@@ -1,0 +1,31 @@
+# Checks the dashboard on every push and pull request.
+# No npm install: the tools use only Node built-ins plus the libraries embedded in index.html.
+name: Dashboard checks
+
+on:
+  push:
+    branches: [main]          # feature branches are checked through their pull request
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TZ: Asia/Kolkata          # the analysts' timezone: Excel-date handling is timezone-sensitive
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Structural and compliance invariants
+        run: node tools/check-invariants.js
+      - name: End-to-end smoke test on the synthetic book
+        run: node tools/smoke-review.js
+      - name: AI Analyst regression test (repo copy is stale, see docs/KNOWN_ISSUES.md KI-010)
+        run: node tools/test-ai-analyst.js
+        continue-on-error: true

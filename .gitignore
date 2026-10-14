@@ -1,11 +1,57 @@
-# Never publish client data or local artifacts
+# Never publish client data or local artifacts.
+# Client base files, IRR sheets and rendered decks/workbooks: every office and
+# data format is blocked, whatever it is called. Test with the synthetic files
+# from tools/make-sample-base.js, which are written to test-data/ (also blocked).
+*.xlsx
+*.xlsm
+*.xlsb
+*.xls
+*.ods
+*.csv
+*.tsv
+*.pptx
+*.ppt
+*.docx
+*.doc
+*.pdf
+*.msg
+*.zip
+*.7z
+# rendered slides / screenshots of client decks
+*.png
+*.jpg
+*.jpeg
 Portfolio Review_*Family*
-*.bak
-~$*
-.DS_Store
-Thumbs.db
+test-data/
+
+# Obsolete or duplicate dashboard copies: the CMS embeds a password hash and a token push path
+Centricity_Portfolio_CMS.html
+Portfolio_Review.html
+.env
+
+# Vendor workbooks are licensed third-party data: they stay on OneDrive/SharePoint.
+For Centricity Portfolio Review Portal/
+
+# Refresh-pipeline intermediates (before/after snapshots contain client holdings)
+buildtools/out/
 
 # Pre-change backups of the dashboard — local changelog, never published
 # (19 of these total ~173 MB and would blow past GitHub's file-size limits)
 *.pre_*
+*.bak
+
+# Reading copies of index.html's code blocks (tools/extract-blocks.js)
+.blocks/
+
+# Machine-local Claude Code settings
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Editor / OS / tool noise
+~$*
 .~lock.*
+.DS_Store
+Thumbs.db
+desktop.ini
+node_modules/
+*.log

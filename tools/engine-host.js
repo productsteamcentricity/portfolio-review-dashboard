@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
-const ROOT = 'C:/Users/IshitaMagazine/OneDrive - CENTRICITY FINANCIAL DISTRIBUTION PRIVATE LIMITED/Documents/Claude/Projects/Portfolio Review';
+const ROOT = path.join(__dirname, '..');   /* the repo root: tools/ sits beside index.html */
 
 function load() {
   const text = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
