@@ -6,15 +6,17 @@ concentration, holdings, fund analytics, an overlap matrix, performance, and
 transaction-based IRR — all exportable to PowerPoint and Excel in the Centricity house style.
 
 The entire app is a single `index.html` (all libraries embedded — Chart.js, SheetJS,
-PptxGenJS). It runs fully offline and works on any modern browser.
+PptxGenJS). It runs fully offline; use Chrome or Edge (the browsers it is tested in).
 
 ## Live link
 
-Once GitHub Pages is enabled for this repository, the dashboard is available at:
+The dashboard is published at:
 
-    https://<your-user-or-org>.github.io/<repo-name>/
+    https://productsteamcentricity.github.io/portfolio-review-dashboard/
 
-(Settings -> Pages -> Build from branch -> `main` / root.)
+(Settings → Pages → Build and deployment → Source: **GitHub Actions**. The `pages.yml`
+workflow publishes `index.html` only; never use "Deploy from a branch", which would publish
+the whole repository. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).)
 
 ## How to use
 
@@ -22,10 +24,14 @@ Once GitHub Pages is enabled for this repository, the dashboard is available at:
 2. Click **Choose base file** and upload the client holdings workbook (`.xlsx`).
    Use the in-app **Download base-file template** button to get a workbook with the
    correct column headings, then paste your data under them.
-3. Pick the **Portfolio as on** date (defaults to today, IST).
+3. Pick the **Portfolio date** ("As on"; defaults to today, IST).
 4. Optionally upload fresher reference data in the Reference data panel:
    Daily MF Monitor, SIF Monitor, Direct MF Monitor, IRR Transactions, PMS / Bonds analytics.
 5. Review the tabs and download the **PPTX** / **XLSX** from the toolbar.
+
+> **Reload the page (F5) before loading the next client's base file.** A second file loaded in
+> the same tab can inherit the previous family's post-rebalancing analytics, Taxation client
+> scope and IRR upload (docs/KNOWN_ISSUES.md, KI-001).
 
 ## Features
 
@@ -43,5 +49,16 @@ Once GitHub Pages is enabled for this repository, the dashboard is available at:
 - All processing happens in the browser. Uploaded client data never leaves the machine
   and is never sent to any server.
 - Reference fund data is embedded for convenience and can be refreshed via the upload panel.
+
+## For maintainers
+
+Start with [docs/HANDOVER.md](docs/HANDOVER.md) and [CLAUDE.md](CLAUDE.md). Before and after any
+change:
+
+    node tools/check-invariants.js    # structure, no network calls, engine, reference data
+    node tools/smoke-review.js        # end-to-end check on a synthetic portfolio
+
+Never commit client files or vendor workbooks. `index.html` is changed only through anchored
+patch scripts, never by hand.
 
 Built for the Centricity WealthTech Products team.

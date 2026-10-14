@@ -1,0 +1,65 @@
+# Handover — start here
+
+For a developer (or a Claude Code session) taking over the Centricity Portfolio Review Dashboard
+without access to earlier conversations.
+
+## 1. The product in brief
+A single offline HTML file (`index.html`) that turns one client holdings workbook into a full HNI/UHNI
+portfolio review: 20 tabs (Home, IPS Profile, Asset / Distributor / Client / AMC Allocation,
+Observations, Holdings, Analytics, Overlap, Portfolio Cost, Fund IRR, Current vs Sample, MF Analysis,
+Taxation, Centricity AI Analyst, Portfolio Rebalancing, Performance, Disclaimer, Thank You), a
+PowerPoint deck in the Centricity house style and an Excel workbook. Users: Products Team analysts who
+build reviews, and the data owner who refreshes the embedded vendor data monthly. Only the exports reach
+partners and clients. Client data never leaves the browser.
+
+Repository: https://github.com/productsteamcentricity/portfolio-review-dashboard (**public** — commit
+nothing confidential). Site: https://productsteamcentricity.github.io/portfolio-review-dashboard/.
+Local working copy on the Products team laptop: `C:\dev\portfolio-review` (outside OneDrive).
+
+## 2. Read in this order
+1. `CLAUDE.md` — the rules and commands (10 minutes).
+2. `docs/ARCHITECTURE.md` — how the file is built and where each calculation lives.
+3. `docs/KNOWN_ISSUES.md` — what is broken or fragile (read KI-001 before using the tool).
+4. `docs/PROJECT_STATE.md` — blockers, next steps, backlog.
+5. `docs/reference/HANDOVER_PRD_Centricity_Portfolio_Review.md` — the previous owner's handover
+   (refresh runbook §9, functional spec §7); errata in `docs/REPLICATION_REPORT.md` §5.
+6. `docs/reference/PROJECT_HISTORY_Portfolio_Review_Dashboard.md` — why things are the way they are.
+
+## 3. Run and test
+```bash
+node tools/check-invariants.js      # structure, no-network, engine, data
+node tools/smoke-review.js          # end-to-end on a synthetic book
+node serve-dashboard.js             # http://127.0.0.1:8099
+node tools/make-sample-base.js      # synthetic files to upload (test-data/)
+```
+Setup details: `docs/DEVELOPMENT_SETUP.md`. Browser acceptance: `docs/TESTING.md` §4.
+
+## 4. Making a change
+1. Agree the objective and acceptance criteria with the owner; read the relevant code in `.blocks/`.
+2. Branch from `main`. Change `index.html` only through a Node script with anchored, exactly-once
+   replacements; confirm the scope (engine / exporters / parsers / UI) of every anchor.
+3. Financial logic: involve `financial-domain-reviewer`; add a check against a known answer.
+4. Run the checks and the browser procedure; compare with the baseline results; update docs and
+   CHANGELOG in the same branch.
+5. `security-release-reviewer` reviews the staged diff (no client data, no secrets, no network calls).
+6. Push the branch and open a PR (routine); CI must pass. Merge only on the owner's go-ahead: a merge
+   that changes `index.html` republishes Pages automatically.
+
+## 5. Monthly data refresh
+The runbook is handover §9 (survey → `build_refresh.js` → `check_blocks.js` gate → client snapshot →
+`splice_refresh.js --data-only` → compare → risk / stock-returns / PMS steps → post-checks). It
+depends on `buildtools/`, which has **not been received** — see `PROJECT_STATE.md`. Until it arrives,
+the data stays at the 30 Sep 2026 vintage. Never hand-edit the data blocks.
+
+## 6. Risks to keep in mind
+- Silent wrong numbers are this project's historical failure mode: sums can be 100% and still wrong.
+  Measure matching or data changes in both directions over the real universes.
+- `index.html` is fragile to tooling: 10 MB lines, raw NUL bytes, exact-byte invariants.
+- Client confidentiality: KI-001 (reload between clients), KI-012 (localStorage), KI-008 (unescaped
+  HTML). Never commit client files; test with synthetic data.
+- Pages URLs are public to anyone holding the link (`docs/DEPLOYMENT.md`).
+
+## 7. Agents available (`.claude/agents/`)
+`dashboard-archaeologist` (read-only investigation) · `financial-domain-reviewer` (calculations and
+data interpretation) · `implementation-engineer` (anchored patches) · `qa-engineer` (checks and
+browser acceptance) · `security-release-reviewer` (pre-commit / pre-push gate).
