@@ -53,13 +53,20 @@ the whole repository. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).)
 
 ## For maintainers
 
-Start with [docs/HANDOVER.md](docs/HANDOVER.md) and [CLAUDE.md](CLAUDE.md). Before and after any
-change:
+Start with [docs/HANDOVER.md](docs/HANDOVER.md) and [CLAUDE.md](CLAUDE.md). Every document is
+listed in [docs/README.md](docs/README.md). Before and after any change:
 
     node tools/check-invariants.js    # structure, no network calls, engine, reference data
     node tools/smoke-review.js        # end-to-end check on a synthetic portfolio
+    node tools/test-ai-analyst.js     # AI Analyst acceptance rules
+
+| Folder | Holds |
+|---|---|
+| `tools/` | checks, the local preview server (`open-dashboard.cmd`), and `patches/`, the only way `index.html` changes |
+| `buildtools/` | the monthly data-refresh pipeline ([docs/MONTHLY_REFRESH.md](docs/MONTHLY_REFRESH.md)) |
+| `docs/` | how it works, decisions, known issues, change requests, refresh logs, the previous owner's handover |
 
 Never commit client files or vendor workbooks. `index.html` is changed only through anchored
-patch scripts, never by hand.
+patch scripts or the refresh pipeline, never by hand.
 
 Built for the Centricity WealthTech Products team.

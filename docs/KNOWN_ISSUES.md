@@ -62,12 +62,17 @@ mixes the two bases in its before/after figures (`:2377, 2548, 2632`). For a fam
 direct equity, the analyst's plan can leave an AMC above 20% of the MF book. Needs a product decision
 on the intended basis.
 
-### KI-005 — Base-file XIRR units: code and handover disagree
-**Confirmed (code).** `XIRR (%)` and `BMXIRR (%)` are read as **percent numbers** and divided by 100
-(`07_engine.js:736`, comment "base file stores XIRR/BMXIRR as percent (e.g. 31.71)"); the in-app template
-labels them `XIRR (%)`. The handover (§5.1) says they are fractions (0.0879 = 8.79%). There is no
-magnitude check, so a file holding fractions — including an Excel cell formatted as % — shows returns
-100× too small, silently. Owner to confirm how real base files store XIRR. (Allocation (%) *is* a fraction.)
+### KI-005 — Base-file XIRR units: real files arrive in both forms
+**Confirmed (code), and confirmed by the previous owner's records.** `XIRR (%)` and `BMXIRR (%)` are read as
+**percent numbers** and divided by 100 (`07_engine.js:736`); the in-app template labels them `XIRR (%)`.
+Real client exports have arrived **both** as plain percent (8.79; July 2026 files, and the anonymised
+20 May 2026 fixture) **and** as fractions (0.182 for 18.2%; a 6 Oct 2026 export), probably depending on the
+report version or how the file was saved (`docs/previous-owner/knowledge/KNOWLEDGE_DUMP.md` §6.3). With a
+fraction file and no IRR upload, every XIRR shows **100× too small**, silently. An IRR upload overwrites the
+base-file XIRR for matched holdings, so it masks the problem. **Check every new base file:** click an XIRR
+cell and read the formula bar. Fix direction: a per-column magnitude test (treat as fractions when the
+column's max |value| ≤ 1.5), as `parseSOA` already does for Holding(%). Allocation (%) is read as a fraction
+and only used in the Excel export.
 
 ### KI-006 — Missing XIRR counted as 0% in client-sheet totals
 **Reported (code review).** Asset / product / grand-total rows weight XIRR by CMV but treat a missing
@@ -127,7 +132,7 @@ after a reference reset, holdings that no longer contribute are not listed as ex
 
 | ID | Status | Issue |
 |---|---|---|
-| KI-010 | Reproduced | `tools/test-ai-analyst.js` (repo copy, 8,163 bytes) fails 1 of 17: TEST 1 picks a fund *listed* in `FUND_RANKS` with status "1-3yr Warning", which the engine deliberately rates amber; funds with *no* entry correctly get "na". The current 8,402-byte version is with the previous owner. CI runs it non-blocking. |
+| KI-010 | **Fixed** 15 Oct 2026 (CR-0003) | `tools/test-ai-analyst.js` (repo copy, 8,163 bytes) failed 1 of 17: TEST 1 picked a fund *listed* in `FUND_RANKS` with status "1-3yr Warning", which the engine deliberately rates amber; funds with *no* entry correctly get "na". Replaced with the previous owner's current 8,402-byte version from their export (it defines "unscored" as no `FUND_RANKS` entry): 17/17 pass, and CI now runs it as a blocking check. |
 | KI-011 | Reproduced | The handover's census one-liner uses `node -e`; under `-e`, `require/module/exports` are globals and the embedded UMD bundles break. Run engine code from a script file. |
 | KI-014 | Reproduced | Deck order differs from tab order: AI Analyst and Taxation follow the Annexure divider (`08_exporters.js:1179-1409`), although `11_app_ui.js:266-268` says screen and deck never disagree. May be intended — owner to confirm. |
 | KI-015 | Reported (code review) | Home tab "Download slide" gives an empty deck; Rebalancing too when no plan exists (`11_app_ui.js:334-338, 361`). |
@@ -146,6 +151,25 @@ after a reference reset, holdings that no longer contribute are not listed as ex
 | KI-033 | Reported (code review) | PMS/AIF performance upload is read by column position and always ×100 (`09_parsers.js:214-220`): sensitive to vendor layout changes. |
 | KI-034 | Reported (code review) | PPTX performance footnote always shows the Regular-plan date, even with Direct selected (`08_exporters.js:1735`). |
 | KI-035 | Confirmed (code) | Two persisted settings carry from one family to the next (and across sessions): the IPS risk profile (`ips_profile_idx`, `11_app_ui.js:4997, 5014`; slide `08_exporters.js:164`) and the Cost tab's distributor filter (`cost_distributor`, `:5081, 5266`). A family reviewed after another uses the previous family's IPS profile unless the analyst changes it — a correctness risk for the IPS tab and slide. Not part of KI-001 (localStorage, by design today). |
+
+## Inherited from the previous owner's knowledge dump (15 Oct 2026, not re-tested)
+Source: `docs/previous-owner/knowledge/KNOWLEDGE_DUMP.md` §4.1 (their numbering in brackets). Items already
+covered above are omitted (D1 = KI-005, D2 = KI-004, D3 = KI-002/003, D9 = TESTING acceptance check 7,
+D17 = KI-028, D25 = KI-012).
+
+| ID | Issue |
+|---|---|
+| KI-036 (D4) | `matchInstrument` breaks ties on `Object.keys()` order: re-serialising a block flipped 3 of 1,419 matches. |
+| KI-037 (D5) | Hybrid MF positions never get a tax class (`taxClassOf` returns null), so they land in Taxation "unmapped" (seen in the smoke test too). |
+| KI-038 (D6) | The July aggregator defaulted a missing debt rating to AAA (against never-fabricate); check whether `buildtools/build_refresh.js` kept that default. |
+| KI-039 (D7) | Issuer top-30 normalisation differs between the build (rescale top 30 to 100) and the browser (divide by the full total). Owner decision pending. |
+| KI-040 (D10) | Loss slides print sub-lakh losses as ₹0.00 Cr; detail pages leave ~1.4" unused. |
+| KI-041 (D11) | "Top Underlying Holdings" aggregates raw names (duplicates, shows TREPS) while the unique-stock KPI de-duplicates. |
+| KI-042 (D14, D15, D16) | IPS: "BBB & below" always 0% (BBB is folded into "AA & Below"); the unlisted denominator counts debt AIFs; the Real Estate row's actual is unverified. |
+| KI-043 (D20) | CVS inflation-adjusted return 7.99% vs the owner's Excel ~9.84%, never reconciled. |
+| KI-044 (D21) | Large & Mid Cap benchmark row may be blank in MF Analysis since Nifty LargeMidcap 250 was removed (12 Jun). |
+| KI-045 (D22, D23, D24) | Data gaps by design or vendor: a large-cap fund missing from the vendor equity analytics; some funds have MF_RISK only as IDCW rows; two MF_ER_TABLE keys still on the all-in ratio (no base ever published). |
+| KI-046 (D8) | A "dashboard not opening" report (25 Aug) was never reproduced; the double-click (`file://`) path has never been tested by Claude. (The 15 Oct "localhost not working" report had a different cause: the preview server only runs during a Claude session; fixed with `tools/open-dashboard.cmd`.) |
 
 ## KI-026 — Inherited from the previous owner (handover §11, not re-tested)
 - `AIF_PERF` (12 records, 30 Jun 2026): no source file has ever been supplied.

@@ -4,7 +4,7 @@
 
    How to run
      1. node tools/make-sample-base.js       (writes test-data/, git-ignored)
-     2. node serve-dashboard.js              -> open http://127.0.0.1:8099
+     2. node tools/serve-dashboard.js        -> open http://127.0.0.1:8099
      3. Paste this whole file into the browser console (or a browser tool's
         JavaScript runner). It defines window.familyChecks.
      4. Run each check on a freshly loaded page (reload in between):

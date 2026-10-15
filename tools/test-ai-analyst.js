@@ -25,7 +25,10 @@ console.log('\n=== TEST 1 — unscored holding is assessed on the rest, never pe
 {
   /* pick a real MF_PERF scheme that carries NO rank this cycle */
   const perf = Object.keys(REF.MF_PERF);
-  const unscored = perf.filter(k => !REF.FUND_RANKS[k] || REF.FUND_RANKS[k].rank == null);
+  /* "unscored" means NO FUND_RANKS entry at all — the engine's own definition (aiaSigScore
+     returns "na" only then). A fund that is listed but carries no rank has a status and is
+     scored amber; Aug 2026 exposed the difference once the SIF funds left MF_PERF. */
+  const unscored = perf.filter(k => !REF.FUND_RANKS[k]);
   const scored = perf.filter(k => REF.FUND_RANKS[k] && REF.FUND_RANKS[k].rank != null);
   console.log('  MF_PERF ' + perf.length + ' schemes: ' + scored.length + ' scored, ' + unscored.length + ' unscored');
   const target = unscored.filter(k => REF.MF_RISK[k])[0];
