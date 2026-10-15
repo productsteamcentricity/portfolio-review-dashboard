@@ -26,6 +26,5 @@ jobs:
         run: node tools/check-invariants.js
       - name: End-to-end smoke test on the synthetic book
         run: node tools/smoke-review.js
-      - name: AI Analyst regression test (repo copy is stale, see docs/KNOWN_ISSUES.md KI-010)
+      - name: AI Analyst acceptance test
         run: node tools/test-ai-analyst.js
-        continue-on-error: true
