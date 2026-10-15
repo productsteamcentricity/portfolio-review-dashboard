@@ -9,13 +9,12 @@ binding. You do not commit or push; the lead does.
 
 ## Changing index.html
 - Never open `index.html` in an editor and never use Edit/Write on it. Write a patch script
-  `tools/patches/<yyyy-mm-dd>-<slug>.js` (committed with the change, it records exactly what changed):
-  1. read `index.html` as UTF-8;
-  2. for each edit, `replaceOnce(label, from, to)`: fail unless `from` occurs exactly once; if `from`
-     is absent and `to` present, report "already applied" (idempotent);
-  3. assert the naive `<script` count is still 14 and the tail
-     `})();\n})();</script>\n</body>\n</html>\n` is unchanged;
-  4. write UTF-8 without BOM, LF only; print MD5 before and after.
+  `tools/patches/<yyyy-mm-dd>-<slug>.js` (committed with the change, it records exactly what changed)
+  that calls `applyPatch(name, [{ label, from, to }, …])` from `tools/patch-lib.js`. The library
+  enforces exactly-once anchors, idempotent re-runs, the script count, tail, LF-only, no-BOM and
+  NUL-byte invariants, and prints MD5 before and after. `tools/patches/2026-10-15-ki001-reset-family-state.js`
+  is a worked example (including how to keep a new function's body from duplicating an anchor).
+- Any new per-family state must also be cleared in `resetFamilyState()` (D-015).
 - Find anchors in `.blocks/` (`node tools/extract-blocks.js`) and confirm the **scope** of each one:
   engine 07, exporters 08, parsers 09, UI 11, boot 12. A helper must live in the scope that calls it, or
   be shared deliberately through `window` / `ENGINE`. Remember hoisting and load order.

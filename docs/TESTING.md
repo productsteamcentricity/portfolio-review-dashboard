@@ -11,6 +11,7 @@ code the browser runs. Browser checks cover what Node cannot (rendering, the liv
 | `node tools/check-invariants.js` | file structure (script count 14, tail, 13 blocks by marker, LF only); **no network API or remote URL** in app code or page shell; engine loads; ENGINE / parser surface; every REFDATA block present; 7 data dates; look-through mixes sum to 100 (FAIL > 0.5, WARN > 0.05). Prints size, MD5 and block counts. `--expect-md5 <hash>` asserts an exact build. | CI, Pages |
 | `node tools/smoke-review.js` | end-to-end on a synthetic book (26 checks): parse, units, unmatched surfacing, AMC 20% rule, mixes sum to 100, **transaction XIRR equal to the exact answer within 1e-6**, taxation reconciliation and LTCG/STCG/unclassified = CMV, overlap matrix properties, no NaN/Infinity, deterministic AI Analyst plan; the full deck, each of the 19 tab groups and the workbook build (the picker-only rebalancing groups need on-screen state and are covered by the browser procedure) | CI, Pages |
 | `node tools/test-ai-analyst.js` | AI Analyst rules on the real embedded data | CI, non-blocking (KI-010) |
+| `tools/browser-checks/family-isolation.js` (browser console) | KI-001: a second family inherits nothing (`isolation()`: 9 checks incl. the Excel "Fund IRR" sheet); an IRR uploaded before the first base file is kept (`irrBeforeBase()`); uploads after removing the base file are kept (`removeThenReload()`) | manual / qa-engineer, before merging UI changes |
 
 The synthetic book (`tools/make-sample-base.js`) has two invented clients, 13 holdings across MF
 equity/debt/hybrid, PMS, AIF, SIF, direct equity and one unknown fund. Every holding is priced off a NAV
@@ -57,10 +58,12 @@ path growing at a constant rate, so its XIRR is known exactly — an independent
    PowerPoint/Excel at least once per release and check every pagination boundary for overflow.
 6. Network audit: DevTools → Network (or the browser tool's request log) must show nothing but the
    page itself and any files you loaded deliberately.
-7. KI-001 check: with the sample and IRR loaded, pick "Sample Client A" in the Taxation scope, then load
-   `test-data/Sample_Base_File_B.xlsx` (different schemes and clients) into `#file`. Today family A's
-   funds remain in Analytics / Post-Rebalancing Overlap, the Taxation scope stays "Sample Client A" and
-   the IRR stays active. After the fix, nothing from family A may appear in any tab or export.
+7. KI-001 checks: paste `tools/browser-checks/family-isolation.js` into the console and run
+   `await familyChecks.isolation()`, then on fresh pages `irrBeforeBase()` and `removeThenReload()`;
+   all must return `pass: true`. (`isolation()` loads the sample with its IRR, sets the Taxation scope
+   and a slide tick, then loads `test-data/Sample_Base_File_B.xlsx`, and checks that nothing of the first
+   family remains on screen or in the Excel export.) Before the fix (`index.html` MD5 `173F86CA…`) it
+   fails; on 15 Oct 2026 the fixed build (`F0EB0101…`) passed all three.
 
 ## 5. Not covered yet
 - Visual PPTX/XLSX review in Office (pagination overflow, fonts) — acceptance check 7.

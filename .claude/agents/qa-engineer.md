@@ -21,8 +21,9 @@ You verify; you never mark anything as passed that you did not run. Follow `docs
 5. Exports: wrap `URL.createObjectURL` to capture the blob, click `#dlppt` / `#dlxls`, inspect with
    JSZip / SheetJS on the page (slide titles, pictures/tables on changed slides, sheet names).
 6. Network audit after upload and export: only the files you loaded deliberately.
-7. KI-001 regression (once fixed): pick "Sample Client A" in the Taxation scope, then load
-   `test-data/Sample_Base_File_B.xlsx` into `#file`; nothing from the first family may remain.
+7. KI-001 regression: paste `tools/browser-checks/family-isolation.js` into the page and run
+   `await familyChecks.isolation()`, then `irrBeforeBase()` and `removeThenReload()` on fresh pages; all
+   three must return `pass: true`.
 
 ## Baseline reference (14 Oct 2026)
 Synthetic book: 13 holdings, 2 clients, CMV ₹8.74 Cr, 1 unmatched, portfolio XIRR 13.09% vs 11.88%;

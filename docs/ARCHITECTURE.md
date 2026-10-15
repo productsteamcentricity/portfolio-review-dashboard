@@ -2,7 +2,7 @@
 
 Describes the system **as built** at the baseline: source commit `cab22e6`, `index.html`
 16,765,556 bytes, MD5 `173F86CAC1E5D0AC8FFD5A66042A3B4C`. Facts were verified against the code
-on 14 Oct 2026. Code references such as `07_engine.js:736` point into the reading copies that
+on 14 Oct 2026; later changes are noted where they apply (KI-001 fix, 15 Oct 2026). Code references such as `07_engine.js:736` point into the reading copies that
 `node tools/extract-blocks.js` writes to `.blocks/`; line numbers are those of the baseline and
 drift as the code changes. Items marked *(code review)* come from reading the code and have not
 been reproduced at runtime.
@@ -73,7 +73,8 @@ Load order engine → exporters → parsers is required: if the parsers ran firs
 replace `ENGINE` and drop `.parsers`. `benchmarkFor` and `aiaRationale` are used before their
 definition and work only because they are hoisted function declarations. `computeReview` **mutates
 its input rows** (match keys, `pcls`, IRR-derived XIRR); the UI reuses the same rows on every
-recompute, which is one root of KI-001. *(code review)*
+recompute; that is the mechanism of KI-031. (A new base file is always parsed into fresh rows, so it
+was not a cause of KI-001.) *(code review)*
 
 ### ENGINE contract (verified)
 `07` attaches `palette, FONT, amcDisplay, normalize, matchInstrument, matchPMS, resolveBench,
@@ -90,6 +91,13 @@ fmtDate, parseAdditionalDebt, parseSOA }`. Node tooling evaluates these blocks s
   embedded block from `REF`. Uploads last for the browser session only. Some consumers read the
   untouched `REFDATA` and so ignore uploads (AI Analyst, MF Analysis, cost-tab risk data, exporter MF
   slides) — KI-013 *(code review)*.
+- **Per-family state** (since the KI-001 fix): `resetFamilyState()` in the UI script runs when a base
+  file replaces a loaded one and when the loaded file is removed (×). It returns the client upload
+  slots (IRR, PMS/AIF, bonds) to the embedded defaults and clears the post-rebalancing cache
+  (`_rbAnCache`), the rebalancing plan (`REBAL_*`), slide-picker ticks (`SLIDE_PICK`), overlap selection
+  and threshold, Taxation scope, CVS edits and the `window.__*` data the exporters read. Market-data
+  uploads are kept. `loadModel()` also clears the post-rebalancing cache on every recompute. New
+  per-family state must be cleared there too (D-015).
 - **localStorage** (the only persistence): `ips_profile_idx`, `cost_overrides` (instrument → ER),
   `cost_mode`, `cost_distributor`, `cvs_cmv`, `cvs_cmv_sig` (`family|asOn|CMV`), `cvs_infl`. Holdings,
   folios and units are never stored, but family name, distributor and instrument names are (KI-012).
@@ -205,6 +213,8 @@ Overlap Matrix, Performance, Fund IRR, Observations, Portfolio Rebalancing, AI A
 | `tools/smoke-review.js` | end-to-end engine/exporter checks on a synthetic book (CI gate) |
 | `tools/make-sample-base.js` | synthetic base + IRR workbooks with exact-answer XIRRs |
 | `tools/extract-blocks.js` | reading copies of the code blocks in `.blocks/` |
+| `tools/patch-lib.js`, `tools/patches/*.js` | the only way to change `index.html`: anchored, idempotent, invariant-checked edits, one committed script per change (D-016) |
+| `tools/browser-checks/family-isolation.js` | browser regression checks for KI-001 (paste into the console on the local preview) |
 | `tools/test-ai-analyst.js` | AI Analyst behavioural tests (repo copy stale, KI-010) |
 | `tools/render-slides.js` | builds one slide group headlessly to a `.pptx` for visual review |
 | `tools/parse-fund-ranks.js` | builds `FUND_RANKS` from the Fund Ranks workbook (its comments cite `tools/parse-performance.js` and the previous owner's CLAUDE.md, neither transferred) |

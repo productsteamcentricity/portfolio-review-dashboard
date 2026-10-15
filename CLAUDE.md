@@ -15,8 +15,9 @@ and the monthly data owner.
 
 ## Non-negotiable rules
 1. **`index.html` is the product. Never rewrite, reformat, prettify, minify, split or re-bundle it.**
-   Change it only with a Node patch script that does anchored `replaceOnce(label, from, to)` edits
-   (each anchor must match exactly once), then re-run `node tools/check-invariants.js`.
+   Change it only with a patch script in `tools/patches/<yyyy-mm-dd>-<slug>.js` built on
+   `tools/patch-lib.js` (anchored, exactly-once, idempotent edits; refuses to break the file's
+   invariants), committed with the change; then re-run `node tools/check-invariants.js`.
    Never open it in an editor or with the Edit/Write tools: it has 10 MB lines and **3 raw NUL bytes**
    inside the UI script (string-literal keys), which editors and tools can corrupt.
 2. **No network calls, ever** (compliance: client holdings never leave the browser). No `fetch`,
@@ -65,7 +66,8 @@ README.md  CLAUDE.md  CHANGELOG.md
 serve-dashboard.js    local preview server, 127.0.0.1:8099
 tools/                engine-host.js (runs the shipped engine in Node) · check-invariants.js ·
                       smoke-review.js · make-sample-base.js · extract-blocks.js · test-ai-analyst.js ·
-                      render-slides.js · parse-fund-ranks.js · parse-fund-mgr.js
+                      render-slides.js · parse-fund-ranks.js · parse-fund-mgr.js ·
+                      patch-lib.js + patches/ (every index.html change) · browser-checks/
 docs/                 ARCHITECTURE, DEVELOPMENT_SETUP, TESTING, DEPLOYMENT, DECISIONS, KNOWN_ISSUES,
                       PROJECT_STATE, REPLICATION_REPORT, HANDOVER; reference/ = handover docs as received
 .claude/              launch.json (preview server) · agents/ (project subagents)
@@ -81,6 +83,8 @@ In a Claude Code PowerShell call, prepend the toolchain if `node` is not found:
 - `node tools/test-ai-analyst.js` — AI Analyst rules; repo copy is stale, 1 known failure (KI-010)
 - `node tools/make-sample-base.js` — synthetic base + IRR files and a second family to `test-data/`
 - `node tools/extract-blocks.js` — reading copies of the code blocks in `.blocks/` (cite as `07_engine.js:736`)
+- `tools/browser-checks/family-isolation.js` — paste into the browser console on the local preview and
+  run `await familyChecks.isolation()` (then `irrBeforeBase()`, `removeThenReload()` on fresh pages)
 - `node serve-dashboard.js` → http://127.0.0.1:8099 (or preview config `dashboard` in .claude/launch.json)
 - Run engine code from a **script file**, never `node -e`: under `-e`, `require/module/exports` are
   globals and the embedded UMD bundles take their CommonJS path and break (KI-011).
@@ -98,9 +102,10 @@ In a Claude Code PowerShell call, prepend the toolchain if `node` is not found:
    files); commit, push the branch, open a PR, report the commit SHA and PR link. Merge only on the
    owner's go-ahead (rule 8).
 
-## Analyst safety notice (until KI-001 is fixed)
-Reload the page (F5) before loading each new client's base file. A second base file loaded in the same
-tab inherits the previous family's post-rebalancing analytics, Taxation client scope and IRR upload.
+## Per-family state (KI-001)
+Loading a base file over a loaded one, or removing it (×), runs `resetFamilyState()` (UI script): the
+IRR, PMS/AIF and bonds uploads return to defaults and all family state is dropped; market-data uploads
+stay. Any new per-family state you add must be cleared there too, and `family-isolation.js` must pass.
 
 ## Docs map
 docs/HANDOVER.md (start here) · ARCHITECTURE.md · DEVELOPMENT_SETUP.md · TESTING.md · DEPLOYMENT.md ·

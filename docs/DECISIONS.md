@@ -103,3 +103,21 @@ git-ignored in case the refresh pipeline writes them. Supersedes handover §10 r
 principal architect, documentation owner and release maintainer (it runs the git operations). Add a
 `refresh-operator` agent when `buildtools/` arrives. Agent findings are evidence to verify, not
 conclusions.
+
+## D-015 — What a new base file clears (15 Oct 2026, KI-001 fix, owner-approved change)
+**Decision.** A base file loaded over an already-loaded one, or the removal (×) of the loaded file,
+clears everything that belongs to a family: the client upload slots (IRR transactions; PMS / AIF
+analytics; bonds / debt analytics) and the look-through, rebalancing, overlap, slide-picker, CVS,
+taxation and AI-analyst state. Market-data uploads (MF / Direct / SIF monitors, Market Update slides)
+are kept. The first base file of a session clears nothing, so uploads made before it are kept.
+**Alternatives.** Reload the page on every new base file (loses market-data uploads, worse UX); keep
+client uploads when the new file has the same clients (convenient, but a wrong match would leak).
+**Consequences.** Re-loading a corrected file for the same family clears its uploads and plan; the
+status line names what was cleared. The PMS/AIF and bonds slots are cleared whole, because they do not
+record whether an upload was client data or market data.
+
+## D-016 — Every change to index.html is a committed patch script (15 Oct 2026)
+**Decision.** `tools/patch-lib.js` applies anchored, exactly-once, idempotent replacements and refuses
+to write a file that breaks the invariants (script count, tail, LF, no BOM, NUL bytes). Each change is
+a script in `tools/patches/` committed with it, so the history shows exactly what changed and the
+change can be re-applied. Supersedes the handover's template scripts (`buildtools/patch_*.js`).

@@ -45,8 +45,7 @@ Then open the URL, check the console is clean and the sidebar data dates are the
 Revert the offending commit on `main` (`git revert <sha>`, PR, merge); the workflow republishes the
 previous `index.html`. Never force-push `main`.
 
-## The previous public site
-The previous owner's site (`magazineishita1108-boop.github.io/Portfolio_Review_Dashboard/`) and its
-public repository still serve build `cab22e6`. Once the new site is live, ask the previous owner to
-unpublish it, so analysts are not left on an unmaintained copy, and to delete or archive that repository
-(its old commit messages contain client names, per the handover).
+## The previous site
+The previous owner's site (`magazineishita1108-boop.github.io/Portfolio_Review_Dashboard/`) still serves
+build `cab22e6` and **stays live until the new build has been fully tested** (owner's decision,
+15 Oct 2026). Retiring it is a separate, later step for the owner to schedule.
