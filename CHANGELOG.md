@@ -35,6 +35,9 @@ Organise the repository and set up the monthly refresh (CR-0003). `index.html` i
 
 ### Changed
 - `serve-dashboard.js` moved to `tools/`, and `.claude/launch.json` updated.
+- The local server now serves only the dashboard and the files in `test-data/` (everything else returns 404,
+  including `buildtools/out/`). It also accepts only requests addressed to `127.0.0.1` or `localhost`, which
+  blocks DNS rebinding.
 - `docs/reference/` renamed to `docs/previous-owner/handover/`.
 - `tools/test-ai-analyst.js` replaced with the previous owner's current version. It passes 17/17, and CI now
   runs it as a blocking check.

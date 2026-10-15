@@ -47,7 +47,9 @@
 - **Local preview:**
   - `serve-dashboard.js` moved to `tools/`;
   - added `tools/open-dashboard.cmd`, which starts the server if needed and opens the browser;
-  - `.claude/launch.json` updated.
+  - `.claude/launch.json` updated;
+  - the server now serves only the dashboard and `test-data/`. It refuses other paths, such as refresh
+    outputs, and refuses foreign Host headers (security review finding).
 - **Documentation:**
   - `docs/README.md` (index);
   - `docs/MONTHLY_REFRESH.md` (the process and runbook);
@@ -67,8 +69,15 @@
 - **localhost:8099.**
   - Cause: nothing was listening. The preview server had been started by the previous Claude session and
     stopped with it.
-  - After the fix: `Open Dashboard.cmd` starts the server and opens the page. The dashboard is served, and
-    `/.git/config` returns 403.
+  - After the fix: `Open Dashboard.cmd` starts the server and opens the page.
+  - Probed with curl:
+    - `/`, `/index.html` and the test files return 200;
+    - `/.git/config`, `/CLAUDE.md`, `/buildtools/...` and traversal attempts return 404;
+    - a foreign Host header returns 403.
+  - A synthetic portfolio loads in the browser ("Loaded 13 holdings · 2 client(s)"), with no console errors.
+- **Security review.** The `security-release-reviewer` agent first returned NO-GO: two lines of
+  `docs/previous-owner/README.md` said where material containing client details is kept. Those lines and
+  three similar location pointers were reworded, and the server was hardened as above.
 - **Export.** T1–T3 match the export manifest. T3 holds all 75 vendor files of the 14 Oct handover, verified
   by SHA-256.
 - **Intake check.** Run on `02 Archive\2026-09` (against 2026-08) and on 2026-08 (against 2026-07). It found
