@@ -1,4 +1,4 @@
-# Checks the dashboard on every push and pull request.
+# Checks the dashboard on pushes to main and on every pull request.
 # No npm install: the tools use only Node built-ins plus the libraries embedded in index.html.
 name: Dashboard checks
 
