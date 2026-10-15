@@ -4,7 +4,7 @@
     {
       "name": "dashboard",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["serve-dashboard.js"],
+      "runtimeArgs": ["tools/serve-dashboard.js"],
       "port": 8099
     }
   ]
