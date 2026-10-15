@@ -16,10 +16,13 @@
               Accord Fintech disclaimer as scheme rows).
 
    Every edit is an anchored string replacement asserted to match exactly
-   once. Asserts the script-tag counts and the file tail, then propagates to
-   the three copies and prints their MD5s.
+   once. Asserts the script-tag counts and the file tail, then writes
+   index.html (this repository keeps a single copy, D-001) and prints its MD5.
+   It does not check line endings, BOM or NUL bytes: run
+   node tools/check-invariants.js after every splice.
 
-   Usage: node buildtools/splice_refresh.js buildtools/out/aug2026_blocks.json --label "Sep 2026"
+   Usage: node --max-old-space-size=8192 buildtools/splice_refresh.js buildtools/out/<YYYY-MM>/blocks.json
+            --data-only [--label "<Mon YYYY>"] [--dry]
    ========================================================================== */
 'use strict';
 const fs = require('fs');
@@ -153,9 +156,11 @@ blk.forEach((b, i) => { try { new vm.Script(b); } catch (e) { throw new Error('s
 console.log('after : bytes ' + html.length.toLocaleString() + '  <script naive ' + after.naive + '  real ' + after.tags + '  all ' + blk.length + ' blocks parse  tail ok');
 
 if (dry) { console.log('dry run — nothing written'); process.exit(0); }
-const targets = ['index.html', 'Portfolio_Review.html', path.join('github-repo', 'index.html')].map(p => path.join(ROOT, p));
-targets.forEach(t => fs.writeFileSync(t, html));
-const sums = targets.map(t => md5(fs.readFileSync(t, 'utf8')));
-targets.forEach((t, i) => console.log('  wrote ' + path.relative(ROOT, t).padEnd(24) + fs.statSync(t).size.toLocaleString() + ' bytes  md5 ' + sums[i]));
-if (new Set(sums).size !== 1) throw new Error('copies are not byte-identical');
-console.log('all three copies byte-identical');
+/* One target: the previous owner's layout also wrote Portfolio_Review.html and github-repo/index.html
+   (three copies); this repository has only index.html (D-001). */
+const target = path.join(ROOT, 'index.html');
+fs.writeFileSync(target, html);
+const written = md5(fs.readFileSync(target, 'utf8'));
+console.log('  wrote index.html  ' + fs.statSync(target).size.toLocaleString() + ' bytes  md5 ' + written);
+if (written !== md5(html)) throw new Error('index.html as re-read differs from the spliced text');
+console.log('index.html re-read and verified; next: node tools/check-invariants.js');
