@@ -14,21 +14,33 @@ Code references point into `.blocks/` (`node tools/extract-blocks.js`), baseline
 
 ## High
 
-### KI-001 — A second client loaded in the same tab inherits the previous family's state
-**Reproduced.** After reviewing family A and then loading family B's base file without reloading:
-B's Analytics tab and Post-Rebalancing Overlap panel listed A's funds; B's Taxation tab kept A's
-client scope ("Sample Client A"); A's IRR upload stayed active, so B's Fund IRR read
-"transaction-based (as on 30 Sep 2026)" from A's file.
-- Causes *(code review)*: post-rebalancing analytics cache keyed only on the rebalancing changes
-  (`11_app_ui.js:3509-3523`, stored for export at `:3660-3676`); `__taxScope` never reset
-  (`:3933, 4413, 4529`); the IRR upload lives in `activeRef.IRR` (`:191`), which loading a new base
-  file (`handle()`, `:53-68`) never clears — the Client SOA upload persists the same way; the CVS tab
-  is seeded before the rebalancing state resets (`:486-488, 2858-2859`).
-- Impact: one family's holdings or client name can appear in another family's on-screen review and
-  exported slides (Post-Rebalancing Analytics, Rebalancing Impact, Taxation titles). Confidentiality risk.
-- **Workaround: reload the page (F5) before loading each new client's base file.**
-- Repro: `docs/TESTING.md` §4 step 7 (uses `test-data/Sample_Base_File_B.xlsx`).
-- Fix direction: reset all per-family state on base-file load (or reload the page on a new upload).
+### KI-001 — A second client loaded in the same tab inherited the previous family's state — **FIXED**
+**Fixed** on branch `fix/ki-001-reset-family-state` (patch `tools/patches/2026-10-15-ki001-reset-family-state.js`,
+`index.html` MD5 `173F86CA…` → `F0EB0101…`); live once merged and deployed.
+**Was reproduced** at baseline: after reviewing family A and then loading family B's base file without
+reloading, B's Analytics tab and Post-Rebalancing Overlap panel listed A's funds; B's Taxation tab kept
+A's client scope; A's IRR upload stayed active, so B's Fund IRR was "transaction-based" from A's file and
+**B's Excel export carried a "Fund IRR" sheet built from A's IRR file, with A's client names**.
+- Causes: the post-rebalancing look-through was cached on the rebalancing deltas alone
+  (`11_app_ui.js:3509-3523`), so two families with no actions shared one entry; client uploads
+  (`activeRef.IRR`, `:191`; client SOA merged into `EQUITY_ANALYTICS`, `:143`; bonds merged into
+  `DEBT_ANALYTICS`, `:132`) were never cleared by `handle()` (`:53-68`); the rebalancing plan reset only
+  inside `renderRebal` (`:2859`), which runs after `renderAnalytics` and `renderCVS` had read it
+  (`:482-494`); the Taxation scope, slide-picker ticks, overlap selection/threshold and CVS edits were
+  never reset.
+- Fix: `resetFamilyState()` runs when a base file replaces a loaded one and when the loaded file is
+  removed (×). It returns the IRR, PMS/AIF and bonds slots to the embedded defaults and drops the
+  look-through, rebalancing, overlap, slide-picker, CVS, taxation and AI-analyst state; market-data
+  uploads (MF / Direct / SIF monitors, Market Update) are kept; the status line names what was cleared.
+  The post-rebalancing cache is also cleared on every recompute. The first base file of a session clears
+  nothing, so client uploads made before it are kept.
+- Behaviour to know: loading a corrected file for the same family also clears its IRR / PMS-AIF / bonds
+  uploads and its rebalancing plan (re-upload them); the PMS/AIF and bonds slots are cleared whole,
+  including a PMS/AIF performance or debt-monitor file uploaded through them.
+- Verified: `tools/browser-checks/family-isolation.js` — `isolation()` fails at baseline and passes
+  after the fix (9/9); `irrBeforeBase()` and `removeThenReload()` pass; single-family results
+  unchanged (61-slide deck, 15-sheet workbook, Fund IRR 13.09% vs 11.88%, no console errors, no
+  network requests).
 
 ### KI-002 — Exported Overlap slide has no matrix
 **Reproduced.** In the exported deck the "Overlap Matrix — Mutual Funds / PMS" slide holds only the
@@ -122,7 +134,7 @@ after a reference reset, holdings that no longer contribute are not listed as ex
 | KI-016 | Reported (code review) | Cost note says "AIF default = 200 bps"; the code uses 250 bps (`11_app_ui.js:5256` vs `5170`, `08_exporters.js:449`). The same note says ERs come from the MF Monitor, but the embedded ER table is consulted first. |
 | KI-017 | Reported (code review) | "Rebalancing Impact" has no checkbox of its own in the slide picker (`11_app_ui.js:456`). |
 | KI-018 | Reproduced | IPS table has 28 rows vs 27 per slide, so "IPS Profile Compliance (2/2)" carries a single row. |
-| KI-019 | Reported (code review) | Changing the as-on date wipes the rebalancing plan (`11_app_ui.js:39, 2450, 2859`). |
+| KI-019 | Reported (code review) | Changing the as-on date wipes the rebalancing plan and the slide-picker ticks (`11_app_ui.js:39, 2450, 2859`). |
 | KI-020 | Reported (code review) | Picking a logo does not update the header logo (`12_boot.js:2, 7`). |
 | KI-021 | Reported (code review) | Excel export fails for client names with `: \ / ? * [ ]` or two names sharing their first 31 characters (`08_exporters.js:1890, 1935`). |
 | KI-023 | Reported (code review) | Ratings with an agency prefix ("CRISIL AAA", "ICRA AAA") fall into the wrong rating bucket (`07_engine.js:881-882`). |
@@ -133,6 +145,7 @@ after a reference reset, holdings that no longer contribute are not listed as ex
 | KI-030 | Confirmed (code) | Overlap uses stored holdings, which may be a fund's top 30 only, so broad funds' overlap is understated (`07_engine.js:1342-1343`). |
 | KI-033 | Reported (code review) | PMS/AIF performance upload is read by column position and always ×100 (`09_parsers.js:214-220`): sensitive to vendor layout changes. |
 | KI-034 | Reported (code review) | PPTX performance footnote always shows the Regular-plan date, even with Direct selected (`08_exporters.js:1735`). |
+| KI-035 | Confirmed (code) | Two persisted settings carry from one family to the next (and across sessions): the IPS risk profile (`ips_profile_idx`, `11_app_ui.js:4997, 5014`; slide `08_exporters.js:164`) and the Cost tab's distributor filter (`cost_distributor`, `:5081, 5266`). A family reviewed after another uses the previous family's IPS profile unless the analyst changes it — a correctness risk for the IPS tab and slide. Not part of KI-001 (localStorage, by design today). |
 
 ## KI-026 — Inherited from the previous owner (handover §11, not re-tested)
 - `AIF_PERF` (12 records, 30 Jun 2026): no source file has ever been supplied.

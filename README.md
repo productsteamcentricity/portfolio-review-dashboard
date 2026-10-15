@@ -29,9 +29,10 @@ the whole repository. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).)
    Daily MF Monitor, SIF Monitor, Direct MF Monitor, IRR Transactions, PMS / Bonds analytics.
 5. Review the tabs and download the **PPTX** / **XLSX** from the toolbar.
 
-> **Reload the page (F5) before loading the next client's base file.** A second file loaded in
-> the same tab can inherit the previous family's post-rebalancing analytics, Taxation client
-> scope and IRR upload (docs/KNOWN_ISSUES.md, KI-001).
+> **Loading the next client's base file starts a clean review.** The previous family's IRR,
+> PMS / AIF and bonds uploads, rebalancing plan and selections are cleared, and the status line
+> says what was cleared, so upload the new family's files after its base file
+> (docs/KNOWN_ISSUES.md, KI-001).
 
 ## Features
 

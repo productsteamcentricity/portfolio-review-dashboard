@@ -36,8 +36,9 @@ Setup details: `docs/DEVELOPMENT_SETUP.md`. Browser acceptance: `docs/TESTING.md
 
 ## 4. Making a change
 1. Agree the objective and acceptance criteria with the owner; read the relevant code in `.blocks/`.
-2. Branch from `main`. Change `index.html` only through a Node script with anchored, exactly-once
-   replacements; confirm the scope (engine / exporters / parsers / UI) of every anchor.
+2. Branch from `main`. Change `index.html` only through a patch script in `tools/patches/` that uses
+   `tools/patch-lib.js` (anchored, exactly-once replacements); confirm the scope (engine / exporters /
+   parsers / UI / boot) of every anchor. The KI-001 patch is a worked example.
 3. Financial logic: involve `financial-domain-reviewer`; add a check against a known answer.
 4. Run the checks and the browser procedure; compare with the baseline results; update docs and
    CHANGELOG in the same branch.
@@ -55,8 +56,9 @@ the data stays at the 30 Sep 2026 vintage. Never hand-edit the data blocks.
 - Silent wrong numbers are this project's historical failure mode: sums can be 100% and still wrong.
   Measure matching or data changes in both directions over the real universes.
 - `index.html` is fragile to tooling: 10 MB lines, raw NUL bytes, exact-byte invariants.
-- Client confidentiality: KI-001 (reload between clients), KI-012 (localStorage), KI-008 (unescaped
-  HTML). Never commit client files; test with synthetic data.
+- Client confidentiality: per-family state must be reset between clients (KI-001, fixed — keep
+  `family-isolation.js` passing), KI-012 / KI-035 (localStorage), KI-008 (unescaped HTML). Never commit
+  client files; test with synthetic data.
 - Pages URLs are public to anyone holding the link (`docs/DEPLOYMENT.md`).
 
 ## 7. Agents available (`.claude/agents/`)

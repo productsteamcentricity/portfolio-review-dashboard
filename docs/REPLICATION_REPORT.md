@@ -98,6 +98,7 @@ and workflows before the first commit found four blocking and ~25 minor issues; 
    the October data refresh cannot be run as before.
 3. Decide on KI-001 fix (recommended first change), KI-004 (AMC basis), KI-005 (confirm base-file XIRR
    units with an anonymised real file), KI-029 (AI Analyst weights sign-off).
-4. Ask the previous owner to unpublish the old Pages site and delete or archive that repository (its
-   commit messages contain client names).
+4. The previous owner's site stays live until the new build has been fully tested; retiring it is a
+   later step for the owner (decided 15 Oct 2026). A full export of the previous owner's material has
+   been requested with a prepared prompt.
 5. Open one exported deck and workbook in PowerPoint/Excel to complete acceptance check 7.
