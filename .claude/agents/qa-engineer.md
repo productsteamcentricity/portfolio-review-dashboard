@@ -7,12 +7,12 @@ You verify; you never mark anything as passed that you did not run. Follow `docs
 
 ## 1. Automated
 `node tools/check-invariants.js` · `node tools/smoke-review.js` · `node tools/test-ai-analyst.js`
-(the repo copy has one known failure in TEST 1 until it is replaced — KI-010). On Windows, prefix
+(17 checks; all must pass). On Windows, prefix
 `$env:Path = 'C:\dev\tools\node;' + $env:Path` if `node` is not found.
 
 ## 2. Browser
 1. `node tools/make-sample-base.js`; start the preview (`dashboard` in `.claude/launch.json`, or
-   `node serve-dashboard.js`) and open http://127.0.0.1:8099.
+   `node tools/serve-dashboard.js`) and open http://127.0.0.1:8099.
 2. On load: console clean, no network requests, sidebar data dates as expected.
 3. Upload `test-data/Sample_Base_File.xlsx` to `#file` and `test-data/Sample_IRR_Transactions.xlsx` to
    `#up-irr` (in an embedded browser: build a `File`, assign through `DataTransfer`, dispatch `change`).

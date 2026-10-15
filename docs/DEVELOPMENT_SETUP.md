@@ -49,7 +49,8 @@ you expect, the checkout was altered (usually by line-ending conversion): fix th
 
 ## Run the dashboard locally
 - Double-click `index.html`, or
-- `node serve-dashboard.js` and open http://127.0.0.1:8099 (bound to localhost only), or
+- double-click `tools\open-dashboard.cmd` (starts the server if needed and opens the browser), or
+- `node tools/serve-dashboard.js` and open http://127.0.0.1:8099 (bound to localhost only), or
 - in Claude Code, the preview configuration `dashboard` in `.claude/launch.json`.
 
 Synthetic test files: `node tools/make-sample-base.js` writes `test-data/Sample_Base_File.xlsx` and
@@ -65,10 +66,25 @@ Open sessions in `C:\dev\portfolio-review` so `CLAUDE.md`, `.claude/launch.json`
 `.claude/agents/` load. Machine-local permissions go in `.claude/settings.local.json` (git-ignored).
 
 ## Where the data lives
-- Vendor workbooks (licensed, never committed) are kept on OneDrive. The archive received at handover is
-  extracted at `…\Desktop\Claude Code-Portfolio Review Dashboard\For Centricity Portfolio Review Portal\`
-  with one folder per month (Apr–Sep 2026); the refresh pipeline finds files by name prefix.
-- Client base files and IRR sheets stay on the analysts' machines / SharePoint, never in the repo.
+Nothing below is ever committed. The project folder in OneDrive is
+`%OneDriveCommercial%\Desktop\Claude Code-Portfolio Review Dashboard` (D-018); each folder has a README:
+
+| Folder | Holds |
+|---|---|
+| `01 Monthly Updates\YYYY-MM` | the owner's inbox for one data month (`Analytics\` and `Index TRI\` subfolders); the refresh reads it (docs/MONTHLY_REFRESH.md) |
+| `02 Archive\YYYY-MM` | processed vendor data per data month (Apr 2026 onward), files exactly as received, plus the slide images embedded that month; `Reference\` for files not tied to a month |
+| `03 Handover` | everything received from the previous owner, as received, and the log of the 15 Oct 2026 reorganisation |
+| `99 Superseded - safe to delete` | verified duplicates, for the owner to delete |
+| `Open Dashboard.cmd` | starts the local server from this repository and opens the browser |
+
+- `C:\dev\handover-export\` holds the previous owner's export unpacked (T1 source and docs, T2 knowledge,
+  T3 vendor data). Its paths are too deep for OneDrive. The parts that are safe to publish are copied into
+  `buildtools/` and `docs/previous-owner/` (D-019).
+- Vendor files are found by name prefix, so they keep their vendor names. Keep folder names short: the
+  project folder's path is already 128 characters, Windows skips files past 260 and Excel cannot open
+  paths past 218.
+- Client base files and IRR sheets stay on the analysts' machines / SharePoint, never in the repo or the
+  project folder.
 
 ## Troubleshooting
 | Symptom | Cause / fix |

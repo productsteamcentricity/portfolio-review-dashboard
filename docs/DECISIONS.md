@@ -2,7 +2,7 @@
 
 Newest last. Each decision records context, the choice, alternatives and consequences. A later
 decision that changes an earlier one says "Supersedes D-xxx". Decisions taken by the previous owner
-(May–Oct 2026) are summarised in `reference/PROJECT_HISTORY_Portfolio_Review_Dashboard.md` and the
+(May–Oct 2026) are summarised in `previous-owner/handover/PROJECT_HISTORY_Portfolio_Review_Dashboard.md` and the
 handover; the most important of them are restated as rules in `CLAUDE.md`.
 
 ## D-001 — The git repository is the working folder, outside OneDrive (14 Oct 2026)
@@ -22,7 +22,7 @@ no tags) has client names in three commit messages (per the handover) and is pub
 **Decision.** Do not import the old history. The baseline commit records its provenance (source repo,
 commit `cab22e6747c02b87f0f95466874b3209edc5da22`, `index.html` MD5) in its message and in
 `REPLICATION_REPORT.md`. **Consequence.** `git log` starts on 14 Oct 2026; earlier history is in
-`docs/reference/PROJECT_HISTORY_Portfolio_Review_Dashboard.md`.
+`docs/previous-owner/handover/PROJECT_HISTORY_Portfolio_Review_Dashboard.md`.
 
 ## D-003 — Sanitise the imported files (14 Oct 2026)
 **Decision.** Remove a client-name pattern from `.gitignore` and a client name from a usage comment in
@@ -121,3 +121,29 @@ record whether an upload was client data or market data.
 to write a file that breaks the invariants (script count, tail, LF, no BOM, NUL bytes). Each change is
 a script in `tools/patches/` committed with it, so the history shows exactly what changed and the
 change can be re-applied. Supersedes the handover's template scripts (`buildtools/patch_*.js`).
+
+## D-017 — Standing instruction: keep GitHub up to date (15 Oct 2026, owner)
+**Context.** The owner asked that everything be pushed to GitHub, organised, with the data for every
+requested change. **Decision.** Work is pushed on a branch and merged into `main` by pull request as soon as
+it is verified (CI green, checks in TESTING.md done), without asking again each time. Each owner request has
+a record in `docs/change-requests/`, each monthly refresh in `docs/refresh-log/`. **Unchanged:** product
+behaviour changes and data refreshes still happen only when the owner asks for them, and the owner reviews
+a refresh before it is merged (MONTHLY_REFRESH.md). Supersedes the "merge only on the owner's go-ahead"
+wording of CLAUDE.md rule 8 for verified work the owner requested.
+
+## D-018 — Project folder layout in OneDrive (15 Oct 2026)
+**Decision.** The OneDrive folder `Claude Code-Portfolio Review Dashboard` holds only non-code material:
+`01 Monthly Updates` (the owner's inbox, one `YYYY-MM` folder per data month), `02 Archive` (processed
+vendor data by data month), `03 Handover` (everything received from the previous owner, as received) and
+`99 Superseded - safe to delete`. Code stays in `C:\dev\portfolio-review`; the unpacked export is in
+`C:\dev\handover-export`. **Why short names:** the folder's own path is 128 characters; Windows skips files
+past 260 characters (21 vendor files were silently lost that way on 14 Oct) and Excel cannot open paths past
+218 characters. **Consequence.** Month folders are `YYYY-MM` only; vendor file names are never changed.
+
+## D-019 — What from the previous owner's export may be published (15 Oct 2026)
+**Decision.** The public repository receives only material that is free of client data and useful for
+maintenance: the refresh pipeline (`buildtools/`), current tools, and reviewed documents under
+`docs/previous-owner/`. Everything else (vendor data, Cowork and scratchpad outputs, session notes, the web
+app, backups) stays private, off GitHub. Every imported file is scanned for client names, personal data and
+credentials before it is committed. Published docs never say which private files hold client data, or where
+such files are kept.

@@ -23,7 +23,7 @@ been reproduced at runtime.
    no server · no network · files are read with FileReader and saved as blob downloads
 ```
 
-- Opened by double-click (file://), from `serve-dashboard.js` on 127.0.0.1:8099, or from GitHub
+- Opened by double-click (file://), from `tools/serve-dashboard.js` on 127.0.0.1:8099, or from GitHub
   Pages (static hosting of `index.html` only). Chrome or Edge.
 - Everything the page needs is inside the file: Chart.js 4.4.0, chartjs-plugin-datalabels 2.2.0,
   SheetJS CE 0.18.5, PptxGenJS 3.12.0 (bundles JSZip), ~10 MB of reference data, logos, divider
@@ -215,12 +215,12 @@ Overlap Matrix, Performance, Fund IRR, Observations, Portfolio Rebalancing, AI A
 | `tools/extract-blocks.js` | reading copies of the code blocks in `.blocks/` |
 | `tools/patch-lib.js`, `tools/patches/*.js` | the only way to change `index.html`: anchored, idempotent, invariant-checked edits, one committed script per change (D-016) |
 | `tools/browser-checks/family-isolation.js` | browser regression checks for KI-001 (paste into the console on the local preview) |
-| `tools/test-ai-analyst.js` | AI Analyst behavioural tests (repo copy stale, KI-010) |
+| `tools/test-ai-analyst.js` | AI Analyst acceptance tests on the embedded data (CI gate) |
 | `tools/render-slides.js` | builds one slide group headlessly to a `.pptx` for visual review |
-| `tools/parse-fund-ranks.js` | builds `FUND_RANKS` from the Fund Ranks workbook (its comments cite `tools/parse-performance.js` and the previous owner's CLAUDE.md, neither transferred) |
+| `tools/parse-fund-ranks.js` | builds `FUND_RANKS` from the Fund Ranks workbook; its output needs the `blocks` + `DATA_DATES` wrapper before `splice_refresh.js` (KNOWLEDGE_DUMP §3.4; never done yet). Its comments cite `tools/parse-performance.js`, which survives only in the previous owner's web-app folder and is superseded by `buildtools/` |
 | `tools/parse-fund-mgr.js` | **superseded — do not use for refreshes**: its row-count floors (539 stints / 104 schemes) are far below the embedded block (2,099 schemes / 11,522 stints); `FUND_MGR` is built by `buildtools/build_refresh.js` |
-| `serve-dashboard.js` | static server on 127.0.0.1:8099 for the browser pane |
-| `buildtools/` | monthly refresh pipeline — **not yet received** (see PROJECT_STATE.md) |
+| `tools/serve-dashboard.js`, `tools/open-dashboard.cmd` | static server on 127.0.0.1:8099; double-click the `.cmd` to start it and open the browser |
+| `buildtools/` | the monthly data-refresh pipeline (intake check → survey → build → gate → splice; risk, stock returns, PMS), restored from the previous owner's export and proved on the Sep 2026 data (byte-identical rebuild). It changes data blocks only. Script table and rules: `buildtools/README.md`; procedure: `docs/MONTHLY_REFRESH.md` |
 
 ## 10. Deployment
 GitHub Pages via `.github/workflows/pages.yml`: on a push to `main` that changes `index.html`, the

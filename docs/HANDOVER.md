@@ -18,18 +18,21 @@ Local working copy on the Products team laptop: `C:\dev\portfolio-review` (outsi
 
 ## 2. Read in this order
 1. `CLAUDE.md` — the rules and commands (10 minutes).
-2. `docs/ARCHITECTURE.md` — how the file is built and where each calculation lives.
-3. `docs/KNOWN_ISSUES.md` — what is broken or fragile (read KI-001 before using the tool).
-4. `docs/PROJECT_STATE.md` — blockers, next steps, backlog.
-5. `docs/reference/HANDOVER_PRD_Centricity_Portfolio_Review.md` — the previous owner's handover
-   (refresh runbook §9, functional spec §7); errata in `docs/REPLICATION_REPORT.md` §5.
-6. `docs/reference/PROJECT_HISTORY_Portfolio_Review_Dashboard.md` — why things are the way they are.
+2. `docs/README.md` — the map of every document and record.
+3. `docs/ARCHITECTURE.md` — how the file is built and where each calculation lives.
+4. `docs/KNOWN_ISSUES.md` — what is broken or fragile.
+5. `docs/PROJECT_STATE.md` — blockers, next steps, backlog.
+6. `docs/MONTHLY_REFRESH.md` — the monthly data refresh: the owner's part and the runbook.
+7. `docs/change-requests/` and `docs/refresh-log/` — what the owner asked for, and every refresh so far.
+8. `docs/previous-owner/` — the previous owner's handover (functional spec §7; errata in
+   `docs/REPLICATION_REPORT.md` §5), project history, and the knowledge dump from their full export
+   (`knowledge/KNOWLEDGE_DUMP.md`; corrections to the handover in its §0.1).
 
 ## 3. Run and test
 ```bash
 node tools/check-invariants.js      # structure, no-network, engine, data
 node tools/smoke-review.js          # end-to-end on a synthetic book
-node serve-dashboard.js             # http://127.0.0.1:8099
+node tools/serve-dashboard.js       # http://127.0.0.1:8099 (or double-click tools\open-dashboard.cmd)
 node tools/make-sample-base.js      # synthetic files to upload (test-data/)
 ```
 Setup details: `docs/DEVELOPMENT_SETUP.md`. Browser acceptance: `docs/TESTING.md` §4.
@@ -43,14 +46,15 @@ Setup details: `docs/DEVELOPMENT_SETUP.md`. Browser acceptance: `docs/TESTING.md
 4. Run the checks and the browser procedure; compare with the baseline results; update docs and
    CHANGELOG in the same branch.
 5. `security-release-reviewer` reviews the staged diff (no client data, no secrets, no network calls).
-6. Push the branch and open a PR (routine); CI must pass. Merge only on the owner's go-ahead: a merge
-   that changes `index.html` republishes Pages automatically.
+6. Push the branch and open a PR; CI must pass. Work the owner asked for is merged once verified
+   (D-017); a merge that changes `index.html` republishes Pages automatically. Record the request in
+   `docs/change-requests/`.
 
 ## 5. Monthly data refresh
-The runbook is handover §9 (survey → `build_refresh.js` → `check_blocks.js` gate → client snapshot →
-`splice_refresh.js --data-only` → compare → risk / stock-returns / PMS steps → post-checks). It
-depends on `buildtools/`, which has **not been received** — see `PROJECT_STATE.md`. Until it arrives,
-the data stays at the 30 Sep 2026 vintage. Never hand-edit the data blocks.
+`docs/MONTHLY_REFRESH.md`. The owner drops the month's files into the OneDrive inbox
+(`…\Claude Code-Portfolio Review Dashboard\01 Monthly Updates\YYYY-MM`); Claude runs the pipeline in
+`buildtools/` (survey → build → gate → splice on a `data/` branch → checks), writes
+`docs/refresh-log/YYYY-MM.md`, and publishes after the owner approves. Never hand-edit the data blocks.
 
 ## 6. Risks to keep in mind
 - Silent wrong numbers are this project's historical failure mode: sums can be 100% and still wrong.
@@ -64,4 +68,5 @@ the data stays at the 30 Sep 2026 vintage. Never hand-edit the data blocks.
 ## 7. Agents available (`.claude/agents/`)
 `dashboard-archaeologist` (read-only investigation) · `financial-domain-reviewer` (calculations and
 data interpretation) · `implementation-engineer` (anchored patches) · `qa-engineer` (checks and
-browser acceptance) · `security-release-reviewer` (pre-commit / pre-push gate).
+browser acceptance) · `security-release-reviewer` (pre-commit / pre-push gate) · `refresh-operator`
+(runs a monthly refresh by the runbook; never publishes).

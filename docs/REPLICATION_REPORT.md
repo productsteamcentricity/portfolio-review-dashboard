@@ -20,8 +20,8 @@ whose Pages workflow publishes the dashboard.
 |---|---|---|
 | Source repository | `Portfolio_Review_Dashboard-main (1).zip` — GitHub archive, 8 files (10 entries incl. 2 folders) | zip comment = commit `cab22e6…`; = HEAD of `main` of the public repo `magazineishita1108-boop/Portfolio_Review_Dashboard` (1 branch, 0 tags) |
 | Live site | `https://magazineishita1108-boop.github.io/Portfolio_Review_Dashboard/` | serves a byte-identical `index.html` (SHA-256 match), last modified 14 Oct 2026 08:39 GMT |
-| Handover PRD | `HANDOVER_PRD_Centricity_Portfolio_Review.md` (41,559 bytes) | read in full; kept verbatim in `docs/reference/` |
-| Project history | `PROJECT_HISTORY_Portfolio_Review_Dashboard.md` (18,054 bytes) | read in full; kept verbatim in `docs/reference/` |
+| Handover PRD | `HANDOVER_PRD_Centricity_Portfolio_Review.md` (41,559 bytes) | read in full; kept verbatim in `docs/previous-owner/handover/` |
+| Project history | `PROJECT_HISTORY_Portfolio_Review_Dashboard.md` (18,054 bytes) | read in full; kept verbatim in `docs/previous-owner/handover/` |
 | Vendor data archive | `For Centricity Portfolio Review Portal.zip` (171.7 MB; 55 files, Apr–Sep 2026 month folders) | inventoried only; licensed data, stays on OneDrive, never committed |
 | Chat history | not received as transcripts | the project history document is a reconstruction from the previous owner's records |
 
