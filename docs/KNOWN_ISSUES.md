@@ -10,8 +10,9 @@ That audit re-tested most of the earlier entries:
 - KI-045 is contradicted in part.
 - KI-008, KI-024 and KI-035 are wider than first recorded.
 
-Fixed so far: KI-001, KI-010, and in fix batch 1a KI-006, KI-047, KI-055 and KI-065. Fixes follow the order in the audit register. Questions that need the owner are
-in [`audits/2026-10-19-decisions.md`](audits/2026-10-19-decisions.md).
+Fixed so far: KI-001, KI-010, and in fix batch 1a KI-006, KI-047, KI-055 and KI-065. Fixes follow the order in the audit register. The owner's decisions are in
+[`audits/2026-10-19-decisions.md`](audits/2026-10-19-decisions.md): all recommendations accepted on 19 Oct 2026
+except OD-11 (D-021).
 
 **Status key**
 - **Reproduced** — demonstrated at runtime during the 14 Oct 2026 replication.
@@ -196,7 +197,9 @@ D17 = KI-028, D25 = KI-012).
   alpha/corr/IR blank.
 - `FUND_RANKS` at 15 Aug 2026, Regular plans only; "unscored" means no entry and is not a negative signal.
 - In-browser `parsePAsheet` assumes the older PMS/AIF sheet layout.
-- An uploaded MF Monitor takes AUM from a stale column on FoF sheets (the embedded block does not).
+- An uploaded MF Monitor takes AUM from a stale column on FoF sheets (the embedded block does not). The audit
+  found the upload degrades more than this (register KI-026). **Owner decision OD-11 (D-021):** the upload stays,
+  and is to be made to match the monthly refresh.
 - An uploaded SIF Monitor puts the month-end date into the unused `amc` field.
 - 35 arbitrage / equity-savings hybrids report eq + db > 105%; the engine falls back to 100 − eq.
 - Within one AMC, generic tokens can still carry a match (e.g. Nifty Metal ETF → Nifty 100 ETF); a fix

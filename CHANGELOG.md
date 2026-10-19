@@ -13,6 +13,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Change requests CR-0004 (the second export request) and CR-0005 (audit, fixes and redesign).
 
 ### Changed
+- **Owner decisions recorded (D-021):** all 28 audit recommendations accepted except OD-11. The MF and Direct
+  Monitor uploads stay, and are to be fixed to match the monthly refresh.
 - CR-0003 marked done; PROJECT_STATE rewritten around the audit's fix order.
 
 ### Fixed (fix batch 1a: engine numbers, the first part of the audit's batch 1, CR-0005)
