@@ -22,6 +22,7 @@ change follows.
 | [change-requests/](change-requests/) | one file per request from the product owner: what was asked, decided, changed and verified |
 | [refresh-log/](refresh-log/) | one file per monthly data refresh: inputs, counts, checks, what stayed stale |
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | every known defect and limitation, with verification status |
+| [audits/](audits/) | full audits of the dashboard: the issue register with evidence, and the owner decisions they need |
 | [DECISIONS.md](DECISIONS.md) | the decision register: why things are the way they are |
 | [REPLICATION_REPORT.md](REPLICATION_REPORT.md) | how the baseline was replicated on 14 Oct 2026 |
 | `../CHANGELOG.md` | what changed, by date |

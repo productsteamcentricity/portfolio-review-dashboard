@@ -17,4 +17,6 @@ Monthly data refreshes are recorded separately in [`../refresh-log/`](../refresh
 |---|---|---|---|
 | [CR-0001](CR-0001-baseline-replication.md) | 14 Oct 2026 | Replicate the existing dashboard, set up the repository, documentation and GitHub | Done |
 | [CR-0002](CR-0002-ki001-family-isolation.md) | 15 Oct 2026 | Fix KI-001; write the full-export prompt for the previous owner | Done |
-| [CR-0003](CR-0003-organise-and-monthly-process.md) | 15 Oct 2026 | Ingest the previous owner's export; organise OneDrive and GitHub; set up the monthly update process; fix the local link | In review |
+| [CR-0003](CR-0003-organise-and-monthly-process.md) | 15 Oct 2026 | Ingest the previous owner's export; organise OneDrive and GitHub; set up the monthly update process; fix the local link | Done (PR #2) |
+| [CR-0004](CR-0004-second-export-request.md) | 15–16 Oct 2026 | Prepare the second export request for the previous owner (everything in one run, delivered over Teams) | Done; delivery awaited |
+| [CR-0005](CR-0005-audit-fixes-and-redesign.md) | 16 Oct 2026 | Share the review link; find and fix the dashboard's issues; prepare the full redesign | In progress |
