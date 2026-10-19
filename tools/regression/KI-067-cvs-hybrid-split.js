@@ -28,8 +28,15 @@
        so a copy of the reference data with one is given to the CVS code.
    The Unallocated share's expected return (OD-29, option b): blank by default;
    while blank, that column's Grand Total return, inflation-adjusted return,
-   3/5/10-year valuations and the difference show "—" with a footnote asking
-   for the return, on screen and on the slide. A typed return is used:
+   3/5/10-year valuations and the difference show "—", on screen and on the
+   slide. The screen footnote tells the analyst what to do (the sample's share
+   cannot be typed over; enter a return to see the totals); the slide footnote
+   (the snapshot's note) is for the client: it says the totals are shown as —
+   and carries neither instruction. An export that includes the CVS slide while
+   a return is blank (single slide, full deck, picked slides) is not blocked and
+   its status line warns, in the warning style, naming the column(s); the
+   export paths (slidePPTX, the deck button) are cut out by anchor
+   (cvs-harness loadExports). A typed return is used:
    80% x 14.00% + 20% x 9.00% = 13.00% (the round-1 build counted the share at
    0%: 11.20%). Typed returns survive a plan refresh and are dropped with the
    live table (what resetFamilyState does) or for another model. The rounding
@@ -103,6 +110,8 @@ async function main() {
     const ret = expRet(cv, 'ca', 'cr') * 100;
     ok(near(ret, 12.85, 0.005), 'expected return at the house assumptions = 12.85% (got ' + ret.toFixed(2) + '%; shipped 13.77%)');
     ok(!un(cv), 'nothing unallocated when every hybrid has a sleeve');
+    const st0 = await C.loadExports(cv, m).deck();
+    ok(!!st0 && st0.warn === false && st0.msg.indexOf('Current vs Sample') < 0, 'deck export with nothing unallocated: no warning (got ' + J(st0) + ')');
   }
 
   console.log('--- 20% ABSL Conservative Hybrid + 80% HDFC Short Term ---');
@@ -196,6 +205,9 @@ async function main() {
     const g = scr(cv, 'Grand Total')[0];
     ok(!!g && g[2] === pct(EQ_RET) && g[4] === '—',
       'Grand Total: current ' + pct(EQ_RET) + ' (nothing unallocated there), sample — (got ' + J(g) + ')');
+    const st = await C.loadExports(cv, m).slide('cvs');
+    ok(!!st && st.warn === true && st.msg.indexOf('The Current vs Sample slide shows — for the sample totals: no expected return is set for the unallocated share (Current vs Sample tab).') >= 0,
+      'CVS slide export: the warning names the sample totals only (got ' + J(st) + ')');
   }
 
   console.log('--- a hybrid record with a missing (null) equity weight is unknown, not all debt (synthetic record) ---');
@@ -221,8 +233,12 @@ async function main() {
     ok(near(rowsSum(cv, 'ca') + (u ? u.ca : 0), 100, 0.005), 'rows + Unallocated = 100.00%');
     ok(u && /Zzyzx Notional Balanced Hybrid Fund\(G\)/.test(u.note) && /20\.00% of the current portfolio/.test(u.note) && /\b1 hybrid holding\b/.test(u.note),
       'footnote names the holding, its share and the count');
-    ok(u && /The sample's Unallocated share follows the rebalancing plan/.test(u.note), 'footnote says the sample\'s Unallocated share follows the plan');
     const t = cv.dom.tableHtml();
+    /* the screen tells the analyst what to do; the slide (the snapshot's note) is for the client */
+    const TYPED = 'The sample\'s Unallocated share follows the rebalancing plan and cannot be typed over.';
+    ok(t.indexOf(TYPED) >= 0, 'on screen: the footnote says the sample\'s Unallocated share follows the plan and cannot be typed over');
+    ok(u && u.note.indexOf('follows the rebalancing plan') < 0 && u.note.indexOf('typed over') < 0,
+      'slide note (snapshot): no "follows the rebalancing plan and cannot be typed over" sentence');
     ok(t.indexOf('<td>Unallocated †</td>') >= 0, 'on screen: an "Unallocated †" row');
     ok(/Grand Total<\/td><td[^>]*>100\.00%<\/td>/.test(t), 'on screen: Grand Total allocation 100.00% (no warning)');
     ok(t.indexOf('Zzyzx Notional Balanced Hybrid Fund(G)') >= 0 && /has no equity \/ debt sleeve/.test(t), 'on screen: the footnote under the table');
@@ -241,7 +257,10 @@ async function main() {
     ok(vals0.length === 6 && vals0.every(r => r && r[1] === '—' && r[2] === '—'), 'on screen: 3/5/10-year valuations, nominal and real, — / —');
     const df0 = scr(cv, 'Difference (Sample vs Current)');
     ok(df0.length === 3 && df0.every(r => r[1] === '—'), 'on screen: the Sample-vs-Current differences —');
-    ok(u && u.note.indexOf(NEED) >= 0 && t.indexOf(NEED) >= 0, 'footnote (snapshot and screen): "' + NEED + '"');
+    ok(t.indexOf(NEED) >= 0, 'on screen: the footnote asks for the return: "' + NEED + '"');
+    const SHOWN0 = 'No return is assumed for it, so the current and sample expected returns and valuations are shown as —.';
+    ok(u && u.note.indexOf(NEED) < 0 && u.note.indexOf(SHOWN0) >= 0 && /are shown as —\.$/.test(u.note),
+      'slide note (snapshot): no instruction; ends "' + SHOWN0 + '" (got ' + J(u && u.note.slice(-120)) + ')');
     let s = await C.cvsSlideText(host, m);
     let r = after(s, 'Unallocated †', 5);
     ok(!!r && r[0] === '20.00%' && r[1] === '—' && r[2] === '20.00%' && r[3] === '—' && r[4] === '+0.00%',
@@ -251,7 +270,27 @@ async function main() {
       'slide: Grand Total 100.00% / — / 100.00% / — (got ' + J(g) + '; round 1: 11.20%)');
     let v = [3, 5, 10].map(y => after(s, 'Valuation After ' + y + 'Y', 3));
     ok(v.every(x => x && x[0] === '—' && x[1] === '—' && x[2] === '—'), 'slide: valuations and differences — (got ' + J(v) + ')');
-    ok(s.some(x => /Unallocated: 1 hybrid holding \(Zzyzx Notional Balanced Hybrid Fund\(G\)\)/.test(x) && x.indexOf(NEED) >= 0), 'slide: the footnote, asking for the return');
+    let fn = s.filter(x => /Unallocated: 1 hybrid holding \(Zzyzx Notional Balanced Hybrid Fund\(G\)\)/.test(x));
+    ok(fn.length === 1 && fn[0].indexOf(SHOWN0) >= 0 && fn[0].indexOf(NEED) < 0 && fn[0].indexOf('typed over') < 0,
+      'slide: the footnote names the holding and says the totals are shown as —, with no instruction to the analyst (got ' + J(fn) + ')');
+
+    /* exporting while the returns are blank: the status line warns, the export is not blocked */
+    const X = C.loadExports(cv, m);
+    const WARN = 'The Current vs Sample slide shows — for the current and sample totals: no expected return is set for the unallocated share (Current vs Sample tab).';
+    const warned = (st, w) => !!st && st.warn === true && st.msg.indexOf(w) >= 0 && /<span style="color:#931621">/.test(st.msg);
+    let st = await X.slide('cvs');
+    ok(warned(st, WARN) && /^Slide downloaded: <b>/.test(st.msg) && X.log.downloads.length === 1,
+      'single CVS slide: downloaded, and the status line warns (warning style): "' + WARN + '" (got ' + J(st) + ')');
+    st = await X.deck();
+    ok(warned(st, WARN) && /^PowerPoint downloaded: <b>/.test(st.msg) && X.log.built[X.log.built.length - 1] === '(full deck)' && X.log.downloads.length === 2,
+      'full deck: downloaded, with the same warning (got ' + J(st) + ')');
+    st = await X.deck(['amc', 'cvs']);
+    ok(warned(st, WARN) && X.log.downloads.length === 3, 'picked slides including Current vs Sample: the same warning (got ' + J(st) + ')');
+    st = await X.deck(['amc']);
+    ok(!!st && st.warn === false && st.msg.indexOf('Current vs Sample') < 0 && X.log.downloads.length === 4,
+      'picked slides without Current vs Sample: no warning (got ' + J(st) + ')');
+    st = await X.slide('amc');
+    ok(!!st && st.warn === false && st.msg.indexOf('Current vs Sample') < 0, 'another single slide: no warning (got ' + J(st) + ')');
 
     /* the analyst enters the current column's return: 9.00% */
     const cur = (EQ_RET * 80 + 9 * 20) / 100;                         /* 13.00 */
@@ -266,9 +305,16 @@ async function main() {
     const want1 = [3, 5, 10].map(y => crS(10 * Math.pow(1 + cur / 100, y)));
     ok(v1.every((x, i) => x && x[1] === want1[i] && x[2] === '—'), 'on screen: current valuations ' + J(want1) + ' on 10 Cr, sample — (got ' + J(v1.map(x => x && x.slice(1))) + ')');
     ok(scr(cv, 'Difference (Sample vs Current)').every(x => x[1] === '—'), 'on screen: differences still — (the sample return is blank)');
-    ok(/Expected return entered for it: 9\.00% \(current\)\./.test(U(cv).note) && U(cv).note.indexOf(NEED) >= 0,
-      'footnote: the entered 9.00% (current), and still asks for the sample return');
+    const SHOWN1 = 'Expected return entered for it: 9.00% (current). No return is assumed for the sample share, so the sample expected return and valuations are shown as —.';
+    ok(U(cv).note.indexOf(SHOWN1) >= 0 && U(cv).note.indexOf(NEED) < 0,
+      'slide note (snapshot): "' + SHOWN1 + '", no instruction (got ' + J(U(cv).note.slice(-150)) + ')');
+    ok(cv.dom.tableHtml().indexOf(SHOWN1 + ' ' + NEED) >= 0, 'on screen: the same, and it still asks for the sample return');
     s = await C.cvsSlideText(host, m);
+    fn = s.filter(x => /Unallocated: 1 hybrid holding/.test(x));
+    ok(fn.length === 1 && fn[0].indexOf(SHOWN1) >= 0 && fn[0].indexOf(NEED) < 0, 'slide: the footnote gives the entered return and says the sample totals are shown as —');
+    st = await X.slide('cvs');
+    const WARN1 = 'The Current vs Sample slide shows — for the sample totals: no expected return is set for the unallocated share (Current vs Sample tab).';
+    ok(warned(st, WARN1), 'export: the warning now names the sample totals only: "' + WARN1 + '" (got ' + J(st) + ')');
     r = after(s, 'Unallocated †', 5); g = after(s, 'Grand Total', 4); v = [3, 5, 10].map(y => after(s, 'Valuation After ' + y + 'Y', 3));
     ok(!!r && r[1] === '9.00%' && r[3] === '—' && !!g && g[1] === pct(cur) && g[3] === '—',
       'slide: Unallocated 9.00% / —, Grand Total ' + pct(cur) + ' / — (got ' + J(r) + ' ' + J(g) + ')');
@@ -282,8 +328,12 @@ async function main() {
     ok(!!gt2 && gt2[2] === pct(cur) && gt2[4] === pct(smp), 'on screen: Grand Total ' + pct(cur) + ' / ' + pct(smp) + ' (got ' + J(gt2) + ')');
     const df2 = scr(cv, 'Difference (Sample vs Current)'), want2 = [3, 5, 10].map(y => badge(10 * Math.pow(1 + smp / 100, y) - 10 * Math.pow(1 + cur / 100, y)));
     ok(df2.length === 3 && df2.every((x, i) => x[1] === want2[i]), 'on screen: differences ' + J(want2) + ' (got ' + J(df2.map(x => x[1])) + ')');
-    ok(U(cv).note.indexOf(NEED) < 0 && /Expected return entered for it: 9\.00% \(current\), 7\.00% \(sample\)\./.test(U(cv).note),
-      'footnote: both entered returns, no longer asks');
+    ok(U(cv).note.indexOf(NEED) < 0 && /Expected return entered for it: 9\.00% \(current\), 7\.00% \(sample\)\.$/.test(U(cv).note) &&
+       cv.dom.tableHtml().indexOf(NEED) < 0 && cv.dom.tableHtml().indexOf('Expected return entered for it: 9.00% (current), 7.00% (sample).') >= 0,
+      'footnote (slide and screen): both entered returns; the screen no longer asks');
+    st = await X.deck();
+    ok(!!st && st.warn === false && st.msg.indexOf('Current vs Sample') < 0 && /^PowerPoint downloaded: <b>/.test(st.msg),
+      'export with both returns entered: no warning (got ' + J(st) + ')');
     s = await C.cvsSlideText(host, m);
     g = after(s, 'Grand Total', 4); v = after(s, 'Valuation After 10Y', 3);
     const cn10 = 10 * Math.pow(1 + cur / 100, 10), pn10 = 10 * Math.pow(1 + smp / 100, 10);

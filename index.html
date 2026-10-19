@@ -4266,7 +4266,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         ]);
       });
       s.addTable(tblRows,{x:0.18,y:1.22,w:8.9,colW:[2.5,1.2,1.2,1.2,1.2,1.3],rowH:0.22,fontFace:F,fontSize:7,border:{type:'solid',pt:0.3,color:'D9D9D9'}});
-      /* KI-067: the footnote naming the Unallocated holdings (and, while a return is blank, asking for it), in the free column right of the table */
+      /* KI-067: the footnote naming the Unallocated holdings (and, while a return is blank, that the totals are shown as —;
+         the snapshot carries the slide's wording, with no instructions to the analyst), in the free column right of the table */
       if(_un&&_un.note) s.addText(String(_un.note),{x:9.3,y:1.22,w:3.85,h:2.8,fontFace:F,fontSize:8,italic:true,color:'6B6B6B',align:'left',valign:'top'});
       s.addText('Illustrative projections based on assumed returns. Not a guarantee of future performance.',{x:0.18,y:7.1,w:12,h:0.2,fontFace:F,fontSize:7,color:'999999'});
     })();
@@ -4882,7 +4883,11 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
                        {align:'center',color:(worse?C.red:(better?"2E7D32":"000000"))}) ]);
       };
       dirRow("Highest overlap between two holdings", sm.overlapBefore, sm.overlapAfter, "%", true);
-      dirRow("Largest AMC concentration"+(sm.amcAfterWho?(" ("+sm.amcAfterWho+")"):""), sm.amcBefore, sm.amcAfter, "%", true);
+      /* KI-120: the Before figure is the house that was largest before the plan, the After figure the
+         house that is largest after it; when they differ the label names both, in the columns' order */
+      var _amcBW=sm.amcBeforeWho, _amcAW=sm.amcAfterWho;
+      dirRow("Largest AMC concentration"+((_amcBW&&_amcAW&&_amcBW!==_amcAW)?(" (before: "+_amcBW+"; after: "+_amcAW+")")
+        :(_amcAW?(" ("+_amcAW+")"):"")), sm.amcBefore, sm.amcAfter, "%", true);
       er.push([ cell("Number of funds",{align:'left'}), cell(String(sm.fundsBefore),{align:'right'}),
                 cell(String(sm.fundsAfter),{align:'right'}),
                 cell(sm.fundsAfter<sm.fundsBefore?"simplified":(sm.fundsAfter>sm.fundsBefore?"more funds":"unchanged"),{align:'center'}) ]);
@@ -5533,7 +5538,9 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     /* 1. Base File */
     var bf=[["Client Name","Instrument Name","Category Name","Asset Name","Folio No","AMC","Product Name","Distributor Name","Units","Invested Value (₹)","Market Value (₹)","Total Gain/Loss (₹)","Invested Value ("+model.unit.lab+")","Current Market Value ("+model.unit.lab+")","Total Gain/Loss ("+model.unit.lab+")","Allocation (%)","XIRR (%)","BMXIRR (%)","Avg. Holding Days"]];
     model.holdings.forEach(function(h){
-      bf.push([h.client,h.name,h.category,h.asset,h.folio,h.amc,h.product,h.distributor,h.units,h.invR,h.mvR,h.glR,model.unit.v(h.invCr),model.unit.v(h.cmvCr),model.unit.v(h.glCr),
+      /* KI-061: amcDisplay of the row's OWN label (what h.amcDisplay was before the one-name-per-house
+         rule); ENGINE is bound at the top of this script */
+      bf.push([h.client,h.name,h.category,h.asset,h.folio,ENGINE.amcDisplay(h.amc),h.product,h.distributor,h.units,h.invR,h.mvR,h.glR,model.unit.v(h.invCr),model.unit.v(h.cmvCr),model.unit.v(h.glCr),
         (h.allocFrac!=null?h.allocFrac*100:null),(h.xirrFrac!=null?h.xirrFrac*100:null),(h.bmxirrFrac!=null?h.bmxirrFrac*100:null),h.days]);
     });
     aoa("Base File",bf,{cols:[{wch:18},{wch:42},{wch:18},{wch:10},{wch:14},{wch:18},{wch:13},{wch:18},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:18},{wch:16},{wch:12},{wch:10},{wch:10},{wch:12}],
@@ -6686,6 +6693,7 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
     var Ppt=(typeof PptxGenJS!=='undefined')?PptxGenJS:(window.PptxGenJS||window.pptxgen);
     if(!Ppt){ setStatus('PowerPoint engine not available in this browser session.',true); return; }
     try{ cvsFlush(); }catch(e){}   /* KI-068: a pending plan refresh of the CVS tab lands before the slide is built */
+    var _cvsW=''; try{ _cvsW=cvsExportWarning(tabKey); }catch(e){}   /* KI-067 / OD-29: the CVS slide's totals are — */
     var mdl=(tabKey==='analytics')?analyticsSrc():model;
     if(!tabHasContent(tabKey, mdl)){ setStatus('No exportable content on the <b>'+tabLabel(tabKey)+'</b> tab for this selection.',true); return; }
     if(tabKey==='overlap'){
@@ -6703,7 +6711,8 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       var fn='Portfolio Review_'+model.meta.familyName+'_'+tabLabel(tabKey)+scope+'_'+model.meta.asOnDate+'.pptx';
       var p=E.buildPPTX(mdl,Ppt,tabKey);
       Promise.resolve(p.write({outputType:'blob'})).then(function(blob){
-        triggerDownload(blob, fn); setStatus('Slide downloaded: <b>'+fn+'</b>');
+        triggerDownload(blob, fn);
+        setStatus('Slide downloaded: <b>'+fn+'</b>'+(_cvsW?(' <span style="color:#931621">'+_cvsW+'</span>'):''), !!_cvsW);   /* KI-067 */
       }).catch(function(e){ setStatus('Slide generation failed: '+e.message,true); console.error(e); });
     }catch(e){ setStatus('Slide generation failed: '+e.message,true); console.error(e); }
   }
@@ -10398,19 +10407,26 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
 
     /* direction matters: a figure that gets worse is shown as worse, in red,
        never listed flat beside a genuine improvement */
-    var mark = function(label, a, b, lowerIsBetter, suffix){
+    /* KI-120: whoA / whoB (escaped) name the figure that follows them */
+    var mark = function(label, a, b, lowerIsBetter, suffix, whoA, whoB){
       if (a == null || b == null) return '';
       var better = lowerIsBetter ? (b < a - 0.005) : (b > a + 0.005);
       var worse  = lowerIsBetter ? (b > a + 0.005) : (b < a - 0.005);
       var col = worse ? '#931621' : (better ? '#2E7D32' : '#5C3E17');
       var word = worse ? ' (worse)' : (better ? '' : ' (unchanged)');
-      return '<span style="color:' + col + ';">' + label + ' ' + a.toFixed(2) + (suffix || '')
-        + ' → ' + b.toFixed(2) + (suffix || '') + word + '</span>';
+      return '<span style="color:' + col + ';">' + label + ' ' + (whoA ? whoA + ' ' : '') + a.toFixed(2) + (suffix || '')
+        + ' → ' + (whoB ? whoB + ' ' : '') + b.toFixed(2) + (suffix || '') + word + '</span>';
     };
     var eff = [];
     var e1 = mark('highest overlap', sm.overlapBefore, sm.overlapAfter, true, '%'); if (e1) eff.push(e1);
-    var e2 = mark('largest AMC' + (sm.amcAfterWho ? (' (' + aiaEsc(sm.amcAfterWho) + ')') : ''),
-                  sm.amcBefore, sm.amcAfter, true, '%'); if (e2) eff.push(e2);
+    /* KI-120: the before figure is the house that was largest before the plan (amcBeforeWho), the
+       after figure the house that is largest after it (amcAfterWho). When they differ, each figure
+       is named with its own house; when they are the same house it is named once. */
+    var amcBW = sm.amcBeforeWho, amcAW = sm.amcAfterWho;
+    var e2 = (amcBW && amcAW && amcBW !== amcAW)
+      ? mark('largest AMC', sm.amcBefore, sm.amcAfter, true, '%', aiaEsc(amcBW), aiaEsc(amcAW))
+      : mark('largest AMC' + (amcAW ? (' (' + aiaEsc(amcAW) + ')') : ''), sm.amcBefore, sm.amcAfter, true, '%');
+    if (e2) eff.push(e2);
     eff.push('funds ' + sm.fundsBefore + ' → ' + sm.fundsAfter);
     var effHtml = '<p class="sub">Portfolio-level effect: ' + eff.join(' · ') + '.</p>';
 
@@ -11730,6 +11746,20 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
   }
   function cvsRefreshSoon(){ cvsCancelRefresh(); __cvsRefreshT=setTimeout(cvsRefreshFromPlan, 250); }
   function cvsFlush(){ if(__cvsRefreshT!=null) cvsRefreshFromPlan(); }
+  /* KI-067 / OD-29: the status-line warning for an export that includes the CVS slide while its
+     totals are unknown: a column's Unallocated share is above zero and its expected return is
+     blank, so the slide shows — for that column's totals. 'only' is what buildPPTX is given
+     (undefined: the full deck; a list: the picked slides; a tab key: one slide). '' when the CVS
+     slide is not exported or no return is blank. Read after cvsFlush(); never blocks the export. */
+  function cvsExportWarning(only){
+    if(only!=null&&(Object.prototype.toString.call(only)==='[object Array]'?only.indexOf('cvs')<0:only!=='cvs')) return '';
+    var u=window._cvsSnapshot&&window._cvsSnapshot.unalloc; if(!u) return '';
+    var cols=[];
+    if(Number(u.ca)>0&&u.cr==null) cols.push('current');
+    if(Number(u.pa)>0&&u.pr==null) cols.push('sample');
+    if(!cols.length) return '';
+    return 'The Current vs Sample slide shows — for the '+cols.join(' and ')+' totals: no expected return is set for the unallocated share (Current vs Sample tab).';
+  }
   var CVS_BTN_ON ='font-family:Cambria,serif;font-size:12px;background:#BD9568;color:#FFFFFF;border:1px solid #BD9568;border-radius:3px;padding:6px 14px;cursor:pointer;font-weight:bold;';
   var CVS_BTN_OFF='font-family:Cambria,serif;font-size:12px;background:#FFFFFF;color:#5C3E17;border:1px solid #BD9568;border-radius:3px;padding:6px 14px;cursor:pointer;font-weight:normal;';
   function paintCvsBtns(){
@@ -11920,21 +11950,23 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       var _unN=_cvsUn.names.length, _unF=!!(_cvsCur.unFof||(_cvsProp&&_cvsProp.total>0&&_cvsProp.unFof));
       _cvsUn.note='† Unallocated: '+_unN+' hybrid holding'+(_unN===1?'':'s')+' ('+_cvsUn.names.slice(0,5).join('; ')+(_unN>5?'; and '+(_unN-5)+' more':'')+') '+
         (_unN===1?'has':'have')+' no equity / debt sleeve in the look-through data'+(_unF?' (Fund-of-Funds are not looked through)':'')+', so '+
-        _cvsUn.ca.toFixed(2)+'% of the current portfolio and '+_cvsUn.pa.toFixed(2)+'% of the sample are not split between Equity and Debt. '+
-        'The sample\'s Unallocated share follows the rebalancing plan and cannot be typed over.';
+        _cvsUn.ca.toFixed(2)+'% of the current portfolio and '+_cvsUn.pa.toFixed(2)+'% of the sample are not split between Equity and Debt.';
     }
-    /* the return part of the footnote follows the Exp. Return cells of the Unallocated row */
-    function _cvsUnNote(ur){
+    /* the return part of the footnote follows the Exp. Return cells of the Unallocated row. The
+       screen note also tells the analyst what to do (the sample's share cannot be typed over;
+       enter a return to see the totals). The slide note (slide=true) is read by the client and
+       states only what the slide shows. */
+    function _cvsUnNote(ur, slide){
       if(!_cvsUn.any) return '';
       var given=[], blank=[];
       [['current',_cvsUn.ca,ur&&ur.cr],['sample',_cvsUn.pa,ur&&ur.pr]].forEach(function(c){
         if(!(c[1]>0)) return;
         if(c[2]==null) blank.push(c[0]); else given.push(c[2].toFixed(2)+'% ('+c[0]+')');
       });
-      var t=_cvsUn.note;
+      var t=_cvsUn.note+(slide?'':' The sample\'s Unallocated share follows the rebalancing plan and cannot be typed over.');
       if(given.length) t+=' Expected return entered for it: '+given.join(', ')+'.';
       if(blank.length) t+=' No return is assumed for '+(given.length?'the '+blank[0]+' share':'it')+', so the '+blank.join(' and ')+' expected return'+(blank.length>1?'s':'')+
-        ' and valuations are shown as —. Enter an expected return for the unallocated share to see the totals.';
+        ' and valuations are shown as —.'+(slide?'':' Enter an expected return for the unallocated share to see the totals.');
       return t;
     }
     /* percentages and the residual rule now live in _cvsAllocate above */
@@ -12160,22 +12192,22 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
           return{l:r.label,ca:r.currAlloc,cr:r.currRet,pa:r.propAlloc,pr:r.propRet};
         })};
       }),cmv:cmv,infl:infl,
-      /* KI-067: the slide shows the Unallocated row, its returns (null = blank) and the footnote from here */
-      unalloc:_cvsUn.any?{ca:_cvsUn.ca,pa:_cvsUn.pa,cr:cvsUnRet.cr,pr:cvsUnRet.pr,note:_cvsUnNote(cvsUnRet)}:null};
+      /* KI-067: the slide shows the Unallocated row, its returns (null = blank) and the footnote from here;
+         the note is the slide's wording (for the client: no instructions to the analyst) */
+      unalloc:_cvsUn.any?{ca:_cvsUn.ca,pa:_cvsUn.pa,cr:cvsUnRet.cr,pr:cvsUnRet.pr,note:_cvsUnNote(cvsUnRet,true)}:null};
     }
 
     function wireInputs(){
       document.querySelectorAll('#s-cvs .cvs-num').forEach(function(inp){
-        function sync(){
+        function sync(redraw){
           /* KI-067 / OD-29: an Exp. Return cell of the Unallocated row. Blank clears it (no return
              assumed: that column's totals show "—"); a number is used as typed, like the other cells */
           if(this.dataset&&this.dataset.un){
             var uk=this.dataset.un; if(uk!=='cr'&&uk!=='pr') return;
             var us=String(this.value==null?'':this.value).trim();
-            if(us===''){ if(cvsUnRet[uk]!=null){ cvsUnRet[uk]=null; rebuildCVS(); } return; }
-            var uv=parseFloat(us); if(isNaN(uv)) return;
-            cvsUnRet[uk]=Math.max(0,Math.round(uv*100)/100);
-            rebuildCVS();
+            if(us==='') cvsUnRet[uk]=null;
+            else { var uv=parseFloat(us); if(isNaN(uv)) return; cvsUnRet[uk]=Math.max(0,Math.round(uv*100)/100); }
+            if(redraw) rebuildCVS();
             return;
           }
           var gi=+this.dataset.g, ri=+this.dataset.r, field=this.dataset.field;
@@ -12185,11 +12217,14 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
             /* a typed sample allocation is the analyst's, and a later change to
                the rebalancing plan must not overwrite it without being asked */
             if(field==='propAlloc'){ try{ (window.__cvsEdited||(window.__cvsEdited={}))[gi+'|'+ri]=1; }catch(e){} }
-            rebuildCVS();
+            if(redraw) rebuildCVS();
           }
         }
-        inp.oninput=sync;
-        inp.onchange=sync;
+        /* KI-114: typing updates the figures without redrawing the table (a redraw replaces the cell
+           and dropped the focus after the first keystroke); the table, its totals and the slide snapshot
+           are redrawn when the entry is committed: Enter, leaving the cell, or a spinner step ("change") */
+        inp.oninput=function(){ sync.call(this,false); };
+        inp.onchange=function(){ sync.call(this,true); };
       });
     }
 
@@ -12259,6 +12294,7 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
     var Ppt=(typeof PptxGenJS!=='undefined')?PptxGenJS:(window.PptxGenJS||window.pptxgen);
     if(!Ppt){ setStatus('PowerPoint engine not available in this browser session. Try reopening the file.',true); return; }
     try{ cvsFlush(); }catch(e){}   /* KI-068: the CVS slide reads window._cvsSnapshot; land a pending plan refresh first */
+    var _cvsW=''; try{ _cvsW=cvsExportWarning(slidePickArg()); }catch(e){}   /* KI-067 / OD-29: the CVS slide's totals are — */
     var btn=this; btn.disabled=true; var old=btn.textContent; btn.textContent='Generating…';
     function done(){ btn.disabled=false; btn.textContent=old; }
     try{
@@ -12274,7 +12310,9 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       var fn='Portfolio Review_'+model.meta.familyName+'_'+model.meta.asOnDate+'.pptx';
       var p=E.buildPPTX(model,Ppt,slidePickArg());
       Promise.resolve(p.write({outputType:'blob'})).then(function(blob){
-        triggerDownload(blob, fn); setStatus('PowerPoint downloaded: <b>'+fn+'</b>'); done();
+        triggerDownload(blob, fn);
+        setStatus('PowerPoint downloaded: <b>'+fn+'</b>'+(_cvsW?(' <span style="color:#931621">'+_cvsW+'</span>'):''), !!_cvsW);   /* KI-067 */
+        done();
       }).catch(function(e){ setStatus('PowerPoint generation failed: '+e.message,true); console.error(e); done(); });
     }catch(e){ setStatus('PowerPoint generation failed: '+e.message,true); console.error(e); done(); }
   };

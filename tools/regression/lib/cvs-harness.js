@@ -17,6 +17,8 @@
      - rbEsc cut from index.html, dlBar stubbed to '', fake timers.
    window._cvsSnapshot is written to the Node global, which is the `window`
    the exporters read, so a slide built afterwards sees what the screen shows.
+   loadExports cuts the two PowerPoint export paths (slidePPTX and the deck
+   button's onclick) the same way, to read the status line an export leaves.
    Synthetic data only.
    ========================================================================== */
 'use strict';
@@ -100,18 +102,39 @@ function fakeDom() {
     document, el, writes,
     tableHtml: () => el('cvs-tbl-wrap')._html,
     sectionHtml: () => el('s-cvs')._html,
-    /* what an analyst typing into a CVS cell does: set the value, fire input */
+    /* what an analyst typing into a CVS cell does: set the value, fire input, then commit it
+       (Enter or leaving the cell fires change; KI-114: only the commit redraws the table) */
     type(g, r, field, value) {
       const inp = inputs.find(x => x.dataset.g === String(g) && x.dataset.r === String(r) && x.dataset.field === field);
-      if (!inp || typeof inp.oninput !== 'function') return false;
-      inp.value = String(value); inp.oninput.call(inp); return true;
+      if (!inp || typeof inp.oninput !== 'function' || typeof inp.onchange !== 'function') return false;
+      inp.value = String(value); inp.oninput.call(inp); inp.onchange.call(inp); return true;
     },
     /* the Unallocated row's Exp. Return cell: k = 'cr' (current) or 'pr' (sample); '' clears it */
     typeUn(k, value) {
       const inp = inputs.find(x => x.dataset.un === k);
-      if (!inp || typeof inp.oninput !== 'function') return false;
-      inp.value = String(value); inp.oninput.call(inp); return true;
+      if (!inp || typeof inp.oninput !== 'function' || typeof inp.onchange !== 'function') return false;
+      inp.value = String(value); inp.oninput.call(inp); inp.onchange.call(inp); return true;
     },
+    /* keystrokes only, no commit yet: returns the input object so a test can check it was not replaced */
+    keyUn(k, value) {
+      const inp = inputs.find(x => x.dataset.un === k);
+      if (!inp || typeof inp.oninput !== 'function') return null;
+      inp.value = String(value); inp.oninput.call(inp); return inp;
+    },
+    /* commit the cell (what Enter or leaving it does) */
+    commitUn(k) {
+      const inp = inputs.find(x => x.dataset.un === k);
+      if (!inp || typeof inp.onchange !== 'function') return false;
+      inp.onchange.call(inp); return true;
+    },
+    unInput(k) { return inputs.find(x => x.dataset.un === k) || null; },
+    /* keystrokes only in a group-row cell (g, r, field), no commit yet; returns the input object */
+    keyCell(g, r, field, value) {
+      const inp = inputs.find(x => x.dataset.g === String(g) && x.dataset.r === String(r) && x.dataset.field === field);
+      if (!inp || typeof inp.oninput !== 'function') return null;
+      inp.value = String(value); inp.oninput.call(inp); return inp;
+    },
+    cellInput(g, r, field) { return inputs.find(x => x.dataset.g === String(g) && x.dataset.r === String(r) && x.dataset.field === field) || null; },
     /* the Unallocated row's Exp. Return inputs as rendered: { cr: value, pr: value } (undefined = no input) */
     unInputs() { const o = {}; inputs.filter(x => x.dataset.un).forEach(x => { o[x.dataset.un] = x.value; }); return o; }
   };
@@ -168,6 +191,7 @@ function loadCvs(env) {
     '  cvsRefreshSoon: (typeof cvsRefreshSoon==="function")?cvsRefreshSoon:null,\n' +
     '  cvsFlush: (typeof cvsFlush==="function")?cvsFlush:null,\n' +
     '  cvsCancelRefresh: (typeof cvsCancelRefresh==="function")?cvsCancelRefresh:null,\n' +
+    '  cvsExportWarning: (typeof cvsExportWarning==="function")?cvsExportWarning:null,\n' +
     '  dropLive: function(){ if(typeof __cvsLive!=="undefined") __cvsLive=null; } };';
   const factory = new Function('__hooks', 'document', 'window', 'localStorage', 'setTimeout', 'clearTimeout', 'dlBar', 'activeRef',
     prefix + src + suffix);
@@ -181,6 +205,41 @@ function loadCvs(env) {
     snap: () => global._cvsSnapshot,
     /* snapshot value: group gi, row ri, field ca|cr|pa|pr */
     cell: (gi, ri, f) => { const s = global._cvsSnapshot; return s && s.groups[gi] && s.groups[gi].rows[ri] ? s.groups[gi].rows[ri][f] : undefined; }
+  };
+}
+
+/* The two PowerPoint export paths of the UI script, cut out of index.html by anchor and bound to
+   a harness's CVS section (its cvsFlush and cvsExportWarning, which read the same
+   window._cvsSnapshot): slidePPTX(tabKey), the one-slide export, and the deck button's onclick
+   (the full deck, or the slides picked in the side menu). E.buildPPTX is a stub that records what
+   it was asked to build (the real slide is checked with cvsSlideText); setStatus and the download
+   are captured. The status line is what the analyst reads after the export.
+     const X = loadExports(cv, model);
+     await X.slide('cvs')      -> the last status { msg, warn }
+     await X.deck()            -> the same, full deck; X.deck(['cvs', 'amc']) a picked deck */
+function loadExports(cv, model) {
+  const html = readHtml();
+  const slide = uiFunction(html, '  function slidePPTX(tabKey){\n');
+  const deck = uiFunction(html, "  document.getElementById('dlppt').onclick=function(){\n", '\n  };\n');
+  if (!slide || !deck) throw new Error('export paths not found in index.html');
+  const log = { status: [], built: [], downloads: [] };
+  const btn = { disabled: false, textContent: 'Download PPT', onclick: null };
+  const E = { buildPPTX(m, P, only) { log.built.push(only === undefined ? '(full deck)' : only); return { write: () => Promise.resolve({ pptx: true }) }; } };
+  let pick = [];
+  const prefix = 'var PptxGenJS=function(){};\nvar TABS=[], anScope=null;\n' +
+    'function tabLabel(k){ return k; }\nfunction tabHasContent(){ return true; }\nfunction analyticsSrc(){ return model; }\n' +
+    'function slidePickArg(){ var l=__pick(); return l.length ? l : undefined; }\n';
+  const f = new Function('model', 'E', 'setStatus', 'triggerDownload', 'cvsFlush', 'cvsExportWarning', '__pick', 'document',
+    prefix + slide + '\n' + deck + '\nreturn { slide: slidePPTX };');
+  const api = f(model, E, (msg, warn) => log.status.push({ msg: String(msg), warn: !!warn }), (blob, fn) => log.downloads.push(fn),
+    cv.api.cvsFlush || function () {}, cv.api.cvsExportWarning || function () { return ''; }, () => pick,
+    { getElementById: id => (id === 'dlppt' ? btn : null) });
+  const settle = () => new Promise(r => setImmediate(r));
+  const last = () => log.status[log.status.length - 1] || null;
+  return {
+    log,
+    async slide(tabKey) { api.slide(tabKey); await settle(); return last(); },
+    async deck(picked) { pick = picked || []; btn.onclick.call(btn); await settle(); return last(); }
   };
 }
 
@@ -234,4 +293,4 @@ async function cvsSlideText(host, model) {
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'"));
 }
 
-module.exports = { readHtml, cutBetween, uiFunction, loadCvs, sampleModel, bookModel, rebalanced, rowCells, cvsSlideText };
+module.exports = { readHtml, cutBetween, uiFunction, loadCvs, loadExports, sampleModel, bookModel, rebalanced, rowCells, cvsSlideText };

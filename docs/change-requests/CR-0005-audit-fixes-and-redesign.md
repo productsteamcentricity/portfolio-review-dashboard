@@ -45,9 +45,11 @@ Shipped in batches, each on its own branch and PR, with known-answer tests. Fina
 | Batch | PR | Issues | Status |
 |---|---|---|---|
 | 1a. Engine numbers (first part of batch 1; the rest of batch 1 follows as 1b) | #4 | KI-047 (XIRR solver), KI-055 (hybrid stocks), KI-006 (partial XIRR coverage), KI-065 (debt MF tax) | fixed; smoke 35/35; financial review approved; raised OD-26 to OD-28 and KI-099, KI-100 |
+| 1b. Engine numbers, rest of batch 1 | #6 | KI-007 (blank invested), KI-048 + KI-100 (client-sheet IRR join), KI-061 (AMC house key), KI-062 (degraded Exit bookkeeping), KI-063 (Apply plan), KI-067 + KI-068 + KI-114 (Current vs Sample), KI-120 (AI summary house name) | fixed; two financial reviews per group; browser and PowerPoint QA passed; raised OD-29 to OD-36 and KI-101 to KI-123 |
 
 ## Open
 - **Owner (answered 19 Oct 2026):** all 28 decisions accepted except OD-11. The monitor uploads stay and are to
   be made correct (D-021).
+- **Owner:** answer OD-29 to OD-36, raised by fix batch 1b (or "accept all": each shipped with its recommendation).
 - **Owner:** send their own list of issues, with a screenshot or note each.
 - **Owner:** give redesign direction.

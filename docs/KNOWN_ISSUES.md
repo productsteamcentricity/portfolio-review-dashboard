@@ -10,7 +10,8 @@ That audit re-tested most of the earlier entries:
 - KI-045 is contradicted in part.
 - KI-008, KI-024 and KI-035 are wider than first recorded.
 
-Fixed so far: KI-001, KI-010, and in fix batch 1a KI-006, KI-047, KI-055 and KI-065. Fixes follow the order in the audit register. The owner's decisions are in
+Fixed so far: KI-001, KI-010; in fix batch 1a KI-006, KI-047, KI-055 and KI-065; in fix batch 1b KI-007,
+KI-048, KI-061, KI-062 (bookkeeping), KI-063, KI-067, KI-068, KI-100, KI-114 and KI-120. Fixes follow the order in the audit register. The owner's decisions are in
 [`audits/2026-10-19-decisions.md`](audits/2026-10-19-decisions.md): all recommendations accepted on 19 Oct 2026
 except OD-11 (D-021).
 
@@ -70,7 +71,9 @@ Same scope fault at `08_exporters.js:1131-1137`; the slide picker still offers t
 (`07_engine.js:1075`); the AI Analyst caps at 20% of **total portfolio CMV** (`07_engine.js:2700`) and
 mixes the two bases in its before/after figures (`:2377, 2548, 2632`). For a family with PMS / AIF /
 direct equity, the analyst's plan can leave an AMC above 20% of the MF book. Needs a product decision
-on the intended basis.
+on the intended basis. **Owner decision OD-1 (D-021): the mutual-fund book.** Fix batch 1b (KI-061) already keys
+every AI Analyst AMC figure by fund house and moves it only with mutual-fund-book positions (a PMS/AIF/SIF/stock
+trim or top-up never frees or uses a house's room). The cap itself is still 20% of total CMV until OD-1 is built.
 
 ### KI-005 — Base-file XIRR units: real files arrive in both forms
 **Confirmed (code), and confirmed by the previous owner's records.** `XIRR (%)` and `BMXIRR (%)` are read as
@@ -96,9 +99,18 @@ weighted XIRR by CMV but treated a missing XIRR as 0 while keeping its CMV in th
 
 Open owner question OD-26: should a row's fund and benchmark average cover the same holdings?
 
-### KI-007 — Missing invested value becomes 0
-**Reported (code review).** A blank invested value is stored as 0 (`07_engine.js:764`): the whole CMV
-is then treated as gain in totals and in Taxation (`:325-326, 396`).
+### KI-007 — Missing invested value becomes 0 — **FIXED**
+**Reported (code review)**; reproduced at runtime by the 19 Oct audit. A blank invested value was stored as 0
+(`07_engine.js:764`): the holding showed 0.00, and Total Gain/Loss and Taxation counted its whole CMV as gain.
+
+**Fixed** in fix batch 1b (`tools/patches/2026-10-19-invested-and-irr-join.js`):
+- The value stays null and shows "—"; merged folios with any blank are blank.
+- Invested value and gain/loss are totalled only over holdings that have one (review totals, Asset Allocation,
+  client sheets). Partial figures, Absolute Return % included, carry ‡ and a footnote gives the count and share
+  of CMV (screen, deck, workbook, Rebalancing Holding Sheet).
+- Taxation takes its `glMissing` path; its Total Gain/Loss label and totals name the count.
+- The gain/loss definition is unchanged (OD-18, market value minus invested value). On a ‡ row, invested +
+  gain/loss no longer equals CMV, which is why the ‡ is there. Test: `tools/regression/KI-007-blank-invested.js`.
 
 ### KI-008 — Workbook text rendered as HTML without escaping
 **Reported (code review).** Many renderers insert cell text into the page unescaped (e.g.
@@ -140,11 +152,15 @@ rule runs before the debt rules (`07_engine.js:639-694, 952, 1372-1374`).
 **Reported (code review).** After clearing the IRR upload, matched holdings keep the transaction XIRR
 while the page says XIRR comes from the base file (`07_engine.js:1022`, `11_app_ui.js:224-231, 1360`);
 after a reference reset, holdings that no longer contribute are not listed as excluded
-(`07_engine.js:1147, 1234-1237`). Workaround: reload the page.
+(`07_engine.js:1147, 1234-1237`). Since fix batch 1b, holdings blanked by the KI-100 rule also stay blank after
+the IRR upload is cleared. Workaround: reload the page.
 
 ### KI-032 — IRR client names resolved fuzzily
 **Reported (code review).** Base-file clients are joined to IRR clients on ≥ 2 shared name tokens
 (`07_engine.js:1012-1015`): a client could pick up a family member's flows when two names share tokens.
+**Reproduced** with the synthetic book (fix batch 1b review): when Sample Client B has no IRR transactions it
+resolves to Sample Client A on two shared tokens, and takes A's Grand Total and flows. Since fix batch 1b the
+§ note shows that none of B's holdings matches an instrument, but the join itself still needs its own fix.
 
 ## Low
 
@@ -219,7 +235,7 @@ Status: **Reproduced** unless marked fixed.
 | KI | Audit ID | P | Kind | Issue | Owner decision |
 |---|---|---|---|---|---|
 | KI-047 | NEW-1 | P0 | calculation | **FIXED** (fix batch 1a) — XIRR solver invents 10000% / 10% for same-day flows | no |
-| KI-048 | NEW-2 | P0 | calculation | Client-sheet asset/product XIRR/BMXIRR joined by IRR-file labels | no |
+| KI-048 | NEW-2 | P0 | calculation | **FIXED** (fix batch 1b) — Client-sheet asset/product XIRR/BMXIRR joined by IRR-file labels. Now the client's holdings joined by client + instrument, plus redeemed or unresolvable instruments placed by the IRR file's labels (the since-inception scope OD-4 keeps); unplaceable ones are footnoted § | OD-36 |
 | KI-049 | NEW-3 | P0 | calculation | IRR aggregates not reconciled to the base file or validated | yes |
 | KI-050 | NEW-4 | P0 | calculation | Renamed/legacy scheme names matched to a different fund | yes |
 | KI-051 | NEW-5 | P0 | data | Bonds, unlisted shares, MLDs treated as MFs | yes |
@@ -232,14 +248,14 @@ Status: **Reproduced** unless marked fixed.
 | KI-058 | NEW-12 | P0 | parsing | Uploaded monitor ERs stored 100x too large | no |
 | KI-059 | NEW-13 | P0 | data | Missing base ER filled with an unsourced estimate | yes |
 | KI-060 | NEW-14 | P0 | data | ER override above 300 bps cut 100x on next load | no |
-| KI-061 | NEW-15 | P0 | calculation | AI Analyst AMC cap bypassed by label mismatch | no |
-| KI-062 | NEW-16 | P0 | calculation | AI Analyst degraded Exit keeps stale unfunded / AMC-after | yes (behaviour) |
-| KI-063 | NEW-17 | P0 | calculation | "Apply plan" writes part of the release | no |
+| KI-061 | NEW-15 | P0 | calculation | **FIXED** (fix batch 1b) — AI Analyst AMC cap bypassed by label mismatch. One canonical house key (`ENGINE.amcKey`); house figures move only with mutual-fund-book positions | OD-32, OD-33 |
+| KI-062 | NEW-16 | P0 | calculation | **FIXED (bookkeeping)** (fix batch 1b) — AI Analyst degraded Exit keeps stale unfunded / AMC-after. The behaviour (fall back to Retain with a note) is accepted as OD-14 and follows in a later batch | yes (OD-14) |
+| KI-063 | NEW-17 | P0 | calculation | **FIXED** (fix batch 1b) — "Apply plan" writes part of the release. Every member row is written; per-row rationale; exact "Applied" badge | OD-31 |
 | KI-064 | NEW-18 | P0 | calculation | Taxation rupee ledger misallocates LT/ST | yes |
 | KI-065 | NEW-19 | P0 | calculation | **FIXED** (fix batch 1a) — Corporate/Dynamic Bond MFs taxed as listed bonds | no |
 | KI-066 | NEW-20 | P0 | calculation | IPS compliance verdicts wrong | yes |
-| KI-067 | NEW-21 | P0 | calculation | CVS splits hybrids by the portfolio-wide equity share | no (rule 3) |
-| KI-068 | NEW-22 | P0 | ui-state | CVS tab/slide ignore the rebalancing plan | no |
+| KI-067 | NEW-21 | P0 | calculation | **FIXED** (fix batch 1b) — CVS splits hybrids by the portfolio-wide equity share. Now each by its own sleeve; FoFs and hybrids with no sleeve go to "Unallocated †" with a blank return | OD-29, OD-30 |
+| KI-068 | NEW-22 | P0 | ui-state | **FIXED** (fix batch 1b) — CVS tab/slide ignore the rebalancing plan | no |
 | KI-069 | NEW-23 | P1 | calculation | Taxation lot join: exact names, distributor split | yes (apportionment) |
 | KI-070 | NEW-24 | P1 | calculation | Taxation ignores common transaction types | yes |
 | KI-071 | NEW-25 | P1 | calculation | Two G/L definitions disagree | yes |
@@ -257,7 +273,7 @@ Status: **Reproduced** unless marked fixed.
 | KI-083 | NEW-37 | P1 | output-pptx | PMS/AIF data captioned with the MF date | no |
 | KI-084 | NEW-38 | P1 | output-xlsx | XLSX liquidity % in the Investment Amount column | no |
 | KI-085 | NEW-39 | P1 | output-xlsx | XLSX analytics sheets lack vintage and coverage | yes (deck) |
-| KI-086 | NEW-40 | P1 | ui-state | CVS typed values revert to house defaults | no |
+| KI-086 | NEW-40 | P1 | ui-state | CVS typed values revert to house defaults. Since fix batch 1b a plan refresh keeps them; a full re-render (recompute, Re-seed, reference upload) still resets them, the Unallocated returns to blank | no |
 | KI-087 | NEW-41 | P1 | ui-state | Cleared as-on date becomes "20 May 2026" | no |
 | KI-088 | NEW-42 | P1 | robustness | Blocked browser storage blanks tabs, breaks the deck | no |
 | KI-089 | NEW-43 | P1 | ui-state | Re-picking the same file is ignored | no |
@@ -278,4 +294,35 @@ Both pre-date the fixes; the reviewers confirmed the shipped code behaves the sa
 | KI | P | Kind | Issue |
 |---|---|---|---|
 | KI-099 | P2 | calculation | Products named "ETF(s)", "Index Fund(s)" or "Fund of Funds" (instead of "Mutual Fund(s)") skip the mutual-fund branch of `taxClassOf`: a G-Sec ETF / index fund is still taxed as a G-Sec, a bond ETF or FoF as a listed bond, and some debt ETFs / FoFs come out unclassified. Fix: one engine-scope "is a mutual-fund product" test (the AMC tab's `_isMFbook` pattern) for these guards and the MF branch. |
-| KI-100 | P1 | calculation | With an IRR file loaded, a holding whose transaction XIRR cannot be computed (e.g. one-signed flows, a missing benchmark series) keeps its base-file XIRR under the "transaction-based" caption and disagrees with the Fund IRR sheet (`07_engine.js:1032`). Belongs with KI-048 / KI-049 (one reconciled set of flows). |
+| KI-100 | P1 | calculation | **FIXED** (fix batch 1b, with KI-048): blank and counted in the § footnote. Was: with an IRR file loaded, a holding whose transaction XIRR cannot be computed (e.g. one-signed flows, a missing benchmark series) keeps its base-file XIRR under the "transaction-based" caption and disagrees with the Fund IRR sheet (`07_engine.js:1032`). Belongs with KI-048 / KI-049 (one reconciled set of flows). |
+
+### Found while fixing (batch 1b reviews, 19 Oct 2026)
+
+All pre-date fix batch 1b unless marked. The reviewers confirmed the synthetic books give the same numbers before
+and after the batch, except where the fixes intend.
+
+| KI | P | Kind | Issue |
+|---|---|---|---|
+| KI-101 | P1 | calculation | A Hybrid-tagged **equity** fund can match the wrong hybrid record on brand tokens alone: "Aditya Birla SL Midcap Fund(G)" tagged Hybrid gets "Aditya Birla SL Arbitrage Fund(G)", so its look-through and CVS split come from another fund. Matching rules are fixed (rule 4); needs a measured change. |
+| KI-102 | P1 | calculation | HARD RULE 2 (an Exit needs a funded destination) is checked before the final AMC-cap cut, so an Exit whose destinations are all cut stays an Exit with 100% unplaced. Fix together with OD-14 (degraded Exit falls back to Retain). |
+| KI-103 | P2 | ui text / exports | On a reduction spread over several Rebalancing rows (KI-063), the engine's position-level clauses are repeated on every row: "₹X Cr of this release could not be placed" (adding the rows overstates the unplaced amount) and the tax clause ("₹0.98 Cr of this holding is long term …" on a ₹0.63 Cr Direct row quotes the whole scheme's lots). Only the recommendation clause is per row. Say "of the combined position" on such rows, or split the clauses per row. |
+| KI-104 | P2 | ui text / exports | Rationale units on Lakh files: the per-row clause uses the file's unit, while the engine's own text always says Cr (`07_engine.js:2849, 2882`), so one Rationale column can mix L and Cr (OD-35). |
+| KI-105 | P3 | ui-state | Two holdings in different AI positions whose names normalise alike share one Rebalancing row; the acting position's % then applies to the whole row. The status line names it ("reached by two positions"). Low likelihood. |
+| KI-106 | P3 | ui-state | After a client-scope analytics recompute, the family's mutual-fund rows can show their own AMC label instead of the house's one name in an AI recommendation's AMC name and impact text (`computeReview` mutates shared row objects). Numbers, keys and caps are unaffected. |
+| KI-107 | P3 | calculation | A merged AI position takes its mutual-fund-book flag from its largest member. Not seen in practice (performance keys are per product class). |
+| KI-108 | P2 | test | `aiaFloor2` floors float dust (0.4999999 → 0.49), so a top-up can come out 0.01 Cr low; the KI-061 §6 test pins 0.50 and could fail after a data refresh without a real defect. |
+| KI-109 | P2 | output-pptx | Taxation holding-detail slide: with many unreconciled holdings (24 in a synthetic worst case) the footer's third line touches the black band. |
+| KI-110 | P2 | output-pptx | Holdings slides assume names wrap to at most two lines. Without notes a page takes 13 rows; 13 two-line names end about 6.99 in, just past the one-line footer's top (still above the band). Names of about 85+ characters wrap to three lines: QA (19 Oct 2026) saw the notes box print over the Grand Total row (with an IRR file), and with only the ‡ note the Grand Total row run into the black band. Main overflows worse on the same book (Grand Total off the slide), so it is not a regression of fix batch 1b. Fix: measure row heights from the wrapped name length. |
+| KI-111 | P2 | calculation | The Fund IRR tree joins clients by exact name; the client sheets normalise case and punctuation. A client spelled differently in the two IRR sheets gets a blank tree benchmark but a client-sheet one. |
+| KI-112 | P2 | calculation | Mutual-fund rows with a blank AMC label form one unnamed house: it can head the AI Analyst's "largest AMC after" with no name, and its cap is only half enforced (OD-34). |
+| KI-113 | P2 | calculation | Merged duplicate folios add up only the G/L values present, so a merged row's G/L can be partial (OD-18 work). |
+| KI-114 | P1 | ui-state | **Fixed in fix batch 1b.** Every CVS input redrew the whole table on each keystroke, so the focus was lost after the first character ("12" typed at a normal pace became 1.00; confirmed in the browser). Typing now updates the figures only; the table redraws when the entry is committed (Enter, leaving the cell, spinner). Test: `tools/regression/KI-114-cvs-typing.js`. |
+| KI-115 | P2 | output-pptx | CVS slide: the disclaimer (y 7.1 in) is partly covered by the black footer bar (7.23 in); difference cells print "-0 Cr" for differences under 0.5 Cr; the headers say "Curr./Prop. IRR%" while the screen says "Exp. Return %", which a client could read as realised IRR. |
+| KI-116 | P2 | calculation | CVS bucket rules: an Equity-tagged SIF falls into Equity > Mutual Funds, and Hybrid-tagged PMS/AIF into the Mutual Funds rows; there is no Equity SIF row (OD-30). |
+| KI-117 | P3 | data | `AMC_DISPLAY` lacks newer houses (Old Bridge, The Wealth Company, Angel One, JioBlackRock, Zerodha, Unifi, Capitalmind, Choice, Abakkus, Quantum, Templeton): an AI destination from such a house that is not yet held is named by its first word ("Old", "The"). Display only. |
+| KI-118 | P3 | docs | The comment near `07_engine.js:1219` says no hybrid record carries `db.weight`; all 243 do, and 54 have eq + db ≠ 100 (arbitrage ~170–180). The code handles it. |
+| KI-120 | P2 | ui text | AI Analyst executive summary named the wrong house beside the "largest AMC" figure: "largest AMC (360 ONE) 51.64% → 38.08%", where 51.64% is Aditya Birla Sun Life's share (`amcBeforeWho`) and only the after figure is 360 ONE's (`amcAfterWho`). Found by QA of fix batch 1b; also on main. **Fixed in fix batch 1b.** |
+| KI-121 | P2 | ui text | The holdings caption says "XIRR/BMXIRR transaction-based" for a client whose § note says it has no IRR transactions (its figures are the base file's), on screen and on the slide. Word the caption per client. |
+| KI-122 | P3 | output-pptx | Holdings slides can end a page with a group's subtotal rows and carry its only holding alone to the next page (an orphaned group header). |
+| KI-123 | P3 | ui text / exports | The Rebalancing Holding Sheet Grand Total and the XLSX client-sheet invested/G-L totals carry no ‡ when they leave out a holding with no invested value (KI-007); the notes beside them explain it. |
+| KI-119 | — | tooling | **Fixed in fix batch 1b.** Re-running an older patch on a newer build could silently insert a second copy of code (`2026-10-15-ki001-reset-family-state.js` re-inserted `resetFamilyState`), because a later patch had edited its text. `patch-lib.js` now refuses a partly-present patch; rebuild by replaying all patches from git in file-name order. |

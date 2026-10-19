@@ -84,13 +84,17 @@ In a Claude Code PowerShell call, prepend the toolchain if `node` is not found:
 `$env:Path = 'C:\dev\tools\node;C:\dev\tools\git\cmd;C:\dev\tools\gh\bin;' + $env:Path`
 - `node tools/check-invariants.js [--expect-md5 <hash>]` — structure, no-network, engine surface, data sums
 - `node tools/smoke-review.js` — end-to-end engine + exporters on a synthetic book (35 checks)
-- `node tools/test-ai-analyst.js` — AI Analyst acceptance rules on the embedded data (17 checks, CI-blocking)
+- `node tools/test-ai-analyst.js` — AI Analyst acceptance rules on the embedded data (24 checks, CI-blocking)
 - `node tools/run-regression.js [KI-nnn]` — known-answer test of each fixed issue (`tools/regression/`, CI-blocking)
 - `node tools/make-sample-base.js` — synthetic base + IRR files and a second family to `test-data/`
 - `node tools/extract-blocks.js` — reading copies of the code blocks in `.blocks/` (cite as `07_engine.js:736`)
 - `tools/browser-checks/family-isolation.js` — paste into the browser console on the local preview and
-  run `await familyChecks.isolation()` (then `irrBeforeBase()`, `removeThenReload()` on fresh pages)
-- `node tools/serve-dashboard.js` → http://127.0.0.1:8099 (or preview config `dashboard` in .claude/launch.json)
+  run `await familyChecks.isolation()` (then `irrBeforeBase()`, `removeThenReload()` on fresh pages);
+  `tools/browser-checks/cvs-refresh.js` likewise (`cvsChecks.planRefresh()`, `hybridSplit()`, `unallocated()`, `fof()`)
+- `node tools/serve-dashboard.js` → http://127.0.0.1:8099 (or preview config `dashboard` in .claude/launch.json);
+  test a PR branch from its own worktree (e.g. `C:\dev\pr-review`) served on another port, e.g. `serve-dashboard.js 8101`
+- A patch that is partly present stops without writing: a later patch rewrote its text. Never force it; rebuild
+  with `git checkout -- index.html` and every script in `tools/patches/` in file-name order.
 - Run engine code from a **script file**, never `node -e`: under `-e`, `require/module/exports` are
   globals and the embedded UMD bundles take their CommonJS path and break (KI-011).
 - Search code in `.blocks/`, not `index.html` (the NUL bytes make grep/ripgrep treat it as binary).

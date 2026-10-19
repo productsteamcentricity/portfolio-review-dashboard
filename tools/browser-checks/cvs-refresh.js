@@ -8,7 +8,10 @@
              a footnote. Its Exp. Return cells start blank and, while blank,
              the column's Grand Total return, inflation-adjusted return and
              valuations show "—" (OD-29); a typed return is used and survives
-             a plan refresh.
+             a plan refresh. The screen footnote asks the analyst for the
+             return; the slide footnote only says the totals are shown as —,
+             and an export of the CVS slide (single slide or deck) while a
+             return is blank warns in the status line without blocking.
 
    How to run
      1. node tools/make-sample-base.js       (writes test-data/, git-ignored)
@@ -77,7 +80,8 @@
   function snap(gi, ri, f) { var s = window._cvsSnapshot; return (s && s.groups[gi] && s.groups[gi].rows[ri]) ? s.groups[gi].rows[ri][f] : null; }
   function cvsInput(g, r, field) { return document.querySelector('#s-cvs .cvs-num[data-g="' + g + '"][data-r="' + r + '"][data-field="' + field + '"]'); }
   function screenVal(g, r, field) { var el = cvsInput(g, r, field); return el ? parseFloat(el.value) : null; }
-  function typeCvs(g, r, field, v) { var el = cvsInput(g, r, field); if (!el) return false; el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); return true; }
+  /* typing then committing (Enter / leaving the cell fires change): since KI-114 only the commit redraws */
+  function typeCvs(g, r, field, v) { var el = cvsInput(g, r, field); if (!el) return false; el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); return true; }
   function tableRow(label) {
     var rows = Array.prototype.slice.call(document.querySelectorAll('#s-cvs table.cvs-tbl tr'));
     var tr = rows.find(function (x) { return x.cells.length && x.cells[0].innerText.trim() === label; });
@@ -86,7 +90,7 @@
   function cvsText() { var e = document.getElementById('s-cvs'); return e ? e.innerText : ''; }
   /* the Unallocated row's Exp. Return cells (KI-067 / OD-29): k = 'cr' (current) or 'pr' (sample) */
   function unInput(k) { return document.querySelector('#s-cvs .cvs-num[data-un="' + k + '"]'); }
-  function typeUn(k, v) { var el = unInput(k); if (!el) return false; el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); return true; }
+  function typeUn(k, v) { var el = unInput(k); if (!el) return false; el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); return true; }
   function tableRowStarting(prefix) {
     var rows = Array.prototype.slice.call(document.querySelectorAll('#s-cvs table.cvs-tbl tr'));
     var tr = rows.find(function (x) { return x.cells.length && x.cells[0].innerText.trim().indexOf(prefix) === 0; });
@@ -125,6 +129,11 @@
     }
     return [];
   }
+  /* the status line an export leaves (KI-067: a warning while an Unallocated return is blank) */
+  function statusEl() { return document.getElementById('status'); }
+  function statusText() { var e = statusEl(); return e ? e.innerText.trim() : ''; }
+  function statusIsWarn() { var e = statusEl(); return !!e && /\bwarn\b/.test(e.className); }
+  function statusWarns(w) { return statusIsWarn() && statusText().indexOf(w) >= 0; }
   function slideCvsOnly() { var b = document.querySelector('#s-cvs .dlslide[data-tab="cvs"]'); if (!b) throw new Error('no CVS slide button'); b.click(); }
   function slideDeck() { document.getElementById('dlppt').click(); }
   /* [Curr alloc, Curr ret, Prop alloc, Prop ret, delta] of a row of a group on the slide */
@@ -201,17 +210,25 @@
       ['Zzyzx Notional Balanced Hybrid Fund(G)', 'Balanced Advantage Fund', 'Hybrid', 'Zzyzx', 2.0]]), 'CVS_Check_Unallocated.xlsx');
     await loaded(2, 'the in-page workbook to load');
     var NEED = /Enter an expected return for the unallocated share to see the totals/;
+    var TYPED = /The sample's Unallocated share follows the rebalancing plan and cannot be typed over/;
+    var SHOWN = 'No return is assumed for it, so the current and sample expected returns and valuations are shown as —.';
+    var WARN = 'The Current vs Sample slide shows — for the current and sample totals: no expected return is set for the unallocated share (Current vs Sample tab).';
     var c = [], u = tableRow('Unallocated †'), g = tableRow('Grand Total'), ia = tableRowStarting('Inflation-Adjusted Return'), v3 = tableRow('Valuation After 3Y — Nominal');
     c.push({ name: 'Equity MF 80.00 / Debt MF 0.00: the unknown hybrid is not split (' + snap(1, 0, 'ca') + ' / ' + snap(0, 0, 'ca') + ')', pass: near(snap(1, 0, 'ca'), 80) && near(snap(0, 0, 'ca'), 0) });
     c.push({ name: 'on screen: Unallocated † row 20.00% / [blank cell] / 20.00% / [blank cell] (' + JSON.stringify(u) + ')',
       pass: !!u && u[1] === '20.00%' && u[3] === '20.00%' && !!unInput('cr') && unInput('cr').value === '' && !!unInput('pr') && unInput('pr').value === '' });
     c.push({ name: 'on screen: Grand Total 100.00% / — / 100.00% / — while the return is blank (' + JSON.stringify(g) + ')', pass: !!g && g[1] === '100.00%' && g[2] === '—' && g[3] === '100.00%' && g[4] === '—' });
     c.push({ name: 'on screen: inflation-adjusted return and 3Y valuation — (' + JSON.stringify([ia, v3]) + ')', pass: !!ia && ia[1] === '—' && ia[2] === '—' && !!v3 && v3[1] === '—' && v3[2] === '—' });
-    c.push({ name: 'on screen: footnote names the fund and asks for the return', pass: /Unallocated: 1 hybrid holding \(Zzyzx Notional Balanced Hybrid Fund\(G\)\) has no equity \/ debt sleeve/.test(cvsText()) && NEED.test(cvsText()) });
+    c.push({ name: 'on screen: footnote names the fund, says the sample\'s share cannot be typed over and asks for the return',
+      pass: /Unallocated: 1 hybrid holding \(Zzyzx Notional Balanced Hybrid Fund\(G\)\) has no equity \/ debt sleeve/.test(cvsText()) && TYPED.test(cvsText()) && NEED.test(cvsText()) });
     var t = await capture(slideCvsOnly), r = slideRow(t, null, 'Unallocated †'), gt = slideRow(t, null, 'Grand Total');
     c.push({ name: 'slide: Unallocated row ' + JSON.stringify(r), pass: !!r && r[0] === '20.00%' && r[1] === '—' && r[2] === '20.00%' && r[3] === '—' && r[4] === '+0.00%' });
     c.push({ name: 'slide: Grand Total ' + JSON.stringify(gt && gt.slice(0, 4)), pass: !!gt && gt[0] === '100.00%' && gt[1] === '—' && gt[2] === '100.00%' && gt[3] === '—' });
-    c.push({ name: 'slide: footnote asks for the return', pass: t.some(function (x) { return /Unallocated: 1 hybrid holding/.test(x) && NEED.test(x); }) });
+    c.push({ name: 'slide: footnote says the totals are shown as — and carries no instruction to the analyst',
+      pass: t.some(function (x) { return /Unallocated: 1 hybrid holding/.test(x) && x.indexOf(SHOWN) >= 0 && !NEED.test(x) && !TYPED.test(x); }) });
+    c.push({ name: 'single-slide export: not blocked; the status line warns in the warning style: "' + statusText() + '"', pass: statusWarns(WARN) && /Slide downloaded/.test(statusText()) });
+    t = await capture(slideDeck);
+    c.push({ name: 'full deck export: the status line warns likewise: "' + statusText() + '"', pass: statusWarns(WARN) && /PowerPoint downloaded/.test(statusText()) && t.length > 0 });
 
     var typed = typeUn('cr', 9); await sleep(300);
     typed = typeUn('pr', 9) && typed; await sleep(300);
@@ -220,6 +237,7 @@
     t = await capture(slideCvsOnly); r = slideRow(t, null, 'Unallocated †'); gt = slideRow(t, null, 'Grand Total');
     c.push({ name: 'slide: Unallocated 9.00% / 9.00%, Grand Total 13.00% / 13.00% (' + JSON.stringify([r, gt && gt.slice(0, 4)]) + ')',
       pass: !!r && r[1] === '9.00%' && r[3] === '9.00%' && !!gt && gt[1] === '13.00%' && gt[3] === '13.00%' && !t.some(function (x) { return NEED.test(x); }) });
+    c.push({ name: 'export with both returns entered: no warning ("' + statusText() + '")', pass: /Slide downloaded/.test(statusText()) && !statusIsWarn() && !/no expected return is set/.test(statusText()) });
 
     await exitFund(/Zzyzx Notional Balanced/i);
     u = tableRow('Unallocated †'); g = tableRow('Grand Total');

@@ -10,9 +10,10 @@ code the browser runs. Browser checks cover what Node cannot (rendering, the liv
 |---|---|---|
 | `node tools/check-invariants.js` | file structure (script count 14, tail, 13 blocks by marker, LF only); **no network API or remote URL** in app code or page shell; engine loads; ENGINE / parser surface; every REFDATA block present; 7 data dates; look-through mixes sum to 100 (FAIL > 0.5, WARN > 0.05). Prints size, MD5 and block counts. `--expect-md5 <hash>` asserts an exact build. | CI, Pages |
 | `node tools/smoke-review.js` | end-to-end on a synthetic book (35 checks): parse, units, unmatched surfacing, AMC 20% rule, mixes sum to 100, **transaction XIRR equal to the exact answer within 1e-6**, taxation reconciliation and LTCG/STCG/unclassified = CMV, overlap matrix properties, no NaN/Infinity, deterministic AI Analyst plan; the full deck, each of the 19 tab groups and the workbook build (the picker-only rebalancing groups need on-screen state and are covered by the browser procedure) | CI, Pages |
-| `node tools/test-ai-analyst.js` | AI Analyst rules on the real embedded data (17 checks: unscored holdings, the 20% AMC cap on both tabs, determinism and conservation of the plan) | CI |
-| `node tools/run-regression.js [KI-nnn]` | the known-answer test of every fixed issue: one file per issue in `tools/regression/` (for example `KI-007-blank-invested.js`), each exiting 1 on any failure. The fixes of batch 1 (19 Oct 2026) are tested inside `smoke-review` instead, in its section "engine fixes from the 19 Oct 2026 audit" | CI, Pages |
+| `node tools/test-ai-analyst.js` | AI Analyst rules on the real embedded data (24 checks: unscored holdings, the 20% AMC cap on both tabs, determinism and conservation of the plan including sources with no destination, the cap under house-label variants such as "PPFAS" and "HDFC Mutual Fund", and a degraded Exit) | CI |
+| `node tools/run-regression.js [KI-nnn]` | the known-answer test of every fixed issue: one file per issue in `tools/regression/` (for example `KI-007-blank-invested.js`), each exiting 1 on any failure. Fix batch 1a is tested inside `smoke-review` (section "engine fixes from the 19 Oct 2026 audit"); fix batch 1b has KI-007, KI-048, KI-061, KI-062, KI-063, KI-067, KI-068, KI-114 and KI-120 (380 checks; UI code is cut out of `index.html` by anchor and run on stubs or a fake page, `regression/lib/cvs-harness.js`) | CI, Pages |
 | `tools/browser-checks/family-isolation.js` (browser console) | KI-001: a second family inherits nothing (`isolation()`: 9 checks incl. the Excel "Fund IRR" sheet); an IRR uploaded before the first base file is kept (`irrBeforeBase()`); uploads after removing the base file are kept (`removeThenReload()`) | manual / qa-engineer, before merging UI changes |
+| `tools/browser-checks/cvs-refresh.js` (browser console) | KI-067/KI-068: the CVS Sample column follows the rebalancing plan and keeps typed cells (`planRefresh()`), hybrids split by their own sleeve (`hybridSplit()`), the Unallocated row with blank returns and "—" totals (`unallocated()`), FoFs unallocated (`fof()`); each on a fresh page | manual / qa-engineer, before merging CVS or rebalancing changes |
 
 The synthetic book (`tools/make-sample-base.js`) has two invented clients, 13 holdings across MF
 equity/debt/hybrid, PMS, AIF, SIF, direct equity and one unknown fund. Every holding is priced off a NAV
@@ -65,6 +66,14 @@ path growing at a constant rate, so its XIRR is known exactly — an independent
    and a slide tick, then loads `test-data/Sample_Base_File_B.xlsx`, and checks that nothing of the first
    family remains on screen or in the Excel export.) Before the fix (`index.html` MD5 `173F86CA…`) it
    fails; on 15 Oct 2026 the fixed build (`F0EB0101…`) passed all three.
+8. CVS checks: paste `tools/browser-checks/cvs-refresh.js` and run `await cvsChecks.planRefresh()`, then on
+   fresh pages `hybridSplit()`, `unallocated()` and `fof()`; all must pass.
+9. For changes to the AI Analyst or Rebalancing: Apply plan on a book with a Regular+Direct pair (or one scheme
+   held by two clients). Expect a status line "N rows written for M holdings (…)" with no warning, Rebalancing
+   "Released" equal to the AI figure to ±0.01 Cr, a rationale on each row of the split scheme that opens with that
+   row's own amount, and a green "Applied" badge. Change any % on the Rebalancing tab: the badge turns red.
+10. To test a PR branch, check it out in its own worktree (e.g. `C:\dev\pr-review`) and serve that worktree's
+   `tools/serve-dashboard.js` on another port (e.g. 8101), so the main checkout stays on `main`.
 
 ## 5. Not covered yet
 - Visual PPTX/XLSX review in Office (pagination overflow, fonts) — acceptance check 7.

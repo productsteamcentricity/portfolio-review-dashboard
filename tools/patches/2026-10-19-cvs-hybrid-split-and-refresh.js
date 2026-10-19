@@ -33,9 +33,20 @@
            default. While a column's cell is blank and its Unallocated share is
            above zero, that column's Grand Total expected return, inflation-
            adjusted return and 3/5/10-year valuations (and the Sample-vs-Current
-           difference) show "—", and the footnote says "Enter an expected return
-           for the unallocated share to see the totals", on screen and on the
-           slide. A typed return is used as typed; it is kept like the other CVS
+           difference) show "—". The footnote says so: "No return is assumed for
+           it, so the current expected return and valuations are shown as —." On
+           SCREEN it also tells the analyst what to do ("The sample's Unallocated
+           share follows the rebalancing plan and cannot be typed over." and
+           "Enter an expected return for the unallocated share to see the
+           totals."); the SLIDE is for the client and carries neither sentence
+           (_cvsUnNote(ur, slide); the snapshot's unalloc.note is the slide's).
+           A deck, picked-slides or single-slide export that includes the CVS
+           slide while a column's Unallocated share is above zero and its return
+           is blank is not blocked; its status line warns, in the warning style:
+           "The Current vs Sample slide shows — for the current [and sample]
+           totals: no expected return is set for the unallocated share (Current
+           vs Sample tab)." (cvsExportWarning).
+           A typed return is used as typed; it is kept like the other CVS
            cells (across plan refreshes, in __cvsLive) and cleared with them on
            a family reset (resetFamilyState drops __cvsLive).
            The rounding residual no longer lands on a row when part of the
@@ -87,6 +98,20 @@ applyPatch('CVS hybrid split and plan refresh (KI-067, KI-068)', [
   }
   function cvsRefreshSoon(){ cvsCancelRefresh(); __cvsRefreshT=setTimeout(cvsRefreshFromPlan, 250); }
   function cvsFlush(){ if(__cvsRefreshT!=null) cvsRefreshFromPlan(); }
+  /* KI-067 / OD-29: the status-line warning for an export that includes the CVS slide while its
+     totals are unknown: a column's Unallocated share is above zero and its expected return is
+     blank, so the slide shows — for that column's totals. 'only' is what buildPPTX is given
+     (undefined: the full deck; a list: the picked slides; a tab key: one slide). '' when the CVS
+     slide is not exported or no return is blank. Read after cvsFlush(); never blocks the export. */
+  function cvsExportWarning(only){
+    if(only!=null&&(Object.prototype.toString.call(only)==='[object Array]'?only.indexOf('cvs')<0:only!=='cvs')) return '';
+    var u=window._cvsSnapshot&&window._cvsSnapshot.unalloc; if(!u) return '';
+    var cols=[];
+    if(Number(u.ca)>0&&u.cr==null) cols.push('current');
+    if(Number(u.pa)>0&&u.pr==null) cols.push('sample');
+    if(!cols.length) return '';
+    return 'The Current vs Sample slide shows — for the '+cols.join(' and ')+' totals: no expected return is set for the unallocated share (Current vs Sample tab).';
+  }
 `
   },
   {
@@ -224,21 +249,23 @@ applyPatch('CVS hybrid split and plan refresh (KI-067, KI-068)', [
       var _unN=_cvsUn.names.length, _unF=!!(_cvsCur.unFof||(_cvsProp&&_cvsProp.total>0&&_cvsProp.unFof));
       _cvsUn.note='† Unallocated: '+_unN+' hybrid holding'+(_unN===1?'':'s')+' ('+_cvsUn.names.slice(0,5).join('; ')+(_unN>5?'; and '+(_unN-5)+' more':'')+') '+
         (_unN===1?'has':'have')+' no equity / debt sleeve in the look-through data'+(_unF?' (Fund-of-Funds are not looked through)':'')+', so '+
-        _cvsUn.ca.toFixed(2)+'% of the current portfolio and '+_cvsUn.pa.toFixed(2)+'% of the sample are not split between Equity and Debt. '+
-        'The sample\'s Unallocated share follows the rebalancing plan and cannot be typed over.';
+        _cvsUn.ca.toFixed(2)+'% of the current portfolio and '+_cvsUn.pa.toFixed(2)+'% of the sample are not split between Equity and Debt.';
     }
-    /* the return part of the footnote follows the Exp. Return cells of the Unallocated row */
-    function _cvsUnNote(ur){
+    /* the return part of the footnote follows the Exp. Return cells of the Unallocated row. The
+       screen note also tells the analyst what to do (the sample's share cannot be typed over;
+       enter a return to see the totals). The slide note (slide=true) is read by the client and
+       states only what the slide shows. */
+    function _cvsUnNote(ur, slide){
       if(!_cvsUn.any) return '';
       var given=[], blank=[];
       [['current',_cvsUn.ca,ur&&ur.cr],['sample',_cvsUn.pa,ur&&ur.pr]].forEach(function(c){
         if(!(c[1]>0)) return;
         if(c[2]==null) blank.push(c[0]); else given.push(c[2].toFixed(2)+'% ('+c[0]+')');
       });
-      var t=_cvsUn.note;
+      var t=_cvsUn.note+(slide?'':' The sample\'s Unallocated share follows the rebalancing plan and cannot be typed over.');
       if(given.length) t+=' Expected return entered for it: '+given.join(', ')+'.';
       if(blank.length) t+=' No return is assumed for '+(given.length?'the '+blank[0]+' share':'it')+', so the '+blank.join(' and ')+' expected return'+(blank.length>1?'s':'')+
-        ' and valuations are shown as —. Enter an expected return for the unallocated share to see the totals.';
+        ' and valuations are shown as —.'+(slide?'':' Enter an expected return for the unallocated share to see the totals.');
       return t;
     }
     /* percentages and the residual rule now live in _cvsAllocate above */
@@ -374,8 +401,9 @@ applyPatch('CVS hybrid split and plan refresh (KI-067, KI-068)', [
     label: 'KI-067 the slide snapshot carries the Unallocated share, its typed returns and the footnote',
     from: '      }),cmv:cmv,infl:infl};\n',
     to: '      }),cmv:cmv,infl:infl,\n' +
-        '      /* KI-067: the slide shows the Unallocated row, its returns (null = blank) and the footnote from here */\n' +
-        '      unalloc:_cvsUn.any?{ca:_cvsUn.ca,pa:_cvsUn.pa,cr:cvsUnRet.cr,pr:cvsUnRet.pr,note:_cvsUnNote(cvsUnRet)}:null};\n'
+        '      /* KI-067: the slide shows the Unallocated row, its returns (null = blank) and the footnote from here;\n' +
+        '         the note is the slide\'s wording (for the client: no instructions to the analyst) */\n' +
+        '      unalloc:_cvsUn.any?{ca:_cvsUn.ca,pa:_cvsUn.pa,cr:cvsUnRet.cr,pr:cvsUnRet.pr,note:_cvsUnNote(cvsUnRet,true)}:null};\n'
   },
   {
     label: 'KI-067 the Unallocated Exp. Return cells: blank clears, a number is used as typed',
@@ -384,20 +412,44 @@ applyPatch('CVS hybrid split and plan refresh (KI-067, KI-068)', [
       '          var gi=+this.dataset.g, ri=+this.dataset.r, field=this.dataset.field;',
       ''
     ].join('\n'),
-    to: R`        function sync(){
+    to: R`        function sync(redraw){
           /* KI-067 / OD-29: an Exp. Return cell of the Unallocated row. Blank clears it (no return
              assumed: that column's totals show "—"); a number is used as typed, like the other cells */
           if(this.dataset&&this.dataset.un){
             var uk=this.dataset.un; if(uk!=='cr'&&uk!=='pr') return;
             var us=String(this.value==null?'':this.value).trim();
-            if(us===''){ if(cvsUnRet[uk]!=null){ cvsUnRet[uk]=null; rebuildCVS(); } return; }
-            var uv=parseFloat(us); if(isNaN(uv)) return;
-            cvsUnRet[uk]=Math.max(0,Math.round(uv*100)/100);
-            rebuildCVS();
+            if(us==='') cvsUnRet[uk]=null;
+            else { var uv=parseFloat(us); if(isNaN(uv)) return; cvsUnRet[uk]=Math.max(0,Math.round(uv*100)/100); }
+            if(redraw) rebuildCVS();
             return;
           }
           var gi=+this.dataset.g, ri=+this.dataset.r, field=this.dataset.field;
 `
+  },
+  {
+    /* KI-114: every keystroke redrew the whole table, which replaced the cell being typed in, so the
+       focus was lost after the first character ("12" typed slowly became 1.00). Typing now updates
+       the figures only; the table is redrawn when the entry is committed. */
+    label: 'KI-114 CVS cells: redraw on commit (Enter, leaving the cell, spinner), not on every keystroke',
+    from: [
+      '            rebuildCVS();',
+      '          }',
+      '        }',
+      '        inp.oninput=sync;',
+      '        inp.onchange=sync;',
+      ''
+    ].join('\n'),
+    to: [
+      '            if(redraw) rebuildCVS();',
+      '          }',
+      '        }',
+      '        /* KI-114: typing updates the figures without redrawing the table (a redraw replaces the cell',
+      '           and dropped the focus after the first keystroke); the table, its totals and the slide snapshot',
+      '           are redrawn when the entry is committed: Enter, leaving the cell, or a spinner step ("change") */',
+      '        inp.oninput=function(){ sync.call(this,false); };',
+      '        inp.onchange=function(){ sync.call(this,true); };',
+      ''
+    ].join('\n')
   },
   {
     label: 'KI-067 the CVS note says how hybrids are split',
@@ -446,16 +498,31 @@ applyPatch('CVS hybrid split and plan refresh (KI-067, KI-068)', [
     to: '    taxScope=null; __cvsAction=null; __cvsLive=null; cvsCancelRefresh();   /* KI-068: the live CVS table (typed cells, Unallocated returns) and a pending refresh */\n'
   },
   {
-    label: 'KI-068 single-slide export lands a pending CVS refresh first',
+    label: 'KI-068 single-slide export lands a pending CVS refresh first; KI-067 notes a blank Unallocated return',
     from: "    var mdl=(tabKey==='analytics')?analyticsSrc():model;\n",
     to: "    try{ cvsFlush(); }catch(e){}   /* KI-068: a pending plan refresh of the CVS tab lands before the slide is built */\n" +
+        "    var _cvsW=''; try{ _cvsW=cvsExportWarning(tabKey); }catch(e){}   /* KI-067 / OD-29: the CVS slide's totals are — */\n" +
         "    var mdl=(tabKey==='analytics')?analyticsSrc():model;\n"
   },
   {
-    label: 'KI-068 deck export lands a pending CVS refresh first',
+    label: 'KI-067 single-slide export: the status line warns when the CVS slide shows — for its totals',
+    from: "        triggerDownload(blob, fn); setStatus('Slide downloaded: <b>'+fn+'</b>');\n",
+    to: "        triggerDownload(blob, fn);\n" +
+        "        setStatus('Slide downloaded: <b>'+fn+'</b>'+(_cvsW?(' <span style=\"color:#931621\">'+_cvsW+'</span>'):''), !!_cvsW);   /* KI-067 */\n"
+  },
+  {
+    label: 'KI-068 deck export lands a pending CVS refresh first; KI-067 notes a blank Unallocated return',
     from: "    if(!Ppt){ setStatus('PowerPoint engine not available in this browser session. Try reopening the file.',true); return; }\n",
     to: "    if(!Ppt){ setStatus('PowerPoint engine not available in this browser session. Try reopening the file.',true); return; }\n" +
-        "    try{ cvsFlush(); }catch(e){}   /* KI-068: the CVS slide reads window._cvsSnapshot; land a pending plan refresh first */\n"
+        "    try{ cvsFlush(); }catch(e){}   /* KI-068: the CVS slide reads window._cvsSnapshot; land a pending plan refresh first */\n" +
+        "    var _cvsW=''; try{ _cvsW=cvsExportWarning(slidePickArg()); }catch(e){}   /* KI-067 / OD-29: the CVS slide's totals are — */\n"
+  },
+  {
+    label: 'KI-067 deck export: the status line warns when the CVS slide shows — for its totals',
+    from: "        triggerDownload(blob, fn); setStatus('PowerPoint downloaded: <b>'+fn+'</b>'); done();\n",
+    to: "        triggerDownload(blob, fn);\n" +
+        "        setStatus('PowerPoint downloaded: <b>'+fn+'</b>'+(_cvsW?(' <span style=\"color:#931621\">'+_cvsW+'</span>'):''), !!_cvsW);   /* KI-067 */\n" +
+        "        done();\n"
   },
 
   /* ---------------- KI-067: the CVS slide (exporters script) ---------------- */
@@ -531,7 +598,8 @@ applyPatch('CVS hybrid split and plan refresh (KI-067, KI-068)', [
   {
     label: 'KI-067 CVS slide: the Unallocated footnote, right of the table',
     from: "      s.addText('Illustrative projections based on assumed returns. Not a guarantee of future performance.'",
-    to: "      /* KI-067: the footnote naming the Unallocated holdings (and, while a return is blank, asking for it), in the free column right of the table */\n" +
+    to: "      /* KI-067: the footnote naming the Unallocated holdings (and, while a return is blank, that the totals are shown as —;\n" +
+        "         the snapshot carries the slide's wording, with no instructions to the analyst), in the free column right of the table */\n" +
         "      if(_un&&_un.note) s.addText(String(_un.note),{x:9.3,y:1.22,w:3.85,h:2.8,fontFace:F,fontSize:8,italic:true,color:'6B6B6B',align:'left',valign:'top'});\n" +
         "      s.addText('Illustrative projections based on assumed returns. Not a guarantee of future performance.'"
   }

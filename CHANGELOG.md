@@ -35,6 +35,50 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   tests of later batches in CI and before every publish.
 - Decisions OD-26 to OD-28 added; KI-099 and KI-100 recorded (found while fixing, not regressions).
 
+### Fixed (fix batch 1b: the rest of the audit's batch 1, CR-0005)
+`index.html` MD5 `FB6676DC…` → `EF2FF4F198A41FE02404B3617CBAD36E` (16,817,827 bytes), by four patches replayed from `main` in
+file-name order: `2026-10-19-ai-analyst-amc-bookkeeping.js`, `-apply-plan-members.js`, `-cvs-hybrid-split-and-refresh.js`
+and `-invested-and-irr-join.js`. Each fix had two financial reviews and known-answer tests that fail on the old build.
+- **KI-007, blank invested value:** shown as "—" instead of 0.00, and left out of invested and gain/loss totals
+  instead of counting the whole market value as gain. Partial totals carry ‡ with a footnote giving the count and
+  share of CMV (screen, deck, workbook). Taxation treats the gain as unknown and names the count.
+- **KI-048, client-sheet IRR subtotals:** built from the client's own holdings joined to the IRR file by client and
+  instrument, so they no longer depend on the IRR file's asset/product spelling ("Equity", "EQUITY", "Mutual Fund").
+  Redeemed or unmatched instruments still count (the since-inception scope of OD-4), placed by the IRR file's labels;
+  anything that cannot be placed is listed in a § footnote. Client sheets reproduce the earlier figures whenever the
+  labels were consistent.
+- **KI-100:** a holding whose transactions give no rate is blank and footnoted, instead of showing the base file's
+  figure as "transaction-based". Such holdings drop out of the Observations counts and the AI Analyst return signals.
+- **Holdings slides:** a client's †/‡/§ notes get their own box above the black band, and that client's pages
+  carry fewer rows (10–12 instead of 13). Slides without notes are unchanged.
+- **KI-061, AMC cap and fund-house names:** one fund-house key, whatever the label ("HDFC", "HDFC Mutual Fund";
+  "PPFAS", "Parag Parikh"; "ABSL", "Aditya Birla Sun Life"). The AI Analyst could take a house from 19% to 29%; it
+  now stays within 20%, and the AMC tab shows one row per house. House figures move only with mutual-fund holdings:
+  trimming or topping up a PMS, AIF, SIF or listed stock never frees or uses a fund house's room (OD-33).
+- **KI-062, degraded Exit bookkeeping:** the unplaced amount is what the Exit actually releases ("₹7.50 Cr
+  released … ₹7.80 Cr unplaced" could appear), and "largest AMC after" is read off the final plan. The behaviour
+  itself (fall back to Retain, OD-14) follows in a later batch.
+- **KI-120, AI Analyst summary:** named the after-plan house beside the before-plan "largest AMC" figure; each
+  figure now carries its own house.
+- **KI-063, Apply plan to Portfolio Rebalancing:** every holding of a position (Regular and Direct plans, several
+  clients) gets the plan's release %, so the Rebalancing tab releases what the AI plan does (it released 3.46 vs
+  4.58 Cr, and 2.35 vs 3.67 Cr, on synthetic books). Each row of a split reduction states its own amount; the status
+  line counts rows and holdings; the "Applied" badge turns red with both figures once the tab no longer matches.
+- **KI-067, Current vs Sample hybrid split:** each hybrid is split by its own equity sleeve, not the portfolio's
+  (80% large cap + 20% conservative hybrid: 84.08 / 15.92, was 96.82 / 3.18). Funds of funds and hybrids with no
+  sleeve data go to an "Unallocated †" row. Its expected return starts blank and, until the analyst types one, the
+  totals and 3/5/10-year values show "—" (OD-29); the analyst is warned before exporting such a deck.
+- **KI-068, Current vs Sample follows the plan:** the Sample column and slide refresh when the rebalancing plan
+  changes, keeping typed cells; exports apply a pending refresh first.
+- **KI-114, typing in Current vs Sample cells:** every keystroke redrew the table and dropped the focus, so "12"
+  typed at a normal pace became 1.00. Typing now updates the figures only; the table and totals redraw when the
+  entry is committed (Enter, leaving the cell, or a spinner step).
+- **Tooling:** `tools/patch-lib.js` refuses a patch that is only partly present (a later patch rewrote its text),
+  instead of silently re-inserting code (KI-119). AI Analyst acceptance test 17 → 24 checks; nine regression test
+  files in `tools/regression/` (380 checks); browser check `tools/browser-checks/cvs-refresh.js`.
+- **Docs:** decisions OD-29 to OD-36 (answered by the as-built behaviour unless the owner says otherwise);
+  KI-101 to KI-123 recorded (found while fixing; none caused by this batch).
+
 ## 2026-10-15 — Repository organised, monthly refresh restored (PR #2, merged as `df25dcd`)
 
 Organise the repository and set up the monthly refresh (CR-0003). `index.html` is unchanged

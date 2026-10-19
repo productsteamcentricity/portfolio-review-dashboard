@@ -77,7 +77,7 @@ recompute; that is the mechanism of KI-031. (A new base file is always parsed in
 was not a cause of KI-001.) *(code review)*
 
 ### ENGINE contract (verified)
-`07` attaches `palette, FONT, amcDisplay, normalize, matchInstrument, matchPMS, resolveBench,
+`07` attaches `palette, FONT, amcDisplay, amcKey, xirr, normalize, matchInstrument, matchPMS, resolveBench,
 benchmarkFor, bucketDefs, parseBaseRows, computeReview, computeTaxation, taxClassOf, aiaCompute,
 aiaWeights, aiaAmcCap (=20), aiaOvBands ([15,30,50]), fmt`; `08` adds `buildPPTX, buildXLSX`;
 `09` adds `parsers = { parseEquitySide, parseDebtSide, parseMonitor, parseSIF, parsePMS, parseIRR,
@@ -95,14 +95,16 @@ fmtDate, parseAdditionalDebt, parseSOA }`. Node tooling evaluates these blocks s
   file replaces a loaded one and when the loaded file is removed (×). It returns the client upload
   slots (IRR, PMS/AIF, bonds) to the embedded defaults and clears the post-rebalancing cache
   (`_rbAnCache`), the rebalancing plan (`REBAL_*`), slide-picker ticks (`SLIDE_PICK`), overlap selection
-  and threshold, Taxation scope, CVS edits and the `window.__*` data the exporters read. Market-data
+  and threshold, Taxation scope, CVS edits, the live CVS table (`__cvsLive`, which holds the typed Unallocated
+  returns) and any pending CVS refresh, and the `window.__*` data the exporters read. Market-data
   uploads are kept. `loadModel()` also clears the post-rebalancing cache on every recompute. New
   per-family state must be cleared there too (D-015).
 - **localStorage** (the only persistence): `ips_profile_idx`, `cost_overrides` (instrument → ER),
   `cost_mode`, `cost_distributor`, `cvs_cmv`, `cvs_cmv_sig` (`family|asOn|CMV`), `cvs_infl`. Holdings,
   folios and units are never stored, but family name, distributor and instrument names are (KI-012).
 - **Model** returned by `computeReview(rows, REF, {familyName, asOnDate})`: `meta`, `unit`,
-  `totalCMV/totalInv/totalGL`, `holdings`, `unmatched`, `clients`, `assetAllocation`, `assetPie`,
+  `totalCMV/totalInv/totalGL` (invested and G/L only over holdings that have an invested value; `invMissing`,
+  `invNote`), `holdings`, `unmatched`, `clients` (each with `covNote` †, `invNote` ‡, `irrNote` §), `assetAllocation`, `assetPie`,
   `liqPie`, `amc {rows, mfTotal, breaches, max}`, `allocByDistributor`, `allocByClient`,
   `equityAnalytics`, `debtAnalytics`, `overlap {eligible, funds, matrix}`, `performance {buckets,
   regularList, directList, hasDirect}`, `irr` (tree), `irrActive`, `irrAsOn`, `taxation`,
@@ -120,7 +122,7 @@ text, not position:
 | client / name | contains "client" / "instrument" | name is the fuzzy-match key |
 | category / asset / product | contains "category" / "asset"+"name" / "product" | blank asset → Equity, blank product → Mutual Funds; Product is the class used for matching (PMS / AIF / SIF / else MF) |
 | folio / distributor / amc / units | "folio" / "distributor" / exactly "amc" / exactly "units" | AMC is the brand anchor |
-| money | "invested" / "market value" / "gain" + unit: "cr" → Cr, "lakh"/"lac" → ÷100, none → ₹ ÷1e7 | the display unit follows the file; rows with no market value are skipped |
+| money | "invested" / "market value" / "gain" + unit: "cr" → Cr, "lakh"/"lac" → ÷100, none → ₹ ÷1e7 | the display unit follows the file; rows with no market value are skipped; a blank invested value stays **null**, never 0 (KI-007), and merged folios with any blank are blank |
 | allocation | contains "allocation" | read as a **fraction**; used only in the XLSX export |
 | xirr / bmxirr | contains "xirr" / "bmxirr" | read as **percent numbers** and ÷100 (`:736`) |
 | days, purchase date, liquidity | "holding"+"day", "purchase"+"date", "liquidity" | optional; purchase date is displayed, not used by Taxation |
@@ -178,20 +180,24 @@ ledger). The IRR as-on date is the latest fund transaction.
 | Benchmarks | `07_engine.js:611-694` | `REF.BENCHMARKS` first, then rules; Debt MF bucket → liquid / gilt / short-term / composite bond |
 | Performance buckets | `07_engine.js:570-580` | Equity/Hybrid/Commodity MF, Debt MF, PMS, AIF, SIF, Direct Equity; Regular/Direct toggle |
 | XIRR | `07_engine.js:823-843` | actual/365; bisection on [−0.999999, 100] to width < 1e-12; Newton fallback if no sign change |
-| IRR tree | `07_engine.js:844+`, `:998-1022` | portfolio → client → asset → product → instrument; matched holdings take transaction XIRR |
+| IRR tree | `07_engine.js:844+`, `:998+` | portfolio → client → asset → product → instrument; holdings that resolve to IRR instruments take their transaction XIRR/BMXIRR (blank, footnoted §, when the flows give no rate). Client-sheet asset/product subtotals = the IRR instruments in the bucket: those the client's holdings resolve to (client + instrument join), plus the client's instruments no holding resolves to (redeemed, unresolvable), placed by the IRR file's SI Xirr labels (exact, else normalised for case, spacing, punctuation and plural, single match only; `irrPlace`). Unplaceable instruments count only in the Grand Total and are listed in the § note (KI-048) |
 | Look-through | `07_engine.js:1125-1312` | CMV-weighted by sleeve exposure; display truncation: sectors 10, stocks 20, debt sectors 12, issuers 20 |
 | Overlap | `07_engine.js:1314-1362` | Σ min(wA, wB) on stored holdings, no re-normalisation, diagonal 100, ≥ 99.5 → 100 |
-| AMC concentration | `07_engine.js:1064-1078` | share of the MF book; breach > 20.0% |
+| AMC concentration | `07_engine.js:1114+` | rows flagged `mfBook` (`_isMFbook`); grouped by the canonical house key `amcKey` (noise words such as "Mutual Fund", "AMC", "Ltd" dropped; owner-approved aliases in `AMC_ALIAS`, OD-5), one row and one name per house (mixed labels take the `AMC_DISPLAY` name, or for an unlisted house the label with the most MF CMV; only MF-book rows are renamed); share of the MF book; breach > 20.0% |
 | Cost (TER) | UI `11_app_ui.js:5061+`; exporter fallback `08_exporters.js:426-454` | CMV-weighted; source order per handover: override → `MF_ER_TABLE` base ER → monitor ER → category fallback → PMS 1.5% / AIF 2.5% *(UI order not re-verified)* |
 | Taxation | `07_engine.js:209-540` | FIFO lots from the IRR sheet (unit and rupee ledgers), whole months, LTCG if months > rule; drift ≤1% scaled, >1% unreconciled |
-| AI Analyst | `07_engine.js:1849-2871` | deterministic; 8 signals weighted score 22 · perf 18 · risk 15 · overlap 13 · mgr 10 · weight 10 · tax 7 · impact 5 (marked in code as a proposal awaiting Products Team sign-off); per-fund band 2–10%; AMC cap 20% of total CMV; exit needs ≥ 2 fault reds and composite < 50 |
+| AI Analyst | `07_engine.js:1849-2871` | deterministic; 8 signals weighted score 22 · perf 18 · risk 15 · overlap 13 · mgr 10 · weight 10 · tax 7 · impact 5 (marked in code as a proposal awaiting Products Team sign-off); per-fund band 2–10%; AMC cap 20% of total CMV; exit needs ≥ 2 fault reds and composite < 50. House figures are keyed by `amcKey` and moved only by mutual-fund-book positions (a PMS/AIF/SIF/stock trim or top-up never frees or uses a house's room; KI-061); a destination's house is the longest run of leading words of its scheme name (`aiaAmcOfName`); a degraded Exit books its reduced release as unplaced; "largest AMC after" is read off the final plan (`amcLive`, KI-062) |
+| Apply plan | UI `aiaApplyToRebal`, `aiaRebalCheck`, `aiaRowRecText` | writes every member of an AI position (Regular/Direct plans and clients merged under the vendor key) to its own Rebalancing row, with the position's releasePct and client = all; a reduction spread over several rows states each row's own amount; `aiaRebalCheck.ok` (exact, drives the Applied badge) and `.agrees` (within the plan's rounding, drives the status-line warning) (KI-063) |
+| Current vs Sample | UI `renderCVS`, `_cvsAllocate`, `_cvsEqShare` | each hybrid split by its own equity sleeve (`HYBRID_ANALYTICS` eq.weight, gross; else the `EQUITY_ANALYTICS` mcap sum); FoFs, hybrids with no record and null/out-of-range weights go to an "Unallocated †" row whose Exp. Return cells start blank: while blank, that column's totals and valuations show "—" (KI-067, OD-29). Refreshed from the plan by `renderRebal` (sync) and `rbRecalc` (250 ms debounce); exports flush a pending refresh first; typed cells survive a plan refresh, not a full re-render (KI-068, KI-086); a keystroke updates the figures and the table redraws on commit ("change": Enter, leaving the cell, spinner; KI-114). The slide footnote is client-facing; the screen adds the analyst instructions, and exporting a deck with "—" totals warns in the status line |
 | Dates | `07_engine.js:738`, `09_parsers.js:99, 353-364` | +12 h shift on Date cells; Excel serial epoch 30 Dec 1899 |
 
 ## 8. Exports
 
 **PowerPoint** (`buildPPTX(model, PptxGenJS, only)`, `08_exporters.js:30-1867`): 13.333 × 7.5 in,
 black header bar with white upper-case Cambria title, gold rule, logo top-right, black footer;
-Market Update images carry no logo. Deck order: market divider · Market Update images · portfolio
+Market Update images carry no logo. Holdings slides: when a client has †/‡/§ notes, the caption and notes share one
+bottom-anchored box sized to the text and that client's pages carry fewer rows (`HF_CPL`/`HF_LH`/`HF_ROW`). CVS slide:
+an "Unallocated †" row and footnote when some hybrid share has no sleeve. Deck order: market divider · Market Update images · portfolio
 divider · IPS · asset · distributor/client allocation · AMC · observations/SWOT · holdings divider ·
 holdings · analytics · overlap · cost · Fund IRR · rebalancing divider · CVS · MF Analysis ·
 rebalancing table · holding sheet · post-rebalancing analytics · rebalancing impact · annexure
@@ -213,8 +219,10 @@ Overlap Matrix, Performance, Fund IRR, Observations, Portfolio Rebalancing, AI A
 | `tools/smoke-review.js` | end-to-end engine/exporter checks on a synthetic book (CI gate) |
 | `tools/make-sample-base.js` | synthetic base + IRR workbooks with exact-answer XIRRs |
 | `tools/extract-blocks.js` | reading copies of the code blocks in `.blocks/` |
-| `tools/patch-lib.js`, `tools/patches/*.js` | the only way to change `index.html`: anchored, idempotent, invariant-checked edits, one committed script per change (D-016) |
+| `tools/patch-lib.js`, `tools/patches/*.js` | the only way to change `index.html`: anchored, idempotent, invariant-checked edits, one committed script per change (D-016). A patch found partly present stops without writing (a later patch rewrote its text); rebuild by restoring `index.html` from git and running every patch in file-name order |
+| `tools/run-regression.js`, `tools/regression/*.js` | one known-answer test per fixed issue (`KI-nnn-*.js`; shared helpers in `regression/lib/`), CI and Pages gate |
 | `tools/browser-checks/family-isolation.js` | browser regression checks for KI-001 (paste into the console on the local preview) |
+| `tools/browser-checks/cvs-refresh.js` | browser checks for KI-067/KI-068: `cvsChecks.planRefresh()`, `hybridSplit()`, `unallocated()`, `fof()` |
 | `tools/test-ai-analyst.js` | AI Analyst acceptance tests on the embedded data (CI gate) |
 | `tools/render-slides.js` | builds one slide group headlessly to a `.pptx` for visual review |
 | `tools/parse-fund-ranks.js` | builds `FUND_RANKS` from the Fund Ranks workbook; its output needs the `blocks` + `DATA_DATES` wrapper before `splice_refresh.js` (KNOWLEDGE_DUMP §3.4; never done yet). Its comments cite `tools/parse-performance.js`, which survives only in the previous owner's web-app folder and is superseded by `buildtools/` |

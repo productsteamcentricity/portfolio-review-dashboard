@@ -1,7 +1,9 @@
 /* ============================================================================
    2026-10-19 — AI Analyst AMC bookkeeping (audit of 19 Oct 2026, fix batch 1b)
    Edits are in the engine script (07_engine.js), plus one column of the XLSX
-   "Base File" sheet in the exporters script (08_exporters.js).
+   "Base File" sheet and the AI Analyst slide's largest-AMC row in the exporters
+   script (08_exporters.js) and the AI Analyst tab's largest-AMC line in the UI
+   script (11_app_ui.js).
 
    KI-061 (NEW-15)  One canonical key per fund house.
      A held fund's house was its base-file label run through amcDisplay ("PPFAS",
@@ -43,8 +45,10 @@
        AMC_DISPLAY lists, else its first word as before (whole words: "Quantum" is
        never Quant). Summary names and their tie order (alphabetical by name) are
        as before.
-     - XLSX "Base File" sheet: the AMC column echoes the upload's own label (h.amc).
-       It showed h.amcDisplay, which the one-name-per-house rule now rewrites.
+     - XLSX "Base File" sheet: the AMC column is unchanged from main: the display
+       name of the row's OWN uploaded label, ENGINE.amcDisplay(h.amc) (it read
+       h.amcDisplay, which the one-name-per-house rule now rewrites, so a
+       "HDFC Mutual Fund" row would have been exported as "HDFC").
    KI-062 (NEW-16)  A degraded Exit keeps its bookkeeping. BOOKKEEPING ONLY: whether a
      degraded Exit should release anything is owner decision OD-14 and is unchanged.
      - The degrade block (HARD RULE 2) now sets destinations to [], unfunded to the
@@ -55,13 +59,24 @@
        AMC after is read off it (final releases, destinations after any cap cut),
        on the basis that figure has always used (KI-004 open): the house's AMC-tab %
        moved by its net flow / total CMV.
+   KI-120 (QA of this batch; also on main)  The largest-AMC line named the wrong
+     house for the before figure: "largest AMC (360 ONE) 51.64% → 38.08%", where
+     51.64% is the house largest BEFORE the plan (summary.amcBeforeWho, Aditya Birla
+     Sun Life) and only 38.08% is 360 ONE's (amcAfterWho). When the two houses
+     differ, each figure is now named with its own house: on the AI Analyst tab
+     (UI, 11) "largest AMC Aditya Birla Sun Life 51.64% → 360 ONE 38.08%", and on
+     the AI Analyst slide (exporters, 08) the row "Largest AMC concentration
+     (before: Aditya Birla Sun Life; after: 360 ONE)" | 51.64% | 38.08%. One house
+     before and after is named once, as before. The engine's caveat ("RAISES ...
+     from x% (before house) to y% (after house)", also in the XLSX AI Analyst
+     sheet) already named each figure's own house and is unchanged.
 
      node tools/patches/2026-10-19-ai-analyst-amc-bookkeeping.js
    ========================================================================== */
 'use strict';
 const { applyPatch } = require('../patch-lib.js');
 
-applyPatch('AI Analyst AMC bookkeeping (KI-061, KI-062)', [
+applyPatch('AI Analyst AMC bookkeeping (KI-061, KI-062, KI-120)', [
   /* ---------------- KI-061: the key function ---------------- */
   {
     label: 'KI-061 amcKey: one canonical key per fund house (after amcDisplay)',
@@ -429,8 +444,64 @@ applyPatch('AI Analyst AMC bookkeeping (KI-061, KI-062)', [
 
   /* ---------------- KI-061: the XLSX Base File sheet (exporters, 08) ---------------- */
   {
-    label: 'KI-061 XLSX Base File sheet: the AMC column echoes the upload\'s own label',
+    label: 'KI-061 XLSX Base File sheet: the AMC column is the display name of the row\'s own label, as on main',
     from: 'bf.push([h.client,h.name,h.category,h.asset,h.folio,h.amcDisplay,h.product,',
-    to: 'bf.push([h.client,h.name,h.category,h.asset,h.folio,h.amc,h.product,'
+    to: '/* KI-061: amcDisplay of the row\'s OWN label (what h.amcDisplay was before the one-name-per-house\n' +
+        '         rule); ENGINE is bound at the top of this script */\n' +
+        '      bf.push([h.client,h.name,h.category,h.asset,h.folio,ENGINE.amcDisplay(h.amc),h.product,'
+  },
+
+  /* ---------------- KI-120: the largest-AMC line names each figure's own house ---------------- */
+  {
+    label: 'KI-120 AI Analyst tab: the largest-AMC line names the house of each figure',
+    from: [
+      '    var mark = function(label, a, b, lowerIsBetter, suffix){',
+      '      if (a == null || b == null) return \'\';',
+      '      var better = lowerIsBetter ? (b < a - 0.005) : (b > a + 0.005);',
+      '      var worse  = lowerIsBetter ? (b > a + 0.005) : (b < a - 0.005);',
+      '      var col = worse ? \'#931621\' : (better ? \'#2E7D32\' : \'#5C3E17\');',
+      '      var word = worse ? \' (worse)\' : (better ? \'\' : \' (unchanged)\');',
+      '      return \'<span style="color:\' + col + \';">\' + label + \' \' + a.toFixed(2) + (suffix || \'\')',
+      '        + \' → \' + b.toFixed(2) + (suffix || \'\') + word + \'</span>\';',
+      '    };',
+      '    var eff = [];',
+      '    var e1 = mark(\'highest overlap\', sm.overlapBefore, sm.overlapAfter, true, \'%\'); if (e1) eff.push(e1);',
+      '    var e2 = mark(\'largest AMC\' + (sm.amcAfterWho ? (\' (\' + aiaEsc(sm.amcAfterWho) + \')\') : \'\'),',
+      '                  sm.amcBefore, sm.amcAfter, true, \'%\'); if (e2) eff.push(e2);'
+    ].join('\n'),
+    to: [
+      '    /* KI-120: whoA / whoB (escaped) name the figure that follows them */',
+      '    var mark = function(label, a, b, lowerIsBetter, suffix, whoA, whoB){',
+      '      if (a == null || b == null) return \'\';',
+      '      var better = lowerIsBetter ? (b < a - 0.005) : (b > a + 0.005);',
+      '      var worse  = lowerIsBetter ? (b > a + 0.005) : (b < a - 0.005);',
+      '      var col = worse ? \'#931621\' : (better ? \'#2E7D32\' : \'#5C3E17\');',
+      '      var word = worse ? \' (worse)\' : (better ? \'\' : \' (unchanged)\');',
+      '      return \'<span style="color:\' + col + \';">\' + label + \' \' + (whoA ? whoA + \' \' : \'\') + a.toFixed(2) + (suffix || \'\')',
+      '        + \' → \' + (whoB ? whoB + \' \' : \'\') + b.toFixed(2) + (suffix || \'\') + word + \'</span>\';',
+      '    };',
+      '    var eff = [];',
+      '    var e1 = mark(\'highest overlap\', sm.overlapBefore, sm.overlapAfter, true, \'%\'); if (e1) eff.push(e1);',
+      '    /* KI-120: the before figure is the house that was largest before the plan (amcBeforeWho), the',
+      '       after figure the house that is largest after it (amcAfterWho). When they differ, each figure',
+      '       is named with its own house; when they are the same house it is named once. */',
+      '    var amcBW = sm.amcBeforeWho, amcAW = sm.amcAfterWho;',
+      '    var e2 = (amcBW && amcAW && amcBW !== amcAW)',
+      '      ? mark(\'largest AMC\', sm.amcBefore, sm.amcAfter, true, \'%\', aiaEsc(amcBW), aiaEsc(amcAW))',
+      '      : mark(\'largest AMC\' + (amcAW ? (\' (\' + aiaEsc(amcAW) + \')\') : \'\'), sm.amcBefore, sm.amcAfter, true, \'%\');',
+      '    if (e2) eff.push(e2);'
+    ].join('\n')
+  },
+  {
+    label: 'KI-120 AI Analyst slide: the largest-AMC row names the house of each column',
+    from: '      dirRow("Largest AMC concentration"+(sm.amcAfterWho?(" ("+sm.amcAfterWho+")"):""), sm.amcBefore, sm.amcAfter, "%", true);\n',
+    to: [
+      '      /* KI-120: the Before figure is the house that was largest before the plan, the After figure the',
+      '         house that is largest after it; when they differ the label names both, in the columns\' order */',
+      '      var _amcBW=sm.amcBeforeWho, _amcAW=sm.amcAfterWho;',
+      '      dirRow("Largest AMC concentration"+((_amcBW&&_amcAW&&_amcBW!==_amcAW)?(" (before: "+_amcBW+"; after: "+_amcAW+")")',
+      '        :(_amcAW?(" ("+_amcAW+")"):"")), sm.amcBefore, sm.amcAfter, "%", true);',
+      ''
+    ].join('\n')
   }
 ]);

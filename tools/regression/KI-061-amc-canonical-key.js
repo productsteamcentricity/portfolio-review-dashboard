@@ -32,7 +32,10 @@
         its full 0.50 Cr headroom.
      7. A Regular plan labelled "HDFC" and its Direct plan labelled "HDFC Mutual
         Fund" merge into one position; the house (19%) stays within the cap.
-     8. The XLSX "Base File" sheet's AMC column is the label as uploaded.
+     8. The XLSX "Base File" sheet's AMC column is as on main: amcDisplay of the
+        row's own uploaded label ("Aditya" -> "Aditya Birla Sun Life", "woc" ->
+        "WhiteOak Capital", an unlisted label as typed), never the one name per
+        house the AMC tab shows ("HDFC Mutual Fund" stays "HDFC Mutual Fund").
 
    Synthetic rows built here; the scheme names of real funds come from the
    embedded reference data (FUND_RANKS / MF_PERF), never from client data.
@@ -389,8 +392,13 @@ console.log('--- 7. a Regular plan labelled "HDFC" and its Direct plan labelled 
   }
 }
 
-/* ---------- 8. the XLSX Base File sheet echoes the upload's AMC label ---------- */
-console.log('--- 8. XLSX "Base File" sheet: the AMC column is the label as uploaded ---');
+/* ---------- 8. the XLSX Base File sheet: the AMC column as on main ---------- */
+/* The column is unchanged from main: the display name of the row's OWN uploaded label
+   (amcDisplay(label): a label AMC_DISPLAY lists gets the engine's name for it, any other
+   label is echoed as typed). It must not take the one-name-per-house name the AMC tab
+   shows (h.amcDisplay), so a "HDFC Mutual Fund" row beside a "HDFC" row is not exported as
+   "HDFC". The expected cells are main's output for these labels, written out here. */
+console.log('--- 8. XLSX "Base File" sheet: the AMC column is amcDisplay(the uploaded label), as on main ---');
 {
   const XLSX = global.XLSX;                     /* set by engine-host load() */
   const up = [
@@ -400,8 +408,14 @@ console.log('--- 8. XLSX "Base File" sheet: the AMC column is the label as uploa
     row({ name: 'Synthetic Fund X4', amc: 'woc', cmvCr: 1.0 }),
     row({ name: 'Synthetic PMS X5', amc: 'ICICI Prudential AMC', product: 'PMS', cmvCr: 1.0 })
   ];
-  const want = {}; up.forEach(r => { want[r.name] = r.amc; });
+  const want = { 'Synthetic Fund X1': 'HDFC', 'Synthetic Fund X2': 'HDFC Mutual Fund', 'Synthetic Fund X3': 'Aditya Birla Sun Life',
+    'Synthetic Fund X4': 'WhiteOak Capital', 'Synthetic PMS X5': 'ICICI Prudential AMC' };
+  const upl = {}; up.forEach(r => { upl[r.name] = r.amc; });
+  ok(up.every(r => E.amcDisplay(r.amc) === want[r.name]), 'precondition: the expected cells are amcDisplay(uploaded label) (' +
+     up.map(r => '"' + r.amc + '" -> "' + E.amcDisplay(r.amc) + '"').join(', ') + ')');
   const m = review(up.map(r => Object.assign({}, r)));
+  const shown = (m.holdings.filter(h => h.name === 'Synthetic Fund X2')[0] || {}).amcDisplay;
+  console.log('  on screen the "HDFC Mutual Fund" row carries the house name "' + shown + '" (one name per house)');
   let got = [];
   try {
     const wb = E.buildXLSX(m, XLSX);
@@ -410,8 +424,10 @@ console.log('--- 8. XLSX "Base File" sheet: the AMC column is the label as uploa
     got = aoa.slice(1).filter(r => r && r[ci]).map(r => [r[ci], r[ca]]);
   } catch (e) { console.log('  workbook error: ' + (e && e.message)); }
   const bad = got.filter(([n, a]) => want[n] !== a);
-  ok(got.length === up.length && bad.length === 0, 'every row\'s AMC cell is its uploaded label' +
-     (bad.length ? ' — ' + bad.map(([n, a]) => n + ': "' + a + '" (uploaded "' + want[n] + '")').join('; ') : ''));
+  ok(got.length === up.length && bad.length === 0, 'every row\'s AMC cell is amcDisplay of its uploaded label, as on main' +
+     (bad.length ? ' — ' + bad.map(([n, a]) => n + ': "' + a + '" (uploaded "' + upl[n] + '", want "' + want[n] + '")').join('; ') : ''));
+  const x2 = got.filter(([n]) => n === 'Synthetic Fund X2')[0];
+  ok(!!x2 && x2[1] === 'HDFC Mutual Fund', 'the "HDFC Mutual Fund" row is not renamed "HDFC" in the export (got ' + (x2 ? '"' + x2[1] + '"' : 'no row') + ')');
 }
 
 console.log('\n' + (fail ? fail + ' FAILURE(S)' : 'all KI-061 checks passed'));
