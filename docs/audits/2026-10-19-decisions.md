@@ -10,6 +10,27 @@ Each question has a **recommendation**, built on two rules:
 
 **How to reply:** "accept all", or "accept all except OD-n: …".
 
+## Owner's answer (19 Oct 2026)
+"Accept all except OD-11." Every recommendation below is accepted as written (D-021), except:
+
+- **OD-11, monitor uploads: keep them.** The analyst using the dashboard must be able to upload the latest
+  MF Monitor and Direct Monitor. The upload therefore has to be made correct instead of removed:
+  - **one parsing path:** an uploaded monitor is read by the same rules as the monthly refresh, so it gives the
+    same AUM, debt fields (YTM, modified duration), Direct sheet mapping and categories (KI-026);
+  - **expense ratios read as percent:** always divided by 100; values above 5% are dropped and counted
+    (NEW-12, KI-058);
+  - **the right slot:** a Direct file in the Regular slot, or the reverse, is rejected, and the status line names
+    the plan type it detected (NEW-30, KI-076);
+  - **the data date is visible:** the sidebar shows which monitor and date are in use (embedded or uploaded). An
+    upload with the same or an older date than the embedded data gets a warning, and one click returns to the
+    embedded data.
+
+Follow-ups that the accepted answers leave with the owner:
+- **OD-28:** ask the tax adviser for the current section reference under the Income-tax Act 2025.
+- **OD-25 (optional):** turn on GitHub's "Keep my email addresses private".
+- **OD-5:** new fund-name and AMC aliases are added only after the owner approves them. The first list comes
+  with fix batch 1b.
+
 | # | Question | Recommendation | Issues |
 |---|---|---|---|
 | OD-1 | Which basis governs the 20% AMC cap: the mutual-fund book or the whole portfolio? | **The mutual-fund book** (your 21 May choice, reaffirmed 1 Sep), used the same way in the AMC tab and the AI Analyst. | KI-004 |
@@ -22,7 +43,7 @@ Each question has a **recommendation**, built on two rules:
 | OD-8 | A holding with no market value | **Exclude it and list it** (count and names) in the status line and a footnote. Never show it at zero. | NEW-11 |
 | OD-9 | No base expense ratio from the vendor | **Leave it blank, with a footnote,** and exclude it from coverage. Drop the category estimates and the all-in fallback. | NEW-13, KI-016 |
 | OD-10 | Should cost mode and ER overrides persist across families or sessions? One Regular/Direct switch? | **Per family only:** cleared when a new family loads, nothing carried between sessions. **One shared Regular/Direct switch** for Cost, IPS and Performance. | KI-035, KI-012 |
-| OD-11 | Keep the in-browser MF Monitor and Direct Monitor uploads? | **Remove them.** The monthly refresh embeds the same data correctly, while these uploads degrade it (AUM, debt fields, expense ratios). Keep the client uploads: IRR, PMS/AIF look-through, bonds. | KI-026, NEW-12, NEW-30 |
+| OD-11 | Keep the in-browser MF Monitor and Direct Monitor uploads? | **Owner's answer: keep them, made correct (see above).** Original recommendation: **remove them.** The monthly refresh embeds the same data correctly, while these uploads degrade it (AUM, debt fields, expense ratios). Keep the client uploads: IRR, PMS/AIF look-through, bonds. | KI-026, NEW-12, NEW-30 |
 | OD-12 | PMS/AIF tax split, where only rupee amounts are known | **Show "not split"** for those holdings, with a note. Do not apportion pro rata. | NEW-18 |
 | OD-13 | IPS compliance basis; a family with no unlisted holdings | **Measure on CMV**, including the hybrid sleeves. With no unlisted holdings, show "—", not a breach. | NEW-20 |
 | OD-14 | AI Analyst Exit with no destination fund | **Fall back to Retain, with a note.** Never release money that has nowhere to go. | NEW-16 |

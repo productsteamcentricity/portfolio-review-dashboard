@@ -158,3 +158,13 @@ such files are kept.
 - **Merges.** Pull requests are merged locally (`git merge --no-ff`, message "Merge pull request #N …") with the
   repository's no-reply identity, and pushed. GitHub then marks the PR merged. This happens after CI is green,
   as under D-017. This laptop's global git identity is also the no-reply address.
+
+## D-021 — The owner's answers to the audit decisions (19 Oct 2026)
+**Context.** The audit of 19 Oct 2026 put 28 questions to the owner (OD-1 to OD-28 in
+`audits/2026-10-19-decisions.md`), each with a recommendation.
+**Decision.** The owner accepted every recommendation except OD-11. For OD-11 the in-browser MF Monitor and
+Direct Monitor uploads **stay**, so that the analyst can load the latest monitor. They are to be made correct:
+one parsing path shared with the monthly refresh, expense ratios read as percent, wrong-slot files rejected, and
+the data date in use shown with a way back to the embedded data.
+**Consequence.** The register's group (b) fixes are unblocked and are scheduled with the "fix now" batches.
+KI-026, KI-058 (NEW-12) and KI-076 (NEW-30) become fixes of the upload path instead of its removal.
