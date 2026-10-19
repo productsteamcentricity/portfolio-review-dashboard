@@ -112,9 +112,10 @@ console.log('\n=== TEST 3 — determinism and conservation ===');
   /* released = invested + unfunded.  is a legitimate outcome: the
      10% fund cap and the 20% AMC cap can both refuse the tail of a release, and
      it is reported rather than forced past a limit. */
+  /* every recommendation, including a source with no destination at all (KI-062: a
+     degraded Exit used to keep the full exit as unfunded on a reduced release) */
   let bad = [];
   a.recs.forEach(r => {
-    if (!r.destinations.length) return;
     const s = r.destinations.reduce((x, d) => x + d.amount, 0);
     if (Math.abs(s + (r.unfunded || 0) - r.release) > 0.0051)
       bad.push(r.name + ' dest ' + s.toFixed(4) + ' + unfunded ' + (r.unfunded || 0).toFixed(4) + ' vs release ' + r.release.toFixed(4));
@@ -135,6 +136,96 @@ console.log('\n=== TEST 3 — determinism and conservation ===');
   const thin = a.recs.filter(r => r.action === 'Exit' &&
     r.signals.filter(s => s.verdict === 'red' && ['score','perf','risk','overlap','mgr'].indexOf(s.id) >= 0).length < 2);
   ok(thin.length === 0, 'no exit on fewer than two independent faults');
+}
+
+const FR4 = REF.FUND_RANKS || {}, MP4 = REF.MF_PERF || {};
+const assetOf4 = k => (MP4[k] && MP4[k].type === 'debt') ? 'Debt' : (MP4[k] && MP4[k].type === 'hybrid') ? 'Hybrid' : 'Equity';
+
+/* ---------- TEST 4: the house cap holds whatever the base file calls the house ---------- */
+console.log('\n=== TEST 4 — a house labelled "PPFAS" / "HDFC Mutual Fund" stays within the 20% cap (KI-061) ===');
+{
+  /* The house is held at 19% of a 10 Cr book under the label (two synthetic funds), a
+     weak 3.7 Cr fund of another house sits in a category where the house has a top-3
+     fund, and six funds of other houses in another asset class fill the book, so the
+     weak fund's destinations are that category's top-3 new additions. The house's
+     exposure after the plan is recomputed from the scheme names, not from AMC keys. */
+  let ran = 0;
+  [[/^Parag Parikh /, 'PPFAS'], [/^HDFC /, 'HDFC Mutual Fund']].forEach(([re, label]) => {
+    const cat = Object.keys(FR4).filter(k => re.test(k) && FR4[k].rank != null && FR4[k].rank <= 3 &&
+      FR4[k].score != null && MP4[k]).map(k => FR4[k].cat).sort()[0];
+    const src = cat && Object.keys(FR4).filter(k => FR4[k].cat === cat && !re.test(k) && FR4[k].rank != null && MP4[k])
+      .sort((x, y) => (FR4[y].rank - FR4[x].rank) || (x < y ? -1 : 1))[0];
+    if (!src) { console.log('  NOTE  no top-3 fund of the "' + label + '" house this cycle; case not run'); return; }
+    ran++;
+    const sAsset = assetOf4(src), sTok = src.split(' ')[0];
+    const seen = new Set([sTok]), fill = [];
+    Object.keys(MP4).sort().forEach(k => { if (fill.length >= 6) return; const t = k.split(' ')[0];
+      if (seen.has(t) || re.test(k)) return;
+      if (assetOf4(k) !== sAsset && MP4[k].type !== 'debt' && /Reg\(G\)$/.test(k)) { seen.add(t); fill.push(k); } });
+    const rows = [
+      row({ name: 'Synthetic House Fund A', amc: label, cmvCr: 0.95, invCr: 0.85 }),
+      row({ name: 'Synthetic House Fund B', amc: label, cmvCr: 0.95, invCr: 0.85 }),
+      row({ name: src, amc: sTok, category: FR4[src].cat, asset: sAsset, cmvCr: 3.7, invCr: 3.3, xirrFrac: 0.05, bmxirrFrac: 0.09 })
+    ].concat(fill.map(k => row({ name: k, amc: k.split(' ')[0], asset: assetOf4(k), cmvCr: 4.4 / fill.length, invCr: 0.6 })));
+    const m = E.computeReview(rows, REF, { familyName: 'T4', asOnDate: '31 Jul 2026' });
+    const P = E.aiaCompute(m, REF, {});
+    const before = m.holdings.filter(h => h.amc === label).reduce((x, h) => x + h.cmvCr, 0);
+    let after = before; const into = [];
+    P.recs.forEach(r => {
+      if (r.action !== 'Retain' && /^Synthetic House Fund/.test(r.name)) after -= r.release;
+      r.destinations.forEach(d => { if (re.test(d.name)) { after += d.amount; into.push(d.name + ' ' + d.amount + ' Cr'); } });
+    });
+    const pb = before / m.totalCMV * 100, pa = after / m.totalCMV * 100;
+    console.log('  "' + label + '": ' + cat + ', weak fund ' + src + '; house ' + pb.toFixed(2) + '% -> ' + pa.toFixed(2) + '%' +
+      (into.length ? ' (' + into.join('; ') + ')' : ''));
+    ok(pa <= 20 + 0.005, 'the "' + label + '" house stays at or under the 20% cap after the plan (' + pa.toFixed(2) + '%)');
+  });
+  ok(ran >= 1, 'at least one label case ran this cycle (' + ran + ')');
+}
+
+/* ---------- TEST 5: a degraded Exit keeps its bookkeeping ---------- */
+console.log('\n=== TEST 5 — a degraded Exit: unplaced never exceeds released (KI-062) ===');
+{
+  /* the category's top-3 at 1.2 Cr each (overweight, so trimmed and never a destination),
+     its worst fund at 6.4 Cr (an Exit with nowhere to go -> degraded) and a 1.0 Cr debt
+     fund of the worst fund's house (retained; never a destination for an equity source) */
+  let fx = null;
+  for (const cat of ['Large Cap', 'Flexi Cap', 'Mid Cap', 'Small Cap', 'Focused', 'Value-Contra']) {
+    const funds = Object.keys(FR4).filter(k => FR4[k].cat === cat && FR4[k].rank != null && MP4[k])
+      .sort((x, y) => (FR4[x].rank - FR4[y].rank) || (x < y ? -1 : 1));
+    if (funds.length < 4) continue;
+    const W = funds[funds.length - 1];
+    const rows = funds.slice(0, 3).map((k, i) => row({ name: k, amc: 'Synthetic House T' + i, category: cat, cmvCr: 1.2, invCr: 1.0 }))
+      .concat([row({ name: W, amc: 'Synthetic House W', category: cat, cmvCr: 6.4, invCr: 7.0, glCr: -0.6, xirrFrac: 0.04, bmxirrFrac: 0.12 }),
+               row({ name: 'Synthetic Short Duration Fund', amc: 'Synthetic House W', asset: 'Debt', category: 'Short Duration', cmvCr: 1.0, invCr: 0.95 })]);
+    const input = rows.map(r => ({ name: r.name, amc: r.amc, cmvCr: r.cmvCr }));   /* the test's own view of the book */
+    const m = E.computeReview(rows, REF, { familyName: 'T5', asOnDate: '31 Jul 2026' });
+    const P = E.aiaCompute(m, REF, {});
+    if (P.recs.some(r => r.name === W && r.degraded)) { fx = { cat, W, m, P, rows: input }; break; }
+  }
+  ok(!!fx, 'a degraded-Exit fixture exists this cycle' + (fx ? ' (' + fx.cat + ': ' + fx.W + ')' : ''));
+  if (fx) {
+    const S = fx.P.summary, tot = fx.m.totalCMV;
+    ok(S.unfunded <= S.released + 0.005, 'unplaced ₹' + S.unfunded + ' Cr does not exceed released ₹' + S.released + ' Cr');
+    const over = fx.P.recs.filter(r => (r.unfunded || 0) > r.release + 0.005);
+    ok(over.length === 0, 'no recommendation leaves more unplaced than it releases' +
+       (over.length ? ': ' + over.map(r => r.name + ' ' + r.unfunded + ' > ' + r.release).join('; ') : ''));
+    /* largest AMC after the plan, recomputed from the holdings, the final releases and
+       the destinations (an all-MF book, so the figure is the same on either cap basis).
+       The houses are the test's own, never the engine's names: a holding's house is the
+       label this test gave it, a new destination's house the brand (first word) of its
+       scheme name. */
+    const cmv = {}, houseOf = {};
+    fx.rows.forEach(r => { houseOf[r.name] = r.amc; cmv[r.amc] = (cmv[r.amc] || 0) + r.cmvCr; });
+    const destHouse = n => houseOf[n] || String(n).split(' ')[0];
+    fx.P.recs.forEach(r => { cmv[houseOf[r.name]] -= r.release;
+      r.destinations.forEach(d => { const k = destHouse(d.name); cmv[k] = (cmv[k] || 0) + d.amount; }); });
+    let mx = -1, who = '';
+    Object.keys(cmv).sort().forEach(k => { const p = cmv[k] / tot * 100; if (p > mx + 1e-12) { mx = p; who = k; } });
+    const want = Math.round(mx * 100) / 100;
+    ok(S.amcAfter != null && Math.abs(S.amcAfter - want) < 1e-6 && S.amcAfterWho === who, 'the largest AMC after the plan is the recomputed ' + want.toFixed(2) + '% (' + who +
+       '); the summary says ' + S.amcAfter + '% (' + S.amcAfterWho + ')');
+  }
 }
 
 console.log('\n' + (fail ? (fail + ' FAILURE(S)') : 'all acceptance checks passed'));

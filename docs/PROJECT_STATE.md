@@ -2,7 +2,7 @@
 
 **Last updated:** 19 Oct 2026.
 - The full audit is done: 67 issues, see [`audits/`](audits/).
-- Fixes are shipping in batches (CR-0005): batch 1a is live, batch 1b is in review.
+- Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done.
 - The owner answered the 28 audit decisions: all accepted except OD-11 (keep the monitor uploads, fixed), D-021.
 - The previous owner's second export is expected this week (CR-0004).
 - The October 2026 data refresh is due when the files arrive, around 13–17 Nov 2026.
@@ -10,9 +10,10 @@
 ## Current state
 - **Live product.** https://productsteamcentricity.github.io/portfolio-review-dashboard/ is the permanent review
   link.
-  - It serves `index.html` on `main`: MD5 `FB6676DCEEDEA162318CDA02FEB86AA9`, 16,771,979 bytes, with the KI-001
-    fix and fix batch 1a.
-  - Verified identical to `main` on 19 Oct 2026.
+  - It serves `index.html` on `main`. After PR #6: MD5 `EF2FF4F198A41FE02404B3617CBAD36E`, 16,817,827 bytes, with the KI-001 fix and fix
+    batches 1a and 1b.
+  - After every deploy the live page is downloaded and its MD5 compared with `main` (batch 1a verified 19 Oct
+    2026).
   - Data vintage: 30 Sep 2026, except ranks (15 Aug), fund managers (31 Aug), PMS returns (31 Jul) and AIF
     (30 Jun).
 - **Repository.** `C:\dev\portfolio-review`; `origin` =
@@ -35,24 +36,25 @@
 | Accord Fintech licence: may the embedded vendor data be on a public site? | Owner (whoever holds the vendor contract) | Certainty about the public Pages site (D-008) |
 
 ## Next steps
-1. **Claude:** ship the audit's "fix now" batches (CR-0005), one PR each, with known-answer tests. The first
-   batch is engine numbers: part 1a (KI-047, KI-055, KI-006, KI-065) is PR #4; part 1b (KI-007, KI-048, KI-061, KI-062,
-   KI-063, KI-067, KI-068) follows.
+1. **Claude:** ship the audit's remaining "fix now" batches (CR-0005), one PR each, with known-answer tests.
+   Batch 1 (engine numbers) is done: 1a is PR #4, 1b is PR #6.
 2. **Claude:** implement the owner's decisions (D-021), the register's group (b), in batches alongside the "fix
-   now" list. This includes OD-11: keep the monitor uploads and make them match the monthly refresh.
+   now" list. This includes OD-11 (keep the monitor uploads and make them match the monthly refresh) and OD-14
+   (a degraded Exit falls back to Retain).
 3. **Owner:**
    - send your own list of issues;
    - give the redesign direction;
-   - ask the tax adviser about OD-28.
-3. **Claude:** propose the redesign architecture: source files that build the same single offline page. Start it
+   - ask the tax adviser about OD-28;
+   - answer OD-29 to OD-36 (or "accept all").
+4. **Claude:** propose the redesign architecture: source files that build the same single offline page. Start it
    after approval.
-4. **When the second export arrives:**
+5. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;
    - re-tests the fixes against the real-format fixtures.
-5. **Around 13–17 Nov:** the October data refresh (docs/MONTHLY_REFRESH.md).
-6. **Owner:** approve protecting `main` with a ruleset (docs/DEPLOYMENT.md).
-7. **Owner:** after full testing of the new build, schedule retiring the previous owner's site.
+6. **Around 13–17 Nov:** the October data refresh (docs/MONTHLY_REFRESH.md).
+7. **Owner:** approve protecting `main` with a ruleset (docs/DEPLOYMENT.md).
+8. **Owner:** after full testing of the new build, schedule retiring the previous owner's site.
 
 ## Backlog
 The prioritised backlog is the audit register's fix order (`audits/2026-10-19-full-audit.md`, end of the file):

@@ -46,6 +46,8 @@ buildtools/out/
 # Machine-local Claude Code settings
 .claude/settings.local.json
 CLAUDE.local.md
+# Agent scratch worktrees (isolated working copies created by Claude Code agents)
+.claude/worktrees/
 
 # Editor / OS / tool noise
 ~$*
