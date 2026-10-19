@@ -15,6 +15,24 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ### Changed
 - CR-0003 marked done; PROJECT_STATE rewritten around the audit's fix order.
 
+### Fixed (fix batch 1a: engine numbers, the first part of the audit's batch 1, CR-0005)
+`index.html` MD5 `F0EB0101…` → `FB6676DCEEDEA162318CDA02FEB86AA9` (16,771,979 bytes), by the patch
+`tools/patches/2026-10-19-engine-numbers-1.js`.
+- **KI-047, XIRR solver:** flows that all fall on one day now give no XIRR instead of a wrong one. The Newton step
+  reports a rate only when it has converged and the NPV is near zero; otherwise the bisection result or nothing.
+- **KI-055, hybrid look-through stocks:** a hybrid fund's top stocks were scaled by its equity weight twice, which
+  understated them in Stock Exposure and Overlap. Each is now its share of the fund.
+- **KI-006, partial XIRR coverage:** a subtotal's XIRR and BMXIRR now average only holdings that have a value,
+  instead of counting the others as 0%. Partial figures carry a †, and a footnote gives the coverage (on screen, on
+  the Holdings slide and in the client's Excel sheet). Question OD-26 asks whether fund and benchmark should cover
+  the same holdings.
+- **KI-065, taxation of debt mutual funds:** debt fund categories (gilt, liquid, money market, duration, credit
+  risk, Banking & PSU, floater, target maturity, FMP) and G-Sec/SDL/gilt-named funds are taxed under Sec. 50AA
+  instead of as listed bonds or equity. Equity : G-Sec blends ("… 75:25") stay unclassified (OD-27, KI-037).
+- Smoke test: 26 → 35 checks, with known answers for each fix. New `tools/run-regression.js` runs the per-issue
+  tests of later batches in CI and before every publish.
+- Decisions OD-26 to OD-28 added; KI-099 and KI-100 recorded (found while fixing, not regressions).
+
 ## 2026-10-15 — Repository organised, monthly refresh restored (PR #2, merged as `df25dcd`)
 
 Organise the repository and set up the monthly refresh (CR-0003). `index.html` is unchanged

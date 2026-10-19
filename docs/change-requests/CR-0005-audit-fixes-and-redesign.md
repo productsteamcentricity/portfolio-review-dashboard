@@ -44,9 +44,9 @@ Shipped in batches, each on its own branch and PR, with known-answer tests. Fina
 
 | Batch | PR | Issues | Status |
 |---|---|---|---|
-| — | — | — | — |
+| 1a. Engine numbers (first part of batch 1; the rest of batch 1 follows as 1b) | #4 | KI-047 (XIRR solver), KI-055 (hybrid stocks), KI-006 (partial XIRR coverage), KI-065 (debt MF tax) | fixed; smoke 35/35; financial review approved; raised OD-26 to OD-28 and KI-099, KI-100 |
 
 ## Open
-- **Owner:** answer the 25 decisions (or "accept all").
+- **Owner:** answer the 28 decisions (or "accept all").
 - **Owner:** send their own list of issues, with a screenshot or note each.
 - **Owner:** give redesign direction.

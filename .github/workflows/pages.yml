@@ -34,6 +34,8 @@ jobs:
         run: node tools/check-invariants.js
       - name: Smoke test must pass before anything is published
         run: node tools/smoke-review.js
+      - name: Regression tests of fixed issues must pass before anything is published
+        run: node tools/run-regression.js
       - name: Stage only the dashboard
         run: |
           mkdir _site

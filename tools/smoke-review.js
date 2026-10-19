@@ -100,6 +100,83 @@ const bads = [];
 })(m, 'model', new Set());
 ok(bads.length === 0, 'no NaN or Infinity anywhere in the model' + (bads.length ? ': ' + bads.slice(0, 5).join(', ') : ''));
 
+console.log('\n=== engine fixes from the 19 Oct 2026 audit (known answers) ===');
+/* KI-047: no rate of return exists when every flow falls on one date; a 365-day year at +10% is exact */
+const D0 = new Date(Date.UTC(2025, 8, 30)), D1 = new Date(Date.UTC(2026, 8, 30));
+ok(E.xirr([{ d: D1, a: -100 }, { d: D1, a: 110 }]) === null && E.xirr([{ d: D1, a: -100 }, { d: D1, a: 100 }]) === null,
+  'KI-047: XIRR of flows that all fall on one date is blank, not 10000% or 10%');
+ok(near(E.xirr([{ d: D0, a: -100 }, { d: D1, a: 110 }]), 0.10, 1e-9), 'KI-047: a one-year +10% flow pair still gives exactly 10%');
+/* the Newton branch (roots outside the bisection bracket) still finds genuine large rates */
+const day = n => new Date(D0.getTime() + n * 86400000);
+const newton = [
+  [[{ d: D0, a: -100 }, { d: day(3), a: 105 }], Math.pow(1.05, 365 / 3) - 1],
+  [[{ d: D0, a: -1000 }, { d: day(3), a: 1100 }], Math.pow(1.1, 365 / 3) - 1],
+];
+ok(newton.every(([f, x]) => { const r = E.xirr(f); return r != null && Math.abs(r - x) <= 1e-6 * Math.max(1, x); }),
+  'KI-047: very large genuine rates are still found (' + newton.map(([f, x]) => (E.xirr(f) || 0).toFixed(4) + ' vs ' + x.toFixed(4)).join('; ') + ')');
+
+/* KI-055: a single hybrid holding's top stock, as a share of the equity exposure, equals the stock's
+   weight in the fund divided by the fund's equity-sleeve weight */
+const hyKey = Object.keys(H.REF.HYBRID_ANALYTICS).find(k => { const e = H.REF.HYBRID_ANALYTICS[k].eq;
+  return e && e.weight > 20 && e.weight < 80 && e.stocks && e.stocks.length > 5 && H.REF.MF_PERF[k]; });
+const hyEq = H.REF.HYBRID_ANALYTICS[hyKey].eq;
+const hyRows = E.parseBaseRows([
+  ['Client Name', 'Instrument Name', 'Category Name', 'Asset Name', 'AMC', 'Product Name', 'Invested Value (Cr.)', 'Current Market Value (Cr.)', 'XIRR (%)', 'BMXIRR (%)'],
+  ['Test Client', hyKey, 'Aggressive Hybrid Fund', 'Hybrid', '', 'Mutual Funds', 1, 1.2, 10, 9]]);
+const hyM = E.computeReview(hyRows, H.REF, META);
+const topSt = hyEq.stocks.slice().sort((x, y) => y[1] - x[1])[0];
+const gotTop = (hyM.equityAnalytics.stocks || []).find(s => s.k === topSt[0]);
+ok(gotTop && near(gotTop.pct, topSt[1] / hyEq.weight * 100, 0.01),
+  'KI-055: hybrid stock exposure is not scaled twice (' + hyKey + ': top stock ' + (gotTop ? gotTop.pct.toFixed(2) : '?') +
+  '% of equity vs ' + (topSt[1] / hyEq.weight * 100).toFixed(2) + '% expected)');
+
+/* KI-006: a blank XIRR is left out of the client-sheet averages instead of counting as 0% */
+const rowsBlank = parseBase();
+const blanked = rowsBlank.find(h => /mutual/i.test(h.product) && h.asset === 'Equity');
+blanked.xirrFrac = null;
+const mB = E.computeReview(rowsBlank, H.REF, META);
+const cB = mB.clients.find(c => c.name === blanked.client);
+const covered = rowsBlank.filter(h => h.client === blanked.client && h.xirrFrac != null);
+const wavg = list => list.length ? sum(list, h => h.xirrFrac * h.cmvCr) / sum(list, h => h.cmvCr) * 100 : null;
+const prodRow = cB.rows.find(r => r.level === 'product' && r.label === blanked.product &&
+  cB.rows.indexOf(r) > cB.rows.findIndex(x => x.level === 'asset' && x.label === blanked.asset));
+const expProd = wavg(covered.filter(h => h.asset === blanked.asset && h.product === blanked.product));
+const expGrand = wavg(covered);
+const grandRow = cB.rows.find(r => r.level === 'grand');
+ok(prodRow && near(prodRow.xirr, expProd, 1e-9) && near(grandRow.xirr, expGrand, 1e-9),
+  'KI-006: blank XIRR excluded from subtotals (product ' + (prodRow ? prodRow.xirr.toFixed(4) : '?') + ' vs ' + (expProd != null ? expProd.toFixed(4) : '?') +
+  ', grand ' + grandRow.xirr.toFixed(4) + ' vs ' + expGrand.toFixed(4) + ')');
+ok(grandRow.xcov > 0 && grandRow.xcov < 100, 'KI-006: the grand total reports the share of CMV that has an XIRR (' + grandRow.xcov.toFixed(2) + '%)');
+ok(cB.covNote && /: 1 without XIRR/.test(cB.covNote) && mB.clients.filter(c => c.covNote).length === 1,
+  'KI-006: the client with a blank XIRR carries a coverage footnote with the count, and only that client (' + cB.covNote + ')');
+ok(m.clients.every(c => !c.covNote), 'KI-006: no coverage footnote when every subtotal is complete (IRR loaded)');
+
+/* KI-065: debt mutual funds are taxed under Sec. 50AA; directly held bonds and G-Secs keep their rows */
+const tc = (asset, product, category, name) => E.taxClassOf({ asset, product, category, name });
+const taxCases = [
+  [tc('Debt', 'Mutual Funds', 'Corporate Bond Fund', 'X Corporate Bond Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 50AA'],
+  [tc('Debt', 'Mutual Funds', 'Dynamic Bond', 'X Dynamic Bond Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 50AA'],
+  [tc('Debt', 'Mutual Funds', 'Gilt Fund', 'X Gilt Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 50AA'],
+  [tc('Debt', 'Mutual Funds', 'Index Funds', 'X CRISIL IBX Gilt Index Fund'), 'Debt Mutual Funds – Sec. 50AA'],
+  [tc('Fixed Income', 'Mutual Funds', 'Corporate Bond Fund', 'X Corporate Bond Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 50AA'],
+  [tc('Debt', 'Bonds', 'Corporate Bond', 'X Ltd 8.5% NCD 2028'), 'Listed Bonds / NCDs'],
+  [tc('Debt', 'Bonds', 'G-Sec', '7.18% GOI 2033'), 'Government Securities / G-Secs'],
+  [tc('Equity', 'Mutual Funds', 'Large Cap Fund', 'X Large Cap Fund-Reg(G)'), 'Equity Mutual Funds'],
+  /* a blank Asset parses as Equity: the G-Sec name still marks a debt fund */
+  [tc('Equity', 'Mutual Funds', 'Index Funds', 'X Nifty G-Sec Apr 2029 Index Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 50AA'],
+  [tc('Equity', 'Mutual Funds', 'Other ETFs', 'X Nifty SDL Apr 2027 ETF'), 'Debt Mutual Funds – Sec. 50AA'],
+  [tc('Equity', 'Mutual Funds', 'Debt', 'X Banking & PSU Debt Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 50AA'],
+  /* an equity : G-Sec blend needs its equity share: unclassified, not guessed */
+  [tc('Equity', 'Mutual Funds', 'Index Funds', 'X Nifty200 Momentum 30 Plus 8-13yr G-Sec 75:25 Index Fund'), null],
+  /* earlier rows keep their place */
+  [tc('Commodity', 'Mutual Funds', 'Gold ETF', 'X Gold ETF'), 'Commodity ETF'],
+  [tc('Equity', 'Mutual Funds', 'FoF Overseas', 'X US Equity FoF'), 'Global Funds'],
+  [tc('Debt', 'Mutual Funds', 'Arbitrage Fund', 'X Arbitrage Fund-Reg(G)'), 'Equity Mutual Funds'],
+];
+const taxBad = taxCases.filter(c => c[0] !== c[1]);
+ok(taxBad.length === 0, 'KI-065: debt mutual funds take Sec. 50AA; direct bonds and G-Secs keep their rows' +
+  (taxBad.length ? ': ' + taxBad.map(c => c[0] + ' (expected ' + c[1] + ')').join('; ') : ''));
+
 console.log('\n=== AI Analyst ===');
 const a = E.aiaCompute(m, REF, {}), b = E.aiaCompute(m, REF, {});
 ok(a && a.ok !== false, 'a plan is produced');

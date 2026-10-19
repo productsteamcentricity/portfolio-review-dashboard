@@ -10,7 +10,7 @@ That audit re-tested most of the earlier entries:
 - KI-045 is contradicted in part.
 - KI-008, KI-024 and KI-035 are wider than first recorded.
 
-Fixed so far: KI-001 and KI-010. Fixes follow the order in the audit register. Questions that need the owner are
+Fixed so far: KI-001, KI-010, and in fix batch 1a KI-006, KI-047, KI-055 and KI-065. Fixes follow the order in the audit register. Questions that need the owner are
 in [`audits/2026-10-19-decisions.md`](audits/2026-10-19-decisions.md).
 
 **Status key**
@@ -83,9 +83,17 @@ cell and read the formula bar. Fix direction: a per-column magnitude test (treat
 column's max |value| ≤ 1.5), as `parseSOA` already does for Holding(%). Allocation (%) is read as a fraction
 and only used in the Excel export.
 
-### KI-006 — Missing XIRR counted as 0% in client-sheet totals
-**Reported (code review).** Asset / product / grand-total rows weight XIRR by CMV but treat a missing
-XIRR as 0 while keeping its CMV in the denominator (`07_engine.js:1092-1121`).
+### KI-006 — Missing XIRR counted as 0% in client-sheet totals — **FIXED**
+**Reported (code review)**; reproduced at runtime by the 19 Oct audit. Asset / product / grand-total rows
+weighted XIRR by CMV but treated a missing XIRR as 0 while keeping its CMV in the denominator
+(`07_engine.js:1092-1121`).
+
+**Fixed** in fix batch 1a (`tools/patches/2026-10-19-engine-numbers-1.js`):
+- Each average is taken over the CMV that has a value.
+- Partial subtotals are marked † on the Holdings tab and the holdings slides.
+- The client sheet, slide and workbook carry a footnote with the count left out.
+
+Open owner question OD-26: should a row's fund and benchmark average cover the same holdings?
 
 ### KI-007 — Missing invested value becomes 0
 **Reported (code review).** A blank invested value is stored as 0 (`07_engine.js:764`): the whole CMV
@@ -207,7 +215,7 @@ Status: **Reproduced** unless marked fixed.
 
 | KI | Audit ID | P | Kind | Issue | Owner decision |
 |---|---|---|---|---|---|
-| KI-047 | NEW-1 | P0 | calculation | XIRR solver invents 10000% / 10% for same-day flows | no |
+| KI-047 | NEW-1 | P0 | calculation | **FIXED** (fix batch 1a) — XIRR solver invents 10000% / 10% for same-day flows | no |
 | KI-048 | NEW-2 | P0 | calculation | Client-sheet asset/product XIRR/BMXIRR joined by IRR-file labels | no |
 | KI-049 | NEW-3 | P0 | calculation | IRR aggregates not reconciled to the base file or validated | yes |
 | KI-050 | NEW-4 | P0 | calculation | Renamed/legacy scheme names matched to a different fund | yes |
@@ -215,7 +223,7 @@ Status: **Reproduced** unless marked fixed.
 | KI-052 | NEW-6 | P0 | data | FUND_RANKS / MF_RISK keyed under stale spellings | partly (renames) |
 | KI-053 | NEW-7 | P0 | calculation | MF Analysis risk ratios from two unanchored matchers | no |
 | KI-054 | NEW-8 | P0 | calculation | Direct-plan view substitutes or drops schemes | no |
-| KI-055 | NEW-9 | P0 | calculation | Hybrid underlying stocks scaled twice | no |
+| KI-055 | NEW-9 | P0 | calculation | **FIXED** (fix batch 1a) — Hybrid underlying stocks scaled twice | no |
 | KI-056 | NEW-10 | P0 | parsing | Vendor Debt Analytics file misread in the bonds slot | no |
 | KI-057 | NEW-11 | P0 | data | Holdings with no CMV dropped silently | yes |
 | KI-058 | NEW-12 | P0 | parsing | Uploaded monitor ERs stored 100x too large | no |
@@ -225,7 +233,7 @@ Status: **Reproduced** unless marked fixed.
 | KI-062 | NEW-16 | P0 | calculation | AI Analyst degraded Exit keeps stale unfunded / AMC-after | yes (behaviour) |
 | KI-063 | NEW-17 | P0 | calculation | "Apply plan" writes part of the release | no |
 | KI-064 | NEW-18 | P0 | calculation | Taxation rupee ledger misallocates LT/ST | yes |
-| KI-065 | NEW-19 | P0 | calculation | Corporate/Dynamic Bond MFs taxed as listed bonds | no |
+| KI-065 | NEW-19 | P0 | calculation | **FIXED** (fix batch 1a) — Corporate/Dynamic Bond MFs taxed as listed bonds | no |
 | KI-066 | NEW-20 | P0 | calculation | IPS compliance verdicts wrong | yes |
 | KI-067 | NEW-21 | P0 | calculation | CVS splits hybrids by the portfolio-wide equity share | no (rule 3) |
 | KI-068 | NEW-22 | P0 | ui-state | CVS tab/slide ignore the rebalancing plan | no |
@@ -259,3 +267,12 @@ Status: **Reproduced** unless marked fixed.
 | KI-096 | NEW-50 | P2 | data | Benchmark index rows offered as funds in the picker | no |
 | KI-097 | NEW-51 | P2 | data | MF_CAT_BM documented but never read | no |
 | KI-098 | NEW-52 | P2 | security-privacy | Gmail address in public commit history | yes |
+
+### Found while fixing (batch 1a review, 19 Oct 2026)
+
+Both pre-date the fixes; the reviewers confirmed the shipped code behaves the same before and after the batch.
+
+| KI | P | Kind | Issue |
+|---|---|---|---|
+| KI-099 | P2 | calculation | Products named "ETF(s)", "Index Fund(s)" or "Fund of Funds" (instead of "Mutual Fund(s)") skip the mutual-fund branch of `taxClassOf`: a G-Sec ETF / index fund is still taxed as a G-Sec, a bond ETF or FoF as a listed bond, and some debt ETFs / FoFs come out unclassified. Fix: one engine-scope "is a mutual-fund product" test (the AMC tab's `_isMFbook` pattern) for these guards and the MF branch. |
+| KI-100 | P1 | calculation | With an IRR file loaded, a holding whose transaction XIRR cannot be computed (e.g. one-signed flows, a missing benchmark series) keeps its base-file XIRR under the "transaction-based" caption and disagrees with the Fund IRR sheet (`07_engine.js:1032`). Belongs with KI-048 / KI-049 (one reconciled set of flows). |
