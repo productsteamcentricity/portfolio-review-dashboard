@@ -147,3 +147,14 @@ maintenance: the refresh pipeline (`buildtools/`), current tools, and reviewed d
 app, backups) stays private, off GitHub. Every imported file is scanned for client names, personal data and
 credentials before it is committed. Published docs never say which private files hold client data, or where
 such files are kept.
+
+## D-020 — Audits, and how pull requests are merged (19 Oct 2026)
+**Context.** The first full audit produced a register of 67 issues, with reproduction scripts. GitHub's web merge
+(and its merge API with the no-reply address) records the account's own e-mail as the merge author (KI-098).
+**Decision.**
+- **Audit records.** Each audit has a public register and decision sheet in `docs/audits/`, without local paths
+  or personal data. Its private evidence (full register and reproduction scripts) goes in OneDrive
+  `04 Audits\<date>`. Every issue gets a permanent KI number in `KNOWN_ISSUES.md`.
+- **Merges.** Pull requests are merged locally (`git merge --no-ff`, message "Merge pull request #N …") with the
+  repository's no-reply identity, and pushed. GitHub then marks the PR merged. This happens after CI is green,
+  as under D-017. This laptop's global git identity is also the no-reply address.

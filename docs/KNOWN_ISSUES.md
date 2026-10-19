@@ -1,8 +1,17 @@
 # Known issues
 
-Register of defects and limitations in the baseline (`index.html` MD5 `173F86CA…`, source commit
-`cab22e6`). **None of these is fixed in the baseline** — the replication changed no product code.
-Fixes need the product owner's go-ahead (see the backlog in `PROJECT_STATE.md`).
+Register of defects and limitations. KI-001 to KI-046 were recorded at the handover (baseline `index.html` MD5
+`173F86CA…`, source commit `cab22e6`). KI-047 to KI-098 were found by the **full audit of 19 Oct 2026**
+([`audits/2026-10-19-full-audit.md`](audits/2026-10-19-full-audit.md)).
+
+That audit re-tested most of the earlier entries:
+- KI-006 and KI-007 are now reproduced at runtime.
+- KI-044 no longer reproduces.
+- KI-045 is contradicted in part.
+- KI-008, KI-024 and KI-035 are wider than first recorded.
+
+Fixed so far: KI-001 and KI-010. Fixes follow the order in the audit register. Questions that need the owner are
+in [`audits/2026-10-19-decisions.md`](audits/2026-10-19-decisions.md).
 
 **Status key**
 - **Reproduced** — demonstrated at runtime during the 14 Oct 2026 replication.
@@ -167,8 +176,8 @@ D17 = KI-028, D25 = KI-012).
 | KI-041 (D11) | "Top Underlying Holdings" aggregates raw names (duplicates, shows TREPS) while the unique-stock KPI de-duplicates. |
 | KI-042 (D14, D15, D16) | IPS: "BBB & below" always 0% (BBB is folded into "AA & Below"); the unlisted denominator counts debt AIFs; the Real Estate row's actual is unverified. |
 | KI-043 (D20) | CVS inflation-adjusted return 7.99% vs the owner's Excel ~9.84%, never reconciled. |
-| KI-044 (D21) | Large & Mid Cap benchmark row may be blank in MF Analysis since Nifty LargeMidcap 250 was removed (12 Jun). |
-| KI-045 (D22, D23, D24) | Data gaps by design or vendor: a large-cap fund missing from the vendor equity analytics; some funds have MF_RISK only as IDCW rows; two MF_ER_TABLE keys still on the all-in ratio (no base ever published). |
+| KI-044 (D21) | Large & Mid Cap benchmark row may be blank in MF Analysis since Nifty LargeMidcap 250 was removed (12 Jun). **No longer reproduces** (audit 19 Oct 2026: `MF_BENCHMARKS` now holds Nifty 500 - TRI). |
+| KI-045 (D22, D23, D24) | Data gaps by design or vendor: a large-cap fund missing from the vendor equity analytics; some funds have MF_RISK only as IDCW rows; two MF_ER_TABLE keys still on the all-in ratio (no base ever published). **Contradicted in part** (audit 19 Oct 2026): Growth holdings of IDCW-only funds get the IDCW row, not blanks; see KI-053. |
 | KI-046 (D8) | A "dashboard not opening" report (25 Aug) was never reproduced; the double-click (`file://`) path has never been tested by Claude. (The 15 Oct "localhost not working" report had a different cause: the preview server only runs during a Claude session; fixed with `tools/open-dashboard.cmd`.) |
 
 ## KI-026 — Inherited from the previous owner (handover §11, not re-tested)
@@ -187,3 +196,66 @@ D17 = KI-028, D25 = KI-012).
 - Exit load is deliberately not consumed; the AI Analyst reports it as absent.
 - ~28 index ETFs ship vendor-published, split-corrupted 3Y risk stats; nulling them is an owner decision.
 - `Centricity_Portfolio_CMS.html` is obsolete and must not be used (it embeds a July copy of the dashboard).
+
+## Found by the full audit of 19 Oct 2026
+
+Found and independently reproduced by the 19 Oct 2026 audit. The evidence, fix approach and owner questions for each
+entry are in [`audits/2026-10-19-full-audit.md`](audits/2026-10-19-full-audit.md) under its audit ID. The owner
+decisions are in [`audits/2026-10-19-decisions.md`](audits/2026-10-19-decisions.md). Priority: **P0** = wrong numbers,
+data integrity or security that could reach a client; **P1** = output defects and robustness; **P2** = minor.
+Status: **Reproduced** unless marked fixed.
+
+| KI | Audit ID | P | Kind | Issue | Owner decision |
+|---|---|---|---|---|---|
+| KI-047 | NEW-1 | P0 | calculation | XIRR solver invents 10000% / 10% for same-day flows | no |
+| KI-048 | NEW-2 | P0 | calculation | Client-sheet asset/product XIRR/BMXIRR joined by IRR-file labels | no |
+| KI-049 | NEW-3 | P0 | calculation | IRR aggregates not reconciled to the base file or validated | yes |
+| KI-050 | NEW-4 | P0 | calculation | Renamed/legacy scheme names matched to a different fund | yes |
+| KI-051 | NEW-5 | P0 | data | Bonds, unlisted shares, MLDs treated as MFs | yes |
+| KI-052 | NEW-6 | P0 | data | FUND_RANKS / MF_RISK keyed under stale spellings | partly (renames) |
+| KI-053 | NEW-7 | P0 | calculation | MF Analysis risk ratios from two unanchored matchers | no |
+| KI-054 | NEW-8 | P0 | calculation | Direct-plan view substitutes or drops schemes | no |
+| KI-055 | NEW-9 | P0 | calculation | Hybrid underlying stocks scaled twice | no |
+| KI-056 | NEW-10 | P0 | parsing | Vendor Debt Analytics file misread in the bonds slot | no |
+| KI-057 | NEW-11 | P0 | data | Holdings with no CMV dropped silently | yes |
+| KI-058 | NEW-12 | P0 | parsing | Uploaded monitor ERs stored 100x too large | no |
+| KI-059 | NEW-13 | P0 | data | Missing base ER filled with an unsourced estimate | yes |
+| KI-060 | NEW-14 | P0 | data | ER override above 300 bps cut 100x on next load | no |
+| KI-061 | NEW-15 | P0 | calculation | AI Analyst AMC cap bypassed by label mismatch | no |
+| KI-062 | NEW-16 | P0 | calculation | AI Analyst degraded Exit keeps stale unfunded / AMC-after | yes (behaviour) |
+| KI-063 | NEW-17 | P0 | calculation | "Apply plan" writes part of the release | no |
+| KI-064 | NEW-18 | P0 | calculation | Taxation rupee ledger misallocates LT/ST | yes |
+| KI-065 | NEW-19 | P0 | calculation | Corporate/Dynamic Bond MFs taxed as listed bonds | no |
+| KI-066 | NEW-20 | P0 | calculation | IPS compliance verdicts wrong | yes |
+| KI-067 | NEW-21 | P0 | calculation | CVS splits hybrids by the portfolio-wide equity share | no (rule 3) |
+| KI-068 | NEW-22 | P0 | ui-state | CVS tab/slide ignore the rebalancing plan | no |
+| KI-069 | NEW-23 | P1 | calculation | Taxation lot join: exact names, distributor split | yes (apportionment) |
+| KI-070 | NEW-24 | P1 | calculation | Taxation ignores common transaction types | yes |
+| KI-071 | NEW-25 | P1 | calculation | Two G/L definitions disagree | yes |
+| KI-072 | NEW-26 | P1 | output-xlsx | Unmatched PMS/AIF/SIF filed under MF buckets | no |
+| KI-073 | NEW-27 | P1 | data | Missing benchmark series shown as all-dash rows | yes (series) |
+| KI-074 | NEW-28 | P1 | robustness | Base loader: wrong sheet/header row, misleading error | no |
+| KI-075 | NEW-29 | P1 | parsing | IRR parser silently drops or misdates rows | no |
+| KI-076 | NEW-30 | P1 | robustness | Direct/Regular monitor slots swappable with no warning | no |
+| KI-077 | NEW-31 | P1 | parsing | SOA Product Category must be exactly "PMS"/"AIF" | no |
+| KI-078 | NEW-32 | P1 | output-pptx | PPTX tables/panels sized by fixed counts overflow | no |
+| KI-079 | NEW-33 | P1 | output-pptx | Exports ignore the review's money unit | no |
+| KI-080 | NEW-34 | P1 | calculation | AI Analyst rounding/thresholds in absolute ₹ Cr | yes |
+| KI-081 | NEW-35 | P1 | output-pptx | CVS slide calls assumptions "IRR%", omits inflation rows | no |
+| KI-082 | NEW-36 | P1 | output-pptx | Deck drops MF Analysis disclosures and client-scope label | no |
+| KI-083 | NEW-37 | P1 | output-pptx | PMS/AIF data captioned with the MF date | no |
+| KI-084 | NEW-38 | P1 | output-xlsx | XLSX liquidity % in the Investment Amount column | no |
+| KI-085 | NEW-39 | P1 | output-xlsx | XLSX analytics sheets lack vintage and coverage | yes (deck) |
+| KI-086 | NEW-40 | P1 | ui-state | CVS typed values revert to house defaults | no |
+| KI-087 | NEW-41 | P1 | ui-state | Cleared as-on date becomes "20 May 2026" | no |
+| KI-088 | NEW-42 | P1 | robustness | Blocked browser storage blanks tabs, breaks the deck | no |
+| KI-089 | NEW-43 | P1 | ui-state | Re-picking the same file is ignored | no |
+| KI-090 | NEW-44 | P2 | output-pptx | Negative figures dark red on black | no |
+| KI-091 | NEW-45 | P2 | output-pptx | Pie/doughnut labels whole-percent | no |
+| KI-092 | NEW-46 | P2 | output-pptx | Deck category order; single-distributor slides exported | yes |
+| KI-093 | NEW-47 | P2 | output-xlsx | XLSX Base File Allocation blank/unreliable | yes |
+| KI-094 | NEW-48 | P2 | output-xlsx | XLSX allocation sheets pre-rounded | no |
+| KI-095 | NEW-49 | P2 | ui-state | Overlap panels' Clear buttons cross-wired | no |
+| KI-096 | NEW-50 | P2 | data | Benchmark index rows offered as funds in the picker | no |
+| KI-097 | NEW-51 | P2 | data | MF_CAT_BM documented but never read | no |
+| KI-098 | NEW-52 | P2 | security-privacy | Gmail address in public commit history | yes |

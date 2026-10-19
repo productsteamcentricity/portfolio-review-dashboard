@@ -4,6 +4,19 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added
+- **The full audit of 19 Oct 2026** (CR-0005), under `docs/audits/`:
+  - the issue register, with 67 issues, their evidence and fix approach;
+  - the owner-decision sheet, with 25 questions and a recommendation for each.
+- KNOWN_ISSUES: KI-047 to KI-098, the 52 new issues from the audit. Status updates for KI-006, KI-007 and KI-044
+  (no longer reproduces), and for KI-045 (contradicted in part).
+- Change requests CR-0004 (the second export request) and CR-0005 (audit, fixes and redesign).
+
+### Changed
+- CR-0003 marked done; PROJECT_STATE rewritten around the audit's fix order.
+
+## 2026-10-15 — Repository organised, monthly refresh restored (PR #2, merged as `df25dcd`)
+
 Organise the repository and set up the monthly refresh (CR-0003). `index.html` is unchanged
 (MD5 `F0EB0101E27DD165A23A62CF548E26A2`).
 

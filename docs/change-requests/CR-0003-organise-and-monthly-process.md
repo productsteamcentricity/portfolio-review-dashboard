@@ -1,7 +1,8 @@
 # CR-0003: Ingest the previous owner's export, organise everything, set up the monthly process
 
 - **Requested:** 15 Oct 2026, by the product owner.
-- **Status:** in review (PR pending).
+- **Status:** done. Merged as PR [#2](https://github.com/productsteamcentricity/portfolio-review-dashboard/pull/2)
+  (`df25dcd`, 15 Oct 2026). `index.html` was unchanged, and the live site was verified identical after the merge.
 
 ## Request
 1. The previous owner's replies are in OneDrive under `Previous Owner Files - Prompt Response`: three zips

@@ -74,6 +74,7 @@ Nothing below is ever committed. The project folder in OneDrive is
 | `01 Monthly Updates\YYYY-MM` | the owner's inbox for one data month (`Analytics\` and `Index TRI\` subfolders); the refresh reads it (docs/MONTHLY_REFRESH.md) |
 | `02 Archive\YYYY-MM` | processed vendor data per data month (Apr 2026 onward), files exactly as received, plus the slide images embedded that month; `Reference\` for files not tied to a month |
 | `03 Handover` | everything received from the previous owner, as received, and the log of the 15 Oct 2026 reorganisation |
+| `04 Audits` | audit evidence: the full register, the decision sheet, and the scripts that reproduce each issue (public copies in `docs/audits/`) |
 | `99 Superseded - safe to delete` | verified duplicates, for the owner to delete |
 | `Open Dashboard.cmd` | starts the local server from this repository and opens the browser |
 
