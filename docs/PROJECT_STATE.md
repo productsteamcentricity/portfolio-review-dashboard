@@ -30,12 +30,13 @@
 | Blocker | Needed from | Unblocks |
 |---|---|---|
 | The second export: risk toolchain, sources of record, real-format test fixtures, answers | Previous owner (prompt sent via Teams, CR-0004) | Monthly MF_RISK refresh; testing fixes against real file formats; several owner questions |
-| 25 product decisions from the audit | Owner (`audits/2026-10-19-decisions.md`; "accept all" is enough) | The register's group (b) fixes |
+| 28 product decisions from the audit (OD-1 to OD-28) | Owner (`audits/2026-10-19-decisions.md`; "accept all" is enough) | The register's group (b) fixes |
 | Accord Fintech licence: may the embedded vendor data be on a public site? | Owner (whoever holds the vendor contract) | Certainty about the public Pages site (D-008) |
 
 ## Next steps
 1. **Claude:** ship the audit's "fix now" batches (CR-0005), one PR each, with known-answer tests. The first
-   batch is engine numbers.
+   batch is engine numbers: part 1a (KI-047, KI-055, KI-006, KI-065) is PR #4; part 1b (KI-007, KI-048, KI-061, KI-062,
+   KI-063, KI-067, KI-068) follows.
 2. **Owner:**
    - answer the audit decisions;
    - send your own list of issues;

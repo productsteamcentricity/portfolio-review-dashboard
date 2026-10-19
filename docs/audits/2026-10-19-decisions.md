@@ -1,8 +1,8 @@
 # Owner decisions from the 19 Oct 2026 audit
 
 The audit ([`2026-10-19-full-audit.md`](2026-10-19-full-audit.md)) found 67 issues. Most can be fixed without a
-product decision, and those fixes have started (batch order at the end of the register). The 25 questions below
-need the product owner's answer.
+product decision, and those fixes have started (batch order at the end of the register). The 28 questions below
+need the product owner's answer. OD-26 to OD-28 were added by the review of fix batch 1a.
 
 Each question has a **recommendation**, built on two rules:
 - **CLAUDE.md rule 3:** never invent a number.
@@ -37,3 +37,6 @@ Each question has a **recommendation**, built on two rules:
 | OD-23 | Show the 15 Aug fund ranks of renamed schemes under their new names? | **Yes**, same scheme (same AMFI code), labelled with the rank date. | NEW-6 |
 | OD-24 | Keep the rebalancing plan and slide picks when only the as-on date changes for the same family? | **Keep them.** | KI-019 |
 | OD-25 | The account's Gmail address is in one public merge commit | **Accept it:** history cannot be rewritten under rule 8. Optionally turn on GitHub's "Keep my email addresses private". Claude now merges with the no-reply address, and this laptop's global git identity has been switched to it. | NEW-52 |
+| OD-26 | When some holdings have an XIRR but no BMXIRR (common for PMS, AIF and direct equity), should a subtotal's fund and benchmark figures cover the **same** holdings? Raised by the financial review of fix batch 1a. | **Yes**, for the comparison: average both over holdings that have both values, as the Observations already do. Also show the fund-only average with its coverage. Today each figure covers its own holdings and the † footnote states the coverage. | KI-006 |
+| OD-27 | A mutual fund whose debt nature shows only in its name (G-Sec, SDL, gilt), with an equity or blank asset tag: debt fund, or unclassified? | **Debt fund (Sec. 50AA)**, as fix batch 1a does. Funds named as an equity : G-Sec blend ("… 75:25") are left unclassified until their equity share decides the row (KI-037). | KI-065 |
+| OD-28 | The Taxation rules cite "Sec. 50AA" (Income-tax Act 1961). From FY 2026-27 the Income-tax Act 2025 applies. | **Ask the tax adviser** for the current section reference, then update the Tax Rules sheet. The rates are unaffected. | Taxation |

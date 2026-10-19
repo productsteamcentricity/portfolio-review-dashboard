@@ -708,7 +708,9 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     if (/reit/.test(c+n)) return "REIT Units";
     if (/invit/.test(c+n)) return "InvIT Units";
     if (/\bmld\b|market linked/.test(c+n)) return "MLD";
-    if (/g-?sec|government securit/.test(c+n)) return "Government Securities / G-Secs";
+    /* KI-065: gilt / G-Sec / bond mutual funds and ETFs are debt mutual funds (Sec. 50AA), not
+       directly held securities: these rows apply only when the product is not a mutual fund */
+    if (!/mutual fund/.test(p) && /g-?sec|government securit/.test(c+n)) return "Government Securities / G-Secs";
     /* Product first: an AIF holding unlisted equity is still an AIF, and the
        word "unlisted" in its category would otherwise claim it. */
     if (/aif/.test(p)){
@@ -720,14 +722,19 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       return /debt/.test(a) ? "Debt AIF – Cat I/II" : "Equity AIF – Cat I/II";
     }
     if (/unlisted/.test(p+c)) return /debt/.test(a) ? "Unlisted Bonds / NCDs" : "Unlisted Equity Shares";
-    if (/bond|ncd|debenture/.test(p+c)) return "Listed Bonds / NCDs";
+    if (!/mutual fund/.test(p) && /bond|ncd|debenture/.test(p+c)) return "Listed Bonds / NCDs";
     if (/pms/.test(p)) return /debt/.test(a) ? null : "Equity PMS";   /* no Debt PMS rule published */
     if (/commodit|gold|silver/.test(a+c)) return /etf/.test(c+n) ? "Commodity ETF" : "Commodity Mutual Fund";
     if (/global|international|overseas|us equity/.test(c+n)) return "Global Funds";
     if (/direct equity|equity shares/.test(p+c)) return "Listed Equity Shares";
     if (/mutual fund/.test(p)){
       if (/hybrid|balanced|asset alloc|equity savings|multi asset/.test(c)) return null;  /* needs the equity share to pick a row */
-      if (/debt/.test(a)) return "Debt Mutual Funds – Sec. 50AA";
+      /* KI-065: a debt fund by asset tag, by SEBI debt category, or by a G-Sec / SDL / gilt name, so a
+         mis-tagged asset (e.g. "Fixed Income", or blank, which parses as Equity) does not make it equity.
+         An equity : G-Sec blend named by its ratio ("… G-Sec 75:25") needs its equity share to pick a row. */
+      var _gsecName=/g-?sec|government securit|\bsdl\b|\bgilt\b/.test(n), _ratio=/\b\d{2}\s*:\s*\d{2}\b/.test(n);
+      if (/debt|fixed income/.test(a) || /\bdebt\b|bond|gilt|g-?sec|liquid|overnight|money market|duration|credit risk|banking\s*(and|&)\s*psu|floater|floating rate|target maturity|fixed maturity|\bfmp\b/.test(c) || (_gsecName && !_ratio)) return "Debt Mutual Funds – Sec. 50AA";
+      if (_gsecName && _ratio) return null;
       return /etf|bees/.test(c+n) ? "Equity ETFs" : "Equity Mutual Funds";
     }
     return null;
@@ -1303,13 +1310,20 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     var hasP=false,hasN=false,i; for(i=0;i<cfs.length;i++){ if(cfs[i].a>0)hasP=true; else if(cfs[i].a<0)hasN=true; }
     if(!(hasP&&hasN)) return null;
     var t0=cfs[0].d; for(i=1;i<cfs.length;i++){ if(cfs[i].d<t0)t0=cfs[i].d; }
-    var yrs=[],amt=[]; for(i=0;i<cfs.length;i++){ yrs.push((cfs[i].d-t0)/86400000/365); amt.push(cfs[i].a); }
+    var yrs=[],amt=[],span=0,scale=0; for(i=0;i<cfs.length;i++){ yrs.push((cfs[i].d-t0)/86400000/365); amt.push(cfs[i].a); if(yrs[i]>span)span=yrs[i]; scale+=Math.abs(cfs[i].a); }
+    /* KI-047: when every flow falls on one date the NPV is the same at every rate, so no
+       rate of return exists. The search used to stop at its bracket edge (10000%) or at its
+       10% starting guess and show that as the XIRR. */
+    if(!(span>0)) return null;
     function npv(r){ var sm=0; for(var j=0;j<amt.length;j++) sm+=amt[j]/Math.pow(1+r,yrs[j]); return sm; }
     var lo=-0.999999,hi=100,flo=npv(lo),fhi=npv(hi);
-    if(flo*fhi>0){ var r=0.1; for(i=0;i<100;i++){ var f=npv(r),d=0,j;
+    if(flo*fhi>0){ var r=0.1,conv=false; for(i=0;i<100;i++){ var f=npv(r),d=0,j;
       for(j=0;j<amt.length;j++) d+= -yrs[j]*amt[j]/Math.pow(1+r,yrs[j]+1);
-      if(d===0) break; var rn=r-f/d; if(rn<=-0.9999) rn=(-0.9999+r)/2; if(Math.abs(rn-r)<1e-9){ r=rn; break; } r=rn; }
-      return Math.abs(npv(r))<1?r:null; }
+      if(d===0) break; var rn=r-f/d; if(rn<=-0.9999) rn=(-0.9999+r)/2; if(Math.abs(rn-r)<1e-9*Math.max(1,Math.abs(r))){ r=rn; conv=true; break; } r=rn; }
+      /* KI-047: a zero derivative or an exhausted loop is not a root; accept only a converged
+         rate (relative step, so very large genuine rates still converge) whose NPV is
+         negligible relative to the size of the flows */
+      return (conv && Math.abs(npv(r))<=1e-6*scale)?r:null; }
     /* Converge on the WIDTH of the bracket, never on |npv| alone. A tiny |npv| is not a root:
        when the earliest flow sits years before the rest (a Rs 0.001 folio-opening placeholder
        dated 2006 in a 2023-26 book), every real flow discounts to ~0 at the very first midpoint
@@ -1565,27 +1579,32 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       var aM={};
       C2.rows.forEach(function(h){
         var a=h.asset||"Equity", p=h.product||"Mutual Funds";
-        var A=aM[a]||(aM[a]={inv:0,cmv:0,gl:0,wx:0,wb:0,prods:{}});
+        var A=aM[a]||(aM[a]={inv:0,cmv:0,gl:0,wx:0,wb:0,cx:0,cb:0,prods:{}});
         A.inv+=h.invCr; A.cmv+=h.cmvCr; A.gl+=(h.glCr||0);
-        A.wx += (h.xirrFrac||0)*h.cmvCr; A.wb += (h.bmxirrFrac||0)*h.cmvCr;
-        var P=A.prods[p]||(A.prods[p]={inv:0,cmv:0,gl:0,wx:0,wb:0,items:[]});
+        /* KI-006: a blank XIRR / BMXIRR is not 0%: average over the CMV that has a value */
+        if(h.xirrFrac!=null){ A.wx+=h.xirrFrac*h.cmvCr; A.cx+=h.cmvCr; }
+        if(h.bmxirrFrac!=null){ A.wb+=h.bmxirrFrac*h.cmvCr; A.cb+=h.cmvCr; }
+        var P=A.prods[p]||(A.prods[p]={inv:0,cmv:0,gl:0,wx:0,wb:0,cx:0,cb:0,items:[]});
         P.inv+=h.invCr; P.cmv+=h.cmvCr; P.gl+=(h.glCr||0);
-        P.wx += (h.xirrFrac||0)*h.cmvCr; P.wb += (h.bmxirrFrac||0)*h.cmvCr;
+        if(h.xirrFrac!=null){ P.wx+=h.xirrFrac*h.cmvCr; P.cx+=h.cmvCr; }
+        if(h.bmxirrFrac!=null){ P.wb+=h.bmxirrFrac*h.cmvCr; P.cb+=h.cmvCr; }
         P.items.push(h);
       });
-      var outRows=[]; var gx=0, gb=0;
+      var outRows=[]; var gx=0, gb=0, gcx=0, gcb=0;
       assetOrder.concat(Object.keys(aM).filter(function(a){return assetOrder.indexOf(a)<0;}))
         .forEach(function(a){
           if(!aM[a])return; var A=aM[a];
           var _va=irrAgg(cn,a,null);
           outRows.push({level:"asset",label:a,inv:A.inv,cmv:A.cmv,gl:A.gl,
-            alloc:A.cmv/ctot*100, xirr:(_va&&_va.f!=null)?_va.f*100:(A.cmv?A.wx/A.cmv*100:null), bmxirr:(_va&&_va.b!=null)?_va.b*100:(A.cmv?A.wb/A.cmv*100:null)});
-          gx+=A.wx; gb+=A.wb;
+            alloc:A.cmv/ctot*100, xirr:(_va&&_va.f!=null)?_va.f*100:(A.cx?A.wx/A.cx*100:null), bmxirr:(_va&&_va.b!=null)?_va.b*100:(A.cb?A.wb/A.cb*100:null),
+            xcov:(_va&&_va.f!=null)?null:(A.cmv?A.cx/A.cmv*100:null), bcov:(_va&&_va.b!=null)?null:(A.cmv?A.cb/A.cmv*100:null)});
+          gx+=A.wx; gb+=A.wb; gcx+=A.cx; gcb+=A.cb;
           Object.keys(A.prods).sort(function(x,y){return A.prods[y].cmv-A.prods[x].cmv;}).forEach(function(p){
             var P=A.prods[p];
             var _vp=irrAgg(cn,a,p);
             outRows.push({level:"product",label:p,inv:P.inv,cmv:P.cmv,gl:P.gl,
-              alloc:P.cmv/ctot*100, xirr:(_vp&&_vp.f!=null)?_vp.f*100:(P.cmv?P.wx/P.cmv*100:null), bmxirr:(_vp&&_vp.b!=null)?_vp.b*100:(P.cmv?P.wb/P.cmv*100:null)});
+              alloc:P.cmv/ctot*100, xirr:(_vp&&_vp.f!=null)?_vp.f*100:(P.cx?P.wx/P.cx*100:null), bmxirr:(_vp&&_vp.b!=null)?_vp.b*100:(P.cb?P.wb/P.cb*100:null),
+              xcov:(_vp&&_vp.f!=null)?null:(P.cmv?P.cx/P.cmv*100:null), bcov:(_vp&&_vp.b!=null)?null:(P.cmv?P.cb/P.cmv*100:null)});
             P.items.sort(function(x,y){return y.cmvCr-x.cmvCr;}).forEach(function(h){
               outRows.push({level:"item",label:h.name,dist:h.distributor||"—",pdate:h.purchaseDate||"—",inv:h.invCr,cmv:h.cmvCr,gl:h.glCr,
                 alloc:h.cmvCr/ctot*100,
@@ -1596,8 +1615,17 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         });
       var _vg=irrCli(cn);
       outRows.push({level:"grand",label:"Grand Total",inv:C2.inv,cmv:ctot,gl:C2.rows.reduce(function(s,h){return s+(h.glCr||0);},0),
-        alloc:100, xirr:(_vg&&_vg.f!=null)?_vg.f*100:(ctot?gx/ctot*100:null), bmxirr:(_vg&&_vg.b!=null)?_vg.b*100:(ctot?gb/ctot*100:null)});
-      return {name:cn, totalCMV:ctot, totalInv:C2.inv, rows:outRows};
+        alloc:100, xirr:(_vg&&_vg.f!=null)?_vg.f*100:(gcx?gx/gcx*100:null), bmxirr:(_vg&&_vg.b!=null)?_vg.b*100:(gcb?gb/gcb*100:null),
+        xcov:(_vg&&_vg.f!=null)?null:(ctot?gcx/ctot*100:null), bcov:(_vg&&_vg.b!=null)?null:(ctot?gcb/ctot*100:null)});
+      /* KI-006 (rule 3: a blank, a footnote and a count): name how many holdings a partial subtotal leaves out */
+      var _part=outRows.some(function(r){ return r.level!=="item" && ((r.xcov!=null&&r.xcov<99.995)||(r.bcov!=null&&r.bcov<99.995)); });
+      var covNote=null;
+      if(_part){
+        var _nx=C2.rows.filter(function(h){return h.xirrFrac==null;}).length, _nb=C2.rows.filter(function(h){return h.bmxirrFrac==null;}).length;
+        var _fx=function(v){ return (Math.round(v*100)/100).toFixed(2); };
+        covNote="\u2020 Averages only holdings with a value: "+_nx+" without XIRR ("+_fx(ctot?gcx/ctot*100:0)+"% of CMV covered), "+_nb+" without BMXIRR ("+_fx(ctot?gcb/ctot*100:0)+"%).";
+      }
+      return {name:cn, totalCMV:ctot, totalInv:C2.inv, rows:outRows, covNote:covNote};
     });
 
     /* ---- ANALYTICS (CMV-weighted, hybrid split, normalise last) ---- */
@@ -1656,7 +1684,9 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         if (hy.eq){ var e=hy.eq, w=(e.weight||0)/100;
           Object.keys(e.mcap).forEach(function(b){ addPct(eq_mcap,b,e.mcap[b]/100*w*Cv); });
           Object.keys(e.sector).forEach(function(s){ addPct(eq_sector,s,e.sector[s]/100*w*Cv); });
-          e.stocks.forEach(function(st){ addPct(eq_stock,st[0],st[1]/100*w*Cv); eq_stock_mcap[st[0]]=st[2]; addUniq(st[0],"hyb"); });
+          /* KI-055: a hybrid stock's weight is already a share of the WHOLE fund (sum(stocks) = eq.weight
+             in HYBRID_ANALYTICS), unlike mcap/sector above, which are shares of the equity sleeve */
+          e.stocks.forEach(function(st){ addPct(eq_stock,st[0],st[1]/100*Cv); eq_stock_mcap[st[0]]=st[2]; addUniq(st[0],"hyb"); });
           eq_exp += w*Cv;
           noteFund(eqFunds,h,h.hyKey,"Hybrid — equity sleeve",w*Cv);
         }
@@ -3352,7 +3382,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     palette:C, FONT:FONT, amcDisplay:amcDisplay, normalize:normalize, matchInstrument:matchInstrument,
     matchPMS:matchPMS, resolveBench:resolveBench, benchmarkFor:benchmarkFor, bucketDefs:BUCKET_DEFS,
     parseBaseRows:parseBaseRows, computeReview:computeReview,
-    computeTaxation:computeTaxation, taxClassOf:taxClassOf,
+    computeTaxation:computeTaxation, taxClassOf:taxClassOf, xirr:xirr,
     aiaCompute:aiaCompute, aiaWeights:AIA_WEIGHTS, aiaAmcCap:AIA_AMC_CAP, aiaOvBands:AIA_OV_BANDS,
     fmt:{pct2:pct2,cr2:cr2,ws:ws}
   };
@@ -3684,7 +3714,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         var bold = r.level!=="item";
         function tc(t){ return cell(t,{fill:{color:fill},color:fg,bold:bold,fontSize:8}); }
         function mc(v){ var t=model.unit.t(v); return cell(t,{align:"right",fill:{color:fill},color:(!num(v)&&v<0)?C.red:fg,bold:bold}); }
-        function pc(v){ var t=num(v)?"—":(Math.round(v*100)/100).toFixed(2)+"%"; return cell(t,{align:"right",fill:{color:fill},color:(!num(v)&&v<0)?C.red:fg,bold:bold}); }
+        function pc(v,mark){ var t=num(v)?"—":(Math.round(v*100)/100).toFixed(2)+"%"+(mark||""); return cell(t,{align:"right",fill:{color:fill},color:(!num(v)&&v<0)?C.red:fg,bold:bold}); }
         return cols.map(function(c){
           if(c.key==="name") return cell((r.level==="item"?"   ":"")+r.label,{fill:{color:fill},color:fg,bold:bold});
           if(c.key==="dist") return tc(r.level==="item"?(r.dist||""):"");
@@ -3693,8 +3723,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
           if(c.key==="cmv") return mc(r.cmv);
           if(c.key==="gl") return mc(r.gl);
           if(c.key==="alloc") return pc(r.alloc);
-          if(c.key==="xirr") return pc(r.xirr);
-          if(c.key==="bmxirr") return pc(r.bmxirr);
+          if(c.key==="xirr") return pc(r.xirr,(r.level!=="item"&&r.xcov!=null&&r.xcov<99.995)?"\u2020":"");   /* KI-006 */
+          if(c.key==="bmxirr") return pc(r.bmxirr,(r.level!=="item"&&r.bcov!=null&&r.bcov<99.995)?"\u2020":"");   /* KI-006 */
           if(c.key==="absret") return pc((r.inv!=null&&!isNaN(r.inv)&&r.inv!==0)?(r.gl/r.inv*100):null);
           return cell("",{fill:{color:fill},color:fg,bold:bold});
         });
@@ -3710,7 +3740,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         if (grandRow) chunk.push(rowCells(grandRow));
         s.addTable(chunk,{x:0.18,y:1.12,w:12.97,colW:colW,
           rowH:0.34,fontFace:F,fontSize:8.5,valign:"middle",border:{type:"solid",color:"D9D9D9",pt:0.5}});
-        foot(s,"*Allocation re-based to "+cl.name+"'s portfolio (CMV "+model.unit.m(cl.totalCMV)+"). "+(model.irrActive?("XIRR/BMXIRR transaction-based (as on "+model.irrAsOn+")."):"XIRR/BMXIRR are CMV-weighted.")+" Portfolio as on "+model.meta.asOnDate+".");
+        foot(s,"*Allocation re-based to "+cl.name+"'s portfolio (CMV "+model.unit.m(cl.totalCMV)+"). "+(model.irrActive?("XIRR/BMXIRR transaction-based (as on "+model.irrAsOn+")."):"XIRR/BMXIRR are CMV-weighted.")+" Portfolio as on "+model.meta.asOnDate+"."+(cl.covNote?" "+cl.covNote:""));   /* KI-006 */
       }
     });
 
@@ -5297,6 +5327,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     model.clients.forEach(function(cl){
       var ch=[["Instrument Name","Distributor","Purchase Date","Invested Value ("+model.unit.lab+")","Current Market Value ("+model.unit.lab+")","Total Gain/Loss ("+model.unit.lab+")","Allocation (%)","XIRR (%)","BMXIRR (%)"]];
       cl.rows.forEach(function(r){ ch.push([(r.level==="item"?"   ":"")+r.label,r.dist||"",(r.level==="item"?(r.pdate||""):""),model.unit.v(r.inv),model.unit.v(r.cmv),model.unit.v(r.gl),r.alloc,r.xirr,r.bmxirr]); });
+      if(cl.covNote){ ch.push([]); ch.push([cl.covNote]); }   /* KI-006 */
       aoa(cl.name,ch,{cols:[{wch:46},{wch:22},{wch:16},{wch:18},{wch:24},{wch:20},{wch:14},{wch:12},{wch:12}],fmt:{3:FMT_CR,4:FMT_CR,5:FMT_CR,6:'0.00"%"',7:'0.00"%"',8:'0.00"%"'}});
     });
 
@@ -6646,14 +6677,14 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
           if(c.key==='cmv') return '<td'+neg(r.cmv)+'>'+model.unit.t(r.cmv)+'</td>';
           if(c.key==='gl') return '<td'+neg(r.gl)+'>'+model.unit.t(r.gl)+'</td>';
           if(c.key==='alloc') return '<td>'+pe(r.alloc)+'</td>';
-          if(c.key==='xirr') return '<td>'+pe(r.xirr)+'</td>';
-          if(c.key==='bmxirr') return '<td>'+pe(r.bmxirr)+'</td>';
+          if(c.key==='xirr') return '<td>'+pe(r.xirr)+((r.level!=='item'&&r.xirr!=null&&r.xcov!=null&&r.xcov<99.995)?'\u2020':'')+'</td>';   /* KI-006 */
+          if(c.key==='bmxirr') return '<td>'+pe(r.bmxirr)+((r.level!=='item'&&r.bmxirr!=null&&r.bcov!=null&&r.bcov<99.995)?'\u2020':'')+'</td>';   /* KI-006 */
           if(c.key==='absret'){ var a=czAbsRet(r); return '<td'+neg(a)+'>'+pe(a)+'</td>'; }
           return '<td></td>';
         }).join('');
         return '<tr class="'+cls+'">'+tds+'</tr>';
       }).join('');
-      html+='<div class="card"><h3>Portfolio Holdings — '+cl.name+'</h3><div class="sub">Allocation re-based to this client (CMV '+model.unit.m(cl.totalCMV)+'). '+(model.irrActive?('XIRR/BMXIRR transaction-based (as on '+model.irrAsOn+').'):'XIRR/BMXIRR CMV-weighted.')+'</div>'+
+      html+='<div class="card"><h3>Portfolio Holdings — '+cl.name+'</h3><div class="sub">Allocation re-based to this client (CMV '+model.unit.m(cl.totalCMV)+'). '+(model.irrActive?('XIRR/BMXIRR transaction-based (as on '+model.irrAsOn+').'):'XIRR/BMXIRR CMV-weighted.')+(cl.covNote?' '+cl.covNote:'')+'</div>'+   /* KI-006: engine text, numbers only */
         '<table class="cz"><tr>'+cols.map(function(c){return '<th>'+colLab(c)+'</th>';}).join('')+'</tr>'+rows+'</table></div>';
     });
     s.innerHTML=html;

@@ -83,8 +83,9 @@ in `C:\dev\handover-export`. Monthly refresh: docs/MONTHLY_REFRESH.md (`refresh-
 In a Claude Code PowerShell call, prepend the toolchain if `node` is not found:
 `$env:Path = 'C:\dev\tools\node;C:\dev\tools\git\cmd;C:\dev\tools\gh\bin;' + $env:Path`
 - `node tools/check-invariants.js [--expect-md5 <hash>]` — structure, no-network, engine surface, data sums
-- `node tools/smoke-review.js` — end-to-end engine + exporters on a synthetic book (26 checks)
+- `node tools/smoke-review.js` — end-to-end engine + exporters on a synthetic book (35 checks)
 - `node tools/test-ai-analyst.js` — AI Analyst acceptance rules on the embedded data (17 checks, CI-blocking)
+- `node tools/run-regression.js [KI-nnn]` — known-answer test of each fixed issue (`tools/regression/`, CI-blocking)
 - `node tools/make-sample-base.js` — synthetic base + IRR files and a second family to `test-data/`
 - `node tools/extract-blocks.js` — reading copies of the code blocks in `.blocks/` (cite as `07_engine.js:736`)
 - `tools/browser-checks/family-isolation.js` — paste into the browser console on the local preview and
