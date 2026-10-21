@@ -13,6 +13,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Change requests CR-0004 (the second export request) and CR-0005 (audit, fixes and redesign).
 
 ### Changed
+- **Owner decisions OD-29 to OD-36 accepted (D-022, 21 Oct 2026).** OD-32 (renamed fund houses as aliases) and
+  OD-34 ("AMC not given" for a blank AMC) are to be built; OD-35 comes with OD-19.
+- KNOWN_ISSUES: KI-124, the Home tab's "Download slide" gives an empty deck (found in an export on 21 Oct 2026).
 - **Owner decisions recorded (D-021):** all 28 audit recommendations accepted except OD-11. The MF and Direct
   Monitor uploads stay, and are to be fixed to match the monthly refresh.
 - CR-0003 marked done; PROJECT_STATE rewritten around the audit's fix order.

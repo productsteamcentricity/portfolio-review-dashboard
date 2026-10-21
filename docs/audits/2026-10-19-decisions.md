@@ -66,6 +66,15 @@ Follow-ups that the accepted answers leave with the owner:
 Raised by the financial reviews of fix batch 1b. Each fix shipped with the recommended behaviour, so "accept all" keeps
 the dashboard as it now is.
 
+**Owner's answer (21 Oct 2026): "accept all OD-29 to OD-36"** (D-022). Implementation status:
+- **Already built** (fix batch 1b, PR #6): OD-29, OD-30, OD-31, OD-33, OD-36.
+- **To build** in the next fix batch:
+  - OD-32: add the renamed houses to the alias list (IDFC → Bandhan, L&T → HSBC, Reliance → Nippon India,
+    DSP BlackRock → DSP, Birla Sun Life → ABSL, IIFL → 360 ONE);
+  - OD-34: mutual-fund rows with a blank AMC show as "AMC not given", with a count and footnote, outside every
+    house's cap (KI-112).
+- **With OD-19:** OD-35, the file's unit in all rationale text (KI-104).
+
 | # | Question | Recommendation (as built) | Issues |
 |---|---|---|---|
 | OD-29 | Current vs Sample: some hybrid holdings have no equity/debt split in the data. These are funds of funds (about 50 schemes) and hybrids with no look-through record. They now show as an "Unallocated †" row. What expected return should that share carry? | **None until the analyst types one.** The row's return cells start blank. While a column's cell is blank, its total return, inflation-adjusted return and 3/5/10-year values show "—". The alternatives both invent a figure (rule 3): counting the share at 0% understates the portfolio, and rescaling over the rest assumes it earns the average. On the client slide the footnote reads as a statement, not an instruction to the analyst. The analyst is warned before exporting a deck with "—" totals. Expected returns cannot be negative (as in every CVS cell). | KI-067 |
