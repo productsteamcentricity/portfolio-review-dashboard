@@ -30,3 +30,26 @@ jobs:
         run: node tools/test-ai-analyst.js
       - name: Known-answer regression tests of fixed issues
         run: node tools/run-regression.js
+
+  # The new build (CR-0006), milestone M1.1: zero-dependency safety checks, Node built-ins only.
+  # See docs/new-build/safety-tooling.md. M1.2 extends this job (npm ci, typecheck, build, invariants).
+  next:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Privacy scan of docs/ and the root Markdown (generic rules; the private deny-list is local only)
+        run: node scripts/validation/privacy-scan.mjs docs *.md
+      - name: Documentation links
+        run: node scripts/validation/docs-links.mjs
+      - name: Tests (IST)
+        run: node --test "tests/**/*.test.mjs"
+        env:
+          TZ: Asia/Kolkata
+      - name: Tests (UTC)
+        run: node --test "tests/**/*.test.mjs"
+        env:
+          TZ: UTC

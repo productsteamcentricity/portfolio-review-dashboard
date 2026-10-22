@@ -15,6 +15,15 @@ code the browser runs. Browser checks cover what Node cannot (rendering, the liv
 | `tools/browser-checks/family-isolation.js` (browser console) | KI-001: a second family inherits nothing (`isolation()`: 9 checks incl. the Excel "Fund IRR" sheet); an IRR uploaded before the first base file is kept (`irrBeforeBase()`); uploads after removing the base file are kept (`removeThenReload()`) | manual / qa-engineer, before merging UI changes |
 | `tools/browser-checks/cvs-refresh.js` (browser console) | KI-067/KI-068: the CVS Sample column follows the rebalancing plan and keeps typed cells (`planRefresh()`), hybrids split by their own sleeve (`hybridSplit()`), the Unallocated row with blank returns and "—" totals (`unallocated()`), FoFs unallocated (`fof()`); each on a fresh page | manual / qa-engineer, before merging CVS or rebalancing changes |
 
+Safety checks for the repository itself (new build, M1.1; detail in `new-build/safety-tooling.md`):
+
+| Command | What it proves | Gate |
+|---|---|---|
+| `node scripts/validation/privacy-scan.mjs docs *.md` | no e-mail, PAN, token, key, password, local user path, OneDrive organisation path or personal GitHub account URL in the documentation (folio-like digit runs are warnings); with `PRD_PRIVACY_DENYLIST` set, no name from the private deny-list | CI (`next`, generic rules only) |
+| `node scripts/validation/docs-links.mjs` | every relative link and anchor in the root and `docs/` Markdown resolves | CI (`next`) |
+| `node scripts/validation/prepush-scan.mjs` | the commits to be pushed: privacy on added lines, commit messages and identities; no file over 50 MB; no new binary or data file outside `monthly_updates/YYYY-MM/` | before every push (pre-push hook) |
+| `node --test "tests/**/*.test.mjs"` | the tests of the scripts above, on synthetic strings, temp files, throwaway git repositories and a fixture folder | CI (`next`, IST and UTC) |
+
 The synthetic book (`tools/make-sample-base.js`) has two invented clients, 13 holdings across MF
 equity/debt/hybrid, PMS, AIF, SIF, direct equity and one unknown fund. Every holding is priced off a NAV
 path growing at a constant rate, so its XIRR is known exactly — an independent check of the solver.

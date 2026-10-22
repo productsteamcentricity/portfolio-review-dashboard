@@ -13,9 +13,9 @@ These are background documents. Where they disagree with the current docs (`docs
 
 | File | What it is |
 |---|---|
-| [`handover/HANDOVER_PRD_Centricity_Portfolio_Review.md`](handover/HANDOVER_PRD_Centricity_Portfolio_Review.md) | The handover and product spec (14 Oct 2026): architecture, the 20 tabs, the refresh runbook as they ran it, the rules. |
+| [`handover/HANDOVER_PRD_Centricity_Portfolio_Review.md`](handover/HANDOVER_PRD_Centricity_Portfolio_Review.md) | The handover and product spec (14 Oct 2026): architecture, the 20 tabs, the refresh runbook as they ran it, the rules. **Public copy:** the local user name in two paths replaced by `<previous owner>` (22 Oct 2026). |
 | [`handover/PROJECT_HISTORY_Portfolio_Review_Dashboard.md`](handover/PROJECT_HISTORY_Portfolio_Review_Dashboard.md) | How the project evolved, May–Oct 2026. |
-| [`knowledge/KNOWLEDGE_DUMP.md`](knowledge/KNOWLEDGE_DUMP.md) | Everything known that the handover did not say. It covers the refresh as actually performed, every source file and its quirks, manual steps, alias tables, the reasoning behind hard-coded values, base-file formats and units, the slides, and tooling traps. **Public copy:** §4.2–4.4, §8 and §10 are left out. |
+| [`knowledge/KNOWLEDGE_DUMP.md`](knowledge/KNOWLEDGE_DUMP.md) | Everything known that the handover did not say. It covers the refresh as actually performed, every source file and its quirks, manual steps, alias tables, the reasoning behind hard-coded values, base-file formats and units, the slides, and tooling traps. **Public copy:** §4.2–4.4, §8 and §10 are left out; the organisation name in one OneDrive path replaced by `<organisation>` (22 Oct 2026). |
 | [`knowledge/DECISIONS_LOG.md`](knowledge/DECISIONS_LOG.md) | Every product, data and engineering decision, May–Oct 2026, with who decided and what it superseded. **Public copy:** two phrases shortened. |
 
 The refresh pipeline from the export is in `buildtools/` (see its README). The current AI Analyst test

@@ -13,6 +13,7 @@ change follows.
 | understand how `index.html` is built and where each calculation lives | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | test a change | [TESTING.md](TESTING.md) |
 | publish, verify or roll back the live site | [DEPLOYMENT.md](DEPLOYMENT.md) |
+| check a change for client data, names and secrets before pushing (privacy scan, pre-push hook) | [new-build/safety-tooling.md](new-build/safety-tooling.md) |
 
 ## Records
 

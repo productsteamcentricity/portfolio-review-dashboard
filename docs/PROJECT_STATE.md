@@ -5,6 +5,8 @@
 - Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done.
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
   Phase 0 (audit, architecture, parity matrix, roadmap) is in progress; data and return conventions are in D-023.
+  Milestone M1.1 safety tooling (privacy scan, docs link check, pre-push scan and hook, CI job `next`) is built
+  (`new-build/safety-tooling.md`); the hook is active only after `git config core.hooksPath scripts/hooks`.
 - The owner answered the 28 audit decisions: all accepted except OD-11 (keep the monitor uploads, fixed), D-021.
 - The previous owner's second export is expected this week (CR-0004).
 - The October 2026 data refresh is due when the files arrive, around 13–17 Nov 2026.

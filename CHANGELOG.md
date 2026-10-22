@@ -5,6 +5,19 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ## [Unreleased]
 
 ### Added
+- **Safety tooling for the new build (CR-0006, milestone M1.1)**, Node 24 built-ins only, described in
+  `docs/new-build/safety-tooling.md`. `index.html` is unchanged.
+  - `scripts/validation/privacy-scan.mjs`: scans files, or only the lines a change adds (`--staged`,
+    `--diff <base>`), for e-mail addresses, PAN patterns, tokens, private keys, passwords, local user paths,
+    OneDrive organisation paths and personal GitHub account URLs, with folio-like digit runs as warnings; a
+    public allow-list (`privacy-allowlist.json`) and an optional private deny-list of names named by
+    `PRD_PRIVACY_DENYLIST`, kept outside the repository.
+  - `scripts/validation/docs-links.mjs`: every relative link and anchor in the root and `docs/` Markdown resolves.
+  - `scripts/validation/prepush-scan.mjs` and the hook `scripts/hooks/pre-push` (enable with
+    `git config core.hooksPath scripts/hooks`): privacy on every added line, commit message and identity of
+    the commits to be pushed, no file over 50 MB, no new binary or data file outside `monthly_updates/YYYY-MM/`.
+  - Tests in `tests/validation/` (`node --test "tests/**/*.test.mjs"`), and a CI job `next` that runs the privacy
+    scan of the documentation, the link check and the tests in IST and UTC. The `checks` job is unchanged.
 - **The full audit of 19 Oct 2026** (CR-0005), under `docs/audits/`:
   - the issue register, with 67 issues, their evidence and fix approach;
   - the owner-decision sheet, with 25 questions and a recommendation for each.
@@ -13,6 +26,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Change requests CR-0004 (the second export request) and CR-0005 (audit, fixes and redesign).
 
 ### Changed
+- **Privacy fixes found by the new scan:** the previous owner's personal GitHub account address (DECISIONS D-002,
+  DEPLOYMENT, REPLICATION_REPORT), their local user name in two paths (previous-owner handover) and the
+  organisation's OneDrive folder name (previous-owner knowledge dump) are replaced by descriptions or placeholders.
+  Earlier commits still hold them; history is not rewritten.
 - **CR-0006, the new build:** the owner's brief of 21 Oct 2026 (sanitised copy in `docs/new-build/00-owner-brief.md`).
 - **D-023 (22 Oct 2026):** the vendor licence allows publishing the monitor files, which closes the open question
   under D-008. Drawdown comparisons use index data. Portfolio 3Y and 5Y returns are the weighted average of the

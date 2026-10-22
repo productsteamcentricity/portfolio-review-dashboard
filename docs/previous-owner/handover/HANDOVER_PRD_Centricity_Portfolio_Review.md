@@ -151,8 +151,8 @@ folder or junction named `github-repo` pointing at it, or edit the `targets` arr
 
 | File | Line | Change |
 |---|---|---|
-| `tools/engine-host.js` | `const ROOT = 'C:/Users/IshitaMagazine/…/Portfolio Review';` | `const ROOT = path.join(__dirname, '..');` |
-| `buildtools/postcheck.js` | `const A = "C:/Users/IshitaMagazine/…/Aug 2026";` | Point it at the current month's source folder (or take it from `process.argv[2]`) |
+| `tools/engine-host.js` | `const ROOT = 'C:/Users/<previous owner>/…/Portfolio Review';` | `const ROOT = path.join(__dirname, '..');` |
+| `buildtools/postcheck.js` | `const A = "C:/Users/<previous owner>/…/Aug 2026";` | Point it at the current month's source folder (or take it from `process.argv[2]`) |
 
 Do this in both `tools/engine-host.js` copies (working folder and `github-repo/tools/`). Every
 `buildtools/` script loads the engine through `engine-host.js`, so nothing works until this is fixed.

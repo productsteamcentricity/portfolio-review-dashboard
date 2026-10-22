@@ -45,7 +45,8 @@ Setup details: `docs/DEVELOPMENT_SETUP.md`. Browser acceptance: `docs/TESTING.md
 3. Financial logic: involve `financial-domain-reviewer`; add a check against a known answer.
 4. Run the checks and the browser procedure; compare with the baseline results; update docs and
    CHANGELOG in the same branch.
-5. `security-release-reviewer` reviews the staged diff (no client data, no secrets, no network calls).
+5. `security-release-reviewer` reviews the staged diff (no client data, no secrets, no network calls), and
+   `node scripts/validation/prepush-scan.mjs` passes (the pre-push hook runs it; `new-build/safety-tooling.md`).
 6. Push the branch and open a PR; CI must pass. Work the owner asked for is merged once verified
    (D-017); a merge that changes `index.html` republishes Pages automatically. Record the request in
    `docs/change-requests/`.

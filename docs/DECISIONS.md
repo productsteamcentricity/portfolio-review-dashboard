@@ -17,7 +17,7 @@ sync problem and leaves docs/tools unversioned).
 `patch_dates.js` and `patch_riskdate.js` must be reduced to `index.html`. Supersedes handover §3 step 2.
 
 ## D-002 — Start the new repository from a fresh history (14 Oct 2026)
-**Context.** The source repo (`magazineishita1108-boop/Portfolio_Review_Dashboard`, public, 1 branch,
+**Context.** The source repo (the previous owner's `Portfolio_Review_Dashboard`, public, 1 branch,
 no tags) has client names in three commit messages (per the handover) and is public.
 **Decision.** Do not import the old history. The baseline commit records its provenance (source repo,
 commit `cab22e6747c02b87f0f95466874b3209edc5da22`, `index.html` MD5) in its message and in

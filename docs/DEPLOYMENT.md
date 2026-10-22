@@ -47,6 +47,6 @@ Revert the offending commit on `main` (`git revert <sha>`, PR, merge); the workf
 previous `index.html`. Never force-push `main`.
 
 ## The previous site
-The previous owner's site (`magazineishita1108-boop.github.io/Portfolio_Review_Dashboard/`) still serves
-build `cab22e6` and **stays live until the new build has been fully tested** (owner's decision,
-15 Oct 2026). Retiring it is a separate, later step for the owner to schedule.
+The previous owner's site (GitHub Pages on their personal account; the address is in their handover,
+kept privately) still serves build `cab22e6` and **stays live until the new build has been fully tested**
+(owner's decision, 15 Oct 2026). Retiring it is a separate, later step for the owner to schedule.
