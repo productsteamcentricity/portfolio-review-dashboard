@@ -18,7 +18,8 @@ The dashboard is one static file. "Deploying" means making `index.html` availabl
   Never commit client data, credentials or anything meant to stay internal.
 - The **Pages site is public** and serves the dashboard only.
 - `index.html` embeds licensed vendor data, Centricity's advisory logic and third-party logos (as the
-  previous owner's public site already did). Client data is never in the file: it is uploaded in the
+  previous owner's public site already did). The owner confirmed on 22 Oct 2026 that the licence allows
+  publishing the vendor monitor files (D-023). Client data is never in the file: it is uploaded in the
   browser and never leaves it.
 - If the repository is ever made private, Pages from a private repository needs a paid plan
   (GitHub Pro for a personal account, Team/Enterprise for an organisation).

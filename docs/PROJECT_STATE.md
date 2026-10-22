@@ -3,6 +3,8 @@
 **Last updated:** 19 Oct 2026.
 - The full audit is done: 67 issues, see [`audits/`](audits/).
 - Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done.
+- **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
+  Phase 0 (audit, architecture, parity matrix, roadmap) is in progress; data and return conventions are in D-023.
 - The owner answered the 28 audit decisions: all accepted except OD-11 (keep the monitor uploads, fixed), D-021.
 - The previous owner's second export is expected this week (CR-0004).
 - The October 2026 data refresh is due when the files arrive, around 13–17 Nov 2026.
@@ -33,7 +35,6 @@
 | Blocker | Needed from | Unblocks |
 |---|---|---|
 | The second export: risk toolchain, sources of record, real-format test fixtures, answers | Previous owner (prompt sent via Teams, CR-0004) | Monthly MF_RISK refresh; testing fixes against real file formats; several owner questions |
-| Accord Fintech licence: may the embedded vendor data be on a public site? | Owner (whoever holds the vendor contract) | Certainty about the public Pages site (D-008) |
 
 ## Next steps
 1. **Claude:** ship the audit's remaining "fix now" batches (CR-0005), one PR each, with known-answer tests.

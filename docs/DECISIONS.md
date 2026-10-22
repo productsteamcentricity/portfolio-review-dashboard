@@ -183,3 +183,38 @@ KI-026, KI-058 (NEW-12) and KI-076 (NEW-30) become fixes of the upload path inst
 - OD-36: a redeemed fund whose label matches no current row counts in the Grand Total only, footnoted.
 **Consequence.** OD-32 and OD-34 are built in the next fix batch; OD-35 with OD-19. The rest is already in
 production (PR #6).
+
+## D-023 — Publishing vendor files, and how portfolio returns are calculated (22 Oct 2026)
+**Context.** The new-build brief (CR-0006) asks for the monthly source files, including the MF and SIF Monitors,
+to be tracked in the public repository; earlier records treated the vendor data as licensed and kept it out of git
+(the open question under D-008). The brief also needs portfolio-level 3Y and 5Y returns, a drawdown comparison and
+returns for direct equity.
+**Decision (owner, 22 Oct 2026):**
+1. **Publication.** The vendor licence allows publishing the monitor files. Approved monthly source files will be
+   tracked in `monthly_updates/YYYY-MM/` once that folder is set up (CR-0006, Phase 1). The vendor-derived data
+   embedded in `index.html` is permitted, which closes the D-008 question. Client data is never published.
+   - **Recommended:** the MF Screener data pack stays private unless the Screener owner agrees. The Screener is
+     invitation-only and carries Centricity's own scores.
+   - **Recommended:** files above 50 MB (GitHub warns at 50 MB and refuses 100 MB), such as the Investment Reckoner
+     PPTX, are tracked as PDF, with the original kept in OneDrive and its SHA-256 recorded.
+2. **Drawdown comparison** is done on index data, not on the client portfolio's history. The owner supplies index
+   return data every month.
+3. **Portfolio 3Y and 5Y returns (mutual funds)** are the average of each fund's 3Y and 5Y return, weighted by its
+   share of the portfolio.
+   - **Source:** the MF Monitor the analyst uploads for the review if there is one, otherwise the latest monthly
+     data: the MF Monitor, or the MF Screener data pack.
+   - **Missing returns:** following CLAUDE.md rule 3 and KI-006, a fund without a 3Y or 5Y return (for example, too
+     young) is left out of the weights and the coverage is footnoted. It is never counted as 0%.
+   - **Label:** "weighted average return of current holdings", not the portfolio's realised return.
+4. **Direct equity returns** follow the owner's Stock Price to Return Calculator:
+   - **Stock return:** 1Y, 3Y and 5Y CAGR = (price on the as-on date ÷ price n years earlier)^(1/n) − 1;
+   - **Portfolio:** each stock's return weighted by its share of the direct-equity holdings.
+   - **Differences from the workbook,** because the dashboard is offline and must not invent numbers:
+     - prices come from the monthly data (the Screener data pack's split- and bonus-adjusted month-end prices)
+       instead of Excel's online stock feed;
+     - the start dates are the exact anniversaries of the review's as-on date (or the nearest earlier trading day);
+     - a stock without enough history is left out and footnoted, never counted as 0%.
+   - **Fallback** for stocks the data does not cover: the analyst can upload a price file (for example the
+     calculator's Fetch Price sheet).
+**Consequence.** CLAUDE.md, MONTHLY_REFRESH and DEPLOYMENT now point here. The Screener data pack prompt asks for
+month-end stock price history.
