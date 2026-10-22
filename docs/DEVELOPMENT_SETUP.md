@@ -39,6 +39,9 @@ git config user.email "342556594+productsteamcentricity@users.noreply.github.com
 git config user.useConfigOnly true
 ```
 
+Turn on the pre-push privacy check once per clone with `git config core.hooksPath scripts/hooks`, and point
+`PRD_PRIVACY_DENYLIST` at the private deny-list (see `docs/new-build/safety-tooling.md`).
+
 ## Verify a checkout
 ```bash
 node tools/check-invariants.js

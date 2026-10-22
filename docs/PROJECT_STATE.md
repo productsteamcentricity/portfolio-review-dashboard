@@ -3,11 +3,25 @@
 **Last updated:** 22 Oct 2026.
 - The full audit is done: 67 issues, see [`audits/`](audits/).
 - Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done. Fix batch 2a
-  (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is built and in review on branch
-  `fix/legacy-batch-2a-r2` (`index.html` MD5 `911A04659CB34383E478416B54E9C306`), after its financial review;
-  its browser acceptance passed on 22 Oct 2026. The QA found KI-127 and KI-128 (both also on main).
+  (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is merged (PR #9; `index.html` MD5
+  `911A04659CB34383E478416B54E9C306`); its browser acceptance passed on 22 Oct 2026, and the QA found KI-127 and
+  KI-128 (both also on main before the batch).
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
-  Phase 0 (audit, architecture, parity matrix, roadmap) is in progress; data and return conventions are in D-023.
+  - **Phase 0 is done.** The record is in [`new-build/`](new-build/README.md) (audit, capability inventory,
+    architecture, reuse plan, parity matrix, data sources, roadmap, test plan, repository structure, rule bank, deck
+    design system, open questions), and the living PRD is [`PRD.md`](PRD.md). **The owner answered ND-1 to ND-10 on
+    22 Oct 2026** ([`new-build/owner-decisions-new-build.md`](new-build/owner-decisions-new-build.md)), recorded as
+    D-024 to D-033, and gave Claude full charge of GitHub and the dashboard (D-033). In short: Screener scores and
+    ranks never in a public page, the pack uploaded by the owner each cycle and kept in the browser (D-026); missing
+    values keep the dash, sentences never use one (D-029); a fund pair overlaps from 35% (D-030); capital-gains
+    statements in our own template (D-032); no branch ruleset (D-033). Data and return conventions are in D-023; the
+    Index TRI files are its index data.
+  - **Milestone M1.1 is ready for its pull request.** Built: the safety tooling (privacy scan, docs link check,
+    pre-push scan and hook, CI job `next`; [`new-build/safety-tooling.md`](new-build/safety-tooling.md); the hook is
+    active only after `git config core.hooksPath scripts/hooks`), the Phase 0 records and the living documents
+    ([`DATA_DICTIONARY.md`](DATA_DICTIONARY.md) v0.1, [`MONTHLY_UPDATE_GUIDE.md`](MONTHLY_UPDATE_GUIDE.md) with the
+    list of files the owner supplies each month, [`monthly-prds/`](monthly-prds/README.md)), with the owner's answers
+    applied. None of it is pushed yet. The rest of M1.1 is in "Next steps".
 - The owner answered the 28 audit decisions: all accepted except OD-11 (keep the monitor uploads, fixed), D-021.
 - The previous owner's second export is expected this week (CR-0004).
 - The October 2026 data refresh is due when the files arrive, around 13–17 Nov 2026.
@@ -38,6 +52,7 @@
 | Blocker | Needed from | Unblocks |
 |---|---|---|
 | The second export: risk toolchain, sources of record, real-format test fixtures, answers | Previous owner (prompt sent via Teams, CR-0004) | Monthly MF_RISK refresh; testing fixes against real file formats; several owner questions |
+| The first MF Screener data pack and its holdings backfill | Screener owner (prompt in OneDrive `05 Data Requests`) | Real data for M10 (Screener metrics) and M12 (historical analytics, FoF look-through) |
 
 ## Next steps
 1. **Claude:** ship the audit's remaining "fix now" batches (CR-0005), one PR each, with known-answer tests.
@@ -47,20 +62,29 @@
    (a degraded Exit falls back to Retain).
 3. **Owner:**
    - send your own list of issues;
-   - give the redesign direction;
    - ask the tax adviser about OD-28.
+   ND-1 to ND-10 were answered on 22 Oct 2026 (D-024 to D-033).
    OD-29 to OD-36 were accepted on 21 Oct 2026 (D-022); OD-32 (renamed fund houses) and OD-34 ("AMC not given")
-   are built in fix batch 2a, with KI-124 (empty Home slide export). The details settled while building them
-   (placeholder labels, extra spellings) are listed in CR-0007 for the owner to confirm.
-4. **Claude:** propose the redesign architecture: source files that build the same single offline page. Start it
-   after approval.
+   are built in fix batch 2a (PR #9, merged), with KI-124 (empty Home slide export).
+4. **Claude: finish M1.1** ([roadmap](new-build/07-implementation-roadmap.md), M1.1):
+   - push the safety tooling and the Phase 0 records and open their pull requests;
+   - create and push the tag `legacy-baseline-782794f`;
+   - `scripts/validation/release-check.mjs` and `scripts/validation/monthly-prd-check.mjs`;
+   - the folder skeleton with READMEs (`app/`, `data/`, `product_bank/`, `monthly_updates/`);
+   - the new `docs/ARCHITECTURE.md` from `new-build/03-architecture.md`, with the legacy one moved to `docs/legacy/`;
+   - `CHANGELOG.md` moved to `docs/CHANGELOG.md`; the README's "two apps" section;
+   - KNOWN_ISSUES N-1 to N-10 from KI-129; the full new-app section of `CLAUDE.md` (including D-024 to D-033: the
+     "no npm install" rule is the legacy file's, D-025; the dash rule, D-029; the Screener pack store, D-026).
+   Then M1.2 (toolchain and `/next/` preview, now decided) and M1.3 (shared model, base-file ingest); neither needs
+   owner input.
 5. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;
    - re-tests the fixes against the real-format fixtures.
-6. **Around 13–17 Nov:** the October data refresh (docs/MONTHLY_REFRESH.md).
-7. **Owner:** approve protecting `main` with a ruleset (docs/DEPLOYMENT.md).
-8. **Owner:** after full testing of the new build, schedule retiring the previous owner's site.
+6. **Around 13–17 Nov:** the October data refresh (docs/MONTHLY_REFRESH.md), followed by the first monthly PRD
+   ([`monthly-prds/`](monthly-prds/README.md)) and a refresh of HANDOVER.md.
+7. **Owner:** after full testing of the new build, schedule retiring the previous owner's site.
+   (No ruleset will protect `main`: D-033.)
 
 ## Backlog
 The prioritised backlog is the audit register's fix order (`audits/2026-10-19-full-audit.md`, end of the file):
@@ -74,6 +98,7 @@ Other items:
 | P1 | Risk-ratio computation in this repository (from the previous owner's toolchain) | operations |
 | P2 | Expense-ratio sanity checks as a script (today a manual runbook step) | operations |
 | P3 | KI-029: AI Analyst signal weights sign-off | product decision |
+| P1 | The legacy `FUND_RANKS` block (fund ranks issued 15 Aug 2026) is an open item: whether the legacy page removes it now (a data change under D-028, which would also remove what uses it, such as the AI Analyst's rank signal) or keeps it until switch-over is to be decided by the lead under D-033 and recorded | decision, then a legacy data change |
 
 ## Records
 - What the owner asked for: `docs/change-requests/`.

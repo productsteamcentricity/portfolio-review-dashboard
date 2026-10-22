@@ -42,7 +42,7 @@ points to them instead ("see CLAUDE.md §…", "see HANDOVER §…").
 Path shorthands used below:
 - `<PR>` = the project folder `…\Documents\Claude\Projects\Portfolio Review`
 - `<WEB>` = the sibling folder `…\Documents\Claude\Projects\Portfolio Review Web`
-- `<UPD>` = `%USERPROFILE%\OneDrive - CENTRICITY FINANCIAL DISTRIBUTION PRIVATE LIMITED\Desktop\AI Dashboard Updates\For Centricity Portfolio Review Portal`
+- `<UPD>` = `%USERPROFILE%\OneDrive - <organisation>\Desktop\AI Dashboard Updates\For Centricity Portfolio Review Portal`
 - `<PLAY>` = the sibling vendor folder `…\AI Dashboard Updates\For Centricity Proposal Playbook Portal`
 
 ### 0.1 Corrections to the existing docs (read these first)

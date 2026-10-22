@@ -1,0 +1,22 @@
+{
+  "_comment": "Public allow-list for privacy-scan.mjs. Organisations, library homepages and generic addresses only: never a client, family or person name (those belong in the private deny-list, which is never committed). Every entry says why it is allowed.",
+  "githubOwners": [
+    { "owner": "productsteamcentricity", "why": "this repository's organisation account and its GitHub Pages site" },
+    { "owner": "actions", "why": "GitHub's own actions (actions/checkout, actions/setup-node) used by the workflows" },
+    { "owner": "kurkle", "why": "public open-source library: the colour helper bundled with Chart.js, embedded in index.html" },
+    { "owner": "stuk", "why": "public open-source library: JSZip homepage, embedded in index.html" },
+    { "owner": "gitbrent", "why": "public open-source library: PptxGenJS homepage, embedded in index.html" }
+  ],
+  "emails": {
+    "addresses": ["git@github.com"],
+    "localParts": ["noreply", "no-reply", "donotreply", "do-not-reply"],
+    "domains": ["example.com", "example.org", "example.net"],
+    "githubNoreplyUsers": ["productsteamcentricity"]
+  },
+  "userPathPlaceholders": ["public", "default", "default user", "all users", "username", "user", "you", "yourname", "your-name", "name", "me"],
+  "denylistExemptPaths": [
+    { "path": "index.html", "why": "the legacy product: its embedded reference data names listed companies, funds and fund managers (public vendor data), which share first names and surnames with the private deny-list. Client holdings are never embedded (they are uploaded at run time), and every code change reaches index.html through a patch script in tools/patches/, which the deny-list does scan. The generic rules still apply to index.html." }
+  ],
+  "binaryAllowPaths": [],
+  "exceptions": []
+}

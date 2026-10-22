@@ -36,6 +36,9 @@ Terms used below:
 ### 1. Collect the files
 Put each file in `01 Monthly Updates\YYYY-MM`, or in its `Analytics` or `Index TRI` subfolder, exactly as it
 arrived. The checklist with every file name is in `01 Monthly Updates\README - How to submit monthly files.md`.
+The tracked list of every file you supply, with who sends it, where it goes, whether it is public and what it feeds
+(including the new build's additions), is in
+[MONTHLY_UPDATE_GUIDE.md](MONTHLY_UPDATE_GUIDE.md#files-the-owner-supplies-each-month).
 
 The monthly items:
 - **From the vendor (Accord Fintech):**
@@ -96,7 +99,7 @@ Run it step by step and fill in `docs/refresh-log/YYYY-MM.md` as you go; the `re
 the same steps. The rules in `CLAUDE.md` apply throughout:
 - inputs are read-only;
 - never invent a number;
-- no client data in git; the vendor monitor files may be published (D-023) but stay in OneDrive until the tracked
+- no client data in git; every Accord file may be published (D-023, D-026) but stays in OneDrive until the tracked
   `monthly_updates/` folder exists (CR-0006);
 - splice only on the branch, only with `--data-only`.
 

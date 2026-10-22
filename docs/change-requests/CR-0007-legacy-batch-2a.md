@@ -2,7 +2,7 @@
 
 - **Requested:** 21 Oct 2026, by the product owner: KI-124 was seen in an export, and the owner accepted OD-32 and
   OD-34 (D-022). Built 22 Oct 2026; revised the same day after its financial review.
-- **Status:** in review, on branch `fix/legacy-batch-2a-r2`.
+- **Status:** done: merged as PR #9 (22 Oct 2026).
 
 ## Request
 1. **KI-124:** the Home tab's "Download slide" button produced a PowerPoint file with no slides.
@@ -120,5 +120,5 @@ the AMC slide insight's wording changes.
   headlessly), and the live page after publishing.
 
 ## Status
-In review; the browser acceptance passed. Follow-ups: the owner confirms the decisions settled while building;
+Done: merged as PR #9 on 22 Oct 2026; the browser acceptance passed. Follow-ups: the owner confirms the decisions settled while building;
 KI-125 to KI-128.
