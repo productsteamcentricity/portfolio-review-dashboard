@@ -340,5 +340,14 @@ Both pre-date fix batch 2a.
 
 | KI | P | Kind | Issue |
 |---|---|---|---|
-| KI-125 | P3 | ui text / exports | On a book with no mutual funds at all, the AMC slide's insight still reads "AMC exposure is well diversified. The largest fund house is —, within the 20% per-AMC cap." (`08_exporters.js` INS.amc; the same claim, with dashes, before batch 2a). Say that there is no mutual-fund book to measure, or leave the AMC slide out of such a deck. |
+| KI-125 | P3 | ui text / exports | On a book with no mutual funds at all, the AMC slide's insight still reads "AMC exposure is well diversified. The largest fund house is —, within the 20% per-AMC cap." (`08_exporters.js` INS.amc; the same claim, with dashes, before batch 2a). Building that slide also makes PptxGenJS log `"" is not a valid scheme color or hex RGB! "000000" used instead.` (seen in the browser QA of fix batch 2a; reproduced headlessly on main `EF2FF4F1…` and on `911A0465…`). Say that there is no mutual-fund book to measure, or leave the AMC slide out of such a deck. |
 | KI-126 | P3 | ui text / exports | Generated prose still uses dashes as sentence punctuation in many places, for example the Observations product sentence ("selective PMS and AIF strategies — from Centricity's focused list — would …"), the overlap and performance slide insights, and several SWOT bullets. The owner's rule (22 Oct 2026): no dash inside a sentence; a dash only stands for a missing value. Batch 2a applied it to the AMC sentences and the AMC slide insight only. |
+
+### Found by the browser QA of fix batch 2a (22 Oct 2026)
+
+Both pre-date fix batch 2a: the same code is on main (`EF2FF4F1…`).
+
+| KI | P | Kind | Issue |
+|---|---|---|---|
+| KI-127 | P3 | ui text | The AMC tab's breach note says "exceed" whatever the number of houses: "Breach: Bandhan (25.00%) exceed the 20% per-AMC cap." (`11_app_ui.js:577`, `renderAMC`). For one house it should read "exceeds". The AMC slide insight and the Observations sentence already say "breaches" for a single house (batch 2a). |
+| KI-128 | P3 | output-pptx | The single-slide downloads from the rebalancing group's own buttons put the internal key in the file name: "Portfolio Review_<family>_rebalhold_<date>.pptx", "…_postan_…", "…_rbimpact_…". `tabLabel` (`11_app_ui.js:386`) looks only in `TABS` and falls back to the key; these groups' names ("Rebalancing Holding Sheet", "Post-Rebalancing Analytics", "Rebalancing Impact") are in `EXTRA_SLIDES` (`11_app_ui.js:316-322`). The same key would show in `slidePPTX`'s status messages for those groups. The slides themselves download correctly. |

@@ -110,9 +110,14 @@ financial review).
   be assessed. The insight is now written as plain sentences for every book (its dashes became full stops) and says
   "breaches" for a single house.
 - **Tests:** three regression files (`KI-124-empty-slide-export.js`, `OD-32-renamed-amc.js`,
-  `OD-34-amc-not-given.js`; 12 files, 490 checks in all). The nine OD-34 checks added after the financial review
-  fail on the first build and pass on this one. `smoke-review` adds any "AMC not given" share to its AMC sum.
-- **Docs:** KI-125 and KI-126 recorded (both pre-date the batch).
+  `OD-34-amc-not-given.js`; 12 files, 499 checks in all). The nine OD-34 checks added after the financial review
+  fail on the first build and pass on this one. Nine more, after the financial re-review, pin the "well
+  diversified" boundary (18.00% + 2.00% not given is cap-safe, 18.10% + 2.00% is not, on the breach test's own
+  arithmetic) and the wording (one house "breaches"; main's no-breach sentence unchanged; no en or em dash).
+  `smoke-review` adds any "AMC not given" share to its AMC sum.
+- **Browser acceptance** (22 Oct 2026, commit `a777490`, synthetic data): passed; recorded in CR-0007.
+- **Docs:** KI-125 and KI-126 recorded (both pre-date the batch); after the browser QA, KI-125 extended (a PptxGenJS
+  colour warning) and KI-127 and KI-128 recorded (both also on main).
 
 ## 2026-10-15 — Repository organised, monthly refresh restored (PR #2, merged as `df25dcd`)
 

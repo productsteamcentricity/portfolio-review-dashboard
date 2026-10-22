@@ -56,7 +56,24 @@
         (iii) 2.00% with no AMC (one 0.20 Cr fund): beside seven houses at 14.00%
               each, 14.00 + 2.00 = 16.00% stays within the cap, so both texts say
               well diversified and give 2.00%; beside a largest house at 19.00%,
-              19.00 + 2.00 = 21.00% could pass it, so neither says it.
+              19.00 + 2.00 = 21.00% could pass it, so neither says it. No en or em
+              dash in either text.
+        (iv)  the boundary, on the breach test's own arithmetic (a house is a breach
+              above 20.0%, so a house at exactly 20.00% is not): 12.50 Cr, the
+              largest house 2.25 Cr (18.00%), five houses at 2.00 Cr (16.00%), one
+              0.25 Cr fund with no AMC (2.00%): 18.00 + 2.00 = 20.00%, so
+              amc.notGiven.capSafe is true and both texts say well diversified; the
+              same book with that fund in the largest house has it at 20.00%, not a
+              breach. 10.00 Cr with the largest house at 1.81 Cr (18.10%) and 2.00%
+              with no AMC: 20.10%, so capSafe is false, neither text says well
+              diversified and both say diversification cannot be confirmed; with
+              that fund in the largest house it is at 20.10%, a breach.
+        (v)   wording on books where every mutual fund names its house: one house at
+              2.50 Cr of 10.00 Cr (25.00%), the rest 15.00%: the insight opens
+              "Synthetic House A (25.00%) breaches the 20% per-AMC cap." (one house
+              "breaches"), and the Observations say "breaches" too; no breach, the
+              largest house at 18.00%: the Observations sentence is main's, word for
+              word, and the insight has no en or em dash.
      6. Placeholder labels: ENGINE.amcKey gives no house for each of them (in any
         case); labels that only contain such a word ("Unknown Opportunities",
         "Other Distributor") or real houses ("Navi", "NJ", "Union") keep a key.
@@ -377,6 +394,71 @@ async function sentenceChecks() {
     ok(w.ngS === '2.00%' && w.worst > 20 && (m.amc.breaches || []).length === 0 && ob.indexOf(w.ngS) >= 0 && !WELL.test(ob) &&
        !!sl.insight && sl.insight.indexOf(w.ngS) >= 0 && !WELL.test(sl.insight),
        '(iii) the same 2.00% beside a largest house at 19.00%: 19.00 + 2.00 = 21.00% could pass the cap, so neither text says well diversified');
+    ok(!DASH.test(ob) && !!sl.insight && !DASH.test(sl.insight),
+       '(iii) 19.00% + 2.00%: no en or em dash in the Observations sentence or the insight');
+  }
+  /* (iv) the capSafe boundary. Known answer: a house is a breach above 20.0% (a house at exactly
+     20.00% is not), so the book is cap-safe when the largest house plus the share with no AMC is at
+     most 20.00%. Cross-check on the engine's own breach test: the same book with the holdings with
+     no AMC labelled as the largest house must show that house as a breach exactly when capSafe is false. */
+  async function capCase(H, N) {
+    const w = want(H, N), m = review(mixBook(H, N)), sl = await amcSlide(m), ob = obsAmc(m);
+    const topName = 'Synthetic House ' + String.fromCharCode(65 + H.indexOf(Math.max.apply(null, H)));
+    const merged = review(mixBook(H, []).concat(N.map((c, i) => row({ name: 'Synthetic Mix Fund N' + (i + 1), amc: topName, cmvCr: c }))));
+    const mTop = amcRows(merged).filter(r => r.amc === topName)[0] || null;
+    console.log('  (iv) largest house ' + topName + ' ' + w.topS + ', not given ' + w.ngS + ', largest plus not given ' + w.worst.toFixed(2) + '%' +
+      '; capSafe ' + J(m.amc.notGiven ? m.amc.notGiven.capSafe : undefined) + '; merged ' + J(mTop && { pct: r2(mTop.pct), breach: mTop.breach }));
+    console.log('      Observations: ' + J(ob));
+    console.log('      insight     : ' + J(sl.insight));
+    return { w, m, sl, ob, ng: m.amc.notGiven || null, mTop, topName };
+  }
+  {
+    const H = [2.25, 2, 2, 2, 2, 2], N = [0.25], c = await capCase(H, N), w = c.w;
+    pre(w.topS === '18.00%' && w.ngS === '2.00%' && w.worst === 20,
+        '(iv) the fixture sits on the boundary: ' + w.topS + ' + ' + w.ngS + ' = ' + w.worst.toFixed(2) + '% exactly (no rounding), from the rows (12.50 Cr book)');
+    ok(!!c.ng && c.ng.capSafe === true && (c.m.amc.breaches || []).length === 0 && !!c.mTop && c.mTop.pct === 20 && c.mTop.breach === false,
+       '(iv) 18.00% + 2.00% = 20.00%: model.amc.notGiven.capSafe === true, and with that 2.00% in ' + c.topName + ' it is at 20.00%, not a breach (got capSafe ' +
+       J(c.ng ? c.ng.capSafe : undefined) + ')');
+    ok(WELL.test(c.ob) && c.ob.indexOf(w.ngS) >= 0 && !!c.sl.insight && WELL.test(c.sl.insight) && c.sl.insight.indexOf(w.ngS) >= 0 &&
+       !DASH.test(c.ob) && !DASH.test(c.sl.insight),
+       '(iv) 18.00% + 2.00% = 20.00%: the Observations sentence and the AMC-slide insight both say well diversified and give 2.00%; no en or em dash');
+  }
+  {
+    const H = [1.81, 1.6, 1.6, 1.6, 1.6, 1.59], N = [0.2], c = await capCase(H, N), w = c.w;
+    pre(w.topS === '18.10%' && w.ngS === '2.00%' && w.worst > 20 && w.worst.toFixed(2) === '20.10',
+        '(iv) the fixture sits just above the boundary: ' + w.topS + ' + ' + w.ngS + ' = ' + w.worst.toFixed(2) + '%, from the rows (10.00 Cr book)');
+    ok(!!c.ng && c.ng.capSafe === false && (c.m.amc.breaches || []).length === 0 && !!c.mTop && c.mTop.breach === true && r2(c.mTop.pct) === 20.1,
+       '(iv) 18.10% + 2.00% = 20.10%: model.amc.notGiven.capSafe === false, and with that 2.00% in ' + c.topName + ' it is at 20.10%, a breach (got capSafe ' +
+       J(c.ng ? c.ng.capSafe : undefined) + ')');
+    const CANNOT = /cannot be confirmed/;
+    ok(!WELL.test(c.ob) && c.ob.indexOf(w.ngS) >= 0 && CANNOT.test(c.ob) && !!c.sl.insight && !WELL.test(c.sl.insight) &&
+       c.sl.insight.indexOf(w.ngS) >= 0 && CANNOT.test(c.sl.insight) && !DASH.test(c.ob) && !DASH.test(c.sl.insight),
+       '(iv) 18.10% + 2.00% = 20.10%: neither text says well diversified; both give 2.00% and say diversification cannot be confirmed; no en or em dash');
+  }
+  /* (v) wording where every mutual fund names its house */
+  {
+    const H = [2.5, 1.5, 1.5, 1.5, 1.5, 1.5], w = want(H, []);
+    const m = review(mixBook(H, [])), sl = await amcSlide(m), ob = obsAmc(m);
+    const lead = 'Synthetic House A (' + w.topS + ') breaches the 20% per-AMC cap.';
+    console.log('  (v) one breach, ' + w.topS + '; Observations: ' + J(ob));
+    console.log('      insight     : ' + J(sl.insight));
+    ok(w.topS === '25.00%' && (m.amc.breaches || []).length === 1 && !!sl.insight && sl.insight.indexOf(lead) === 0 && !DASH.test(sl.insight),
+       '(v) a single breaching house: the insight reads ' + J(lead) + ' with no en or em dash');
+    ok(ob.indexOf('Synthetic House A (' + w.topS + ') breaches Centricity\'s 20% per-AMC cap of the mutual-fund book.') === 0 && !DASH.test(ob),
+       '(v) a single breaching house: the Observations sentence says "breaches" too, with no en or em dash');
+  }
+  {
+    const H = [1.8, 1.7, 1.7, 1.6, 1.6, 1.6], w = want(H, []);
+    const m = review(mixBook(H, [])), sl = await amcSlide(m), ob = obsAmc(m);
+    /* main's sentence (EF2FF4F1), word for word, with the largest house and its share from the rows */
+    const mainSays = 'No single fund house exceeds Centricity\'s 20% per-AMC cap (largest is Synthetic House A at ' + w.topS +
+      '), indicating well-diversified AMC exposure across the mutual-fund book.';
+    console.log('  (v) no breach, largest ' + w.topS + '; Observations: ' + J(ob));
+    console.log('      insight     : ' + J(sl.insight));
+    ok(w.topS === '18.00%' && !m.amc.notGiven && (m.observations.currentPortfolio.amcAllocation || []).length === 1 && ob === mainSays,
+       '(v) every fund names its house, no breach: the Observations sentence is unchanged from main: ' + J(mainSays));
+    ok(!!sl.insight && !DASH.test(sl.insight) && WELL.test(sl.insight) && sl.insight.indexOf('Synthetic House A at ' + w.topS) >= 0,
+       '(v) every fund names its house, no breach: the insight says well diversified, names Synthetic House A at ' + w.topS + ', and has no en or em dash');
   }
   /* a book with breaches: both texts still give the share with no AMC (book 1: 30.00%) */
   {

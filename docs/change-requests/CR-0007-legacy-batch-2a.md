@@ -67,23 +67,58 @@ the AMC slide insight's wording changes.
   `37f533f`) is superseded by this one.
 - Tests: `tools/regression/KI-124-empty-slide-export.js`, `OD-32-renamed-amc.js`, `OD-34-amc-not-given.js`;
   `tools/smoke-review.js` (its AMC sum includes any "AMC not given" share).
-- Docs: KNOWN_ISSUES (KI-015 Home part, KI-061, KI-112, KI-124; new KI-125 and KI-126), the decisions file
-  (OD-32 and OD-34 built), ARCHITECTURE, TESTING, PROJECT_STATE, CHANGELOG, this record.
+- Docs: KNOWN_ISSUES (KI-015 Home part, KI-061, KI-112, KI-124; new KI-125 and KI-126; after the browser QA, KI-125
+  extended and new KI-127 and KI-128), the decisions file (OD-32 and OD-34 built), ARCHITECTURE, TESTING,
+  PROJECT_STATE, CHANGELOG, this record.
 
 ## Verification
 - `check-invariants --expect-md5 911A04659CB34383E478416B54E9C306`: all invariants hold, 1 known warning (KI-027).
-- `smoke-review` 35/35, `test-ai-analyst` 24/24, `run-regression` 12 files, 490 checks, all pass.
+- `smoke-review` 35/35, `test-ai-analyst` 24/24, `run-regression` 12 files, 499 checks, all pass.
 - The nine OD-34 checks added after the financial review (the placeholder labels; the AMC sentence and slide
   insight with 40%, 100% and 2% not given, and with breaches) fail on the first build `F7123A83…` and pass on this
   one. The known answers are computed in the test from its own rows.
+- Nine more OD-34 checks, the financial re-review's required changes 2 and 3 (test only; `index.html` unchanged):
+  - **The capSafe boundary.** A 12.50 Cr book with the largest house at 18.00% and 2.00% "AMC not given" (20.00%
+    exactly) is cap-safe: `model.amc.notGiven.capSafe` is true and both texts say well diversified. A book at
+    18.10% + 2.00% (20.10%) is not: capSafe is false, neither text says well diversified, both say diversification
+    cannot be confirmed. Cross-check on the engine's own breach test: the same books with the 2.00% labelled as the
+    largest house put it at 20.00% (not a breach) and 20.10% (a breach).
+  - **Wording.** A single breaching house: the insight opens "Synthetic House A (25.00%) breaches the 20% per-AMC
+    cap." and the Observations say "breaches"; an all-named book with no breach: the Observations sentence is main's,
+    word for word. No en or em dash in either text in these books or in the 19% + 2% book.
+  - **Fail before.** On main (`EF2FF4F1…`) and on the first build (`F7123A83…`), seven of the nine fail (capSafe is
+    undefined; the insight has a dash and "breach" for one house). The two that pass there pin unchanged text (the
+    Observations "breaches" for one house, and main's no-breach sentence). Three scratch builds of `911A0465…` that
+    change only the capSafe rule each fail the boundary checks: `< 20.0` fails the 20.00% book, a whole-percent
+    rounding and a rule without the not-given share fail the 20.10% book.
+- **Browser acceptance (22 Oct 2026), all checks passed.** QA ran commit `a777490` (`index.html` `911A0465…`),
+  served at localhost:8101, with synthetic data only:
+  - Home has no download bar.
+  - The other 19 single-tab decks are not empty: ips 2, asset 1, distalloc 2, clalloc 2, amc 1, obs 3, holdings 4,
+    analytics 3, overlap 2, cost 2, irr 2, cvs 2, mfanalysis 7, tax 5, aia 4, rebal 1, perf 7, disc 1, thank 1
+    slides. The rebalancing group's own download buttons download too.
+  - IPS (2 slides) and AI Analyst (4) download once filled in. An empty AI Analyst tab gives "Nothing to download …"
+    and downloads nothing.
+  - Full deck 61 slides; workbook 15 sheets; Fund IRR total 13.09 / 11.88.
+  - A synthetic book with "IDFC", "L&T", blank, "-", "NA" and "Others" as AMCs: Bandhan 25% (a breach) with IDFC
+    counted in it; HSBC with L&T; "AMC not given" 10% as a grey bar with its note; the Direct Equity "Larsen &
+    Toubro Ltd." row untouched. The AMC slide and the XLSX agree. The Observations and the slide insight give the
+    not-given share. With Bandhan at 19% (not cap-safe), both say diversification cannot be confirmed.
+  - `family-isolation.js` 15/15 and `cvs-refresh.js` 34/34; the console is clean (apart from KI-125's warning on a
+    book with no mutual funds); network requests only for the page and the test files.
+  - Found on the way, not caused by this batch (the same on main): KI-127 (the AMC tab note says "exceed" for one
+    house), KI-128 (raw keys in the rebalancing group's slide file names), and KI-125's PptxGenJS colour warning
+    on a book with no mutual funds.
 - Rebuilt from `main` by running every patch in file-name order (older patches already in `main` are skipped or
   refused as superseded, nothing written): the result is `911A0465…`; a second run of the batch patch changes
   nothing.
 - The AMC and Observations slides were rendered in PowerPoint for four synthetic books (two breaches with long
   house names and 25% not given; 40% not given; 2% not given; no AMC at all) and looked at: the texts fit their
   boxes, and the all-blank book shows one grey bar at 100%.
-- Not verified here: the dashboard in the browser (the AMC tab on screen, Home without its download bar, a refused
-  download), and the live page after publishing.
+- Not verified: Office rendering of what the browser QA downloaded (its decks and workbook were counted, not opened
+  in PowerPoint or Excel; the PowerPoint check above covers only the AMC and Observations slides of four books built
+  headlessly), and the live page after publishing.
 
 ## Status
-In review. Follow-ups: the owner confirms the decisions settled while building; KI-125 and KI-126.
+In review; the browser acceptance passed. Follow-ups: the owner confirms the decisions settled while building;
+KI-125 to KI-128.
