@@ -44,8 +44,9 @@
 3. **Owner:**
    - send your own list of issues;
    - give the redesign direction;
-   - ask the tax adviser about OD-28;
-   - answer OD-29 to OD-36 (or "accept all").
+   - ask the tax adviser about OD-28.
+   OD-29 to OD-36 were accepted on 21 Oct 2026 (D-022); OD-32 (renamed fund houses) and OD-34 ("AMC not given")
+   are built in the next fix batch, with KI-124 (empty Home slide export).
 4. **Claude:** propose the redesign architecture: source files that build the same single offline page. Start it
    after approval.
 5. **When the second export arrives:**

@@ -50,6 +50,8 @@ Shipped in batches, each on its own branch and PR, with known-answer tests. Fina
 ## Open
 - **Owner (answered 19 Oct 2026):** all 28 decisions accepted except OD-11. The monitor uploads stay and are to
   be made correct (D-021).
-- **Owner:** answer OD-29 to OD-36, raised by fix batch 1b (or "accept all": each shipped with its recommendation).
+- **Owner (answered 21 Oct 2026):** OD-29 to OD-36 all accepted (D-022). OD-32 and OD-34 still to build.
 - **Owner:** send their own list of issues, with a screenshot or note each.
-- **Owner:** give redesign direction.
+- **Owner (21 Oct 2026):** redesign direction given as a full new-build brief (a clean new application with feature
+  parity, conditional Review Snapshot, observation engine, formula-driven Excel, monthly update workflow, MF Screener
+  link). Phase 0 (audit, architecture, parity matrix, roadmap) is in progress; it gets its own change request.

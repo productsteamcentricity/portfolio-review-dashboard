@@ -168,3 +168,18 @@ one parsing path shared with the monthly refresh, expense ratios read as percent
 the data date in use shown with a way back to the embedded data.
 **Consequence.** The register's group (b) fixes are unblocked and are scheduled with the "fix now" batches.
 KI-026, KI-058 (NEW-12) and KI-076 (NEW-30) become fixes of the upload path instead of its removal.
+
+## D-022 — The owner's answers to the batch-1b questions (21 Oct 2026)
+**Context.** The financial reviews of fix batch 1b raised eight questions (OD-29 to OD-36 in
+`audits/2026-10-19-decisions.md`); each fix shipped with the recommended behaviour.
+**Decision.** The owner accepted all eight:
+- OD-29: no return assumed for the Current vs Sample "Unallocated" share until the analyst enters one;
+- OD-30: gross equity for hedged hybrids; the multi-asset remainder as Debt MF; a Hybrid SIF Unallocated;
+- OD-31: "Apply plan" cuts every plan and client of a scheme pro rata;
+- OD-32: the fund-house alias list as built, plus the renamed houses;
+- OD-33: a PMS, AIF, SIF or listed stock of a group sits outside that fund house's 20% cap;
+- OD-34: blank AMC rows show as "AMC not given";
+- OD-35: rationale text in the file's unit (with OD-19);
+- OD-36: a redeemed fund whose label matches no current row counts in the Grand Total only, footnoted.
+**Consequence.** OD-32 and OD-34 are built in the next fix batch; OD-35 with OD-19. The rest is already in
+production (PR #6).
