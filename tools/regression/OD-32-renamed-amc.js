@@ -16,7 +16,9 @@
    Known answers (independent of the engine's AMC keys):
      1. ENGINE.amcKey gives a former name the key of its current house; other
         names that merely start alike stay apart ("IDFC First Bank", "Reliance
-        Industries", "IIFL Finance").
+        Industries", "IIFL Finance"). It also pins the spellings the lead approved
+        on 22 Oct 2026 ("L and T", "Larsen and Toubro", "Reliance Nippon",
+        "Reliance Nippon Life", "Birla SL"); "IIFL Wealth" is not 360 ONE.
      2. AMC tab, a 10.00 Cr mutual-fund book written here: Bandhan 1.00 ("IDFC")
         + 1.50 ("Bandhan Mutual Fund") = 2.50 Cr 25.00% (a breach); Aditya Birla
         Sun Life 1.00 ("Birla Sun Life") + 1.00 ("ABSL") = 20.00% (not a breach:
@@ -73,16 +75,20 @@ function same(labels, house) {
 }
 function differ(a, b) { ok(K(a) !== K(b), '"' + a + '" and "' + b + '" are different houses (' + K(a) + ' / ' + K(b) + ')'); }
 same(['Bandhan', 'Bandhan Mutual Fund', 'IDFC', 'IDFC Mutual Fund', 'IDFC MF', 'idfc'], 'Bandhan');
+/* the extra spellings the lead approved on 22 Oct 2026: "L and T", "Larsen and Toubro", "Reliance Nippon",
+   "Reliance Nippon Life", "Birla SL"; "IIFL Wealth" stays out (below) */
 same(['HSBC', 'HSBC Mutual Fund', 'L&T', 'L&T Mutual Fund', 'L & T', 'L and T', 'L and T Mutual Fund', 'Larsen & Toubro MF',
-      'Larsen and Toubro Mutual Fund', 'L&T Investment Management'], 'HSBC');
-same(['Nippon India', 'Nippon India Mutual Fund', 'Reliance', 'Reliance Mutual Fund', 'Reliance MF', 'Reliance Nippon Life'], 'Nippon India');
+      'Larsen and Toubro', 'Larsen and Toubro Mutual Fund', 'L&T Investment Management'], 'HSBC');
+same(['Nippon India', 'Nippon India Mutual Fund', 'Reliance', 'Reliance Mutual Fund', 'Reliance MF', 'Reliance Nippon',
+      'Reliance Nippon Life', 'Reliance Nippon Life Mutual Fund'], 'Nippon India');
 same(['DSP', 'DSP Mutual Fund', 'DSP BlackRock', 'DSP Black Rock', 'DSP BlackRock Mutual Fund'], 'DSP');
-same(['Aditya Birla Sun Life', 'ABSL', 'Birla Sun Life', 'Birla Sun Life Mutual Fund', 'Birla SunLife'], 'Aditya Birla Sun Life');
+same(['Aditya Birla Sun Life', 'ABSL', 'Birla Sun Life', 'Birla Sun Life Mutual Fund', 'Birla SunLife', 'Birla SL', 'Birla SL MF'], 'Aditya Birla Sun Life');
 same(['360 ONE', '360 ONE Mutual Fund', 'IIFL', 'IIFL Mutual Fund', 'IIFL MF'], '360 ONE');
 differ('IDFC First Bank', 'Bandhan');
 differ('IDFC First Bank Ltd.', 'IDFC');
 differ('Reliance Industries', 'Nippon India');
 differ('IIFL Finance', '360 ONE');
+differ('IIFL Wealth', '360 ONE');
 differ('Bandhan', 'HSBC');
 
 /* ---------- 2 & 3. the AMC tab and the rows' names ---------- */

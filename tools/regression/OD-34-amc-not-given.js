@@ -13,7 +13,12 @@
    book (every house's % is still of the whole book), but they are never a house:
    not a row of the house table, not a breach, not the largest AMC, not tested
    or booked in the greedy fill, the final cap or the summary.
-   A label with no letter or digit ("", "  ", "-") gives no AMC.
+   A label with no letter or digit ("", "  ", "-") gives no AMC, and so does a
+   placeholder label (lead decision of 22 Oct 2026): "NA", "N/A", "N.A.", "Not
+   Available", "Unknown", "Others", "Other", "-", "--", whatever the case.
+   With such holdings, the Observations' AMC sentence and the AMC slide's insight
+   state their share and call the book well diversified only when that holds
+   whichever house they belong to (financial review of fix batch 2a).
 
    Known answers (written here, independent of the engine's AMC keys):
      1. A 10.00 Cr all-mutual-fund book: six 0.50 Cr funds with no AMC (3.00 Cr),
@@ -39,6 +44,25 @@
         chart has an "AMC not given" bar and the footer gives the count; the AMC
         tab's chart has a grey "AMC not given" bar and the note gives the count;
         the XLSX "AI Analyst" sheet shows the row's AMC and the caveat.
+     5. The AMC sentence and the AMC-slide insight, each book written here:
+        (i)   10.00 Cr: four funds with no AMC, 1.00 Cr each (40.00%), and four
+              named houses at 1.50 Cr (15.00%) each. Both texts give 40.00%; neither
+              says "well diversified", since the largest house plus the 40.00% with
+              no AMC could reach 55.00%, past the 20% cap. No en or em dash.
+        (ii)  every mutual fund without an AMC (1.00 + 2.00 + 1.00 Cr): the insight
+              does not say "well diversified", and the slide's chart is one grey
+              (#BFBFBF) "AMC not given" bar at 100%. The Observations give the
+              count (3) and 100.00%.
+        (iii) 2.00% with no AMC (one 0.20 Cr fund): beside seven houses at 14.00%
+              each, 14.00 + 2.00 = 16.00% stays within the cap, so both texts say
+              well diversified and give 2.00%; beside a largest house at 19.00%,
+              19.00 + 2.00 = 21.00% could pass it, so neither says it.
+     6. Placeholder labels: ENGINE.amcKey gives no house for each of them (in any
+        case); labels that only contain such a word ("Unknown Opportunities",
+        "Other Distributor") or real houses ("Navi", "NJ", "Union") keep a key.
+        A book with one 0.50 Cr mutual fund under each of the nine placeholders
+        and Alpha at 0.50 Cr: "AMC not given" 9 holdings, 90.00%; Alpha 10.00% is
+        the only house row; a PMS labelled "N/A" keeps its label, outside the book.
 
    UI-BLOCK NOTE: renderAMC lives in the UI script (11_app_ui), which Node cannot
    load. It is cut out of the SHIPPED index.html by anchor
@@ -117,6 +141,35 @@ console.log('--- 1b. a "-" label; a PMS with no label ---');
   const pms = m.holdings.filter(h => h.name === 'Synthetic Unlabelled Portfolio')[0];
   ok(!!pms && pms.amcDisplay === '' && Math.abs(m.amc.mfTotal - 4) < 1e-9, 'the PMS with no label is outside the book and keeps its blank label (got ' + J(pms && pms.amcDisplay) + ')');
   ok(E.amcKey('-') === '' && E.amcKey('  ') === '' && E.amcKey('') === '', 'ENGINE.amcKey gives no house for "", "  " or "-"');
+}
+
+console.log('--- 1c. placeholder labels mean "AMC not given" (lead decision, 22 Oct 2026) ---');
+{
+  const PH = ['NA', 'N/A', 'N.A.', 'Not Available', 'Unknown', 'Others', 'Other', '-', '--'];
+  const variants = PH.concat(['na', 'n/a', 'n.a.', 'N. A.', 'NOT AVAILABLE', 'not available', 'UNKNOWN', 'unknown', 'OTHERS', 'other', ' N/A ']);
+  const keyed = variants.map(l => [l, E.amcKey(l)]);
+  ok(keyed.every(([, k]) => k === ''), 'ENGINE.amcKey gives no house for each placeholder label, whatever the case (got ' +
+     J(keyed.filter(([, k]) => k !== '')) + ' with a key)');
+  const REAL = ['Navi', 'NJ Mutual Fund', 'Union', 'Unknown Opportunities', 'Other Distributor', 'Nippon India'];
+  const kept = REAL.map(l => [l, E.amcKey(l)]);
+  ok(kept.every(([, k]) => k !== ''), 'a label that only contains such a word, or a real house, keeps a key (got ' + J(kept) + ')');
+  const rowsP = PH.map((a, i) => row({ name: 'Synthetic Placeholder Fund ' + (i + 1), amc: a, cmvCr: 0.5 }));
+  rowsP.push(row({ name: 'Synthetic Alpha Fund', amc: 'Synthetic House Alpha', cmvCr: 0.5 }));
+  rowsP.push(row({ name: 'Synthetic NA Portfolio', amc: 'N/A', product: 'PMS', category: 'Multi Cap', cmvCr: 1.0 }));
+  const m = review(rowsP);
+  /* independent: nine 0.50 Cr placeholders and one 0.50 Cr Alpha fund; the PMS is outside the book */
+  const ngWant = PH.length * 0.5, bookWant = ngWant + 0.5;
+  const n = m.amc.notGiven, r = amcRows(m);
+  console.log('  AMC rows: ' + showRows(m) + '; not given: ' + J(n && { count: n.count, cmv: r2(n.cmv), pct: r2(n.pct) }));
+  ok(!!n && n.count === PH.length && Math.abs(n.cmv - ngWant) < 1e-9 && Math.abs(n.pct - ngWant / bookWant * 100) < 1e-9 &&
+     r.length === 1 && r[0].amc === 'Synthetic House Alpha' && Math.abs(r[0].pct - 0.5 / bookWant * 100) < 1e-9,
+     '"AMC not given" ' + PH.length + ' holdings, ' + (ngWant / bookWant * 100).toFixed(2) + '% of the ' + bookWant.toFixed(2) +
+     ' Cr book; Alpha ' + (0.5 / bookWant * 100).toFixed(2) + '% is the only house row');
+  const shown = m.holdings.filter(h => /^Synthetic Placeholder Fund/.test(h.name)).map(h => h.amcDisplay);
+  ok(shown.length === PH.length && shown.every(a => a === NG), 'each placeholder row is shown as "AMC not given" (got ' + J(Array.from(new Set(shown))) + ')');
+  const pms = m.holdings.filter(h => h.name === 'Synthetic NA Portfolio')[0];
+  ok(!!pms && pms.amcDisplay === 'N/A' && Math.abs(m.amc.mfTotal - bookWant) < 1e-9,
+     'a PMS labelled "N/A" keeps its label and is outside the book (got ' + J(pms && pms.amcDisplay) + ')');
 }
 
 /* ---------- 2. the AI Analyst on book 1 ---------- */
@@ -248,7 +301,95 @@ function screenChecks() {
      'AMC tab: the note gives the count, and no breach is listed for the funds with no AMC');
 }
 
-slideChecks().then(() => {
+/* ---------- 5. the AMC sentence and the AMC-slide insight ---------- */
+const XENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+const unxml = t => String(t).replace(/&(amp|lt|gt|quot|apos);/g, (x, e) => XENT[e]);
+/* the AMC slide alone: the insight's text (the run after "INSIGHT") and the bar chart */
+async function amcSlide(m) {
+  const buf = await E.buildPPTX(m, Ppt, 'amc').write({ outputType: 'nodebuffer', compression: false });
+  const s = Buffer.from(buf).toString('utf8');
+  const ins = s.match(/<a:t>INSIGHT\s*<\/a:t><\/a:r>[\s\S]*?<a:t>([^<]*)<\/a:t>/);
+  const a = s.indexOf('<c:barChart>'), b = s.indexOf('</c:barChart>', a);
+  const bc = a >= 0 && b > a ? s.slice(a, b) : '';
+  const lv = t => (t.match(/<c:pt idx="\d+"><c:v>[^<]*<\/c:v><\/c:pt>/g) || []).map(x => x.replace(/^.*<c:v>|<\/c:v>.*$/g, ''));
+  const cat = bc.match(/<c:cat>[\s\S]*?<\/c:cat>/), val = bc.match(/<c:val>[\s\S]*?<\/c:val>/);
+  /* a point's colour: its own <c:dPt> fill if any, else the series fill */
+  const serFill = (bc.match(/<c:ser>[\s\S]*?<c:spPr>\s*<a:solidFill><a:srgbClr val="([0-9A-Fa-f]{6})"/) || [])[1] || null;
+  const dpt = {}; (bc.match(/<c:dPt>[\s\S]*?<\/c:dPt>/g) || []).forEach(d => {
+    const i = (d.match(/<c:idx val="(\d+)"/) || [])[1], c = (d.match(/<a:srgbClr val="([0-9A-Fa-f]{6})"/) || [])[1];
+    if (i != null && c) dpt[i] = c; });
+  const cats = cat ? lv(cat[0]).map(unxml) : [], vals = val ? lv(val[0]).map(Number) : [];
+  return { insight: ins ? unxml(ins[1]) : null, cats, vals, colors: cats.map((c, i) => (dpt[i] || serFill || '').toUpperCase()) };
+}
+const obsAmc = m => ((m.observations && m.observations.currentPortfolio && m.observations.currentPortfolio.amcAllocation) || []).join(' ');
+const WELL = /well[- ]diversified/i, DASH = /[–—]/;
+const mixBook = (houses, blanks) => houses.map((c, i) => row({ name: 'Synthetic Mix Fund H' + (i + 1), amc: 'Synthetic House ' + String.fromCharCode(65 + i), cmvCr: c }))
+  .concat(blanks.map((c, i) => row({ name: 'Synthetic Mix Fund N' + (i + 1), amc: ['', '  ', '-', ''][i % 4], cmvCr: c })));
+/* independent: the share with no AMC, the largest house, and the largest house's share if it held all of them */
+function want(houses, blanks) {
+  const tot = houses.concat(blanks).reduce((a, c) => a + c, 0), ng = blanks.reduce((a, c) => a + c, 0), top = Math.max.apply(null, houses.concat([0]));
+  return { ngS: (ng / tot * 100).toFixed(2) + '%', topS: (top / tot * 100).toFixed(2) + '%', worst: (top + ng) / tot * 100, n: blanks.length };
+}
+async function sentenceChecks() {
+  console.log('--- 5. the AMC sentence (Observations) and the AMC-slide insight ---');
+  /* (i) 40% with no AMC, four named houses at 15% each */
+  {
+    const H = [1.5, 1.5, 1.5, 1.5], N = [1, 1, 1, 1], w = want(H, N);
+    const m = review(mixBook(H, N)), sl = await amcSlide(m), ob = obsAmc(m);
+    console.log('  (i) not given ' + w.ngS + ', largest ' + w.topS + ', largest plus not given ' + w.worst.toFixed(2) + '%');
+    console.log('      Observations: ' + J(ob));
+    console.log('      insight     : ' + J(sl.insight));
+    ok(w.ngS === '40.00%' && w.worst > 20 && ob.indexOf(w.ngS) >= 0 && !WELL.test(ob) && !DASH.test(ob) &&
+       !!sl.insight && sl.insight.indexOf(w.ngS) >= 0 && !WELL.test(sl.insight) && !DASH.test(sl.insight),
+       '(i) 40.00% with no AMC beside four houses at 15.00%: the Observations sentence and the AMC-slide insight give 40.00%, ' +
+       'neither says "well diversified" (15.00 + 40.00 = 55.00% could pass the cap), no en or em dash');
+  }
+  /* (ii) every mutual fund without an AMC */
+  {
+    const H = [], N = [1, 2, 1], w = want(H, N);
+    const m = review(mixBook(H, N)), sl = await amcSlide(m), ob = obsAmc(m);
+    console.log('  (ii) chart ' + J({ cats: sl.cats, vals: sl.vals, colors: sl.colors }));
+    console.log('      Observations: ' + J(ob));
+    console.log('      insight     : ' + J(sl.insight));
+    ok(!!sl.insight && !WELL.test(sl.insight) && !DASH.test(sl.insight) &&
+       J(sl.cats) === J([NG]) && J(sl.vals) === J([100]) && J(sl.colors) === J(['BFBFBF']),
+       '(ii) no AMC on any mutual fund: the insight does not say "well diversified", and the slide shows a single grey (#BFBFBF) "AMC not given" bar at 100%');
+    ok(w.ngS === '100.00%' && ob.indexOf(w.ngS) >= 0 && ob.indexOf(String(w.n)) >= 0 && !WELL.test(ob) && !DASH.test(ob),
+       '(ii) the Observations give the count (3) and 100.00% with no AMC, and do not say "well diversified"');
+  }
+  /* (iii) 2% with no AMC: "well diversified" depends on the largest house plus that share */
+  {
+    const H = [1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4], N = [0.2], w = want(H, N);
+    const m = review(mixBook(H, N)), sl = await amcSlide(m), ob = obsAmc(m);
+    console.log('  (iii) seven houses at ' + w.topS + ', not given ' + w.ngS + ', largest plus not given ' + w.worst.toFixed(2) + '%');
+    console.log('      Observations: ' + J(ob));
+    console.log('      insight     : ' + J(sl.insight));
+    ok(w.ngS === '2.00%' && w.worst <= 20 && ob.indexOf(w.ngS) >= 0 && WELL.test(ob) && !!sl.insight && sl.insight.indexOf(w.ngS) >= 0 && WELL.test(sl.insight) &&
+       !DASH.test(ob) && !DASH.test(sl.insight),
+       '(iii) 2.00% with no AMC beside houses at 14.00%: 14.00 + 2.00 = 16.00% stays within the cap, so both texts say well diversified and give 2.00%');
+  }
+  {
+    const H = [1.9, 1.9, 1.9, 1.9, 1.9, 0.3], N = [0.2], w = want(H, N);
+    const m = review(mixBook(H, N)), sl = await amcSlide(m), ob = obsAmc(m);
+    console.log('  (iii) largest house ' + w.topS + ', not given ' + w.ngS + ', largest plus not given ' + w.worst.toFixed(2) + '%');
+    console.log('      Observations: ' + J(ob));
+    console.log('      insight     : ' + J(sl.insight));
+    ok(w.ngS === '2.00%' && w.worst > 20 && (m.amc.breaches || []).length === 0 && ob.indexOf(w.ngS) >= 0 && !WELL.test(ob) &&
+       !!sl.insight && sl.insight.indexOf(w.ngS) >= 0 && !WELL.test(sl.insight),
+       '(iii) the same 2.00% beside a largest house at 19.00%: 19.00 + 2.00 = 21.00% could pass the cap, so neither text says well diversified');
+  }
+  /* a book with breaches: both texts still give the share with no AMC (book 1: 30.00%) */
+  {
+    const sl = await amcSlide(m1), ob = obsAmc(m1);
+    console.log('  breaches, book 1: Observations ' + J(ob));
+    console.log('      insight     : ' + J(sl.insight));
+    ok(ob.indexOf('30.00%') >= 0 && !!sl.insight && sl.insight.indexOf('30.00%') >= 0 && sl.insight.indexOf('Synthetic House Alpha (25.00%)') >= 0 &&
+       !DASH.test(ob) && !DASH.test(sl.insight),
+       'book 1 (Alpha and Beta breach): the Observations and the insight name the breaches and give the 30.00% with no AMC');
+  }
+}
+
+slideChecks().then(sentenceChecks).then(() => {
   screenChecks();
   console.log('\n' + (fail ? fail + ' FAILURE(S)' : 'all OD-34 checks passed'));
   process.exit(fail ? 1 : 0);

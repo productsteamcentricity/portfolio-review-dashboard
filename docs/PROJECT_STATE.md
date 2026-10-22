@@ -1,8 +1,10 @@
 # Project state
 
-**Last updated:** 19 Oct 2026.
+**Last updated:** 22 Oct 2026.
 - The full audit is done: 67 issues, see [`audits/`](audits/).
-- Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done.
+- Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done. Fix batch 2a
+  (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is built and in review on branch
+  `fix/legacy-batch-2a-r2` (`index.html` MD5 `911A04659CB34383E478416B54E9C306`), after its financial review.
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
   Phase 0 (audit, architecture, parity matrix, roadmap) is in progress; data and return conventions are in D-023.
 - The owner answered the 28 audit decisions: all accepted except OD-11 (keep the monitor uploads, fixed), D-021.
@@ -47,7 +49,8 @@
    - give the redesign direction;
    - ask the tax adviser about OD-28.
    OD-29 to OD-36 were accepted on 21 Oct 2026 (D-022); OD-32 (renamed fund houses) and OD-34 ("AMC not given")
-   are built in the next fix batch, with KI-124 (empty Home slide export).
+   are built in fix batch 2a, with KI-124 (empty Home slide export). The details settled while building them
+   (placeholder labels, extra spellings) are listed in CR-0007 for the owner to confirm.
 4. **Claude:** propose the redesign architecture: source files that build the same single offline page. Start it
    after approval.
 5. **When the second export arrives:**

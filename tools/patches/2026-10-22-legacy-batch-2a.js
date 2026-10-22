@@ -29,12 +29,24 @@
 
    OD-34 (owner decision, 21 Oct 2026; KI-112)  Mutual-fund rows with no AMC label.
      - Engine amcKey: a label with no letter or digit ("", "  ", "-") gives "" (no
-       house). KI-061 kept a lone "-" as its own house.
+       house). KI-061 kept a lone "-" as its own house. So does a placeholder label
+       (lead decision, 22 Oct 2026; AMC_PLACEHOLDER): "NA", "N/A", "N.A.", "Not
+       Available", "Unknown", "Others", "Other", "-", "--", compared on the whole
+       squashed label (case, spaces, punctuation and AMC_NOISE words ignored).
      - computeReview: such mutual-fund rows are named AMC_NOT_GIVEN ("AMC not
        given"); they stay in the mutual-fund book total (every house's % is still of
        the whole book) but are not a row of the house table, never a breach and never
-       amc.max. model.amc.notGiven = { amc, count, cmv, pct, note } (null when none);
-       note is the footnote with the count and the share of the book.
+       amc.max. model.amc.notGiven = { amc, count, cmv, pct, named, capSafe, note }
+       (null when none); named is the share of the book the named houses cover;
+       capSafe is true when the largest house would stay within the 20% cap even if
+       it held every holding with no AMC; note is the footnote with the count and the
+       share of the book.
+     - Observations (engine) and the AMC slide insight (exporters INS.amc), after the
+       financial review: with holdings that have no AMC, both give their share, and
+       call the book well diversified only when capSafe. Otherwise they say that
+       diversification cannot be confirmed; with no AMC on any mutual fund, that
+       concentration by fund house cannot be assessed. Plain sentences: the insight's
+       dashes become full stops for every book, and one breach reads "breaches".
      - aiaCompute: a house-table row with an empty key is skipped (no AMC given is
        never a house in amcPctOf / amcAfter / the final-cap map / the summary), so a
        top-up of such a fund is neither tested against nor booked to any house, its
@@ -50,6 +62,27 @@
    ========================================================================== */
 'use strict';
 const { applyPatch } = require('../patch-lib.js');
+
+/* the engine's Observations, "1c. AMC Allocation", as it stands before this patch (reused verbatim below) */
+const OBS_1C = [
+  '    // ============ 1c. CURRENT PORTFOLIO — AMC Allocation ============',
+  '    if (amcBreaches.length){',
+  '      CP.amcAllocation.push(amcBreaches.map(function(b){return b.amc+" ("+pct2(b.pct)+")";}).join(" and ")+" breach"+(amcBreaches.length>1?"":"es")+" Centricity\'s 20% per-AMC cap of the mutual-fund book.");',
+  '      var _destCP=amcRows.filter(function(r){return !r.breach && r.pct>0 && r.amc && String(r.amc).trim();}).slice(0,3).map(function(r){return r.amc;});',
+  '      if (_destCP.length){',
+  '        CP.amcAllocation.push("Trimming "+amcBreaches.map(function(b){return b.amc;}).join(" and ")+" back toward the 20% cap and redeploying into other quality houses already held ("+_destCP.join(", ")+") would reduce house-level concentration without disturbing the asset mix.");',
+  '      }',
+  '    } else if (amcRows.length){',
+  '      CP.amcAllocation.push("No single fund house exceeds Centricity\'s 20% per-AMC cap (largest is "+amcRows[0].amc+" at "+pct2(amcRows[0].pct)+"), indicating well-diversified AMC exposure across the mutual-fund book.");',
+  '    }',
+  ''
+];
+/* the breach sentence, followed by the share with no AMC when there is one */
+const OBS_BREACH = OBS_1C[2].replace('cap of the mutual-fund book.");',
+  'cap of the mutual-fund book."+(_ngCP?" "+_ngSay:""));   /* OD-34: the share with no AMC */');
+if (OBS_BREACH === OBS_1C[2]) throw new Error('the breach sentence of OBS_1C was not found');
+/* the exporters' AMC slide insight before this patch */
+const INS_AMC = '      o.amc=model.amc.breaches.length?(model.amc.breaches.map(function(b){return b.amc+" ("+b.pct.toFixed(2)+"%)";}).join(", ")+" breach the 20% per-AMC cap — trimming toward the cap reduces house-level concentration."):("AMC exposure is well diversified — the largest fund house is "+(model.amc.max?model.amc.max.amc+" at "+model.amc.max.pct.toFixed(2)+"%":"—")+", within the 20% per-AMC cap.");\n';
 
 applyPatch('Legacy fix batch 2a (KI-124, OD-32, OD-34)', [
   /* ---------------- engine (07): the house key ---------------- */
@@ -70,6 +103,12 @@ applyPatch('Legacy fix batch 2a (KI-124, OD-32, OD-34)', [
       '    birlasunlife:"aditya", birlasl:"aditya", iifl:"360" };',
       '  /* OD-34: the name shown for mutual-fund rows that carry no AMC label */',
       '  var AMC_NOT_GIVEN = "AMC not given";',
+      '  /* OD-34 (lead decision, 22 Oct 2026): placeholder labels that also mean no AMC was given:',
+      '     "NA", "N/A", "N.A.", "Not Available", "Unknown", "Others", "Other" ("-" and "--" have no',
+      '     letter or digit at all). Compared on the whole squashed label, as AMC_ALIAS is (case,',
+      '     spaces, punctuation and the AMC_NOISE words ignored), so "n/a" and "N. A." are alike; a',
+      '     label with any other word ("Unknown Opportunities", "Other Distributor") is not one. */',
+      '  var AMC_PLACEHOLDER = { na:1, notavailable:1, unknown:1, others:1, other:1 };',
       ''
     ].join('\n')
   },
@@ -91,7 +130,8 @@ applyPatch('Legacy fix batch 2a (KI-124, OD-32, OD-34)', [
       '  function amcFormer(tok){ return Object.prototype.hasOwnProperty.call(AMC_RENAMED, amcSquash(tok)); }',
       '  function amcKey(tok){',
       '    var s = amcSquash(tok);',
-      '    if (!s) return "";        /* OD-34: no letter or digit ("", "  ", "-"): no AMC given, no house */',
+      '    /* OD-34: no letter or digit ("", "  ", "-"), or a placeholder ("N/A", "Unknown"): no AMC given, no house */',
+      '    if (!s || AMC_PLACEHOLDER.hasOwnProperty(s)) return "";',
       ''
     ].join('\n')
   },
@@ -172,8 +212,13 @@ applyPatch('Legacy fix batch 2a (KI-124, OD-32, OD-34)', [
       '    var amcBreaches=amcRows.filter(function(r){return r.breach;});',
       '    var amcNotGiven = null;                                          /* OD-34 */',
       '    if (ngN){',
-      '      var ngPct = mfTotal ? ngCmv/mfTotal*100 : 0, ngMany = ngN > 1;',
-      '      amcNotGiven = { amc:AMC_NOT_GIVEN, count:ngN, cmv:ngCmv, pct:ngPct,',
+      '      var ngPct = mfTotal ? ngCmv/mfTotal*100 : 0, ngMany = ngN > 1, ngNamed = 0;',
+      '      amcRows.forEach(function(r){ ngNamed += r.pct; });',
+      '      /* named: the share of the book the named houses cover. capSafe: the largest house would',
+      '         stay within the 20% cap even if it held every holding with no AMC (a breach is above',
+      '         20.0%, on the same CMV arithmetic); only then is the book called well diversified */',
+      '      amcNotGiven = { amc:AMC_NOT_GIVEN, count:ngN, cmv:ngCmv, pct:ngPct, named:ngNamed,',
+      '        capSafe: mfTotal ? (((amcRows.length ? amcRows[0].cmv : 0) + ngCmv)/mfTotal*100 <= 20.0) : false,',
       '        note: AMC_NOT_GIVEN+": "+ngN+" mutual-fund holding"+(ngMany?"s":"")+" ("+(Math.round(ngPct*100)/100).toFixed(2)+',
       '          "% of the mutual-fund book) "+(ngMany?"have":"has")+" no AMC in the base file. "+(ngMany?"They are":"It is")+',
       '          " shown separately, outside every fund house\'s 20% cap, and counted in no house\'s share." };',
@@ -185,6 +230,34 @@ applyPatch('Legacy fix batch 2a (KI-124, OD-32, OD-34)', [
     label: 'OD-34 model.amc carries notGiven',
     from: 'amc:{rows:amcRows, mfTotal:mfTotal, breaches:amcBreaches, max:amcRows[0]||null},',
     to: 'amc:{rows:amcRows, mfTotal:mfTotal, breaches:amcBreaches, max:amcRows[0]||null, notGiven:amcNotGiven},   /* OD-34 */'
+  },
+  {
+    label: 'OD-34 Observations: the AMC sentence gives the share with no AMC; "well diversified" only when capSafe',
+    from: OBS_1C.join('\n'),
+    to: [
+      OBS_1C[0],
+      '    /* OD-34 (financial review of fix batch 2a): with mutual-fund holdings that carry no AMC, the',
+      '       sentences give their share, and call the book well diversified only when amcNotGiven.capSafe',
+      '       (the largest house would stay within the cap even if it held all of them). */',
+      '    var _ngCP = (amcNotGiven && amcNotGiven.count) ? amcNotGiven : null, _ngMany = !!_ngCP && _ngCP.count > 1;',
+      '    var _ngSay = _ngCP ? (AMC_NOT_GIVEN+": "+_ngCP.count+" mutual-fund holding"+(_ngMany?"s":"")+" ("+pct2(_ngCP.pct)+" of the mutual-fund book) "+' +
+        '(_ngMany?"have":"has")+" no AMC in the base file and "+(_ngMany?"are":"is")+" counted in no fund house\'s share.") : "";',
+      OBS_1C[1],
+      OBS_BREACH,
+      OBS_1C[3], OBS_1C[4], OBS_1C[5], OBS_1C[6],
+      '    } else if (amcRows.length && !_ngCP){',
+      OBS_1C[8],
+      '    } else if (amcRows.length){',
+      '      CP.amcAllocation.push("No named fund house exceeds Centricity\'s 20% per-AMC cap (largest is "+amcRows[0].amc+" at "+pct2(amcRows[0].pct)+"). The named houses cover "+' +
+        'pct2(_ngCP.named)+" of the mutual-fund book and "+pct2(_ngCP.pct)+" ("+_ngCP.count+" holding"+(_ngMany?"s":"")+") has no AMC in the base file. "+',
+      '        (_ngCP.capSafe ? "Even if all of it belonged to the largest house, that house would stay within the cap, so AMC exposure across the mutual-fund book is well diversified."',
+      '                       : "AMC diversification cannot be confirmed until those holdings carry an AMC in the base file."));',
+      '    } else if (_ngCP){',
+      '      CP.amcAllocation.push((_ngMany ? "None of the "+_ngCP.count+" mutual-fund holdings has an AMC" : "The only mutual-fund holding has no AMC")+" in the base file ("+AMC_NOT_GIVEN+", "+' +
+        'pct2(_ngCP.pct)+" of the mutual-fund book), so concentration by fund house cannot be assessed against Centricity\'s 20% per-AMC cap.");',
+      '    }',
+      ''
+    ].join('\n')
   },
 
   /* ---------------- engine (07): the AI Analyst ---------------- */
@@ -212,6 +285,29 @@ applyPatch('Legacy fix batch 2a (KI-124, OD-32, OD-34)', [
   },
 
   /* ---------------- exporters (08) ---------------- */
+  {
+    label: 'OD-34 AMC slide insight: the share with no AMC; "well diversified" only when capSafe; plain sentences',
+    from: INS_AMC,
+    to: [
+      '      /* OD-34 (financial review of fix batch 2a): with mutual funds that carry no AMC, the insight gives',
+      '         their share and says "well diversified" only when model.amc.notGiven.capSafe (the largest house',
+      '         would stay within the cap even if it held all of them). Plain sentences, no dashes. */',
+      '      o.amc=(function(){',
+      '        var a=model.amc, mx=a.max, ng=(a.notGiven&&a.notGiven.count)?a.notGiven:null, many=!!ng&&ng.count>1;',
+      '        var ngN=ng?(ng.count+" holding"+(many?"s":"")):"", p2=function(x){ return (Math.round(x*100)/100).toFixed(2); };   /* as the bar and the note round */',
+      '        if(a.breaches.length) return a.breaches.map(function(b){return b.amc+" ("+b.pct.toFixed(2)+"%)";}).join(", ")+" breach"+(a.breaches.length>1?"":"es")+' +
+        '" the 20% per-AMC cap. Trimming toward the cap reduces house-level concentration."+(ng?(" AMC not given: "+p2(ng.pct)+"% of the mutual-fund book ("+ngN+") has no AMC in the base file."):"");',
+      '        if(!ng) return "AMC exposure is well diversified. The largest fund house is "+(mx?mx.amc+" at "+mx.pct.toFixed(2)+"%":"—")+", within the 20% per-AMC cap.";',
+      '        if(!a.rows.length) return (many?"None of the "+ng.count+" mutual-fund holdings has an AMC":"The only mutual-fund holding has no AMC")+" in the base file (AMC not given, "+' +
+        'p2(ng.pct)+"% of the mutual-fund book), so concentration by fund house cannot be assessed.";',
+      '        if(ng.capSafe) return "AMC exposure is well diversified. The largest fund house is "+mx.amc+" at "+mx.pct.toFixed(2)+"%, within the 20% per-AMC cap even if it held all "+' +
+        'p2(ng.pct)+"% of the mutual-fund book that has no AMC in the base file ("+ngN+").";',
+      '        return "The largest named fund house is "+mx.amc+" at "+mx.pct.toFixed(2)+"%, within the 20% per-AMC cap, and the named houses cover "+p2(ng.named)+' +
+        '"% of the mutual-fund book. AMC not given: "+p2(ng.pct)+"% ("+ngN+") has no AMC in the base file, so diversification across fund houses cannot be confirmed.";',
+      '      })();',
+      ''
+    ].join('\n')
+  },
   {
     label: 'OD-34 AMC slide: a grey "AMC not given" bar at the foot of the chart',
     from: 'var labels=rows.map(function(r){return r.amc;}), vals=rows.map(function(r){return Math.round(r.pct*100)/100;}), cols=rows.map(function(r){return r.breach?C.red:C.gold;});',
