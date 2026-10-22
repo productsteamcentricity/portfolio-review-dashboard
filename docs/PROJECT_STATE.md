@@ -2,8 +2,10 @@
 
 **Last updated:** 22 Oct 2026.
 - The full audit is done: 67 issues, see [`audits/`](audits/).
-- Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done. Legacy batch 2a
-  (OD-32, OD-34, KI-124; D-022) is being built.
+- Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done. Fix batch 2a
+  (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is merged (PR #9; `index.html` MD5
+  `911A04659CB34383E478416B54E9C306`); its browser acceptance passed on 22 Oct 2026, and the QA found KI-127 and
+  KI-128 (both also on main before the batch).
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
   - **Phase 0 is done.** The record is in [`new-build/`](new-build/README.md) (audit, capability inventory,
     architecture, reuse plan, parity matrix, data sources, roadmap, test plan, repository structure, rule bank, deck
@@ -63,7 +65,7 @@
    - ask the tax adviser about OD-28.
    ND-1 to ND-10 were answered on 22 Oct 2026 (D-024 to D-033).
    OD-29 to OD-36 were accepted on 21 Oct 2026 (D-022); OD-32 (renamed fund houses) and OD-34 ("AMC not given")
-   are built in legacy batch 2a, with KI-124 (empty Home slide export).
+   are built in fix batch 2a (PR #9, merged), with KI-124 (empty Home slide export).
 4. **Claude: finish M1.1** ([roadmap](new-build/07-implementation-roadmap.md), M1.1):
    - push the safety tooling and the Phase 0 records and open their pull requests;
    - create and push the tag `legacy-baseline-782794f`;
@@ -71,7 +73,7 @@
    - the folder skeleton with READMEs (`app/`, `data/`, `product_bank/`, `monthly_updates/`);
    - the new `docs/ARCHITECTURE.md` from `new-build/03-architecture.md`, with the legacy one moved to `docs/legacy/`;
    - `CHANGELOG.md` moved to `docs/CHANGELOG.md`; the README's "two apps" section;
-   - KNOWN_ISSUES N-1 to N-10 from KI-125; the full new-app section of `CLAUDE.md` (including D-024 to D-033: the
+   - KNOWN_ISSUES N-1 to N-10 from KI-129; the full new-app section of `CLAUDE.md` (including D-024 to D-033: the
      "no npm install" rule is the legacy file's, D-025; the dash rule, D-029; the Screener pack store, D-026).
    Then M1.2 (toolchain and `/next/` preview, now decided) and M1.3 (shared model, base-file ingest); neither needs
    owner input.

@@ -11,7 +11,8 @@ That audit re-tested most of the earlier entries:
 - KI-008, KI-024 and KI-035 are wider than first recorded.
 
 Fixed so far: KI-001, KI-010; in fix batch 1a KI-006, KI-047, KI-055 and KI-065; in fix batch 1b KI-007,
-KI-048, KI-061, KI-062 (bookkeeping), KI-063, KI-067, KI-068, KI-100, KI-114 and KI-120. Fixes follow the order in the audit register. The owner's decisions are in
+KI-048, KI-061, KI-062 (bookkeeping), KI-063, KI-067, KI-068, KI-100, KI-114 and KI-120; in fix batch 2a KI-112
+(with OD-32 and OD-34), KI-124 and the Home part of KI-015. Fixes follow the order in the audit register. The owner's decisions are in
 [`audits/2026-10-19-decisions.md`](audits/2026-10-19-decisions.md): all recommendations accepted on 19 Oct 2026
 except OD-11 (D-021).
 
@@ -169,7 +170,7 @@ resolves to Sample Client A on two shared tokens, and takes A's Grand Total and 
 | KI-010 | **Fixed** 15 Oct 2026 (CR-0003) | `tools/test-ai-analyst.js` (repo copy, 8,163 bytes) failed 1 of 17: TEST 1 picked a fund *listed* in `FUND_RANKS` with status "1-3yr Warning", which the engine deliberately rates amber; funds with *no* entry correctly get "na". Replaced with the previous owner's current 8,402-byte version from their export (it defines "unscored" as no `FUND_RANKS` entry): 17/17 pass, and CI now runs it as a blocking check. |
 | KI-011 | Reproduced | The handover's census one-liner uses `node -e`; under `-e`, `require/module/exports` are globals and the embedded UMD bundles break. Run engine code from a script file. |
 | KI-014 | Reproduced | Deck order differs from tab order: AI Analyst and Taxation follow the Annexure divider (`08_exporters.js:1179-1409`), although `11_app_ui.js:266-268` says screen and deck never disagree. May be intended — owner to confirm. |
-| KI-015 | Reported (code review) | Home tab "Download slide" gives an empty deck; Rebalancing too when no plan exists (`11_app_ui.js:334-338, 361`). |
+| KI-015 | Home part **fixed** (fix batch 2a, with KI-124) | Home tab "Download slide" gave an empty deck; Rebalancing too when no plan exists (`11_app_ui.js:334-338, 361`). Home now has no download bar, and a single-tab download whose deck would hold no slide is refused with a status message, whatever the tab. The Rebalancing case with no plan is not re-tested in the browser. |
 | KI-016 | Reported (code review) | Cost note says "AIF default = 200 bps"; the code uses 250 bps (`11_app_ui.js:5256` vs `5170`, `08_exporters.js:449`). The same note says ERs come from the MF Monitor, but the embedded ER table is consulted first. |
 | KI-017 | Reported (code review) | "Rebalancing Impact" has no checkbox of its own in the slide picker (`11_app_ui.js:456`). |
 | KI-018 | Reproduced | IPS table has 28 rows vs 27 per slide, so "IPS Profile Compliance (2/2)" carries a single row. |
@@ -248,7 +249,7 @@ Status: **Reproduced** unless marked fixed.
 | KI-058 | NEW-12 | P0 | parsing | Uploaded monitor ERs stored 100x too large | no |
 | KI-059 | NEW-13 | P0 | data | Missing base ER filled with an unsourced estimate | yes |
 | KI-060 | NEW-14 | P0 | data | ER override above 300 bps cut 100x on next load | no |
-| KI-061 | NEW-15 | P0 | calculation | **FIXED** (fix batch 1b) — AI Analyst AMC cap bypassed by label mismatch. One canonical house key (`ENGINE.amcKey`); house figures move only with mutual-fund-book positions | OD-32, OD-33 |
+| KI-061 | NEW-15 | P0 | calculation | **FIXED** (fix batch 1b) — AI Analyst AMC cap bypassed by label mismatch. One canonical house key (`ENGINE.amcKey`); house figures move only with mutual-fund-book positions. Fix batch 2a adds the former house names (OD-32: "IDFC" is Bandhan, "L&T" is HSBC, and so on) and "AMC not given" for a blank or placeholder label (OD-34, KI-112) | OD-32 (built, 2a), OD-33 |
 | KI-062 | NEW-16 | P0 | calculation | **FIXED (bookkeeping)** (fix batch 1b) — AI Analyst degraded Exit keeps stale unfunded / AMC-after. The behaviour (fall back to Retain with a note) is accepted as OD-14 and follows in a later batch | yes (OD-14) |
 | KI-063 | NEW-17 | P0 | calculation | **FIXED** (fix batch 1b) — "Apply plan" writes part of the release. Every member row is written; per-row rationale; exact "Applied" badge | OD-31 |
 | KI-064 | NEW-18 | P0 | calculation | Taxation rupee ledger misallocates LT/ST | yes |
@@ -314,7 +315,7 @@ and after the batch, except where the fixes intend.
 | KI-109 | P2 | output-pptx | Taxation holding-detail slide: with many unreconciled holdings (24 in a synthetic worst case) the footer's third line touches the black band. |
 | KI-110 | P2 | output-pptx | Holdings slides assume names wrap to at most two lines. Without notes a page takes 13 rows; 13 two-line names end about 6.99 in, just past the one-line footer's top (still above the band). Names of about 85+ characters wrap to three lines: QA (19 Oct 2026) saw the notes box print over the Grand Total row (with an IRR file), and with only the ‡ note the Grand Total row run into the black band. Main overflows worse on the same book (Grand Total off the slide), so it is not a regression of fix batch 1b. Fix: measure row heights from the wrapped name length. |
 | KI-111 | P2 | calculation | The Fund IRR tree joins clients by exact name; the client sheets normalise case and punctuation. A client spelled differently in the two IRR sheets gets a blank tree benchmark but a client-sheet one. |
-| KI-112 | P2 | calculation | Mutual-fund rows with a blank AMC label form one unnamed house: it can head the AI Analyst's "largest AMC after" with no name, and its cap is only half enforced. **Owner decision OD-34 (accepted 21 Oct 2026):** show them as "AMC not given", with a count and footnote, outside every house's cap; to build. |
+| KI-112 | P2 | calculation | **FIXED** (fix batch 2a, OD-34). Mutual-fund rows with a blank AMC label formed one unnamed house: it could head the AI Analyst's "largest AMC after" with no name, and its cap was only half enforced. Now a label with no letter or digit, or a placeholder ("NA", "N/A", "N.A.", "Not Available", "Unknown", "Others", "Other", "-", "--"), is "AMC not given": a grey bar and a footnote with the count on the AMC tab, slide and workbook, outside every house's cap, still in the mutual-fund book total. The Observations and the AMC slide insight give its share and call the book well diversified only when the largest house would stay within the cap even holding all of it. Test: `tools/regression/OD-34-amc-not-given.js`. |
 | KI-113 | P2 | calculation | Merged duplicate folios add up only the G/L values present, so a merged row's G/L can be partial (OD-18 work). |
 | KI-114 | P1 | ui-state | **Fixed in fix batch 1b.** Every CVS input redrew the whole table on each keystroke, so the focus was lost after the first character ("12" typed at a normal pace became 1.00; confirmed in the browser). Typing now updates the figures only; the table redraws when the entry is committed (Enter, leaving the cell, spinner). Test: `tools/regression/KI-114-cvs-typing.js`. |
 | KI-115 | P2 | output-pptx | CVS slide: the disclaimer (y 7.1 in) is partly covered by the black footer bar (7.23 in); difference cells print "-0 Cr" for differences under 0.5 Cr; the headers say "Curr./Prop. IRR%" while the screen says "Exp. Return %", which a client could read as realised IRR. |
@@ -331,4 +332,22 @@ and after the batch, except where the fixes intend.
 
 | KI | P | Kind | Issue |
 |---|---|---|---|
-| KI-124 | P1 | output-pptx | The Home tab's "Download slide" button produces an empty deck (0 slides). `ensureDlBtns` (`11_app_ui.js:365-369`) adds a download bar to all 20 tabs, including Home, which has no slide; `tabHasContent` returns true for it, so `buildPPTX(..., "home")` writes a deck with no slides. Fix: no download bar on Home (and on any tab with nothing to export), or a clear status message. Seen in a downloaded "…_Home_….pptx" (39 KB, no slides). |
+| KI-124 | P1 | output-pptx | **FIXED** (fix batch 2a). The Home tab's "Download slide" button produced an empty deck (0 slides). `ensureDlBtns` (`11_app_ui.js:365-369`) added a download bar to all 20 tabs, including Home, which has no slide; `tabHasContent` returned true for it, so `buildPPTX(..., "home")` wrote a deck with no slides. Seen in a downloaded "…_Home_….pptx" (39 KB, no slides). Now Home has no download bar, and `slidePPTX` refuses any single-tab deck with no slide (a status message, no download). Test: `tools/regression/KI-124-empty-slide-export.js`. |
+
+### Found while fixing (batch 2a review, 22 Oct 2026)
+
+Both pre-date fix batch 2a.
+
+| KI | P | Kind | Issue |
+|---|---|---|---|
+| KI-125 | P3 | ui text / exports | On a book with no mutual funds at all, the AMC slide's insight still reads "AMC exposure is well diversified. The largest fund house is —, within the 20% per-AMC cap." (`08_exporters.js` INS.amc; the same claim, with dashes, before batch 2a). Building that slide also makes PptxGenJS log `"" is not a valid scheme color or hex RGB! "000000" used instead.` (seen in the browser QA of fix batch 2a; reproduced headlessly on main `EF2FF4F1…` and on `911A0465…`). Say that there is no mutual-fund book to measure, or leave the AMC slide out of such a deck. |
+| KI-126 | P3 | ui text / exports | Generated prose still uses dashes as sentence punctuation in many places, for example the Observations product sentence ("selective PMS and AIF strategies — from Centricity's focused list — would …"), the overlap and performance slide insights, and several SWOT bullets. The owner's rule (22 Oct 2026): no dash inside a sentence; a dash only stands for a missing value. Batch 2a applied it to the AMC sentences and the AMC slide insight only. |
+
+### Found by the browser QA of fix batch 2a (22 Oct 2026)
+
+Both pre-date fix batch 2a: the same code is on main (`EF2FF4F1…`).
+
+| KI | P | Kind | Issue |
+|---|---|---|---|
+| KI-127 | P3 | ui text | The AMC tab's breach note says "exceed" whatever the number of houses: "Breach: Bandhan (25.00%) exceed the 20% per-AMC cap." (`11_app_ui.js:577`, `renderAMC`). For one house it should read "exceeds". The AMC slide insight and the Observations sentence already say "breaches" for a single house (batch 2a). |
+| KI-128 | P3 | output-pptx | The single-slide downloads from the rebalancing group's own buttons put the internal key in the file name: "Portfolio Review_<family>_rebalhold_<date>.pptx", "…_postan_…", "…_rbimpact_…". `tabLabel` (`11_app_ui.js:386`) looks only in `TABS` and falls back to the key; these groups' names ("Rebalancing Holding Sheet", "Post-Rebalancing Analytics", "Rebalancing Impact") are in `EXTRA_SLIDES` (`11_app_ui.js:316-322`). The same key would show in `slidePPTX`'s status messages for those groups. The slides themselves download correctly. |

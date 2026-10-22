@@ -167,7 +167,7 @@ buttons, upload UI paths, overlap interactions, cost overrides, IPS, MF Analysis
 N-1 derivatives, D-rated and other non-credit labels grouped as "AA & Below"; N-2 harvesting ignores the long-term
 exemption; N-3 unconditional SWOT bullet; N-4 bare "sip" in the direct-equity pattern; N-5 hard-coded CVS fallback;
 N-6 single-tab downloads include their divider; N-7 dashes in client text; N-8 dead code; N-9 parsers shared with the
-refresh; N-10 renamed fund houses not aliased (OD-32) [IE §10]. They are to be filed from KI-125 onward. Also:
+refresh; N-10 renamed fund houses not aliased (OD-32) [IE §10]. They are to be filed from KI-129 onward (KI-125 to KI-128 went to fix batch 2a). Also:
 KI-124 confirmed [IU U-45] and filed on `main` (PR #7); the Holdings
 download button disappears after a column chip toggle (code reading, not browser-verified) [IU U-23]; arbitrage and
 balanced-advantage equity sleeves counted gross in effective equity (G-6) [OP §7.2].

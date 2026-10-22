@@ -170,7 +170,7 @@ KI-076 (OD-11), KI-031, KI-032, KI-033, KI-034, KI-036, KI-037 (OD-17), KI-039, 
 (OD-12), KI-066 (OD-13), KI-069 (OD-15), KI-070 (OD-16), KI-071 (OD-18), KI-072, KI-073, KI-074, KI-075, KI-077,
 KI-078, KI-079, KI-080 (OD-19), KI-082, KI-083, KI-084, KI-085 (OD-20), KI-087, KI-088, KI-089, KI-090, KI-091, KI-092
 (OD-21), KI-093 (OD-22), KI-094, KI-095, KI-099, KI-101, KI-102, KI-103, KI-104, KI-109, KI-110, KI-111, KI-112
-(OD-34), KI-113, KI-121, KI-122, KI-123, KI-124 (on `main` since PR #7), and N-1 to N-10 once filed as KI-125
+(OD-34), KI-113, KI-121, KI-122, KI-123, KI-124 (on `main` since PR #7), and N-1 to N-10 once filed as KI-129
 onward. The register's IDs are authoritative; each test names the KI and its milestone.
 
 ### 5.3.1 Legacy sub-features with their own tests

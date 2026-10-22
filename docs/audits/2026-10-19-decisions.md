@@ -68,11 +68,19 @@ the dashboard as it now is.
 
 **Owner's answer (21 Oct 2026): "accept all OD-29 to OD-36"** (D-022). Implementation status:
 - **Already built** (fix batch 1b, PR #6): OD-29, OD-30, OD-31, OD-33, OD-36.
-- **To build** in the next fix batch:
-  - OD-32: add the renamed houses to the alias list (IDFC → Bandhan, L&T → HSBC, Reliance → Nippon India,
-    DSP BlackRock → DSP, Birla Sun Life → ABSL, IIFL → 360 ONE);
+- **Built in fix batch 2a** (22 Oct 2026, [CR-0007](../change-requests/CR-0007-legacy-batch-2a.md)):
+  - OD-32: the renamed houses count as the current house (IDFC → Bandhan, L&T → HSBC, Reliance → Nippon India,
+    DSP BlackRock → DSP, Birla Sun Life → ABSL, IIFL → 360 ONE), also under the spellings "L and T", "Larsen and
+    Toubro", "Reliance Nippon", "Reliance Nippon Life" and "Birla SL". "IIFL Wealth" is not an alias. A mutual-fund
+    row under a former name shows the current house's name; the XLSX "Base File" sheet keeps the uploaded label
+    (OD-22 comes later);
   - OD-34: mutual-fund rows with a blank AMC show as "AMC not given", with a count and footnote, outside every
-    house's cap (KI-112).
+    house's cap (KI-112). The placeholder labels "NA", "N/A", "N.A.", "Not Available", "Unknown", "Others",
+    "Other", "-" and "--" count as blank. These rows stay in the mutual-fund book total, so every house's share is
+    still of the whole book.
+
+  These details were settled by the lead implementer within the owner's decisions; they are listed in CR-0007 for
+  the owner to confirm or change.
 - **With OD-19:** OD-35, the file's unit in all rationale text (KI-104).
 
 | # | Question | Recommendation (as built) | Issues |
@@ -80,8 +88,8 @@ the dashboard as it now is.
 | OD-29 | Current vs Sample: some hybrid holdings have no equity/debt split in the data. These are funds of funds (about 50 schemes) and hybrids with no look-through record. They now show as an "Unallocated †" row. What expected return should that share carry? | **None until the analyst types one.** The row's return cells start blank. While a column's cell is blank, its total return, inflation-adjusted return and 3/5/10-year values show "—". The alternatives both invent a figure (rule 3): counting the share at 0% understates the portfolio, and rescaling over the rest assumes it earns the average. On the client slide the footnote reads as a statement, not an instruction to the analyst. The analyst is warned before exporting a deck with "—" totals. Expected returns cannot be negative (as in every CVS cell). | KI-067 |
 | OD-30 | Current vs Sample, hybrid details: (a) arbitrage, equity savings and balanced advantage funds have gross equity of 60–90%, much of it hedged; (b) a multi-asset fund's non-equity part (gold, silver, REITs) currently counts as Debt MF; (c) a Hybrid-tagged SIF has no look-through. | **(a) Gross equity**, as the look-through and the hybrid tax rule (OD-17) use; net equity is not in the vendor data. **(b) Debt MF** until the data carries a commodity share. **(c) Unallocated.** | KI-067 |
 | OD-31 | "Apply plan to Portfolio Rebalancing" for a scheme held in both Regular and Direct, or by several clients | **Pro rata:** every plan and client is cut by the same %. A Regular-first or least-tax-first order can follow once tax lots are reliable (OD-15). A row the RM narrowed to one client is reset to all clients after a prompt. The "Applied" badge turns red after any later edit on the Rebalancing tab. | KI-063 |
-| OD-32 | Fund-house names that count as one house (OD-5 says you approve additions) | **Approve the list as built:** PPFAS = Parag Parikh; ABSL = Aditya Birla (Sun Life); ICICI Pru; Kotak Mahindra; Nippon Life; "<house> India". Words such as "Mutual Fund", "MF", "AMC", "Asset Management", "Ltd" are ignored. **Also add the renamed houses:** IDFC → Bandhan, L&T → HSBC, Reliance → Nippon India, DSP BlackRock → DSP, Birla Sun Life → ABSL, IIFL → 360 ONE. | KI-061 |
+| OD-32 | Fund-house names that count as one house (OD-5 says you approve additions) | **Approve the list as built:** PPFAS = Parag Parikh; ABSL = Aditya Birla (Sun Life); ICICI Pru; Kotak Mahindra; Nippon Life; "<house> India". Words such as "Mutual Fund", "MF", "AMC", "Asset Management", "Ltd" are ignored. **Also add the renamed houses:** IDFC → Bandhan, L&T → HSBC, Reliance → Nippon India, DSP BlackRock → DSP, Birla Sun Life → ABSL, IIFL → 360 ONE. Built in fix batch 2a. | KI-061 |
 | OD-33 | A PMS, AIF, SIF or listed stock of a group that also runs mutual funds (e.g. a stock "HDFC Asset Management Company Ltd", an "ICICI Prudential" PMS) | **Outside the fund house's 20% cap**, consistent with OD-1 (the cap is on the mutual-fund book). Selling it no longer frees room for that house's funds, and topping it up uses none. | KI-061, KI-004 |
-| OD-34 | Mutual-fund rows with a blank AMC label | **Show them as "AMC not given"**, with a count and footnote, outside every house's cap. Today they form one unnamed house. | new KI-112 |
+| OD-34 | Mutual-fund rows with a blank AMC label | **Show them as "AMC not given"**, with a count and footnote, outside every house's cap. Today they form one unnamed house. Built in fix batch 2a. | KI-112 (fixed) |
 | OD-35 | Rationale text on base files in ₹ Lakh: the per-row text added by this batch uses Lakh, while the AI Analyst's own text always says Cr | **Use the file's unit everywhere**, when OD-19 (amounts kept in full) is built. | KI-063, NEW-34 |
 | OD-36 | Client-sheet IRR subtotals: a fully redeemed fund whose asset or product label matches no row the client has today (e.g. a redeemed gold fund) | **Grand Total only, listed in the § footnote** with its ₹ flows (as built). A label that matches only the asset row counts there and is footnoted. | KI-048, OD-4 |

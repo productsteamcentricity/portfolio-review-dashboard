@@ -21,3 +21,4 @@ Monthly data refreshes are recorded separately in [`../refresh-log/`](../refresh
 | [CR-0004](CR-0004-second-export-request.md) | 15–16 Oct 2026 | Prepare the second export request for the previous owner (everything in one run, delivered over Teams) | Done; delivery awaited |
 | [CR-0005](CR-0005-audit-fixes-and-redesign.md) | 16 Oct 2026 | Share the review link; find and fix the dashboard's issues; prepare the full redesign | In progress |
 | [CR-0006](CR-0006-new-build.md) | 21 Oct 2026 | Build the next-generation dashboard: a clean new application with feature parity, per the owner's brief | Phase 0 delivered; M1.1 in progress |
+| [CR-0007](CR-0007-legacy-batch-2a.md) | 21–22 Oct 2026 | Fix batch 2a: empty Home slide download (KI-124), renamed fund houses (OD-32), "AMC not given" (OD-34, KI-112) | Done (PR #9) |

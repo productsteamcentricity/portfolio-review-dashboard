@@ -9,7 +9,8 @@
    properties the review must keep whatever the monthly data is:
      - base-file units: XIRR (%) / BMXIRR (%) are percent numbers -> fractions
      - only the planted unknown fund is unmatched
-     - AMC shares sum to 100 and every share above 20% is a breach
+     - AMC shares (with any "AMC not given" share) sum to 100 and every share
+       above 20% is a breach
      - look-through market-cap and rating mixes sum to 100
      - transaction XIRR equals the exact answer the flows were built to give
      - taxation reconciles, and LTCG + STCG + unclassified = CMV
@@ -63,7 +64,9 @@ const REF = Object.assign({}, H.REF, { IRR: irr });
 const m = E.computeReview(parseBase(), REF, META);
 
 const amcRows = m.amc.rows || [];
-ok(near(sum(amcRows, r => r.pct), 100, 1e-6), 'AMC shares of the MF book sum to 100');
+/* OD-34: mutual funds with no AMC are no house's share but stay in the book, reported as amc.notGiven */
+const amcNg = (m.amc.notGiven && m.amc.notGiven.pct) || 0;
+ok(near(sum(amcRows, r => r.pct) + amcNg, 100, 1e-6), 'AMC shares of the MF book (with any "AMC not given" share) sum to 100');
 ok(amcRows.every(r => r.breach === (r.pct > 20)), 'every AMC above 20.00% is a breach, and only those');
 
 const EA = m.equityAnalytics, DA = m.debtAnalytics;

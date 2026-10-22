@@ -187,7 +187,7 @@ the content; `docs/new-build/README.md` says so, so the two do not drift.
 | `docs/MONTHLY_REFRESH.md` | Unchanged until M11; then moved to `docs/legacy/` | M11 |
 | `docs/TESTING.md` | New-app section from `08-regression-test-plan.md` | M1.3 |
 | `docs/DEPLOYMENT.md` | `/next/` channel; switch-over and rollback | M1.2, M15 |
-| `docs/KNOWN_ISSUES.md` | KI-124 is already on `main` (PR #7); N-1 to N-10 filed from KI-125 | M1.1 |
+| `docs/KNOWN_ISSUES.md` | KI-124 is already on `main` (PR #7); N-1 to N-10 filed from KI-129 | M1.1 |
 | `docs/DECISIONS.md` | D-022 and D-023 are already on `main` (PR #7, PR #8); D-024 to D-033, the owner's answers of 22 Oct 2026 to ND-1 to ND-10 (architecture §21), recorded at M1.1 | M1.1 onward |
 | `docs/change-requests/CR-0006-new-build.md` | exists (PR #8); status updated as Phase 0 is delivered and at each milestone | M1.1 onward |
 | `docs/new-build/` | exists with `00-owner-brief.md`; Phase 0 deliverables, `inputs/` and a `README.md` added | M1.1 |

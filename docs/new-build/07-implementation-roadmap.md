@@ -87,7 +87,7 @@ dashboard (D-033); every other question proceeds on its default.
     `docs/legacy/ARCHITECTURE.md`, `docs/DATA_DICTIONARY.md` v0, `docs/MONTHLY_UPDATE_GUIDE.md` (new process; links the
     legacy `MONTHLY_REFRESH.md` until M11), `docs/monthly-prds/README.md` and `docs/monthly-prds/TEMPLATE.md` (sections
     A to I, for the hand-written cycles before M14, Q-76); move `CHANGELOG.md` to `docs/CHANGELOG.md` with a root
-    pointer in `README.md`. File N-1 to N-10 (and the U-23 Holdings button finding) in `KNOWN_ISSUES.md` from KI-125
+    pointer in `README.md`. File N-1 to N-10 (and the U-23 Holdings button finding) in `KNOWN_ISSUES.md` from KI-129
     onward (KI-124 is already on `main`). Record D-024 to D-033, the owner's answers of 22 Oct 2026 (with D-026, the
     data-class policy and the Screener pack slot, and D-027, the MF Screener link exception), and add the list of files
     the owner supplies each month to `docs/MONTHLY_UPDATE_GUIDE.md` (done on 22 Oct 2026). Update `CLAUDE.md` with a
