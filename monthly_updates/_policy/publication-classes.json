@@ -1,0 +1,47 @@
+{
+  "_comment": "Publication classes of the monthly source files (D-023 point 1, D-026). Read by the monthly update engine (M11) and the pre-push scan (its monthly-class rules arrive in M11). Roles and folders follow docs/new-build/09-repository-and-docs-structure.md section 5 and docs/MONTHLY_UPDATE_GUIDE.md. A change here is a policy change: it needs the decision it rests on.",
+  "schemaVersion": 1,
+  "updated": "2026-10-22",
+  "decisions": ["D-023", "D-026"],
+  "monthFolderPattern": "^monthly_updates/\\d{4}-(?:0[1-9]|1[0-2])/",
+  "limits": {
+    "maxFileMb": 50,
+    "warnFileMb": 20,
+    "aboveMax": "commit the PDF; keep the original privately and record its SHA-256 in MANIFEST.json (D-023)"
+  },
+  "classes": {
+    "P": {
+      "name": "publishable",
+      "tracked": true,
+      "meaning": "Every Accord Fintech file (the licence covers all Accord files, D-026), the other approved monthly source files of D-023 point 1, and Centricity material without client or personal data. Committed in its role folder of monthly_updates/YYYY-MM/ after the privacy scan."
+    },
+    "C": {
+      "name": "private until approved",
+      "tracked": false,
+      "meaning": "A source that is neither Accord nor Centricity material, or whose owner has not agreed. The raw file stays in private storage, proven by its SHA-256 in MANIFEST.json; data derived from it may be embedded where D-023 permits."
+    },
+    "N": {
+      "name": "never",
+      "tracked": false,
+      "meaning": "Client data, personal data, credentials, confidential client presentations and the MF Screener data pack (D-026). Never committed and never embedded in a public build; a client file found in a monthly folder is quarantined and reported."
+    }
+  },
+  "roles": [
+    { "role": "mf_monitor", "class": "P", "folder": "mf-monitor", "producer": "Accord Fintech", "files": "Daily MF Monitor, Regular and Direct", "sources": ["DS-V1", "DS-V2"], "basis": "D-023 point 1" },
+    { "role": "sif_monitor", "class": "P", "folder": "sif-monitor", "producer": "Accord Fintech", "files": "SIF Monitor", "sources": ["DS-V3"], "basis": "D-023 point 1" },
+    { "role": "accord_other", "class": "P", "folder": "other-approved", "producer": "Accord Fintech", "files": "Expense Ratio; Equity, Hybrid and Debt Analytics; Listed Direct Equity master and returns; Fund Manager history; Exit Load", "sources": ["DS-V4", "DS-V5", "DS-V6", "DS-V7", "DS-V8", "DS-V9", "DS-V10", "DS-V11"], "basis": "D-026 (every Accord file)" },
+    { "role": "reckoner", "class": "P", "folder": "reckoner", "producer": "Centricity", "files": "Monthly Investment Reckoner (as PDF while the PPTX is above 50 MB)", "sources": ["DS-M1"], "basis": "D-023 point 1" },
+    { "role": "one_pagers", "class": "P", "folder": "one-pagers", "producer": "Centricity", "files": "PMS and AIF one-pagers of approved products", "sources": ["DS-M2", "DS-M3"], "basis": "D-023 point 1" },
+    { "role": "market_update", "class": "P", "folder": "market-update", "producer": "Centricity", "files": "Monthly Outlook deck (the market update)", "sources": ["DS-M6"], "basis": "D-023 point 1" },
+    { "role": "disclaimer", "class": "P", "folder": "disclaimer", "producer": "Centricity", "files": "Disclaimer, topic and closing material", "sources": ["DS-M7"], "basis": "D-023 point 1" },
+    { "role": "index_data", "class": "P", "folder": "index-data", "producer": "NSE Indices", "files": "The five Index TRI files: Nifty 50, 100, 500, Midcap 150, Smallcap 250", "sources": ["DS-H3"], "basis": "D-023 point 2 and its addendum" },
+    { "role": "owner_tables", "class": "P", "folder": "other-approved", "producer": "Centricity", "files": "Tax rules, IPS profiles and other owner-maintained tables", "sources": ["DS-O1", "DS-O2"], "basis": "D-026 (Centricity material without client data)" },
+    { "role": "risk_ratios", "class": "C", "folder": null, "producer": "in-house", "files": "Fund Risk Ratios and 3Y Rolling; NAV Data workbook", "sources": ["DS-H1", "DS-H2"], "basis": "D-026 (until approved)" },
+    { "role": "fund_ranks", "class": "C", "folder": null, "producer": "Products Team", "files": "Fund Ranks workbook", "sources": ["DS-S1"], "basis": "D-026 (until approved)" },
+    { "role": "pms_aif_performance", "class": "C", "folder": null, "producer": "third party (producer to be named, Q-24)", "files": "PMS Scheme Performance; AIF performance; PMS and AIF Analytics (SOA format)", "sources": ["DS-P1", "DS-P2", "DS-P4"], "basis": "D-026 (until approved)" },
+    { "role": "manager_material", "class": "C", "folder": null, "producer": "fund managers", "files": "Manager-published one-pagers and factsheets", "sources": ["DS-M4"], "basis": "D-026 (third-party copyright)" },
+    { "role": "screener_pack", "class": "N", "folder": null, "producer": "the MF Screener owner's exporter", "files": "pr-datapack_<cycle>.zip (contract pr-datapack-v1) and the holdings backfill pack", "sources": ["DS-S2"], "basis": "D-026 (never published; only its fingerprint, contract version, cycle and counts go into MANIFEST.json)" },
+    { "role": "client_material", "class": "N", "folder": null, "producer": "clients and analysts", "files": "Base files, IRR workbooks, PMS and AIF statements, bonds sheets, capital-gains statements, review workbooks and decks", "sources": ["DS-C1", "DS-C2", "DS-C3", "DS-C4", "DS-C5", "DS-C6", "DS-C7", "DS-C8"], "basis": "D-023, CLAUDE.md rule 6 (quarantined and reported if found)" }
+  ],
+  "trackedAlways": ["README.md", "_policy/", "YYYY-MM/MANIFEST.json", "YYYY-MM/UPDATE_REPORT.md"]
+}

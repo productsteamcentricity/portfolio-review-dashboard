@@ -39,7 +39,7 @@ the synthetic generator).
 2. Verified `index.html`: size, MD5, 13 real script blocks (+1 literal), tail, LF-only, no BOM; census of
    every reference-data block against handover §6.3 (all counts match); no network API in app code.
 3. Two read-only archaeology reviews of the engine/parsers and the UI/exporters against every handover
-   claim (results folded into ARCHITECTURE.md and KNOWN_ISSUES.md).
+   claim (results folded into ARCHITECTURE.md, now `legacy/ARCHITECTURE.md`, and KNOWN_ISSUES.md).
 4. Installed a portable toolchain (owner-approved): Node 24.21.0, Git 2.56.0.2, gh 2.102.0, SHA-256
    verified; `core.autocrlf=false`.
 5. Created the repository outside OneDrive and imported the 8 source files; verified each byte-identical.

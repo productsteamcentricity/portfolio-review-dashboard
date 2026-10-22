@@ -3,9 +3,11 @@
 **Status: planned (M1.1 outline; completed with the monthly update engine in milestone M11).** The monthly process
 in use today is the legacy refresh in [MONTHLY_REFRESH.md](MONTHLY_REFRESH.md): the owner's part, Claude's runbook
 and the reference tables. Follow it for every data month until the new engine has passed the parity checks below.
-This guide describes the new flow as planned in CR-0006 ([03-architecture.md](new-build/03-architecture.md) §13 and
-[09-repository-and-docs-structure.md](new-build/09-repository-and-docs-structure.md) §5); `monthly_updates/` does
-not exist yet. **One section is in use now:** [Files the owner supplies each month](#files-the-owner-supplies-each-month),
+This guide describes the new flow as planned in CR-0006 ([ARCHITECTURE.md](ARCHITECTURE.md) §13 and
+[09-repository-and-docs-structure.md](new-build/09-repository-and-docs-structure.md) §5); `monthly_updates/` holds
+only its [README](../monthly_updates/README.md) and the class policy
+[`_policy/publication-classes.json`](../monthly_updates/_policy/publication-classes.json) until M11. **One section is
+in use now:** [Files the owner supplies each month](#files-the-owner-supplies-each-month),
 the single tracked list of the monthly files, for both pipelines.
 
 ## Which process applies
@@ -99,7 +101,7 @@ approved (the in-house risk ratios and the fund ranks);
 the original of any file above 50 MB (its SHA-256 is recorded); client material, which is quarantined and reported,
 never copied.
 
-**Stages** (the flow of the One Digital Reckoner Console design reference, `03-architecture.md` §13.1):
+**Stages** (the flow of the One Digital Reckoner Console design reference, `ARCHITECTURE.md` §13.1):
 
 | Stage | What happens |
 |---|---|
@@ -119,7 +121,7 @@ step failed.** Re-running the same month changes nothing.
 
 The new engine must reproduce the legacy pipeline's reference blocks: a synthetic comparison in CI, a private
 re-derivation of the 2026-09 data month compared by hash with the blocks in `index.html`, and the first live month run
-by both pipelines (`03-architecture.md` §13 step 10).
+by both pipelines (`ARCHITECTURE.md` §13 step 10).
 
 ## When something fails
 

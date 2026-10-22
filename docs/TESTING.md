@@ -22,7 +22,9 @@ Safety checks for the repository itself (new build, M1.1; detail in `new-build/s
 | `node scripts/validation/privacy-scan.mjs docs *.md` | no e-mail, PAN, token, key, password, local user path, OneDrive organisation path or personal GitHub account URL in the documentation (folio-like digit runs are warnings); with `PRD_PRIVACY_DENYLIST` set, no name from the private deny-list | CI (`next`, generic rules only) |
 | `node scripts/validation/docs-links.mjs` | every relative link and anchor in the root and `docs/` Markdown resolves | CI (`next`) |
 | `node scripts/validation/prepush-scan.mjs` | the commits to be pushed: privacy on added lines, commit messages and identities; no file over 50 MB; no new binary or data file outside `monthly_updates/YYYY-MM/` | before every push (pre-push hook) |
-| `node --test "tests/**/*.test.mjs"` | the tests of the scripts above, on synthetic strings, temp files, throwaway git repositories and a fixture folder | CI (`next`, IST and UTC) |
+| `node scripts/validation/release-check.mjs [--online \| --after-push]` | the release state before a merge: the recorded remote (no token in its URLs) and default branch, a named branch, a clean tree, `index.html` changed only with a patch script (or on a `data/` branch), no local or generated file in the change; with `--after-push`, the remote has HEAD. Its report goes in the pull request | before every merge; CI (`next`, `--ci`, after the tests) |
+| `node scripts/validation/monthly-prd-check.mjs` | each monthly PRD: sections A to I of the template, no placeholder left, links, privacy and deny-list, the handover refreshed in the cycle | each monthly cycle; CI (`next`, generic rules only) |
+| `node --test "tests/**/*.test.mjs"` | the tests of the scripts above and of `monthly_updates/_policy/publication-classes.json`, on synthetic strings, temp files, throwaway git repositories and fixture folders | CI (`next`, IST and UTC) |
 
 The synthetic book (`tools/make-sample-base.js`) has two invented clients, 13 holdings across MF
 equity/debt/hybrid, PMS, AIF, SIF, direct equity and one unknown fund. Every holding is priced off a NAV

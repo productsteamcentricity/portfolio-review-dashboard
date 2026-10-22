@@ -1,5 +1,10 @@
 # Architecture — Centricity Portfolio Review Dashboard
 
+> **Legacy application.** This file describes the legacy `index.html`, the review link until the new application
+> reaches parity (CR-0006). It moved here from `docs/ARCHITECTURE.md` on 22 Oct 2026 (milestone M1.1); that path now
+> holds the new application's architecture ([../ARCHITECTURE.md](../ARCHITECTURE.md)). During the parallel run the
+> legacy page receives calculation, data and security fixes only (D-028), and those fixes keep this file up to date.
+
 Describes the system **as built** at the baseline: source commit `cab22e6`, `index.html`
 16,765,556 bytes, MD5 `173F86CAC1E5D0AC8FFD5A66042A3B4C`. Facts were verified against the code
 on 14 Oct 2026; later changes are noted where they apply (KI-001 fix, 15 Oct 2026). Code references such as `07_engine.js:736` point into the reading copies that

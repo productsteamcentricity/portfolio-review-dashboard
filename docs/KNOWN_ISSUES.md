@@ -2,7 +2,8 @@
 
 Register of defects and limitations. KI-001 to KI-046 were recorded at the handover (baseline `index.html` MD5
 `173F86CA…`, source commit `cab22e6`). KI-047 to KI-098 were found by the **full audit of 19 Oct 2026**
-([`audits/2026-10-19-full-audit.md`](audits/2026-10-19-full-audit.md)).
+([`audits/2026-10-19-full-audit.md`](audits/2026-10-19-full-audit.md)). KI-129 to KI-139 come from the Phase 0 audit
+of the new build (CR-0006), [filed on 22 Oct 2026](#filed-from-the-new-build-audit-22-oct-2026).
 
 That audit re-tested most of the earlier entries:
 - KI-006 and KI-007 are now reproduced at runtime.
@@ -12,7 +13,8 @@ That audit re-tested most of the earlier entries:
 
 Fixed so far: KI-001, KI-010; in fix batch 1a KI-006, KI-047, KI-055 and KI-065; in fix batch 1b KI-007,
 KI-048, KI-061, KI-062 (bookkeeping), KI-063, KI-067, KI-068, KI-100, KI-114 and KI-120; in fix batch 2a KI-112
-(with OD-32 and OD-34), KI-124 and the Home part of KI-015. Fixes follow the order in the audit register. The owner's decisions are in
+(with OD-32 and OD-34), KI-124 and the Home part of KI-015, and with OD-32 KI-138 (filed after the fix). Fixes follow
+the order in the audit register. The owner's decisions are in
 [`audits/2026-10-19-decisions.md`](audits/2026-10-19-decisions.md): all recommendations accepted on 19 Oct 2026
 except OD-11 (D-021).
 
@@ -351,3 +353,28 @@ Both pre-date fix batch 2a: the same code is on main (`EF2FF4F1…`).
 |---|---|---|---|
 | KI-127 | P3 | ui text | The AMC tab's breach note says "exceed" whatever the number of houses: "Breach: Bandhan (25.00%) exceed the 20% per-AMC cap." (`11_app_ui.js:577`, `renderAMC`). For one house it should read "exceeds". The AMC slide insight and the Observations sentence already say "breaches" for a single house (batch 2a). |
 | KI-128 | P3 | output-pptx | The single-slide downloads from the rebalancing group's own buttons put the internal key in the file name: "Portfolio Review_<family>_rebalhold_<date>.pptx", "…_postan_…", "…_rbimpact_…". `tabLabel` (`11_app_ui.js:386`) looks only in `TABS` and falls back to the key; these groups' names ("Rebalancing Holding Sheet", "Post-Rebalancing Analytics", "Rebalancing Impact") are in `EXTRA_SLIDES` (`11_app_ui.js:316-322`). The same key would show in `slidePPTX`'s status messages for those groups. The slides themselves download correctly. |
+
+### Filed from the new-build audit (22 Oct 2026)
+
+The Phase 0 audit of the new build (CR-0006) found these on `782794f`: N-1 to N-10 in
+[`new-build/01-legacy-system-audit.md`](new-build/01-legacy-system-audit.md) §5.3 (from the engine inventory,
+[`new-build/inputs/inventory-engine-exports.md`](new-build/inputs/inventory-engine-exports.md) §10) and the Holdings
+finding of the UI inventory (U-23). Each was re-checked on `main` at `2a65a62` (`index.html` MD5 `911A0465…`) before it
+was filed, by reading the code (line numbers of that build's `.blocks/`) and, where marked **Reproduced**, by running
+the shipped code headless on the embedded reference data or the synthetic book. N-n is KI-(128+n); U-23 is KI-139.
+Priorities are proposed. On the live page these follow D-028: calculation, data and security fixes there,
+presentation-only changes in the new build.
+
+| KI | From | P | Kind | Issue |
+|---|---|---|---|---|
+| KI-129 | N-1 | P1 | calculation | Non-credit labels are counted as credit in the debt rating mix. `ratingGroup` (`07_engine.js:943-954`) places a label by its first letter, so "Derivatives" (D), "ADR/GDR" (A) and the defaulted grade "D" fall into "AA & Below", and the short-term "A2+(SO)" is placed by its letter, not by a mapping. **Reproduced** on the embedded data: "Derivatives" in 36 schemes (up to 23.42% of a scheme's debt rating mix), "D" in 4 (at 100%), "ADR/GDR" in 1, "A2+(SO)" in 1. It reaches the Analytics tab and slide, the post-rebalancing analytics, the IPS rating rows (`11_app_ui.js:4949`), the workbook's Debt Analytics sheet and the Observations' high-quality share (`07_engine.js:1742`). New build: three credit buckets with "Derivatives and hedges" and "Non-credit holdings" beside them (Q-46, M4); the legacy fix needs the mapping approved. |
+| KI-130 | N-2 | P1 | calculation | Tax-loss harvesting ignores the long-term exemption. `buildHarvest` (`07_engine.js:495-525`) taxes every long-term gain at the long-term rate (`taxOf`, `:515`), while the footnote on the Taxation tab (`11_app_ui.js:4762`) and slide (`08_exporters.js:1706`) says 12.5% applies to gains above Rs. 1.25 lakh. The "tax before" and "tax after" figures therefore include tax on gains the exemption may cover. Confirmed (code). Needs an owner decision: the page does not know how much of the exemption was already used this year (Q-52), and applying it in full could understate the tax. New build: E-43 with Q-52 (M7). |
+| KI-131 | N-3 | P2 | ui text / exports | One SWOT opportunity is unconditional: "Periodic rebalancing is recommended to keep the allocation aligned …" is added for every portfolio (`07_engine.js:1926`), so every Observations tab, SWOT slide and workbook carries it whatever the evidence. Confirmed (code). New build: removed, recorded in the parity ledger ([`new-build/observation-rule-bank.md`](new-build/observation-rule-bank.md) §8). On the live page it is wording, a presentation item under D-028. |
+| KI-132 | N-4 | P2 | classification | `isDirectEquity` (`07_engine.js:619-623`) matches the letters "sip" anywhere in a product label that the mutual-fund, PMS, AIF and bond exclusions do not catch first, so a holding whose product reads "SIP" is classed as direct equity and enters the direct-equity look-through and stock returns. **Reproduced** by running the shipped function: "SIP" and "Gossip Ventures" give true, "Mutual Fund SIP" false. Fix with a word boundary, measured over real product labels both ways. |
+| KI-133 | N-5 | P2 | output-pptx / data | When the Current vs Sample snapshot (`window._cvsSnapshot`, written by the CVS tab, `11_app_ui.js:5901`) is absent, the CVS slide falls back to a second, hard-coded copy of the house-default groups (`08_exporters.js:595-600`): every current allocation 0.00% beside the default returns. **Reproduced** headless (the smoke test's CVS slide is built from it); in the browser the tab renders before an export, so the fallback is reached only when the snapshot is missing (not seen in the browser). The two copies of the assumptions can drift. New build: one table, `data/owner/cvs-assumptions.json`, and the slide built from the engine. |
+| KI-134 | N-6 | P3 | output-pptx | Single-tab downloads start with their section divider. **Reproduced** headless on the synthetic book: the Holdings, Analytics, Overlap, Cost, Fund IRR, Current vs Sample and MF Analysis downloads begin with the divider picture (Overlap: 2 slides, the divider and the matrix slide); Rebalancing with no plan gives the divider alone (the open part of KI-015). Whether a single-slide download carries its divider is a presentation choice; new build: the presentation manifest (M9). |
+| KI-135 | N-7 | P3 | ui text / exports | **Same defect as KI-126, tracked there.** The 21 Oct inventory counted en or em dashes in 19 observation and SWOT lines, 15 AI Analyst template lines and 161 string-literal lines of the exporters at `782794f`. Fix batch 2a removed them from the AMC sentences only; they remain elsewhere on `main` (for example `07_engine.js:1917`). The dash stays only as the missing-value marker (D-029). |
+| KI-136 | N-8 | P3 | code | Dead code: the exporters build an `INS.perf` sentence (`08_exporters.js:81`) that nothing reads. (`norm2`, `07_engine.js:94`, is unused too; already KI-028.) No effect on any output; dropped in the new build. |
+| KI-137 | N-9 | P3 | pipeline | The monthly pipeline runs the page's own upload parsers: `buildtools/build_refresh.js` evaluates `ENGINE.parsers` out of `index.html` through `tools/engine-host.js` (lines 96, 151, 173-184), so a patch to `09_parsers.js` also changes the next refresh's output. Confirmed (code). Until M11, a parser change should be followed by the fidelity rebuild of an archived month (`build_refresh.js --verify`, which needs the private archive; `MONTHLY_REFRESH.md`). New build: one parsing path in `app/src/ingest/` (OD-11). |
+| KI-138 | N-10 | — | calculation | **FIXED** in fix batch 2a (OD-32), before it was filed. At `782794f` the former fund-house names accepted in OD-32 were not aliases, so old and new labels got different house keys. Batch 2a added `AMC_RENAMED` (`07_engine.js:56-58`). Re-checked headless on `main`: `ENGINE.amcKey` gives one key for IDFC and Bandhan, L&T and HSBC, Reliance and Nippon India, DSP BlackRock and DSP, Birla Sun Life and Aditya Birla Sun Life, IIFL and 360 ONE. Test: `tools/regression/OD-32-renamed-amc.js`. The new build ports the table to `data/owner/amc-aliases.json` (M2.1). |
+| KI-139 | U-23 | P2 | ui-state | The Holdings tab's "Download slide" button disappears after a presentation-column chip is toggled: `czHoldToggle` (`11_app_ui.js:613`) calls `renderHoldings`, which rewrites the whole section (`s.innerHTML=html`, `:658`), download bar included, and the bar is added back only by `ensureDlBtns` (`:365-370`) at the end of `renderAll` (`:536`). Confirmed (code); not checked in the browser. Also noted: the column choice (`window.CZHOLD`, `:597`) is not cleared by `resetFamilyState`, so it carries to the next family in the session (a presentation preference, no client data). New build: download buttons from the slide manifest (M9). |

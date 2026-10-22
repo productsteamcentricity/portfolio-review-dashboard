@@ -10,20 +10,23 @@ change follows.
 | understand the product and how to take it over | [HANDOVER.md](HANDOVER.md) |
 | run the monthly data refresh (owner's part and Claude's part) | [MONTHLY_REFRESH.md](MONTHLY_REFRESH.md) |
 | set up a laptop, run the dashboard locally | [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md) |
-| understand how `index.html` is built and where each calculation lives | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| understand how `index.html` is built and where each calculation lives | [legacy/ARCHITECTURE.md](legacy/ARCHITECTURE.md) |
 | test a change | [TESTING.md](TESTING.md) |
 | publish, verify or roll back the live site | [DEPLOYMENT.md](DEPLOYMENT.md) |
-| check a change for client data, names and secrets before pushing (privacy scan, pre-push hook) | [new-build/safety-tooling.md](new-build/safety-tooling.md) |
+| check a change for client data, names and secrets before pushing (privacy scan, pre-push hook), and the state of a release before it is merged (release check) | [new-build/safety-tooling.md](new-build/safety-tooling.md) |
 
 ## The new build (CR-0006)
 
 A new application is being built beside `index.html`, which stays the review link until the new one reaches feature
-parity. No application code exists yet.
+parity. No application code exists yet; its folders (`app/`, `data/`, `product_bank/`, `monthly_updates/`) each have a
+README saying what will go there.
 
 | I want to… | Read |
 |---|---|
 | find the Phase 0 documents (brief, audit, architecture, parity matrix, roadmap, test plan, rule bank, deck design, open questions) | [new-build/README.md](new-build/README.md) |
 | know what the new application must do | [PRD.md](PRD.md) (the living PRD) |
+| understand how the new application is built: stack, layers, modules, engine, outputs, security, deployment | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| know which monthly files may be published (classes P, C and N) and how the monthly folder is laid out | [../monthly_updates/README.md](../monthly_updates/README.md) |
 | look up an entity, field, metric path, missing-data status, unit or calculation definition | [DATA_DICTIONARY.md](DATA_DICTIONARY.md) (v0.1) |
 | see how the monthly update will work in the new application | [MONTHLY_UPDATE_GUIDE.md](MONTHLY_UPDATE_GUIDE.md) (planned; today's process is [MONTHLY_REFRESH.md](MONTHLY_REFRESH.md)) |
 | see every file the owner supplies each month: who sends it, where it goes, public or private, what it feeds | [MONTHLY_UPDATE_GUIDE.md, "Files the owner supplies each month"](MONTHLY_UPDATE_GUIDE.md#files-the-owner-supplies-each-month) (in use now) |

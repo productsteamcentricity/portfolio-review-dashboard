@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Version | **v0.1**, 22 Oct 2026 (milestone M1.1, CR-0006; the owner's answers D-024 to D-033 applied) |
-| Scope | the data model of the **new** Portfolio Review application. The legacy `index.html` is described in [ARCHITECTURE.md](ARCHITECTURE.md) and the conventions section of `CLAUDE.md` |
+| Scope | the data model of the **new** Portfolio Review application. The legacy `index.html` is described in [legacy/ARCHITECTURE.md](legacy/ARCHITECTURE.md) and the conventions section of `CLAUDE.md`; how the new application is built is in [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Owns | every entity, field, metric path, missing-data status, unit and calculation definition of the new application ([09-repository-and-docs-structure.md](new-build/09-repository-and-docs-structure.md) §3). The PRD (§6), the architecture and the observation rule bank link here and do not restate these definitions |
 | Built from | the Phase 0 architecture's model section ([03-architecture.md](new-build/03-architecture.md) §6, with §8, §9, §12, §16) and the record and metric-path sections of [observation-rule-bank.md](new-build/observation-rule-bank.md) (§1, §2) |
 | Not here | data sources, roles, publication classes and freshness rules ([06-data-source-inventory.md](new-build/06-data-source-inventory.md)); observation thresholds (rule bank §3, to become `data/owner/observation-thresholds.json`); design tokens ([deck-design-system.md](new-build/deck-design-system.md)) |
@@ -365,7 +365,7 @@ path is a `Value<T>` in the `Review` (rule bank §2; `03` §11, §16).
 | `tax.unrealised.{st,lt}`, `tax.realisedFY.{st,lt,source}`, `tax.harvestableLoss`, `tax.exemptionUsed` | tax position (realised gains from the statement or derived, section 5.5) |
 | `scenario.valid`, `scenario.post.*`, `scenario.exits[]`, `scenario.tradeoffs` | Review with Rebalancing only |
 
-The mandatory facts F1 to F11 of the Review Only Snapshot map to these paths in `03-architecture.md` §11.
+The mandatory facts F1 to F11 of the Review Only Snapshot map to these paths in [ARCHITECTURE.md](ARCHITECTURE.md) §11 (from `03-architecture.md` §11).
 
 ## 7. Calculation definitions
 
@@ -421,3 +421,4 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
 |---|---|---|
 | v0 | 22 Oct 2026 | Created at M1.1 from the Phase 0 architecture (§6, §8, §9, §12, §16) and the observation rule bank (§1, §2) |
 | v0.1 | 22 Oct 2026 | The owner's answers: the dash as the missing-value marker, never in sentences (§2, D-029); the stored MF Screener data pack (§5.16, D-026); the capital-gains template, proposed for M7 (§5.17, §5.5, D-032); thresholds approved (§8, D-030); the Index TRI files as the drawdown index data (§7) |
+| v0.1 (links) | 22 Oct 2026 | Links only (M1.1): the legacy architecture moved to `legacy/ARCHITECTURE.md`; `ARCHITECTURE.md` is now the new application's, and the F1 to F11 mapping of §6 points there; definitions unchanged |

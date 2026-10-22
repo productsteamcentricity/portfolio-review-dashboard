@@ -65,6 +65,8 @@ listed in [docs/README.md](docs/README.md). Before and after any change:
 | `tools/` | checks, the local preview server (`open-dashboard.cmd`), and `patches/`, the only way `index.html` changes |
 | `buildtools/` | the monthly data-refresh pipeline ([docs/MONTHLY_REFRESH.md](docs/MONTHLY_REFRESH.md)) |
 | `docs/` | how it works, decisions, known issues, change requests, refresh logs, the previous owner's handover |
+| `app/`, `data/`, `product_bank/`, `monthly_updates/` | the new application (CR-0006), built beside `index.html`; each folder has a README, and code and data arrive from milestone M1.2 ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) |
+| `scripts/`, `tests/` | the new build's tooling and tests; today the safety checks in `scripts/validation/` ([docs/new-build/safety-tooling.md](docs/new-build/safety-tooling.md)) |
 
 Never commit client files or vendor workbooks. `index.html` is changed only through anchored
 patch scripts or the refresh pipeline, never by hand.

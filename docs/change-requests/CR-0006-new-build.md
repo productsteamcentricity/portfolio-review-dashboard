@@ -3,7 +3,8 @@
 - **Requested:** 21 Oct 2026, by the product owner (a full brief; sanitised copy in
   [`../new-build/00-owner-brief.md`](../new-build/00-owner-brief.md): login details and client names removed).
 - **Status:** Phase 0 done (delivered on 22 Oct 2026; the owner answered ND-1 to ND-10 on 22 Oct 2026, recorded as
-  D-024 to D-033). Milestone M1.1 is ready for its pull request.
+  D-024 to D-033). Milestone M1.1: the safety tooling and the Phase 0 records merged in PR #10 (`2a65a62`); the rest
+  of M1.1 is on `chore/m1-1-rest` (Changes, below).
 
 ## Request
 Build a clean new application that keeps every capability of the existing dashboard and improves it:
@@ -66,13 +67,16 @@ rebalancing method) is out of scope; the data structures for it are in scope.
 ## Changes
 | Milestone | What | Branch | State |
 |---|---|---|---|
-| M1.1 | Safety tooling: privacy scan, docs link check, pre-push scan and hook, CI job `next` ([`../new-build/safety-tooling.md`](../new-build/safety-tooling.md)) | `feat/m1-1-safety-tooling` | committed, not yet pushed |
-| M1.1 | Phase 0 records: the deliverables and investigator inputs in `docs/new-build/`, the living PRD, `DATA_DICTIONARY.md` v0, `MONTHLY_UPDATE_GUIDE.md`, the monthly PRD template | `docs/m1-1-new-build-docs` | committed, not yet pushed |
-| M1.1 | The owner's answers of 22 Oct 2026 applied: D-024 to D-033 in `DECISIONS.md`; the deliverables, PRD 0.4 and `DATA_DICTIONARY.md` v0.1 updated (Screener pack slot, dash rule, 35% overlap, capital-gains template); the monthly upload list in `MONTHLY_UPDATE_GUIDE.md` | `docs/m1-1-new-build-docs` | ready for the pull request |
+| M1.1 | Safety tooling: privacy scan, docs link check, pre-push scan and hook, CI job `next` ([`../new-build/safety-tooling.md`](../new-build/safety-tooling.md)) | `feat/m1-1-safety-tooling` | merged in PR #10 (`2a65a62`) |
+| M1.1 | Phase 0 records: the deliverables and investigator inputs in `docs/new-build/`, the living PRD, `DATA_DICTIONARY.md` v0, `MONTHLY_UPDATE_GUIDE.md`, the monthly PRD template | `docs/m1-1-new-build-docs` | merged in PR #10 (`2a65a62`) |
+| M1.1 | The owner's answers of 22 Oct 2026 applied: D-024 to D-033 in `DECISIONS.md`; the deliverables, PRD 0.4 and `DATA_DICTIONARY.md` v0.1 updated (Screener pack slot, dash rule, 35% overlap, capital-gains template); the monthly upload list in `MONTHLY_UPDATE_GUIDE.md`; the new-app section of `CLAUDE.md` | `docs/m1-1-new-build-docs` | merged in PR #10 (`2a65a62`) |
+| M1.1 | The baseline tag `legacy-baseline-782794f` on `782794f` | (tag) | on the remote (`git ls-remote --tags origin`, 22 Oct 2026) |
+| M1.1 | The rest of M1.1: `release-check.mjs` and `monthly-prd-check.mjs` with their tests and CI steps; the folder skeleton (`app/`, `data/`, `product_bank/`, `monthly_updates/` with `_policy/publication-classes.json`); the new [`../ARCHITECTURE.md`](../ARCHITECTURE.md), the legacy one moved to [`../legacy/ARCHITECTURE.md`](../legacy/ARCHITECTURE.md); N-1 to N-10 and U-23 filed as KI-129 to KI-139 | `chore/m1-1-rest` | committed, not yet pushed |
 
-Still to do in M1.1: the baseline tag, the release and monthly PRD check scripts, the folder skeleton, the new
-`ARCHITECTURE.md` (legacy one moved), the changelog move, KNOWN_ISSUES N-1 to N-10, and the new-app section of
-`CLAUDE.md` (`docs/PROJECT_STATE.md`, next steps).
+`CHANGELOG.md` stays at the repository root rather than moving to `docs/` as `09-repository-and-docs-structure.md` §6
+planned (the lead's decision, 22 Oct 2026). Still to do in M1.1 after `chore/m1-1-rest`: the lead integrates the
+parallel M1.1 branches (`CHANGELOG.md`, `docs/PROJECT_STATE.md`, `docs/HANDOVER.md`) and points the references in
+`CLAUDE.md`, `docs/HANDOVER.md` and the project agents at the moved legacy architecture.
 
 ## Open
 - **Owner:** your own list of issues with the existing dashboard (screenshots or notes).
