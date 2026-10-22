@@ -88,6 +88,37 @@ and `-invested-and-irr-join.js`. Each fix had two financial reviews and known-an
 - **Docs:** decisions OD-29 to OD-36 (answered by the as-built behaviour unless the owner says otherwise);
   KI-101 to KI-123 recorded (found while fixing; none caused by this batch).
 
+### Fixed (fix batch 2a: KI-124, OD-32 and OD-34, CR-0007)
+`index.html` MD5 `EF2FF4F1…` → `911A04659CB34383E478416B54E9C306` (16,826,633 bytes), by the patch
+`tools/patches/2026-10-22-legacy-batch-2a.js` (the first build of the batch, `F7123A83…`, was revised after its
+financial review).
+- **KI-124, empty slide download:** the Home tab's "Download slide" wrote a deck with no slides. Home has no download
+  bar now, and any single-tab download whose deck would be empty is refused with a status message.
+- **OD-32, renamed fund houses:** a former name counts as the current house: IDFC is Bandhan, L&T (also "L and T",
+  "Larsen and Toubro") is HSBC, Reliance (also "Reliance Nippon", "Reliance Nippon Life") is Nippon India, DSP
+  BlackRock is DSP, Birla Sun Life (also "Birla SL") is Aditya Birla Sun Life, IIFL is 360 ONE. The AMC tab, the AI
+  Analyst cap and the summary measure the house as one, and its mutual-fund rows show the current name. A stock or
+  PMS with such a name keeps its own label and counts in no house.
+- **OD-34 and KI-112, mutual funds with no AMC:** a blank label, or a placeholder ("NA", "N/A", "N.A.", "Not
+  Available", "Unknown", "Others", "Other", "-", "--"), is "AMC not given". It was one unnamed house that could be a
+  breach and head the AI Analyst's largest AMC. Now it is a grey bar with a count and footnote on the AMC tab, slide
+  and workbook, outside every house's cap but still in the mutual-fund book total; the AI Analyst shows those rows as
+  "AMC not given" and adds a caveat.
+- **AMC sentence and AMC slide insight (financial review):** with holdings that have no AMC, both give their share
+  and say "well diversified" only if the largest house would stay within the 20% cap even if it held all of them.
+  Otherwise they say diversification cannot be confirmed; with no AMC on any mutual fund, that concentration cannot
+  be assessed. The insight is now written as plain sentences for every book (its dashes became full stops) and says
+  "breaches" for a single house.
+- **Tests:** three regression files (`KI-124-empty-slide-export.js`, `OD-32-renamed-amc.js`,
+  `OD-34-amc-not-given.js`; 12 files, 499 checks in all). The nine OD-34 checks added after the financial review
+  fail on the first build and pass on this one. Nine more, after the financial re-review, pin the "well
+  diversified" boundary (18.00% + 2.00% not given is cap-safe, 18.10% + 2.00% is not, on the breach test's own
+  arithmetic) and the wording (one house "breaches"; main's no-breach sentence unchanged; no en or em dash).
+  `smoke-review` adds any "AMC not given" share to its AMC sum.
+- **Browser acceptance** (22 Oct 2026, commit `a777490`, synthetic data): passed; recorded in CR-0007.
+- **Docs:** KI-125 and KI-126 recorded (both pre-date the batch); after the browser QA, KI-125 extended (a PptxGenJS
+  colour warning) and KI-127 and KI-128 recorded (both also on main).
+
 ## 2026-10-15 — Repository organised, monthly refresh restored (PR #2, merged as `df25dcd`)
 
 Organise the repository and set up the monthly refresh (CR-0003). `index.html` is unchanged
