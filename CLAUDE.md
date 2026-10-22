@@ -75,7 +75,9 @@ docs/                 README.md (index) · HANDOVER · MONTHLY_REFRESH · ARCHIT
 .claude/              launch.json (preview server) · agents/ (project subagents)
 .github/workflows/    ci.yml (checks on main and PRs) · pages.yml (publishes index.html only)
 ```
-Not in git: vendor data and the owner's inbox live in OneDrive (`…\Claude Code-Portfolio Review Dashboard\`
+Not in git (yet): vendor data and the owner's inbox live in OneDrive. The licence allows publishing the monitor
+files (D-023), so approved monthly source files move to a tracked `monthly_updates/YYYY-MM/` with CR-0006 Phase 1;
+client data never goes in git. OneDrive (`…\Claude Code-Portfolio Review Dashboard\`
 `01 Monthly Updates\YYYY-MM`, `02 Archive\YYYY-MM`, `03 Handover`); the previous owner's unpacked export is
 in `C:\dev\handover-export`. Monthly refresh: docs/MONTHLY_REFRESH.md (`refresh-operator` agent).
 

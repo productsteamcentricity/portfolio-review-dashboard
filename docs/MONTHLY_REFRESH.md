@@ -96,7 +96,8 @@ Run it step by step and fill in `docs/refresh-log/YYYY-MM.md` as you go; the `re
 the same steps. The rules in `CLAUDE.md` apply throughout:
 - inputs are read-only;
 - never invent a number;
-- no licensed data or client data in git;
+- no client data in git; the vendor monitor files may be published (D-023) but stay in OneDrive until the tracked
+  `monthly_updates/` folder exists (CR-0006);
 - splice only on the branch, only with `--data-only`.
 
 Session setup (Git Bash). Replace the month values:

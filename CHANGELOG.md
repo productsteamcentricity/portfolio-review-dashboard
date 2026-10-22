@@ -13,6 +13,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Change requests CR-0004 (the second export request) and CR-0005 (audit, fixes and redesign).
 
 ### Changed
+- **CR-0006, the new build:** the owner's brief of 21 Oct 2026 (sanitised copy in `docs/new-build/00-owner-brief.md`).
+- **D-023 (22 Oct 2026):** the vendor licence allows publishing the monitor files, which closes the open question
+  under D-008. Drawdown comparisons use index data. Portfolio 3Y and 5Y returns are the weighted average of the
+  holdings' returns, with missing returns left out and footnoted. Direct-equity returns follow the owner's stock price
+  calculator. CLAUDE.md, MONTHLY_REFRESH, DEPLOYMENT and `.gitignore` comments updated; the licence blocker removed
+  from PROJECT_STATE.
 - **Owner decisions OD-29 to OD-36 accepted (D-022, 21 Oct 2026).** OD-32 (renamed fund houses as aliases) and
   OD-34 ("AMC not given" for a blank AMC) are to be built; OD-35 comes with OD-19.
 - KNOWN_ISSUES: KI-124, the Home tab's "Download slide" gives an empty deck (found in an export on 21 Oct 2026).
