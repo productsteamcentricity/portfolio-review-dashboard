@@ -10,6 +10,8 @@ data, names, secrets and personal identifiers before they are pushed. They use N
 | `docs-links.mjs` | checks that every relative link and `#anchor` in the root `*.md` and `docs/**/*.md` resolves | 0 all resolve, 1 a broken link, 2 usage error |
 | `prepush-scan.mjs` | everything to check before a push: privacy, file size, new binary files; prints a summary | 0 pass, 1 refused, 2 error |
 | `scripts/hooks/pre-push` | git hook that runs `prepush-scan.mjs` for every branch or tag being pushed | non-zero refuses the push |
+| `release-check.mjs` | the state a release (of the legacy page or of `/next/`) must be in before it is merged: remote, default branch, branch, clean tree, the legacy page's patch-script rule, push evidence; prints a report for the pull request | 0 pass or warnings only, 1 a failed check, 2 usage error or base not fetched |
+| `monthly-prd-check.mjs` | a monthly PRD in `docs/monthly-prds/` has the template's sections A to I, no placeholder left, working links, no privacy or deny-list hit, and a handover refreshed in the same cycle | 0 pass, 1 a problem, 2 usage error or a template without A to I |
 
 ## Privacy rules
 
@@ -59,6 +61,11 @@ node scripts/validation/privacy-scan.mjs --diff origin/main
 node scripts/validation/docs-links.mjs
 # before a push (what the hook runs): the commits in origin/main..HEAD
 node scripts/validation/prepush-scan.mjs
+# before a pull request is merged: the release state; after the push, with the evidence from the remote
+node scripts/validation/release-check.mjs --online
+node scripts/validation/release-check.mjs --after-push
+# a monthly PRD and its handover, at the end of each monthly cycle
+node scripts/validation/monthly-prd-check.mjs
 # the tests
 node --test "tests/**/*.test.mjs"
 ```
@@ -80,11 +87,46 @@ For the commits that would be pushed (from `origin/main`, or `--base <ref>`, to 
 3. **New binary and data files** are refused: `xlsx`, `xls`, `csv`, `pptx`, `pdf`, `zip`, `png`, `jpg`, and the
    other office and data formats `.gitignore` blocks (`jpeg`, `xlsm`, `xlsb`, `ods`, `tsv`, `ppt`, `pptm`,
    `docx`, `doc`, `msg`, `7z`). Allowed: anything under `monthly_updates/YYYY-MM/` (the folder for approved
-   monthly files, CR-0006; it does not exist yet), files already tracked on the base (existing assets), and
-   paths listed in `binaryAllowPaths` of the allow-list.
+   monthly files, CR-0006; only its README and `_policy/` exist until M11), files already tracked on the base
+   (existing assets), and paths listed in `binaryAllowPaths` of the allow-list.
 4. A **summary**: commits, files, lines scanned, whether the deny-list was applied, and PASS or REFUSED.
 
 If `origin/main` is missing or stale, run `git fetch origin` first; a missing base is an error, never a pass.
+
+## What the release check checks
+
+`release-check.mjs` reads the repository and never changes it, its remotes or the git configuration (brief Phase 1,
+BR-1.1). Run it on the branch to be released, before the pull request is merged, and attach its report to the pull
+request. Each line is PASS, WARN, FAIL or SKIP; any FAIL exits 1.
+
+| Check | Fails when | Warns when |
+|---|---|---|
+| `remote-url` | `origin`'s fetch or push URL is not the recorded repository (`productsteamcentricity/portfolio-review-dashboard` on GitHub, in any URL form), or carries a user name or token (never printed) | |
+| `default-branch` | the remote's default branch is not `main` (read from `refs/remotes/origin/HEAD`; `--online` asks the remote) | it is not known locally |
+| `base` | | with `--online`, `origin/main` is not the remote's `main` (run `git fetch origin`) |
+| `branch` | HEAD is detached, or on `main` | the name does not follow `feature/`, `feat/`, `fix/`, `docs/`, `chore/`, `data/` or `test/` |
+| `working-tree` | anything is staged, modified, untracked or unmerged | |
+| `commits` | | the branch is not ahead of `origin/main`, is behind it, or a commit subject has no conventional prefix |
+| `local-files` | the change adds a local or generated file (`test-data/`, `.blocks/`, `buildtools/out/`, `dist/`, `.env`, backups, an exported client deck name …) | |
+| `legacy-page` | `index.html` changed without a patch script in `tools/patches/` in the same change and not on a `data/` refresh branch (`CLAUDE.md` rule 1); with `--expect-md5`, its MD5 at HEAD differs | |
+| `records` | | `CHANGELOG.md` or `docs/PROJECT_STATE.md` did not change |
+| `identity` | | `user.useConfigOnly` is off (`CLAUDE.md` rule 8) |
+| `pushed` | with `--after-push`: the branch is not on the remote, or the remote has another commit than HEAD | |
+
+The report ends with the change: commits, files by area (legacy page, legacy tooling, new application, monthly folder,
+scripts and CI, tests, documentation) and `git diff --stat` against `origin/main`. A legacy release that changes
+`index.html` still needs the legacy suites and the browser acceptance of `docs/TESTING.md` before it is merged.
+
+## What the monthly PRD check checks
+
+`monthly-prd-check.mjs` checks every `docs/monthly-prds/YYYY-MM-Portfolio-Review-PRD.md` (or the files given):
+the file name and the title's data month; the nine section headings of `TEMPLATE.md`, exactly as written, once each, in
+order and none empty (the headings are read from the template, so the two cannot drift); no template placeholder left
+(`<…>` in prose, a code span holding only `<…>`, `YYYY-MM`, `DD Mon YYYY`); every relative link and anchor; the privacy
+rules, with the private deny-list when `PRD_PRIVACY_DENYLIST` is set; and the handover (`docs/HANDOVER.md`, or
+`--handover`): its "**Last refreshed:**" date is on or after the "cycle completed" date of the PRD's Cycle line, and for
+the newest cycle it names the latest commit of section I. `--no-handover` skips the handover for a draft. With no
+monthly PRD yet it passes and says so.
 
 ## Enabling the hook
 
@@ -103,8 +145,12 @@ When a push is refused, remove the finding from the local commits before pushing
 ## In CI
 
 The `next` job of `.github/workflows/ci.yml` runs on every pull request and every push to `main`: the privacy
-scan of `docs/` and the root Markdown with the generic rules (the deny-list is local only), the link check, and
-the tests under `TZ=Asia/Kolkata` and `TZ=UTC`. The existing `checks` job (the legacy app) is unchanged.
+scan of `docs/` and the root Markdown with the generic rules (the deny-list is local only), the link check, the
+tests under `TZ=Asia/Kolkata` and `TZ=UTC`, the monthly PRD check, and last the release check with `--ci`. The
+checkout is shallow, so a step fetches `main` first. In its CI form the release check takes the branch from
+`GITHUB_HEAD_REF` (a pull request) or `GITHUB_REF_NAME` (a push), the default branch from the event, treats a push to
+`main` as the merged state, and skips the identity check; it runs after the tests, so a test that leaves a file in the
+working tree fails it. The existing `checks` job (the legacy app) is unchanged.
 
 ## Limits
 

@@ -7,14 +7,17 @@ session can resume from the living PRD, the latest monthly PRD, the handover, th
 
 - **How it is written.** By hand from [`TEMPLATE.md`](TEMPLATE.md) for each cycle from the **2026-10** data month (files
   due 13 to 17 Nov 2026, processed by the legacy pipeline) until milestone M14 generates it (Q-76, proceeding on its
-  default). The template's section headings are fixed: the planned check script and, from M14, the acceptance test
-  AC-23 look for them.
+  default). The template's section headings are fixed: the check script (`monthly-prd-check.mjs`) and, from M14, the
+  acceptance test AC-23 look for them.
 - **Handover in the same cycle.** Each cycle also refreshes [`../HANDOVER.md`](../HANDOVER.md): its "last refreshed"
   date becomes the cycle's, and its git-state section matches section I of the monthly PRD.
-- **Checks before committing.** `node scripts/validation/privacy-scan.mjs docs/monthly-prds` with the private
-  deny-list (`PRD_PRIVACY_DENYLIST`, see [`../new-build/safety-tooling.md`](../new-build/safety-tooling.md)) and
-  `node scripts/validation/docs-links.mjs`. `scripts/validation/monthly-prd-check.mjs` (sections A to I present, the
-  handover refreshed, privacy) is planned in M1.1 and not built yet.
+- **Checks before committing.** `node scripts/validation/monthly-prd-check.mjs` with the private deny-list
+  (`PRD_PRIVACY_DENYLIST`, see [`../new-build/safety-tooling.md`](../new-build/safety-tooling.md)). For every
+  `YYYY-MM-Portfolio-Review-PRD.md` here it checks the file name and title month, the nine section headings of
+  `TEMPLATE.md` (exactly as written, in order, none empty), that no template placeholder is left, the links, the
+  privacy rules and deny-list, and that `../HANDOVER.md` was refreshed in the cycle: its "Last refreshed" date is on or
+  after the "cycle completed" date of the Cycle line, and for the newest cycle it names the latest commit of section I.
+  CI runs it with the generic privacy rules only.
 
 ## What it holds, and what it does not
 

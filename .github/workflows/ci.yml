@@ -53,3 +53,12 @@ jobs:
         run: node --test "tests/**/*.test.mjs"
         env:
           TZ: UTC
+      - name: Monthly PRDs (sections A to I, placeholders, links, privacy, handover refreshed)
+        run: node scripts/validation/monthly-prd-check.mjs
+      - name: Fetch main for the release check (the checkout is shallow)
+        run: |
+          git fetch --no-tags --unshallow origin '+refs/heads/main:refs/remotes/origin/main' \
+            || git fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main'
+      # Last on purpose: a test that leaves a file in the working tree fails the release check.
+      - name: Release check (remote, default branch, clean tree, legacy page changed only by a patch script)
+        run: node scripts/validation/release-check.mjs --ci
