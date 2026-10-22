@@ -5,6 +5,33 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ## [Unreleased]
 
 ### Added
+- **The owner's answers to the new-build decisions (22 Oct 2026), milestone M1.1.** Documentation and one test;
+  `index.html` is unchanged.
+  - DECISIONS D-024 to D-033: the `/next/` preview and no client use of its exports (D-024); npm for build tooling
+    (D-025); data classes, with every Accord file publishable (the owner confirmed that the licence covers all Accord
+    files), MF Screener scores and ranks never in a public page and the pack uploaded by the owner into a section 1
+    slot and kept in the browser until a newer pack (D-026); the MF Screener link (D-027); the live
+    page's fix policy (D-028); missing values keep the dash, sentences never use one (D-029); thresholds approved with
+    a fund pair overlapping from 35% (D-030); borders and the Actionables tan (D-031); capital-gains statements in our
+    own template (D-032); full charge of GitHub and the dashboard, no branch ruleset (D-033). D-023 gains an addendum:
+    the five Index TRI files are its index data.
+  - `docs/MONTHLY_UPDATE_GUIDE.md`: "Files the owner supplies each month", the single tracked list (who sends each
+    file, when, where it goes, public or private, what it feeds), with the new build's additions; MONTHLY_REFRESH and
+    the docs index point to it.
+  - A privacy-scan test pinning the deny-list exemption to `index.html` alone, with the generic rules still applied
+    to it.
+- **Phase 0 of the new build (CR-0006), recorded in milestone M1.1.** Documentation only; `index.html` is unchanged.
+  - `docs/new-build/`: the Phase 0 deliverables of 21 Oct 2026, revised on 22 Oct 2026 (legacy system audit,
+    capability inventory, architecture, reuse and migration plan, feature-parity matrix, data-source inventory,
+    implementation roadmap, regression test plan, repository and docs structure, observation rule bank, deck design
+    system, open questions, and the ten decisions still open with the owner, ND-1 to ND-10), beside the owner's
+    brief; a `README.md` that indexes them and says which living document owns each fact.
+  - `docs/new-build/inputs/`: the eight investigator files in their public-safe form.
+  - Living documents: `docs/PRD.md` (the PRD, draft 0.3 for the owner's review), `docs/DATA_DICTIONARY.md` (v0: the
+    new data model's entities, fields, metric paths, statuses, units and calculation definitions),
+    `docs/MONTHLY_UPDATE_GUIDE.md` (the planned monthly flow; today's process stays `docs/MONTHLY_REFRESH.md`), and
+    `docs/monthly-prds/` (the README and the sections A to I template for the monthly PRD, from the 2026-10 cycle).
+  - Every new file passed the privacy scan with the private deny-list and the docs link check.
 - **Safety tooling for the new build (CR-0006, milestone M1.1)**, Node 24 built-ins only, described in
   `docs/new-build/safety-tooling.md`. `index.html` is unchanged.
   - `scripts/validation/privacy-scan.mjs`: scans files, or only the lines a change adds (`--staged`,
@@ -26,14 +53,29 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Change requests CR-0004 (the second export request) and CR-0005 (audit, fixes and redesign).
 
 ### Changed
+- **New build documents updated for the owner's answers (22 Oct 2026):** the architecture (the Screener pack slot and
+  browser store, §6.9; the capital-gains template, §6.10; the dash rule; §21 now a record), the rule bank (35% pair
+  threshold, approved table, lint), the deck design system (dash marker, heat bands at 35% and 50%, D-031 tokens), the
+  roadmap (M1.2 can start; M7, M10, M11 and the "what waits" table), the test plan (new section 5.6, AC-16, AC-18,
+  AC-22, CI gates), the parity matrix, the data-source inventory, the reuse plan, the open questions (eleven questions
+  answered; a third change log) and the owner decisions (answers added). PRD 0.4, DATA_DICTIONARY v0.1 (stored
+  Screener pack §5.16, capital-gains template §5.17), CR-0006 (Phase 0 done, M1.1 ready for its PR), PROJECT_STATE,
+  HANDOVER, DEPLOYMENT (no ruleset; `/next/` from M1.2) and the safety-tooling notes. "n.a." is no longer proposed
+  anywhere. The new app takes only scheme codes from the Fund Ranks workbook; the legacy `FUND_RANKS` block (fund
+  ranks issued 15 Aug 2026) is an open item in PROJECT_STATE.
+- **New build records (M1.1):** HANDOVER (a "last refreshed" date, the new-build reading order, the monthly PRD duty,
+  a git-state section), PROJECT_STATE (Phase 0 delivered, M1.1 in progress, new blockers and next steps), CR-0006
+  (Phase 0 done; changes so far), `docs/README.md` (the new documents) and CLAUDE.md (a short "New build" section
+  pointing to them).
 - **Privacy fixes found by the new scan:** the previous owner's personal GitHub account address (DECISIONS D-002,
   DEPLOYMENT, REPLICATION_REPORT), their local user name in two paths (previous-owner handover) and the
   organisation's OneDrive folder name (previous-owner knowledge dump) are replaced by descriptions or placeholders.
   Earlier commits still hold them; history is not rewritten.
 - **CR-0006, the new build:** the owner's brief of 21 Oct 2026 (sanitised copy in `docs/new-build/00-owner-brief.md`).
-- **D-023 (22 Oct 2026):** the vendor licence allows publishing the monitor files, which closes the open question
-  under D-008. Drawdown comparisons use index data. Portfolio 3Y and 5Y returns are the weighted average of the
-  holdings' returns, with missing returns left out and footnoted. Direct-equity returns follow the owner's stock price
+- **D-023 (22 Oct 2026):** the vendor licence allows publishing every Accord file (the monitor files first; the owner
+  confirmed later the same day that the licence covers all Accord files), which closes the open question under
+  D-008. Drawdown comparisons use index data. Portfolio 3Y and 5Y returns are the weighted average of the holdings'
+  returns, with missing returns left out and footnoted. Direct-equity returns follow the owner's stock price
   calculator. CLAUDE.md, MONTHLY_REFRESH, DEPLOYMENT and `.gitignore` comments updated; the licence blocker removed
   from PROJECT_STATE.
 - **Owner decisions OD-29 to OD-36 accepted (D-022, 21 Oct 2026).** OD-32 (renamed fund houses as aliases) and

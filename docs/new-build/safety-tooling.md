@@ -43,7 +43,9 @@ repository.** Without the variable only the generic rules run, and every report 
 (that is the case in CI). If the variable is set but the file cannot be read, the scan stops with exit 2.
 `index.html` is exempt from the deny-list only: its embedded reference data names listed companies and fund
 managers who share names with it. Client holdings never enter `index.html` (they are uploaded at run time),
-and each code change reaches it through a patch script in `tools/patches/`, which is scanned.
+and each code change reaches it through a patch script in `tools/patches/`, which is scanned. Every other rule
+still applies to `index.html`. The lead confirmed this exemption on 22 Oct 2026 (D-033), and a test pins it: the
+committed allow-list exempts `index.html` and no other path (`tests/validation/privacy-scan.test.mjs`).
 
 ## Running them
 
@@ -74,7 +76,7 @@ For the commits that would be pushed (from `origin/main`, or `--base <ref>`, to 
    and removed again before the push is still published in history), and on every commit message and author
    and committer identity.
 2. **Size:** any file over 50 MB is refused (`--max-mb` changes the limit). GitHub warns at 50 MB and rejects
-   100 MB.
+   100 MB. The 50 MB limit stays (lead, 22 Oct 2026, D-033).
 3. **New binary and data files** are refused: `xlsx`, `xls`, `csv`, `pptx`, `pdf`, `zip`, `png`, `jpg`, and the
    other office and data formats `.gitignore` blocks (`jpeg`, `xlsm`, `xlsb`, `ods`, `tsv`, `ppt`, `pptm`,
    `docx`, `doc`, `msg`, `7z`). Allowed: anything under `monthly_updates/YYYY-MM/` (the folder for approved

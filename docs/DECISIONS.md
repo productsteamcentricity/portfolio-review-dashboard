@@ -190,7 +190,8 @@ to be tracked in the public repository; earlier records treated the vendor data 
 (the open question under D-008). The brief also needs portfolio-level 3Y and 5Y returns, a drawdown comparison and
 returns for direct equity.
 **Decision (owner, 22 Oct 2026):**
-1. **Publication.** The vendor licence allows publishing the monitor files. Approved monthly source files will be
+1. **Publication.** The vendor licence allows publishing the monitor files, and (owner, 22 Oct 2026) every other
+   Accord Fintech file too: analytics, expense ratio, listed equity and the rest. Approved monthly source files will be
    tracked in `monthly_updates/YYYY-MM/` once that folder is set up (CR-0006, Phase 1). The vendor-derived data
    embedded in `index.html` is permitted, which closes the D-008 question. Client data is never published.
    - **Recommended:** the MF Screener data pack stays private unless the Screener owner agrees. The Screener is
@@ -218,3 +219,101 @@ returns for direct equity.
      calculator's Fetch Price sheet).
 **Consequence.** CLAUDE.md, MONTHLY_REFRESH and DEPLOYMENT now point here. The Screener data pack prompt asks for
 month-end stock price history.
+**Addendum (owner, 22 Oct 2026).** The index data of point 2 is the five Index TRI files (Nifty 50, Nifty 100,
+Nifty 500, Nifty Midcap 150, Nifty Smallcap 250) that the owner already puts in each month's `Index TRI` folder.
+
+## D-024 — The new app is previewed publicly at `/next/` (22 Oct 2026, lead under D-033; ND-3, ND-9)
+**Context.** CR-0006 builds the new app beside `index.html`; D-007 publishes `index.html` only (Q-10, Q-85).
+**Decision.** Pages publishes `index.html` at `/` (the legacy page, the review link until parity) and
+`next/index.html` at `/next/` (the new app) with a visible "Preview, not for client use" banner. Docs are still never
+served. Nothing exported from `/next/` is used for a client before switch-over: every preview export carries
+"Preview build, not for client use". The legacy page links to the preview from M5 at the earliest. At switch-over
+(M15) the new app moves to `/` and the legacy page to `/legacy/`. Supersedes D-007 in part.
+**Consequence.** `pages.yml` stages both files from milestone M1.2.
+
+## D-025 — npm for the new app's build tooling (22 Oct 2026, lead under D-033; ND-2)
+**Decision.** The new app uses npm for pinned, development-time build tooling (esbuild 0.28.2; TypeScript 7.0.2, or
+6.0.3 as a fallback) plus Preact 10.29.x, bundled into the page: exact versions, a committed lockfile,
+`ignore-scripts=true`, `npm ci` only. Nothing is downloaded when the page runs; it stays one offline HTML file. The
+"no npm install" rule in `CLAUDE.md` describes the legacy `index.html`. The stack is architecture A1 to A3
+(`new-build/03-architecture.md`). **Fallback** if npm or esbuild cannot run on the maintainer's laptop: the same
+layout with a hand-written bundler.
+
+## D-026 — Data classes, and the MF Screener data pack stays out of public pages (22 Oct 2026; the Screener rule by the owner, ND-1; the class policy by the lead, implementing D-023)
+**Context.** D-023 point 1 lets the approved monthly source files be published. The MF Screener is invitation-only
+and carries Centricity's own scores (Q-06).
+**Decision.**
+1. **Classes.** Every source file has a class: P publishable (every Accord Fintech file: the owner confirmed on
+   22 Oct 2026 that the licence covers all Accord files, not only the monitors; the other approved monthly source
+   files of D-023; and Centricity material without client data); C private until approved (a source that is neither
+   Accord nor Centricity material, until its licence is confirmed); N never (client data, personal data,
+   credentials, the MF Screener data pack). From M11 class P files are tracked in `monthly_updates/YYYY-MM/`, a file above 50 MB as PDF with the
+   original's SHA-256 recorded; the policy file is `monthly_updates/_policy/publication-classes.json`.
+2. **Screener scores and ranks are never in a public page (owner).** The MF Screener data pack is never embedded in
+   any public build and never committed. The owner uploads it every Screener cycle: the new app has an "MF Screener
+   data pack" upload slot in section 1; the pack is read and validated in the browser and kept in that browser's
+   IndexedDB until a newer pack is loaded; its cycle date shows in the sidebar; every screen, slide and sheet that
+   needs it says so when no pack is loaded. The monthly update may validate the pack and publish only its
+   fingerprint, contract version, cycle and counts.
+**Consequences.** Design in `new-build/03-architecture.md` §6.9. The legacy `FUND_RANKS` block (fund ranks issued
+15 Aug 2026) is an open item in `PROJECT_STATE.md`.
+
+## D-027 — The MF Screener link (the owner's brief, 21 Oct 2026; recorded 22 Oct 2026)
+**Decision.** The new app has an "MF Screener" navigation item that opens the Screener in a new tab: one allow-listed
+URL in `config/links.json`, an anchor with `target="_blank" rel="noopener noreferrer"`, no query string, no prefetch,
+no availability check. It is the one documented exception to `CLAUDE.md` rule 2, in the new app only (the Screener
+blocks embedding; no credential is used or stored). The build check allows that URL in that form and nowhere else
+(Q-11).
+
+## D-028 — What the live page receives during the parallel run (22 Oct 2026, lead under D-033; ND-4)
+**Decision.** While `index.html` is the review link it keeps receiving calculation, data and security fixes, because
+analysts and clients see those numbers now. Presentation-only improvements (layout, styling, slide order, wording) go
+to the new build only. Legacy batch 2a (D-022) proceeds; the CR-0005 batches continue without their presentation-only
+items. Every legacy fix is ported to the new app with the same known answer.
+
+## D-029 — Missing values show a dash; sentences never use one (22 Oct 2026, owner; ND-5)
+**Context.** The brief bans dashes in presentation writing; OD-13 and OD-29 show "—" for a value that is not there.
+Phase 0 proposed "n.a." instead (Q-42); the owner declined.
+**Decision.** In the new app, as in the legacy page, a missing value is shown as a dash, "—", alone in its cell or
+tile, with a footnote naming its status (for example "not available in supplied data", "not applicable"). The no-dash
+rule applies to sentences only: presentation prose (titles, observations, footnotes, labels, chart series names) never
+uses an en or em dash. In the workbook a missing number is a blank cell with its status in the next column, so
+formulas keep working. The other conventions of Q-42 stand as recommended (lead): dates "D Mon YYYY", Indian digit
+grouping for rupee amounts and units, negatives with a hyphen-minus in red `#931621`.
+
+## D-030 — Observation thresholds approved; a fund pair overlaps from 35% (22 Oct 2026, owner; ND-6)
+**Decision.** The threshold table in `new-build/observation-rule-bank.md` §3 is approved with one change: a fund pair
+counts as overlapping (high) from 35%, not the proposed 30% and not the legacy 40%; very high stays at 50%. The other
+proposed changes stand: the open-ended strength moves from 65% to 95% (L-S3, L-C8) and the debt high-quality phrase
+from 50% to 70% (L-C3). The table's first version records this approval; each later change is a versioned edit with
+its own approval.
+**Consequence.** The parity ledger records the legacy rows L-W2 and L-O3 as a threshold change from 40% to 35%.
+
+## D-031 — Table borders and the Actionables column (22 Oct 2026, lead under D-033; ND-7)
+**Decision.** One table border for the whole deck: 0.5 pt `#D9D9D9` (the holdings sheets' "slide 25" item). The
+rebalancing slide's Actionables cells (the "slide 6" item) are tan `#DBC8B2` with black bold text showing the action
+word (Exit, Retain, Partial, New Addition, Top-Up); the rationale keeps its own column.
+
+## D-032 — Capital-gains statements come in our own template (22 Oct 2026, owner; ND-8)
+**Context.** The brief asks for a capital-gains upload; client files cannot be used to learn issuers' layouts (Q-78).
+**Decision.** Analysts upload capital-gains statements in a template the new app defines, as they do with the
+base-file template. The owner's sample format may inform it but is not required. One row per realised lot, money in
+rupees, dates as Excel dates; the app offers the blank template for download, reads it by header name and refuses a
+file that is not in it, naming the missing columns. The proposed columns (`DATA_DICTIONARY.md` §5.17) are fixed in
+M7.
+**Consequence.** No per-issuer parsers. The statement stays the source of record for a financial year's realised
+gains; without one they are labelled "derived from transactions".
+
+## D-033 — Claude takes charge of GitHub and the dashboard; no branch ruleset (22 Oct 2026, owner; ND-10)
+**Context.** ND-10 proposed a ruleset on `main` (Q-86). The owner declined it and gave Claude full charge of GitHub
+and the dashboard. Extends D-017.
+**Decision.** Claude (the lead session) runs the repository and the dashboard: branches, pull requests, merges,
+repository settings, releases, and the technical and process questions the owner leaves open. Each such decision is
+recorded here as "lead, under D-033". No ruleset protects `main`; `CLAUDE.md` rule 8 still applies (no force-push, no
+history rewrite, no branch deletion, merge only with green CI), and acceptance case AC-22 detects a force-push after
+the fact. Unchanged unless the owner says otherwise: the owner's own answers prevail, and a data refresh is merged
+after the owner's "publish" (D-017).
+**First lead decisions (22 Oct 2026).** D-024, D-025, D-028, D-031 and the Q-42 conventions in D-029; `index.html`
+stays exempt from the private deny-list only (its embedded public vendor data names listed companies and fund
+managers; every other scan rule applies to it); the redactions of local user and organisation names in the previous
+owner's published documents stand; the push size limit stays 50 MB.

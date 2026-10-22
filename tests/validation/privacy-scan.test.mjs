@@ -252,6 +252,25 @@ describe('allow-list', () => {
     for (const o of raw.githubOwners) assert.ok(o.owner && o.why, `owner entry needs a reason: ${JSON.stringify(o)}`);
     for (const e of raw.denylistExemptPaths) assert.ok(e.path && e.why, 'exempt path needs a reason');
   });
+  test('exempts index.html, and only index.html, from the deny-list; every other rule still applies to it (D-033)', () => {
+    // Lead decision of 22 Oct 2026: the legacy page's embedded public vendor data names listed companies and fund
+    // managers, so the private deny-list is not applied to it; e-mail, PAN and the other generic rules are.
+    assert.deepEqual([...allow.denylistExemptPaths], ['index.html']);
+    const entries = [
+      { path: 'index.html', line: 1, text: 'Vexmoor Growth Fund' },
+      { path: 'index.html', line: 2, text: `contact ${'jane.roe'}${AT}${'mailbox.co.in'}` },
+      { path: 'index.html', line: 3, text: `id ${'ABCPE'}${'1234F'}` },
+      { path: 'tools/patches/2026-10-22-example.js', line: 1, text: 'Vexmoor' },
+      { path: 'docs/index.html', line: 1, text: 'Vexmoor' },
+    ];
+    const { hits } = ps.scanEntries(entries, { allow, denyTerms: ['Vexmoor'] });
+    assert.deepEqual(hits.map((h) => `${h.path}:${h.line}:${h.rule}`), [
+      'index.html:2:email',
+      'index.html:3:pan',
+      'tools/patches/2026-10-22-example.js:1:denylist',
+      'docs/index.html:1:denylist',
+    ]);
+  });
 });
 
 test('base64 payloads of data: URIs are not scanned', () => {

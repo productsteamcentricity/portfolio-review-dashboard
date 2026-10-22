@@ -7,8 +7,8 @@ not by reading code, and owns every decision about product behaviour.
 ## What this is
 One offline HTML file, `index.html` (~16.8 MB), that turns one client holdings workbook into an
 HNI/UHNI portfolio review: 20 on-screen tabs, a PowerPoint deck (PptxGenJS) and an Excel workbook
-(SheetJS). All libraries and ~10 MB of vendor reference data are embedded. There is no server, no
-build step and no npm install. Repository: github.com/productsteamcentricity/portfolio-review-dashboard
+(SheetJS). All libraries and ~10 MB of vendor reference data are embedded. The legacy page has no server, no
+build step and no npm install; the new app (CR-0006) uses pinned npm build tooling (D-025). Repository: github.com/productsteamcentricity/portfolio-review-dashboard
 (**public**); `.github/workflows/pages.yml` publishes index.html only to
 https://productsteamcentricity.github.io/portfolio-review-dashboard/. Users: the Products Team analysts
 and the monthly data owner.
@@ -75,8 +75,8 @@ docs/                 README.md (index) · HANDOVER · MONTHLY_REFRESH · ARCHIT
 .claude/              launch.json (preview server) · agents/ (project subagents)
 .github/workflows/    ci.yml (checks on main and PRs) · pages.yml (publishes index.html only)
 ```
-Not in git (yet): vendor data and the owner's inbox live in OneDrive. The licence allows publishing the monitor
-files (D-023), so approved monthly source files move to a tracked `monthly_updates/YYYY-MM/` with CR-0006 Phase 1;
+Not in git (yet): vendor data and the owner's inbox live in OneDrive. The licence allows publishing every Accord
+file (D-023, D-026), so approved monthly source files move to a tracked `monthly_updates/YYYY-MM/` with CR-0006;
 client data never goes in git. OneDrive (`…\Claude Code-Portfolio Review Dashboard\`
 `01 Monthly Updates\YYYY-MM`, `02 Archive\YYYY-MM`, `03 Handover`); the previous owner's unpacked export is
 in `C:\dev\handover-export`. Monthly refresh: docs/MONTHLY_REFRESH.md (`refresh-operator` agent).
@@ -117,6 +117,26 @@ In a Claude Code PowerShell call, prepend the toolchain if `node` is not found:
 Loading a base file over a loaded one, or removing it (×), runs `resetFamilyState()` (UI script): the
 IRR, PMS/AIF and bonds uploads return to defaults and all family state is dropped; market-data uploads
 stay. Any new per-family state you add must be cleared there too, and `family-isolation.js` must pass.
+
+## New build (CR-0006)
+A clean new application is being built beside `index.html`, which stays the review link until the new one reaches
+feature parity. Phase 0 is delivered (22 Oct 2026); the owner answered ND-1 to ND-10 on 22 Oct 2026 (D-024 to
+D-033) and gave Claude full charge of GitHub and the dashboard (D-033). Milestone M1.1 (safety tooling and these
+records) is in progress; no application code exists yet. Every rule above applies; rules 1 and 5 are about the legacy
+`index.html`, and the new application's own rules arrive with its code (M1.2).
+- Start at `docs/new-build/README.md` (the Phase 0 record and which living document owns what); the living PRD is
+  `docs/PRD.md`; the data model `docs/DATA_DICTIONARY.md`; the roadmap `docs/new-build/07-implementation-roadmap.md`;
+  the answered owner decisions `docs/new-build/owner-decisions-new-build.md`; the files the owner supplies each month
+  `docs/MONTHLY_UPDATE_GUIDE.md`.
+- House style (D-029): a missing value shows a dash ("—") alone in its cell; presentation sentences never contain an
+  en or em dash. Screener scores and ranks never go into a public page (D-026). Every Accord file may be published;
+  client data never (D-023).
+- Before a push: `node scripts/validation/prepush-scan.mjs` (or the hook: `git config core.hooksPath scripts/hooks`)
+  with `PRD_PRIVACY_DENYLIST` naming the private deny-list; never copy a deny-list term into the repository
+  (`docs/new-build/safety-tooling.md`). Docs: `node scripts/validation/docs-links.mjs`. Tests:
+  `node --test "tests/**/*.test.mjs"`.
+- Every monthly cycle from the 2026-10 data month ends with `docs/monthly-prds/YYYY-MM-Portfolio-Review-PRD.md` (from
+  `TEMPLATE.md`) and a refresh of `docs/HANDOVER.md`.
 
 ## Docs map
 `docs/README.md` indexes everything. Start with docs/HANDOVER.md; the monthly process is

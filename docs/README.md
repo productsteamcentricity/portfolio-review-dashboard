@@ -15,6 +15,21 @@ change follows.
 | publish, verify or roll back the live site | [DEPLOYMENT.md](DEPLOYMENT.md) |
 | check a change for client data, names and secrets before pushing (privacy scan, pre-push hook) | [new-build/safety-tooling.md](new-build/safety-tooling.md) |
 
+## The new build (CR-0006)
+
+A new application is being built beside `index.html`, which stays the review link until the new one reaches feature
+parity. No application code exists yet.
+
+| I want to… | Read |
+|---|---|
+| find the Phase 0 documents (brief, audit, architecture, parity matrix, roadmap, test plan, rule bank, deck design, open questions) | [new-build/README.md](new-build/README.md) |
+| know what the new application must do | [PRD.md](PRD.md) (the living PRD) |
+| look up an entity, field, metric path, missing-data status, unit or calculation definition | [DATA_DICTIONARY.md](DATA_DICTIONARY.md) (v0.1) |
+| see how the monthly update will work in the new application | [MONTHLY_UPDATE_GUIDE.md](MONTHLY_UPDATE_GUIDE.md) (planned; today's process is [MONTHLY_REFRESH.md](MONTHLY_REFRESH.md)) |
+| see every file the owner supplies each month: who sends it, where it goes, public or private, what it feeds | [MONTHLY_UPDATE_GUIDE.md, "Files the owner supplies each month"](MONTHLY_UPDATE_GUIDE.md#files-the-owner-supplies-each-month) (in use now) |
+| see the owner's answers for the new build | [DECISIONS.md](DECISIONS.md) D-024 to D-033 ([new-build/owner-decisions-new-build.md](new-build/owner-decisions-new-build.md)) |
+| write the monthly PRD at the end of a cycle | [monthly-prds/](monthly-prds/README.md) |
+
 ## Records
 
 | Record | What it holds |
@@ -22,6 +37,7 @@ change follows.
 | [PROJECT_STATE.md](PROJECT_STATE.md) | where things stand now: blockers, next steps, backlog, open decisions |
 | [change-requests/](change-requests/) | one file per request from the product owner: what was asked, decided, changed and verified |
 | [refresh-log/](refresh-log/) | one file per monthly data refresh: inputs, counts, checks, what stayed stale |
+| [monthly-prds/](monthly-prds/README.md) | one monthly PRD per completed cycle from the 2026-10 data month (brief Phase 12, sections A to I) |
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | every known defect and limitation, with verification status |
 | [audits/](audits/) | full audits of the dashboard: the issue register with evidence, and the owner decisions they need |
 | [DECISIONS.md](DECISIONS.md) | the decision register: why things are the way they are |
