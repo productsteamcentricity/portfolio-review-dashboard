@@ -524,6 +524,18 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     investment:1, investments:1, manager:1, managers:1, company:1, co:1, ltd:1, limited:1, pvt:1, private:1 };
   var AMC_ALIAS = { ppfas:"parag", paragparikh:"parag", absl:"aditya", adityabirla:"aditya",
     adityabirlasl:"aditya", icicipru:"icici", kotakmahindra:"kotak", nipponlife:"nippon" };
+  /* OD-32 (owner decision, 21 Oct 2026): a fund house's FORMER name counts as its current
+     house, on the same squashed spelling as AMC_ALIAS: IDFC -> Bandhan; L&T (L and T,
+     Larsen & Toubro MF) -> HSBC; Reliance (Reliance Nippon Life) -> Nippon India; DSP
+     BlackRock -> DSP; Birla Sun Life (Birla SL) -> Aditya Birla Sun Life; IIFL -> 360 ONE.
+     A mutual-fund row under a former name is shown under the current name (computeReview);
+     a row outside the mutual-fund book keeps its own label (KI-061), so a "Larsen & Toubro
+     Ltd." stock is never renamed. "IDFC First Bank" squashes to idfcfirstbank: not an alias. */
+  var AMC_RENAMED = { idfc:"bandhan", lt:"hsbc", landt:"hsbc", larsentoubro:"hsbc", larsenandtoubro:"hsbc",
+    reliance:"nippon", reliancenippon:"nippon", reliancenipponlife:"nippon", dspblackrock:"dsp",
+    birlasunlife:"aditya", birlasl:"aditya", iifl:"360" };
+  /* OD-34: the name shown for mutual-fund rows that carry no AMC label */
+  var AMC_NOT_GIVEN = "AMC not given";
   function amcSquash(s){
     var w = String(s==null?"":s).toLowerCase().replace(/[^a-z0-9]+/g," ").trim().split(" ");
     var kept = w.filter(function(t){ return t && !AMC_NOISE.hasOwnProperty(t); });
@@ -537,10 +549,13 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     Object.keys(AMC_DISPLAY).forEach(function(k){
       var s = amcSquash(AMC_DISPLAY[k]); if (s && !(s in AMC_HOUSE)) AMC_HOUSE[s] = AMC_HOUSE[k]; });
     Object.keys(AMC_ALIAS).forEach(function(a){ AMC_HOUSE[a] = AMC_HOUSE[AMC_ALIAS[a]]; });
+    Object.keys(AMC_RENAMED).forEach(function(a){ AMC_HOUSE[a] = AMC_HOUSE[AMC_RENAMED[a]]; });   /* OD-32 */
   })();
+  /* OD-32: true when a label is a fund house's former name */
+  function amcFormer(tok){ return Object.prototype.hasOwnProperty.call(AMC_RENAMED, amcSquash(tok)); }
   function amcKey(tok){
     var s = amcSquash(tok);
-    if (!s) return String(tok==null?"":tok).trim();        /* "" stays "", a lone "-" stays itself */
+    if (!s) return "";        /* OD-34: no letter or digit ("", "  ", "-"): no AMC given, no house */
     if (s in AMC_HOUSE) return AMC_HOUSE[s];
     if (s.length > 5 && s.slice(-5) === "india" && (s.slice(0, -5) in AMC_HOUSE)) return AMC_HOUSE[s.slice(0, -5)];
     return s;
@@ -1657,24 +1672,36 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
        Only mutual-fund-book rows take part and are renamed, so the AI Analyst and
        the AMC tab agree; a row outside the book keeps amcDisplay(its own label). */
     (function(){
-      var seen = Object.create(null), nameOf = Object.create(null);
+      /* OD-32: a house with a former name (AMC_RENAMED) among its mutual-fund labels is
+         named as the engine names it today (AMC_DISPLAY), even under a single label.
+         OD-34: mutual-fund rows with no AMC label are no house: they are named
+         AMC_NOT_GIVEN and kept out of the house table below. */
+      var seen = Object.create(null), nameOf = Object.create(null), former = Object.create(null);
       rows.forEach(function(h){
-        if (!h.mfBook) return;
+        if (!h.mfBook || !h.amcKey) return;
         var g = seen[h.amcKey] || (seen[h.amcKey] = Object.create(null));
         g[h.amcDisplay] = (g[h.amcDisplay] || 0) + (h.cmvCr || 0);
+        if (amcFormer(h.amc)) former[h.amcKey] = 1;
       });
       Object.keys(seen).forEach(function(k){
         var g = seen[k], names = Object.keys(g);
-        if (names.length < 2) return;
+        if (names.length < 2 && !former[k]) return;
         nameOf[k] = Object.prototype.hasOwnProperty.call(AMC_DISPLAY, k) ? AMC_DISPLAY[k]
           : names.sort(function(a, b){ return (g[b] - g[a]) || (a < b ? -1 : (a > b ? 1 : 0)); })[0];
       });
-      rows.forEach(function(h){ if (h.mfBook && (h.amcKey in nameOf)) h.amcDisplay = nameOf[h.amcKey]; });
+      rows.forEach(function(h){
+        if (!h.mfBook) return;
+        if (!h.amcKey){ h.amcDisplay = AMC_NOT_GIVEN; return; }       /* OD-34 */
+        if (h.amcKey in nameOf) h.amcDisplay = nameOf[h.amcKey];
+      });
     })();
-    var amcMap=Object.create(null), amcName=Object.create(null), amcOrder=[], mfTotal=0;
+    /* OD-34: a mutual-fund row with no AMC counts in the book (every house's % is of the
+       whole mutual-fund book) but in no house; it is reported apart as amc.notGiven */
+    var amcMap=Object.create(null), amcName=Object.create(null), amcOrder=[], mfTotal=0, ngCmv=0, ngN=0;
     rows.forEach(function(h){
       if (h.mfBook){
         var ak=h.amcKey;
+        if (!ak){ ngCmv+=h.cmvCr; ngN++; mfTotal+=h.cmvCr; return; }
         if (!(ak in amcMap)){ amcMap[ak]=0; amcName[ak]=h.amcDisplay; amcOrder.push(ak); }
         amcMap[ak]+=h.cmvCr; mfTotal+=h.cmvCr;
       }
@@ -1684,6 +1711,14 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       return {amc:amcName[a],key:a,cmv:amcMap[a],pct:pct,breach:pct>20.0};
     }).sort(function(x,y){return y.pct-x.pct;});
     var amcBreaches=amcRows.filter(function(r){return r.breach;});
+    var amcNotGiven = null;                                          /* OD-34 */
+    if (ngN){
+      var ngPct = mfTotal ? ngCmv/mfTotal*100 : 0, ngMany = ngN > 1;
+      amcNotGiven = { amc:AMC_NOT_GIVEN, count:ngN, cmv:ngCmv, pct:ngPct,
+        note: AMC_NOT_GIVEN+": "+ngN+" mutual-fund holding"+(ngMany?"s":"")+" ("+(Math.round(ngPct*100)/100).toFixed(2)+
+          "% of the mutual-fund book) "+(ngMany?"have":"has")+" no AMC in the base file. "+(ngMany?"They are":"It is")+
+          " shown separately, outside every fund house's 20% cap, and counted in no house's share." };
+    }
 
     var _uh = (opts && opts.unitHint) || (rows && rows.unitHint) || _unitHint || 'Cr';   /* KI-048: set here, before the client sheets, whose § note quotes rupee flows */
     if (_uh==='auto') _uh = (totalCMV>=1) ? 'Cr' : 'L';   // raw-rupee-only files: pick by portfolio size
@@ -2496,7 +2531,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       irr:irrTree, irrActive:!!IRRO, irrAsOn:irrAsOn,
       assetAllocation:{rows:aaRows, presentAssets:presentAssets},
       assetPie:assetPie, liqPie:liqPie,
-      amc:{rows:amcRows, mfTotal:mfTotal, breaches:amcBreaches, max:amcRows[0]||null},
+      amc:{rows:amcRows, mfTotal:mfTotal, breaches:amcBreaches, max:amcRows[0]||null, notGiven:amcNotGiven},   /* OD-34 */
       clients:clients,
       equityAnalytics:equityAnalytics, debtAnalytics:debtAnalytics,
       taxation:(function(){ try{ return computeTaxation(rows,REF,(REF.IRR&&REF.IRR.date)||null); }
@@ -3117,6 +3152,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     var amcPctOf = Object.create(null), amcCmvOf = Object.create(null), amcNameOf = Object.create(null);
     (model.amc && model.amc.rows || []).forEach(function(r){
       var k = (r.key != null) ? r.key : amcKey(r.amc);
+      if (!k) return;                              /* OD-34: no AMC given is never a house */
       amcPctOf[k] = r.pct; amcCmvOf[k] = r.cmv || 0; amcNameOf[k] = r.amc; });
 
     /* as-on date for tenure arithmetic, from the manager-history vintage */
@@ -3515,6 +3551,9 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         "). That is inside the " + AIA_AMC_CAP + "% house cap and is not a breach, but concentration is one of the " +
         "rebalancing triggers in its own right: the plan is trading concentration for the other improvements shown, " +
         "and the trade-off is the adviser's to accept.");
+    /* OD-34: the mutual-fund rows with no AMC, counted, outside every house */
+    if (model.amc && model.amc.notGiven && model.amc.notGiven.count)
+      out.caveats.push(model.amc.notGiven.note + " The plan neither tests nor books them against any fund house, and the largest-AMC figures leave them out.");
     out.caveats.push("This is a draft for the adviser to review, not an instruction. Every figure is computed in the browser from the loaded portfolio and the embedded reference data.");
     out.ok = true;
     return out;
@@ -3889,12 +3928,14 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       var s = base("AMC Allocation (Across Mutual Fund)");
       var rows = model.amc.rows.slice().reverse();
       var labels=rows.map(function(r){return r.amc;}), vals=rows.map(function(r){return Math.round(r.pct*100)/100;}), cols=rows.map(function(r){return r.breach?C.red:C.gold;});
+      /* OD-34: mutual funds with no AMC, one grey bar below the houses (the chart draws the first category at the bottom) */
+      var ng=model.amc.notGiven; if(ng&&ng.count){ labels.unshift(ng.amc); vals.unshift(Math.round(ng.pct*100)/100); cols.unshift(C.greyM); }
       s.addShape(pptx.ShapeType.roundRect,{x:0.18,y:1.02,w:12.97,h:5.05,rectRadius:0.04,fill:{color:"FFFFFF"},line:{color:C.greyL,width:1}});
       s.addChart(pptx.ChartType.bar,[{name:"AMC %",labels:labels,values:vals}],
         {x:0.34,y:1.14,w:12.65,h:4.80,barDir:"bar",chartColors:cols,showValue:true,dataLabelFormatCode:'0.00"%"',dataLabelFontFace:F,dataLabelColor:C.black,dataLabelFontSize:9,dataLabelPosition:"outEnd",
          catAxisLabelFontFace:F,catAxisLabelColor:C.black,catAxisLabelFontSize:9,valAxisHidden:false,valAxisLabelFontFace:F,valAxisLabelFontSize:8,valAxisMinVal:0,valGridLine:{style:"none"},catGridLine:{style:"none"},showLegend:false,barGapWidthPct:45});
       insight(s, INS.amc, 0.2, 6.15, 12.95, 0.55);
-      foot(s, "Weights normalised to the Mutual Fund book (100%). Per-AMC cap = 20.00%; breaches shown in red. Portfolio as on "+model.meta.asOnDate+".");
+      foot(s, "Weights normalised to the Mutual Fund book (100%). Per-AMC cap = 20.00%; breaches shown in red."+((ng&&ng.count)?(" AMC not given (grey): "+ng.count+" mutual-fund holding"+(ng.count>1?"s":"")+" with no AMC in the base file, outside every house's cap."):"")+" Portfolio as on "+model.meta.asOnDate+".");   /* OD-34 */
     })();
 
     if(SHOW('obs')) __obsSlides();
@@ -5557,6 +5598,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     /* 3. AMC Allocation */
     var am=[["AMC","% of Mutual Fund Book","CMV ("+model.unit.lab+")","Breach (>20%)"]];
     model.amc.rows.forEach(function(r){ am.push([r.amc,r.pct,model.unit.v(r.cmv),r.breach?"YES":"No"]); });
+    /* OD-34: the mutual funds with no AMC, outside every house's cap, and the footnote with the count */
+    var amNg=model.amc.notGiven; if(amNg&&amNg.count){ am.push([amNg.amc,amNg.pct,model.unit.v(amNg.cmv),"Outside cap"]); am.push([]); am.push([amNg.note]); }
     aoa("AMC Allocation",am,{cols:[{wch:26},{wch:22},{wch:12},{wch:14}],fmt:{1:'0.00"%"',2:FMT_CR}});
 
     /* 3b. Distributor / Client Asset Allocation */
@@ -6659,6 +6702,7 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
   function ensureDlBtns(){
     if(typeof TABS==='undefined') return;
     TABS.forEach(function(t){
+      if(t[0]==='home') return;   /* KI-124: Home has no slide, so it gets no download bar */
       var s=document.getElementById('s-'+t[0]); if(s && !s.querySelector('.dlslide-bar')) s.insertAdjacentHTML('afterbegin', dlBar(t[0])); });
   }
   /* a section header reflects its children: on when all are on */
@@ -6710,6 +6754,8 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       var scope=(tabKey==='analytics'&&anScope)?(' ('+anScope+')'):'';
       var fn='Portfolio Review_'+model.meta.familyName+'_'+tabLabel(tabKey)+scope+'_'+model.meta.asOnDate+'.pptx';
       var p=E.buildPPTX(mdl,Ppt,tabKey);
+      /* KI-124: a deck that would hold no slide is never written or downloaded, whatever the tab */
+      if(p&&p.slides&&p.slides.length===0){ setStatus('Nothing to download: the <b>'+tabLabel(tabKey)+'</b> tab has no slide.',true); return; }
       Promise.resolve(p.write({outputType:'blob'})).then(function(blob){
         triggerDownload(blob, fn);
         setStatus('Slide downloaded: <b>'+fn+'</b>'+(_cvsW?(' <span style="color:#931621">'+_cvsW+'</span>'):''), !!_cvsW);   /* KI-067 */
@@ -6867,11 +6913,13 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
     var s=document.getElementById('s-amc'); var m=model;
     var note=m.amc.breaches.length? '<span class="neg">Breach: '+m.amc.breaches.map(function(b){return b.amc+' ('+b.pct.toFixed(2)+'%)';}).join(', ')+' exceed the 20% per-AMC cap.</span>'
       : 'No AMC exceeds the 20% per-AMC cap (largest: '+(m.amc.max?m.amc.max.amc+' at '+m.amc.max.pct.toFixed(2)+'%':'—')+').';
+    var ng=m.amc.notGiven; if(ng&&ng.count) note+='<br>'+ng.note;   /* OD-34: count and footnote */
     s.innerHTML='<div class="card"><h3>AMC Allocation (Across Mutual Fund)</h3><div class="sub">Weights normalised to the Mutual Fund book (100%). 20% per-AMC cap shown.</div>'+
       '<div class="chartbox tall"><canvas id="amcBar"></canvas></div><p style="font-size:12.5px;margin-top:10px;">'+note+'</p></div>';
     var labels=m.amc.rows.map(function(r){return r.amc;});
     var data=m.amc.rows.map(function(r){return +r.pct.toFixed(2);});
     var colors=m.amc.rows.map(function(r){return r.breach?'#931621':'#BD9568';});
+    if(ng&&ng.count){ labels.push(ng.amc); data.push(+ng.pct.toFixed(2)); colors.push('#BFBFBF'); }   /* OD-34: palette greyM, never a breach */
     var capLine={id:'capLine',afterDraw:function(ch){var x=ch.scales.x.getPixelForValue(20);var ya=ch.scales.y;ctxLine(ch.ctx,x,ya.top,ya.bottom);}};
     charts.push(new Chart(document.getElementById('amcBar'),{type:'bar',data:{labels:labels,datasets:[{data:data,backgroundColor:colors}]},
       options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:46}},
