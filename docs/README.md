@@ -18,11 +18,13 @@ change follows.
 ## The new build (CR-0006)
 
 A new application is being built beside `index.html`, which stays the review link until the new one reaches feature
-parity. No application code exists yet.
+parity. Its sources are in `app/`; from M1.2 the shell (the nine sections as empty states) is built into one offline
+file and previewed at `/next/` with a "Preview, not for client use" banner.
 
 | I want to… | Read |
 |---|---|
 | find the Phase 0 documents (brief, audit, architecture, parity matrix, roadmap, test plan, rule bank, deck design, open questions) | [new-build/README.md](new-build/README.md) |
+| install the new app's tooling, build it, check it, preview it locally | [new-build/toolchain.md](new-build/toolchain.md) |
 | know what the new application must do | [PRD.md](PRD.md) (the living PRD) |
 | look up an entity, field, metric path, missing-data status, unit or calculation definition | [DATA_DICTIONARY.md](DATA_DICTIONARY.md) (v0.1) |
 | see how the monthly update will work in the new application | [MONTHLY_UPDATE_GUIDE.md](MONTHLY_UPDATE_GUIDE.md) (planned; today's process is [MONTHLY_REFRESH.md](MONTHLY_REFRESH.md)) |

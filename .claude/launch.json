@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["tools/serve-dashboard.js"],
       "port": 8099
+    },
+    {
+      "name": "next",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/serve.mjs"],
+      "port": 8100
     }
   ]
 }

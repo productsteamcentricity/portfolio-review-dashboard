@@ -15,8 +15,8 @@ The dashboard is published at:
     https://productsteamcentricity.github.io/portfolio-review-dashboard/
 
 (Settings → Pages → Build and deployment → Source: **GitHub Actions**. The `pages.yml`
-workflow publishes `index.html` only; never use "Deploy from a branch", which would publish
-the whole repository. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).)
+workflow publishes `index.html` and, at `/next/`, the preview of the new application (D-024), nothing else;
+never use "Deploy from a branch", which would publish the whole repository. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).)
 
 ## How to use
 

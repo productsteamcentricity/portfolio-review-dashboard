@@ -234,6 +234,7 @@ Overlap Matrix, Performance, Fund IRR, Observations, Portfolio Rebalancing, AI A
 | `buildtools/` | the monthly data-refresh pipeline (intake check → survey → build → gate → splice; risk, stock returns, PMS), restored from the previous owner's export and proved on the Sep 2026 data (byte-identical rebuild). It changes data blocks only. Script table and rules: `buildtools/README.md`; procedure: `docs/MONTHLY_REFRESH.md` |
 
 ## 10. Deployment
-GitHub Pages via `.github/workflows/pages.yml`: on a push to `main` that changes `index.html`, the
-workflow runs the invariants and smoke test, stages **only** `index.html` and deploys it. Nothing
-else in the repo is published. See `docs/DEPLOYMENT.md`.
+GitHub Pages via `.github/workflows/pages.yml`: on a push to `main` that changes `index.html` (or the new
+application's sources), the workflow runs the invariants, smoke test and regression tests, stages `index.html`
+byte for byte and deploys it; from M1.2 it also builds the new application and stages it at `/next/` (D-024).
+Nothing else in the repo is published. See `docs/DEPLOYMENT.md`.

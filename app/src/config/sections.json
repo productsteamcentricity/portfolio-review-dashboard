@@ -1,0 +1,113 @@
+{
+  "_comment": "The nine sections of the brief (docs/PRD.md section 3) in their fixed order, with what arrives in which milestone (docs/new-build/07-implementation-roadmap.md). The build writes the navigation from this file and the app renders the panels from it. Sentences never contain an en or em dash (D-029).",
+  "sections": [
+    {
+      "n": 1,
+      "id": "uploads",
+      "title": "Uploads and inputs",
+      "summary": "The client's files, the analyst's inputs and the month's reference data that a review starts from. Every upload will pass the Upload, Validate, Preview and Review stages before it feeds the review.",
+      "arriving": [
+        { "milestone": "M1.4", "what": "Base file upload with the Upload, Validate, Preview and Review stages, the import report, the editable family label and the disclaimer in use" },
+        { "milestone": "M2", "what": "Fund monitor uploads, read by column name, with their data dates" },
+        { "milestone": "M3", "what": "Transactions (IRR) file, and the analyst's price file for direct equity" },
+        { "milestone": "M4", "what": "PMS and AIF look-through statements and bond holdings, as two clear inputs" },
+        { "milestone": "M5 and M8", "what": "Review mode selector: Portfolio Review Only from M5, Portfolio Review with Rebalancing from M8" },
+        { "milestone": "M6", "what": "Workbook re-upload, with the report of any replaced formula" },
+        { "milestone": "M7", "what": "Capital-gains statement in the app's own template, with the blank template to download" },
+        { "milestone": "M10", "what": "MF Screener data pack (the slot below)" }
+      ],
+      "slots": [
+        {
+          "id": "screener-pack",
+          "title": "MF Screener data pack",
+          "milestone": "M10",
+          "text": "Upload the pack the Screener owner exports (pr-datapack_<cycle>.zip) once per Screener cycle. It will be checked in this browser and kept in this browser only, until a newer pack is loaded. It is never published, never committed and never sent anywhere (D-026). Until then, Screener scores and ranks are not shown."
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "id": "overview",
+      "title": "Portfolio overview",
+      "summary": "The family's portfolio at a glance.",
+      "arriving": [
+        { "milestone": "M1.4", "what": "Headline figures, asset and product allocation, and client and distributor allocation, with the first slide and workbook sheets" },
+        { "milestone": "M4", "what": "AMC concentration" },
+        { "milestone": "M7", "what": "IPS compliance" }
+      ]
+    },
+    {
+      "n": 3,
+      "id": "observations",
+      "title": "Portfolio observations",
+      "summary": "The one-page Review Snapshot and the evidence-backed observations.",
+      "arriving": [
+        { "milestone": "M5", "what": "Review Snapshot for Portfolio Review Only, observations grouped under what drives portfolio risk and what drives portfolio return, the observation editor and the one-slide SWOT" },
+        { "milestone": "M8", "what": "Review Snapshot for Portfolio Review with Rebalancing" }
+      ]
+    },
+    {
+      "n": 4,
+      "id": "analytics",
+      "title": "Analytics and overlap",
+      "summary": "What the portfolio holds underneath its funds, and where the funds overlap.",
+      "arriving": [
+        { "milestone": "M3", "what": "Contributors and laggards" },
+        { "milestone": "M4", "what": "Equity and debt look-through, fund overlap with its controls, and family, client and advisor scopes" },
+        { "milestone": "M5", "what": "Index overlap and active share" },
+        { "milestone": "M12", "what": "Historical analytics and the drawdown comparison on index data" }
+      ]
+    },
+    {
+      "n": 5,
+      "id": "holdings",
+      "title": "Holdings and performance",
+      "summary": "Every holding, its returns and its benchmark.",
+      "arriving": [
+        { "milestone": "M3", "what": "Holding sheets, the fund IRR tree, performance against benchmarks, the portfolio's weighted 3Y and 5Y returns, and direct equity returns from prices" },
+        { "milestone": "M5", "what": "Portfolio Quants on the current data" },
+        { "milestone": "M7", "what": "MF Analysis" },
+        { "milestone": "M10", "what": "Screener scores and ranks, from the MF Screener data pack" }
+      ]
+    },
+    {
+      "n": 6,
+      "id": "rebalancing",
+      "title": "Rebalancing",
+      "summary": "The analyst's plan and what it changes.",
+      "arriving": [
+        { "milestone": "M7", "what": "Current vs Sample" },
+        { "milestone": "M8", "what": "The analyst's plan, the AI Analyst draft, holdings and analytics after the plan, pre and post composition and projection, the redemption plan in units and the transition plan" }
+      ]
+    },
+    {
+      "n": 7,
+      "id": "taxation",
+      "title": "Taxation",
+      "summary": "Gains, losses and the tax effect of the plan.",
+      "arriving": [
+        { "milestone": "M7", "what": "Long and short term gains, holding detail, harvesting and losses, with the capital-gains statement reconciled" },
+        { "milestone": "M8", "what": "Tax impact of the rebalancing plan" }
+      ]
+    },
+    {
+      "n": 8,
+      "id": "market-updates",
+      "title": "Market updates",
+      "summary": "The month's market update material for the deck.",
+      "arriving": [
+        { "milestone": "M9", "what": "The month's market update pages, with preview, order and exclusion" }
+      ]
+    },
+    {
+      "n": 9,
+      "id": "annexure",
+      "title": "Annexure",
+      "summary": "Product information and cost analysis that support the review.",
+      "arriving": [
+        { "milestone": "M7", "what": "Portfolio cost analysis" },
+        { "milestone": "M11", "what": "Approved PMS and AIF product cards and one-pagers, from the product bank" }
+      ]
+    }
+  ]
+}

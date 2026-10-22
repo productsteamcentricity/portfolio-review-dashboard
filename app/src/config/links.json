@@ -1,0 +1,9 @@
+{
+  "_comment": "The only remote URL the new app may contain (D-027): the MF Screener navigation link. The build places it in one static <a target=\"_blank\" rel=\"noopener noreferrer\"> in the navigation; no module may import this file (check-next fails on the URL anywhere else, including inside a script). No query string, no fragment, no credential.",
+  "mfScreener": {
+    "url": "https://centricity-mf-dashboard.pages.dev/",
+    "label": "MF Screener",
+    "ariaLabel": "MF Screener (opens in a new tab; sign-in required)",
+    "title": "Opens the Centricity MF Screener in a new tab. Sign-in required."
+  }
+}

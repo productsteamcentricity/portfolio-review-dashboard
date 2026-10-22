@@ -7,7 +7,7 @@ maintaining it (tests, previews, data refreshes, git).
 | Tool | Version in use | Notes |
 |---|---|---|
 | Windows 11 | — | PowerShell 5.1 is the default shell |
-| Node.js | 24.21.0 LTS | built-ins only; **no `npm install`** |
+| Node.js | 24.21.0 LTS (npm 11) | the legacy tools use built-ins only (**no `npm install`**); the new app (`app/`) uses its pinned tooling through `npm ci` (D-025, see below) |
 | Git | 2.56.0.windows.2 | `core.autocrlf=false` (see below) |
 | GitHub CLI `gh` | 2.102.0 | repo creation, PRs, Pages settings |
 | Chrome or Edge | current | the analysts' browser |
@@ -58,6 +58,19 @@ you expect, the checkout was altered (usually by line-ending conversion): fix th
 
 Synthetic test files: `node tools/make-sample-base.js` writes `test-data/Sample_Base_File.xlsx` and
 `test-data/Sample_IRR_Transactions.xlsx` (git-ignored, no client data).
+
+## The new application (CR-0006)
+Its tooling is pinned in `package.json` and `package-lock.json`; `.npmrc` disables install scripts. In the
+repository folder:
+```bash
+npm ci                  # installs exactly the lockfile (esbuild, TypeScript, Preact) into node_modules/ (git-ignored)
+npm run typecheck
+npm run build           # app/dist/index.html, one offline file (git-ignored)
+npm run check           # its invariants; npm test runs every node --test suite
+npm run serve           # http://127.0.0.1:8100/ (legacy) and /next/ (new); or the preview configuration "next"
+```
+Or double-click `app/dist/index.html` after a build. Details, and what each package is for:
+`docs/new-build/toolchain.md`.
 
 ## Reading the code
 `node tools/extract-blocks.js` writes the engine, exporters, parsers, UI and boot scripts plus the page
