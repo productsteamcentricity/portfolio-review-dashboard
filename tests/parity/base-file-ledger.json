@@ -1,0 +1,210 @@
+{
+  "schema": "parity-ledger-v1",
+  "area": "base-file",
+  "legacy": "parseBaseRows in index.html (07_engine.js), run through tools/engine-host.js with the page's own upload path (SheetJS read with cellDates, sheet \"Base File\" or the first sheet, sheet_to_json header 1 raw)",
+  "new": "app/src/ingest/base-file.ts parseBaseFile on app/src/ingest/workbook.ts readWorkbook",
+  "test": "tests/parity/base-file.parity.test.ts",
+  "notes": [
+    "Every difference between the two outputs on the synthetic fixtures must match exactly one entry, and every entry must be used, under TZ=Asia/Kolkata and TZ=UTC.",
+    "Representation is normalised before comparing (tests/parity/base-file-compare.ts): labels as strings, XIRR as a fraction, Crore amounts, the purchase date as D Mon YYYY, folios joined by a slash, the asset label without regard to letter case. A difference left after that is a behaviour difference.",
+    "Classes follow 08-regression-test-plan.md section 5.4: correction (a known defect fixed, KI or OD named), improvement (a requirement changes the output), regression (a defect of the new code; must be empty for a merge).",
+    "Value patterns: \"*\" any value; {\"type\": \"number\"} any number; {\"timesLegacy\": k} the new value is k times the legacy value."
+  ],
+  "entries": [
+    {
+      "id": "BF-01",
+      "kind": "field-not-carried",
+      "field": "allocFrac",
+      "fixtures": "*",
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "KI-093; OD-22",
+      "description": "Allocation (%) is not read from the file. Weights are computed from market values by the engine, so a merged folio or a file without the column no longer leaves a blank or stale allocation (the legacy blanked it on merge and echoed it otherwise)."
+    },
+    {
+      "id": "BF-02",
+      "kind": "field-not-carried",
+      "field": "invR",
+      "fixtures": "*",
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "OD-22",
+      "description": "The rupee echo of the invested value is not carried. Money is held in Crore (architecture 6.7); the workbook's Holdings (as loaded) sheet shows computed values instead of echoing the upload (OD-22). The legacy used it only for the echoed Base File sheet."
+    },
+    {
+      "id": "BF-03",
+      "kind": "field-not-carried",
+      "field": "mvR",
+      "fixtures": "*",
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "OD-22",
+      "description": "The rupee echo of the market value is not carried, for the reason of BF-02."
+    },
+    {
+      "id": "BF-04",
+      "kind": "field-not-carried",
+      "field": "glR",
+      "fixtures": "*",
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "OD-22",
+      "description": "The rupee echo of the file's gain or loss is not carried, for the reason of BF-02."
+    },
+    {
+      "id": "BF-05",
+      "kind": "field",
+      "field": "xirrFrac",
+      "fixtures": ["family-a-pct-xirr"],
+      "legacy": { "type": "number" },
+      "new": { "timesLegacy": 100 },
+      "class": "correction",
+      "reference": "OD-3; KI-005",
+      "description": "Percent-formatted XIRR cells hold fractions (0.1425 shown as 14.25%). The legacy divided them by 100 again, 100 times too small; they are now read as percentages automatically."
+    },
+    {
+      "id": "BF-06",
+      "kind": "field",
+      "field": "bmxirrFrac",
+      "fixtures": ["family-a-pct-xirr"],
+      "legacy": { "type": "number" },
+      "new": { "timesLegacy": 100 },
+      "class": "correction",
+      "reference": "OD-3; KI-005",
+      "description": "As BF-05, for BMXIRR."
+    },
+    {
+      "id": "BF-07",
+      "kind": "field",
+      "field": "xirrFrac",
+      "fixtures": ["family-a-ambiguous-xirr"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "OD-3; KI-005",
+      "description": "An unformatted XIRR column whose values are all below 1.5 in size could hold fractions or percent numbers. The analyst is asked, and until the answer the values are missing (INSUFFICIENT EVIDENCE); the legacy read them as percent numbers, 100 times too small for a fraction file."
+    },
+    {
+      "id": "BF-08",
+      "kind": "field",
+      "field": "bmxirrFrac",
+      "fixtures": ["family-a-ambiguous-xirr"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "OD-3; KI-005",
+      "description": "As BF-07, for BMXIRR."
+    },
+    {
+      "id": "BF-09",
+      "kind": "field",
+      "field": "xirrFrac",
+      "fixtures": ["family-a-ambiguous-xirr-answered"],
+      "legacy": { "type": "number" },
+      "new": { "timesLegacy": 100 },
+      "class": "correction",
+      "reference": "OD-3; KI-005",
+      "description": "The same file after the analyst answers \"fractions\": the values are read as fractions, 100 times the legacy reading."
+    },
+    {
+      "id": "BF-10",
+      "kind": "field",
+      "field": "bmxirrFrac",
+      "fixtures": ["family-a-ambiguous-xirr-answered"],
+      "legacy": { "type": "number" },
+      "new": { "timesLegacy": 100 },
+      "class": "correction",
+      "reference": "OD-3; KI-005",
+      "description": "As BF-09, for BMXIRR."
+    },
+    {
+      "id": "BF-11",
+      "kind": "holding-only-in-new",
+      "fixtures": ["family-a-header-row-6"],
+      "legacy": null,
+      "new": "*",
+      "class": "correction",
+      "reference": "KI-074",
+      "description": "Header in row 6: the legacy searched the first 5 rows only and read no holding; the new reader searches 20 rows and reads every holding, naming the sheet and header row."
+    },
+    {
+      "id": "BF-12",
+      "kind": "holding-only-in-new",
+      "fixtures": ["family-a-note-sheet-first"],
+      "legacy": null,
+      "new": "*",
+      "class": "correction",
+      "reference": "KI-074",
+      "description": "A notes sheet first and the holdings on a sheet not named Base File: the legacy read only the first sheet and found nothing; the new reader tries every sheet and uses the first that has holdings."
+    },
+    {
+      "id": "BF-13",
+      "kind": "unit-hint",
+      "fixtures": ["family-a-header-row-6", "family-a-note-sheet-first"],
+      "legacy": "auto",
+      "new": "Cr",
+      "class": "correction",
+      "reference": "KI-074",
+      "description": "The display unit follows from the money columns the reader finds; the legacy found no header in these files (BF-11, BF-12) and so no unit."
+    },
+    {
+      "id": "BF-14",
+      "kind": "field",
+      "field": "asset",
+      "fixtures": ["family-a-odd-asset-labels"],
+      "legacy": "Equity",
+      "new": null,
+      "class": "correction",
+      "reference": "OD-7",
+      "description": "A blank Asset Name stays unknown, with a notice, instead of becoming Equity."
+    },
+    {
+      "id": "BF-15",
+      "kind": "field",
+      "field": "asset",
+      "fixtures": ["family-a-odd-asset-labels"],
+      "legacy": "Fixed Income",
+      "new": "Debt",
+      "class": "correction",
+      "reference": "OD-7",
+      "description": "\"Fixed Income\" counts as Debt (the legacy kept the label and routed it as equity in analytics)."
+    },
+    {
+      "id": "BF-16",
+      "kind": "field",
+      "field": "asset",
+      "fixtures": ["family-a-odd-asset-labels"],
+      "legacy": "Debt Funds",
+      "new": "Debt",
+      "class": "correction",
+      "reference": "OD-7",
+      "description": "\"Debt Funds\" counts as Debt (as BF-15)."
+    },
+    {
+      "id": "BF-17",
+      "kind": "field",
+      "field": "glCr",
+      "fixtures": ["family-a-merged-folios"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "KI-113",
+      "description": "Merged duplicate folios where one folio has no gain or loss: the legacy added up the values present (a partial figure); the merged file gain is now missing. The gain shown is CMV minus invested in any case (OD-18)."
+    },
+    {
+      "id": "BF-18",
+      "kind": "field",
+      "field": "units",
+      "fixtures": ["family-a-merged-folios"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "KI-113",
+      "description": "The KI-113 rule applied to units: merged folios where one folio has no units leave the merged units missing instead of a partial sum (a partial sum would give a wrong implied NAV). Extension of KI-113 to units, made in M1.3 for the lead to confirm."
+    }
+  ]
+}

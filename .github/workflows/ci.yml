@@ -45,11 +45,14 @@ jobs:
         run: node scripts/validation/privacy-scan.mjs docs *.md
       - name: Documentation links
         run: node scripts/validation/docs-links.mjs
+      # M1.3: the new app's TypeScript tests run straight from source (Node 24 type stripping, no build).
       - name: Tests (IST)
-        run: node --test "tests/**/*.test.mjs"
+        run: node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"
         env:
           TZ: Asia/Kolkata
       - name: Tests (UTC)
-        run: node --test "tests/**/*.test.mjs"
+        run: node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"
         env:
           TZ: UTC
+      - name: Traceability (every test names what it covers; rows in progress have a test)
+        run: node scripts/validation/traceability.mjs

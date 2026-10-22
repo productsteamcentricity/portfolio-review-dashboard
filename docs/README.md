@@ -18,13 +18,16 @@ change follows.
 ## The new build (CR-0006)
 
 A new application is being built beside `index.html`, which stays the review link until the new one reaches feature
-parity. No application code exists yet.
+parity. Its first code (milestone M1.3) is the shared model, the base-file reader and the extracted reference data
+(`app/src/`, `data/refdata/`); there is no page to open yet.
 
 | I want to… | Read |
 |---|---|
 | find the Phase 0 documents (brief, audit, architecture, parity matrix, roadmap, test plan, rule bank, deck design, open questions) | [new-build/README.md](new-build/README.md) |
 | know what the new application must do | [PRD.md](PRD.md) (the living PRD) |
-| look up an entity, field, metric path, missing-data status, unit or calculation definition | [DATA_DICTIONARY.md](DATA_DICTIONARY.md) (v0.1) |
+| look up an entity, field, metric path, missing-data status, unit or calculation definition | [DATA_DICTIONARY.md](DATA_DICTIONARY.md) (v0.2: the shared model's types from M1.3) |
+| find the reference data the new application embeds, and how it is extracted from `index.html` | [data/refdata/README.md](../data/refdata/README.md) |
+| run the new application's tests, read the parity ledger or the traceability report | [TESTING.md](TESTING.md) §6, [tests/parity/README.md](../tests/parity/README.md) |
 | see how the monthly update will work in the new application | [MONTHLY_UPDATE_GUIDE.md](MONTHLY_UPDATE_GUIDE.md) (planned; today's process is [MONTHLY_REFRESH.md](MONTHLY_REFRESH.md)) |
 | see every file the owner supplies each month: who sends it, where it goes, public or private, what it feeds | [MONTHLY_UPDATE_GUIDE.md, "Files the owner supplies each month"](MONTHLY_UPDATE_GUIDE.md#files-the-owner-supplies-each-month) (in use now) |
 | see the owner's answers for the new build | [DECISIONS.md](DECISIONS.md) D-024 to D-033 ([new-build/owner-decisions-new-build.md](new-build/owner-decisions-new-build.md)) |

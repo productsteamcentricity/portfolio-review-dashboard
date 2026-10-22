@@ -1,0 +1,219 @@
+{
+  "blocks": {
+    "AIF_PERF": {
+      "asOn": null,
+      "asOnReason": "the embedded data records no as-on date for this block",
+      "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
+      "class": "C source; this derived block is published in index.html (06: derived only)",
+      "file": "AIF_PERF.json",
+      "records": 12,
+      "sha256": "cce62b978e38e8e9afd2c1fe7ff02df7501ab21454e7c3a0559cb5eb44d6a86a",
+      "source": "DS-P2 AIF Performance"
+    },
+    "BENCHMARKS": {
+      "asOn": null,
+      "asOnReason": "the embedded data records no as-on date for this block",
+      "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
+      "class": "P",
+      "file": "BENCHMARKS.json",
+      "records": 21,
+      "sha256": "6f6e8fada862f202b03ef0843e78bcdaaaf46d020ff38aa1057cc59bd81c41b2",
+      "source": "DS-O7 category to benchmark map, Centricity owner table"
+    },
+    "BENCH_RET": {
+      "asOn": "2026-09-30",
+      "asOnFrom": "DATA_DATES.performance",
+      "class": "P",
+      "file": "BENCH_RET.json",
+      "records": 108,
+      "sha256": "eb87e31387e1abda843bf167a41abbb72c8211e05af934f9976b47839f53c69e",
+      "source": "DS-V1 Daily MF Monitor (Regular), Accord"
+    },
+    "DEBT_ANALYTICS": {
+      "asOn": null,
+      "asOnReason": "the embedded data records no as-on date for this block",
+      "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
+      "class": "P",
+      "file": "DEBT_ANALYTICS.json",
+      "records": 486,
+      "sha256": "8281489c19ea01afcf47c8d7000dc60681807f655335fdb94462a2fcfa2f8469",
+      "source": "DS-V7 Debt Analytics, Accord"
+    },
+    "EQUITY_ANALYTICS": {
+      "asOn": "2026-09-30",
+      "asOnFrom": "DATA_DATES.analytics",
+      "class": "P",
+      "file": "EQUITY_ANALYTICS.json",
+      "records": 1144,
+      "sha256": "0573024bcfd115ceccbf1be2b4905b64f2ecc30d10ff06c6ae0b05e0132d02bc",
+      "source": "DS-V5 Equity Analytics, Accord"
+    },
+    "FUND_MGR": {
+      "asOn": "2026-08-31",
+      "asOnFrom": "DATA_DATES.fmgr",
+      "class": "P",
+      "file": "FUND_MGR.json",
+      "records": 2099,
+      "sha256": "b81f188ceb4ef8cbcb5b46b5f4f235ac663dbec606938d99006f0ebe68fc86ba",
+      "source": "DS-V10 Fund Manager history, Accord"
+    },
+    "FUND_MGR_META": {
+      "asOn": null,
+      "asOnReason": "the embedded data records no as-on date for this block",
+      "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
+      "class": "P",
+      "file": "FUND_MGR_META.json",
+      "records": 4,
+      "sha256": "e25d61e7954514afc182484f1f04580de35eee69198b3905412440a3a575b877",
+      "source": "DS-V10 Fund Manager history, Accord"
+    },
+    "FUND_RANKS_CODES": {
+      "asOn": "2026-08-15",
+      "asOnFrom": "DATA_DATES.ranks",
+      "class": "C source; AMFI scheme codes only (06: new app keeps scheme codes only)",
+      "derivedFrom": "FUND_RANKS",
+      "fields": [
+        "code"
+      ],
+      "file": "FUND_RANKS_CODES.json",
+      "omittedWithoutCode": 0,
+      "records": 1262,
+      "sha256": "d98d9eafac028900b07e480e03ee4c2e54df7a1cadf40469e68af21905256a03",
+      "source": "DS-S1 Fund Ranks workbook, scheme codes only (D-026)"
+    },
+    "HYBRID_ANALYTICS": {
+      "asOn": null,
+      "asOnReason": "the embedded data records no as-on date for this block",
+      "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
+      "class": "P",
+      "file": "HYBRID_ANALYTICS.json",
+      "records": 243,
+      "sha256": "ce5f1476901183c0c57563d787a403a1736035592fd521a770c169cd1eeffcea",
+      "source": "DS-V6 Hybrid Analytics, Accord"
+    },
+    "MF_BENCHMARKS": {
+      "asOn": null,
+      "asOnReason": "the embedded data records no as-on date for this block",
+      "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
+      "class": "P (published in index.html)",
+      "file": "MF_BENCHMARKS.json",
+      "records": 5,
+      "sha256": "2b9e76d3b9216779de6c3859480996309a97518fa5c810bf2dff0be6bfe6ad48",
+      "source": "legacy benchmark risk rows of unknown provenance (02 E-93, KI-026)"
+    },
+    "MF_CAT_BM": {
+      "asOn": null,
+      "asOnReason": "the embedded data records no as-on date for this block",
+      "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
+      "class": "P",
+      "file": "MF_CAT_BM.json",
+      "records": 15,
+      "sha256": "dfbe91205269612fa56d3e043a39314ee6767108287781c33d3e05e48b4d9da6",
+      "source": "DS-O7 category to benchmark map, Centricity owner table (no consumer, KI-097)"
+    },
+    "MF_ER_TABLE": {
+      "asOn": null,
+      "asOnReason": "the embedded data records no as-on date for this block",
+      "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
+      "class": "P",
+      "file": "MF_ER_TABLE.json",
+      "records": 14644,
+      "sha256": "09eb210eb47d53ffac1d48cfb4f789061888f16af7350a85acc689cef874e33f",
+      "source": "DS-V4 Expense Ratio, Accord"
+    },
+    "MF_PERF": {
+      "asOn": "2026-09-30",
+      "asOnFrom": "DATA_DATES.performance",
+      "class": "P",
+      "file": "MF_PERF.json",
+      "records": 2130,
+      "sha256": "ebebb2c30c863a581206f4d666ced0a08aa54196f0708a66df886371b7739af1",
+      "source": "DS-V1 Daily MF Monitor (Regular), Accord"
+    },
+    "MF_PERF_DIRECT": {
+      "asOn": "2026-09-30",
+      "asOnFrom": "DATA_DATES.direct",
+      "class": "P",
+      "file": "MF_PERF_DIRECT.json",
+      "records": 1765,
+      "sha256": "a1f6b2e1ebba6fc4192189c5ae46b0eaaddd7c59c7bf212d7ead6dc754c7c121",
+      "source": "DS-V2 Daily MF Monitor (Direct), Accord"
+    },
+    "MF_RISK": {
+      "asOn": "2026-09-30",
+      "asOnFrom": "DATA_DATES.risk",
+      "class": "C source; this derived block is published in index.html (06: derived only)",
+      "file": "MF_RISK.json",
+      "records": 1088,
+      "sha256": "5a0640df4c116d84e3753a5012bb9546dd55e152b69f53676e45ceac52b39051",
+      "source": "DS-H2 Fund Risk Ratios, in-house"
+    },
+    "PMS_PERF": {
+      "asOn": null,
+      "asOnReason": "the embedded data records no as-on date for this block",
+      "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
+      "class": "C source; this derived block is published in index.html (06: derived only)",
+      "file": "PMS_PERF.json",
+      "records": 721,
+      "sha256": "28e1f9de3714dfa8c81fdcbea46a5d11344723f502020f2d22e29f9d373f248a",
+      "source": "DS-P1 PMS Scheme Performance"
+    },
+    "SIF_PERF": {
+      "asOn": "2026-09-30",
+      "asOnFrom": "DATA_DATES.sif",
+      "class": "P",
+      "file": "SIF_PERF.json",
+      "records": 30,
+      "sha256": "188c0a11c451b9cb637059bbdf1c624c6d9b5a62a048406ad15f6d33d44d0318",
+      "source": "DS-V3 SIF Monitor, Accord"
+    },
+    "STOCK_INFO": {
+      "asOn": null,
+      "asOnReason": "the embedded data records no as-on date for this block",
+      "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
+      "class": "P",
+      "file": "STOCK_INFO.json",
+      "records": 8684,
+      "sha256": "9441fa7ec49d14d5236e1f6783963518709626c2dfc275c4c0679470acf6f9ee",
+      "source": "DS-V8 Listed Direct Equity master and DS-V5 votes, Accord"
+    },
+    "STOCK_RET": {
+      "asOn": null,
+      "asOnReason": "the embedded data records no as-on date for this block",
+      "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
+      "class": "P",
+      "file": "STOCK_RET.json",
+      "records": 8580,
+      "sha256": "062a2f1c9f079ebe555d36e79124dae136dd792d6c9ec2ff658a1982061b953d",
+      "source": "DS-V9 Listed Direct Equity returns, Accord"
+    },
+    "TAX_RULES": {
+      "asOn": null,
+      "asOnReason": "the embedded data records no as-on date for this block",
+      "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
+      "class": "P",
+      "file": "TAX_RULES.json",
+      "records": 25,
+      "sha256": "747648911a144e92597f6145f6694f960610eeedd0ff778fc4adef76c7044d96",
+      "source": "DS-O1 Tax rules, Centricity owner table"
+    }
+  },
+  "dataMonth": "2026-09",
+  "dataMonthRule": "the month of DATA_DATES.performance, the MF Monitor date the legacy page shows as its performance data date",
+  "extractedFrom": "index.html script blocks window.REFDATA and window.MF_ER_TABLE, by scripts/data-extract.ts",
+  "legacyDataDates": {
+    "analytics": "30 Sep 2026",
+    "direct": "30 Sep 2026",
+    "fmgr": "31 Aug 2026",
+    "performance": "30 Sep 2026",
+    "ranks": "15 Aug 2026",
+    "risk": "30 Sep 2026",
+    "sif": "30 Sep 2026"
+  },
+  "notExtracted": {
+    "DATA_DATES": "kept in VINTAGE.json as legacyDataDates (parity row E-107)",
+    "FUND_RANKS": "Products Team fund ranks (DS-S1): scores and ranks are never committed or published by the new app (D-026); only the AMFI scheme codes are extracted, to FUND_RANKS_CODES.json",
+    "FUND_RANKS_META": "metadata of the fund ranks (cycle date, ranked and unranked counts); the new app keeps no ranks (D-026); the cycle date is DATA_DATES.ranks"
+  },
+  "schema": "refdata-vintage-v1"
+}

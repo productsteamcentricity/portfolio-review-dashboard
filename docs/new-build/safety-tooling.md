@@ -46,6 +46,11 @@ managers who share names with it. Client holdings never enter `index.html` (they
 and each code change reaches it through a patch script in `tools/patches/`, which is scanned. Every other rule
 still applies to `index.html`. The lead confirmed this exemption on 22 Oct 2026 (D-033), and a test pins it: the
 committed allow-list exempts `index.html` and no other path (`tests/validation/privacy-scan.test.mjs`).
+**Milestone M1.3 (pending the lead's confirmation):** the reference-data files that `scripts/data-extract.ts` writes
+from the same embedded data (`data/refdata/<BLOCK>.json`, one per block) are exempt for the same reason, each by its
+exact path. `tests/parity/refdata.parity.test.ts` proves each file equal to the block in `index.html` and checks that
+the exempt paths under `data/refdata/` are exactly the extractor's block files; `data/refdata/README.md` and
+`VINTAGE.json` stay under the deny-list, and every generic rule still applies to all of them.
 
 ## Running them
 

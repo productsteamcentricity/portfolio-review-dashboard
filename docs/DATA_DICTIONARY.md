@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | **v0.1**, 22 Oct 2026 (milestone M1.1, CR-0006; the owner's answers D-024 to D-033 applied) |
+| Version | **v0.2**, 22 Oct 2026 (milestone M1.3: the shared model's types in `app/src/model/`; v0.1 was M1.1 with the owner's answers D-024 to D-033) |
 | Scope | the data model of the **new** Portfolio Review application. The legacy `index.html` is described in [ARCHITECTURE.md](ARCHITECTURE.md) and the conventions section of `CLAUDE.md` |
 | Owns | every entity, field, metric path, missing-data status, unit and calculation definition of the new application ([09-repository-and-docs-structure.md](new-build/09-repository-and-docs-structure.md) §3). The PRD (§6), the architecture and the observation rule bank link here and do not restate these definitions |
 | Built from | the Phase 0 architecture's model section ([03-architecture.md](new-build/03-architecture.md) §6, with §8, §9, §12, §16) and the record and metric-path sections of [observation-rule-bank.md](new-build/observation-rule-bank.md) (§1, §2) |
@@ -10,8 +10,13 @@
 
 **What v0 is.** The names, meanings and sources of every entity and field that Phase 0 specified. Field types,
 enumerations and optionality are fixed in this file, in the same pull request, when each module is built (the shared
-model in M1.3, then every milestone that adds fields or metrics). Nothing here is implemented yet. The "Phase 0
-source" column says where each item was specified, so a reviewer can check that nothing was added on the way.
+model in M1.3, then every milestone that adds fields or metrics). The "Phase 0 source" column says where each item
+was specified, so a reviewer can check that nothing was added on the way.
+
+**Implemented in M1.3** (types in `app/src/model/`, erasable TypeScript, constants only): the statuses and
+`Value<T>` (§2, §3), identifiers (§4), `SourceFile` and import records (§5.1), `Holding` (§5.3), clients,
+accounts, folios and ownership (§5.6), `ValidationResult` and analyst questions (§5.8) and `AuditEntry` (§5.14);
+filled by the base-file reader `app/src/ingest/base-file.ts`. The other entities are still Phase 0 definitions.
 `03` is `new-build/03-architecture.md`; `06` and `09` are the other Phase 0 deliverables; [DA], [IE] and [PO] are the
 investigator files listed in [new-build/README.md](new-build/README.md); OD-nn are the audit decisions
 ([audits/2026-10-19-decisions.md](audits/2026-10-19-decisions.md)), D-nnn the [decision register](DECISIONS.md), Q-nn
@@ -48,6 +53,14 @@ Every metric is a `Value<T>` (`03-architecture.md` §6.2):
 
 `Provenance` (`prov`): `sources` (source register ids), `method`, optional `asOf`, optional `vintage`.
 
+Types (M1.3, `app/src/model/value.ts`): `Value<T> = PresentValue<T> | MissingValue`; `PresentValue<T>` is
+`{ kind: 'value', v: T, unit: Unit, prov: Provenance, coverage?: number (0 to 1), stale?: { asOf: string } }`;
+`MissingValue` is `{ kind: 'missing', status: MissingStatus, reason: string, prov?: Provenance }`. `Unit` is one of
+`cr`, `pct`, `pp`, `bp`, `count`, `ratio`, `years`, `days`, `units` (units of a fund held), `date` (a DayNumber) and
+`label`. A present number is always finite: NaN and Infinity are refused when the value is made
+(`app/src/engine/value.ts`). The marker characters are in `app/src/config/formats.ts`, and
+`app/src/views/format.ts` turns a value into cell text (the marker alone for every status, never `0.00`).
+
 | Status | Meaning | Screen and slide | Workbook |
 |---|---|---|---|
 | (value 0) | a real zero | `0.00` | `0` |
@@ -74,9 +87,9 @@ marker characters are configuration.
 | Item | Convention | Phase 0 source |
 |---|---|---|
 | Money | held in **Crore**, unrounded; displayed in the base file's unit (Crore, Lakh or rupees; rupee-only files in Crore from 1 Cr, else Lakh) through one formatter | `03` §6.7 |
-| Percentages | two decimals for display; inflation one decimal | `03` §6.7 |
+| Percentages | held as **percent numbers** (8.79 means 8.79 %), unit `pct`, never as fractions (decided in M1.3, §8); two decimals for display; inflation one decimal | `03` §6.7; rule bank §1 (thresholds such as 35 are percent numbers) |
 | Rounding | unrounded maths; rounding only in the renderer; Excel receives unrounded values with number formats | `03` §6.1 rule 3 |
-| Dates | day numbers, converted from raw Excel serials by one timezone-free function (the legacy +12 h shift stays in the legacy only); tests run under `TZ=Asia/Kolkata` and `TZ=UTC` | `03` §6.7 |
+| Dates | day numbers, converted from raw Excel serials by one timezone-free function (the legacy +12 h shift stays in the legacy only); tests run under `TZ=Asia/Kolkata` and `TZ=UTC`. M1.3: `DayNumber` = whole days since 1970-01-01; `app/src/engine/dates.ts` `excelSerialToDay` (1900 and 1904 systems; the phantom 29 Feb 1900 is refused; a serial within one minute of midnight counts as that midnight, which absorbs the 10-second drift SheetJS adds when it writes a local-time date in IST) | `03` §6.7 |
 | Evidence units | `pct`, `pp`, `bp`, `count`, `ratio`, `cr` (Crore), `years`, `label` | rule bank §1 |
 | Weights | on current market value (CMV); per-client sheets re-based to the client; scopes re-based to the scope | PRD §6 |
 
@@ -96,6 +109,15 @@ Stable identifiers first, names last: a name match only proposes, and an owner-a
 | Source file | SHA-256 | `03` §6.3 |
 | Observation | `ruleId@version` + scope + evidence fingerprint | `03` §6.3; rule bank §1 |
 
+M1.3 (`app/src/model/ids.ts`, `app/src/engine/ids.ts`): ids are strings typed by kind at compile time
+(`SourceFileId`, `FamilyId`, `ClientId`, `DistributorId`, `AccountId`, `FolioId`, `HoldingId`). Per-review ids are a
+prefix (`cl`, `ds`, `ac`, `fo`, `h`) and the first 12 hex digits of the FNV-1a 64-bit hash of the normalised key
+(labels lower-cased with spaces collapsed), so a file read twice, or with its rows in another order, gives the same
+ids. Keys: client and distributor by label; account by client and distributor (the plan joins in M2); folio by
+account, AMC label and folio number (a blank folio number by its row); an included holding by the merge key
+(client, instrument, product, distributor); an excluded holding by its sheet and row. `InstrumentRef` is as in §5.2
+and is null on a holding until engine/match resolves it (M2).
+
 ## 5. Entities
 
 ### 5.1 `SourceFile` (L1)
@@ -109,6 +131,23 @@ Stable identifiers first, names last: a name match only proposes, and an owner-a
 | parserVersion | the parser that read it | `03` §6.1 |
 | rows | raw rows, each with its position (file, sheet, row) | `03` §6.1 |
 | stage | Upload, Validate, Preview, Review: the source register records each stage before a file feeds the review | `03` §13.1; PRD R-IN-9 |
+
+Types (M1.3, `app/src/model/source.ts`): `id: SourceFileId` (SHA-256, lower-case hex, computed by the caller),
+`fileName`, `role: SourceRole` (`base-file`, `irr-file`, `capital-gains`, `soa-lookthrough`, `bonds`, `price-file`,
+`mf-monitor`, `mf-monitor-direct`, `sif-monitor`, `screener-pack`, `index-data`, `workbook-reupload`),
+`class: 'P' | 'C' | 'N'`, `asOn: Value<DayNumber>`, `parserVersion` (for example `base-file@1`),
+`stage: 'upload' | 'validate' | 'preview' | 'review'`, `bytes`. A raw row's position is a `RowRef`
+`{ sourceId, sheet, row }` with the row number Excel shows. The raw cells are those of the workbook reader
+(`app/src/ingest/workbook.ts`: numbers with their number format and a date flag, text, booleans, errors, formulas
+kept beside their cached value).
+
+**Import record of a base file** (`BaseFileImport`, `app/src/ingest/base-file.ts`): the sheet used and its header
+row, every sheet tried and what was found (`used`, `no-header`, `no-rows`, `not-needed`), the column mapping, the
+money unit of the file (`crore`, `lakh` or `rupee`), the holdings, clients, distributors, accounts, folios and
+ownership, the **skipped rows** with their reason (`blank-row`, `repeated-header`, `total-row`,
+`no-instrument-name`, each with its row and whether it carries an amount), the analyst questions, the validation
+results, the audit entries and the counts (rows, holding rows, holdings, included, excluded, merged rows, skipped
+rows by reason).
 
 ### 5.2 `InstrumentRef` (L2)
 
@@ -139,6 +178,38 @@ Stable identifiers first, names last: a name match only proposes, and an owner-a
 
 View-model fields derived from it (`cmvPct`, `label`) are metric paths (section 6). Duplicate folios merge as in the
 legacy (E-02, KI-113).
+
+**Fields as built in M1.3** (`app/src/model/holding.ts`; the base-file reader fills them):
+
+| Field | Type | Rule |
+|---|---|---|
+| `id`, `sourceId` | `HoldingId`, `SourceFileId` | §4 |
+| `rows` | `RowRef[]` | every base-file row in the holding, in file order (several when folios merged) |
+| `instrumentName` | string | "Instrument Name" as given, spaces collapsed; a row without one is skipped and reported |
+| `instrument` | `InstrumentRef \| null` | null until engine/match (M2) |
+| `clientLabel`, `clientId`, `distributorLabel`, `distributorId` | string or null, id or null | a blank Client Name is warned |
+| `accountId` | `AccountId` | §5.6 |
+| `productLabel`, `product`, `productDefaulted` | string or null, string, boolean | a blank Product Name reads as "Mutual Funds", the legacy default, flagged and noted (Information) |
+| `categoryLabel`, `amcLabel`, `liquidity` | string or null | as given |
+| `assetLabel`, `assetClass` | string or null; `'Equity' \| 'Debt' \| 'Hybrid' \| 'Commodity' \| null` | OD-7: Equity, Debt, Hybrid, Commodity(ies) as labelled; "Fixed Income" and "Debt Funds" are Debt; blank or any other label is unknown (null) with a Warning, the label kept |
+| `folios`, `folioIds` | string[], `FolioId[]` | folio numbers as supplied, one per merged row that has one |
+| `purchaseDate` | `Value<DayNumber>` | an Excel serial or a text date (`YYYY-MM-DD`, `DD-MM-YYYY` with the legacy month-first swap above 12, `D Mon YYYY`); an impossible date is INVALID SOURCE DATA |
+| `units` | `Value<number>`, unit `units` | |
+| `invested`, `cmv`, `fileGain` | `Value<number>`, unit `cr` | per row the Cr. column, else Lakh / 100, else rupees / 1e7 (the legacy precedence); `fileGain` is the file's own G/L, kept for reconciliation only (the gain shown is CMV minus invested, OD-18) |
+| `xirr`, `bmXirr` | `Value<number>`, unit `pct` | OD-3: a percent-formatted cell is read as a percentage; an unformatted column whose values are all below 1.5 in size raises an analyst question and stays INSUFFICIENT EVIDENCE until answered; otherwise percent numbers |
+| `holdingDays` | `Value<number>`, unit `days` | "Avg. Holding Days" |
+| `inclusion` | `{ status: 'included' }` or `{ status: 'excluded', reasons: ['no-market-value'] }` | OD-8: a row without a market value in any unit is excluded and listed by name (Warning), never valued at zero |
+
+Text that is not a number is INVALID SOURCE DATA (Warning, counted by column); blank cells and placeholders ("NA",
+"N/A", "-", "--", "nil") are NOT AVAILABLE IN SUPPLIED DATA. The file's Allocation (%) column is recognised but not
+read: weights are computed from market values by the engine (KI-093, OD-22).
+
+**Merging duplicate folios (E-02).** Included rows with the same client, instrument, product and distributor (exact
+labels, as the legacy) merge into one holding: market value summed; invested value, file gain and units summed only
+when every folio has one, otherwise missing (KI-007, KI-113; the rule for units is an M1.3 extension of KI-113);
+XIRR and BMXIRR weighted by market value over the folios that have one, with the coverage recorded when some do
+not; purchase date, holding days, category, asset, AMC and liquidity from the first row, as the legacy (open item,
+§8). A folio without a market value is excluded and listed on its own, never merged.
 
 ### 5.4 `Transaction` (L2)
 
@@ -179,6 +250,23 @@ IRR-file redemptions by FIFO.
 Ownership data is client data: it is shown on screen and in the workbook's "Holdings (as loaded)" sheet, never on
 slides, and never in browser storage (`03` §6.8, §17 item 6).
 
+**Types as built in M1.3** (`app/src/model/ownership.ts`, `app/src/engine/ownership.ts`): `Family { id, label }`;
+`Client { id, label, displayLabel }` (the label first seen; the analyst's display label, null until set);
+`Distributor { id, label }`; `Account { id, clientId, distributorId, plan }` (plan `Regular` or `Direct`, null until
+M2); `Folio { id, number, amcLabel, accountId }`; `Holder { role: 'first' | 'second' | 'third' | 'guardian',
+clientId, share: Value<number> (pct) }`; `Ownership { folioId, firstHolder, jointHolders: Value<Holder[]>, mode:
+Value<'single' | 'joint' | 'anyone-or-survivor'>, source: 'holder-columns' | 'default-sole-holder' }`.
+A holding is attributed to the first holder of its folio, the row's client (`attributedClient`). Without holder
+columns: the first holder's share is 100 and joint holders and mode are NOT AVAILABLE IN SUPPLIED DATA. With holder
+columns: joint holders become clients the analyst can label; with any joint holder every share is NOT AVAILABLE
+(never split); a row whose holder cells are blank is a sole holding (share 100, mode single).
+
+**Optional holder columns (proposal, Q-79; no base file has them today).** Read by header, case-insensitive:
+"Second Holder" (also "2nd Holder", "Joint Holder", "Joint Holder 1", "Holder 2", with an optional "Name"),
+"Third Holder" (also "3rd Holder", "Joint Holder 2", "Holder 3"), "Guardian" or "Guardian Name", and
+"Mode of Holding" or "Holding Mode" (Single, Sole, SI; Joint, Jointly, JO, JT; Anyone or Survivor, Either or
+Survivor, AS, ES; anything else is INVALID SOURCE DATA with a Warning).
+
 ### 5.7 `LookThrough` (L4 input, one per holding)
 
 | Field | Meaning | Phase 0 source |
@@ -204,6 +292,25 @@ exposure, MF book or total CMV) and never mixes two (`03` §9 rule 8; PRD R-AN-9
 | blocksPublication | whether it blocks export | `03` §16 |
 | resolution | `auto-resolved`, `analyst-decision` or `none` | `03` §16 |
 | status | the result's status (its values are fixed with the type) | `03` §16 |
+
+Types (M1.3, `app/src/model/validation.ts`): `id` (`ruleId:n`), `ruleId` (for example
+`base-file.no-market-value`), `scope` (`file`, `sheet`, `column`, `rows` with their `RowRef`s, or `holdings` with
+their ids), `message` (a plain sentence, no en or em dash), `severity: 'Blocking' | 'High' | 'Warning' |
+'Information'`, `blocksPublication` (true exactly for Blocking), `resolution: 'auto-resolved' | 'analyst-decision' |
+'none'`, `status: 'open' | 'acknowledged' | 'resolved'`, optional `decision` (the OD, KI or D id the rule implements)
+and `count`.
+
+**Analyst question** (`AnalystQuestion`): `{ id, kind: 'xirr-unit', field: 'xirr' | 'bmXirr', sheet, column,
+options: ['percent', 'fraction'], prompt, evidence: { values, maxAbs }, decision: 'OD-3' }`. While it is open, a
+High result (`analyst-decision`, `open`) stands and the column's values are missing; the answer is passed back to the
+reader, which records an Information result (`resolved`) and a `validation-decision` audit entry.
+
+Base-file results in M1.3: Blocking `no-header`, `no-holdings`, `no-market-value-column`; High
+`xirr-unit-question`; Warning `no-market-value` (OD-8), `blank-asset` and `unrecognised-asset` (OD-7),
+`blank-client`, `total-like-name`, `invalid-cells`, `holders-conflict`, `mode-unrecognised`, and
+`skipped-no-instrument-name` when such a row carries an amount; Information `sheet-used`, `xirr-percent-format`,
+`xirr-unit-answered`, `asset-synonym`, `product-defaulted`, `merged-folios`, `merge-incomplete` and the other
+skipped-row reports.
 
 ### 5.9 `Review` (L4) and `Scope`
 
@@ -269,6 +376,11 @@ One entry per: import (file hash, rows read, rows excluded by reason), validatio
 analyst edit (before and after), re-upload (each changed input), export (file name, SHA-256 of the produced file,
 manifest), and the build manifest (commit, data vintages, library hashes). Exported in the workbook's Audit Log sheet;
 never sent anywhere. (`03` §16)
+
+Types (M1.3, `app/src/model/audit.ts`): `{ id, at (ISO 8601 from an injected clock), kind: 'import' |
+'validation-decision' | 'mode-switch' | 'scope-switch' | 'edit' | 'reupload' | 'export' | 'build', summary,
+detail: Record<string, string | number | boolean | null>, sourceId? }`. Entries carry counts, hashes and
+decisions only: never client names, folio numbers, amounts or sheet names.
 
 ### 5.15 Monthly and product-bank records
 
@@ -405,9 +517,15 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
 
 ## 8. Open in v0
 
-- **Types and enumerations** of every field above (M1.3 onward, with the module that produces them).
-- **Percent representation:** whether a `pct` value is held as a percent number (8.79) or a fraction (0.0879). The
-  legacy base file mixes both (`CLAUDE.md` conventions; OD-3); the model fixes one in M1.3 and records it here.
+- **Types and enumerations** of the entities not yet built (from M2 onward, with the module that produces them).
+- **Percent representation: decided in M1.3.** A `pct` value is a percent number (8.79 means 8.79 %), as the rule
+  bank's thresholds and the workbook's `0.00"%"` format already assume; fractions appear only inside a calculation.
+  The base-file reader converts on the way in (OD-3).
+- **Merged folios, first-row fields (M1.3, open).** The purchase date and holding days of a merged holding are the
+  first row's, as in the legacy; the earliest purchase date or a unit-weighted holding period may be wanted. The
+  member rows are kept (`rows`), so the engine can compute either when the owner decides.
+- **Blank Product Name (M1.3, open).** Read as "Mutual Funds", as the legacy does, flagged on the holding and noted;
+  no decision covers it.
 - **Cross-output registry name:** `03-architecture.md` §16 lists `xirr.portfolio` among the figures checked across
   outputs; the rule bank's path for the same figure is `irr.portfolio.fund`. This dictionary uses the rule bank's
   form; the registry is aligned when it is built (M13).
@@ -421,3 +539,4 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
 |---|---|---|
 | v0 | 22 Oct 2026 | Created at M1.1 from the Phase 0 architecture (§6, §8, §9, §12, §16) and the observation rule bank (§1, §2) |
 | v0.1 | 22 Oct 2026 | The owner's answers: the dash as the missing-value marker, never in sentences (§2, D-029); the stored MF Screener data pack (§5.16, D-026); the capital-gains template, proposed for M7 (§5.17, §5.5, D-032); thresholds approved (§8, D-030); the Index TRI files as the drawdown index data (§7) |
+| v0.2 | 22 Oct 2026 | Milestone M1.3: types of `Value<T>`, units and dates (§2, §3), identifiers (§4), `SourceFile` and the base-file import record (§5.1), `Holding` with the reader's rules and the folio merge (§5.3), ownership and the proposed holder columns (§5.6), validation results and analyst questions (§5.8), audit entries (§5.14); percent numbers decided (§3, §8); two open items (§8) |
