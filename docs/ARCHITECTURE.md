@@ -515,7 +515,10 @@ regression) unchanged; the job `next` runs the privacy scan of the documentation
 PRD check (Node built-ins only), then `npm ci`, the type check, the build, `check-next.mjs --rebuild`,
 `node --test "tests/**/*.test.mjs"` under IST and UTC and, last, the release check in its CI form. Later milestones
 add parity, export structure and acceptance tests. **Pages:** from M1.2 `pages.yml` stages `_site/index.html`
-(legacy, byte for byte) and `_site/next/index.html` (new) after both gate sets pass (D-024).
+(legacy, byte for byte) and `_site/next/index.html` (new) (D-024). The legacy gates block the deployment; the new
+app's steps (`npm ci`, build, `check-next.mjs --rebuild`) never do: when one fails, `/next/` gets a static notice
+that the preview could not be built for that commit, the log a warning, and the legacy page deploys as usual (D-034,
+[DEPLOYMENT.md](DEPLOYMENT.md)).
 
 **Coexistence:** the legacy page is the review link until parity (Q-17); nothing exported from `/next/` is used for a
 client before switch-over; the live page receives calculation, data and security fixes and presentation-only work goes
@@ -541,8 +544,9 @@ defined in M8; no decision engine is built now.
 The decisions behind this design are recorded in [DECISIONS.md](DECISIONS.md), which owns them: D-023 (publication
 and return methods), D-024 (the `/next/` preview), D-025 (npm for build tooling), D-026 (data classes; the Screener
 pack never public), D-027 (the MF Screener link), D-028 (what the live page receives), D-029 (the missing-value dash),
-D-030 (observation thresholds), D-031 (borders and Actionables), D-032 (the capital-gains template) and D-033
-(Claude's charge of GitHub and the dashboard). The owner's audit decisions are OD-nn in
+D-030 (observation thresholds), D-031 (borders and Actionables), D-032 (the capital-gains template), D-033
+(Claude's charge of GitHub and the dashboard) and D-034 (the toolchain, the one-file build and the preview that never
+blocks the legacy page). The owner's audit decisions are OD-nn in
 [audits/2026-10-19-decisions.md](audits/2026-10-19-decisions.md); the open questions are Q-nn in
 [open-questions.md](new-build/open-questions.md).
 

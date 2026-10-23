@@ -18,6 +18,26 @@ The dashboard is published at:
 workflow publishes `index.html` and, at `/next/`, the preview of the new application (D-024), nothing else;
 never use "Deploy from a branch", which would publish the whole repository. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).)
 
+## Two applications during the parallel run
+
+The dashboard above (`index.html`) is the review link. A new Portfolio Review application (CR-0006) is being built
+beside it, in `app/`, and previewed at
+
+    https://productsteamcentricity.github.io/portfolio-review-dashboard/next/
+
+with a "Preview, not for client use" banner: nothing from the preview goes to a client until the new application
+reaches feature parity and replaces the dashboard (D-024). If the preview cannot be built for a commit, that address
+shows a short notice instead and the dashboard is published as usual (D-034).
+
+To run both on your machine (Node 24):
+
+    npm ci           # the new application's pinned build tooling; the dashboard needs none
+    npm run build    # app/dist/index.html, one offline file (double-click it to open it)
+    npm run serve    # http://127.0.0.1:8100/ (the dashboard) and http://127.0.0.1:8100/next/ (the new application)
+
+The dashboard alone needs no install: open `index.html`, or run `node tools/serve-dashboard.js`
+(http://127.0.0.1:8099). Details: [docs/new-build/toolchain.md](docs/new-build/toolchain.md).
+
 ## How to use
 
 1. Open the dashboard (the live link above, or download `index.html` and open it locally).

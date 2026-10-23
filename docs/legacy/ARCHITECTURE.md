@@ -242,4 +242,5 @@ Overlap Matrix, Performance, Fund IRR, Observations, Portfolio Rebalancing, AI A
 GitHub Pages via `.github/workflows/pages.yml`: on a push to `main` that changes `index.html` (or the new
 application's sources), the workflow runs the invariants, smoke test and regression tests, stages `index.html`
 byte for byte and deploys it; from M1.2 it also builds the new application and stages it at `/next/` (D-024).
-Nothing else in the repo is published. See `docs/DEPLOYMENT.md`.
+A failure of the new application's steps never blocks this page (D-034). Nothing else in the repo is published.
+See `docs/DEPLOYMENT.md`.

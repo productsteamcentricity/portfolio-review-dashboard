@@ -153,7 +153,7 @@ After the fix of QA defect D1 (23 Oct 2026): **42,280 bytes, SHA-256
 `e74e8a07ca1008152a2429439c9677ff3d00b96ed39e75d9723ca7b60b63a3bb`** (same tools; app script 31,804 bytes, style
 element 5,500 bytes, no vendored library); the 49 spike checks ran on this file.
 
-## 8. Differences from the Phase 0 design, and why (lead to confirm)
+## 8. Differences from the Phase 0 design, and why (confirmed by the lead, D-034)
 
 | Phase 0 text | M1.2 | Why |
 |---|---|---|

@@ -70,4 +70,5 @@ How these parts fit together is in [ARCHITECTURE.md](../docs/ARCHITECTURE.md) (t
 
 The build writes `app/dist/index.html` (git-ignored) and GitHub Pages serves it at `/next/` with a
 "Preview, not for client use" banner; nothing exported from the preview is used for a client before switch-over
-(D-024).
+(D-024). If the preview cannot be installed, built or checked for a commit, Pages publishes a short static notice at
+`/next/` instead and the legacy page still deploys (D-034, [DEPLOYMENT.md](../docs/DEPLOYMENT.md)).

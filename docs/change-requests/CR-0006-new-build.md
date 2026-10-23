@@ -5,7 +5,8 @@
 - **Status:** Phase 0 done (delivered on 22 Oct 2026; the owner answered ND-1 to ND-10 on 22 Oct 2026, recorded as
   D-024 to D-033). Milestone M1.1: the safety tooling and the Phase 0 records merged in PR #10 (`2a65a62`); the rest
   of M1.1, with the lead's records, is on `chore/m1-1-rest-int`, ready for its pull request (Changes, below). M1.2
-  and M1.3 are built on their own branches and follow M1.1.
+  is integrated on `feat/m1-2-int`, stacked on it, with its records and D-034 (23 Oct 2026), ready for its own pull
+  request after M1.1. M1.3 is built on its own branch and follows.
 
 ## Request
 Build a clean new application that keeps every capability of the existing dashboard and improves it:
@@ -48,6 +49,10 @@ rebalancing method) is out of scope; the data structures for it are in scope.
   - D-033: no branch ruleset; Claude takes full charge of GitHub and the dashboard.
   - The five Index TRI files of the monthly inbox are the index data for drawdown comparisons (D-023 addendum), and
     the files the owner supplies each month are tracked in `docs/MONTHLY_UPDATE_GUIDE.md`.
+- **23 Oct 2026, D-034 (lead under D-033):** the new app's toolchain as M1.2 built it (exact pins, lockfile, no
+  install scripts, one deterministic offline file with a hash CSP, static navigation, vendored libraries checked by
+  SHA-256), and the `/next/` preview never blocks the legacy page: when it cannot be built, Pages publishes a notice
+  there and deploys the legacy page as usual.
 
 ## Plan
 1. **Phase 0 (done, 22 Oct 2026):**
@@ -74,13 +79,14 @@ rebalancing method) is out of scope; the data structures for it are in scope.
 | M1.1 | The baseline tag `legacy-baseline-782794f` on `782794f` | (tag) | on the remote (`git ls-remote --tags origin`, 22 Oct 2026) |
 | M1.1 | The rest of M1.1: `release-check.mjs` and `monthly-prd-check.mjs` with their tests and CI steps; the folder skeleton (`app/`, `data/`, `product_bank/`, `monthly_updates/` with `_policy/publication-classes.json`); the new [`../ARCHITECTURE.md`](../ARCHITECTURE.md), the legacy one moved to [`../legacy/ARCHITECTURE.md`](../legacy/ARCHITECTURE.md); N-1 to N-10 and U-23 filed as KI-129 to KI-139 | `chore/m1-1-rest` | ready for its pull request, carried by `chore/m1-1-rest-int` |
 | M1.1 | The lead's records for the rest of M1.1: `CHANGELOG.md`, `docs/PROJECT_STATE.md`, `docs/HANDOVER.md` (refreshed for the end of M1.1), the PRD's §13 status; `CLAUDE.md`, `docs/HANDOVER.md` and three project agents point at the moved legacy architecture, and `CLAUDE.md` names the new one and the two new checks | `chore/m1-1-rest-int` (on `chore/m1-1-rest`) | ready for its pull request |
+| M1.2 | The toolchain (esbuild 0.28.2, TypeScript 7.0.2, Preact 10.29.8, pinned, lockfile, `.npmrc`), `scripts/build.mjs` (one offline `app/dist/index.html` with a hash CSP), `scripts/validation/check-next.mjs`, `scripts/serve.mjs`, the nine-section shell with the Screener pack slot, the CI steps and `/next/` in `pages.yml`, tests and the browser spike ([`../new-build/toolchain.md`](../new-build/toolchain.md)) | `feat/m1-2-toolchain-shell` | reviewed; carried by `feat/m1-2-int` |
+| M1.2 | Integration on top of M1.1: the merge (conflicts resolved keeping both sides; CI job `next` in one order with the release check last); the fix of QA defect D1 (Enter or a click on any section link moves focus to its heading; links read "1 Uploads and inputs"); the Pages fallback (a failing preview never blocks the legacy page, D-034); the records: D-034, `CLAUDE.md` (the new app's working rules), the living architecture, DEPLOYMENT, the root README's two-apps section, HANDOVER, PROJECT_STATE, CHANGELOG, the PRD's §13 | `feat/m1-2-int` (on `chore/m1-1-rest-int`) | ready for its pull request after M1.1's; the browser QA by hand (`toolchain.md` §9) and the first CI and Pages runs are still to come |
 
 `CHANGELOG.md` stays at the repository root rather than moving to `docs/` as `09-repository-and-docs-structure.md` §6
 planned (the lead's decision, 22 Oct 2026). Still to do in M1.1: its last pull request (push `chore/m1-1-rest-int`,
-attach the report of `release-check.mjs --after-push` to the pull request, merge it once CI is green, D-017), and the
-root README's section on the two applications during the parallel run and how to run both (`09` §6). The README
-lists the new folders so far; as nothing of the new application can be run before the `/next/` preview, that section
-is proposed for M1.2's records.
+attach the report of `release-check.mjs --after-push` to the pull request, merge it once CI is green, D-017). The root
+README's section on the two applications during the parallel run and how to run both (`09` §6), proposed for M1.2's
+records, is written on `feat/m1-2-int`.
 
 ## Open
 - **Owner:** your own list of issues with the existing dashboard (screenshots or notes).

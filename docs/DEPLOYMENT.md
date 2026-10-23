@@ -13,8 +13,11 @@ The dashboard is one static file. "Deploying" means making `index.html` availabl
    files (`package.json`, `package-lock.json`, `.npmrc`), `scripts/build.mjs`, `scripts/validation/check-next.mjs`
    or the workflow itself, and on manual dispatch. Its build job (read-only rights) runs the legacy gates
    (`tools/check-invariants.js`, `tools/smoke-review.js`, `tools/run-regression.js`), then `npm ci`, the new app's
-   build and `scripts/validation/check-next.mjs --rebuild`, and stages both files; any failure stops the deployment
-   (while the preview has no users a failing new build also blocks a legacy fix: fix forward). Only the separate
+   build and `scripts/validation/check-next.mjs --rebuild`, and stages both files. A failure of a legacy gate stops
+   the deployment. **A failure of the new app never does (D-034):** `npm ci`, the build and the check may each fail
+   without failing the job (`continue-on-error`, each with its own time limit, each run only when the one before it
+   succeeded), and then the staging step still copies `index.html` byte for byte to `/` and puts a short static
+   notice at `/next/` instead of the build (see "When the preview could not be built" below). Only the separate
    deploy job, which runs no repository code, can write to Pages.
 2. **The file itself**: analysts can open `index.html` from SharePoint/Teams or a local copy. It works
    fully offline.
@@ -58,6 +61,21 @@ $p = "$env:TEMP\pages_next_check.html"; curl.exe -sSL -o $p "https://productstea
 ```
 Then open `/next/`: the "Preview, not for client use" banner shows, the console is clean and the Network panel lists
 the page only (`docs/new-build/toolchain.md`, section 9).
+
+## When the preview could not be built
+If `npm ci`, the new app's build or `check-next.mjs` fails in the Pages run, the legacy page is still published and
+`/next/` shows a notice instead of the preview. The notice is a static page written by the workflow itself (not from
+`app/`, so a broken `app/` cannot break it): the banner "Preview, not for client use.", the heading "The preview could
+not be built for this commit", the short commit, and one relative link back to the dashboard; a CSP of
+`default-src 'none'`, no script and no remote URL. The run log carries a warning, "New app preview not built", with
+the outcome of each of the three steps, and the build log prints the SHA-256 of both staged files.
+
+What to do: CI (job `next`) runs the same steps on every pull request, so this should only follow a change that
+reached `main` with them failing or a failure of the Pages runner itself (for example the npm registry unreachable
+during `npm ci`). Read the warning and the failed step's log, fix forward on a branch, and merge the fix; the next
+Pages run publishes the preview again. A manual re-run (Actions, "Publish dashboard to GitHub Pages", Run workflow)
+is enough for a temporary failure such as a registry outage. `tests/next/pages-workflow.test.mjs` checks the workflow
+and runs its staging script on temporary files.
 
 ## Roll back
 Revert the offending commit on `main` (`git revert <sha>`, PR, merge); the workflow republishes the

@@ -21,7 +21,8 @@ On Windows, if `git` or `node` is not found, prefix each command with
 4. **Compliance** — `check-invariants` passes on the staged `index.html`: no network API or remote URL
    in the app code or page shell.
 5. **Workflows** — any change under `.github/workflows/`: minimal `permissions`, no secret echoed, and
-   Pages still publishes `index.html` only.
+   Pages still publishes only `index.html` at `/` and the new app's preview (or its fallback notice) at `/next/`,
+   with the legacy gates blocking (D-024, D-034; `docs/DEPLOYMENT.md`).
 6. **Git safety** — feature work on a branch, not `main`; `origin` is
    `github.com/productsteamcentricity/portfolio-review-dashboard`, which is **public**: anything
    committed is world-readable and permanent; no force-push, history rewrite or branch deletion planned.

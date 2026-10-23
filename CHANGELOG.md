@@ -5,6 +5,36 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ## [Unreleased]
 
 ### Added
+- **Milestone M1.2 of the new build (CR-0006): the toolchain, the one-file build and the nine-section shell, previewed
+  at `/next/`.** The first application code. `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
+  - Pinned npm tooling (D-025, D-034): esbuild 0.28.2, TypeScript 7.0.2 (type check only, erasable syntax) and
+    Preact 10.29.8, all `devDependencies` at exact versions with a committed `package-lock.json`; `.npmrc` disables
+    install scripts and the audit and fund calls; `npm ci` only.
+  - `scripts/build.mjs`: one offline file, `app/dist/index.html` (git-ignored), with a CSP meta tag first in `<head>`
+    that allows the inline script and style by SHA-256 and sets `connect-src 'none'`; deterministic; the navigation and
+    the single MF Screener link (D-027) written as static HTML; vendored libraries (none yet) inlined only when
+    imported as `vendor:<name>` and checked against `app/vendor/MANIFEST.json`. Built on 23 Oct 2026: 42,280 bytes,
+    SHA-256 `e74e8a07ca1008152a2429439c9677ff3d00b96ed39e75d9723ca7b60b63a3bb`.
+  - `scripts/validation/check-next.mjs`: the built page's invariants (CSP, no network API, no remote URL but the
+    Screener link in its exact form, the "Preview, not for client use" banner, no en or em dash in static text, clean
+    bytes, size budget), a scan of `app/src` for DOM sinks and network APIs, and with `--rebuild` a byte-identical
+    rebuild. `scripts/serve.mjs` serves the legacy page at `/` and the new app at `/next/` on 127.0.0.1:8100.
+  - The shell (`app/src`): the nine sections of the PRD as empty states saying what arrives in which milestone, the MF
+    Screener data pack slot in section 1 (M10), hash navigation, the house palette and Cambria.
+  - Tests in `tests/next/` (build determinism, the vendored-library mechanism, every check-next rule against a planted
+    violation, the shell, the Pages workflow) and the browser spike `tests/browser/next-spike.mjs` (headless Edge and
+    Chrome, from disk and served: the CSP runs the page and blocks a wrong hash and a `fetch`, one request only,
+    keyboard and mouse navigation, IndexedDB kept across a reload and a restart): 49 of 49 in Edge 155 and Chrome 155.
+  - QA defect D1, fixed before the merge: Enter or a click on the link of the section already on screen, or after the
+    skip link, left keyboard focus on the page; every activation of a section link now moves focus to the section's
+    heading, and each link's accessible name reads "1 Uploads and inputs" (it read "1Uploads and inputs").
+  - CI job `next`: after the privacy scan, the docs links and the monthly PRD check, `npm ci`, the type check, the
+    build and `check-next.mjs --rebuild`, then the tests in IST and UTC and, last, the release check.
+  - Pages (`pages.yml`): `/next/` publishes the new app beside the legacy page (D-024). The legacy gates stay
+    blocking, but a failure to install, build or check the new app never blocks the legacy page: `/next/` then shows
+    a short static notice and the log a warning (D-034, replacing M1.2's "fix forward" note).
+  - `docs/new-build/toolchain.md`, the M1.2 record: packages, commands, the build, the invariants, the spike results
+    and the browser QA steps.
 - **The rest of milestone M1.1 of the new build (CR-0006): the release checks, the folder skeleton and the living
   architecture.** `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
   - `scripts/validation/release-check.mjs` (BR-1.1), read-only: the state a release of the legacy page or of `/next/`
@@ -81,6 +111,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Change requests CR-0004 (the second export request) and CR-0005 (audit, fixes and redesign).
 
 ### Changed
+- **New build records for M1.2:** DECISIONS D-034 (the toolchain, the one-file build, static navigation, and the
+  preview never blocking the legacy page); CLAUDE.md (Pages publishes `index.html` and `/next/`, the repository
+  layout, and the new app's working rules: `npm ci`, the type check, the build, `check-next.mjs`, no network API, no
+  `innerHTML` or `eval` in `app/src`, the single Screener link, vendored libraries only through `vendor:<name>` with a
+  SHA-256 in `app/vendor/MANIFEST.json`, `serve.mjs`); the living architecture (what M1.2 built, §5, §17, §18,
+  §22); DEPLOYMENT (the fallback notice); the root README (the two applications during the parallel run and how to
+  run both, the last M1.1 item); HANDOVER (refreshed for M1.2), PROJECT_STATE, CR-0006, the PRD's §13 status,
+  `app/README.md`, TESTING and the safety-tooling notes; the `security-release-reviewer` agent's Pages check.
 - **The legacy architecture moved to `docs/legacy/ARCHITECTURE.md` (M1.1)**, a pure rename in a commit of its own so
   that `git log --follow` keeps its history. Every link follows it: `docs/README.md`, the PRD, DATA_DICTIONARY,
   MONTHLY_UPDATE_GUIDE, REPLICATION_REPORT, `docs/new-build/README.md`, CLAUDE.md (conventions and repository

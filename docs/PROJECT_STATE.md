@@ -16,8 +16,8 @@
     values keep the dash, sentences never use one (D-029); a fund pair overlaps from 35% (D-030); capital-gains
     statements in our own template (D-032); no branch ruleset (D-033). Data and return conventions are in D-023; the
     Index TRI files are its index data.
-  - **Milestone M1.1 is complete once its last branch merges** (the root README's two-apps section aside, proposed
-    for M1.2; next step 4). Merged in PR #10 (`2a65a62`): the safety tooling
+  - **Milestone M1.1 is complete once its last branch merges** (next step 4; the root README's two-apps section,
+    the one item left over, is written in M1.2's records). Merged in PR #10 (`2a65a62`): the safety tooling
     (privacy scan, docs link check, pre-push scan and hook, CI job `next`;
     [`new-build/safety-tooling.md`](new-build/safety-tooling.md); the hook is active only after
     `git config core.hooksPath scripts/hooks`), the Phase 0 records and the living documents
@@ -29,11 +29,17 @@
     [`ARCHITECTURE.md`](ARCHITECTURE.md) with the legacy one moved to
     [`legacy/ARCHITECTURE.md`](legacy/ARCHITECTURE.md), and KI-129 to KI-139 (KI-138 already fixed by batch 2a).
     `CHANGELOG.md` stays at the repository root.
-  - **M1.2 and M1.3 follow**, each built and reviewed on its own branch from `main` and not yet pushed: M1.2
-    (`feat/m1-2-toolchain-shell`) the npm toolchain, the one-file offline build with a hash CSP, `check-next.mjs`, the
-    nine-section shell and the `/next/` preview; M1.3 (`feat/m1-3-model-ingest-r2`) the model types, the workbook
-    reader, the base-file parser with its parity ledger, the reference data in `data/refdata/`, fixtures and
-    traceability. No application code is on `main` yet.
+  - **M1.2 is integrated and ready for its pull request** on `feat/m1-2-int`, stacked on `chore/m1-1-rest-int`
+    (local, not pushed): `feat/m1-2-toolchain-shell` (the npm toolchain, the one-file offline build with a hash CSP,
+    `check-next.mjs`, the nine-section shell and the `/next/` preview; [`new-build/toolchain.md`](new-build/toolchain.md))
+    merged with M1.1, the fix of QA defect D1 (focus on the section heading for every section link; links read
+    "1 Uploads and inputs"), the Pages fallback (a failing preview never blocks the legacy page; `/next/` then shows a
+    notice) and the records, with D-034. The built page: 42,280 bytes, SHA-256 `e74e8a07…`; the browser spike passes 49
+    of 49 in headless Edge 155 and Chrome 155. Open: the by-hand browser QA of `toolchain.md` §9 on an analyst's
+    profile, and the first CI and Pages runs (the Pages workflow runs only on GitHub).
+  - **M1.3 follows** (`feat/m1-3-model-ingest-r2`, built and reviewed from `main`, not yet pushed): the model types,
+    the workbook reader, the base-file parser with its parity ledger, the reference data in `data/refdata/`, fixtures
+    and traceability. No application code is on `main` yet.
 - The owner answered the 28 audit decisions: all accepted except OD-11 (keep the monitor uploads, fixed), D-021.
 - The previous owner's second export is expected this week (CR-0004).
 - The October 2026 data refresh is due when the files arrive, around 13–17 Nov 2026.
@@ -57,7 +63,8 @@
   docs/MONTHLY_REFRESH.md, and the inbox `01 Monthly Updates\2026-10` is ready.
 - **OneDrive project folder:** `…\Desktop\Claude Code-Portfolio Review Dashboard` (D-018).
 - **Local preview:** `Open Dashboard.cmd` (OneDrive) or `tools/open-dashboard.cmd` opens http://127.0.0.1:8099.
-  The server serves only the dashboard and `test-data/`.
+  The server serves only the dashboard and `test-data/`. With M1.2, `npm run serve` (preview configuration `next`)
+  serves the dashboard at http://127.0.0.1:8100/ and the new app's build at `/next/`.
 - **Previous owner's site:** stays live until the new build has been fully tested (owner, 15 Oct 2026).
 
 ## Blockers
@@ -82,11 +89,13 @@
    attach the report of `node scripts/validation/release-check.mjs --after-push` to its pull request, and merge it
    once CI is green (D-017). The one other M1.1 item, the root README's section on the two applications and how to
    run both ([`new-build/09-repository-and-docs-structure.md`](new-build/09-repository-and-docs-structure.md) §6), is
-   proposed for M1.2's records: nothing of the new application can be run before `/next/`. `CHANGELOG.md` stays at
-   the repository root (the lead's decision, 22 Oct 2026).
-5. **Claude: M1.2, then M1.3**, each integrated with its records on top of M1.1 and merged as its own pull request:
-   M1.2 publishes the `/next/` preview (D-024) and brings the new application's own rules into `CLAUDE.md`; M1.3 the
-   shared model and base-file ingest. Neither needs owner input. Then M1.4, the first vertical slice (after M1.2).
+   written in M1.2's records (`feat/m1-2-int`). `CHANGELOG.md` stays at the repository root (the lead's decision,
+   22 Oct 2026).
+5. **Claude: M1.2, then M1.3**, each merged as its own pull request after M1.1. M1.2 (`feat/m1-2-int`): the browser
+   QA by hand ([`new-build/toolchain.md`](new-build/toolchain.md) §9), push, the release-check report, merge once CI
+   is green; then check the first Pages run (`/` byte-identical, `/next/` the preview, not the notice) as in
+   [DEPLOYMENT.md](DEPLOYMENT.md). M1.3: integrated with its records on top of M1.2. Neither needs owner input. Then
+   M1.4, the first vertical slice.
 6. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;
