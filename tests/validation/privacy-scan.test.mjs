@@ -252,16 +252,28 @@ describe('allow-list', () => {
     for (const o of raw.githubOwners) assert.ok(o.owner && o.why, `owner entry needs a reason: ${JSON.stringify(o)}`);
     for (const e of raw.denylistExemptPaths) assert.ok(e.path && e.why, 'exempt path needs a reason');
   });
-  test('exempts index.html, and only index.html, from the deny-list; every other rule still applies to it (D-033)', () => {
+  test('exempts index.html and its generated data/refdata copies, and nothing else, from the deny-list; every other rule still applies (D-033, M1.3)', () => {
     // Lead decision of 22 Oct 2026: the legacy page's embedded public vendor data names listed companies and fund
     // managers, so the private deny-list is not applied to it; e-mail, PAN and the other generic rules are.
-    assert.deepEqual([...allow.denylistExemptPaths], ['index.html']);
+    // M1.3 extends this to the block files scripts/data-extract.ts writes from that same data (proved equal by
+    // tests/parity/refdata.parity.test.ts, which also checks this list against the extractor's file set);
+    // data/refdata/README.md and VINTAGE.json stay under the deny-list.
+    const exempt = [...allow.denylistExemptPaths];
+    assert.equal(exempt[0], 'index.html');
+    for (const p of exempt.slice(1)) {
+      assert.match(p, /^data\/refdata\/[A-Z][A-Z_]*\.json$/, `only generated block files may be exempt: ${p}`);
+      assert.notEqual(p, 'data/refdata/VINTAGE.json');
+    }
     const entries = [
       { path: 'index.html', line: 1, text: 'Vexmoor Growth Fund' },
       { path: 'index.html', line: 2, text: `contact ${'jane.roe'}${AT}${'mailbox.co.in'}` },
       { path: 'index.html', line: 3, text: `id ${'ABCPE'}${'1234F'}` },
       { path: 'tools/patches/2026-10-22-example.js', line: 1, text: 'Vexmoor' },
       { path: 'docs/index.html', line: 1, text: 'Vexmoor' },
+      { path: 'data/refdata/FUND_MGR.json', line: 1, text: 'Vexmoor' },
+      { path: 'data/refdata/FUND_MGR.json', line: 2, text: `id ${'ABCPE'}${'1234F'}` },
+      { path: 'data/refdata/README.md', line: 1, text: 'Vexmoor' },
+      { path: 'data/refdata/VINTAGE.json', line: 1, text: 'Vexmoor' },
     ];
     const { hits } = ps.scanEntries(entries, { allow, denyTerms: ['Vexmoor'] });
     assert.deepEqual(hits.map((h) => `${h.path}:${h.line}:${h.rule}`), [
@@ -269,6 +281,9 @@ describe('allow-list', () => {
       'index.html:3:pan',
       'tools/patches/2026-10-22-example.js:1:denylist',
       'docs/index.html:1:denylist',
+      'data/refdata/FUND_MGR.json:2:pan',
+      'data/refdata/README.md:1:denylist',
+      'data/refdata/VINTAGE.json:1:denylist',
     ]);
   });
 });

@@ -37,9 +37,14 @@
     notice) and the records, with D-034. The built page: 42,280 bytes, SHA-256 `e74e8a07…`; the browser spike passes 49
     of 49 in headless Edge 155 and Chrome 155. Open: the by-hand browser QA of `toolchain.md` §9 on an analyst's
     profile, and the first CI and Pages runs (the Pages workflow runs only on GitHub).
-  - **M1.3 follows** (`feat/m1-3-model-ingest-r2`, built and reviewed from `main`, not yet pushed): the model types,
-    the workbook reader, the base-file parser with its parity ledger, the reference data in `data/refdata/`, fixtures
-    and traceability. No application code is on `main` yet.
+  - **M1.3 is integrated and ready for its pull request** on `feat/m1-3-int`, stacked on `feat/m1-2-int` (local, not
+    pushed): `feat/m1-3-model-ingest-r2` (the shared model, the workbook and base-file readers with the parity ledger
+    `tests/parity/base-file-ledger.json`, the reference data in `data/refdata/`, fixtures and traceability; reviewed
+    twice) merged on top of M1.2, the type check over M1.3's code with `"type": "module"`, the re-review's fixes
+    (the asset class compared exactly, BF-26) and the records, with D-035 and KI-140 to KI-147. 234 of 234 tests
+    pass in IST and UTC; the `/next/` build is unchanged. No application code is on `main` yet.
+  - **M1.4 is next** (the first vertical slice: the portfolio overview end to end), starting with the rule for a
+    Crore cell that is not a number (KI-147, an owner decision).
 - The owner answered the 28 audit decisions: all accepted except OD-11 (keep the monitor uploads, fixed), D-021.
 - The previous owner's second export is expected this week (CR-0004).
 - The October 2026 data refresh is due when the files arrive, around 13–17 Nov 2026.
@@ -81,7 +86,12 @@
    (a degraded Exit falls back to Retain).
 3. **Owner:**
    - send your own list of issues;
-   - ask the tax adviser about OD-28.
+   - ask the tax adviser about OD-28;
+   - answer M1.3's questions in [`DATA_DICTIONARY.md`](DATA_DICTIONARY.md) §8: unrecognised Asset Names such as
+     "Gold" (BF-19), letter case of Asset Names (BF-26), a market value of 0, and, for M1.4, a Crore cell that is not
+     a number beside a Lakh amount (KI-147);
+   - count, privately, how often the real base files carry variant asset labels (letter case, spacing, synonyms):
+     it sizes KI-145 and KI-146 on the live page.
    ND-1 to ND-10 were answered on 22 Oct 2026 (D-024 to D-033).
    OD-29 to OD-36 were accepted on 21 Oct 2026 (D-022); OD-32 (renamed fund houses) and OD-34 ("AMC not given")
    are built in fix batch 2a (PR #9, merged), with KI-124 (empty Home slide export).
@@ -91,18 +101,20 @@
    run both ([`new-build/09-repository-and-docs-structure.md`](new-build/09-repository-and-docs-structure.md) §6), is
    written in M1.2's records (`feat/m1-2-int`). `CHANGELOG.md` stays at the repository root (the lead's decision,
    22 Oct 2026).
-5. **Claude: M1.2, then M1.3**, each merged as its own pull request after M1.1. M1.2 (`feat/m1-2-int`): the browser
-   QA by hand ([`new-build/toolchain.md`](new-build/toolchain.md) §9), push, the release-check report, merge once CI
-   is green; then check the first Pages run (`/` byte-identical, `/next/` the preview, not the notice) as in
-   [DEPLOYMENT.md](DEPLOYMENT.md). M1.3: integrated with its records on top of M1.2. Neither needs owner input. Then
-   M1.4, the first vertical slice.
+5. **Claude: M1.2, then M1.3**, each merged as its own pull request after the one before. M1.2 (`feat/m1-2-int`):
+   the browser QA by hand ([`new-build/toolchain.md`](new-build/toolchain.md) §9), push, the release-check report,
+   merge once CI is green; then check the first Pages run (`/` byte-identical, `/next/` the preview, not the notice)
+   as in [DEPLOYMENT.md](DEPLOYMENT.md). M1.3 (`feat/m1-3-int`): push, the release-check report, merge once CI is
+   green; it needs no owner input to merge (its open questions wait in `DATA_DICTIONARY.md` §8). Then M1.4, the first
+   vertical slice, with the items carried from M1.3 in its acceptance list (KI-147).
 6. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;
    - re-tests the fixes against the real-format fixtures.
 7. **Around 13–17 Nov:** the October data refresh (docs/MONTHLY_REFRESH.md), followed by the first monthly PRD
    ([`monthly-prds/`](monthly-prds/README.md)) and a refresh of HANDOVER.md, both checked by
-   `scripts/validation/monthly-prd-check.mjs`.
+   `scripts/validation/monthly-prd-check.mjs`. From M1.3 the runbook's Step 8 regenerates `data/refdata/` from the
+   spliced page in the same change, or CI fails (D-035).
 8. **Owner:** after full testing of the new build, schedule retiring the previous owner's site.
    (No ruleset will protect `main`: D-033.)
 
@@ -118,6 +130,7 @@ Other items:
 | P1 | Risk-ratio computation in this repository (from the previous owner's toolchain) | operations |
 | P2 | Expense-ratio sanity checks as a script (today a manual runbook step) | operations |
 | P3 | KI-029: AI Analyst signal weights sign-off | product decision |
+| P1 | The legacy page's base-file reading defects found by M1.3: KI-146 (the IPS takes only the last allocation row of a class) and KI-140 to KI-145 (partial merged units, first-folio dates, total rows read as holdings, text read by `parseFloat`, impossible dates rolled, variant asset labels split into rows); live-page data fixes under D-028, measured on the real base files first | legacy fix batch |
 | P1 | The legacy `FUND_RANKS` block (fund ranks issued 15 Aug 2026) is an open item: whether the legacy page removes it now (a data change under D-028, which would also remove what uses it, such as the AI Analyst's rank signal) or keeps it until switch-over is to be decided by the lead under D-033 and recorded | decision, then a legacy data change |
 
 ## Records

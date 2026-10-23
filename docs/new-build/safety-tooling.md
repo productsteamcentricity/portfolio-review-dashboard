@@ -46,8 +46,14 @@ repository.** Without the variable only the generic rules run, and every report 
 `index.html` is exempt from the deny-list only: its embedded reference data names listed companies and fund
 managers who share names with it. Client holdings never enter `index.html` (they are uploaded at run time),
 and each code change reaches it through a patch script in `tools/patches/`, which is scanned. Every other rule
-still applies to `index.html`. The lead confirmed this exemption on 22 Oct 2026 (D-033), and a test pins it: the
-committed allow-list exempts `index.html` and no other path (`tests/validation/privacy-scan.test.mjs`).
+still applies to `index.html`. The lead confirmed this exemption on 22 Oct 2026 (D-033), and a test pins it
+(`tests/validation/privacy-scan.test.mjs`): the committed allow-list exempts `index.html` and, from M1.3, the
+generated reference-data files below, and no other path.
+**Milestone M1.3 (confirmed by the lead on 23 Oct 2026, D-035):** the reference-data files that `scripts/data-extract.ts` writes
+from the same embedded data (`data/refdata/<BLOCK>.json`, one per block) are exempt for the same reason, each by its
+exact path. `tests/parity/refdata.parity.test.ts` proves each file equal to the block in `index.html` and checks that
+the exempt paths under `data/refdata/` are exactly the extractor's block files; `data/refdata/README.md` and
+`VINTAGE.json` stay under the deny-list, and every generic rule still applies to all of them.
 
 ## Running them
 
@@ -67,7 +73,7 @@ node scripts/validation/release-check.mjs --after-push
 # a monthly PRD and its handover, at the end of each monthly cycle
 node scripts/validation/monthly-prd-check.mjs
 # the tests
-node --test "tests/**/*.test.mjs"
+node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"
 ```
 
 With the deny-list, in PowerShell: `$env:PRD_PRIVACY_DENYLIST = 'C:\dev\private\privacy-denylist.txt'` for the
@@ -147,8 +153,10 @@ When a push is refused, remove the finding from the local commits before pushing
 The `next` job of `.github/workflows/ci.yml` runs on every pull request and every push to `main`: the privacy
 scan of `docs/` and the root Markdown with the generic rules (the deny-list is local only), the link check, the
 monthly PRD check, then the new application's steps from M1.2 (`npm ci`, the type check, the build and
-`check-next.mjs --rebuild`; [toolchain.md](toolchain.md)), the tests under `TZ=Asia/Kolkata` and `TZ=UTC`, and last
-the release check with `--ci`. The checkout is shallow, so a step fetches `main` first. In its CI form the release check takes the branch from
+`check-next.mjs --rebuild`; [toolchain.md](toolchain.md)), the tests under `TZ=Asia/Kolkata` and `TZ=UTC`, then the
+steps from M1.3 (the traceability report, `node scripts/validation/traceability.mjs`, and the reference data check,
+`node scripts/data-extract.ts --check`), and last the release check with `--ci`. The checkout is shallow, so a step
+fetches `main` first. In its CI form the release check takes the branch from
 `GITHUB_HEAD_REF` (a pull request) or `GITHUB_REF_NAME` (a push), the default branch from the event, treats a push to
 `main` as the merged state, and skips the identity check; it runs after the tests, so a test that leaves a file in the
 working tree fails it. The existing `checks` job (the legacy app) is unchanged.

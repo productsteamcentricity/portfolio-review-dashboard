@@ -274,7 +274,11 @@ block at the previous vintage; record that in the log under "Blocks left stale".
 ```bash
 node --max-old-space-size=8192 buildtools/postcheck.js "$IN" "$ASON"     # prints a sanity view; asserts nothing
 node tools/check-invariants.js && node tools/smoke-review.js && node tools/test-ai-analyst.js
+node scripts/data-extract.ts && node scripts/data-extract.ts --check   # the new app's copy of the data, data/refdata/
 ```
+
+Commit the regenerated `data/refdata/` (its JSON files and `VINTAGE.json`) on the refresh branch: CI checks it equal
+to the spliced `index.html`, so a refresh without it fails (D-035).
 
 Then do the browser check:
 1. Start `node tools/serve-dashboard.js` (or the preview config `dashboard`).

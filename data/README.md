@@ -1,9 +1,9 @@
 # data/: reference data the new application embeds
 
-Reference data for the new application, as reviewable JSON. **Empty until milestone M1.3**, when
-`scripts/data-extract.ts` extracts the blocks the legacy `index.html` embeds today and checks them equal to the
-embedded ones; from M11 the monthly update engine writes here from the monthly source files
-([07-implementation-roadmap.md](../docs/new-build/07-implementation-roadmap.md)).
+Reference data for the new application, as reviewable JSON. From milestone M1.3, `refdata/` holds the blocks the
+legacy `index.html` embeds today, extracted by `scripts/data-extract.ts` and checked equal to the embedded ones
+([refdata/README.md](refdata/README.md), D-035); from M11 the monthly update engine writes here from the monthly
+source files ([07-implementation-roadmap.md](../docs/new-build/07-implementation-roadmap.md)).
 
 ## What will be here
 

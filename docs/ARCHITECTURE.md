@@ -14,7 +14,11 @@ tests in `tests/validation/` and the CI job `next`, and the folder skeleton with
 `data/`, `product_bank/`, `monthly_updates/` with `_policy/publication-classes.json`). Milestone M1.2 built the pinned
 toolchain, the page shell with the nine sections as empty states, the one-file build (`scripts/build.mjs`) and its
 invariant check (`scripts/validation/check-next.mjs`), and the `/next/` preview; its facts and spike results are in
-[toolchain.md](new-build/toolchain.md). Next is M1.3 (model, base-file ingest, reference-data extraction); see
+[toolchain.md](new-build/toolchain.md). Milestone M1.3 built the shared model (`app/src/model/`), the workbook and
+base-file readers (`app/src/ingest/`) with the engine helpers they use (`app/src/engine/`: dates, units, asset
+classes, identifiers, ownership), the reference data in `data/refdata/` (extracted from `index.html` by
+`scripts/data-extract.ts` and checked equal, D-035), the base-file parity ledger and the traceability report; no
+page uses them yet. Next is M1.4 (the portfolio overview end to end); see
 [07-implementation-roadmap.md](new-build/07-implementation-roadmap.md) and [PROJECT_STATE.md](PROJECT_STATE.md).
 
 ---
@@ -99,14 +103,14 @@ owner of each document are in [09-repository-and-docs-structure.md](new-build/09
 | Folder | Holds | Since |
 |---|---|---|
 | `index.html`, `tools/`, `buildtools/` | the legacy page, its checks and patch scripts, the legacy monthly pipeline (retired at M15) | before CR-0006 |
-| `app/` | the new application: `index.template.html`, `tsconfig.json`, `vendor/`, `assets/`, `src/` with `model/`, `ingest/`, `engine/`, `observations/`, `views/`, `exports/pptx/`, `exports/xlsx/`, `ui/`, `services/`, `config/` ([app/README.md](../app/README.md)) | README in M1.1; the template, `tsconfig.json`, `vendor/MANIFEST.json` and the shell (`main.tsx`, `ui/`, `config/`, `types/`) in M1.2 |
-| `data/` | reference data as JSON: `refdata/` with `VINTAGE.json`, `owner/` tables with approval records, `identifiers/crosswalk.json`, `history/YYYY-MM/` ([data/README.md](../data/README.md)) | README in M1.1; data from M1.3 |
+| `app/` | the new application: `index.template.html`, `tsconfig.json`, `vendor/`, `assets/`, `src/` with `model/`, `ingest/`, `engine/`, `observations/`, `views/`, `exports/pptx/`, `exports/xlsx/`, `ui/`, `services/`, `config/` ([app/README.md](../app/README.md)) | README in M1.1; the template, `tsconfig.json`, `vendor/MANIFEST.json` and the shell (`main.tsx`, `ui/`, `config/`, `types/`) in M1.2; `model/`, `ingest/`, the first `engine/` helpers and `views/format.ts` in M1.3 |
+| `data/` | reference data as JSON: `refdata/` with `VINTAGE.json`, `owner/` tables with approval records, `identifiers/crosswalk.json`, `history/YYYY-MM/` ([data/README.md](../data/README.md)) | README in M1.1; `refdata/` with `VINTAGE.json` in M1.3 (D-035) |
 | `product_bank/` | `schema/`, `products/`, `performance/`, `snapshots/`, `source_register/`, `pins.json` ([product_bank/README.md](../product_bank/README.md)) | README in M1.1; records from M11 |
 | `monthly_updates/` | `_policy/` and one `YYYY-MM/` folder per data month with `MANIFEST.json`, `UPDATE_REPORT.md` and the class P files in role folders ([monthly_updates/README.md](../monthly_updates/README.md)) | README and `_policy/` in M1.1; files from M11 |
-| `scripts/` | `validation/` (M1.1; `check-next.mjs` in M1.2); `build.mjs` and `serve.mjs` (M1.2); data extraction (M1.3); vendor extraction (M1.4); `monthly-update/` (M11); `office/` (local acceptance); `docs/` (M14) | M1.1 |
-| `tests/` | `validation/` (M1.1); `next/`, `browser/` and `fixtures/next-build/` (M1.2); unit, regression, parity, exports, integration, acceptance, monthly, fixtures, helpers | M1.1 |
+| `scripts/` | `validation/` (M1.1; `check-next.mjs` in M1.2; `traceability.mjs` in M1.3); `build.mjs` and `serve.mjs` (M1.2); data extraction, `data-extract.ts` (M1.3); vendor extraction (M1.4); `monthly-update/` (M11); `office/` (local acceptance); `docs/` (M14) | M1.1 |
+| `tests/` | `validation/` (M1.1); `next/`, `browser/` and `fixtures/next-build/` (M1.2); `unit/`, `parity/`, `fixtures/make-books.ts` and `helpers/` (M1.3); regression, more unit and parity, exports, integration, acceptance, monthly, fixtures, helpers | M1.1 |
 | `app/dist/` | build output (git-ignored; M1.2 put it beside the sources, not at the root) | M1.2 |
-| `package.json`, `package-lock.json`, `.npmrc` | the pinned build tooling (D-025) | M1.2 |
+| `package.json`, `package-lock.json`, `.npmrc` | the pinned build tooling (D-025, D-034); `"type": "module"`, with `tools/` and `buildtools/` kept CommonJS by their own `package.json` (M1.3 integration) | M1.2 |
 
 The brief's suggested names map as follows: `components` and `pages` become `ui/`, `analytics` becomes `engine/`,
 `data` splits into `model/` (types) and the root `data/` (values), `configuration` is `config/`; `ingest/` and
@@ -500,9 +504,11 @@ Commands (built in M1.2 unless marked planned; [toolchain.md](new-build/toolchai
 | Command | Does |
 |---|---|
 | `npm ci` | installs exactly the lockfile, scripts disabled |
-| `npm run typecheck` | `tsc -p app/tsconfig.json` (strict, `erasableSyntaxOnly`, `noEmit`) |
-| `npm test` | `node --test "tests/**/*.test.mjs"`; CI runs it under `TZ=Asia/Kolkata` and `TZ=UTC` (`npm run test:utc` was not added) |
-| `npm run parity` (planned) | new engine against the legacy engine (`tools/engine-host.js`) with the parity ledger |
+| `npm run typecheck` | `tsc -p app/tsconfig.json` (strict, `erasableSyntaxOnly`, `noEmit`): all of `app/src`, from M1.3 with `model/`, `ingest/`, `engine/` and `views/`; the Node-side `.ts` in `scripts/` and `tests/` is not type-checked yet ([toolchain.md](new-build/toolchain.md) §2) |
+| `npm test` | `node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"` (the `.ts` tests run from source by Node's type stripping, M1.3); CI runs it under `TZ=Asia/Kolkata` and `TZ=UTC` (`npm run test:utc` was not added) |
+| `npm run parity` (planned) | new engine against the legacy engine (`tools/engine-host.js`) with the parity ledger; from M1.3 the base-file and reference-data parity tests (`tests/parity/`) run inside `npm test`, with one ledger per area (`tests/parity/base-file-ledger.json`) |
+| `node scripts/validation/traceability.mjs` | every test file names the parity-matrix rows it covers; a row in progress or later without a test fails (M1.3) |
+| `node scripts/data-extract.ts [--check]` | writes `data/refdata/*.json` from the blocks of `index.html`, or checks them equal (M1.3) |
 | `npm run build` | `scripts/build.mjs` to `app/dist/index.html` and `app/dist/build-manifest.json` (git-ignored); prints the size and SHA-256 |
 | `npm run check` | `scripts/validation/check-next.mjs`: CSP first, hashes match, no network, one allowed link, banner, size budget, a scan of `app/src`; `-- --rebuild` for the deterministic build |
 | `npm run serve` | `scripts/serve.mjs`, 127.0.0.1:8100: legacy at `/`, new at `/next/` |
@@ -513,8 +519,9 @@ Commands (built in M1.2 unless marked planned; [toolchain.md](new-build/toolchai
 **CI today** (`.github/workflows/ci.yml`): the job `checks` runs the legacy gates (invariants, smoke, AI Analyst,
 regression) unchanged; the job `next` runs the privacy scan of the documentation, the docs link check and the monthly
 PRD check (Node built-ins only), then `npm ci`, the type check, the build, `check-next.mjs --rebuild`,
-`node --test "tests/**/*.test.mjs"` under IST and UTC and, last, the release check in its CI form. Later milestones
-add parity, export structure and acceptance tests. **Pages:** from M1.2 `pages.yml` stages `_site/index.html`
+`node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"` under IST and UTC (from M1.3 with the new app's unit and
+parity tests), the traceability report, `data-extract.ts --check` and, last, the release check in its CI form. Later
+milestones add export structure and acceptance tests. **Pages:** from M1.2 `pages.yml` stages `_site/index.html`
 (legacy, byte for byte) and `_site/next/index.html` (new) (D-024). The legacy gates block the deployment; the new
 app's steps (`npm ci`, build, `check-next.mjs --rebuild`) never do: when one fails, `/next/` gets a static notice
 that the preview could not be built for that commit, the log a warning, and the legacy page deploys as usual (D-034,
@@ -545,8 +552,9 @@ The decisions behind this design are recorded in [DECISIONS.md](DECISIONS.md), w
 and return methods), D-024 (the `/next/` preview), D-025 (npm for build tooling), D-026 (data classes; the Screener
 pack never public), D-027 (the MF Screener link), D-028 (what the live page receives), D-029 (the missing-value dash),
 D-030 (observation thresholds), D-031 (borders and Actionables), D-032 (the capital-gains template), D-033
-(Claude's charge of GitHub and the dashboard) and D-034 (the toolchain, the one-file build and the preview that never
-blocks the legacy page). The owner's audit decisions are OD-nn in
+(Claude's charge of GitHub and the dashboard), D-034 (the toolchain, the one-file build and the preview that never
+blocks the legacy page) and D-035 (reference data in the repository and the base-file reading conventions). The
+owner's audit decisions are OD-nn in
 [audits/2026-10-19-decisions.md](audits/2026-10-19-decisions.md); the open questions are Q-nn in
 [open-questions.md](new-build/open-questions.md).
 

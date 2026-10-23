@@ -1,3 +1,4 @@
+// covers: BR-0.3 D-025 D-034 M1.2-build
 // Tests of scripts/build.mjs: determinism, CSP hashes, vendored libraries inlined only when used, and the helpers.
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';

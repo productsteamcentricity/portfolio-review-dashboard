@@ -3,7 +3,7 @@
 For a developer (or a Claude Code session) taking over the Centricity Portfolio Review Dashboard
 without access to earlier conversations.
 
-**Last refreshed:** 23 Oct 2026 (milestone M1.2 of the new build integrated, after the end of M1.1). Refreshed at every milestone and at the end of every
+**Last refreshed:** 23 Oct 2026 (milestone M1.3 of the new build integrated, on top of M1.2). Refreshed at every milestone and at the end of every
 monthly cycle from the 2026-10 data month ([monthly-prds/](monthly-prds/README.md)).
 
 ## 1. The product in brief
@@ -25,8 +25,10 @@ roadmap) was delivered on 22 Oct 2026; on 22 Oct 2026 the owner answered the ten
 gave Claude full charge of GitHub and the dashboard (D-033). Milestone M1.1 (safety tooling, records, living documents,
 the release checks and the folder skeleton) is merged in part (PR #10) and complete once its last branch merges
 (section 8). M1.2 (the pinned npm toolchain, the one-file offline build and its check, the nine-section shell, the
-`/next/` preview that never blocks the legacy page, D-034) is integrated on a branch stacked on M1.1 and follows it;
-M1.3 (shared model, base-file ingest) is built on its own branch. No new application code is on `main` yet.
+`/next/` preview that never blocks the legacy page, D-034) is integrated on a branch stacked on M1.1, and M1.3 (the
+shared model, the base-file reader with its parity ledger, the reference data in `data/refdata/`, D-035) on a branch
+stacked on M1.2; each follows the one before. M1.4 (the first vertical slice) is next. No new application code is
+on `main` yet.
 
 ## 2. Read in this order
 1. `CLAUDE.md` — the rules and commands (10 minutes).
@@ -48,11 +50,13 @@ For the new build, then:
    engine, outputs, security, deployment), with the section numbers of `docs/new-build/03-architecture.md`.
 4. `docs/new-build/07-implementation-roadmap.md` and `docs/DECISIONS.md` D-024 to D-033: the milestones, and the
    owner's answers of 22 Oct 2026 to ND-1 to ND-10 (`docs/new-build/owner-decisions-new-build.md`).
-5. `docs/DATA_DICTIONARY.md` and `docs/MONTHLY_UPDATE_GUIDE.md`: the new data model (v0.1), the planned monthly flow
-   and the list of files the owner supplies each month.
+5. `docs/DATA_DICTIONARY.md` and `docs/MONTHLY_UPDATE_GUIDE.md`: the new data model (v0.3, with M1.3's types and the
+   owner's open questions in §8), the planned monthly flow and the list of files the owner supplies each month.
 6. `app/README.md` and `docs/new-build/toolchain.md`: the new application's code, its working rules (also in
    `CLAUDE.md`, "New build"), the build, the invariants it must keep and the browser QA steps; D-034 in
    `docs/DECISIONS.md`.
+7. `data/refdata/README.md`, `tests/parity/README.md` and `docs/TESTING.md` §6: the reference data and how it is
+   extracted, the parity ledger, and the new application's tests; D-035 in `docs/DECISIONS.md`.
 
 ## 3. Run and test
 ```bash
@@ -61,7 +65,9 @@ node tools/smoke-review.js          # end-to-end on a synthetic book
 node tools/serve-dashboard.js       # http://127.0.0.1:8099 (or double-click tools\open-dashboard.cmd)
 node tools/make-sample-base.js      # synthetic files to upload (test-data/)
 node scripts/validation/docs-links.mjs          # every relative link in the docs resolves
-node --test "tests/**/*.test.mjs"               # tests of the new-build tooling
+node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"   # tests of the new-build tooling and the new app
+node scripts/validation/traceability.mjs       # every test names the parity-matrix rows it covers
+node scripts/data-extract.ts --check           # data/refdata/ equals the blocks of index.html
 node scripts/validation/release-check.mjs       # the release state of a branch before its merge (report for the PR)
 npm ci && npm run typecheck && npm run build    # the new app: pinned tooling, type check, app/dist/index.html
 node scripts/validation/check-next.mjs --rebuild   # the built page's invariants and a byte-identical rebuild
@@ -93,7 +99,8 @@ From the 2026-10 data month each completed cycle also gets a monthly PRD written
 `docs/monthly-prds/TEMPLATE.md` and a refresh of this handover. The new update engine's flow is planned in
 `docs/MONTHLY_UPDATE_GUIDE.md` (milestone M11); until then the legacy process above applies. The files the owner
 supplies each month (who sends each, where it goes, public or private, what it feeds) are tracked in one list there:
-"Files the owner supplies each month".
+"Files the owner supplies each month". From M1.3 a splice is followed by `node scripts/data-extract.ts`, which
+regenerates the new application's copy in `data/refdata/` (MONTHLY_REFRESH Step 8; CI checks it, D-035).
 
 ## 6. Risks to keep in mind
 - Silent wrong numbers are this project's historical failure mode: sums can be 100% and still wrong.
@@ -122,6 +129,7 @@ browser acceptance) · `security-release-reviewer` (pre-commit / pre-push gate) 
   - `feat/m1-2-int` (on `chore/m1-1-rest-int`): M1.2 (`feat/m1-2-toolchain-shell`, built from `main` and reviewed)
     merged on top of M1.1, the fix of QA defect D1, the Pages fallback and M1.2's records with D-034; ready for its
     pull request after M1.1's. Before it merges: the browser QA by hand (`docs/new-build/toolchain.md` §9).
-  - `feat/m1-3-model-ingest-r2` (M1.3), built from `main` and reviewed; integrated after M1.2 with its own records
-    and pull request.
+  - `feat/m1-3-int` (on `feat/m1-2-int`): M1.3 (`feat/m1-3-model-ingest-r2`, built from `main` and reviewed twice)
+    merged on top of M1.2, the type check over its code, the re-review's fixes and M1.3's records with D-035 and
+    KI-140 to KI-147; ready for its pull request after M1.2's.
 - To resume: read section 2, then the next steps in `docs/PROJECT_STATE.md`.

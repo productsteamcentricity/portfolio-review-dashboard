@@ -1,3 +1,4 @@
+// covers: BR-3.10 D-024 D-026 D-027 D-029 M1.2-shell
 // Static tests of the application shell (M1.2): the nine sections of the brief, the preview banner, exactly one
 // remote URL (the MF Screener link, D-027), the MF Screener data pack slot in section 1 (D-026), the house palette
 // and the dash rule (D-029). Expected values come from docs/PRD.md section 3, CLAUDE.md and the decisions, not from

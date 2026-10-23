@@ -32,17 +32,31 @@ pin is a deliberate `npm install <pkg>@<version>` followed by a review of the lo
 | Command | Does |
 |---|---|
 | `npm ci` | installs exactly the lockfile (scripts disabled) |
-| `npm run typecheck` | `tsc -p app/tsconfig.json` (strict, `erasableSyntaxOnly`, `noEmit`) |
+| `npm run typecheck` | `tsc -p app/tsconfig.json` (strict, `erasableSyntaxOnly`, `noEmit`): every file under `app/src`, from M1.3 with `model/`, `ingest/`, `engine/` and `views/` |
 | `npm run build` | `scripts/build.mjs`: writes `app/dist/index.html` and `app/dist/build-manifest.json` (git-ignored) and prints the size and SHA-256 |
 | `npm run check` | `scripts/validation/check-next.mjs`: the built page's invariants and a scan of `app/src`; add `-- --rebuild` to require a byte-identical rebuild |
-| `npm test` | `node --test "tests/**/*.test.mjs"` (the validation scripts' tests and `tests/next/`) |
+| `npm test` | `node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"` (the validation scripts' tests, `tests/next/` and, from M1.3, the new app's unit and parity tests) |
 | `npm run serve` | `scripts/serve.mjs`: http://127.0.0.1:8100/ (legacy `index.html`) and `/next/` (the built new app), nothing else; launch configuration `next` in `.claude/launch.json` |
 | `node tests/browser/next-spike.mjs` | the spike gates in headless Edge or Chrome (local only; section 6) |
+
+**Module type (M1.3 integration, 23 Oct 2026).** The root `package.json` sets `"type": "module"`, so Node runs the
+new app's TypeScript (`scripts/data-extract.ts`, the `.test.ts` files and the `app/src` modules they import) as ES
+modules directly. Without it Node first tried CommonJS for each such file and printed a `MODULE_TYPELESS_PACKAGE_JSON`
+warning. The legacy tooling stays CommonJS: `tools/package.json` and `buildtools/package.json` hold only
+`"type": "commonjs"` and a description, and no script in those folders changed. `engines` asks for Node 24.2 or
+later, the first with `import.meta.main`. The built page is unchanged by this (same SHA-256).
+
+**Not type-checked yet: the Node-side TypeScript.** `scripts/*.ts` and `tests/**/*.ts` run by type stripping, which
+checks no types. Checking them needs Node's type declarations (`@types/node`), a new pinned package, which needs a
+recorded decision (D-034 names the pins). A trial on 23 Oct 2026, with `@types/node` 24.19.2 and a second
+configuration (the options of `app/tsconfig.json` with `"types": ["node"]`, over `scripts/*.ts` and
+`tests/**/*.ts`), found no error in those files; the package was not added.
 
 ## 3. Layout
 
 ```
 package.json  package-lock.json  .npmrc
+tools/package.json  buildtools/package.json   "type": "commonjs" for the legacy tooling (M1.3 integration)
 app/
   index.template.html     page shell: placeholders for the CSP, style, navigation, data blocks and scripts
   tsconfig.json

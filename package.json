@@ -2,15 +2,16 @@
   "name": "centricity-portfolio-review",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "description": "Build tooling for the new Portfolio Review application (CR-0006). Development-time only: the built page is one offline HTML file and installs nothing.",
   "engines": {
-    "node": ">=24"
+    "node": ">=24.2"
   },
   "scripts": {
     "typecheck": "tsc -p app/tsconfig.json",
     "build": "node scripts/build.mjs",
     "check": "node scripts/validation/check-next.mjs",
-    "test": "node --test \"tests/**/*.test.mjs\"",
+    "test": "node --test \"tests/**/*.test.mjs\" \"tests/**/*.test.ts\"",
     "serve": "node scripts/serve.mjs"
   },
   "devDependencies": {

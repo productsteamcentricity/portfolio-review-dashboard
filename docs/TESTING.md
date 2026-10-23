@@ -25,7 +25,8 @@ Safety checks for the repository itself (new build, M1.1; detail in `new-build/s
 | `node scripts/validation/prepush-scan.mjs` | the commits to be pushed: privacy on added lines, commit messages and identities; no file over 50 MB; no new binary or data file outside `monthly_updates/YYYY-MM/` | before every push (pre-push hook) |
 | `node scripts/validation/release-check.mjs [--online \| --after-push]` | the release state before a merge: the recorded remote (no token in its URLs) and default branch, a named branch, a clean tree, `index.html` changed only with a patch script (or on a `data/` branch), no local or generated file in the change; with `--after-push`, the remote has HEAD. Its report goes in the pull request | before every merge; CI (`next`, `--ci`, last, after the tests) |
 | `node scripts/validation/monthly-prd-check.mjs` | each monthly PRD: sections A to I of the template, no placeholder left, links, privacy and deny-list, the handover refreshed in the cycle | each monthly cycle; CI (`next`, generic rules only) |
-| `node --test "tests/**/*.test.mjs"` | the tests of the scripts above and of `monthly_updates/_policy/publication-classes.json`, on synthetic strings, temp files, throwaway git repositories and fixture folders; from M1.2 also `tests/next/` (below) | CI (`next`, IST and UTC) |
+| `node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"` | the tests of the scripts above and of `monthly_updates/_policy/publication-classes.json`, on synthetic strings, temp files, throwaway git repositories and fixture folders; from M1.2 also `tests/next/` (below); from M1.3 also the new application's tests (section 6) | CI (`next`, IST and UTC) |
+| `node scripts/validation/traceability.mjs` | every test file names what it covers (`// covers:` header); every id it names is a row of the parity matrix; every matrix row "in progress" or later has a test (section 6) | CI (`next`, from M1.3) |
 
 The new application (M1.2; detail in `new-build/toolchain.md`), after `npm ci`:
 
@@ -104,4 +105,37 @@ path growing at a constant rate, so its XIRR is known exactly — an independent
   reproduces published data, but the first real run (October 2026 data) is its first test against new
   vendor drift. `buildtools/` is not in CI (it needs the licensed vendor files).
 - Real-world base-file variants (Lakh columns, merged folios, blank invested values, odd asset labels);
-  use anonymised copies only, never commit them.
+  use anonymised copies only, never commit them. Synthetic versions of each are covered for the new reader
+  (section 6); the legacy reader's behaviour on them is recorded in the parity ledger.
+
+## 6. New application (CR-0006), from milestone M1.3
+
+The plan is [new-build/08-regression-test-plan.md](new-build/08-regression-test-plan.md); this section says what
+exists and how to run it. TypeScript tests run straight from source with Node 24's type stripping (Node 24.2 or
+later), so nothing is built or installed first; `npm run typecheck` checks the `app/src` modules they test. Every test file starts with a `// covers:` line naming the parity-matrix rows and the
+decisions it proves.
+
+```bash
+node --test "tests/**/*.test.ts"                                  # the new application's tests
+TZ=Asia/Kolkata node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"   # what CI runs, then again with TZ=UTC
+node scripts/validation/traceability.mjs [--rows]                 # coverage report; fails on a gap
+node scripts/data-extract.ts --check                              # data/refdata equals index.html
+node tests/fixtures/make-books.ts                                 # write the synthetic fixtures to test-data/new-build/
+```
+In PowerShell set the zone with `$env:TZ = 'UTC'` before `node --test`.
+
+| Test | What it proves |
+|---|---|
+| `tests/unit/model/value.test.ts` | no missing status formats as zero; zero is a value; "s" and "p" markers; NaN and Infinity refused; the statuses equal `DATA_DICTIONARY.md` §2 |
+| `tests/unit/model/ownership.test.ts` | sole first holder by default; joint holders and mode read from holder columns; attribution to the first holder; nothing of it in the audit log |
+| `tests/unit/engine/dates.test.ts`, `units.test.ts`, `classify-asset.test.ts` | Excel serials to days (1900 and 1904 systems, the phantom 29 Feb 1900, the SheetJS drift), text dates, the house date format; Crore, Lakh and rupees; the OD-7 asset table |
+| `tests/unit/ingest/workbook.test.ts` | raw serials, number formats (a percent format told from a literal "%"), formulas with cached values, limits, unreadable files |
+| `tests/unit/ingest/base-file.test.ts` | the base-file reader against values worked out by hand: Lakh-only and rupee-only books, header in row 6, notes sheet first, XIRR units (OD-3), "NA" and blank market values (OD-8), blank invested (KI-007), odd asset labels (OD-7), merged folios (KI-113), skipped rows, severities |
+| `tests/unit/ingest/time-zones.test.ts` | the reader's output is identical under `Asia/Kolkata` and `UTC` in one run (child processes), including files written with local-time dates |
+| `tests/parity/base-file.parity.test.ts` | the new reader against the legacy `parseBaseRows` (through `tools/engine-host.js`) on `tools/make-sample-base.js`'s files and variants of its book; every difference matches one entry of `tests/parity/base-file-ledger.json`, every entry is used, none is a regression ([tests/parity/README.md](../tests/parity/README.md)) |
+| `tests/parity/refdata.parity.test.ts` | `data/refdata/*.json` deep-equal the blocks the legacy page runs on; byte-equal to the extractor's output; `FUND_RANKS` reduced to scheme codes (D-026); `VINTAGE.json` dates and hashes |
+| `tests/validation/traceability.test.mjs` | the traceability script on a throwaway repository and on this one |
+
+Fixtures are generated at test time by `tests/fixtures/make-books.ts` and never committed. The SheetJS used by the
+tests is the copy embedded in `index.html`, run in a sandbox (`tests/helpers/sheetjs.ts`), until SheetJS is vendored
+in `app/vendor/` (M1.2 built the mechanism and vendored no library).

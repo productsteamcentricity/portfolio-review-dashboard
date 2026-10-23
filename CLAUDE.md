@@ -76,10 +76,13 @@ docs/                 README.md (index) · HANDOVER · MONTHLY_REFRESH · legacy
                       knowledge, as received) · the new build's documents ("New build" below)
 app/  data/  product_bank/  monthly_updates/
                       the new application's folders (CR-0006): a README in each; app/ holds the M1.2 shell
-                      (src/, index.template.html, vendor/MANIFEST.json; build output app/dist/, ignored); data from M1.3
+                      (src/, index.template.html, vendor/MANIFEST.json; build output app/dist/, ignored) and
+                      M1.3's model, readers and engine helpers (src/model, ingest, engine); data/refdata/
+                      from M1.3, generated from index.html
 package.json  package-lock.json  .npmrc
-                      the new app's pinned build tooling (D-025, D-034); the legacy page needs none of it
-scripts/  tests/      the new build's tooling (scripts/validation/, build.mjs, serve.mjs) and its tests
+                      the new app's pinned build tooling (D-025, D-034); the legacy page needs none of it. "type":
+                      "module"; tools/ and buildtools/ stay CommonJS through their own package.json
+scripts/  tests/      the new build's tooling (scripts/validation/, build.mjs, serve.mjs, data-extract.ts) and its tests
 .claude/              launch.json (preview servers) · agents/ (project subagents)
 .github/workflows/    ci.yml (checks on main and PRs) · pages.yml (publishes index.html and /next/)
 ```
@@ -131,7 +134,8 @@ A clean new application is being built beside `index.html`, which stays the revi
 feature parity. Phase 0 is delivered (22 Oct 2026); the owner answered ND-1 to ND-10 on 22 Oct 2026 (D-024 to
 D-033) and gave Claude full charge of GitHub and the dashboard (D-033). Milestone M1.1 (safety tooling, these
 records, the release checks and the folder skeleton) is complete once its last pull request merges; M1.2 (the pinned
-toolchain, the one-file build and its check, the nine-section shell and the `/next/` preview, D-034) follows it.
+toolchain, the one-file build and its check, the nine-section shell and the `/next/` preview, D-034) follows it, then
+M1.3 (the shared model, the base-file reader with its parity ledger, and `data/refdata/`, D-035); M1.4 is next.
 Every rule above applies; rules 1 and 5 are about the legacy `index.html`, and the new application in `app/` has its
 own working rules (below; `app/README.md`, `docs/new-build/toolchain.md`).
 - Working on the new app (Node 24, npm 11): `npm ci` (never `npm install`, except a deliberate pin change with a
@@ -162,8 +166,13 @@ own working rules (below; `app/README.md`, `docs/new-build/toolchain.md`).
 - Before a push: `node scripts/validation/prepush-scan.mjs` (or the hook: `git config core.hooksPath scripts/hooks`)
   with `PRD_PRIVACY_DENYLIST` naming the private deny-list; never copy a deny-list term into the repository
   (`docs/new-build/safety-tooling.md`). Docs: `node scripts/validation/docs-links.mjs`. Tests:
-  `node --test "tests/**/*.test.mjs"`. Before a merge: `node scripts/validation/release-check.mjs` on the branch,
+  `node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"` (IST and UTC); `node scripts/validation/traceability.mjs`;
+  `node scripts/data-extract.ts --check`. Before a merge: `node scripts/validation/release-check.mjs` on the branch,
   its report attached to the pull request (`--after-push` once pushed).
+- `data/refdata/*.json` is generated from `index.html` by `node scripts/data-extract.ts`, never edited by hand; CI
+  checks it equal (`--check`), so a data refresh regenerates it in the same change (D-035). Every difference of the new
+  app from the legacy is classified in the area's parity ledger (`tests/parity/<area>-ledger.json`; an unclassified
+  difference fails), and every test file starts with a `// covers:` line naming the parity-matrix rows it proves.
 - Every monthly cycle from the 2026-10 data month ends with `docs/monthly-prds/YYYY-MM-Portfolio-Review-PRD.md` (from
   `TEMPLATE.md`) and a refresh of `docs/HANDOVER.md`, checked by `node scripts/validation/monthly-prd-check.mjs`.
 

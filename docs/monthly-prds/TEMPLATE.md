@@ -81,7 +81,7 @@ Run record: <link to `docs/refresh-log/YYYY-MM.md` and, from M11, `monthly_updat
 | `node tools/smoke-review.js` | |
 | `node tools/test-ai-analyst.js` | |
 | `node tools/run-regression.js` | |
-| `node --test "tests/**/*.test.mjs"` | |
+| `node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"` | |
 | Privacy scan and docs link check | |
 | Reconciliation (before/after snapshot of the check portfolio) | |
 | PowerPoint validation | |

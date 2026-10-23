@@ -1,0 +1,4 @@
+{
+  "description": "The legacy page's tools are CommonJS scripts (require). This file keeps them CommonJS under the root package.json's \"type\": \"module\", which is for the new application's TypeScript (CR-0006). Not a package: nothing is installed here.",
+  "type": "commonjs"
+}

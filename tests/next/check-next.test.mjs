@@ -1,3 +1,4 @@
+// covers: BR-0.3 D-024 D-027 D-029 D-034 M1.2-check-next
 // Tests of scripts/validation/check-next.mjs: the built shell passes, and each planted violation fails the check
 // that guards it (and, where the CSP is rehashed after the change, only that check).
 import { test, describe, before } from 'node:test';

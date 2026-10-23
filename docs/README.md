@@ -19,8 +19,10 @@ change follows.
 
 A new application is being built beside `index.html`, which stays the review link until the new one reaches feature
 parity. Its sources are in `app/`; from M1.2 the shell (the nine sections as empty states) is built into one offline
-file and previewed at `/next/` with a "Preview, not for client use" banner. Its folders (`app/`, `data/`,
-`product_bank/`, `monthly_updates/`) each have a README saying what is there and what will go there.
+file and previewed at `/next/` with a "Preview, not for client use" banner. From M1.3, `app/src/` also holds the shared
+model and the base-file reader, and `data/refdata/` the reference data extracted from `index.html`; the shell does not
+use them yet. Its folders (`app/`, `data/`, `product_bank/`, `monthly_updates/`) each have a README saying what is
+there and what will go there.
 
 | I want to… | Read |
 |---|---|
@@ -29,7 +31,9 @@ file and previewed at `/next/` with a "Preview, not for client use" banner. Its 
 | know what the new application must do | [PRD.md](PRD.md) (the living PRD) |
 | understand how the new application is built: stack, layers, modules, engine, outputs, security, deployment | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | know which monthly files may be published (classes P, C and N) and how the monthly folder is laid out | [../monthly_updates/README.md](../monthly_updates/README.md) |
-| look up an entity, field, metric path, missing-data status, unit or calculation definition | [DATA_DICTIONARY.md](DATA_DICTIONARY.md) (v0.1) |
+| look up an entity, field, metric path, missing-data status, unit or calculation definition | [DATA_DICTIONARY.md](DATA_DICTIONARY.md) (v0.3: the shared model's types from M1.3) |
+| find the reference data the new application embeds, and how it is extracted from `index.html` | [data/refdata/README.md](../data/refdata/README.md) |
+| run the new application's tests, read the parity ledger or the traceability report | [TESTING.md](TESTING.md) §6, [tests/parity/README.md](../tests/parity/README.md) |
 | see how the monthly update will work in the new application | [MONTHLY_UPDATE_GUIDE.md](MONTHLY_UPDATE_GUIDE.md) (planned; today's process is [MONTHLY_REFRESH.md](MONTHLY_REFRESH.md)) |
 | see every file the owner supplies each month: who sends it, where it goes, public or private, what it feeds | [MONTHLY_UPDATE_GUIDE.md, "Files the owner supplies each month"](MONTHLY_UPDATE_GUIDE.md#files-the-owner-supplies-each-month) (in use now) |
 | see the owner's answers for the new build | [DECISIONS.md](DECISIONS.md) D-024 to D-033 ([new-build/owner-decisions-new-build.md](new-build/owner-decisions-new-build.md)) |

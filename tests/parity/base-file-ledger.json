@@ -1,0 +1,297 @@
+{
+  "schema": "parity-ledger-v1",
+  "area": "base-file",
+  "legacy": "parseBaseRows in index.html (07_engine.js), run through tools/engine-host.js with the page's own upload path (SheetJS read with cellDates, sheet \"Base File\" or the first sheet, sheet_to_json header 1 raw)",
+  "new": "app/src/ingest/base-file.ts parseBaseFile on app/src/ingest/workbook.ts readWorkbook",
+  "test": "tests/parity/base-file.parity.test.ts",
+  "notes": [
+    "Every difference between the two outputs on the synthetic fixtures must match exactly one entry, and every entry must be used, under TZ=Asia/Kolkata and TZ=UTC.",
+    "Representation is normalised before comparing (tests/parity/base-file-compare.ts): labels as strings, XIRR as a fraction, Crore amounts, the purchase date as D Mon YYYY, folios joined by a slash, the asset as the new class (null when unknown, never the label as given). The class is compared with the legacy label exactly: the legacy label is already whitespace-normalised (ws(), 07_engine.js:818), and its letter case matters to the legacy, which lower-cases the label where it routes a holding (for example isCommodity, 07_engine.js:626, and bucketOf, :1605) but keys its Asset Allocation on the exact label (07_engine.js:1150-1159), from which the IPS reads its asset-class actuals by assignment (11_app_ui.js:4871-4878). A difference left after that is a behaviour difference.",
+    "Classes follow 08-regression-test-plan.md section 5.4: correction (a known defect fixed, KI or OD named), improvement (a requirement changes the output), regression (a defect of the new code; must be empty for a merge).",
+    "Value patterns: \"*\" any value; {\"type\": \"number\"} any number; {\"timesLegacy\": k} the new value is k times the legacy value."
+  ],
+  "entries": [
+    {
+      "id": "BF-01",
+      "kind": "field-not-carried",
+      "field": "allocFrac",
+      "fixtures": "*",
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "KI-093; OD-22",
+      "description": "Allocation (%) is not read from the file. Weights are computed from market values by the engine, so a merged folio or a file without the column no longer leaves a blank or stale allocation (the legacy blanked it on merge and echoed it otherwise)."
+    },
+    {
+      "id": "BF-02",
+      "kind": "field-not-carried",
+      "field": "invR",
+      "fixtures": "*",
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "OD-22",
+      "description": "The rupee echo of the invested value is not carried. Money is held in Crore (architecture 6.7); the workbook's Holdings (as loaded) sheet shows computed values instead of echoing the upload (OD-22). The legacy used it only for the echoed Base File sheet."
+    },
+    {
+      "id": "BF-03",
+      "kind": "field-not-carried",
+      "field": "mvR",
+      "fixtures": "*",
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "OD-22",
+      "description": "The rupee echo of the market value is not carried, for the reason of BF-02."
+    },
+    {
+      "id": "BF-04",
+      "kind": "field-not-carried",
+      "field": "glR",
+      "fixtures": "*",
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "OD-22",
+      "description": "The rupee echo of the file's gain or loss is not carried, for the reason of BF-02."
+    },
+    {
+      "id": "BF-05",
+      "kind": "field",
+      "field": "xirrFrac",
+      "fixtures": ["family-a-pct-xirr"],
+      "legacy": { "type": "number" },
+      "new": { "timesLegacy": 100 },
+      "class": "correction",
+      "reference": "OD-3; KI-005",
+      "description": "Percent-formatted XIRR cells hold fractions (0.1425 shown as 14.25%). The legacy divided them by 100 again, 100 times too small; they are now read as percentages automatically."
+    },
+    {
+      "id": "BF-06",
+      "kind": "field",
+      "field": "bmxirrFrac",
+      "fixtures": ["family-a-pct-xirr"],
+      "legacy": { "type": "number" },
+      "new": { "timesLegacy": 100 },
+      "class": "correction",
+      "reference": "OD-3; KI-005",
+      "description": "As BF-05, for BMXIRR."
+    },
+    {
+      "id": "BF-07",
+      "kind": "field",
+      "field": "xirrFrac",
+      "fixtures": ["family-a-ambiguous-xirr"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "OD-3; KI-005",
+      "description": "An unformatted XIRR column whose values are all below 1.5 in size could hold fractions or percent numbers. The analyst is asked, and until the answer the values are missing (INSUFFICIENT EVIDENCE); the legacy read them as percent numbers, 100 times too small for a fraction file."
+    },
+    {
+      "id": "BF-08",
+      "kind": "field",
+      "field": "bmxirrFrac",
+      "fixtures": ["family-a-ambiguous-xirr"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "OD-3; KI-005",
+      "description": "As BF-07, for BMXIRR."
+    },
+    {
+      "id": "BF-09",
+      "kind": "field",
+      "field": "xirrFrac",
+      "fixtures": ["family-a-ambiguous-xirr-answered"],
+      "legacy": { "type": "number" },
+      "new": { "timesLegacy": 100 },
+      "class": "correction",
+      "reference": "OD-3; KI-005",
+      "description": "The same file after the analyst answers \"fractions\": the values are read as fractions, 100 times the legacy reading."
+    },
+    {
+      "id": "BF-10",
+      "kind": "field",
+      "field": "bmxirrFrac",
+      "fixtures": ["family-a-ambiguous-xirr-answered"],
+      "legacy": { "type": "number" },
+      "new": { "timesLegacy": 100 },
+      "class": "correction",
+      "reference": "OD-3; KI-005",
+      "description": "As BF-09, for BMXIRR."
+    },
+    {
+      "id": "BF-11",
+      "kind": "holding-only-in-new",
+      "fixtures": ["family-a-header-row-6"],
+      "legacy": null,
+      "new": "*",
+      "class": "correction",
+      "reference": "KI-074",
+      "description": "Header in row 6: the legacy searched the first 5 rows only and read no holding; the new reader searches 20 rows and reads every holding, naming the sheet and header row."
+    },
+    {
+      "id": "BF-12",
+      "kind": "holding-only-in-new",
+      "fixtures": ["family-a-note-sheet-first"],
+      "legacy": null,
+      "new": "*",
+      "class": "correction",
+      "reference": "KI-074",
+      "description": "A notes sheet first and the holdings on a sheet not named Base File: the legacy read only the first sheet and found nothing; the new reader tries every sheet and uses the first that has holdings."
+    },
+    {
+      "id": "BF-13",
+      "kind": "unit-hint",
+      "fixtures": ["family-a-header-row-6", "family-a-note-sheet-first"],
+      "legacy": "auto",
+      "new": "Cr",
+      "class": "correction",
+      "reference": "KI-074",
+      "description": "The display unit follows from the money columns the reader finds; the legacy found no header in these files (BF-11, BF-12) and so no unit."
+    },
+    {
+      "id": "BF-14",
+      "kind": "field",
+      "field": "asset",
+      "fixtures": ["family-a-odd-asset-labels"],
+      "legacy": "Equity",
+      "new": null,
+      "class": "correction",
+      "reference": "OD-7",
+      "description": "A blank Asset Name stays unknown, with a notice, instead of becoming Equity."
+    },
+    {
+      "id": "BF-15",
+      "kind": "field",
+      "field": "asset",
+      "fixtures": ["family-a-odd-asset-labels"],
+      "legacy": "Fixed Income",
+      "new": "Debt",
+      "class": "correction",
+      "reference": "OD-7",
+      "description": "\"Fixed Income\" counts as Debt (the legacy kept the label and routed it as equity in analytics)."
+    },
+    {
+      "id": "BF-16",
+      "kind": "field",
+      "field": "asset",
+      "fixtures": ["family-a-odd-asset-labels"],
+      "legacy": "Debt Funds",
+      "new": "Debt",
+      "class": "correction",
+      "reference": "OD-7",
+      "description": "\"Debt Funds\" counts as Debt (as BF-15)."
+    },
+    {
+      "id": "BF-17",
+      "kind": "field",
+      "field": "glCr",
+      "fixtures": ["family-a-merged-folios"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "KI-113",
+      "description": "Merged duplicate folios where one folio has no gain or loss: the legacy added up the values present (a partial figure); the merged file gain is now missing. The gain shown is CMV minus invested in any case (OD-18)."
+    },
+    {
+      "id": "BF-18",
+      "kind": "field",
+      "field": "units",
+      "fixtures": ["family-a-merged-folios"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "KI-113; D-035",
+      "description": "The KI-113 rule applied to units: merged folios where one folio has no units leave the merged units missing instead of a partial sum, and the holding lists units in mergeGaps. Base-file units are the base the legacy tax split reconciles each holding against (07_engine.js:393-405), and missing units switch that split to the rupee ledger (amtMode), which is meant for products priced in rupees (PMS, unlisted AIF). So the legacy partial sum reconciled a fund against too few units, and a missing value read the same way would reconcile a unit-priced fund by amount. M7 requirement: a unit-priced holding with a merge gap in units is never reconciled by amount; the engine tells the gap from a product without units by mergeGaps, never by the reason text. Extension of KI-113 to units, made in M1.3 and accepted by the lead (D-035; docs/DATA_DICTIONARY.md section 8)."
+    },
+    {
+      "id": "BF-19",
+      "kind": "field",
+      "field": "asset",
+      "fixtures": ["family-a-odd-asset-labels"],
+      "legacy": "Gold",
+      "new": null,
+      "class": "correction",
+      "reference": "OD-7 (extended beyond the blank case, pending the owner)",
+      "description": "An Asset Name the reader does not recognise (here \"Gold\") becomes unknown, kept as given, with a Warning. The legacy kept the label as the asset: it became its own Asset Allocation row after the five ordered classes (07_engine.js:1147-1159), and a mutual fund so labelled fell into the Equity MF bucket for performance and benchmarks (07_engine.js:1599-1609) unless its name or category marked it as a commodity fund. OD-7 decided only the blank case and two synonyms; reading any other label as unknown extends OD-7 and waits for the owner's confirmation (docs/DATA_DICTIONARY.md section 8)."
+    },
+    {
+      "id": "BF-20",
+      "kind": "field",
+      "field": "asset",
+      "fixtures": ["family-a-odd-asset-labels"],
+      "legacy": "REITs / InvITs",
+      "new": "REITs/InvITs",
+      "class": "correction",
+      "reference": "OD-7",
+      "description": "The spaced form \"REITs / InvITs\" reads as the class REITs/InvITs, the fifth class of the legacy Asset Allocation order (07_engine.js:1147), also an IPS row (11_app_ui.js:3903, 4840) with a fixed deck colour. The legacy matched the order by exact label, so the spaced form became a second allocation row beside REITs/InvITs. The exact label \"REITs/InvITs\" reads the same in both and is not a difference."
+    },
+    {
+      "id": "BF-21",
+      "kind": "holding-only-in-legacy",
+      "fixtures": ["family-a-invalid-text"],
+      "legacy": "*",
+      "new": null,
+      "class": "correction",
+      "reference": "BR-2.5; OD-8",
+      "description": "A market value written as text that is not a number (\"1.25 Cr\", \"12abc\") is INVALID SOURCE DATA: with no other market value column to read, the holding is excluded from every total and listed (OD-8), and the cell is counted in a Warning. The legacy parseFloat read the number off the front of the text and included the holding at it (1.25 and 12 Crore here)."
+    },
+    {
+      "id": "BF-22",
+      "kind": "field",
+      "field": "invCr",
+      "fixtures": ["family-a-invalid-text"],
+      "legacy": 1.25,
+      "new": null,
+      "class": "correction",
+      "reference": "BR-2.5; KI-007",
+      "description": "An invested value written as \"1.25 Cr\" is INVALID SOURCE DATA and stays missing, counted in a Warning. The legacy parseFloat read 1.25 Crore off the front of the text."
+    },
+    {
+      "id": "BF-23",
+      "kind": "field",
+      "field": "xirrFrac",
+      "fixtures": ["family-a-invalid-text"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "BR-2.5",
+      "description": "An XIRR written as \"12abc\" is INVALID SOURCE DATA and stays missing, counted in a Warning. The legacy parseFloat read 12 off the front of the text, a 12% return."
+    },
+    {
+      "id": "BF-24",
+      "kind": "field",
+      "field": "bmxirrFrac",
+      "fixtures": ["family-a-invalid-text"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "BR-2.5",
+      "description": "As BF-23, for a BMXIRR written as \"1.25 Cr\" (the legacy read a 1.25% benchmark return)."
+    },
+    {
+      "id": "BF-25",
+      "kind": "field",
+      "field": "purchaseDate",
+      "fixtures": ["family-a-invalid-text"],
+      "legacy": "2 Mar 2024",
+      "new": "",
+      "class": "correction",
+      "reference": "BR-2.5",
+      "description": "An impossible text date (\"31-02-2024\") is INVALID SOURCE DATA and the purchase date stays missing, counted in a Warning. The legacy built the date with new Date(2024, 1, 31), which rolled it into March as 2 Mar 2024."
+    },
+    {
+      "id": "BF-26",
+      "kind": "field",
+      "field": "asset",
+      "fixtures": ["family-a-odd-asset-labels"],
+      "legacy": "EQUITY",
+      "new": "Equity",
+      "class": "correction",
+      "reference": "OD-7 (letter case, beyond OD-7, pending the owner); KI-145",
+      "description": "An Asset Name that differs from a class only in letter case (\"  EQUITY  \", which the legacy kept as \"EQUITY\" with its spaces collapsed) reads as that class, Equity. The legacy kept the label as written: it became an Asset Allocation row of its own beside Equity (07_engine.js:1147-1159), and the IPS, which reads the allocation rows by assignment, took only the last of them as its equity figure (11_app_ui.js:4871-4878). Both are live-page defects, KI-145 and KI-146. OD-7 decided the blank case and two synonyms; folding letter case goes beyond OD-7 and waits for the owner's confirmation (docs/DATA_DICTIONARY.md section 8)."
+    }
+  ]
+}
