@@ -1,0 +1,7 @@
+{
+"Nifty 100 - TRI":{"alpha":-0.0763,"basis":"TR","beta":0.9979,"cat":"Large Cap Fund","corr":0.9999,"dc":102.5332,"ir":-1.6783,"r3y":0.138348,"sd":13.83,"sharpe":0.47,"sortino":0.62},
+"Nifty 50 - TRI":{"alpha":-0.0331,"basis":"TR","beta":0.9991,"cat":"Large Cap Fund","corr":0.9999,"dc":101.2037,"ir":-0.9,"r3y":0.13143,"sd":13.33,"sharpe":0.36,"sortino":0.5},
+"Nifty 500 - TRI":{"alpha":-0.0767,"basis":"TR","beta":0.9977,"cat":"Flexi Cap Fund","corr":0.9999,"dc":102.3576,"ir":-1.4247,"r3y":0.160727,"sd":14.47,"sharpe":0.59,"sortino":0.74},
+"Nifty Midcap 150 - TRI":{"alpha":-0.066,"basis":"TR","beta":0.9973,"cat":"Mid Cap Fund","corr":0.9999,"dc":101.4871,"ir":-0.907,"r3y":0.234179,"sd":17.38,"sharpe":0.83,"sortino":1.01},
+"Nifty Smallcap 250 - TRI":{"alpha":-0.1026,"basis":"TR","beta":0.9954,"cat":"Small Cap Fund","corr":0.9997,"dc":101.7073,"ir":-0.7142,"r3y":0.222418,"sd":19.47,"sharpe":0.7,"sortino":0.84}
+}
