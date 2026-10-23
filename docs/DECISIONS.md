@@ -317,3 +317,36 @@ after the owner's "publish" (D-017).
 stays exempt from the private deny-list only (its embedded public vendor data names listed companies and fund
 managers; every other scan rule applies to it); the redactions of local user and organisation names in the previous
 owner's published documents stand; the push size limit stays 50 MB.
+
+## D-034 — New-app toolchain and preview publishing (23 Oct 2026, lead under D-033)
+**Context.** Milestone M1.2 built the new app's toolchain, its one-file build and the `/next/` preview (D-024, D-025;
+`new-build/toolchain.md`, whose section 8 lists where the build departs from the Phase 0 design). M1.2's Pages
+workflow stopped the whole deployment when the new app failed to install, build or pass its check ("fix forward"), so
+a broken preview would also have held back a legacy fix.
+**Decision.**
+1. **Toolchain.** esbuild 0.28.2 bundles. TypeScript 7.0.2 type-checks only (`noEmit`, `erasableSyntaxOnly`: the
+   sources use erasable syntax only, with no `enum`, namespace or parameter property); the 6.0.3 fallback of D-025
+   was not needed. Preact 10.29.8 is the UI library, bundled into the page. All three are `devDependencies` pinned to
+   exact versions with a committed `package-lock.json`; `.npmrc` sets `ignore-scripts=true` and `save-exact=true`,
+   and `fund=false` and `audit=false`, so an install runs no package script and makes no audit or funding call.
+   Installs use `npm ci` only.
+2. **One offline file.** `scripts/build.mjs` writes `app/dist/index.html` (git-ignored; Pages stages it as
+   `next/index.html`). Its CSP meta tag, the first element of `<head>`, allows the inline scripts and the style
+   element by SHA-256 only and sets `connect-src 'none'`. The build is deterministic: the same sources give the same
+   bytes (`check-next.mjs --rebuild`). A vendored library is inlined only when a module imports it as `vendor:<name>`,
+   and only after its SHA-256 matches `app/vendor/MANIFEST.json`.
+3. **Static navigation.** The build writes the nine section links and the single MF Screener link (D-027) as static
+   HTML, so the page reads without scripts and the one remote URL is checked in its exact form.
+4. **The preview never blocks the legacy page.** In `pages.yml` the legacy gates (invariants, smoke, regression)
+   stay blocking. `npm ci`, the build and `check-next.mjs --rebuild` may fail without failing the job, each running
+   only after the one before it succeeded. The build is published at `/next/` only when all three passed; otherwise
+   `/next/` gets a short static notice (the banner "Preview, not for client use.", "The preview could not be built for
+   this commit", no script, no remote URL), the log gets a warning, and the legacy page deploys as usual. This
+   replaces M1.2's "fix forward" note.
+**Alternatives.** Keeping a failing preview blocking (rejected: a preview without users must not delay a legacy fix);
+a second Pages workflow for `/next/` (rejected: each Pages deployment replaces the whole site, so two workflows would
+remove each other's page).
+**Consequences.** CI (`ci.yml`, job `next`) still fails on any of these steps, so a pull request that breaks the
+preview is not merged (D-017); the Pages fallback covers what reaches `main` anyway. `DEPLOYMENT.md` describes the
+notice, `CLAUDE.md` lists the new app's working rules, and the differences from the Phase 0 design in `toolchain.md`
+section 8 are confirmed.

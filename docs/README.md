@@ -18,12 +18,14 @@ change follows.
 ## The new build (CR-0006)
 
 A new application is being built beside `index.html`, which stays the review link until the new one reaches feature
-parity. No application code exists yet; its folders (`app/`, `data/`, `product_bank/`, `monthly_updates/`) each have a
-README saying what will go there.
+parity. Its sources are in `app/`; from M1.2 the shell (the nine sections as empty states) is built into one offline
+file and previewed at `/next/` with a "Preview, not for client use" banner. Its folders (`app/`, `data/`,
+`product_bank/`, `monthly_updates/`) each have a README saying what is there and what will go there.
 
 | I want to… | Read |
 |---|---|
 | find the Phase 0 documents (brief, audit, architecture, parity matrix, roadmap, test plan, rule bank, deck design, open questions) | [new-build/README.md](new-build/README.md) |
+| install the new app's tooling, build it, check it, preview it locally | [new-build/toolchain.md](new-build/toolchain.md) |
 | know what the new application must do | [PRD.md](PRD.md) (the living PRD) |
 | understand how the new application is built: stack, layers, modules, engine, outputs, security, deployment | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | know which monthly files may be published (classes P, C and N) and how the monthly folder is laid out | [../monthly_updates/README.md](../monthly_updates/README.md) |

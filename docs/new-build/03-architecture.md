@@ -27,7 +27,7 @@ ND-10 (`owner-decisions-new-build.md`) were answered on 22 Oct 2026 as D-024 to 
 | A2 | **Runtime libraries are vendored byte-for-byte from the legacy page:** PptxGenJS 3.12.0 (with its JSZip), SheetJS CE 0.18.5 (reader; upgrade to 0.20.2+ after Q-12), Chart.js 4.4.0, chartjs-plugin-datalabels 2.2.0, each listed with its SHA-256 in `app/vendor/MANIFEST.json`. | Same behaviour as the analysts' current tool, no download needed for parity [TE §3.1 V]. | Recommended |
 | A3 | **Excel is written by a small in-house SpreadsheetML writer** on the JSZip inside PptxGenJS, gated by a spike (opens in Excel without repair; styles, frozen panes, filters, recalculation). ExcelJS 4.4.0 (MIT) is the fallback. | The embedded SheetJS CE writes formulas and filters but drops styles and frozen panes [TE §5.1 V]. A 94-line spike script (9,844 bytes, recounted 22 Oct 2026) already writes a styled, formula-driven 4,169-byte workbook that SheetJS reads back [TE §5.2 V; Excel opening not verified]. | Recommended; fallback needs Q-13 |
 | A4 | **One shared model and one engine** produce every number. The screen, the PowerPoint and the workbook are renderers of view-models built from that model. No exporter computes, and no renderer reads global state. | The legacy exporters read nine UI globals; that is the root cause of KI-002 and KI-003 and makes half the deck untestable headless [IE E-49; IU U-53]. Brief Phase 2. | Decided (brief) |
-| A5 | **Side-by-side deployment:** the new app is built to `dist/next/index.html` and published at `/next/` on the existing Pages site with a "Preview" banner; the legacy `index.html` stays at `/`. At parity the new app moves to `/` and the legacy to `/legacy/`. | Brief 0.3/0.4: preserve the old app until parity; one Pages site, no new hosting [TE §7.1]. Publishing a second file changes D-007 ("Pages publishes `index.html` only"); D-024 supersedes D-007 in part. | Decided (D-024; Q-17 default) |
+| A5 | **Side-by-side deployment:** the new app is built to `app/dist/index.html` (M1.2) and published at `/next/` on the existing Pages site with a "Preview" banner; the legacy `index.html` stays at `/`. At parity the new app moves to `/` and the legacy to `/legacy/`. | Brief 0.3/0.4: preserve the old app until parity; one Pages site, no new hosting [TE §7.1]. Publishing a second file changes D-007 ("Pages publishes `index.html` only"); D-024 supersedes D-007 in part. | Decided (D-024; Q-17 default) |
 | A6 | **Data-class policy drives what is published.** Every source file has a class (P publishable, C private until approved, N never) and a storage location. The build embeds only what the policy allows; an internal-only build is a configuration switch. | D-023 point 1 settles publication: every Accord file (class P, D-026) and the other approved monthly source files are tracked publicly, the vendor-derived data may be embedded, client data never, files above 50 MB as PDF with the original's SHA-256. The MF Screener data pack is never embedded in a public build or committed: it is uploaded into the app and kept in the browser (D-026, section 6.9) [DS §1, §8]. | Decided (D-023, D-026) |
 | A7 | **Stable identifiers first, names last.** ISIN, AMFI scheme code, vendor key and product-bank id are resolved before any name matching; name matching only proposes and is pinned by an owner-approved alias table (OD-5). | Name matching is the root of the P0 defects KI-050, KI-036, KI-054, KI-052 [IE E-13, E-32; SC §5]. | Decided (OD-5) + recommended |
 | A8 | **A typed missing-data status on every value** (the brief's ten statuses plus zero). The dash stays as the on-screen and on-slide marker of a missing value, now always with a footnote naming its status; sentences never use an en or em dash (D-029). | Brief Phase 2; D-029; "never invent a number" (`CLAUDE.md` rule 3). | Decided (brief, D-029) |
@@ -138,7 +138,7 @@ monthly_updates/           README, _policy/, YYYY-MM/ (MANIFEST.json, UPDATE_REP
 scripts/                   build, check, serve, vendor and data extraction, monthly-update/, validation/,
                            office/ (local Excel/PowerPoint acceptance), docs/ (monthly PRD generator)
 tests/                     unit, integration, regression, parity, exports, acceptance, monthly, fixtures, helpers
-dist/                      build output (git-ignored)
+app/dist/                  build output (git-ignored; M1.2 put it beside the sources, not at the root)
 ```
 
 Mapping to the brief: `components` and `pages` become `ui/`; `analytics` becomes `engine/`; `data` splits into
@@ -320,8 +320,8 @@ The owner uploads it every Screener cycle into the app, and the browser keeps it
 | Storage | After the Review stage, `services/screener-store.ts` writes the accepted pack to the browser's IndexedDB (database `prd.next.v1.screener`), keyed by cycle and SHA-256. It stays there until a newer cycle is loaded, which replaces it as a whole. An older cycle is refused with a message naming the stored cycle; the same SHA-256 is a no-op. The month-end holdings files of replaced packs and the backfill are kept as history, because historical analytics need earlier month-ends (Q-27); every other file of a replaced pack is dropped. The analyst can remove the stored pack in section 1. A family switch never clears it |
 | Sidebar | The sidebar shows the stored pack's cycle date ("MF Screener data: cycle D Mon YYYY") and its status: "validated pack" when its SHA-256 matches the published `MANIFEST.json`, "not in the published manifest" otherwise, STALE DATA when it is behind the reference vintage (shown with its date for up to three cycles, suppressed beyond, Q-21), or "not loaded" |
 | Absence | When no pack is stored, every screen that needs it names the missing pack and the slot ("MF Screener data pack not loaded: scores, ranks and Screener ratios are not shown"). Slides and sheets use the metric's fallback source, named (MF Monitor, in-house risk workbook, analyst's price file), or show the dash with the status NOT AVAILABLE IN SUPPLIED DATA and a footnote that reads as a statement ("Screener data not supplied for this review"). Scores and ranks have no other source in the new app. The export dialog lists the components without Screener data (a Warning, section 16) |
-| Scope of storage | IndexedDB belongs to one browser profile and one origin: a pack loaded on the Pages site is not visible to the local preview or to a copy opened by double-click, and the reverse; each loads it once per cycle. Whether IndexedDB persists under `file://` is checked in the M1.2 spike (R10) [not verified] |
-| Never | written to `localStorage`, logs or exports beyond the figures a review uses; sent anywhere; embedded in a build (the build check fails on any pack content, `scripts/check-next.mjs`); committed. Only the pack's fingerprint, contract version, cycle and counts are published, by the monthly engine |
+| Scope of storage | IndexedDB belongs to one browser profile and one origin: a pack loaded on the Pages site is not visible to the local preview or to a copy opened by double-click, and the reverse; each loads it once per cycle. The M1.2 spike found IndexedDB available under `file://` and served, kept across a reload and a browser restart, in Edge 155 and Chrome 155 (headless), as best-effort storage; every local file shares the one `file://` origin [V: `toolchain.md` §6] |
+| Never | written to `localStorage`, logs or exports beyond the figures a review uses; sent anywhere; embedded in a build (the build check fails on any pack content, `scripts/validation/check-next.mjs`, from M10); committed. Only the pack's fingerprint, contract version, cycle and counts are published, by the monthly engine |
 
 The size of a real pack in IndexedDB (every fund's month-end holdings) is measured with the first pack (M10); if the
 browser's quota is exceeded the store refuses the pack with a clear message instead of keeping part of it.
@@ -732,9 +732,11 @@ manifest (commit, data vintages, library hashes). Exported in the workbook's Aud
 ## 17. Security
 
 1. **CSP meta tag** as the first element of `<head>`: `default-src 'none'; script-src 'sha256-...'; style-src
-   'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; object-src 'none'; frame-src 'none';
-   worker-src 'none'; form-action 'none'; base-uri 'none'`. Script hashes computed by the build, so no
-   `'unsafe-inline'` for scripts [TE §8]. Behaviour under `file://` is checked in the M1.2 spike (R10).
+   'sha256-...'; img-src data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';
+   frame-src 'none'; worker-src 'none'; manifest-src 'none'`. Script and style hashes computed by the build, so no
+   `'unsafe-inline'` [TE §8]; no `font-src` (Cambria is a local font, so `default-src 'none'` applies). As built in
+   M1.2 (the Phase 0 text had `style-src 'unsafe-inline'` and `font-src data:`; `toolchain.md` §8). The M1.2 spike
+   ran the page under this CSP from `file://` and served, in Edge 155 and Chrome 155 [V: `toolchain.md` §6].
 2. **Data blocks** are `<script type="application/json">` with `<` escaped, parsed with `JSON.parse`.
 3. **Escaping by default** through Preact. A build-time invariant fails on `innerHTML`, `outerHTML`,
    `insertAdjacentHTML`, `document.write`, `dangerouslySetInnerHTML`, `eval`, `new Function` in `app/src`, and on any
@@ -770,9 +772,9 @@ manifest (commit, data vintages, library hashes). Exported in the workbook's Aud
 | `npm run typecheck` | `tsc --noEmit -p app` |
 | `npm test` | `node --test` over `tests/**/*.test.ts` with `TZ=Asia/Kolkata`; `npm run test:utc` with `TZ=UTC` |
 | `npm run parity` | new engine vs legacy engine (`tools/engine-host.js`) on the synthetic books against `tests/parity/ledger.json` |
-| `npm run build` | `scripts/build.mjs` -> `dist/next/index.html` + `build-manifest.json` |
-| `npm run check` | `scripts/check-next.mjs`: CSP first, hashes match, no network, vendor hashes, size budget, deterministic build |
-| `npm run serve` | 127.0.0.1: legacy at `/`, new at `/next/` |
+| `npm run build` | `scripts/build.mjs` -> `app/dist/index.html` + `build-manifest.json` (M1.2; staged by Pages as `next/index.html`) |
+| `npm run check` | `scripts/validation/check-next.mjs`: CSP first, hashes match, no network, one allowed link, banner, size budget; `--rebuild` for the deterministic build (M1.2; `toolchain.md` §5) |
+| `npm run serve` | `scripts/serve.mjs`, 127.0.0.1:8100: legacy at `/`, new at `/next/` |
 | `npm run update -- <YYYY-MM>` | monthly update engine (local; needs `PRD_MONTHLY_INBOX`) |
 | `npm run accept:office` | local only: open the latest exports in Excel and PowerPoint through COM from a short path |
 
@@ -842,13 +844,15 @@ approval (D-030) is also recorded in the threshold table itself (`approvedBy`, `
   [IE §5, §6; IU U-53]; Screener access constraints [SC §1]; data-source facts [DS].
 - **Inferred (design choices):** everything in sections 5 to 21 that is not a recorded owner decision.
 - **Not verified:** Excel opening the in-house writer's output; PowerPoint rendering of probe decks; an editable title
-  placeholder in a PptxGenJS master; `npm ci` and esbuild under this laptop's security policy; a hash-based CSP under
-  `file://`; theme XML post-processing [TE §13]. Each is a gate in the first spikes (M1.2, M1.4, M9). Also not
-  verified: the capital-gains template (D-032; its columns are a proposal, not yet tried by analysts); the remote
-  force-push check of AC-22 (designed, not run); the MF Screener data pack (the contract is written, no pack has been
-  received, so the pack parser and its limits are designed against the contract only); the pack's size in IndexedDB
-  and IndexedDB persistence under `file://` (section 6.9); the exact columns of the Index TRI files (known from the
-  data-source survey, not re-read for this design).
+  placeholder in a PptxGenJS master; theme XML post-processing [TE §13]. Each is a gate in the first spikes (M1.4,
+  M9). Also not verified: the capital-gains template (D-032; its columns are a proposal, not yet tried by analysts);
+  the remote force-push check of AC-22 (designed, not run); the MF Screener data pack (the contract is written, no
+  pack has been received, so the pack parser and its limits are designed against the contract only); the pack's size
+  in IndexedDB (section 6.9); the exact columns of the Index TRI files (known from the data-source survey, not re-read
+  for this design).
+- **Verified in the M1.2 spike (22 Oct 2026, `toolchain.md` §6):** `npm ci` and esbuild on this laptop; the
+  hash-based CSP under `file://` and served; IndexedDB kept under `file://` and served (headless Edge 155 and Chrome
+  155; a real double-click on an analyst's profile is the browser QA step).
 - **Verified in the 22 Oct review:** the writer spike's size (94 lines, 9,844 bytes; output 4,169 bytes); the legacy
   page has no capital-gains or realised-gain handling and no holder columns (code search of the reading copies).
 - **Verified on 22 Oct 2026 (read-only):** `main` is at `8cb320d` (PR #7 and PR #8 merged, docs only), `index.html`

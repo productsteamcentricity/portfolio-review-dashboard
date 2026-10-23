@@ -5,14 +5,16 @@
 | Status | The living architecture of the new Portfolio Review application (CR-0006), from milestone M1.1 (22 Oct 2026). Every milestone that changes the structure updates it in the same pull request. |
 | Scope | How the new application is built: stack, layers, modules, engine structure, outputs, the monthly engine, security, build and deployment. The legacy `index.html` is described in [legacy/ARCHITECTURE.md](legacy/ARCHITECTURE.md). |
 | Not here | What the product must do: [PRD.md](PRD.md). Entities, fields, metric paths, missing-data statuses, units and calculation definitions: [DATA_DICTIONARY.md](DATA_DICTIONARY.md). Data sources and their publication classes: [06-data-source-inventory.md](new-build/06-data-source-inventory.md) and [publication-classes.json](../monthly_updates/_policy/publication-classes.json). Observation rules and thresholds: [observation-rule-bank.md](new-build/observation-rule-bank.md). Deck tokens and components: [deck-design-system.md](new-build/deck-design-system.md). Decisions: [DECISIONS.md](DECISIONS.md). |
-| Built from | [03-architecture.md](new-build/03-architecture.md), the Phase 0 record (draft of 21 Oct 2026, revised on 22 Oct 2026 with the owner's answers D-024 to D-033). The record stays as it was; its evidence tags and investigator citations are not repeated here. |
+| Built from | [03-architecture.md](new-build/03-architecture.md), the Phase 0 record (draft of 21 Oct 2026, revised on 22 Oct 2026 with the owner's answers D-024 to D-033). The record stays as it was, apart from M1.2's notes of what the build changed and verified (output path, CSP, IndexedDB, commands); its evidence tags and investigator citations are not repeated here. |
 | Section numbers | The same as in `03-architecture.md`, so "architecture §6.9" names the same topic in both. |
 
-**Where the build stands (22 Oct 2026).** No application code exists yet. Milestone M1.1 built the safety tooling in
+**Where the build stands (23 Oct 2026).** Milestone M1.1 built the safety tooling in
 `scripts/validation/` (privacy scan, docs link check, pre-push scan and hook, release check, monthly PRD check) with its
 tests in `tests/validation/` and the CI job `next`, and the folder skeleton with a README in each new folder (`app/`,
-`data/`, `product_bank/`, `monthly_updates/` with `_policy/publication-classes.json`). Next are M1.2 (toolchain, page
-shell, build, the `/next/` preview) and M1.3 (model, base-file ingest, reference-data extraction); see
+`data/`, `product_bank/`, `monthly_updates/` with `_policy/publication-classes.json`). Milestone M1.2 built the pinned
+toolchain, the page shell with the nine sections as empty states, the one-file build (`scripts/build.mjs`) and its
+invariant check (`scripts/validation/check-next.mjs`), and the `/next/` preview; its facts and spike results are in
+[toolchain.md](new-build/toolchain.md). Next is M1.3 (model, base-file ingest, reference-data extraction); see
 [07-implementation-roadmap.md](new-build/07-implementation-roadmap.md) and [PROJECT_STATE.md](PROJECT_STATE.md).
 
 ---
@@ -25,7 +27,7 @@ shell, build, the `/next/` preview) and M1.3 (model, base-file ingest, reference
 | A2 | **Runtime libraries vendored byte for byte from the legacy page**, each with its SHA-256 in `app/vendor/MANIFEST.json`. | Same behaviour as the analysts' tool; nothing to download. | Recommended |
 | A3 | **Excel written by a small in-house SpreadsheetML writer** on the vendored JSZip, gated by a spike (opens without repair; styles, frozen panes, filters, recalculation). ExcelJS is the fallback. | The embedded SheetJS Community Edition writes formulas and filters but drops styles and frozen panes. | Spike in M1.4; fallback per Q-13 |
 | A4 | **One shared model and one engine** produce every number. Screen, PowerPoint and workbook render view-models of that model; no exporter computes and no renderer reads global state. | The legacy exporters read UI globals, the root of KI-002 and KI-003, and half the legacy deck cannot be tested headless. | Brief Phase 2 |
-| A5 | **Side by side:** the new app is built to `dist/next/index.html` and published at `/next/` with a "Preview, not for client use" banner; the legacy page stays at `/`. At parity the new app moves to `/` and the legacy page to `/legacy/`. | Preserve the old app until parity; one Pages site. | D-024 (supersedes D-007 in part) |
+| A5 | **Side by side:** the new app is built to `app/dist/index.html` (M1.2; staged by Pages as `next/index.html`) and published at `/next/` with a "Preview, not for client use" banner; the legacy page stays at `/`. At parity the new app moves to `/` and the legacy page to `/legacy/`. | Preserve the old app until parity; one Pages site. | D-024 (supersedes D-007 in part) |
 | A6 | **The data-class policy decides what is published and embedded** (P publishable, C private until approved, N never). The MF Screener data pack is never embedded in a build or committed. | D-023 point 1 and D-026. | Decided |
 | A7 | **Stable identifiers first, names last.** ISIN, AMFI scheme code, vendor key and product-bank id are resolved before any name matching; a name match only proposes, and an owner-approved alias pins it (OD-5). | Name matching is the root of the P0 defects KI-036, KI-050, KI-052, KI-054. | Decided |
 | A8 | **A typed missing-data status on every value.** The dash stays the on-screen and on-slide marker of a missing value, always with a footnote naming its status; sentences never use an en or em dash. | Brief Phase 2; D-029; `CLAUDE.md` rule 3. | Decided |
@@ -41,7 +43,7 @@ shell, build, the `/next/` preview) and M1.3 (model, base-file ingest, reference
 | Per-family isolation (KI-001, D-015) and per-family settings (OD-10) | one `Review` object, replaced as a whole; browser storage only for conveniences, namespaced |
 | Public repository; nothing confidential committed (rule 6, D-019, D-020, D-023) | the data-class policy; the pre-push scan; synthetic fixtures only |
 | Financial changes reviewed and tested against known answers (rule 7) | known-answer tests per engine module; the parity ledger |
-| Branches, pull requests, verified merges, never a force-push (rule 8, D-017, D-033) | one pull request per milestone unit; the release check; AC-22 from M1.2 |
+| Branches, pull requests, verified merges, never a force-push (rule 8, D-017, D-033) | one pull request per milestone unit; the release check; AC-22 (designed; not built in M1.2) |
 | Cambria, the house palette, 2 decimals, money held in Crore and shown in the file's unit | shared tokens and one formatter for all three renderers |
 | One parsing path for uploads and the monthly pipeline (OD-11) | parsers in `app/src/ingest/`, imported by the browser bundle and the Node update engine |
 
@@ -57,7 +59,7 @@ shell, build, the `/next/` preview) and M1.3 (model, base-file ingest, reference
 | Excel writing | in-house SpreadsheetML writer on the vendored JSZip (ExcelJS 4.4.0 fallback) | n/a | project |
 | Excel reading | SheetJS Community Edition (vendored) | 0.18.5, then 0.20.2 or later (Q-12) | Apache-2.0 |
 | On-screen charts | Chart.js and chartjs-plugin-datalabels (vendored), screen only | 4.4.0 / 2.2.0 | MIT |
-| Package hygiene | committed `package-lock.json`; `.npmrc` with `ignore-scripts=true` and `save-exact=true`; `npm ci` only | | |
+| Package hygiene | committed `package-lock.json`; `.npmrc` with `ignore-scripts=true`, `save-exact=true`, `fund=false` and `audit=false`; `npm ci` only; all three packages are `devDependencies` (M1.2, [toolchain.md](new-build/toolchain.md) §1) | | |
 
 Rejected: Vite, React, Svelte or Solid, Deno, Electron or Tauri, any server-side generation (client data would leave
 the browser), HyperFormula (GPL-3.0-only).
@@ -97,13 +99,14 @@ owner of each document are in [09-repository-and-docs-structure.md](new-build/09
 | Folder | Holds | Since |
 |---|---|---|
 | `index.html`, `tools/`, `buildtools/` | the legacy page, its checks and patch scripts, the legacy monthly pipeline (retired at M15) | before CR-0006 |
-| `app/` | the new application: `index.template.html`, `tsconfig.json`, `vendor/`, `assets/`, `src/` with `model/`, `ingest/`, `engine/`, `observations/`, `views/`, `exports/pptx/`, `exports/xlsx/`, `ui/`, `services/`, `config/` ([app/README.md](../app/README.md)) | README in M1.1; code from M1.2 |
+| `app/` | the new application: `index.template.html`, `tsconfig.json`, `vendor/`, `assets/`, `src/` with `model/`, `ingest/`, `engine/`, `observations/`, `views/`, `exports/pptx/`, `exports/xlsx/`, `ui/`, `services/`, `config/` ([app/README.md](../app/README.md)) | README in M1.1; the template, `tsconfig.json`, `vendor/MANIFEST.json` and the shell (`main.tsx`, `ui/`, `config/`, `types/`) in M1.2 |
 | `data/` | reference data as JSON: `refdata/` with `VINTAGE.json`, `owner/` tables with approval records, `identifiers/crosswalk.json`, `history/YYYY-MM/` ([data/README.md](../data/README.md)) | README in M1.1; data from M1.3 |
 | `product_bank/` | `schema/`, `products/`, `performance/`, `snapshots/`, `source_register/`, `pins.json` ([product_bank/README.md](../product_bank/README.md)) | README in M1.1; records from M11 |
 | `monthly_updates/` | `_policy/` and one `YYYY-MM/` folder per data month with `MANIFEST.json`, `UPDATE_REPORT.md` and the class P files in role folders ([monthly_updates/README.md](../monthly_updates/README.md)) | README and `_policy/` in M1.1; files from M11 |
-| `scripts/` | `validation/` (M1.1); build, check, serve, vendor and data extraction (M1.2, M1.3); `monthly-update/` (M11); `office/` (local acceptance); `docs/` (M14) | M1.1 |
-| `tests/` | `validation/` (M1.1); unit, regression, parity, exports, integration, acceptance, monthly, browser, fixtures, helpers | M1.1 |
-| `dist/` | build output (git-ignored) | M1.2 |
+| `scripts/` | `validation/` (M1.1; `check-next.mjs` in M1.2); `build.mjs` and `serve.mjs` (M1.2); data extraction (M1.3); vendor extraction (M1.4); `monthly-update/` (M11); `office/` (local acceptance); `docs/` (M14) | M1.1 |
+| `tests/` | `validation/` (M1.1); `next/`, `browser/` and `fixtures/next-build/` (M1.2); unit, regression, parity, exports, integration, acceptance, monthly, fixtures, helpers | M1.1 |
+| `app/dist/` | build output (git-ignored; M1.2 put it beside the sources, not at the root) | M1.2 |
+| `package.json`, `package-lock.json`, `.npmrc` | the pinned build tooling (D-025) | M1.2 |
 
 The brief's suggested names map as follows: `components` and `pages` become `ui/`, `analytics` becomes `engine/`,
 `data` splits into `model/` (types) and the root `data/` (values), `configuration` is `config/`; `ingest/` and
@@ -210,8 +213,8 @@ Screener scores and ranks are never in a public page: the pack is never embedded
 | Storage | `services/screener-store.ts` writes the accepted pack to IndexedDB (`prd.next.v1.screener`), keyed by cycle and SHA-256, until a newer cycle replaces it as a whole; an older cycle is refused, the same SHA-256 is a no-op; month-end holdings of replaced packs and the backfill are kept as history (Q-27); the analyst can remove it; a family switch never clears it |
 | Sidebar | the stored cycle date and its status: "validated pack" (SHA-256 in the published manifest), "not in the published manifest", STALE DATA (Q-21) or "not loaded" |
 | Absence | every screen that needs the pack names it and the slot; slides and sheets use the named fallback source or show the dash with "Screener data not supplied for this review"; score and rank have no other source; the export dialog warns |
-| Scope | IndexedDB belongs to one browser profile and origin: the Pages site, the local preview and a double-clicked copy each load the pack once per cycle; persistence under `file://` is checked in the M1.2 spike |
-| Never | in `localStorage`, logs or exports beyond the figures a review uses; sent anywhere; in a build (`scripts/check-next.mjs` fails on pack content); committed |
+| Scope | IndexedDB belongs to one browser profile and origin: the Pages site, the local preview and a double-clicked copy each load the pack once per cycle; the M1.2 spike found IndexedDB available under `file://` and served, kept across a reload and a browser restart (headless Edge 155 and Chrome 155), as best-effort storage; every local file shares the one `file://` origin ([toolchain.md](new-build/toolchain.md) §6) |
+| Never | in `localStorage`, logs or exports beyond the figures a review uses; sent anywhere; in a build (`scripts/validation/check-next.mjs` fails on pack content, from M10); committed |
 
 ### 6.10 The capital-gains template (D-032)
 
@@ -462,8 +465,11 @@ build manifest; exported in the workbook, never sent anywhere.
 
 ## 17. Security
 
-1. **CSP** as the first element of `<head>`: `default-src 'none'`, scripts by hash only, `connect-src 'none'`, no
-   objects, frames, workers or form actions; behaviour under `file://` checked in the M1.2 spike.
+1. **CSP** as the first element of `<head>`: `default-src 'none'`, scripts and the style element by hash only,
+   `img-src data: blob:`, `connect-src 'none'`, no objects, frames, workers, manifests, base URI or form actions, and
+   no `font-src` (Cambria is a local font). As built in M1.2 (stricter than the Phase 0 text, which had `style-src
+   'unsafe-inline'` and `font-src data:`); the M1.2 spike ran the page under it from `file://` and served, in Edge 155
+   and Chrome 155 ([toolchain.md](new-build/toolchain.md) §4, §6, §8).
 2. **Data blocks** are `<script type="application/json">` with `<` escaped, read with `JSON.parse`.
 3. **Escaping by default** through Preact; a build-time invariant fails on `innerHTML`, `outerHTML`,
    `insertAdjacentHTML`, `document.write`, `dangerouslySetInnerHTML`, `eval` or `new Function` in `app/src`, and on any
@@ -489,26 +495,30 @@ build manifest; exported in the workbook, never sent anywhere.
 
 ## 18. Build, test, deploy and the legacy app
 
-Commands from M1.2 (planned):
+Commands (built in M1.2 unless marked planned; [toolchain.md](new-build/toolchain.md) §2):
 
 | Command | Does |
 |---|---|
-| `npm ci` | installs the lockfile, scripts disabled |
-| `npm run typecheck` | `tsc --noEmit -p app` |
-| `npm test`, `npm run test:utc` | `node --test` over `tests/**/*.test.ts` under `TZ=Asia/Kolkata` and `TZ=UTC` |
-| `npm run parity` | new engine against the legacy engine (`tools/engine-host.js`) with `tests/parity/ledger.json` |
-| `npm run build` | `scripts/build.mjs` to `dist/next/index.html` and `build-manifest.json` |
-| `npm run check` | `scripts/check-next.mjs`: CSP first, hashes match, no network, vendor hashes, size budget, deterministic build |
-| `npm run serve` | 127.0.0.1: legacy at `/`, new at `/next/` |
-| `npm run update -- <YYYY-MM>` | the monthly update engine (local; `PRD_MONTHLY_INBOX`) |
-| `npm run accept:office` | local only: open the latest exports in Excel and PowerPoint through COM |
+| `npm ci` | installs exactly the lockfile, scripts disabled |
+| `npm run typecheck` | `tsc -p app/tsconfig.json` (strict, `erasableSyntaxOnly`, `noEmit`) |
+| `npm test` | `node --test "tests/**/*.test.mjs"`; CI runs it under `TZ=Asia/Kolkata` and `TZ=UTC` (`npm run test:utc` was not added) |
+| `npm run parity` (planned) | new engine against the legacy engine (`tools/engine-host.js`) with the parity ledger |
+| `npm run build` | `scripts/build.mjs` to `app/dist/index.html` and `app/dist/build-manifest.json` (git-ignored); prints the size and SHA-256 |
+| `npm run check` | `scripts/validation/check-next.mjs`: CSP first, hashes match, no network, one allowed link, banner, size budget, a scan of `app/src`; `-- --rebuild` for the deterministic build |
+| `npm run serve` | `scripts/serve.mjs`, 127.0.0.1:8100: legacy at `/`, new at `/next/` |
+| `node tests/browser/next-spike.mjs` | the CSP, network and IndexedDB gates in headless Edge or Chrome (local only) |
+| `npm run update -- <YYYY-MM>` (planned, M11) | the monthly update engine (local; `PRD_MONTHLY_INBOX`) |
+| `npm run accept:office` (planned) | local only: open the latest exports in Excel and PowerPoint through COM |
 
 **CI today** (`.github/workflows/ci.yml`): the job `checks` runs the legacy gates (invariants, smoke, AI Analyst,
-regression) unchanged; the job `next` runs, with Node built-ins only, the privacy scan of the documentation, the docs
-link check, `node --test "tests/**/*.test.mjs"` under IST and UTC, the monthly PRD check and, last, the release check
-in its CI form. M1.2 adds `npm ci`, typecheck, build and invariants; later milestones add parity, export structure and
-acceptance tests. **Pages:** from M1.2 `pages.yml` stages `_site/index.html` (legacy) and `_site/next/index.html`
-(new) after both gate sets pass (D-024).
+regression) unchanged; the job `next` runs the privacy scan of the documentation, the docs link check and the monthly
+PRD check (Node built-ins only), then `npm ci`, the type check, the build, `check-next.mjs --rebuild`,
+`node --test "tests/**/*.test.mjs"` under IST and UTC and, last, the release check in its CI form. Later milestones
+add parity, export structure and acceptance tests. **Pages:** from M1.2 `pages.yml` stages `_site/index.html`
+(legacy, byte for byte) and `_site/next/index.html` (new) (D-024). The legacy gates block the deployment; the new
+app's steps (`npm ci`, build, `check-next.mjs --rebuild`) never do: when one fails, `/next/` gets a static notice
+that the preview could not be built for that commit, the log a warning, and the legacy page deploys as usual (D-034,
+[DEPLOYMENT.md](DEPLOYMENT.md)).
 
 **Coexistence:** the legacy page is the review link until parity (Q-17); nothing exported from `/next/` is used for a
 client before switch-over; the live page receives calculation, data and security fixes and presentation-only work goes
@@ -534,8 +544,9 @@ defined in M8; no decision engine is built now.
 The decisions behind this design are recorded in [DECISIONS.md](DECISIONS.md), which owns them: D-023 (publication
 and return methods), D-024 (the `/next/` preview), D-025 (npm for build tooling), D-026 (data classes; the Screener
 pack never public), D-027 (the MF Screener link), D-028 (what the live page receives), D-029 (the missing-value dash),
-D-030 (observation thresholds), D-031 (borders and Actionables), D-032 (the capital-gains template) and D-033
-(Claude's charge of GitHub and the dashboard). The owner's audit decisions are OD-nn in
+D-030 (observation thresholds), D-031 (borders and Actionables), D-032 (the capital-gains template), D-033
+(Claude's charge of GitHub and the dashboard) and D-034 (the toolchain, the one-file build and the preview that never
+blocks the legacy page). The owner's audit decisions are OD-nn in
 [audits/2026-10-19-decisions.md](audits/2026-10-19-decisions.md); the open questions are Q-nn in
 [open-questions.md](new-build/open-questions.md).
 
@@ -545,10 +556,14 @@ Each is a gate of the milestone named, and this section is updated when it close
 
 - Excel opening the in-house writer's output without repair (M1.4 spike); PowerPoint rendering of the components and
   theme XML post-processing (M9).
-- `npm ci` and esbuild under this laptop's security policy, a hash-based CSP under `file://`, and IndexedDB persistence
-  under `file://` (M1.2 spikes).
+- A real double-click of the built page on an analyst's own browser profile (the M1.2 spikes ran headless; the browser
+  QA steps of [toolchain.md](new-build/toolchain.md) §9).
 - The capital-gains template's columns (D-032; a proposal, not yet tried by analysts; M7).
 - The MF Screener data pack: no pack has been received, so its parser and limits are designed against the contract
   only, and its size in IndexedDB is unmeasured (M10).
 - The exact columns of the Index TRI files (known from the data-source survey; confirmed on the first files read, M11).
-- The remote force-push check of AC-22 (designed, not run; M1.2).
+- The remote force-push check of AC-22 (designed, not run; not done in M1.2).
+
+Closed by the M1.2 spikes (22 Oct 2026, [toolchain.md](new-build/toolchain.md) §6): `npm ci` and esbuild on this
+laptop; the hash-based CSP under `file://` and served; IndexedDB kept under `file://` and served across a reload and a
+browser restart (headless Edge 155 and Chrome 155).

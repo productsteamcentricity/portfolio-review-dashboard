@@ -9,8 +9,9 @@ One offline HTML file, `index.html` (~16.8 MB), that turns one client holdings w
 HNI/UHNI portfolio review: 20 on-screen tabs, a PowerPoint deck (PptxGenJS) and an Excel workbook
 (SheetJS). All libraries and ~10 MB of vendor reference data are embedded. The legacy page has no server, no
 build step and no npm install; the new app (CR-0006) uses pinned npm build tooling (D-025). Repository: github.com/productsteamcentricity/portfolio-review-dashboard
-(**public**); `.github/workflows/pages.yml` publishes index.html only to
-https://productsteamcentricity.github.io/portfolio-review-dashboard/. Users: the Products Team analysts
+(**public**); `.github/workflows/pages.yml` publishes index.html at
+https://productsteamcentricity.github.io/portfolio-review-dashboard/ and the new app's preview at `/next/`, nothing
+else (D-024; a failing preview never blocks index.html, D-034). Users: the Products Team analysts
 and the monthly data owner.
 
 ## Non-negotiable rules
@@ -74,10 +75,13 @@ docs/                 README.md (index) · HANDOVER · MONTHLY_REFRESH · legacy
                       REPLICATION_REPORT · change-requests/ · refresh-log/ · previous-owner/ (handover docs and
                       knowledge, as received) · the new build's documents ("New build" below)
 app/  data/  product_bank/  monthly_updates/
-                      the new application's folders (CR-0006): a README in each; code and data from M1.2 on
-scripts/  tests/      the new build's tooling (scripts/validation/) and its tests
-.claude/              launch.json (preview server) · agents/ (project subagents)
-.github/workflows/    ci.yml (checks on main and PRs) · pages.yml (publishes index.html only)
+                      the new application's folders (CR-0006): a README in each; app/ holds the M1.2 shell
+                      (src/, index.template.html, vendor/MANIFEST.json; build output app/dist/, ignored); data from M1.3
+package.json  package-lock.json  .npmrc
+                      the new app's pinned build tooling (D-025, D-034); the legacy page needs none of it
+scripts/  tests/      the new build's tooling (scripts/validation/, build.mjs, serve.mjs) and its tests
+.claude/              launch.json (preview servers) · agents/ (project subagents)
+.github/workflows/    ci.yml (checks on main and PRs) · pages.yml (publishes index.html and /next/)
 ```
 Not in git (yet): vendor data and the owner's inbox live in OneDrive. The licence allows publishing every Accord
 file (D-023, D-026), so approved monthly source files move to a tracked `monthly_updates/YYYY-MM/` with CR-0006;
@@ -126,9 +130,25 @@ stay. Any new per-family state you add must be cleared there too, and `family-is
 A clean new application is being built beside `index.html`, which stays the review link until the new one reaches
 feature parity. Phase 0 is delivered (22 Oct 2026); the owner answered ND-1 to ND-10 on 22 Oct 2026 (D-024 to
 D-033) and gave Claude full charge of GitHub and the dashboard (D-033). Milestone M1.1 (safety tooling, these
-records, the release checks and the folder skeleton) is complete once its last pull request merges; no application
-code is on `main` yet. Every rule above applies; rules 1 and 5 are about the legacy `index.html`, and the new
-application's own rules arrive with its code (M1.2).
+records, the release checks and the folder skeleton) is complete once its last pull request merges; M1.2 (the pinned
+toolchain, the one-file build and its check, the nine-section shell and the `/next/` preview, D-034) follows it.
+Every rule above applies; rules 1 and 5 are about the legacy `index.html`, and the new application in `app/` has its
+own working rules (below; `app/README.md`, `docs/new-build/toolchain.md`).
+- Working on the new app (Node 24, npm 11): `npm ci` (never `npm install`, except a deliberate pin change with a
+  review of the lockfile diff; `.npmrc` disables install scripts, audit and fund calls); `npm run typecheck`;
+  `npm run build` (writes `app/dist/index.html`, git-ignored, and prints its size and SHA-256);
+  `node scripts/validation/check-next.mjs --rebuild` (the built page's invariants and a byte-identical rebuild);
+  the tests in IST and UTC; `node scripts/serve.mjs` (or preview configuration `next`) serves the legacy page at
+  http://127.0.0.1:8100/ and the new app at `/next/`. After a change to the build, the CSP or navigation, also
+  `node tests/browser/next-spike.mjs` (headless Edge or Chrome; `--port` if 8102 is taken).
+- Rules for `app/src`, enforced by `check-next.mjs`: no network API (`fetch`, `XMLHttpRequest`, `WebSocket`,
+  `EventSource`, `sendBeacon`, `import()`, workers and the like), no remote URL, no `innerHTML`, `outerHTML`,
+  `insertAdjacentHTML`, `document.write`, `dangerouslySetInnerHTML`, `eval`, `new Function` or string timer, no
+  inline style attribute. The single remote URL is the MF Screener link, kept only in `app/src/config/links.json`
+  and written by the build into one static `<a target="_blank" rel="noopener noreferrer">` (D-027); no module
+  imports that file. A vendored library is used only as `import X from 'vendor:<name>'`, listed with its SHA-256 in
+  `app/vendor/MANIFEST.json`; the build checks the hash and inlines it only when imported. Pinned versions change
+  only by a recorded decision (D-025, D-034).
 - Start at `docs/new-build/README.md` (the Phase 0 record and which living document owns what); the living PRD is
   `docs/PRD.md`; the new application's living architecture `docs/ARCHITECTURE.md` (the legacy page's is
   `docs/legacy/ARCHITECTURE.md`); the data model `docs/DATA_DICTIONARY.md`; the roadmap

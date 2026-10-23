@@ -3,7 +3,7 @@
 For a developer (or a Claude Code session) taking over the Centricity Portfolio Review Dashboard
 without access to earlier conversations.
 
-**Last refreshed:** 23 Oct 2026 (the end of milestone M1.1 of the new build). Refreshed at every milestone and at the end of every
+**Last refreshed:** 23 Oct 2026 (milestone M1.2 of the new build integrated, after the end of M1.1). Refreshed at every milestone and at the end of every
 monthly cycle from the 2026-10 data month ([monthly-prds/](monthly-prds/README.md)).
 
 ## 1. The product in brief
@@ -24,8 +24,9 @@ published beside `index.html`, which stays the review link until parity. Phase 0
 roadmap) was delivered on 22 Oct 2026; on 22 Oct 2026 the owner answered the ten open decisions (D-024 to D-033) and
 gave Claude full charge of GitHub and the dashboard (D-033). Milestone M1.1 (safety tooling, records, living documents,
 the release checks and the folder skeleton) is merged in part (PR #10) and complete once its last branch merges
-(section 8). M1.2 (toolchain, nine-section shell, the `/next/` preview) and M1.3 (shared model, base-file ingest) are
-built on their own branches and follow. No new application code is on `main` yet.
+(section 8). M1.2 (the pinned npm toolchain, the one-file offline build and its check, the nine-section shell, the
+`/next/` preview that never blocks the legacy page, D-034) is integrated on a branch stacked on M1.1 and follows it;
+M1.3 (shared model, base-file ingest) is built on its own branch. No new application code is on `main` yet.
 
 ## 2. Read in this order
 1. `CLAUDE.md` — the rules and commands (10 minutes).
@@ -49,6 +50,9 @@ For the new build, then:
    owner's answers of 22 Oct 2026 to ND-1 to ND-10 (`docs/new-build/owner-decisions-new-build.md`).
 5. `docs/DATA_DICTIONARY.md` and `docs/MONTHLY_UPDATE_GUIDE.md`: the new data model (v0.1), the planned monthly flow
    and the list of files the owner supplies each month.
+6. `app/README.md` and `docs/new-build/toolchain.md`: the new application's code, its working rules (also in
+   `CLAUDE.md`, "New build"), the build, the invariants it must keep and the browser QA steps; D-034 in
+   `docs/DECISIONS.md`.
 
 ## 3. Run and test
 ```bash
@@ -59,6 +63,9 @@ node tools/make-sample-base.js      # synthetic files to upload (test-data/)
 node scripts/validation/docs-links.mjs          # every relative link in the docs resolves
 node --test "tests/**/*.test.mjs"               # tests of the new-build tooling
 node scripts/validation/release-check.mjs       # the release state of a branch before its merge (report for the PR)
+npm ci && npm run typecheck && npm run build    # the new app: pinned tooling, type check, app/dist/index.html
+node scripts/validation/check-next.mjs --rebuild   # the built page's invariants and a byte-identical rebuild
+npm run serve                                   # http://127.0.0.1:8100/ (legacy) and /next/ (new app)
 ```
 Setup details: `docs/DEVELOPMENT_SETUP.md`. Browser acceptance: `docs/TESTING.md` §4.
 
@@ -112,6 +119,9 @@ browser acceptance) · `security-release-reviewer` (pre-commit / pre-push gate) 
   - `chore/m1-1-rest-int`: the rest of M1.1 (`chore/m1-1-rest`: the release check and the monthly PRD check, the
     folder skeleton, the living architecture with the legacy one moved, KI-129 to KI-139) with the lead's records on
     top; ready for its pull request.
-  - `feat/m1-2-toolchain-shell` (M1.2) and `feat/m1-3-model-ingest-r2` (M1.3), each built from `main` and reviewed;
-    integrated after M1.1, each with its own records and pull request.
+  - `feat/m1-2-int` (on `chore/m1-1-rest-int`): M1.2 (`feat/m1-2-toolchain-shell`, built from `main` and reviewed)
+    merged on top of M1.1, the fix of QA defect D1, the Pages fallback and M1.2's records with D-034; ready for its
+    pull request after M1.1's. Before it merges: the browser QA by hand (`docs/new-build/toolchain.md` §9).
+  - `feat/m1-3-model-ingest-r2` (M1.3), built from `main` and reviewed; integrated after M1.2 with its own records
+    and pull request.
 - To resume: read section 2, then the next steps in `docs/PROJECT_STATE.md`.

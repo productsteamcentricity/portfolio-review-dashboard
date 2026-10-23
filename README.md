@@ -15,8 +15,28 @@ The dashboard is published at:
     https://productsteamcentricity.github.io/portfolio-review-dashboard/
 
 (Settings → Pages → Build and deployment → Source: **GitHub Actions**. The `pages.yml`
-workflow publishes `index.html` only; never use "Deploy from a branch", which would publish
-the whole repository. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).)
+workflow publishes `index.html` and, at `/next/`, the preview of the new application (D-024), nothing else;
+never use "Deploy from a branch", which would publish the whole repository. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).)
+
+## Two applications during the parallel run
+
+The dashboard above (`index.html`) is the review link. A new Portfolio Review application (CR-0006) is being built
+beside it, in `app/`, and previewed at
+
+    https://productsteamcentricity.github.io/portfolio-review-dashboard/next/
+
+with a "Preview, not for client use" banner: nothing from the preview goes to a client until the new application
+reaches feature parity and replaces the dashboard (D-024). If the preview cannot be built for a commit, that address
+shows a short notice instead and the dashboard is published as usual (D-034).
+
+To run both on your machine (Node 24):
+
+    npm ci           # the new application's pinned build tooling; the dashboard needs none
+    npm run build    # app/dist/index.html, one offline file (double-click it to open it)
+    npm run serve    # http://127.0.0.1:8100/ (the dashboard) and http://127.0.0.1:8100/next/ (the new application)
+
+The dashboard alone needs no install: open `index.html`, or run `node tools/serve-dashboard.js`
+(http://127.0.0.1:8099). Details: [docs/new-build/toolchain.md](docs/new-build/toolchain.md).
 
 ## How to use
 
@@ -65,8 +85,9 @@ listed in [docs/README.md](docs/README.md). Before and after any change:
 | `tools/` | checks, the local preview server (`open-dashboard.cmd`), and `patches/`, the only way `index.html` changes |
 | `buildtools/` | the monthly data-refresh pipeline ([docs/MONTHLY_REFRESH.md](docs/MONTHLY_REFRESH.md)) |
 | `docs/` | how it works, decisions, known issues, change requests, refresh logs, the previous owner's handover |
-| `app/`, `data/`, `product_bank/`, `monthly_updates/` | the new application (CR-0006), built beside `index.html`; each folder has a README, and code and data arrive from milestone M1.2 ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) |
-| `scripts/`, `tests/` | the new build's tooling and tests; today the safety checks in `scripts/validation/` ([docs/new-build/safety-tooling.md](docs/new-build/safety-tooling.md)) |
+| `app/`, `data/`, `product_bank/`, `monthly_updates/` | the new application (CR-0006), built beside `index.html`; each folder has a README; `app/` holds the page shell from milestone M1.2, and data arrives from M1.3 ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) |
+| `scripts/`, `tests/` | the new build's tooling and tests: the safety checks and `check-next.mjs` in `scripts/validation/`, the build and the local server in `scripts/` ([docs/new-build/safety-tooling.md](docs/new-build/safety-tooling.md), [docs/new-build/toolchain.md](docs/new-build/toolchain.md)) |
+| `package.json`, `package-lock.json`, `.npmrc` | the new application's pinned build tooling, installed with `npm ci` (D-025); the legacy page needs none of it |
 
 Never commit client files or vendor workbooks. `index.html` is changed only through anchored
 patch scripts or the refresh pipeline, never by hand.

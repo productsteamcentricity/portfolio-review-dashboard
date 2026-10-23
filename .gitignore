@@ -58,3 +58,6 @@ Thumbs.db
 desktop.ini
 node_modules/
 *.log
+
+# The new application's build output (scripts/build.mjs); CI and Pages rebuild it from the sources (D-024, D-025)
+app/dist/
