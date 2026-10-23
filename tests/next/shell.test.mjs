@@ -83,7 +83,7 @@ describe('the built shell (needs npm ci)', { skip: NEEDS_BUILD }, () => {
     parsed = parseHtml(html);
   });
 
-  test('the navigation lists the nine sections in order, then the MF Screener link', () => {
+  test('the tabs list the nine sections in order; the MF Screener link sits in the masthead (D-027, D-037)', () => {
     const anchors = parsed.tags.filter((t) => t.kind === 'start' && t.name === 'a' && attr(t, 'href') !== '#main');
     const textOf = (t) => {
       const close = parsed.tags.find((e) => e.kind === 'end' && e.name === 'a' && e.start > t.end);
@@ -94,7 +94,12 @@ describe('the built shell (needs npm ci)', { skip: NEEDS_BUILD }, () => {
     assert.deepEqual(sectionLinks.map((t) => textOf(t).split(' ')[0]), ['1', '2', '3', '4', '5', '6', '7', '8', '9']);
     const sections = readJson('app/src/config/sections.json').sections;
     assert.deepEqual(sectionLinks.map((t) => attr(t, 'href')), sections.map((s) => `#${s.id}`));
-    const last = anchors[anchors.length - 1];
+    const external = anchors.filter((t) => attr(t, 'class') === 'nav-external');
+    assert.equal(external.length, 1);
+    const last = external[0];
+    const bar = parsed.tags.find((t) => t.kind === 'start' && attr(t, 'class') === 'app-bar');
+    const tabs = parsed.tags.find((t) => t.kind === 'start' && attr(t, 'class') === 'app-tabs');
+    assert.ok(bar && tabs && bar.start < last.start && last.start < tabs.start, 'the link is in the masthead, above the tabs');
     assert.equal(attr(last, 'href'), 'https://centricity-mf-dashboard.pages.dev/');
     assert.equal(attr(last, 'target'), '_blank');
     assert.equal(attr(last, 'rel'), 'noopener noreferrer');
