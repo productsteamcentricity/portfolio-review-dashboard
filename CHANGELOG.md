@@ -4,6 +4,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed
+- **The new app's layout (CR-0006, D-037, the owner's request of 24 Oct 2026): the nine section tabs run across the
+  top** in the look of the owner's design reference, and each section uses the full page width. The black masthead
+  with the gold rule carries the MF Screener link at its right; the preview banner stays first and in view on a wide
+  screen; on a narrow screen nothing is pinned and the tab row scrolls sideways (which also fixes M1.2's QA note of
+  a header covering a focused heading at 375 px). The `/next/` build: 43,522 bytes, SHA-256 `ad6d3a8c…`
+  (deterministic). `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
+
 ### Added
 - **Milestone M1.3 of the new build (CR-0006): the shared model, the base-file reader, the reference data and the
   parity ledger.** No page uses them yet: the `/next/` shell builds to the same bytes (42,280 bytes, SHA-256

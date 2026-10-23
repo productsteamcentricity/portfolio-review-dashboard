@@ -93,7 +93,7 @@ Each requirement carries its brief reference and parity-matrix id (`docs/new-bui
   (`pr-datapack_<cycle>.zip`, contract `pr-datapack-v1`) and its holdings backfill: validate the manifest, files,
   counts and schemas; refuse a failing pack with the reason; keep the accepted pack in this browser's IndexedDB until a
   newer cycle is loaded (the month-end holdings of earlier cycles kept for history); show its cycle date in the
-  sidebar, with "validated pack" when its SHA-256 matches the published manifest; keep it across a family switch; let
+  masthead (D-037), with "validated pack" when its SHA-256 matches the published manifest; keep it across a family switch; let
   the analyst remove it; loading the same pack twice changes nothing. Screener scores and ranks are never embedded in
   a public build, and the pack is never committed. (E-126; Q-18 answered; D-026)
 - R-IN-11 Accept an analyst price file (for example the Stock Price to Return Calculator's Fetch Price sheet) for

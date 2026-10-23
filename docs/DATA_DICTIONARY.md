@@ -402,7 +402,7 @@ The pack the owner uploads into section 1's "MF Screener data pack" slot, kept i
 
 | Field | Meaning | Source |
 |---|---|---|
-| cycle | the pack's cycle date, from its `manifest.json`; shown in the sidebar | `03` §6.9 |
+| cycle | the pack's cycle date, from its `manifest.json`; shown in the masthead (D-037) | `03` §6.9 |
 | sha256 | fingerprint of the zip; loading the same value again changes nothing | `03` §6.9, §7 |
 | contractVersion | `pr-datapack-v1` | `03` §7 |
 | counts | record counts per file, as checked against the manifest | `03` §7 |
