@@ -153,8 +153,10 @@ When a push is refused, remove the finding from the local commits before pushing
 The `next` job of `.github/workflows/ci.yml` runs on every pull request and every push to `main`: the privacy
 scan of `docs/` and the root Markdown with the generic rules (the deny-list is local only), the link check, the
 monthly PRD check, then the new application's steps from M1.2 (`npm ci`, the type check, the build and
-`check-next.mjs --rebuild`; [toolchain.md](toolchain.md)), the tests under `TZ=Asia/Kolkata` and `TZ=UTC`, and last
-the release check with `--ci`. The checkout is shallow, so a step fetches `main` first. In its CI form the release check takes the branch from
+`check-next.mjs --rebuild`; [toolchain.md](toolchain.md)), the tests under `TZ=Asia/Kolkata` and `TZ=UTC`, then the
+steps from M1.3 (the traceability report, `node scripts/validation/traceability.mjs`, and the reference data check,
+`node scripts/data-extract.ts --check`), and last the release check with `--ci`. The checkout is shallow, so a step
+fetches `main` first. In its CI form the release check takes the branch from
 `GITHUB_HEAD_REF` (a pull request) or `GITHUB_REF_NAME` (a push), the default branch from the event, treats a push to
 `main` as the merged state, and skips the identity check; it runs after the tests, so a test that leaves a file in the
 working tree fails it. The existing `checks` job (the legacy app) is unchanged.

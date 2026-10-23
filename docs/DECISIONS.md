@@ -378,11 +378,12 @@ rules, the class of each block, and which of the reader's differences from the l
 5. **`MF_BENCHMARKS`** has no known source (no tool produces it; `02-capability-inventory.md` E-93, KI-026): class
    C until its source is confirmed (D-026). It stays in `data/refdata/` because `index.html` already publishes the
    same five rows; E-93 replaces it in M7.
-6. **The base-file parity ledger.** The corrections BF-01 to BF-25 are accepted: BF-18 (merged units left missing
-   when a folio has none, the gap named in `Holding.mergeGaps`) as an extension of KI-113 to units, with the M7
-   requirement of `DATA_DICTIONARY.md` §8 (a unit-priced holding with a merge gap in units is never reconciled by
-   amount). BF-19 (an unrecognised Asset Name such as "Gold" becomes unknown with a notice, beyond OD-7) waits for
-   the owner's confirmation, and so does BF-26, which the re-review added (letter case of Asset Names folded).
+6. **The base-file parity ledger.** The corrections BF-01 to BF-25 except BF-19 are accepted: BF-18 (merged units
+   left missing when a folio has none, the gap named in `Holding.mergeGaps`) as an extension of KI-113 to units,
+   with the M7 requirement of `DATA_DICTIONARY.md` §8 (a unit-priced holding with a merge gap in units is never
+   reconciled by amount). BF-19 (an unrecognised Asset Name such as "Gold" becomes unknown with a notice, beyond
+   OD-7) waits for the owner's confirmation, and so does BF-26, which the re-review added (letter case of Asset
+   Names folded).
 **Alternatives.** Reading the blocks out of `index.html` at build time (rejected: no reviewable data diff, and the
 new application would depend on the legacy file until M11); committing `FUND_RANKS` whole (rejected: D-026);
 applying the deny-list to the generated files with every public namesake allow-listed (rejected: thousands of

@@ -57,8 +57,8 @@ rebalancing method) is out of scope; the data structures for it are in scope.
 - **23 Oct 2026, D-035 (lead under D-033):** the reference data in the repository (`data/refdata/`, extracted from
   `index.html` and checked equal; fund ranks reduced to scheme codes; the generated block files exempt from the
   private deny-list as `index.html` is; the classes of `MF_RISK`, `PMS_PERF`, `AIF_PERF` and `MF_BENCHMARKS`) and the
-  base-file reading conventions (the parity ledger's corrections BF-01 to BF-25 accepted, BF-18 as KI-113 extended
-  to units; BF-19 and BF-26 wait for the owner).
+  base-file reading conventions (the parity ledger's corrections BF-01 to BF-25 except BF-19 accepted, BF-18 as
+  KI-113 extended to units; BF-19 and BF-26 wait for the owner).
 
 ## Plan
 1. **Phase 0 (done, 22 Oct 2026):**

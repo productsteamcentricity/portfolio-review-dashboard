@@ -145,15 +145,15 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **New build records for M1.3:** DECISIONS D-035 (the reference data in the repository: extracted from
   `index.html` and checked equal, fund ranks reduced to scheme codes, the deny-list exemption of the generated
   files, the classes of `MF_RISK`, `PMS_PERF`, `AIF_PERF` and `MF_BENCHMARKS`; the base-file ledger's corrections
-  BF-01 to BF-25 accepted, BF-18 as KI-113 extended to units, BF-19 and BF-26 waiting for the owner); KNOWN_ISSUES
-  KI-140 to KI-147 (the legacy page's base-file reading defects that the parity work exposed and their IPS
-  consequence, live-page data fixes for a later legacy batch under D-028; KI-147 the new reader's money-column
+  BF-01 to BF-25 except BF-19 accepted, BF-18 as KI-113 extended to units, BF-19 and BF-26 waiting for the owner);
+  KNOWN_ISSUES KI-140 to KI-147 (the legacy page's base-file reading defects that the parity work exposed and their
+  IPS consequence, live-page data fixes for a later legacy batch under D-028; KI-147 the new reader's money-column
   fallback, for M1.4); CLAUDE.md (M1.3, the generated reference data, the parity ledgers and `// covers:` lines, the
   repository layout); the living architecture (status, §5 layout, §18 commands and CI, §21); HANDOVER (refreshed
   for M1.3), PROJECT_STATE, CR-0006, the PRD's §13 status, DATA_DICTIONARY §8, the safety-tooling note (the
-  exemption confirmed), `app/README.md`, `data/README.md`, `data/refdata/README.md`, the root README,
-  MONTHLY_REFRESH (Step 8 regenerates `data/refdata/` after a splice), the test plan's ledger file names and the
-  roadmap (the M1.4 items carried from M1.3).
+  exemption confirmed; the CI job's M1.3 steps), `app/README.md`, `data/README.md`, `data/refdata/README.md`, the
+  root README, MONTHLY_REFRESH (Step 8 regenerates `data/refdata/` after a splice), the test plan's ledger file
+  names and the roadmap (the M1.4 items carried from M1.3).
 - **New build records for M1.2:** DECISIONS D-034 (the toolchain, the one-file build, static navigation, and the
   preview never blocking the legacy page); CLAUDE.md (Pages publishes `index.html` and `/next/`, the repository
   layout, and the new app's working rules: `npm ci`, the type check, the build, `check-next.mjs`, no network API, no
