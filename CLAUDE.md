@@ -162,7 +162,8 @@ own working rules (below; `app/README.md`, `docs/new-build/toolchain.md`).
 - Before a push: `node scripts/validation/prepush-scan.mjs` (or the hook: `git config core.hooksPath scripts/hooks`)
   with `PRD_PRIVACY_DENYLIST` naming the private deny-list; never copy a deny-list term into the repository
   (`docs/new-build/safety-tooling.md`). Docs: `node scripts/validation/docs-links.mjs`. Tests:
-  `node --test "tests/**/*.test.mjs"`. Before a merge: `node scripts/validation/release-check.mjs` on the branch,
+  `node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"` (IST and UTC); `node scripts/validation/traceability.mjs`;
+  `node scripts/data-extract.ts --check`. Before a merge: `node scripts/validation/release-check.mjs` on the branch,
   its report attached to the pull request (`--after-push` once pushed).
 - Every monthly cycle from the 2026-10 data month ends with `docs/monthly-prds/YYYY-MM-Portfolio-Review-PRD.md` (from
   `TEMPLATE.md`) and a refresh of `docs/HANDOVER.md`, checked by `node scripts/validation/monthly-prd-check.mjs`.

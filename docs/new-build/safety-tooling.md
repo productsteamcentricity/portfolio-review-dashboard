@@ -72,7 +72,7 @@ node scripts/validation/release-check.mjs --after-push
 # a monthly PRD and its handover, at the end of each monthly cycle
 node scripts/validation/monthly-prd-check.mjs
 # the tests
-node --test "tests/**/*.test.mjs"
+node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"
 ```
 
 With the deny-list, in PowerShell: `$env:PRD_PRIVACY_DENYLIST = 'C:\dev\private\privacy-denylist.txt'` for the

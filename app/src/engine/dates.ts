@@ -102,7 +102,7 @@ export function parseDayText(text: string): DayNumber | null {
   }
   m = /^(\d{1,2})[ -]([A-Za-z]{3,9})[ ,-]+(\d{4})$/.exec(s);
   if (m) {
-    const mon = MONTH_INDEX.get(m[2].toLowerCase());
+    const mon = MONTH_INDEX.get(m[2]!.toLowerCase());
     return mon === undefined ? null : ymdToDay(Number(m[3]), mon, Number(m[1]));
   }
   return null;

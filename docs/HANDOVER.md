@@ -61,7 +61,7 @@ node tools/smoke-review.js          # end-to-end on a synthetic book
 node tools/serve-dashboard.js       # http://127.0.0.1:8099 (or double-click tools\open-dashboard.cmd)
 node tools/make-sample-base.js      # synthetic files to upload (test-data/)
 node scripts/validation/docs-links.mjs          # every relative link in the docs resolves
-node --test "tests/**/*.test.mjs"               # tests of the new-build tooling
+node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"   # tests of the new-build tooling and the new app
 node scripts/validation/release-check.mjs       # the release state of a branch before its merge (report for the PR)
 npm ci && npm run typecheck && npm run build    # the new app: pinned tooling, type check, app/dist/index.html
 node scripts/validation/check-next.mjs --rebuild   # the built page's invariants and a byte-identical rebuild

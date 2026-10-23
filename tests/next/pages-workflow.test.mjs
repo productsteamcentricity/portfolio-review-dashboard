@@ -1,3 +1,4 @@
+// covers: BR-0.3 BR-14.4 D-024 D-034 M1.2-pages
 // Tests of .github/workflows/pages.yml (D-024, D-034): the legacy page always deploys, byte for byte, and a failure to
 // install, build or check the new app never blocks it; the preview's place at /next/ then holds a static notice with
 // no script and no remote URL. The workflow is read as text with a small reader for the block-style YAML it uses (the

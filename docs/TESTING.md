@@ -111,8 +111,8 @@ path growing at a constant rate, so its XIRR is known exactly — an independent
 ## 6. New application (CR-0006), from milestone M1.3
 
 The plan is [new-build/08-regression-test-plan.md](new-build/08-regression-test-plan.md); this section says what
-exists and how to run it. TypeScript tests run straight from source with Node 24's type stripping, so nothing is
-built or installed first. Every test file starts with a `// covers:` line naming the parity-matrix rows and the
+exists and how to run it. TypeScript tests run straight from source with Node 24's type stripping (Node 24.2 or
+later), so nothing is built or installed first; `npm run typecheck` checks the `app/src` modules they test. Every test file starts with a `// covers:` line naming the parity-matrix rows and the
 decisions it proves.
 
 ```bash
@@ -137,4 +137,5 @@ In PowerShell set the zone with `$env:TZ = 'UTC'` before `node --test`.
 | `tests/validation/traceability.test.mjs` | the traceability script on a throwaway repository and on this one |
 
 Fixtures are generated at test time by `tests/fixtures/make-books.ts` and never committed. The SheetJS used by the
-tests is the copy embedded in `index.html`, run in a sandbox (`tests/helpers/sheetjs.ts`), until M1.2 vendors it.
+tests is the copy embedded in `index.html`, run in a sandbox (`tests/helpers/sheetjs.ts`), until SheetJS is vendored
+in `app/vendor/` (M1.2 built the mechanism and vendored no library).

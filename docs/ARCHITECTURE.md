@@ -500,9 +500,11 @@ Commands (built in M1.2 unless marked planned; [toolchain.md](new-build/toolchai
 | Command | Does |
 |---|---|
 | `npm ci` | installs exactly the lockfile, scripts disabled |
-| `npm run typecheck` | `tsc -p app/tsconfig.json` (strict, `erasableSyntaxOnly`, `noEmit`) |
-| `npm test` | `node --test "tests/**/*.test.mjs"`; CI runs it under `TZ=Asia/Kolkata` and `TZ=UTC` (`npm run test:utc` was not added) |
-| `npm run parity` (planned) | new engine against the legacy engine (`tools/engine-host.js`) with the parity ledger |
+| `npm run typecheck` | `tsc -p app/tsconfig.json` (strict, `erasableSyntaxOnly`, `noEmit`): all of `app/src`, from M1.3 with `model/`, `ingest/`, `engine/` and `views/`; the Node-side `.ts` in `scripts/` and `tests/` is not type-checked yet ([toolchain.md](new-build/toolchain.md) §2) |
+| `npm test` | `node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"` (the `.ts` tests run from source by Node's type stripping, M1.3); CI runs it under `TZ=Asia/Kolkata` and `TZ=UTC` (`npm run test:utc` was not added) |
+| `npm run parity` (planned) | new engine against the legacy engine (`tools/engine-host.js`) with the parity ledger; from M1.3 the base-file and reference-data parity tests (`tests/parity/`) run inside `npm test`, with one ledger per area (`tests/parity/base-file-ledger.json`) |
+| `node scripts/validation/traceability.mjs` | every test file names the parity-matrix rows it covers; a row in progress or later without a test fails (M1.3) |
+| `node scripts/data-extract.ts [--check]` | writes `data/refdata/*.json` from the blocks of `index.html`, or checks them equal (M1.3) |
 | `npm run build` | `scripts/build.mjs` to `app/dist/index.html` and `app/dist/build-manifest.json` (git-ignored); prints the size and SHA-256 |
 | `npm run check` | `scripts/validation/check-next.mjs`: CSP first, hashes match, no network, one allowed link, banner, size budget, a scan of `app/src`; `-- --rebuild` for the deterministic build |
 | `npm run serve` | `scripts/serve.mjs`, 127.0.0.1:8100: legacy at `/`, new at `/next/` |
@@ -513,8 +515,9 @@ Commands (built in M1.2 unless marked planned; [toolchain.md](new-build/toolchai
 **CI today** (`.github/workflows/ci.yml`): the job `checks` runs the legacy gates (invariants, smoke, AI Analyst,
 regression) unchanged; the job `next` runs the privacy scan of the documentation, the docs link check and the monthly
 PRD check (Node built-ins only), then `npm ci`, the type check, the build, `check-next.mjs --rebuild`,
-`node --test "tests/**/*.test.mjs"` under IST and UTC and, last, the release check in its CI form. Later milestones
-add parity, export structure and acceptance tests. **Pages:** from M1.2 `pages.yml` stages `_site/index.html`
+`node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"` under IST and UTC (from M1.3 with the new app's unit and
+parity tests), the traceability report, `data-extract.ts --check` and, last, the release check in its CI form. Later
+milestones add export structure and acceptance tests. **Pages:** from M1.2 `pages.yml` stages `_site/index.html`
 (legacy, byte for byte) and `_site/next/index.html` (new) (D-024). The legacy gates block the deployment; the new
 app's steps (`npm ci`, build, `check-next.mjs --rebuild`) never do: when one fails, `/next/` gets a static notice
 that the preview could not be built for that commit, the log a warning, and the legacy page deploys as usual (D-034,

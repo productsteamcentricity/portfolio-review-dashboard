@@ -1,7 +1,8 @@
 // SheetJS for tests: the copy embedded in the legacy index.html (CE 0.18.5), the same library the new app will
-// vendor byte for byte in milestone M1.2 (architecture A2). Located by its marker, never by block index, and run in a
+// vendor byte for byte (architecture A2). Located by its marker, never by block index, and run in a
 // fresh vm context with this realm's typed arrays, so it neither reads nor writes this process's globals.
-// When app/vendor/ exists (M1.2), point this helper at the vendored file instead.
+// M1.2 built the vendoring mechanism (app/vendor/MANIFEST.json) but vendored no library; once SheetJS is listed
+// there, point this helper at the vendored file instead.
 
 import fs from 'node:fs';
 import path from 'node:path';
