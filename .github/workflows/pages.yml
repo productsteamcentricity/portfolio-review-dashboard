@@ -1,6 +1,8 @@
 # Publishes two pages to GitHub Pages and nothing else (D-024, superseding D-007 in part):
 #   /       index.html, the legacy dashboard, staged byte for byte (the review link until parity)
-#   /next/  next/index.html, the new app's one-file build (app/dist/index.html), with its preview banner
+#   /next/  next/index.html, the new app's one-file build (app/dist/index.html), with its preview banner; when the
+#           new app cannot be installed, built or checked for a commit, a short static notice instead (D-034)
+# The legacy gates block the deployment; the new app's steps never do (D-034): the legacy page always deploys.
 # The site never serves the docs, tools or agent files. The site is public (see docs/DEPLOYMENT.md).
 # Requires: Settings -> Pages -> Source = "GitHub Actions".
 # The build job runs the repository's code with read-only rights; only the deploy
@@ -30,7 +32,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: read
     env:
@@ -46,20 +48,62 @@ jobs:
         run: node tools/smoke-review.js
       - name: Regression tests of fixed issues must pass before anything is published
         run: node tools/run-regression.js
-      # The new app (CR-0006). While the preview has no users a failing new build blocks the deploy (fix forward;
-      # architecture section 18).
+      # The new app (CR-0006). A failure here never blocks the legacy page (D-034): each step may fail without failing
+      # the job (continue-on-error), runs only when the one before it succeeded, and has its own time limit, so a hung
+      # install cannot use up the job's time either. The staging step publishes the build at /next/ only when
+      # check-next passed; otherwise it stages a static notice there and writes a warning to the log.
       - name: Install the new app's pinned build tooling from the lockfile
+        id: next_install
+        continue-on-error: true
+        timeout-minutes: 5
         run: npm ci
       - name: Build the new app into one offline HTML file
+        id: next_build
+        if: steps.next_install.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 3
         run: npm run build
-      - name: The new app's invariants must hold before anything is published
+      - name: The new app's invariants must hold before it is published at /next/
+        id: next_check
+        if: steps.next_build.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 3
         run: node scripts/validation/check-next.mjs --rebuild
-      - name: Stage the legacy dashboard at / and the new app at /next/, nothing else
+      - name: Stage the legacy dashboard at / and the new app (or the notice that it could not be built) at /next/, nothing else
+        env:
+          NEXT_OK: ${{ steps.next_check.outcome == 'success' }}
+          NEXT_INSTALL: ${{ steps.next_install.outcome }}
+          NEXT_BUILD: ${{ steps.next_build.outcome }}
+          NEXT_CHECK: ${{ steps.next_check.outcome }}
         run: |
+          set -euo pipefail
           mkdir -p _site/next
           cp index.html _site/index.html
-          cp app/dist/index.html _site/next/index.html
           cmp index.html _site/index.html
+          if [ "$NEXT_OK" = "true" ]; then
+            cp app/dist/index.html _site/next/index.html
+          else
+            echo "::warning title=New app preview not built::npm ci ${NEXT_INSTALL}, build ${NEXT_BUILD}, check-next ${NEXT_CHECK}. The legacy page is published as usual; /next/ shows a notice instead of the preview (D-034)."
+            cat > _site/next/index.html <<PREVIEW_NOTICE
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'">
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta name="referrer" content="no-referrer">
+          <meta name="robots" content="noindex, nofollow">
+          <title>Portfolio Review preview not available</title>
+          </head>
+          <body>
+          <p id="preview-banner" role="note"><strong>Preview, not for client use.</strong> This address shows the new Portfolio Review application while it is being built.</p>
+          <h1>The preview could not be built for this commit</h1>
+          <p>The new application could not be installed, built or checked for commit ${GITHUB_SHA::7}, so this notice stands in for it. The current dashboard is not affected: it is published as usual at <a href="../">the main page</a>.</p>
+          </body>
+          </html>
+          PREVIEW_NOTICE
+          fi
+          sha256sum _site/index.html _site/next/index.html
           ls -lR _site
       - uses: actions/upload-pages-artifact@v5
         with:
