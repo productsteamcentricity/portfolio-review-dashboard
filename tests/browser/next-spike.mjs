@@ -9,6 +9,9 @@
 //   2. the CSP blocks what it must: a fetch to the local server is refused (connect-src) and never reaches it; a copy
 //      whose script hash is wrong does not run (negative control, from disk);
 //   3. the nine section links, the banner, the MF Screener link; hash navigation switches the panel;
+//   3a. keyboard and mouse (real input events): Enter or a click on any section link puts focus on that section's
+//      heading, including the section already on screen and after the skip link (QA defect D1); each section link's
+//      accessible name reads "<n> <title>" (for example "1 Uploads and inputs");
 //   4. the page requests nothing but itself;
 //   5. IndexedDB: a record written by the page is read back after a reload and after a browser restart with the
 //      same profile (the store of the MF Screener data pack, D-026);
@@ -146,6 +149,33 @@ async function openPage(cdp) {
     if (r.exceptionDetails) throw new Error(`evaluate: ${r.exceptionDetails.text} ${r.exceptionDetails.exception?.description ?? ''}`);
     return r.result.value;
   };
+  // Real (trusted) input events, as a person's keyboard and mouse produce them; then a pause for the app's effects.
+  page.press = async (key) => {
+    const codes = { Enter: 13, Tab: 9 };
+    const base = { key, code: key, windowsVirtualKeyCode: codes[key], nativeVirtualKeyCode: codes[key] };
+    const text = key === 'Enter' ? { text: '\r', unmodifiedText: '\r' } : {};
+    await cdp.send('Input.dispatchKeyEvent', { type: text.text ? 'keyDown' : 'rawKeyDown', ...base, ...text }, sessionId);
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base }, sessionId);
+    await sleep(300);
+  };
+  page.click = async ({ x, y }) => {
+    for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
+      await cdp.send('Input.dispatchMouseEvent', { type, x, y, button: type === 'mouseMoved' ? 'none' : 'left', clickCount: 1 }, sessionId);
+    }
+    await sleep(300);
+  };
+  // The accessible name the browser computes for each element matching a selector (what a screen reader announces).
+  page.axNames = async (selector) => {
+    await cdp.send('Accessibility.enable', {}, sessionId);
+    const count = await page.eval(`document.querySelectorAll(${JSON.stringify(selector)}).length`);
+    const names = [];
+    for (let i = 0; i < count; i++) {
+      const r = await cdp.send('Runtime.evaluate', { expression: `document.querySelectorAll(${JSON.stringify(selector)})[${i}]` }, sessionId);
+      const { nodes } = await cdp.send('Accessibility.getPartialAXTree', { objectId: r.result.objectId, fetchRelatives: false }, sessionId);
+      names.push(nodes[0]?.name?.value ?? null);
+    }
+    return names;
+  };
   return page;
 }
 
@@ -175,6 +205,33 @@ const GOTO = (id) => `new Promise((r) => { location.hash = '#${id}'; setTimeout(
   title: document.title,
   slot: document.getElementById('slot-screener-pack')?.textContent ?? null,
 }), 300); })`;
+
+// Where the page is: the address, the panel on screen, the marked link and what has keyboard focus.
+const WHERE = `(() => {
+  const f = document.activeElement;
+  return {
+    hash: location.hash,
+    heading: document.querySelector('#app h2')?.textContent.trim() ?? null,
+    current: document.querySelector('nav a[aria-current="page"]')?.dataset.section ?? null,
+    focused: !f || f === document.body ? 'body' : (f.id || f.getAttribute('data-section') || f.className || f.tagName),
+  };
+})()`;
+
+// Puts keyboard focus on an element (as Tab would) and says whether it took it.
+const FOCUS = (selector) => `(() => {
+  const el = document.querySelector(${JSON.stringify(selector)});
+  if (!el) return false;
+  el.focus();
+  return document.activeElement === el;
+})()`;
+
+// The centre of an element, scrolled into view, in viewport coordinates (for a real mouse click).
+const CENTRE = (selector) => `(() => {
+  const el = document.querySelector(${JSON.stringify(selector)});
+  el.scrollIntoView({ block: 'center' });
+  const r = el.getBoundingClientRect();
+  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+})()`;
 
 const FETCH_PROBE = (url) => `new Promise((r) => {
   const before = (window.__cspv || []).length;
@@ -299,6 +356,47 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
         tax.heading === '7 Taxation' && tax.current === 'taxation' && tax.focused === 'taxation-title', tax);
       const up = await page.eval(GOTO('uploads'));
       expect('section 1 shows the MF Screener data pack slot (M10)', up.slot && up.slot.includes('MF Screener data pack') && up.slot.includes('M10'));
+
+      // Keyboard and mouse, with real input events (QA defect D1). Section 1 is on screen and the address is #uploads.
+      const link = (id) => `nav a[data-section="${id}"]`;
+      await page.eval(FOCUS(link('uploads')));
+      await page.press('Enter');
+      const k1 = await page.eval(WHERE);
+      expect('Enter on the link of the section already on screen puts focus on its heading',
+        k1.hash === '#uploads' && k1.heading === '1 Uploads and inputs' && k1.focused === 'uploads-title', k1);
+      await page.click(await page.eval(CENTRE(link('uploads'))));
+      const m1 = await page.eval(WHERE);
+      expect('a click on the link of the section already on screen puts focus on its heading',
+        m1.hash === '#uploads' && m1.focused === 'uploads-title', m1);
+      const skipFocused = await page.eval(FOCUS('a.skip-link'));
+      await page.press('Enter');
+      const sk = await page.eval(WHERE);
+      expect('the skip link moves focus to the section area', skipFocused && sk.hash === '#main' && sk.focused === 'main', sk);
+      await page.eval(FOCUS(link('uploads')));
+      await page.press('Enter');
+      const k2 = await page.eval(WHERE);
+      expect('after the skip link, Enter on the link of the section on screen puts focus on its heading',
+        k2.hash === '#uploads' && k2.current === 'uploads' && k2.focused === 'uploads-title', k2);
+      await page.eval(FOCUS('a.skip-link'));
+      await page.press('Enter');
+      await page.eval(FOCUS(link('taxation')));
+      await page.press('Enter');
+      const k3 = await page.eval(WHERE);
+      expect('after the skip link, Enter on another section link shows it and puts focus on its heading',
+        k3.hash === '#taxation' && k3.heading === '7 Taxation' && k3.current === 'taxation' && k3.focused === 'taxation-title', k3);
+      await page.click(await page.eval(CENTRE(link('overview'))));
+      const m2 = await page.eval(WHERE);
+      expect('a click on another section link shows it and puts focus on its heading',
+        m2.hash === '#overview' && m2.current === 'overview' && m2.focused === 'overview-title', m2);
+      await page.eval(FOCUS(link('overview')));
+      await page.press('Enter');
+      const k4 = await page.eval(WHERE);
+      expect('Enter again on the same link keeps focus on its heading', k4.hash === '#overview' && k4.focused === 'overview-title', k4);
+      const names = await page.axNames('nav a[data-section]');
+      const sectionsConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'app', 'src', 'config', 'sections.json'), 'utf8')).sections;
+      expect('each section link\'s accessible name reads "<n> <title>", for example "1 Uploads and inputs"',
+        JSON.stringify(names) === JSON.stringify(sectionsConfig.map((s) => `${s.n} ${s.title}`)), names);
+      await page.eval(GOTO('uploads'));
 
       received.length = 0;
       const f = await page.eval(FETCH_PROBE(`http://127.0.0.1:${opt.port}/probe`));

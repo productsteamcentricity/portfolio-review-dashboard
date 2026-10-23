@@ -116,7 +116,10 @@ strings inside a script, and lists them in its output; the same text anywhere el
 
 Run with `node tests/browser/next-spike.mjs` against the built shell: headless Microsoft Edge 155 and Google Chrome
 155, each with a fresh temporary profile; the page opened from disk (`file://`) and served by `scripts/serve.mjs`
-(`http://127.0.0.1:<port>/next/`). Both browsers: **33 of 33 checks passed.**
+(`http://127.0.0.1:<port>/next/`). Both browsers: **33 of 33 checks passed.** After the fix of QA defect D1
+(23 Oct 2026, below) the spike has 49 checks, adding keyboard and mouse navigation with real input events and the
+section links' accessible names: **49 of 49 passed** in Edge 155 and Chrome 155; before the fix the same build failed
+the four focus checks in each mode.
 
 | Gate | Result (Edge 155 and Chrome 155, from disk and served) |
 |---|---|
@@ -124,7 +127,7 @@ Run with `node tests/browser/next-spike.mjs` against the built shell: headless M
 | The CSP is enforced | Yes: a copy with a wrong script hash did not run (`script-src-elem` violation); a `fetch` to the local server was refused by `connect-src` and never reached the server |
 | A vendored library and a JSON data block run under the CSP | Yes (synthetic library, from disk) |
 | The page requests nothing but itself | Yes: one request, the page; the server received only `/next/` |
-| Nine section links, banner, sticky header, Screener link `target="_blank" rel="noopener noreferrer"`, Cambria | Yes; hash navigation shows the chosen section, marks its link and moves focus to its heading |
+| Nine section links, banner, sticky header, Screener link `target="_blank" rel="noopener noreferrer"`, Cambria | Yes; hash navigation shows the chosen section, marks its link and moves focus to its heading. Enter or a click on the link of the section already on screen, or on any section link after the skip link, left focus on the page itself (QA defect D1, found on 23 Oct 2026): fixed the same day, every activation of a section link now moves focus to its heading; each section link's accessible name reads "1 Uploads and inputs" (a space between number and title, and an `aria-label`) |
 | **IndexedDB** (the Screener pack store, D-026): write, reload, browser restart with the same profile | **Available and kept, from disk and served**, in both browsers. Storage is "best effort" (`navigator.storage.persisted()` is false) |
 | `npm ci` and esbuild on this laptop | Yes: `npm ci` (5 packages), `npm ci --offline` from the npm cache, `npm run typecheck`, `npm run build`; the offline install rebuilt the same SHA-256 |
 | `npm ci` and esbuild in CI | Wired into the `next` job and the Pages build; first run on the pull request |
@@ -145,6 +148,10 @@ analyst's profile: the browser QA below repeats the check by hand.
 script of 31,138 bytes, Preact included; one style element of 5,500 bytes; no vendored library). The spike of
 section 6 ran on this file. The CI build prints its own hash; the same sources
 should give the same bytes on Linux (repository-relative paths, LF files, no dates), which the first CI run shows.
+
+After the fix of QA defect D1 (23 Oct 2026): **42,280 bytes, SHA-256
+`e74e8a07ca1008152a2429439c9677ff3d00b96ed39e75d9723ca7b60b63a3bb`** (same tools; app script 31,804 bytes, style
+element 5,500 bytes, no vendored library); the 49 spike checks ran on this file.
 
 ## 8. Differences from the Phase 0 design, and why (lead to confirm)
 
@@ -172,7 +179,9 @@ way.
 2. DevTools: Console has no error or CSP message; Network shows one request, the page itself.
 3. "MF Screener" opens the Screener in a new tab and leaves this tab as it was; the new tab gets no referrer.
 4. Keyboard: Tab reaches "Skip to the section", then the section links; Enter on a section moves focus to its
-   heading; the focus outline is visible. At 200% zoom or a narrow window, the navigation stacks above the section.
+   heading, also on the section already on screen and after the skip link (D1); a screen reader reads each link as
+   "1 Uploads and inputs" and so on; the focus outline is visible. At 200% zoom or a narrow window, the navigation
+   stacks above the section.
 5. `npm run serve`, open http://127.0.0.1:8100/next/ and repeat 1 to 3; http://127.0.0.1:8100/ still opens the legacy
    dashboard unchanged.
 6. After the merge: https://productsteamcentricity.github.io/portfolio-review-dashboard/next/ shows the preview, and

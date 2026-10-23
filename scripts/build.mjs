@@ -94,10 +94,15 @@ export function validateScreenerUrl(url) {
   return url;
 }
 
-/** Static navigation: the nine sections (in-page links) and the one external link (D-027). */
+/**
+ * Static navigation: the nine sections (in-page links) and the one external link (D-027). A section link's
+ * accessible name is "<n> <title>" ("1 Uploads and inputs"): a space separates the two spans in the text, and an
+ * aria-label states the name, because the link is a flex box and some name computations join its items without one.
+ */
 export function navHtml(sections, link) {
-  const items = sections.map((s) => `<li><a href="#${escapeHtml(s.id)}" data-section="${escapeHtml(s.id)}">`
-    + `<span class="nav-num">${escapeHtml(s.n)}</span><span class="nav-label">${escapeHtml(s.title)}</span></a></li>`);
+  const items = sections.map((s) => `<li><a href="#${escapeHtml(s.id)}" data-section="${escapeHtml(s.id)}"`
+    + ` aria-label="${escapeHtml(`${s.n} ${s.title}`)}">`
+    + `<span class="nav-num">${escapeHtml(s.n)}</span> <span class="nav-label">${escapeHtml(s.title)}</span></a></li>`);
   return [
     '<nav class="app-nav" aria-label="Sections">',
     '<p class="nav-heading" id="nav-heading">Sections</p>',

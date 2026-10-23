@@ -53,12 +53,16 @@ function SlotCard({ slot }: { slot: Slot }) {
   );
 }
 
-function SectionPanel({ section, focusOnShow }: { section: Section; focusOnShow: boolean }) {
+// focusRequest counts the section-link activations (0: none yet, so the page opens without moving focus). Every new
+// count moves focus to the heading, also when the section stays the same. The effect runs after the browser has
+// painted, so after the browser's own fragment navigation, which leaves focus on the document because the target
+// <section> is not focusable.
+function SectionPanel({ section, focusRequest }: { section: Section; focusRequest: number }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const headingId = `${section.id}-title`;
   useEffect(() => {
-    if (focusOnShow) headingRef.current?.focus();
-  }, [section.id, focusOnShow]);
+    if (focusRequest > 0) headingRef.current?.focus();
+  }, [section.id, focusRequest]);
   return (
     <section class="panel" id={section.id} aria-labelledby={headingId}>
       <h2 id={headingId} ref={headingRef} tabIndex={-1}>
@@ -96,18 +100,37 @@ export function App({ build }: { build: BuildInfo | null }) {
   const first = SECTIONS[0];
   if (!first) throw new Error('sections.json lists no section');
   const [active, setActive] = useState<Section>(() => sectionFromHash(location.hash) ?? first);
-  const [moved, setMoved] = useState(false);
+  const [focusRequest, setFocusRequest] = useState(0);
 
   useEffect(() => {
+    const show = (next: Section) => {
+      setActive(next);
+      setFocusRequest((n) => n + 1);
+    };
+    // A new address (a section link, Back or Forward, an edited address) names the section to show.
     const onHash = () => {
       const next = sectionFromHash(location.hash);
-      if (next) {
-        setActive(next);
-        setMoved(true);
-      }
+      if (next) show(next);
+    };
+    // A section link to the address already shown changes nothing in the address, so no hashchange follows: Enter or
+    // a click on it (Enter on a link fires a click) asks for the focus here. Links that open elsewhere (a modifier key,
+    // another button) and the skip link are left to the browser.
+    const onClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest<HTMLAnchorElement>('a[data-section]');
+      if (!link || link.hash !== location.hash) return;
+      const next = sectionFromHash(link.hash);
+      if (next) show(next);
     };
     window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
+    document.addEventListener('click', onClick);
+    return () => {
+      window.removeEventListener('hashchange', onHash);
+      document.removeEventListener('click', onClick);
+    };
   }, []);
 
   useEffect(() => {
@@ -117,7 +140,7 @@ export function App({ build }: { build: BuildInfo | null }) {
 
   return (
     <>
-      <SectionPanel section={active} focusOnShow={moved} />
+      <SectionPanel section={active} focusRequest={focusRequest} />
       <footer class="app-footer">
         <p>
           Preview build, not for client use. It works offline: nothing on this page is sent anywhere.

@@ -100,6 +100,19 @@ describe('the built shell (needs npm ci)', { skip: NEEDS_BUILD }, () => {
     assert.match(textOf(last), /^MF Screener/);
   });
 
+  test('each section link reads "<n> <title>" with a space, in its text and its accessible name (QA defect D1)', () => {
+    // The text as a browser joins the link's text nodes (tags removed, nothing added), and the aria-label.
+    const sectionLinks = parsed.tags.filter((t) => t.kind === 'start' && t.name === 'a' && attr(t, 'data-section'));
+    const rawText = (t) => {
+      const close = parsed.tags.find((e) => e.kind === 'end' && e.name === 'a' && e.start > t.end);
+      return html.slice(t.end, close.start).replace(/<[^>]*>/g, '');
+    };
+    const want = NINE.map((title, i) => `${i + 1} ${title}`);
+    assert.deepEqual(sectionLinks.map(rawText), want);
+    assert.deepEqual(sectionLinks.map((t) => attr(t, 'aria-label')), want);
+    assert.equal(want[0], '1 Uploads and inputs');
+  });
+
   test('the banner "Preview, not for client use" is static and comes first in the header (D-024)', () => {
     const banner = parsed.tags.find((t) => t.kind === 'start' && attr(t, 'id') === 'preview-banner');
     assert.ok(banner);
