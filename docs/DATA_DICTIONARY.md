@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | **v0.2**, 22 Oct 2026 (milestone M1.3: the shared model's types in `app/src/model/`; v0.1 was M1.1 with the owner's answers D-024 to D-033) |
+| Version | **v0.3**, 23 Oct 2026 (the financial review of M1.3; v0.2 was M1.3's shared model types in `app/src/model/`; v0.1 was M1.1 with the owner's answers D-024 to D-033) |
 | Scope | the data model of the **new** Portfolio Review application. The legacy `index.html` is described in [ARCHITECTURE.md](ARCHITECTURE.md) and the conventions section of `CLAUDE.md` |
 | Owns | every entity, field, metric path, missing-data status, unit and calculation definition of the new application ([09-repository-and-docs-structure.md](new-build/09-repository-and-docs-structure.md) §3). The PRD (§6), the architecture and the observation rule bank link here and do not restate these definitions |
 | Built from | the Phase 0 architecture's model section ([03-architecture.md](new-build/03-architecture.md) §6, with §8, §9, §12, §16) and the record and metric-path sections of [observation-rule-bank.md](new-build/observation-rule-bank.md) (§1, §2) |
@@ -191,14 +191,15 @@ legacy (E-02, KI-113).
 | `accountId` | `AccountId` | §5.6 |
 | `productLabel`, `product`, `productDefaulted` | string or null, string, boolean | a blank Product Name reads as "Mutual Funds", the legacy default, flagged and noted (Information) |
 | `categoryLabel`, `amcLabel`, `liquidity` | string or null | as given |
-| `assetLabel`, `assetClass` | string or null; `'Equity' \| 'Debt' \| 'Hybrid' \| 'Commodity' \| null` | OD-7: Equity, Debt, Hybrid, Commodity(ies) as labelled; "Fixed Income" and "Debt Funds" are Debt; blank or any other label is unknown (null) with a Warning, the label kept |
+| `assetLabel`, `assetClass` | string or null; `'Equity' \| 'Debt' \| 'Hybrid' \| 'Commodity' \| 'REITs/InvITs' \| null` | OD-7: the five classes of the legacy Asset Allocation (07_engine.js:1147 `assetOrder`: Equity, Debt, Hybrid, Commodity, REITs/InvITs; "Commodities" is Commodity) as labelled, ignoring letter case and spacing, around a slash too ("REITs / InvITs" is REITs/InvITs); "Fixed Income" and "Debt Funds" are Debt; blank is unknown (null) with a Warning (OD-7); any other label is unknown too, the label kept, with a Warning (an extension of OD-7, open, §8) |
 | `folios`, `folioIds` | string[], `FolioId[]` | folio numbers as supplied, one per merged row that has one |
 | `purchaseDate` | `Value<DayNumber>` | an Excel serial or a text date (`YYYY-MM-DD`, `DD-MM-YYYY` with the legacy month-first swap above 12, `D Mon YYYY`); an impossible date is INVALID SOURCE DATA |
-| `units` | `Value<number>`, unit `units` | |
+| `units` | `Value<number>`, unit `units` | the base the tax split reconciles a holding against (M7): the legacy reconciles base-file units with its unit FIFO and, when they are missing, switches to its rupee ledger (`amtMode`, 07_engine.js:393-405), which suits products priced in rupees (PMS, unlisted AIF) |
 | `invested`, `cmv`, `fileGain` | `Value<number>`, unit `cr` | per row the Cr. column, else Lakh / 100, else rupees / 1e7 (the legacy precedence); `fileGain` is the file's own G/L, kept for reconciliation only (the gain shown is CMV minus invested, OD-18) |
 | `xirr`, `bmXirr` | `Value<number>`, unit `pct` | OD-3: a percent-formatted cell is read as a percentage; an unformatted column whose values are all below 1.5 in size raises an analyst question and stays INSUFFICIENT EVIDENCE until answered; otherwise percent numbers |
 | `holdingDays` | `Value<number>`, unit `days` | "Avg. Holding Days" |
-| `inclusion` | `{ status: 'included' }` or `{ status: 'excluded', reasons: ['no-market-value'] }` | OD-8: a row without a market value in any unit is excluded and listed by name (Warning), never valued at zero |
+| `mergeGaps` | `('invested' \| 'fileGain' \| 'units')[]` | the merged totals left missing because some merged folios have the value and others do not (a merge gap, KI-007, KI-113), in that order; empty for a one-row holding and when every folio or no folio has the value. Code reads this list, never the reason text; it is what tells a merge gap in units from a product without units (§8) |
+| `inclusion` | `{ status: 'included' }` or `{ status: 'excluded', reasons: ['no-market-value'] }` | OD-8: a row without a market value in any unit is excluded and listed by name (Warning), never valued at zero. A market value that is not a number ("12abc", "1.25 Cr") is INVALID SOURCE DATA and counts as none; a market value of 0 is a real zero and the row is included, as in the legacy (open, §8) |
 
 Text that is not a number is INVALID SOURCE DATA (Warning, counted by column); blank cells and placeholders ("NA",
 "N/A", "-", "--", "nil") are NOT AVAILABLE IN SUPPLIED DATA. The file's Allocation (%) column is recognised but not
@@ -206,9 +207,10 @@ read: weights are computed from market values by the engine (KI-093, OD-22).
 
 **Merging duplicate folios (E-02).** Included rows with the same client, instrument, product and distributor (exact
 labels, as the legacy) merge into one holding: market value summed; invested value, file gain and units summed only
-when every folio has one, otherwise missing (KI-007, KI-113; the rule for units is an M1.3 extension of KI-113);
-XIRR and BMXIRR weighted by market value over the folios that have one, with the coverage recorded when some do
-not; purchase date, holding days, category, asset, AMC and liquidity from the first row, as the legacy (open item,
+when every folio has one, otherwise missing (KI-007, KI-113; the rule for units is an M1.3 extension of KI-113). When
+some folios have the value and others do not, the holding names that total in `mergeGaps`; when no folio has it, the
+total is missing for the folios' own reason, as for a single row, and is not a gap. XIRR and BMXIRR weighted by
+market value over the folios that have one, with the coverage recorded when some do not; purchase date, holding days, category, asset, AMC and liquidity from the first row, as the legacy (open item,
 §8). A folio without a market value is excluded and listed on its own, never merged.
 
 ### 5.4 `Transaction` (L2)
@@ -526,6 +528,29 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
   member rows are kept (`rows`), so the engine can compute either when the owner decides.
 - **Blank Product Name (M1.3, open).** Read as "Mutual Funds", as the legacy does, flagged on the holding and noted;
   no decision covers it.
+- **Unrecognised Asset Names (M1.3, open; question for the owner).** OD-7 decided the blank case (unknown, never
+  Equity) and two synonyms. The reader also leaves any other label unknown, kept as given, with a Warning, because
+  reading it as a class would be a guess; that extends OD-7 beyond the blank case. The legacy kept such a label as
+  the asset: its own Asset Allocation row after the five ordered classes (07_engine.js:1147-1159), and for a mutual
+  fund the Equity MF performance and benchmark bucket unless its name or category marks a commodity fund
+  (07_engine.js:1599-1609). Parity entry BF-19 ("Gold"). Question: should labels such as Gold, Equity Funds, Hybrid
+  Funds, Alternatives, Cash, Real Estate or International stay unknown, or map to a class (which)? REITs/InvITs is
+  not in question: it is the fifth class of the legacy allocation order and is read as labelled.
+- **Units of merged folios and the tax base (M1.3, open; the owner confirms BF-17 and BF-18).** Base-file units are
+  the base the legacy tax split reconciles each holding against (07_engine.js:393-405); when a holding has no units,
+  that split switches to the rupee ledger (`amtMode`), which suits products priced in rupees (PMS, unlisted AIF). The
+  legacy summed the units the merged folios had, so a fund with one folio lacking units was reconciled against too
+  few units. The reader leaves merged units missing instead (KI-113 extended to units, BF-18) and names the gap in
+  `Holding.mergeGaps`. **Requirement for M7:** a unit-priced holding with a merge gap in units is never reconciled by
+  amount; the tax engine tells the gap from a product without units by `mergeGaps`, never by the reason text. How
+  such a holding is reconciled instead (on the folios whose units are known, or not split, with its status) is
+  decided in M7. The merged file gain left missing (BF-17) is shown nowhere: the gain shown is CMV minus invested
+  (OD-18).
+- **A market value of 0 (OD-8 question, open; question for the owner).** OD-8 excludes and lists a holding with no
+  market value and never shows it at zero. A market value of 0, written as a number, is read today as a real zero and
+  the holding is included, as in the legacy (the legacy skipped only a row with no number in any market value
+  column); `tests/unit/ingest/base-file.test.ts` pins this. Question: is a market value of 0 "no market value" under
+  OD-8 (excluded and listed), or a real zero (included)?
 - **Cross-output registry name:** `03-architecture.md` §16 lists `xirr.portfolio` among the figures checked across
   outputs; the rule bank's path for the same figure is `irr.portfolio.fund`. This dictionary uses the rule bank's
   form; the registry is aligned when it is built (M13).
@@ -540,3 +565,4 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
 | v0 | 22 Oct 2026 | Created at M1.1 from the Phase 0 architecture (§6, §8, §9, §12, §16) and the observation rule bank (§1, §2) |
 | v0.1 | 22 Oct 2026 | The owner's answers: the dash as the missing-value marker, never in sentences (§2, D-029); the stored MF Screener data pack (§5.16, D-026); the capital-gains template, proposed for M7 (§5.17, §5.5, D-032); thresholds approved (§8, D-030); the Index TRI files as the drawdown index data (§7) |
 | v0.2 | 22 Oct 2026 | Milestone M1.3: types of `Value<T>`, units and dates (§2, §3), identifiers (§4), `SourceFile` and the base-file import record (§5.1), `Holding` with the reader's rules and the folio merge (§5.3), ownership and the proposed holder columns (§5.6), validation results and analyst questions (§5.8), audit entries (§5.14); percent numbers decided (§3, §8); two open items (§8) |
+| v0.3 | 23 Oct 2026 | M1.3 financial review: REITs/InvITs is the fifth asset class, as in the legacy allocation order (§5.3); `Holding.mergeGaps` tells a merge gap from a value no folio has, and units are named as the tax reconciliation base (§5.3); a market value that is not a number counts as none, and 0 is a real zero (§5.3); three open questions for the owner: unrecognised Asset Names, merged units and the M7 requirement, a market value of 0 (§8) |

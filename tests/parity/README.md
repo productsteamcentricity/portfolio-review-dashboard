@@ -26,8 +26,9 @@ test, and so does an entry no fixture uses. Each entry has:
 | `description` | one plain paragraph, no en or em dash |
 
 Before comparing, representation is normalised (`base-file-compare.ts` `projectNew`): labels as strings, XIRR as a
-fraction, Crore amounts, the purchase date as "D Mon YYYY", folios joined by "/", the asset label compared without
-regard to letter case. What remains is behaviour.
+fraction, Crore amounts, the purchase date as "D Mon YYYY", folios joined by "/", the asset as the new class (null
+when unknown, never the label as given, so an unrecognised label shows as a difference) compared with the legacy
+label without regard to letter case. What remains is behaviour.
 
 To add an entry: make the new behaviour, run the test to see the unmatched difference, and add the narrowest entry
 that matches it (name the fixture; prefer an exact legacy value) with its decision. Improvements that change a

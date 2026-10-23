@@ -136,7 +136,9 @@ function moneyCells(unit: 'rupee' | 'lakh' | 'crore', rupees: number | null): Ce
 
 type RowOverrides = Partial<{
   invested: number | null | string; mv: number | null | string; gain: number | null | string;
-  units: number | null; asset: string; folio: string; xirr: number; bmxirr: number;
+  units: number | null; asset: string; folio: string; xirr: number | string; bmxirr: number | string;
+  /** The Purchase Date cell as written (for example an impossible text date). */
+  date: CellSpec;
   holders: [string | null, string | null, string | null];
 }>;
 
@@ -154,11 +156,11 @@ function holdingRow(h: BookRow, layout: Layout, total: number, i: number, o: Row
   const x = o.xirr !== undefined ? o.xirr : h.xirr;
   const b = o.bmxirr !== undefined ? o.bmxirr : h.bmxirr;
   for (const p of [x, b]) {
-    if (layout.xirr === 'percent') row.push(p);
+    if (typeof p === 'string' || layout.xirr === 'percent') row.push(p);
     else if (layout.xirr === 'pct-format') row.push({ v: p / 100, z: '0.00%' });
     else row.push(p / 100);
   }
-  row.push(h.days, dateCell(h.purchase, layout, i));
+  row.push(h.days, o.date !== undefined ? o.date : dateCell(h.purchase, layout, i));
   if (layout.holders) row.push(...(o.holders ?? [null, null, null]));
   return row;
 }
@@ -237,10 +239,10 @@ export function buildVariants(xlsx: SheetJS, book: readonly BookRow[], prefix: s
   add('blank-invested', 'two holdings without an invested value (KI-007: stays blank)',
     [{ name: 'Base File', rows: blankInv }]);
 
-  const labels = ['', 'Fixed Income', 'Debt Funds', '  EQUITY  ', 'Gold'];
+  const labels = ['', 'Fixed Income', 'Debt Funds', '  EQUITY  ', 'Gold', 'REITs / InvITs', 'REITs/InvITs'];
   const oddRows = [headerFor(STANDARD), ...book.map((h, i) => holdingRow(h, STANDARD, total, i,
     i < labels.length ? { asset: labels[i]! } : {}))];
-  add('odd-asset-labels', 'Asset Name blank, "Fixed Income", "Debt Funds", "  EQUITY  " and "Gold" (OD-7)',
+  add('odd-asset-labels', 'Asset Name blank, "Fixed Income", "Debt Funds", "  EQUITY  ", "Gold", "REITs / InvITs" and (books of seven or more holdings) "REITs/InvITs" (OD-7)',
     [{ name: 'Base File', rows: oddRows }]);
 
   // Merged folios: holding 0 in three folios (the second without a gain, the third without units);
@@ -301,6 +303,18 @@ export function buildVariants(xlsx: SheetJS, book: readonly BookRow[], prefix: s
   const textDates: Layout = { ...STANDARD, dates: 'text' };
   add('text-dates', 'purchase dates as text: 2023-01-16, 16-01-2023, 16 Jan 2023 and 16/01/2023 styles',
     [{ name: 'Base File', rows: standardRows(book, textDates) }]);
+
+  // Text that is not a number, and an impossible date, in a Crore-only book (so no other money column stands in):
+  // holding 0 has the market value "1.25 Cr", holding 1 "12abc"; holding 2 the invested value "1.25 Cr" (its gain
+  // stays the true one); holding 3 the XIRR "12abc"; holding 4 the purchase date "31-02-2024"; holding 5 the BMXIRR
+  // "1.25 Cr". The legacy parseFloat read each number off the front of the text and rolled the date into March.
+  const crore: Layout = { ...STANDARD, money: ['crore'] };
+  const bad: RowOverrides[] = [
+    { mv: '1.25 Cr' }, { mv: '12abc' }, { invested: '1.25 Cr', gain: book[2]!.mv - book[2]!.invested },
+    { xirr: '12abc' }, { date: '31-02-2024' }, { bmxirr: '1.25 Cr' },
+  ];
+  add('invalid-text', 'text that is not a number in the market value, invested value, XIRR and BMXIRR ("12abc", "1.25 Cr") and an impossible text date ("31-02-2024"), in Crore columns only',
+    [{ name: 'Base File', rows: [headerFor(crore), ...book.map((h, i) => holdingRow(h, crore, total, i, bad[i] ?? {}))] }]);
 
   return out;
 }

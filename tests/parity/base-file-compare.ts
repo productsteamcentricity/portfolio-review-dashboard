@@ -3,8 +3,10 @@
 //
 // Representation is normalised before comparing, so only behaviour differences remain: the new holding is
 // projected into the legacy row shape (labels as strings, XIRR as a fraction, Crore amounts, the purchase date as
-// "D Mon YYYY", folios joined by "/"). The legacy asset label is compared without regard to letter case, because the
-// legacy engine itself routes on the lower-cased label.
+// "D Mon YYYY", folios joined by "/"). The asset is the new canonical class, null when unknown, never the label as
+// given: an Asset Name the new reader does not recognise must show as a difference from the legacy label, not compare
+// equal to it. The class is compared with the legacy label without regard to letter case, because the legacy engine
+// itself routes on the lower-cased label.
 
 import type { BaseFileImport } from '../../app/src/ingest/base-file.ts';
 import type { Holding } from '../../app/src/model/holding.ts';
@@ -41,7 +43,7 @@ export function projectNew(h: Holding): Record<string, unknown> {
     client: h.clientLabel ?? '',
     name: h.instrumentName,
     category: h.categoryLabel ?? '',
-    asset: h.assetClass ?? h.assetLabel ?? null,
+    asset: h.assetClass,
     folio: h.folios.join('/'),
     amc: h.amcLabel ?? '',
     product: h.product,

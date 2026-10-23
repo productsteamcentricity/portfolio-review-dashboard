@@ -5,10 +5,17 @@ import type { AccountId, ClientId, DistributorId, FolioId, HoldingId, Instrument
 import type { RowRef } from './source.ts';
 
 /**
- * Canonical asset classes known at ingest (OD-7). A blank or unrecognised Asset Name leaves the class unknown
- * (null) with a notice; it never becomes Equity. engine/classify (M2.2) widens the table only with approval.
+ * Canonical asset classes known at ingest (OD-7): the five classes of the legacy Asset Allocation, in its order
+ * (07_engine.js:1147 assetOrder). A blank or unrecognised Asset Name leaves the class unknown (null) with a notice;
+ * it never becomes Equity. engine/classify (M2.2) widens the table only with approval.
  */
-export type AssetClass = 'Equity' | 'Debt' | 'Hybrid' | 'Commodity';
+export type AssetClass = 'Equity' | 'Debt' | 'Hybrid' | 'Commodity' | 'REITs/InvITs';
+
+/**
+ * A total of merged folios that is left missing because some folios have the value and others do not (a merge gap,
+ * KI-007, KI-113). It tells a merge gap apart from a value no folio has (for units: a product priced in rupees).
+ */
+export type MergeGap = 'invested' | 'fileGain' | 'units';
 
 /** Why a holding is excluded from every total (L3). OD-8: a holding without a market value is listed. */
 export type ExclusionReason = 'no-market-value';
@@ -50,6 +57,11 @@ export type Holding = {
   folioIds: FolioId[];
   /** For merged folios: the first row's date, as the legacy (an open item, see docs/DATA_DICTIONARY.md §5.3). */
   purchaseDate: Value<DayNumber>;
+  /**
+   * Units held. The legacy tax split reconciles a holding against these units and, when they are missing, switches
+   * to its rupee ledger (07_engine.js:393-405); a merge gap in units is listed in `mergeGaps`, so the engine never
+   * mistakes it for a product without units (M7).
+   */
   units: Value<number>;
   /** Invested value, Crore. Blank stays missing (KI-007); merged with any blank stays missing. */
   invested: Value<number>;
@@ -65,5 +77,10 @@ export type Holding = {
   bmXirr: Value<number>;
   /** "Avg. Holding Days"; for merged folios the first row's value, as the legacy (open item). */
   holdingDays: Value<number>;
+  /**
+   * The merged totals left missing by a merge gap, in the order invested, fileGain, units; empty when the holding
+   * is one row, or when every merged folio has each value or none has it.
+   */
+  mergeGaps: MergeGap[];
   inclusion: Inclusion;
 };

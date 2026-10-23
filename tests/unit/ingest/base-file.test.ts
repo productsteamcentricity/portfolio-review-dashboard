@@ -217,6 +217,22 @@ describe('missing values, OD-8 and KI-007', () => {
     assert.deepEqual([w.severity, w.decision, w.count], ['Warning', 'OD-8', 2]);
     assert.match(w.message, /Sample Flexi Cap Fund/);
   });
+  test('the OD-8 boundary: a market value of 0 is a real zero and the holding is included, as in the legacy (open with the owner)', () => {
+    // Pinned current behaviour, not a decision. OD-8 says a holding with no market value is excluded and "never shown
+    // at zero"; whether a market value of 0 counts as "no market value" is the owner's question (DATA_DICTIONARY.md
+    // §8, OD-8 question). The legacy pickCr read 0 as a value and kept the row; it skipped only a row with no number.
+    const imp = parseBaseFile(tiny([{ cmv: 0 }, { cmv: s('0.00') }, { cmv: s('-') }, { cmv: 2 }]), { sourceId: SRC, now: NOW });
+    assert.deepEqual(imp.holdings.map((h) => h.inclusion.status), ['included', 'included', 'excluded', 'included']);
+    for (const h of imp.holdings.slice(0, 2)) {
+      assert.ok(h.cmv.kind === 'value' && h.cmv.v === 0 && h.cmv.unit === 'cr', `${h.instrumentName}: a real zero`);
+    }
+    assert.equal(st(imp.holdings[2]!.cmv), STATUS.NOT_AVAILABLE, 'a placeholder is no market value');
+    assert.deepEqual([imp.counts.included, imp.counts.excluded], [3, 1]);
+    const w = issue(imp, 'base-file.no-market-value')!;
+    assert.equal(w.count, 1);
+    assert.match(w.message, /"Sample Fund 3"/);
+    assert.doesNotMatch(w.message, /"Sample Fund [12]"/, 'the zero-valued holdings are not listed as without a market value');
+  });
   test('a blank invested value stays missing, and so does the file gain', () => {
     const imp = parse('syn-blank-invested');
     const hs = included(imp);
@@ -242,13 +258,17 @@ describe('missing values, OD-8 and KI-007', () => {
 });
 
 describe('asset labels (OD-7) and other labels', () => {
-  test('blank stays unknown; Fixed Income and Debt Funds are Debt; case is ignored; Gold stays unknown with its label', () => {
+  test('blank stays unknown; Fixed Income and Debt Funds are Debt; case is ignored; Gold stays unknown with its label; REITs / InvITs is a class', () => {
     const imp = parse('syn-odd-asset-labels');
     assert.deepEqual(imp.holdings.map((h) => [h.assetLabel, h.assetClass]), [
-      [null, null], ['Fixed Income', 'Debt'], ['Debt Funds', 'Debt'], ['EQUITY', 'Equity'], ['Gold', null], ['Equity', 'Equity'],
+      [null, null], ['Fixed Income', 'Debt'], ['Debt Funds', 'Debt'], ['EQUITY', 'Equity'], ['Gold', null],
+      ['REITs / InvITs', 'REITs/InvITs'],
     ]);
     assert.deepEqual([issue(imp, 'base-file.blank-asset')?.severity, issue(imp, 'base-file.blank-asset')?.count], ['Warning', 1]);
-    assert.match(issue(imp, 'base-file.unrecognised-asset')!.message, /"Gold"/);
+    const unknown = issue(imp, 'base-file.unrecognised-asset')!;
+    assert.deepEqual([unknown.severity, unknown.count], ['Warning', 1]);
+    assert.match(unknown.message, /"Gold"/);
+    assert.doesNotMatch(unknown.message, /REIT/);
     assert.equal(issue(imp, 'base-file.asset-synonym')?.count, 2);
   });
   test('a blank Product Name reads as Mutual Funds, flagged; a blank Client Name and a total-like name are warned', () => {
@@ -276,12 +296,14 @@ describe('merged folios (E-02, KI-007, KI-113, KI-093)', () => {
     close(v(a!.cmv), 0.625);
     assert.equal(st(a!.fileGain), STATUS.NOT_AVAILABLE, 'KI-113: no partial gain');
     assert.equal(st(a!.units), STATUS.NOT_AVAILABLE, 'KI-113 rule applied to units');
+    assert.deepEqual(a!.mergeGaps, ['fileGain', 'units'], 'the merge gaps are named, not left to the reason text');
     close(v(a!.xirr), 14.25);
     // Holding 1 in two folios: 60 % at XIRR 13.8, 40 % at 8.8 -> 0.6 x 13.8 + 0.4 x 8.8 = 11.8; folio B has no invested value.
     close(v(b!.xirr), 11.8, 'CMV-weighted XIRR');
     close(v(b!.cmv), 0.452);
     assert.equal(st(b!.invested), STATUS.NOT_AVAILABLE, 'KI-007: no partial invested value');
     close(v(b!.units), 8000.5);
+    assert.deepEqual(b!.mergeGaps, ['invested', 'fileGain']);
     // Holding 2: folio A included (70 %), folio B without a market value excluded and listed on its own.
     close(v(c!.cmv), 0.6272);
     close(v(c!.invested), 0.56);
@@ -291,7 +313,27 @@ describe('merged folios (E-02, KI-007, KI-113, KI-093)', () => {
     assert.deepEqual([ex.instrumentName, ex.inclusion.status, ex.folios], [c!.instrumentName, 'excluded', ['SYN-1003-B']]);
     close(v(ex.invested), 0.24);
     assert.notEqual(ex.id, c!.id);
-    assert.equal(issue(imp, 'base-file.merge-incomplete')?.count, 2);
+    // One-row holdings never have a merge gap; holding 5 (the PMS) has no units, which is not a gap either.
+    for (const h of imp.holdings.slice(2)) assert.deepEqual(h.mergeGaps, [], h.instrumentName);
+    assert.equal(st(imp.holdings[6]!.units), STATUS.NOT_AVAILABLE);
+    const notice = issue(imp, 'base-file.merge-incomplete')!;
+    assert.equal(notice.count, 2);
+    assert.deepEqual(notice.scope, { kind: 'holdings', holdingIds: [a!.id, b!.id] });
+  });
+  test('folios of a product without units merge without units, and that is not a merge gap', () => {
+    const none: Cell = null;
+    const imp = parseBaseFile(tiny([{ units: none, cmv: 3 }, { units: none, cmv: 1 }], { sameHolding: true }), { sourceId: SRC, now: NOW });
+    const h = imp.holdings[0]!;
+    assert.equal(h.rows.length, 2);
+    assert.equal(st(h.units), STATUS.NOT_AVAILABLE);
+    assert.ok(h.units.kind === 'missing' && /every merged folio lacks units/.test(h.units.reason));
+    assert.deepEqual(h.mergeGaps, []);
+    assert.equal(issue(imp, 'base-file.merge-incomplete'), undefined);
+    // The same folios with units in one of them: a merge gap in units (M7 never reconciles it by amount).
+    const gap = parseBaseFile(tiny([{ units: n(100), cmv: 3 }, { units: none, cmv: 1 }], { sameHolding: true }), { sourceId: SRC, now: NOW });
+    assert.equal(st(gap.holdings[0]!.units), STATUS.NOT_AVAILABLE);
+    assert.deepEqual(gap.holdings[0]!.mergeGaps, ['units']);
+    assert.equal(issue(gap, 'base-file.merge-incomplete')?.count, 1);
   });
   test('a merged XIRR over part of the value records its coverage', () => {
     const imp = parseBaseFile(tiny([{ xirr: 10, cmv: 3 }, { xirr: null, cmv: 1 }], { sameHolding: true }), { sourceId: SRC, now: NOW });
@@ -331,7 +373,7 @@ function sheetOf(name: string, rows: Cell[][]): Workbook['sheets'][number] { ret
 const HEAD: Cell[] = ['Client Name', 'Instrument Name', 'Product Name', 'Distributor Name', 'Units',
   'Current Market Value (Cr.)', 'XIRR (%)', 'Purchase Date'].map(s);
 
-type TinyRow = { client?: string | null; name?: string; product?: string | null; units?: Cell; cmv?: number;
+type TinyRow = { client?: string | null; name?: string; product?: string | null; units?: Cell; cmv?: number | Cell;
   xirr?: number | null | Cell; date?: Cell };
 
 function tiny(rows: TinyRow[], o: { sameHolding?: boolean } = {}): Workbook {
@@ -341,7 +383,7 @@ function tiny(rows: TinyRow[], o: { sameHolding?: boolean } = {}): Workbook {
     r.product === null ? null : s(r.product ?? 'Mutual Funds'),
     s('Centricity'),
     r.units === undefined ? n(100) : r.units,
-    n(r.cmv ?? 1),
+    r.cmv === undefined ? n(1) : typeof r.cmv === 'number' ? n(r.cmv) : r.cmv,
     r.xirr === undefined ? n(10) : r.xirr === null ? null : typeof r.xirr === 'number' ? n(r.xirr) : r.xirr,
     r.date === undefined ? n(44942) : r.date,
   ]);

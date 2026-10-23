@@ -13,7 +13,7 @@ export type {
 export type {
   PublicationClass, RowRef, SheetAttempt, SkipReason, SkippedRow, SourceFile, SourceRole, UploadStage,
 } from './source.ts';
-export type { AssetClass, ExclusionReason, Holding, Inclusion } from './holding.ts';
+export type { AssetClass, ExclusionReason, Holding, Inclusion, MergeGap } from './holding.ts';
 export type {
   Account, Client, Distributor, Family, Folio, Holder, HolderRole, HoldingMode, Ownership, Plan,
 } from './ownership.ts';

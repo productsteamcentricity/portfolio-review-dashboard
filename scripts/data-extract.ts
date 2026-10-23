@@ -72,7 +72,7 @@ const SOURCE: Readonly<Record<string, { source: string; class: string }>> = {
   TAX_RULES: { source: 'DS-O1 Tax rules, Centricity owner table', class: 'P' },
   BENCHMARKS: { source: 'DS-O7 category to benchmark map, Centricity owner table', class: 'P' },
   MF_CAT_BM: { source: 'DS-O7 category to benchmark map, Centricity owner table (no consumer, KI-097)', class: 'P' },
-  MF_BENCHMARKS: { source: 'legacy benchmark risk rows of unknown provenance (02 E-93, KI-026)', class: 'P (published in index.html)' },
+  MF_BENCHMARKS: { source: 'unknown provenance: legacy benchmark risk rows that no tool produces (02 E-93, KI-026)', class: 'C until its source is confirmed (D-026: an unconfirmed source is private until approved; 02 E-93)' },
   MF_RISK: { source: 'DS-H2 Fund Risk Ratios, in-house', class: 'C source; this derived block is published in index.html (06: derived only)' },
   PMS_PERF: { source: 'DS-P1 PMS Scheme Performance', class: 'C source; this derived block is published in index.html (06: derived only)' },
   AIF_PERF: { source: 'DS-P2 AIF Performance', class: 'C source; this derived block is published in index.html (06: derived only)' },

@@ -7,11 +7,14 @@
 //   - XIRR units (OD-3, KI-005): percent-formatted cells are read as percentages automatically; an unformatted
 //     column whose values are all below 1.5 in size raises an analyst question and its values stay missing until it
 //     is answered (never a guess); otherwise the column holds percent numbers, as the template says;
-//   - asset (OD-7): "Fixed Income" and "Debt Funds" are Debt; a blank or unrecognised Asset Name stays unknown with
-//     a notice, never Equity;
-//   - no market value (OD-8, KI-057): the holding is excluded from every total and listed, never shown at zero;
+//   - asset (OD-7): the five legacy allocation classes (REITs/InvITs included) as labelled; "Fixed Income" and
+//     "Debt Funds" are Debt; a blank or unrecognised Asset Name stays unknown with a notice, never Equity
+//     (engine/classify/asset.ts);
+//   - no market value (OD-8, KI-057): the holding is excluded from every total and listed, never shown at zero; a
+//     market value that is not a number (INVALID SOURCE DATA) counts as none; a market value of 0 is a real zero and
+//     is included, as in the legacy (open with the owner, docs/DATA_DICTIONARY.md §8);
 //   - blank invested value stays missing (KI-007); merged folios with a blank invested value, gain or units leave
-//     that total missing instead of partial (KI-113);
+//     that total missing instead of partial (KI-113), and the holding names it in `mergeGaps`;
 //   - Allocation (%) is not read: weights are computed from market values by the engine (KI-093, OD-22), and the
 //     file's own rupee columns are not echoed (OD-22).
 // Column aliases, the money-unit precedence (Cr., then Lakh, then rupees) and the merge key (client, instrument,
@@ -20,12 +23,12 @@
 import type { Cell, Sheet, Workbook } from './workbook.ts';
 import type { NumberRead } from './cells.ts';
 import type { MoneyUnit } from '../engine/units.ts';
-import type { DayNumber, Provenance, Value } from '../model/value.ts';
+import type { DayNumber, MissingValue, Provenance, Value } from '../model/value.ts';
 import type {
   AccountId, ClientId, DistributorId, FolioId, HoldingId, SourceFileId,
 } from '../model/ids.ts';
 import type { RowRef, SheetAttempt, SkipReason, SkippedRow } from '../model/source.ts';
-import type { AssetClass, Holding } from '../model/holding.ts';
+import type { AssetClass, Holding, MergeGap } from '../model/holding.ts';
 import type { Account, Client, Distributor, Folio, HoldingMode, Ownership } from '../model/ownership.ts';
 import type {
   AnalystQuestion, Severity, ValidationResult, ValidationScope, XirrUnitChoice,
@@ -417,17 +420,26 @@ function readXirr(
 
 type Group = { key: string; members: RowRecord[] };
 
-/** Sum of a field over every member, or missing when any member lacks it (KI-007, KI-113: never a partial sum). */
+/**
+ * Sum of a field over every member, or missing when any member lacks it (KI-007, KI-113: never a partial sum).
+ * `gap` is true when some members have the value and others do not: a merge gap (Holding.mergeGaps). When no member
+ * has it the total is missing for the members' own reason, as for a single row (for units: a product priced in
+ * rupees), and that is not a gap.
+ */
 function sumAll(members: RowRecord[], pick: (m: RowRecord) => Value<number>, unit: 'cr' | 'units', what: string,
-  decision: string, prov: Provenance): Value<number> {
+  decision: string, prov: Provenance): { value: Value<number>; gap: boolean } {
   const vals = members.map(pick);
-  const gap = vals.find((v) => v.kind === 'missing');
-  if (gap && gap.kind === 'missing') {
-    return missing(gap.status, `a merged folio has no ${what} (${decision}): ${gap.reason}`, prov);
+  const lacking = vals.filter((v): v is MissingValue => v.kind === 'missing');
+  const first = lacking[0];
+  if (first && lacking.length === vals.length) {
+    return { value: missing(first.status, `every merged folio lacks ${what}: ${first.reason}`, prov), gap: false };
+  }
+  if (first) {
+    return { value: missing(first.status, `a merged folio has no ${what} (${decision}): ${first.reason}`, prov), gap: true };
   }
   let s = 0;
   for (const v of vals) if (v.kind === 'value') s = s + v.v;
-  return present(s, unit, { ...prov, method: `sum of ${members.length} merged folios` });
+  return { value: present(s, unit, { ...prov, method: `sum of ${members.length} merged folios` }), gap: false };
 }
 
 /**
@@ -686,8 +698,20 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
     const ids = rowIds.get(first.r)!;
     const merged = members.length > 1;
     const mProv = prov('base-file');
-    const cmv = merged ? sumAll(members, (m) => m.cmv, 'cr', 'market value', 'E-02', mProv) : first.cmv;
+    const cmv = merged ? sumAll(members, (m) => m.cmv, 'cr', 'market value', 'E-02', mProv).value : first.cmv;
     const total = cmv.kind === 'value' ? cmv.v : 0;
+    // KI-007 and KI-113: a total is summed only when every folio has it; a merge gap is recorded by name.
+    const mergeGaps: MergeGap[] = [];
+    const mergedTotal = (field: MergeGap, pick: (m: RowRecord) => Value<number>, unit: 'cr' | 'units', what: string,
+      decision: string): Value<number> => {
+      if (!merged) return pick(first);
+      const s = sumAll(members, pick, unit, what, decision, mProv);
+      if (s.gap) mergeGaps.push(field);
+      return s.value;
+    };
+    const invested = mergedTotal('invested', (m) => m.invested, 'cr', 'invested value', 'KI-007');
+    const fileGain = mergedTotal('fileGain', (m) => m.fileGain, 'cr', 'gain or loss', 'KI-113');
+    const units = mergedTotal('units', (m) => m.units, 'units', 'units', 'KI-113');
     const asset = assetOf(first.assetLabel);
     const folioNumbers = members.map((m) => m.folio).filter((f): f is string => f !== null);
     const folioIds: FolioId[] = [];
@@ -714,13 +738,14 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       folios: folioNumbers,
       folioIds,
       purchaseDate: first.purchaseDate,
-      units: merged ? sumAll(members, (m) => m.units, 'units', 'units', 'KI-113', mProv) : first.units,
-      invested: merged ? sumAll(members, (m) => m.invested, 'cr', 'invested value', 'KI-007', mProv) : first.invested,
+      units,
+      invested,
       cmv,
-      fileGain: merged ? sumAll(members, (m) => m.fileGain, 'cr', 'gain or loss', 'KI-113', mProv) : first.fileGain,
+      fileGain,
       xirr: merged ? mergedXirr(members, (m) => m.xirr, total, mProv) : first.xirr,
       bmXirr: merged ? mergedXirr(members, (m) => m.bmXirr, total, mProv) : first.bmXirr,
       holdingDays: first.holdingDays,
+      mergeGaps,
       inclusion,
     };
   };
@@ -788,8 +813,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
     issues.add('base-file.merged-folios', 'Information', { kind: 'holdings', holdingIds: mergedHoldings.map((h) => h.id) },
       `${plural(mergedHoldings.length, 'holding was', 'holdings were')} merged from ${included.length - groupOrder.length + mergedHoldings.length} rows with the same client, instrument, product and distributor.`,
       { decision: 'E-02', count: mergedHoldings.length, resolution: 'auto-resolved', status: 'resolved' });
-    const partial = mergedHoldings.filter((h) => [h.invested, h.fileGain, h.units].some((v) => v.kind === 'missing'
-      && /a merged folio has no/.test(v.reason)));
+    const partial = mergedHoldings.filter((h) => h.mergeGaps.length > 0);
     if (partial.length) {
       issues.add('base-file.merge-incomplete', 'Information', { kind: 'holdings', holdingIds: partial.map((h) => h.id) },
         `${plural(partial.length, 'merged holding has', 'merged holdings have')} a folio without an invested value, gain or units: that total is left blank rather than partial.`,

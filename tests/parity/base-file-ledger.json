@@ -6,7 +6,7 @@
   "test": "tests/parity/base-file.parity.test.ts",
   "notes": [
     "Every difference between the two outputs on the synthetic fixtures must match exactly one entry, and every entry must be used, under TZ=Asia/Kolkata and TZ=UTC.",
-    "Representation is normalised before comparing (tests/parity/base-file-compare.ts): labels as strings, XIRR as a fraction, Crore amounts, the purchase date as D Mon YYYY, folios joined by a slash, the asset label without regard to letter case. A difference left after that is a behaviour difference.",
+    "Representation is normalised before comparing (tests/parity/base-file-compare.ts): labels as strings, XIRR as a fraction, Crore amounts, the purchase date as D Mon YYYY, folios joined by a slash, the asset as the new class (null when unknown, never the label as given) compared with the legacy label without regard to letter case. A difference left after that is a behaviour difference.",
     "Classes follow 08-regression-test-plan.md section 5.4: correction (a known defect fixed, KI or OD named), improvement (a requirement changes the output), regression (a defect of the new code; must be empty for a merge).",
     "Value patterns: \"*\" any value; {\"type\": \"number\"} any number; {\"timesLegacy\": k} the new value is k times the legacy value."
   ],
@@ -204,7 +204,83 @@
       "new": null,
       "class": "correction",
       "reference": "KI-113",
-      "description": "The KI-113 rule applied to units: merged folios where one folio has no units leave the merged units missing instead of a partial sum (a partial sum would give a wrong implied NAV). Extension of KI-113 to units, made in M1.3 for the lead to confirm."
+      "description": "The KI-113 rule applied to units: merged folios where one folio has no units leave the merged units missing instead of a partial sum, and the holding lists units in mergeGaps. Base-file units are the base the legacy tax split reconciles each holding against (07_engine.js:393-405), and missing units switch that split to the rupee ledger (amtMode), which is meant for products priced in rupees (PMS, unlisted AIF). So the legacy partial sum reconciled a fund against too few units, and a missing value read the same way would reconcile a unit-priced fund by amount. M7 requirement: a unit-priced holding with a merge gap in units is never reconciled by amount; the engine tells the gap from a product without units by mergeGaps, never by the reason text. Extension of KI-113 to units, made in M1.3, for the owner to confirm (docs/DATA_DICTIONARY.md section 8)."
+    },
+    {
+      "id": "BF-19",
+      "kind": "field",
+      "field": "asset",
+      "fixtures": ["family-a-odd-asset-labels"],
+      "legacy": "Gold",
+      "new": null,
+      "class": "correction",
+      "reference": "OD-7 (extended beyond the blank case, pending the owner)",
+      "description": "An Asset Name the reader does not recognise (here \"Gold\") becomes unknown, kept as given, with a Warning. The legacy kept the label as the asset: it became its own Asset Allocation row after the five ordered classes (07_engine.js:1147-1159), and a mutual fund so labelled fell into the Equity MF bucket for performance and benchmarks (07_engine.js:1599-1609) unless its name or category marked it as a commodity fund. OD-7 decided only the blank case and two synonyms; reading any other label as unknown extends OD-7 and waits for the owner's confirmation (docs/DATA_DICTIONARY.md section 8)."
+    },
+    {
+      "id": "BF-20",
+      "kind": "field",
+      "field": "asset",
+      "fixtures": ["family-a-odd-asset-labels"],
+      "legacy": "REITs / InvITs",
+      "new": "REITs/InvITs",
+      "class": "correction",
+      "reference": "OD-7",
+      "description": "The spaced form \"REITs / InvITs\" reads as the class REITs/InvITs, the fifth class of the legacy Asset Allocation order (07_engine.js:1147), also an IPS row (11_app_ui.js:3903, 4840) with a fixed deck colour. The legacy matched the order by exact label, so the spaced form became a second allocation row beside REITs/InvITs. The exact label \"REITs/InvITs\" reads the same in both and is not a difference."
+    },
+    {
+      "id": "BF-21",
+      "kind": "holding-only-in-legacy",
+      "fixtures": ["family-a-invalid-text"],
+      "legacy": "*",
+      "new": null,
+      "class": "correction",
+      "reference": "BR-2.5; OD-8",
+      "description": "A market value written as text that is not a number (\"1.25 Cr\", \"12abc\") is INVALID SOURCE DATA: with no other market value column to read, the holding is excluded from every total and listed (OD-8), and the cell is counted in a Warning. The legacy parseFloat read the number off the front of the text and included the holding at it (1.25 and 12 Crore here)."
+    },
+    {
+      "id": "BF-22",
+      "kind": "field",
+      "field": "invCr",
+      "fixtures": ["family-a-invalid-text"],
+      "legacy": 1.25,
+      "new": null,
+      "class": "correction",
+      "reference": "BR-2.5; KI-007",
+      "description": "An invested value written as \"1.25 Cr\" is INVALID SOURCE DATA and stays missing, counted in a Warning. The legacy parseFloat read 1.25 Crore off the front of the text."
+    },
+    {
+      "id": "BF-23",
+      "kind": "field",
+      "field": "xirrFrac",
+      "fixtures": ["family-a-invalid-text"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "BR-2.5",
+      "description": "An XIRR written as \"12abc\" is INVALID SOURCE DATA and stays missing, counted in a Warning. The legacy parseFloat read 12 off the front of the text, a 12% return."
+    },
+    {
+      "id": "BF-24",
+      "kind": "field",
+      "field": "bmxirrFrac",
+      "fixtures": ["family-a-invalid-text"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "correction",
+      "reference": "BR-2.5",
+      "description": "As BF-23, for a BMXIRR written as \"1.25 Cr\" (the legacy read a 1.25% benchmark return)."
+    },
+    {
+      "id": "BF-25",
+      "kind": "field",
+      "field": "purchaseDate",
+      "fixtures": ["family-a-invalid-text"],
+      "legacy": "2 Mar 2024",
+      "new": "",
+      "class": "correction",
+      "reference": "BR-2.5",
+      "description": "An impossible text date (\"31-02-2024\") is INVALID SOURCE DATA and the purchase date stays missing, counted in a Warning. The legacy built the date with new Date(2024, 1, 31), which rolled it into March as 2 Mar 2024."
     }
   ]
 }

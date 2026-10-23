@@ -95,11 +95,11 @@
       "asOn": null,
       "asOnReason": "the embedded data records no as-on date for this block",
       "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
-      "class": "P (published in index.html)",
+      "class": "C until its source is confirmed (D-026: an unconfirmed source is private until approved; 02 E-93)",
       "file": "MF_BENCHMARKS.json",
       "records": 5,
       "sha256": "2b9e76d3b9216779de6c3859480996309a97518fa5c810bf2dff0be6bfe6ad48",
-      "source": "legacy benchmark risk rows of unknown provenance (02 E-93, KI-026)"
+      "source": "unknown provenance: legacy benchmark risk rows that no tool produces (02 E-93, KI-026)"
     },
     "MF_CAT_BM": {
       "asOn": null,

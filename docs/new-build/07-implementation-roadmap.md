@@ -260,7 +260,9 @@ dashboard (D-033); every other question proceeds on its default.
   with the IRR-derived gains, a file not in the template refused with the missing columns named, and no statement at
   all); `unit/ingest/capital-gains.test.ts` (the blank template downloaded by the app, filled with the synthetic
   `cg-statement` rows, loads without loss; the financial year from the sale date at the 31 March and 1 April
-  boundary; rupees to Crore); tax reconciliation (long + short + unclassified = CMV); harvesting set-off known
+  boundary; rupees to Crore); tax reconciliation (long + short + unclassified = CMV); a unit-priced holding with a
+  merge gap in units is never reconciled by amount (the gap is told from a product without units by
+  `Holding.mergeGaps`, never by reason text; `docs/DATA_DICTIONARY.md` §8, parity entry BF-18); harvesting set-off known
   answers; exemption already used computed from the statement; IPS known answer per row; weighted cost known answer;
   `unit/views/cost-controls.test.ts` (distributor filter re-bases, override at 350 bps round-trips, reset, per
   review); `unit/views/cvs-controls.test.ts` (Reset to Actual, Re-seed from plan, edited cells marked and kept across

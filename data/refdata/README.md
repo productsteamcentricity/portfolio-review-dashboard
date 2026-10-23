@@ -46,7 +46,10 @@ DATA; no date is assumed. The data month is the month of `DATA_DATES.performance
 The files hold the same data `index.html` already publishes. Each block's data source and class are recorded in
 `VINTAGE.json` from [06-data-source-inventory.md](../../docs/new-build/06-data-source-inventory.md): the Accord
 blocks are class P (D-023, D-026); `MF_RISK`, `PMS_PERF` and `AIF_PERF` are derived from class C sources whose
-derived data may be published; the fund ranks are reduced to scheme codes. No client data is ever here.
+derived data may be published; the fund ranks are reduced to scheme codes. `MF_BENCHMARKS` has no known source (no
+tool produces it; [02-capability-inventory.md](../../docs/new-build/02-capability-inventory.md) E-93, KI-026), so it
+is recorded as class C until its source is confirmed (D-026); the file holds the five rows `index.html` already
+publishes, and E-93 replaces them in M7. No client data is ever here.
 
 The private deny-list of the pre-push scanner is not applied to the generated block files, for the reason it is
 not applied to `index.html` (D-033): the public vendor data names listed companies and fund managers. Every generic
