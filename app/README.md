@@ -4,16 +4,19 @@ The new Portfolio Review application is built here, beside the legacy `index.htm
 page stays the review link until the new application reaches the parity defined in
 [05-feature-parity-matrix.md](../docs/new-build/05-feature-parity-matrix.md).
 
-**What exists (M1.2):** the toolchain, the page shell with the nine sections as empty states and the
+**What exists (M1.2, M1.3):** the toolchain, the page shell with the nine sections as empty states and the
 build. `scripts/build.mjs` bundles these sources into one offline HTML file, `app/dist/index.html` (git-ignored), that
-Pages publishes at `/next/` with a "Preview, not for client use" banner (D-024). The shared model and the base-file
-ingest arrive in M1.3 ([07-implementation-roadmap.md](../docs/new-build/07-implementation-roadmap.md)).
+Pages publishes at `/next/` with a "Preview, not for client use" banner (D-024). M1.3 added the shared model
+(`src/model/`), the workbook and base-file readers (`src/ingest/`), the engine helpers they use (`src/engine/`) and
+`src/views/format.ts`; no page uses them yet. M1.4 builds the first vertical slice on them
+([07-implementation-roadmap.md](../docs/new-build/07-implementation-roadmap.md)).
 
 ```
 npm ci              # the pinned tooling, from the lockfile
 npm run typecheck   # TypeScript, no emit
 npm run build       # app/dist/index.html
 npm run check       # the built page's invariants (CSP, no network, one allowed link, banner)
+npm test            # every test, .mjs and .ts (run it under TZ=UTC too)
 npm run serve       # http://127.0.0.1:8100/next/
 ```
 

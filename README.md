@@ -85,8 +85,8 @@ listed in [docs/README.md](docs/README.md). Before and after any change:
 | `tools/` | checks, the local preview server (`open-dashboard.cmd`), and `patches/`, the only way `index.html` changes |
 | `buildtools/` | the monthly data-refresh pipeline ([docs/MONTHLY_REFRESH.md](docs/MONTHLY_REFRESH.md)) |
 | `docs/` | how it works, decisions, known issues, change requests, refresh logs, the previous owner's handover |
-| `app/`, `data/`, `product_bank/`, `monthly_updates/` | the new application (CR-0006), built beside `index.html`; each folder has a README; `app/` holds the page shell from milestone M1.2, and data arrives from M1.3 ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) |
-| `scripts/`, `tests/` | the new build's tooling and tests: the safety checks and `check-next.mjs` in `scripts/validation/`, the build and the local server in `scripts/` ([docs/new-build/safety-tooling.md](docs/new-build/safety-tooling.md), [docs/new-build/toolchain.md](docs/new-build/toolchain.md)) |
+| `app/`, `data/`, `product_bank/`, `monthly_updates/` | the new application (CR-0006), built beside `index.html`; each folder has a README; `app/` holds the page shell from milestone M1.2 and the shared model and base-file reader from M1.3, and `data/refdata/` the reference data extracted from `index.html` (M1.3) ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) |
+| `scripts/`, `tests/` | the new build's tooling and tests: the safety checks and `check-next.mjs` in `scripts/validation/`, the build, the local server and the reference-data extractor in `scripts/`; the new application's unit and parity tests in `tests/` ([docs/new-build/safety-tooling.md](docs/new-build/safety-tooling.md), [docs/new-build/toolchain.md](docs/new-build/toolchain.md)) |
 | `package.json`, `package-lock.json`, `.npmrc` | the new application's pinned build tooling, installed with `npm ci` (D-025); the legacy page needs none of it |
 
 Never commit client files or vendor workbooks. `index.html` is changed only through anchored

@@ -203,8 +203,8 @@
       "legacy": { "type": "number" },
       "new": null,
       "class": "correction",
-      "reference": "KI-113",
-      "description": "The KI-113 rule applied to units: merged folios where one folio has no units leave the merged units missing instead of a partial sum, and the holding lists units in mergeGaps. Base-file units are the base the legacy tax split reconciles each holding against (07_engine.js:393-405), and missing units switch that split to the rupee ledger (amtMode), which is meant for products priced in rupees (PMS, unlisted AIF). So the legacy partial sum reconciled a fund against too few units, and a missing value read the same way would reconcile a unit-priced fund by amount. M7 requirement: a unit-priced holding with a merge gap in units is never reconciled by amount; the engine tells the gap from a product without units by mergeGaps, never by the reason text. Extension of KI-113 to units, made in M1.3, for the owner to confirm (docs/DATA_DICTIONARY.md section 8)."
+      "reference": "KI-113; D-035",
+      "description": "The KI-113 rule applied to units: merged folios where one folio has no units leave the merged units missing instead of a partial sum, and the holding lists units in mergeGaps. Base-file units are the base the legacy tax split reconciles each holding against (07_engine.js:393-405), and missing units switch that split to the rupee ledger (amtMode), which is meant for products priced in rupees (PMS, unlisted AIF). So the legacy partial sum reconciled a fund against too few units, and a missing value read the same way would reconcile a unit-priced fund by amount. M7 requirement: a unit-priced holding with a merge gap in units is never reconciled by amount; the engine tells the gap from a product without units by mergeGaps, never by the reason text. Extension of KI-113 to units, made in M1.3 and accepted by the lead (D-035; docs/DATA_DICTIONARY.md section 8)."
     },
     {
       "id": "BF-19",

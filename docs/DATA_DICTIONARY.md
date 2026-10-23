@@ -528,7 +528,7 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
   member rows are kept (`rows`), so the engine can compute either when the owner decides.
 - **Blank Product Name (M1.3, open).** Read as "Mutual Funds", as the legacy does, flagged on the holding and noted;
   no decision covers it.
-- **Unrecognised Asset Names (M1.3, open; question for the owner).** OD-7 decided the blank case (unknown, never
+- **Unrecognised Asset Names (M1.3, open; question for the owner, D-035).** OD-7 decided the blank case (unknown, never
   Equity) and two synonyms. The reader also leaves any other label unknown, kept as given, with a Warning, because
   reading it as a class would be a guess; that extends OD-7 beyond the blank case. The legacy kept such a label as
   the asset: its own Asset Allocation row after the five ordered classes (07_engine.js:1147-1159), and for a mutual
@@ -548,7 +548,7 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
   the same row, as the legacy `pickCr` order does, without a notice on the holding (KNOWN_ISSUES KI-147). The rule,
   the notice, a unit test and a clear §5.3 sentence are M1.4 acceptance items
   ([07-implementation-roadmap.md](new-build/07-implementation-roadmap.md) M1.4).
-- **Units of merged folios and the tax base (M1.3, open; the owner confirms BF-17 and BF-18).** Base-file units are
+- **Units of merged folios and the tax base (M1.3; BF-17 and BF-18 accepted by the lead as KI-113 extended, D-035).** Base-file units are
   the base the legacy tax split reconciles each holding against (07_engine.js:393-405); when a holding has no units,
   that split switches to the rupee ledger (`amtMode`), which suits products priced in rupees (PMS, unlisted AIF). The
   legacy summed the units the merged folios had, so a fund with one folio lacking units was reconciled against too
@@ -580,3 +580,4 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
 | v0.2 | 22 Oct 2026 | Milestone M1.3: types of `Value<T>`, units and dates (§2, §3), identifiers (§4), `SourceFile` and the base-file import record (§5.1), `Holding` with the reader's rules and the folio merge (§5.3), ownership and the proposed holder columns (§5.6), validation results and analyst questions (§5.8), audit entries (§5.14); percent numbers decided (§3, §8); two open items (§8) |
 | v0.3 | 23 Oct 2026 | M1.3 financial review: REITs/InvITs is the fifth asset class, as in the legacy allocation order (§5.3); `Holding.mergeGaps` tells a merge gap from a value no folio has, and units are named as the tax reconciliation base (§5.3); a market value that is not a number counts as none, and 0 is a real zero (§5.3); three open questions for the owner: unrecognised Asset Names, merged units and the M7 requirement, a market value of 0 (§8) |
 | v0.3 (re-review) | 23 Oct 2026 | Open items only, definitions unchanged (M1.3 re-review): folding the letter case of Asset Names goes beyond OD-7 and waits for the owner (§5.3, §8, BF-26); a Crore cell that is not a number beside a Lakh or rupee amount, decided in M1.4 (§8, KI-147) |
+| v0.3 (D-035) | 23 Oct 2026 | Status only (§8): BF-17 and BF-18 accepted by the lead as KI-113 extended to units (D-035); BF-19 and BF-26 wait for the owner |

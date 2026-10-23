@@ -350,3 +350,45 @@ remove each other's page).
 preview is not merged (D-017); the Pages fallback covers what reaches `main` anyway. `DEPLOYMENT.md` describes the
 notice, `CLAUDE.md` lists the new app's working rules, and the differences from the Phase 0 design in `toolchain.md`
 section 8 are confirmed.
+
+## D-035 — Reference data in the repository and base-file reading conventions (23 Oct 2026, lead under D-033)
+**Context.** Milestone M1.3 built the new application's shared model, its base-file reader with a parity ledger
+against the legacy `parseBaseRows` (`tests/parity/base-file-ledger.json`), and `data/refdata/`, the reference data
+the legacy page embeds, as one JSON file per block (`scripts/data-extract.ts`). Its financial review and re-review
+(23 Oct 2026) left the lead to decide whether generated data lives in the public repository and under which scan
+rules, the class of each block, and which of the reader's differences from the legacy are accepted.
+**Decision.**
+1. **Extracted, never edited.** `data/refdata/*.json` is written deterministically from the blocks of `index.html`
+   by `scripts/data-extract.ts` (keys sorted, one top-level entry per line, LF) and checked equal to them: CI runs
+   `node scripts/data-extract.ts --check`, and `tests/parity/refdata.parity.test.ts` proves each file deep-equal to
+   the block the legacy page runs on. `VINTAGE.json` records the data month, the legacy `DATA_DATES` and, per file,
+   the record count, SHA-256, source, class and as-on date (null with a status when the page records none).
+2. **Fund ranks: scheme codes only.** `FUND_RANKS` is reduced to `FUND_RANKS_CODES.json`, fund name to AMFI scheme
+   code, with no score, rank, status or metadata; `FUND_RANKS_META` is not extracted (D-026).
+3. **Deny-list exemption.** The generated block files are exempt from the private deny-list scan for the reason
+   `index.html` is (D-033): their public vendor data names listed companies and fund managers. Each is exempt by
+   its exact path in `scripts/validation/privacy-allowlist.json`; a test pins the exempt paths under
+   `data/refdata/` to the extractor's block files; every generic rule still applies to them; `data/refdata/README.md`
+   and `VINTAGE.json` are scanned with the deny-list.
+4. **Classes.** The `MF_RISK`, `PMS_PERF` and `AIF_PERF` blocks are publishable, class P as data in
+   `data/refdata/`: derived data that D-023 permits and that `index.html` already publishes. Their source files keep
+   the class that `06-data-source-inventory.md` and `publication-classes.json` give them (DS-H2, DS-P1 and DS-P2,
+   class C until approved; the producer of DS-P1 is still to be named, Q-24), which is why `VINTAGE.json` records
+   each block as a derived block of a class C source that is published.
+5. **`MF_BENCHMARKS`** has no known source (no tool produces it; `02-capability-inventory.md` E-93, KI-026): class
+   C until its source is confirmed (D-026). It stays in `data/refdata/` because `index.html` already publishes the
+   same five rows; E-93 replaces it in M7.
+6. **The base-file parity ledger.** The corrections BF-01 to BF-25 are accepted: BF-18 (merged units left missing
+   when a folio has none, the gap named in `Holding.mergeGaps`) as an extension of KI-113 to units, with the M7
+   requirement of `DATA_DICTIONARY.md` §8 (a unit-priced holding with a merge gap in units is never reconciled by
+   amount). BF-19 (an unrecognised Asset Name such as "Gold" becomes unknown with a notice, beyond OD-7) waits for
+   the owner's confirmation, and so does BF-26, which the re-review added (letter case of Asset Names folded).
+**Alternatives.** Reading the blocks out of `index.html` at build time (rejected: no reviewable data diff, and the
+new application would depend on the legacy file until M11); committing `FUND_RANKS` whole (rejected: D-026);
+applying the deny-list to the generated files with every public namesake allow-listed (rejected: thousands of
+vendor names, and an allow-list that long would hide a real hit).
+**Consequences.** `safety-tooling.md` and `data/refdata/README.md` record the exemption as confirmed. A data
+refresh that changes `index.html` regenerates `data/refdata/` in the same change (`MONTHLY_REFRESH.md` Step 8),
+or CI fails. The legacy reading defects the parity work found are KI-140 to KI-145, with their IPS consequence
+KI-146: live-page data fixes for a later legacy batch (D-028). The new reader's money-column fallback is KI-147,
+decided in M1.4. The owner's questions are in `DATA_DICTIONARY.md` §8.

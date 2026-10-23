@@ -52,6 +52,6 @@ is recorded as class C until its source is confirmed (D-026); the file holds the
 publishes, and E-93 replaces them in M7. No client data is ever here.
 
 The private deny-list of the pre-push scanner is not applied to the generated block files, for the reason it is
-not applied to `index.html` (D-033): the public vendor data names listed companies and fund managers. Every generic
-rule still applies, and this README and `VINTAGE.json` are scanned in full
+not applied to `index.html` (D-033; confirmed for these files by D-035): the public vendor data names listed
+companies and fund managers. Every generic rule still applies, and this README and `VINTAGE.json` are scanned in full
 ([safety-tooling.md](../../docs/new-build/safety-tooling.md)).

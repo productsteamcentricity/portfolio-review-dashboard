@@ -6,7 +6,8 @@
   D-024 to D-033). Milestone M1.1: the safety tooling and the Phase 0 records merged in PR #10 (`2a65a62`); the rest
   of M1.1, with the lead's records, is on `chore/m1-1-rest-int`, ready for its pull request (Changes, below). M1.2
   is integrated on `feat/m1-2-int`, stacked on it, with its records and D-034 (23 Oct 2026), ready for its own pull
-  request after M1.1. M1.3 is built on its own branch and follows.
+  request after M1.1. M1.3 is integrated on `feat/m1-3-int`, stacked on M1.2, with its records, D-035 and KI-140 to
+  KI-147 (23 Oct 2026), ready for its own pull request after M1.2. M1.4 is next.
 
 ## Request
 Build a clean new application that keeps every capability of the existing dashboard and improves it:
@@ -53,6 +54,11 @@ rebalancing method) is out of scope; the data structures for it are in scope.
   install scripts, one deterministic offline file with a hash CSP, static navigation, vendored libraries checked by
   SHA-256), and the `/next/` preview never blocks the legacy page: when it cannot be built, Pages publishes a notice
   there and deploys the legacy page as usual.
+- **23 Oct 2026, D-035 (lead under D-033):** the reference data in the repository (`data/refdata/`, extracted from
+  `index.html` and checked equal; fund ranks reduced to scheme codes; the generated block files exempt from the
+  private deny-list as `index.html` is; the classes of `MF_RISK`, `PMS_PERF`, `AIF_PERF` and `MF_BENCHMARKS`) and the
+  base-file reading conventions (the parity ledger's corrections BF-01 to BF-25 accepted, BF-18 as KI-113 extended
+  to units; BF-19 and BF-26 wait for the owner).
 
 ## Plan
 1. **Phase 0 (done, 22 Oct 2026):**
@@ -81,15 +87,22 @@ rebalancing method) is out of scope; the data structures for it are in scope.
 | M1.1 | The lead's records for the rest of M1.1: `CHANGELOG.md`, `docs/PROJECT_STATE.md`, `docs/HANDOVER.md` (refreshed for the end of M1.1), the PRD's §13 status; `CLAUDE.md`, `docs/HANDOVER.md` and three project agents point at the moved legacy architecture, and `CLAUDE.md` names the new one and the two new checks | `chore/m1-1-rest-int` (on `chore/m1-1-rest`) | ready for its pull request |
 | M1.2 | The toolchain (esbuild 0.28.2, TypeScript 7.0.2, Preact 10.29.8, pinned, lockfile, `.npmrc`), `scripts/build.mjs` (one offline `app/dist/index.html` with a hash CSP), `scripts/validation/check-next.mjs`, `scripts/serve.mjs`, the nine-section shell with the Screener pack slot, the CI steps and `/next/` in `pages.yml`, tests and the browser spike ([`../new-build/toolchain.md`](../new-build/toolchain.md)) | `feat/m1-2-toolchain-shell` | reviewed; carried by `feat/m1-2-int` |
 | M1.2 | Integration on top of M1.1: the merge (conflicts resolved keeping both sides; CI job `next` in one order with the release check last); the fix of QA defect D1 (Enter or a click on any section link moves focus to its heading; links read "1 Uploads and inputs"); the Pages fallback (a failing preview never blocks the legacy page, D-034); the records: D-034, `CLAUDE.md` (the new app's working rules), the living architecture, DEPLOYMENT, the root README's two-apps section, HANDOVER, PROJECT_STATE, CHANGELOG, the PRD's §13 | `feat/m1-2-int` (on `chore/m1-1-rest-int`) | ready for its pull request after M1.1's; the browser QA by hand (`toolchain.md` §9) and the first CI and Pages runs are still to come |
+| M1.3 | The shared model (`app/src/model/`), the workbook and base-file readers (`app/src/ingest/`) and their engine helpers, `scripts/data-extract.ts` with `data/refdata/` and `VINTAGE.json`, `scripts/validation/traceability.mjs`, the fixture generator, unit and parity tests with the ledger BF-01 to BF-25; the financial review's fixes (REITs/InvITs, merge gaps, the asset class compared honestly, invalid text) | `feat/m1-3-model-ingest-r2` | reviewed twice; carried by `feat/m1-3-int` |
+| M1.3 | Integration on top of M1.2: the merge (CI job `next` with M1.3's tests in both zones, traceability and `data-extract.ts --check`); the type check over M1.3's code, `"type": "module"` with the legacy tooling kept CommonJS, `// covers:` headers for M1.2's tests; the re-review's fixes (the asset class compared exactly, BF-26); the records: D-035, KI-140 to KI-147, `CLAUDE.md`, the living architecture, DATA_DICTIONARY §8, the roadmap's M1.4 items, MONTHLY_REFRESH Step 8, HANDOVER, PROJECT_STATE, CHANGELOG, the PRD's §13 | `feat/m1-3-int` (on `feat/m1-2-int`) | ready for its pull request after M1.2's |
 
 `CHANGELOG.md` stays at the repository root rather than moving to `docs/` as `09-repository-and-docs-structure.md` §6
 planned (the lead's decision, 22 Oct 2026). Still to do in M1.1: its last pull request (push `chore/m1-1-rest-int`,
 attach the report of `release-check.mjs --after-push` to the pull request, merge it once CI is green, D-017). The root
 README's section on the two applications during the parallel run and how to run both (`09` §6), proposed for M1.2's
-records, is written on `feat/m1-2-int`.
+records, is written on `feat/m1-2-int`. After M1.3, M1.4 (the first vertical slice: the portfolio overview end to
+end) is next; its acceptance list carries KI-147 from M1.3.
 
 ## Open
 - **Owner:** your own list of issues with the existing dashboard (screenshots or notes).
 - **Screener owner:** run the data pack prompt and send the first pack and the backfill.
+- **Owner, from M1.3** ([`../DATA_DICTIONARY.md`](../DATA_DICTIONARY.md) §8): unrecognised Asset Names such as
+  "Gold" (BF-19); letter case of Asset Names (BF-26); a market value of 0; for M1.4, a Crore cell that is not a
+  number beside a Lakh amount (KI-147); and a private count of variant asset labels in the real base files (KI-145,
+  KI-146).
 - **Answered on 22 Oct 2026:** ND-1 to ND-10 (D-024 to D-033); the index data for drawdown comparisons is the five
   Index TRI files already in each month's inbox (D-023 addendum).
