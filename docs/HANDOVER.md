@@ -3,7 +3,7 @@
 For a developer (or a Claude Code session) taking over the Centricity Portfolio Review Dashboard
 without access to earlier conversations.
 
-**Last refreshed:** 22 Oct 2026 (milestone M1.1 of the new build; the owner's answers D-024 to D-033). Refreshed at every milestone and at the end of every
+**Last refreshed:** 23 Oct 2026 (the end of milestone M1.1 of the new build). Refreshed at every milestone and at the end of every
 monthly cycle from the 2026-10 data month ([monthly-prds/](monthly-prds/README.md)).
 
 ## 1. The product in brief
@@ -22,13 +22,15 @@ Local working copy on the Products team laptop: `C:\dev\portfolio-review` (outsi
 **A new application is being built** (CR-0006, the owner's brief of 21 Oct 2026): a clean rebuild with feature parity,
 published beside `index.html`, which stays the review link until parity. Phase 0 (audit, architecture, parity matrix,
 roadmap) was delivered on 22 Oct 2026; on 22 Oct 2026 the owner answered the ten open decisions (D-024 to D-033) and
-gave Claude full charge of GitHub and the dashboard (D-033). Milestone M1.1 (safety tooling, records, living documents)
-is ready for its pull request. No new application code exists yet.
+gave Claude full charge of GitHub and the dashboard (D-033). Milestone M1.1 (safety tooling, records, living documents,
+the release checks and the folder skeleton) is merged in part (PR #10) and complete once its last branch merges
+(section 8). M1.2 (toolchain, nine-section shell, the `/next/` preview) and M1.3 (shared model, base-file ingest) are
+built on their own branches and follow. No new application code is on `main` yet.
 
 ## 2. Read in this order
 1. `CLAUDE.md` — the rules and commands (10 minutes).
 2. `docs/README.md` — the map of every document and record.
-3. `docs/ARCHITECTURE.md` — how the file is built and where each calculation lives.
+3. `docs/legacy/ARCHITECTURE.md` — how the file is built and where each calculation lives.
 4. `docs/KNOWN_ISSUES.md` — what is broken or fragile.
 5. `docs/PROJECT_STATE.md` — blockers, next steps, backlog.
 6. `docs/MONTHLY_REFRESH.md` — the monthly data refresh: the owner's part and the runbook.
@@ -41,9 +43,11 @@ For the new build, then:
 1. `docs/new-build/README.md`: the Phase 0 record (the owner's brief, deliverables 01 to 09, the rule bank, the deck
    design system, the open questions, the investigator inputs) and which living document owns what.
 2. `docs/PRD.md`: the living PRD (what the new application must do).
-3. `docs/new-build/07-implementation-roadmap.md` and `docs/DECISIONS.md` D-024 to D-033: the milestones, and the
+3. `docs/ARCHITECTURE.md`: the new application's living architecture (how it is built: stack, layers, modules,
+   engine, outputs, security, deployment), with the section numbers of `docs/new-build/03-architecture.md`.
+4. `docs/new-build/07-implementation-roadmap.md` and `docs/DECISIONS.md` D-024 to D-033: the milestones, and the
    owner's answers of 22 Oct 2026 to ND-1 to ND-10 (`docs/new-build/owner-decisions-new-build.md`).
-4. `docs/DATA_DICTIONARY.md` and `docs/MONTHLY_UPDATE_GUIDE.md`: the new data model (v0.1), the planned monthly flow
+5. `docs/DATA_DICTIONARY.md` and `docs/MONTHLY_UPDATE_GUIDE.md`: the new data model (v0.1), the planned monthly flow
    and the list of files the owner supplies each month.
 
 ## 3. Run and test
@@ -54,6 +58,7 @@ node tools/serve-dashboard.js       # http://127.0.0.1:8099 (or double-click too
 node tools/make-sample-base.js      # synthetic files to upload (test-data/)
 node scripts/validation/docs-links.mjs          # every relative link in the docs resolves
 node --test "tests/**/*.test.mjs"               # tests of the new-build tooling
+node scripts/validation/release-check.mjs       # the release state of a branch before its merge (report for the PR)
 ```
 Setup details: `docs/DEVELOPMENT_SETUP.md`. Browser acceptance: `docs/TESTING.md` §4.
 
@@ -98,11 +103,15 @@ data interpretation) · `implementation-engineer` (anchored patches) · `qa-engi
 browser acceptance) · `security-release-reviewer` (pre-commit / pre-push gate) · `refresh-operator`
 (runs a monthly refresh by the runbook; never publishes).
 
-## 8. Git state (22 Oct 2026)
-- `main` and `origin/main` at `8cb320d` (merge of PR #8: CR-0006 and D-023). `index.html` MD5
-  `EF2FF4F198A41FE02404B3617CBAD36E`, unchanged since `782794f`.
-- Milestone M1.1, local and not yet pushed: `feat/m1-1-safety-tooling` (the safety tooling) and, on top of it,
-  `docs/m1-1-new-build-docs` (the Phase 0 records, the living documents and the owner's answers of 22 Oct 2026).
-- Legacy fix batch 2a (OD-32, OD-34, KI-124; D-022) is being built on `fix/legacy-batch-2a`.
-- Not created yet: the baseline tag `legacy-baseline-782794f` (M1.1).
+## 8. Git state (23 Oct 2026)
+- `main` and `origin/main` at `2a65a62` (merge of PR #10: the M1.1 safety tooling, the Phase 0 records and the
+  owner's answers). Legacy fix batch 2a (OD-32, OD-34, KI-124) merged before it in PR #9; `index.html` MD5
+  `911A04659CB34383E478416B54E9C306`.
+- The baseline tag `legacy-baseline-782794f` (on `782794f`) is on the remote.
+- Local and not yet pushed:
+  - `chore/m1-1-rest-int`: the rest of M1.1 (`chore/m1-1-rest`: the release check and the monthly PRD check, the
+    folder skeleton, the living architecture with the legacy one moved, KI-129 to KI-139) with the lead's records on
+    top; ready for its pull request.
+  - `feat/m1-2-toolchain-shell` (M1.2) and `feat/m1-3-model-ingest-r2` (M1.3), each built from `main` and reviewed;
+    integrated after M1.1, each with its own records and pull request.
 - To resume: read section 2, then the next steps in `docs/PROJECT_STATE.md`.

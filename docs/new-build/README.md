@@ -19,7 +19,7 @@ open questions are recorded in [DECISIONS.md](../DECISIONS.md) and marked "answe
 | Field, metric, status and unit definitions | [docs/DATA_DICTIONARY.md](../DATA_DICTIONARY.md) (v0.1) | `03-architecture.md` §6, §8, §16; `observation-rule-bank.md` §1, §2 |
 | The monthly process, and the files the owner supplies each month | [docs/MONTHLY_UPDATE_GUIDE.md](../MONTHLY_UPDATE_GUIDE.md) (new engine, planned; the tracked list of monthly files, in use now); [docs/MONTHLY_REFRESH.md](../MONTHLY_REFRESH.md) (legacy pipeline, in use) | `03-architecture.md` §13 |
 | The monthly PRD | [docs/monthly-prds/](../monthly-prds/README.md) | the brief's Phase 12 |
-| How the new application is built | [03-architecture.md](03-architecture.md) until it becomes `docs/ARCHITECTURE.md`, when today's (legacy) [ARCHITECTURE.md](../ARCHITECTURE.md) moves to `docs/legacy/` (`09` §6; not done yet) | `03-architecture.md` |
+| How the new application is built | [docs/ARCHITECTURE.md](../ARCHITECTURE.md) (from M1.1, with the same section numbers); the legacy architecture moved to [docs/legacy/ARCHITECTURE.md](../legacy/ARCHITECTURE.md) (`09` §6) | `03-architecture.md` |
 | Status, blockers, next steps | [docs/PROJECT_STATE.md](../PROJECT_STATE.md) | `07-implementation-roadmap.md` |
 | Decisions | [docs/DECISIONS.md](../DECISIONS.md) (D-024 to D-033 for the new build) | [owner-decisions-new-build.md](owner-decisions-new-build.md) (ND-1 to ND-10, answered 22 Oct 2026) |
 
@@ -72,7 +72,7 @@ working folders and are not committed; they held no client data.
 
 | File | What it is |
 |---|---|
-| [safety-tooling.md](safety-tooling.md) | The privacy scan, docs link check, pre-push scan and hook built in M1.1: rules, allow-list, private deny-list, how to run them |
+| [safety-tooling.md](safety-tooling.md) | The privacy scan, docs link check, pre-push scan and hook, release check and monthly PRD check built in M1.1: rules, allow-list, private deny-list, how to run them |
 
 Every file in this folder passed `scripts/validation/privacy-scan.mjs` with the private deny-list and
 `scripts/validation/docs-links.mjs` before it was committed (22 Oct 2026, and again after the revision of 22 Oct 2026).

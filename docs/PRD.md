@@ -11,10 +11,10 @@
 This PRD states **what** the product must do. How it is built is in `ARCHITECTURE.md`; field and metric definitions
 are in `DATA_DICTIONARY.md`. Owner questions are Q-nn; decisions D-nnn and OD-nn; milestones M-n.
 
-*`ARCHITECTURE.md` in this PRD means the new application's architecture. Until it moves to `docs/ARCHITECTURE.md`
-(when the legacy architecture moves to `docs/legacy/`, `09-repository-and-docs-structure.md` §6), it is
-[`docs/new-build/03-architecture.md`](new-build/03-architecture.md); the current
-[`docs/ARCHITECTURE.md`](ARCHITECTURE.md) describes the legacy `index.html`.*
+*`ARCHITECTURE.md` in this PRD means the new application's architecture, [`docs/ARCHITECTURE.md`](ARCHITECTURE.md)
+(from M1.1; its section numbers are those of the Phase 0 record
+[`docs/new-build/03-architecture.md`](new-build/03-architecture.md)). The legacy `index.html` is described in
+[`docs/legacy/ARCHITECTURE.md`](legacy/ARCHITECTURE.md).*
 
 ---
 
@@ -318,8 +318,8 @@ weights (KI-029). Documented in full at M16.
 | Area | Status |
 |---|---|
 | Phase 0 audit and design | done; the owner's answers of 22 Oct 2026 applied |
-| New application | M1.1 ready for its pull request (safety tooling, Phase 0 records and the living documents); no application code yet; M1.2 and M1.3 need no further owner input (npm and the `/next/` preview decided, D-024, D-025) |
-| Legacy application | live at `/` (`index.html` as of `782794f`); during the parallel run it receives calculation, data and security fixes only (D-028; batch 2a in progress) |
+| New application | M1.1: the safety tooling, the Phase 0 records and the living documents merged (PR #10); the rest (the release and monthly PRD checks, the folder skeleton, the living `ARCHITECTURE.md`) ready for its pull request. No application code on `main` yet; M1.2 (toolchain, shell, `/next/` preview) and M1.3 (shared model, base-file ingest) are built on their own branches and need no further owner input (npm and the `/next/` preview decided, D-024, D-025) |
+| Legacy application | live at `/` (`index.html` with fix batch 2a since PR #9, MD5 `911A0465…`; this PRD's legacy reference stays `782794f`, tag `legacy-baseline-782794f`); during the parallel run it receives calculation, data and security fixes only (D-028) |
 | Feature parity | 376 matrix rows, all "not started" |
 | Owner decisions outstanding | none: ND-1 to ND-10 answered on 22 Oct 2026 (D-024 to D-033); every other question proceeds on its default, and Claude decides open technical questions under D-033 |
 
@@ -332,3 +332,5 @@ weights (KI-029). Documented in full at M16.
 | 0.3 | 22 Oct 2026 | D-023 and the MF Screener data pack: the Screener pack and price file in section 1 (R-IN-10, R-IN-11); portfolio 3Y and 5Y returns and direct-equity CAGR (R-HP-6, R-HP-7, §6); drawdown comparison on index data (R-AN-11); historical holdings and FoF from the pack (R-AN-6, R-AN-7); projection basis (R-RB-3); publication per D-023 (R-MU-1, R-MU-2, §11); documents in `docs/new-build/`; owner decisions ND-1 to ND-10 |
 | 0.3 (M1.1) | 22 Oct 2026 | Committed as `docs/PRD.md`, the living PRD: status row, the note on `ARCHITECTURE.md` and the §13 status updated; content unchanged |
 | 0.4 | 22 Oct 2026 | The owner's answers (D-024 to D-033): the MF Screener data pack slot kept in the browser and the absence messages (§3, R-IN-10, R-IN-12, R-MU-2, §11; D-026); the capital-gains template (§3, R-IN-6, §6; D-032); the dash for missing values, no dashes in sentences (§7, R-OB-2; D-029); the overlapping-pair threshold of 35% (§6; D-030); borders and Actionables (§7; D-031); the live page's fix policy (§11, §13; D-028); the Index TRI files as the drawdown data (R-AN-11); §13 status |
+| 0.4 (links) | 22 Oct 2026 | The note on `ARCHITECTURE.md`: `docs/ARCHITECTURE.md` is now the new application's architecture and the legacy one is `docs/legacy/ARCHITECTURE.md` (M1.1); requirements unchanged |
+| 0.4 (status) | 23 Oct 2026 | §13 status at the end of M1.1: the rest of M1.1 ready for its pull request, M1.2 and M1.3 built on their own branches, the legacy page with fix batch 2a; requirements unchanged |

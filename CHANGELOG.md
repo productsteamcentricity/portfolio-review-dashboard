@@ -5,6 +5,34 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ## [Unreleased]
 
 ### Added
+- **The rest of milestone M1.1 of the new build (CR-0006): the release checks, the folder skeleton and the living
+  architecture.** `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
+  - `scripts/validation/release-check.mjs` (BR-1.1), read-only: the state a release of the legacy page or of `/next/`
+    must be in before its merge. It checks the recorded remote (no token in its URLs), the default branch, a named
+    branch other than `main`, a clean working tree, the commits ahead of and behind `origin/main` (conventional
+    prefixes), no local or generated file in the change, `index.html` changed only with a patch script in
+    `tools/patches/` or on a `data/` refresh branch (`--expect-md5` pins it), `CHANGELOG.md` and `PROJECT_STATE.md`
+    changed with the release, and the commit identity setting; `--after-push` checks the remote's copy of the branch
+    (`git ls-remote`) and `--ci` reads the branch names from GitHub. It prints the change by area and
+    `git diff --stat`, the report attached to the pull request.
+  - `scripts/validation/monthly-prd-check.mjs` (Q-76; AC-23 from M14): each
+    `docs/monthly-prds/YYYY-MM-Portfolio-Review-PRD.md` has its month in the file name and title, the nine sections A
+    to I of `TEMPLATE.md` in order and none empty, no template placeholder left, working links and no privacy or
+    deny-list hit, and `docs/HANDOVER.md` was refreshed in the same cycle.
+  - Tests in `tests/validation/` (throwaway git projects with a bare remote; a synthetic monthly PRD fixture). The CI
+    job `next` gains two steps: the monthly PRD check and, last, the release check in its CI form, after fetching
+    `main` (the checkout is shallow). The `checks` job is unchanged.
+  - The folder skeleton, READMEs only: `app/` (code from M1.2), `data/` (M1.3), `product_bank/` (M11) and
+    `monthly_updates/` (the `YYYY-MM` layout and the drop rules), with
+    `monthly_updates/_policy/publication-classes.json`: the publication classes of D-023 and D-026 by role (every
+    Accord file and Centricity material class P; client data and the MF Screener data pack class N, never
+    committed), pinned by a test to the decisions and to the pre-push scan's month-folder pattern and size limit.
+  - `docs/ARCHITECTURE.md` is now the new application's living architecture, condensed from
+    `docs/new-build/03-architecture.md` (kept as the dated Phase 0 record) with the same section numbers; field and
+    calculation definitions stay in `DATA_DICTIONARY.md`.
+  - KNOWN_ISSUES: KI-129 to KI-139, the Phase 0 audit's N-1 to N-10 and the Holdings download-bar finding U-23, each
+    re-checked on `main` at `2a65a62` before it was filed. KI-135 is the same defect as KI-126 and is tracked there;
+    KI-138 (former fund-house names not aliased) was already fixed by fix batch 2a (OD-32) and is filed as fixed.
 - **The owner's answers to the new-build decisions (22 Oct 2026), milestone M1.1.** Documentation and one test;
   `index.html` is unchanged.
   - DECISIONS D-024 to D-033: the `/next/` preview and no client use of its exports (D-024); npm for build tooling
@@ -53,6 +81,19 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Change requests CR-0004 (the second export request) and CR-0005 (audit, fixes and redesign).
 
 ### Changed
+- **The legacy architecture moved to `docs/legacy/ARCHITECTURE.md` (M1.1)**, a pure rename in a commit of its own so
+  that `git log --follow` keeps its history. Every link follows it: `docs/README.md`, the PRD, DATA_DICTIONARY,
+  MONTHLY_UPDATE_GUIDE, REPLICATION_REPORT, `docs/new-build/README.md`, CLAUDE.md (conventions and repository
+  layout), HANDOVER (reading order) and three project agents (`dashboard-archaeologist`, `financial-domain-reviewer`
+  and `implementation-engineer`; the pointer only).
+- **`CHANGELOG.md` stays at the repository root**, rather than moving to `docs/CHANGELOG.md` as
+  `docs/new-build/09-repository-and-docs-structure.md` §6 planned (the lead's decision, 22 Oct 2026).
+- **New build records at the end of M1.1:** CLAUDE.md (the new architecture in the "New build" list, the release
+  check before a merge, the monthly PRD check, the Screener pack kept in the browser until a newer one (D-026), the
+  new folders in the repository layout), HANDOVER (refreshed 23 Oct 2026: status, reading order, git state),
+  PROJECT_STATE (M1.1 complete once this branch merges, M1.2 and M1.3 next), CR-0006 (Changes, and what is left of
+  M1.1), the PRD's §13 status, the root README's folder table, `docs/README.md`, TESTING (the two checks and their
+  tests), the safety-tooling notes and the monthly PRD README.
 - **New build documents updated for the owner's answers (22 Oct 2026):** the architecture (the Screener pack slot and
   browser store, §6.9; the capital-gains template, §6.10; the dash rule; §21 now a record), the rule bank (35% pair
   threshold, approved table, lint), the deck design system (dash marker, heat bands at 35% and 50%, D-031 tokens), the
