@@ -6,7 +6,7 @@
   "test": "tests/parity/base-file.parity.test.ts",
   "notes": [
     "Every difference between the two outputs on the synthetic fixtures must match exactly one entry, and every entry must be used, under TZ=Asia/Kolkata and TZ=UTC.",
-    "Representation is normalised before comparing (tests/parity/base-file-compare.ts): labels as strings, XIRR as a fraction, Crore amounts, the purchase date as D Mon YYYY, folios joined by a slash, the asset as the new class (null when unknown, never the label as given) compared with the legacy label without regard to letter case. A difference left after that is a behaviour difference.",
+    "Representation is normalised before comparing (tests/parity/base-file-compare.ts): labels as strings, XIRR as a fraction, Crore amounts, the purchase date as D Mon YYYY, folios joined by a slash, the asset as the new class (null when unknown, never the label as given). The class is compared with the legacy label exactly: the legacy label is already whitespace-normalised (ws(), 07_engine.js:818), and its letter case matters to the legacy, which lower-cases the label where it routes a holding (for example isCommodity, 07_engine.js:626, and bucketOf, :1605) but keys its Asset Allocation on the exact label (07_engine.js:1150-1159), from which the IPS reads its asset-class actuals by assignment (11_app_ui.js:4871-4878). A difference left after that is a behaviour difference.",
     "Classes follow 08-regression-test-plan.md section 5.4: correction (a known defect fixed, KI or OD named), improvement (a requirement changes the output), regression (a defect of the new code; must be empty for a merge).",
     "Value patterns: \"*\" any value; {\"type\": \"number\"} any number; {\"timesLegacy\": k} the new value is k times the legacy value."
   ],
@@ -281,6 +281,17 @@
       "class": "correction",
       "reference": "BR-2.5",
       "description": "An impossible text date (\"31-02-2024\") is INVALID SOURCE DATA and the purchase date stays missing, counted in a Warning. The legacy built the date with new Date(2024, 1, 31), which rolled it into March as 2 Mar 2024."
+    },
+    {
+      "id": "BF-26",
+      "kind": "field",
+      "field": "asset",
+      "fixtures": ["family-a-odd-asset-labels"],
+      "legacy": "EQUITY",
+      "new": "Equity",
+      "class": "correction",
+      "reference": "OD-7 (letter case, beyond OD-7, pending the owner); KI-145",
+      "description": "An Asset Name that differs from a class only in letter case (\"  EQUITY  \", which the legacy kept as \"EQUITY\" with its spaces collapsed) reads as that class, Equity. The legacy kept the label as written: it became an Asset Allocation row of its own beside Equity (07_engine.js:1147-1159), and the IPS, which reads the allocation rows by assignment, took only the last of them as its equity figure (11_app_ui.js:4871-4878). Both are live-page defects, KI-145 and KI-146. OD-7 decided the blank case and two synonyms; folding letter case goes beyond OD-7 and waits for the owner's confirmation (docs/DATA_DICTIONARY.md section 8)."
     }
   ]
 }

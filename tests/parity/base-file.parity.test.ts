@@ -136,7 +136,7 @@ describe(`base-file parity (TZ=${process.env.TZ ?? 'system'})`, () => {
     assert.deepEqual([ex.severity, ex.count], ['Warning', 2]);
   });
 
-  test('an unrecognised Asset Name is unknown in the new reader, not its label (BF-19); REITs/InvITs is a class (BF-20)', () => {
+  test('an unrecognised Asset Name is unknown in the new reader, not its label (BF-19); REITs/InvITs is a class (BF-20); letter case is folded (BF-26)', () => {
     const r = results.find((x) => x.fixture.id === 'family-a-odd-asset-labels')!;
     const byLabel = (label: string) => r.imp.holdings.find((h) => h.assetLabel === label)!;
     assert.equal(byLabel('Gold').assetClass, null);
@@ -144,5 +144,14 @@ describe(`base-file parity (TZ=${process.env.TZ ?? 'system'})`, () => {
     assert.equal(byLabel('REITs/InvITs').assetClass, 'REITs/InvITs');
     assert.deepEqual(r.legacy.rows.map((x) => x.asset).filter((a) => a === 'Gold' || /REIT/.test(String(a))),
       ['Gold', 'REITs / InvITs', 'REITs/InvITs']);
+    // BF-26: the fixture writes "  EQUITY  ". The legacy row keeps it as written with its spaces collapsed
+    // (ws(), 07_engine.js:818), so "EQUITY" beside "Equity"; the new reader keeps the label and reads the class.
+    const legacyCaps = r.legacy.rows.filter((x) => String(x.asset).toLowerCase() === 'equity' && x.asset !== 'Equity');
+    assert.deepEqual(legacyCaps.map((x) => x.asset), ['EQUITY']);
+    const newCaps = r.imp.holdings.filter((h) => h.assetLabel !== null && h.assetLabel !== 'Equity'
+      && h.assetLabel.toLowerCase() === 'equity');
+    assert.deepEqual(newCaps.map((h) => [h.assetLabel, h.assetClass]), [['EQUITY', 'Equity']]);
+    assert.deepEqual([newCaps[0]!.clientLabel, newCaps[0]!.instrumentName], [legacyCaps[0]!.client, legacyCaps[0]!.name],
+      'the same holding on both sides');
   });
 });

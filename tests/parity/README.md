@@ -27,8 +27,13 @@ test, and so does an entry no fixture uses. Each entry has:
 
 Before comparing, representation is normalised (`base-file-compare.ts` `projectNew`): labels as strings, XIRR as a
 fraction, Crore amounts, the purchase date as "D Mon YYYY", folios joined by "/", the asset as the new class (null
-when unknown, never the label as given, so an unrecognised label shows as a difference) compared with the legacy
-label without regard to letter case. What remains is behaviour.
+when unknown, never the label as given, so an unrecognised label shows as a difference). The class is compared with
+the legacy label exactly. The legacy label is already whitespace-normalised (`ws()`, `07_engine.js:818`), and its
+letter case matters to the legacy: it lower-cases the label where it routes a holding (for example `isCommodity`,
+`07_engine.js:626`, and `bucketOf`, `:1605`), but its Asset Allocation keys on the exact label
+(`07_engine.js:1150-1159`), and the IPS reads the allocation rows by assignment (`11_app_ui.js:4871-4878`). So
+"EQUITY" beside "Equity" is a second allocation row in the legacy and one class in the new reader (BF-26,
+[KI-145](../../docs/KNOWN_ISSUES.md#found-by-milestone-m13-23-oct-2026)). What remains is behaviour.
 
 To add an entry: make the new behaviour, run the test to see the unmatched difference, and add the narrowest entry
 that matches it (name the fixture; prefer an exact legacy value) with its decision. Improvements that change a

@@ -5,8 +5,11 @@
 // projected into the legacy row shape (labels as strings, XIRR as a fraction, Crore amounts, the purchase date as
 // "D Mon YYYY", folios joined by "/"). The asset is the new canonical class, null when unknown, never the label as
 // given: an Asset Name the new reader does not recognise must show as a difference from the legacy label, not compare
-// equal to it. The class is compared with the legacy label without regard to letter case, because the legacy engine
-// itself routes on the lower-cased label.
+// equal to it. The class is compared with the legacy label exactly. The legacy label is already whitespace-normalised
+// (ws(), 07_engine.js:818), and its letter case matters to the legacy: it lower-cases the label where it routes a
+// holding (for example isCommodity, 07_engine.js:626, and bucketOf, :1605), but its Asset Allocation keys on the exact
+// label (07_engine.js:1150-1159), and the IPS reads the allocation rows by assignment (11_app_ui.js:4871-4878). So
+// "EQUITY" beside "Equity" is a second allocation row in the legacy and one class in the new reader (BF-26, KI-145).
 
 import type { BaseFileImport } from '../../app/src/ingest/base-file.ts';
 import type { Holding } from '../../app/src/model/holding.ts';
@@ -68,7 +71,6 @@ export function sameValue(field: string, a: unknown, b: unknown): boolean {
     if (a === b) return true;
     return Math.abs(a - b) <= 1e-9 * Math.max(Math.abs(a), Math.abs(b)) + 1e-12;
   }
-  if (field === 'asset' && typeof a === 'string' && typeof b === 'string') return a.toLowerCase() === b.toLowerCase();
   return a === b;
 }
 

@@ -2,7 +2,8 @@
 
 Phase 0 deliverable 8. Draft of 21 Oct 2026, revised 22 Oct 2026 (Phase 0 review, then D-023 and the MF Screener data
 pack) and 22 Oct 2026 (the owner's answers, D-024 to D-033: section 5.6 and the cases they change; change log at the
-end of `open-questions.md`). How the new application proves that it preserves the legacy capabilities
+end of `open-questions.md`); on 23 Oct 2026 the parity ledger's file names and entry format were brought in line with
+what M1.3 built (sections 1, 2 and 5.4). How the new application proves that it preserves the legacy capabilities
 (legacy preservation) and meets the brief (the 24 acceptance cases of Phase 15), with the test files, the synthetic
 fixtures and the CI gates. Ids: capabilities E-nn and U-nn (`02-capability-inventory.md`), parity rows and BR-n.n
 (`05-feature-parity-matrix.md`), milestones M-n (`07-implementation-roadmap.md`).
@@ -18,7 +19,9 @@ fixtures and the CI gates. Ids: capabilities E-nn and U-nn (`02-capability-inven
    are time-zone sensitive [TE §9]).
 4. **Unrounded comparison** inside the engine (tolerance 1e-9 relative unless stated); display comparisons after the
    renderer's rounding.
-5. **Every difference from the legacy is classified** in `tests/parity/ledger.json`; an unclassified difference fails.
+5. **Every difference from the legacy is classified** in the parity ledger of its area, one ledger per area
+   (`tests/parity/<area>-ledger.json`; the first, from M1.3, is `tests/parity/base-file-ledger.json`); an
+   unclassified difference fails.
 6. **Traceability:** each test file starts with a header listing the ids it covers (`// covers: E-25 BR-7.1 AC-01`);
    `scripts/validation/traceability.mjs` (built in M1.3 with the first tests) builds a report that maps every
    parity-matrix row, including the workflow rows W-1 to W-9, to at least one test and fails CI when a row in status
@@ -30,7 +33,7 @@ fixtures and the CI gates. Ids: capabilities E-nn and U-nn (`02-capability-inven
 |---|---|---|---|---|
 | Unit | `tests/unit/**` | `node --test` on `.ts` sources | Known answers per module; statuses; edge cases | CI-blocking (`next` job) |
 | Regression | `tests/regression/ki-nnn-*.test.ts` | same | Each fixed KI stays fixed; ported legacy KI tests | CI-blocking |
-| Parity | `tests/parity/*.parity.test.ts`, `ledger.json`, `golden/` | same + `tools/engine-host.js` | New engine equals the legacy engine, or the difference is classified | CI-blocking |
+| Parity | `tests/parity/*.parity.test.ts`, one `<area>-ledger.json` per area (`base-file-ledger.json` from M1.3), `golden/` | same + `tools/engine-host.js` | New engine equals the legacy engine, or the difference is classified | CI-blocking |
 | Export structure | `tests/exports/pptx/*`, `tests/exports/xlsx/*` | same; OOXML read with the vendored JSZip; SheetJS read-back | Slide inventory (objects, fonts, colours, positions, chart types, table sizes) and sheet structure (names, order, formats, formulas, panes, filters, merges) as normalised JSON snapshots | CI-blocking |
 | Formula evaluation | `tests/exports/xlsx/formulas.test.ts`, `tests/helpers/formula-eval.ts` | same; in-house evaluator for the writer's allow-listed function subset (architecture §14) | Every formula cell built from declared references; evaluated result equals the engine value (1e-9 relative); no error value; also after the AC-17 edits. This is how CI proves "no formula errors" without Excel | CI-blocking from M1.4 |
 | Integration | `tests/integration/*` | same | End-to-end flows on synthetic books: upload to all outputs; cross-output agreement; mode switch; family isolation; export isolation after a family switch | CI-blocking |
@@ -194,9 +197,12 @@ investigator's "tests needed"):
   (`tests/parity/golden/*.json`, procedure in `tests/parity/README.md`), because they cannot run headless [IU U-53].
 - Deck and workbook parity compare a normalised inventory (slide titles, component kind, table dimensions, chart types
   and series names; sheet names and header rows), not pixels.
-- `ledger.json` entries: `{ id, area, legacyValue, newValue, class: 'improvement' | 'correction' | 'regression',
-  reference: 'KI-nnn' | 'OD-nn' | 'BR-n.n', approvedBy?: 'owner' }`. Regressions must be empty for a merge;
-  improvements that change client-facing numbers are listed in the PR for the owner.
+- One ledger file per area, `tests/parity/<area>-ledger.json`; the first, from M1.3, is
+  `tests/parity/base-file-ledger.json`. The file names its area once; each entry is `{ id, kind, field?, fixtures,
+  legacy, new, class: 'improvement' | 'correction' | 'regression', reference: 'KI-nnn' | 'OD-nn' | 'D-nnn' |
+  'BR-n.n', description }`, with value patterns for `legacy` and `new` (format in `tests/parity/README.md`); a
+  correction waiting for the owner says so in its reference. Regressions must be empty for a merge; improvements
+  that change client-facing numbers are listed in the PR for the owner.
 - **Observations parity** (`parity/observations.parity.test.ts`): for every row of the rule bank's §8 legacy table
   (observation cards L-C1 to L-C8 and SWOT bullets L-S1 to L-T7), a synthetic book built to trigger the legacy
   condition is run through both engines; the mapped rule must fire with the same SWOT quadrant, or the ledger must hold

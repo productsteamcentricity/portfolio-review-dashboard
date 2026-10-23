@@ -127,7 +127,8 @@ dashboard (D-033); every other question proceeds on its default.
   `tools/make-sample-base.js` plus the variants in `08-regression-test-plan.md` §4).
 - **Acceptance.** `tests/unit/ingest/base-file.test.ts` (fraction XIRR, header in row 6, note sheet first, "NA" CMV,
   Lakh-only, rupee-only, blank asset, merged folios); `tests/parity/base-file.parity.test.ts` against the legacy
-  `parseBaseRows` through `tools/engine-host.js` with every difference classified in `tests/parity/ledger.json`;
+  `parseBaseRows` through `tools/engine-host.js` with every difference classified in
+  `tests/parity/base-file-ledger.json` (one ledger per area);
   `tests/unit/model/value.test.ts` (no status formats as zero); `tests/unit/model/ownership.test.ts` (sole holder by
   default, joint holders read when present, attribution to the first holder); runs under both time zones.
 
@@ -149,6 +150,14 @@ dashboard (D-033); every other question proceeds on its default.
   ranges, frozen header, filter); `tests/integration/cross-output.test.ts` (CMV, invested, gain, every allocation figure
   equal on screen view-model, slide and sheet); parity of totals and allocation vs legacy; Office acceptance run once
   (no error value after a full recalculation; Excel's results equal the evaluator's).
+- **Carried from the M1.3 financial re-review (KI-147).** `readMoney` (`app/src/ingest/base-file.ts`) values a
+  holding from the Lakh or rupee column when its Crore cell holds text that is not a number ("12abc" with 1250 Lakh
+  gives 12.5 Cr; "abc" with a stale 50 Lakh gives 0.5 Cr), and nothing flags it on the holding. Before the overview
+  totals are built on it: (a) the owner decides between that fallback, flagged on the holding, and treating the
+  amount as INVALID SOURCE DATA; (b) a notice scoped to the holding names the column used; (c) a unit test with both
+  Crore and Lakh columns pins the decided rule in `tests/unit/ingest/base-file.test.ts`; (d) `DATA_DICTIONARY.md`
+  §5.3 says the rule in a clear sentence in place of "counts as none"; (e) the owner decides whether Crore is
+  cross-checked against Lakh or rupees when both are numbers and disagree.
 - **Analyst value.** The first slide that already meets the brief's allocation rules (6.1), available for preview on
   `/next/` (not for client use until switch-over).
 

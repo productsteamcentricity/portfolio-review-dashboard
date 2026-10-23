@@ -191,7 +191,7 @@ legacy (E-02, KI-113).
 | `accountId` | `AccountId` | §5.6 |
 | `productLabel`, `product`, `productDefaulted` | string or null, string, boolean | a blank Product Name reads as "Mutual Funds", the legacy default, flagged and noted (Information) |
 | `categoryLabel`, `amcLabel`, `liquidity` | string or null | as given |
-| `assetLabel`, `assetClass` | string or null; `'Equity' \| 'Debt' \| 'Hybrid' \| 'Commodity' \| 'REITs/InvITs' \| null` | OD-7: the five classes of the legacy Asset Allocation (07_engine.js:1147 `assetOrder`: Equity, Debt, Hybrid, Commodity, REITs/InvITs; "Commodities" is Commodity) as labelled, ignoring letter case and spacing, around a slash too ("REITs / InvITs" is REITs/InvITs); "Fixed Income" and "Debt Funds" are Debt; blank is unknown (null) with a Warning (OD-7); any other label is unknown too, the label kept, with a Warning (an extension of OD-7, open, §8) |
+| `assetLabel`, `assetClass` | string or null; `'Equity' \| 'Debt' \| 'Hybrid' \| 'Commodity' \| 'REITs/InvITs' \| null` | OD-7: the five classes of the legacy Asset Allocation (07_engine.js:1147 `assetOrder`: Equity, Debt, Hybrid, Commodity, REITs/InvITs; "Commodities" is Commodity) as labelled, ignoring letter case and spacing, around a slash too ("REITs / InvITs" is REITs/InvITs; folding letter case goes beyond OD-7, open, §8, BF-26); "Fixed Income" and "Debt Funds" are Debt; blank is unknown (null) with a Warning (OD-7); any other label is unknown too, the label kept, with a Warning (an extension of OD-7, open, §8) |
 | `folios`, `folioIds` | string[], `FolioId[]` | folio numbers as supplied, one per merged row that has one |
 | `purchaseDate` | `Value<DayNumber>` | an Excel serial or a text date (`YYYY-MM-DD`, `DD-MM-YYYY` with the legacy month-first swap above 12, `D Mon YYYY`); an impossible date is INVALID SOURCE DATA |
 | `units` | `Value<number>`, unit `units` | the base the tax split reconciles a holding against (M7): the legacy reconciles base-file units with its unit FIFO and, when they are missing, switches to its rupee ledger (`amtMode`, 07_engine.js:393-405), which suits products priced in rupees (PMS, unlisted AIF) |
@@ -536,6 +536,18 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
   (07_engine.js:1599-1609). Parity entry BF-19 ("Gold"). Question: should labels such as Gold, Equity Funds, Hybrid
   Funds, Alternatives, Cash, Real Estate or International stay unknown, or map to a class (which)? REITs/InvITs is
   not in question: it is the fifth class of the legacy allocation order and is read as labelled.
+- **Letter case and spacing of Asset Names (M1.3 re-review, open; the owner confirms BF-26).** The reader reads an
+  Asset Name without regard to letter case or spacing: "  EQUITY  " is Equity, "REITs / InvITs" is REITs/InvITs.
+  OD-7 decided only the blank case and two synonyms, so folding letter case goes beyond it. The legacy kept the label
+  as written (spaces collapsed): "EQUITY" became an Asset Allocation row beside "Equity", and the IPS took only the
+  last of such rows (KNOWN_ISSUES KI-145 and KI-146). Parity entry BF-26. Questions for the owner: confirm the
+  folding; and measure, privately, how common variant labels (letter case, spacing, synonyms) are in the real base
+  files, which sizes KI-145 and KI-146 on the live page.
+- **A Crore cell that is not a number beside a Lakh or rupee amount (M1.3 re-review; decided in M1.4).** §5.3 says
+  a market value that is not a number "counts as none"; today the reader then takes the Lakh or rupee column of
+  the same row, as the legacy `pickCr` order does, without a notice on the holding (KNOWN_ISSUES KI-147). The rule,
+  the notice, a unit test and a clear §5.3 sentence are M1.4 acceptance items
+  ([07-implementation-roadmap.md](new-build/07-implementation-roadmap.md) M1.4).
 - **Units of merged folios and the tax base (M1.3, open; the owner confirms BF-17 and BF-18).** Base-file units are
   the base the legacy tax split reconciles each holding against (07_engine.js:393-405); when a holding has no units,
   that split switches to the rupee ledger (`amtMode`), which suits products priced in rupees (PMS, unlisted AIF). The
@@ -567,3 +579,4 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
 | v0.1 (links) | 22 Oct 2026 | Links only (M1.1): the legacy architecture moved to `legacy/ARCHITECTURE.md`; `ARCHITECTURE.md` is now the new application's, and the F1 to F11 mapping of §6 points there; definitions unchanged |
 | v0.2 | 22 Oct 2026 | Milestone M1.3: types of `Value<T>`, units and dates (§2, §3), identifiers (§4), `SourceFile` and the base-file import record (§5.1), `Holding` with the reader's rules and the folio merge (§5.3), ownership and the proposed holder columns (§5.6), validation results and analyst questions (§5.8), audit entries (§5.14); percent numbers decided (§3, §8); two open items (§8) |
 | v0.3 | 23 Oct 2026 | M1.3 financial review: REITs/InvITs is the fifth asset class, as in the legacy allocation order (§5.3); `Holding.mergeGaps` tells a merge gap from a value no folio has, and units are named as the tax reconciliation base (§5.3); a market value that is not a number counts as none, and 0 is a real zero (§5.3); three open questions for the owner: unrecognised Asset Names, merged units and the M7 requirement, a market value of 0 (§8) |
+| v0.3 (re-review) | 23 Oct 2026 | Open items only, definitions unchanged (M1.3 re-review): folding the letter case of Asset Names goes beyond OD-7 and waits for the owner (§5.3, §8, BF-26); a Crore cell that is not a number beside a Lakh or rupee amount, decided in M1.4 (§8, KI-147) |
