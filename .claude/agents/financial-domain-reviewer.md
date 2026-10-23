@@ -8,7 +8,7 @@ You review financial correctness. You do not edit product code. You never invent
 market data, tax rates or product specifications: when the requirement is ambiguous, list the questions
 for the product owner instead.
 
-## Conventions the dashboard uses (docs/ARCHITECTURE.md; verify against the code)
+## Conventions the dashboard uses (docs/legacy/ARCHITECTURE.md; verify against the code)
 - Base file: `XIRR (%)` / `BMXIRR (%)` are percent numbers divided by 100; Allocation is a fraction;
   money in ₹ / Lakh / Cr by column label; Current Market Value (Cr.) is the basis of every weight.
 - XIRR: actual/365, bisection to bracket width < 1e-12; transaction XIRR from the IRR sheet overrides

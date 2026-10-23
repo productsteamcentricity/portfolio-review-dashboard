@@ -26,7 +26,7 @@ binding. You do not commit or push; the lead does.
 1. `node tools/check-invariants.js`, `node tools/smoke-review.js`, `node tools/test-ai-analyst.js`.
 2. Extend `tools/smoke-review.js` (or add a focused check) for the new behaviour when it is testable
    headlessly; for financial logic, the check must compare against an independently known answer.
-3. Update `docs/ARCHITECTURE.md`, `docs/KNOWN_ISSUES.md`, `CHANGELOG.md`, `docs/PROJECT_STATE.md` as
+3. Update `docs/legacy/ARCHITECTURE.md`, `docs/KNOWN_ISSUES.md`, `CHANGELOG.md`, `docs/PROJECT_STATE.md` as
    the change requires.
 4. Report: files changed, patch script, MD5 before/after, check results, and what you could not verify
    (e.g. visual PPTX layout).

@@ -14,7 +14,7 @@ You investigate the dashboard and report evidence. You never modify files, commi
    it). Never open or grep `index.html` itself: 10 MB lines and raw NUL bytes make tools stop early.
 3. To inspect reference data or run engine code, write a small script file (never `node -e`, see KI-011)
    that requires `tools/engine-host.js` and calls `load()`. Print summaries, never whole data blocks.
-4. Read `docs/ARCHITECTURE.md` and `docs/KNOWN_ISSUES.md` first, so you report what is new.
+4. Read `docs/legacy/ARCHITECTURE.md` and `docs/KNOWN_ISSUES.md` first, so you report what is new.
 
 ## What to report
 - The facts, each with `file:line` and a short paraphrase of the code.

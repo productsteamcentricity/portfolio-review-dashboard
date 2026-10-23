@@ -47,7 +47,7 @@ and the monthly data owner.
 9. **Stage discipline**: implement only what the owner asked. Record other defects/ideas in
    `docs/KNOWN_ISSUES.md` or the backlog in `docs/PROJECT_STATE.md`; do not fix them on the side.
 
-## Conventions the code actually uses (verified at baseline, see docs/ARCHITECTURE.md)
+## Conventions the code actually uses (verified at baseline, see docs/legacy/ARCHITECTURE.md)
 - Base file: header row found in the first 5 rows, columns matched by alias. **`XIRR (%)` / `BMXIRR (%)`
   are percent numbers** (8.79 = 8.79%) and are divided by 100 (`07_engine.js:736`); a %-formatted Excel
   cell (stored as 0.0879) would show 100× too small. `Allocation (%)` is read as a fraction. Money is
@@ -69,9 +69,13 @@ tools/                engine-host.js (runs the shipped engine in Node) · check-
                       make-sample-base.js · extract-blocks.js · test-ai-analyst.js · serve-dashboard.js +
                       open-dashboard.cmd (local preview) · render-slides.js · parse-fund-ranks.js ·
                       parse-fund-mgr.js · patch-lib.js + patches/ (every index.html change) · browser-checks/
-docs/                 README.md (index) · HANDOVER · MONTHLY_REFRESH · ARCHITECTURE · DEVELOPMENT_SETUP · TESTING ·
-                      DEPLOYMENT · DECISIONS · KNOWN_ISSUES · PROJECT_STATE · REPLICATION_REPORT ·
-                      change-requests/ · refresh-log/ · previous-owner/ (handover docs and knowledge, as received)
+docs/                 README.md (index) · HANDOVER · MONTHLY_REFRESH · legacy/ARCHITECTURE (index.html) ·
+                      DEVELOPMENT_SETUP · TESTING · DEPLOYMENT · DECISIONS · KNOWN_ISSUES · PROJECT_STATE ·
+                      REPLICATION_REPORT · change-requests/ · refresh-log/ · previous-owner/ (handover docs and
+                      knowledge, as received) · the new build's documents ("New build" below)
+app/  data/  product_bank/  monthly_updates/
+                      the new application's folders (CR-0006): a README in each; code and data from M1.2 on
+scripts/  tests/      the new build's tooling (scripts/validation/) and its tests
 .claude/              launch.json (preview server) · agents/ (project subagents)
 .github/workflows/    ci.yml (checks on main and PRs) · pages.yml (publishes index.html only)
 ```
@@ -121,22 +125,27 @@ stay. Any new per-family state you add must be cleared there too, and `family-is
 ## New build (CR-0006)
 A clean new application is being built beside `index.html`, which stays the review link until the new one reaches
 feature parity. Phase 0 is delivered (22 Oct 2026); the owner answered ND-1 to ND-10 on 22 Oct 2026 (D-024 to
-D-033) and gave Claude full charge of GitHub and the dashboard (D-033). Milestone M1.1 (safety tooling and these
-records) is in progress; no application code exists yet. Every rule above applies; rules 1 and 5 are about the legacy
-`index.html`, and the new application's own rules arrive with its code (M1.2).
+D-033) and gave Claude full charge of GitHub and the dashboard (D-033). Milestone M1.1 (safety tooling, these
+records, the release checks and the folder skeleton) is complete once its last pull request merges; no application
+code is on `main` yet. Every rule above applies; rules 1 and 5 are about the legacy `index.html`, and the new
+application's own rules arrive with its code (M1.2).
 - Start at `docs/new-build/README.md` (the Phase 0 record and which living document owns what); the living PRD is
-  `docs/PRD.md`; the data model `docs/DATA_DICTIONARY.md`; the roadmap `docs/new-build/07-implementation-roadmap.md`;
+  `docs/PRD.md`; the new application's living architecture `docs/ARCHITECTURE.md` (the legacy page's is
+  `docs/legacy/ARCHITECTURE.md`); the data model `docs/DATA_DICTIONARY.md`; the roadmap
+  `docs/new-build/07-implementation-roadmap.md`;
   the answered owner decisions `docs/new-build/owner-decisions-new-build.md`; the files the owner supplies each month
   `docs/MONTHLY_UPDATE_GUIDE.md`.
 - House style (D-029): a missing value shows a dash ("—") alone in its cell; presentation sentences never contain an
-  en or em dash. Screener scores and ranks never go into a public page (D-026). Every Accord file may be published;
-  client data never (D-023).
+  en or em dash. Screener scores and ranks never go into a public page; the owner uploads the Screener data pack each
+  cycle and the browser keeps it until a newer pack (D-026). Every Accord file may be published; client data never
+  (D-023).
 - Before a push: `node scripts/validation/prepush-scan.mjs` (or the hook: `git config core.hooksPath scripts/hooks`)
   with `PRD_PRIVACY_DENYLIST` naming the private deny-list; never copy a deny-list term into the repository
   (`docs/new-build/safety-tooling.md`). Docs: `node scripts/validation/docs-links.mjs`. Tests:
-  `node --test "tests/**/*.test.mjs"`.
+  `node --test "tests/**/*.test.mjs"`. Before a merge: `node scripts/validation/release-check.mjs` on the branch,
+  its report attached to the pull request (`--after-push` once pushed).
 - Every monthly cycle from the 2026-10 data month ends with `docs/monthly-prds/YYYY-MM-Portfolio-Review-PRD.md` (from
-  `TEMPLATE.md`) and a refresh of `docs/HANDOVER.md`.
+  `TEMPLATE.md`) and a refresh of `docs/HANDOVER.md`, checked by `node scripts/validation/monthly-prd-check.mjs`.
 
 ## Docs map
 `docs/README.md` indexes everything. Start with docs/HANDOVER.md; the monthly process is
