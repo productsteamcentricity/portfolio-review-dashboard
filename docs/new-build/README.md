@@ -74,5 +74,11 @@ working folders and are not committed; they held no client data.
 |---|---|
 | [safety-tooling.md](safety-tooling.md) | The privacy scan, docs link check, pre-push scan and hook, release check and monthly PRD check built in M1.1: rules, allow-list, private deny-list, how to run them |
 
+## Toolchain and build (M1.2)
+
+| File | What it is |
+|---|---|
+| [toolchain.md](toolchain.md) | The pinned npm tooling (esbuild, TypeScript, Preact), the one-file build and its CSP, the invariants `check-next.mjs` enforces, the spike results (CSP and IndexedDB from disk and served), the built file's size and SHA-256, and the browser QA steps |
+
 Every file in this folder passed `scripts/validation/privacy-scan.mjs` with the private deny-list and
 `scripts/validation/docs-links.mjs` before it was committed (22 Oct 2026, and again after the revision of 22 Oct 2026).

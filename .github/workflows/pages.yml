@@ -1,5 +1,7 @@
-# Publishes ONLY index.html to GitHub Pages: the site serves the dashboard, never the
-# docs, tools or agent files as web pages. The site is public (see docs/DEPLOYMENT.md).
+# Publishes two pages to GitHub Pages and nothing else (D-024, superseding D-007 in part):
+#   /       index.html, the legacy dashboard, staged byte for byte (the review link until parity)
+#   /next/  next/index.html, the new app's one-file build (app/dist/index.html), with its preview banner
+# The site never serves the docs, tools or agent files. The site is public (see docs/DEPLOYMENT.md).
 # Requires: Settings -> Pages -> Source = "GitHub Actions".
 # The build job runs the repository's code with read-only rights; only the deploy
 # job, which runs no repository code, can write to Pages.
@@ -8,7 +10,15 @@ name: Publish dashboard to GitHub Pages
 on:
   push:
     branches: [main]
-    paths: [index.html]
+    paths:
+      - index.html
+      - app/**
+      - package.json
+      - package-lock.json
+      - .npmrc
+      - scripts/build.mjs
+      - scripts/validation/check-next.mjs
+      - .github/workflows/pages.yml
   workflow_dispatch:
 
 permissions: {}
@@ -20,7 +30,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
     env:
@@ -36,10 +46,21 @@ jobs:
         run: node tools/smoke-review.js
       - name: Regression tests of fixed issues must pass before anything is published
         run: node tools/run-regression.js
-      - name: Stage only the dashboard
+      # The new app (CR-0006). While the preview has no users a failing new build blocks the deploy (fix forward;
+      # architecture section 18).
+      - name: Install the new app's pinned build tooling from the lockfile
+        run: npm ci
+      - name: Build the new app into one offline HTML file
+        run: npm run build
+      - name: The new app's invariants must hold before anything is published
+        run: node scripts/validation/check-next.mjs --rebuild
+      - name: Stage the legacy dashboard at / and the new app at /next/, nothing else
         run: |
-          mkdir _site
+          mkdir -p _site/next
           cp index.html _site/index.html
+          cp app/dist/index.html _site/next/index.html
+          cmp index.html _site/index.html
+          ls -lR _site
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site

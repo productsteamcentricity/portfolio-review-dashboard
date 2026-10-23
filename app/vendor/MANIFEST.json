@@ -1,0 +1,4 @@
+{
+  "_comment": "Vendored runtime libraries (architecture A2): each entry is { name, version, file, sha256 (hex, of the file), global (the name the library defines on window), license, licenseFile (optional), source }. A module uses one with `import X from 'vendor:<name>'`; scripts/build.mjs then inlines the file as its own <script>, after checking its SHA-256, and only then. The shell (M1.2) uses none; PptxGenJS, SheetJS and Chart.js are extracted from the legacy page when a milestone first needs them.",
+  "libraries": []
+}

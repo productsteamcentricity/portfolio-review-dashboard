@@ -1,6 +1,7 @@
 # Testing
 
-There is no unit-test framework and no `npm install`: every check is a Node script that evaluates the
+For the legacy `index.html` there is no unit-test framework and no `npm install` (the new app's checks are at the
+end of section 1): every legacy check is a Node script that evaluates the
 **shipped** script blocks out of `index.html` (`tools/engine-host.js`), so tests exercise exactly the
 code the browser runs. Browser checks cover what Node cannot (rendering, the live page, network).
 
@@ -22,9 +23,19 @@ Safety checks for the repository itself (new build, M1.1; detail in `new-build/s
 | `node scripts/validation/privacy-scan.mjs docs *.md` | no e-mail, PAN, token, key, password, local user path, OneDrive organisation path or personal GitHub account URL in the documentation (folio-like digit runs are warnings); with `PRD_PRIVACY_DENYLIST` set, no name from the private deny-list | CI (`next`, generic rules only) |
 | `node scripts/validation/docs-links.mjs` | every relative link and anchor in the root and `docs/` Markdown resolves | CI (`next`) |
 | `node scripts/validation/prepush-scan.mjs` | the commits to be pushed: privacy on added lines, commit messages and identities; no file over 50 MB; no new binary or data file outside `monthly_updates/YYYY-MM/` | before every push (pre-push hook) |
-| `node scripts/validation/release-check.mjs [--online \| --after-push]` | the release state before a merge: the recorded remote (no token in its URLs) and default branch, a named branch, a clean tree, `index.html` changed only with a patch script (or on a `data/` branch), no local or generated file in the change; with `--after-push`, the remote has HEAD. Its report goes in the pull request | before every merge; CI (`next`, `--ci`, after the tests) |
+| `node scripts/validation/release-check.mjs [--online \| --after-push]` | the release state before a merge: the recorded remote (no token in its URLs) and default branch, a named branch, a clean tree, `index.html` changed only with a patch script (or on a `data/` branch), no local or generated file in the change; with `--after-push`, the remote has HEAD. Its report goes in the pull request | before every merge; CI (`next`, `--ci`, last, after the tests) |
 | `node scripts/validation/monthly-prd-check.mjs` | each monthly PRD: sections A to I of the template, no placeholder left, links, privacy and deny-list, the handover refreshed in the cycle | each monthly cycle; CI (`next`, generic rules only) |
-| `node --test "tests/**/*.test.mjs"` | the tests of the scripts above and of `monthly_updates/_policy/publication-classes.json`, on synthetic strings, temp files, throwaway git repositories and fixture folders | CI (`next`, IST and UTC) |
+| `node --test "tests/**/*.test.mjs"` | the tests of the scripts above and of `monthly_updates/_policy/publication-classes.json`, on synthetic strings, temp files, throwaway git repositories and fixture folders; from M1.2 also `tests/next/` (below) | CI (`next`, IST and UTC) |
+
+The new application (M1.2; detail in `new-build/toolchain.md`), after `npm ci`:
+
+| Command | What it proves | Gate |
+|---|---|---|
+| `npm run typecheck` | the TypeScript sources type-check (strict, erasable syntax only) | CI (`next`) |
+| `npm run build` | `app/dist/index.html` builds: one offline file, CSP hashes computed, vendored libraries inlined only when used | CI (`next`), Pages |
+| `node scripts/validation/check-next.mjs --rebuild` | the built page: CSP first in `<head>` with exact hashes and `connect-src 'none'`; no network API; no remote URL except the MF Screener link in its one `<a target="_blank" rel="noopener noreferrer">` (D-027); the "Preview, not for client use" banner (D-024); no en or em dash in static text (D-029); clean bytes; size budget. The sources: no DOM sink, network API or stray URL. Two fresh builds and the file are byte-identical | CI (`next`), Pages |
+| `tests/next/*.test.mjs` (in `node --test`) | build determinism, the vendored-library mechanism (synthetic fixture), each check-next rule failing on a planted violation, and the shell: the nine sections in order, the banner, exactly one remote URL, the Screener data pack slot in section 1, the palette and font | CI (`next`, IST and UTC) |
+| `node tests/browser/next-spike.mjs` | in headless Edge or Chrome, from disk and served: the CSP lets the page run and blocks a wrong hash and a `fetch`; no request but the page; navigation; IndexedDB kept across reload and restart | local, before merging a change to the build or the CSP |
 
 The synthetic book (`tools/make-sample-base.js`) has two invented clients, 13 holdings across MF
 equity/debt/hybrid, PMS, AIF, SIF, direct equity and one unknown fund. Every holding is priced off a NAV

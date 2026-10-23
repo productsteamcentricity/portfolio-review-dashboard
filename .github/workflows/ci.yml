@@ -1,5 +1,6 @@
 # Checks the dashboard on pushes to main and on every pull request.
-# No npm install: the tools use only Node built-ins plus the libraries embedded in index.html.
+# Job "checks" (the legacy index.html) needs no npm install: its tools use only Node built-ins plus the libraries
+# embedded in index.html. Job "next" (the new app, CR-0006) installs its pinned build tooling with npm ci (D-025).
 name: Dashboard checks
 
 on:
@@ -31,11 +32,12 @@ jobs:
       - name: Known-answer regression tests of fixed issues
         run: node tools/run-regression.js
 
-  # The new build (CR-0006), milestone M1.1: zero-dependency safety checks, Node built-ins only.
-  # See docs/new-build/safety-tooling.md. M1.2 extends this job (npm ci, typecheck, build, invariants).
+  # The new build (CR-0006). M1.1: zero-dependency safety checks (docs/new-build/safety-tooling.md).
+  # M1.2: the pinned toolchain from the lockfile, type check, the one-file build and its invariants
+  # (docs/new-build/toolchain.md). No npm cache: npm ci fetches exactly the lockfile's tarballs on every run.
   next:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -45,6 +47,16 @@ jobs:
         run: node scripts/validation/privacy-scan.mjs docs *.md
       - name: Documentation links
         run: node scripts/validation/docs-links.mjs
+      - name: Monthly PRDs (sections A to I, placeholders, links, privacy, handover refreshed)
+        run: node scripts/validation/monthly-prd-check.mjs
+      - name: Install the pinned build tooling from the lockfile (install scripts disabled by .npmrc)
+        run: npm ci
+      - name: Type check (TypeScript, no emit)
+        run: npm run typecheck
+      - name: Build the new app into one offline HTML file
+        run: npm run build
+      - name: Invariants of the built page (CSP, no network, one allowed link, banner) and a byte-identical rebuild
+        run: node scripts/validation/check-next.mjs --rebuild
       - name: Tests (IST)
         run: node --test "tests/**/*.test.mjs"
         env:
@@ -53,8 +65,6 @@ jobs:
         run: node --test "tests/**/*.test.mjs"
         env:
           TZ: UTC
-      - name: Monthly PRDs (sections A to I, placeholders, links, privacy, handover refreshed)
-        run: node scripts/validation/monthly-prd-check.mjs
       - name: Fetch main for the release check (the checkout is shallow)
         run: |
           git fetch --no-tags --unshallow origin '+refs/heads/main:refs/remotes/origin/main' \
