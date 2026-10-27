@@ -7,7 +7,10 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Review } from '../../../app/src/model/review.ts';
+import type { MoneyFinding } from '../../../app/src/ingest/base-file.ts';
 import type { Figure, OverviewVM } from '../../../app/src/views/overview-vm.ts';
+import { STATUS } from '../../../app/src/model/status.ts';
+import { missing } from '../../../app/src/engine/value.ts';
 import { buildOverviewVM, PREVIEW_MARKER } from '../../../app/src/views/overview.ts';
 import { sampleReview } from '../../helpers/sample-review.ts';
 
@@ -210,21 +213,65 @@ describe('the other sample books', () => {
   test('the KI-147 money notes and the not-given entity note, in the fixed order (D-039)', () => {
     const r = sampleReview('standard');
     const h = r.holdings.map((x) => x.id);
+    const col = (header: string, unit: 'crore' | 'lakh' | 'rupee') => ({ header, unit });
+    const findings: MoneyFinding[] = [
+      { holdingId: h[0]!, field: 'invested', kind: 'invalid', column: col('Invested Value (Cr.)', 'crore'), others: [col('Invested Value (Lakh)', 'lakh')] },
+      { holdingId: h[1]!, field: 'cmv', kind: 'disagree', column: col('Current Market Value (Cr.)', 'crore'), others: [col('Current Market Value (Lakh)', 'lakh')] },
+      { holdingId: h[2]!, field: 'cmv', kind: 'disagree', column: col('Current Market Value (Cr.)', 'crore'), others: [col('Current Market Value (Lakh)', 'lakh')] },
+      // The file's own gain or loss changes no figure (OD-18): never a note.
+      { holdingId: h[3]!, field: 'fileGain', kind: 'invalid', column: col('Total Gain/Loss (Cr.)', 'crore'), others: [] },
+      { holdingId: h[4]!, field: 'fileGain', kind: 'disagree', column: col('Total Gain/Loss (Cr.)', 'crore'), others: [col('Total Gain/Loss (Lakh)', 'lakh')] },
+    ];
+    r.base = { ...r.base, moneyFindings: findings };
+    // A reader result alone makes no note: the notes count the findings.
     const result = (ruleId: string, ids: typeof h) => ({
-      id: `${ruleId}:1`, ruleId, scope: { kind: 'holdings' as const, holdingIds: ids }, message: 'm', severity: 'Warning' as const,
+      id: `${ruleId}:1`, ruleId, scope: { kind: 'holdings' as const, holdingIds: ids }, message: 'm', severity: 'Information' as const,
       blocksPublication: false, resolution: 'none' as const, status: 'open' as const, decision: 'KI-147',
     });
-    r.issues = [...r.issues, result('base-file.money-invalid', [h[0]!]), result('base-file.money-disagree', [h[1]!, h[2]!]),
-      result('base-file.money-column-used', [h[3]!])];
+    r.issues = [...r.issues, result('base-file.money-column-used', [h[3]!])];
     r.totals = { ...r.totals, counts: { ...r.totals.counts, withoutClient: 2, withoutDistributor: 1 } };
     const vm = buildOverviewVM(r);
     assert.deepEqual(vm.notes.map((n) => n.id), ['as-on', 'unit', 'gain-def', 'money-invalid', 'money-disagree', 'no-client']);
-    assert.equal(vm.notes[3]!.text, '1 holding has a Crore amount that is not a number: it is invalid source data, and no Lakh or rupee amount is used in its place.');
-    assert.equal(vm.notes[4]!.text, '2 holdings show a Crore amount that differs from its Lakh or rupee amount by more than 0.005 Cr; the Crore amount is used.');
+    assert.equal(vm.notes[3]!.text, '1 holding has an invested value in "Invested Value (Cr.)" that is not a number: it is invalid source data, and no Lakh amount is used in its place.');
+    assert.equal(vm.notes[4]!.text, '2 holdings have market values in "Current Market Value (Cr.)" that are used although their Lakh amounts differ by more than 0.005 Crore.');
     assert.equal(vm.notes[5]!.text, '2 holdings name no client (shown under Client not given); 1 holding names no distributor (shown under Distributor not given).');
-    assert.deepEqual(vm.kpis[1]!.figure.notes, ['money-invalid', 'money-disagree']);
+    // Each note is on the KPI whose figure it changes.
+    assert.deepEqual(vm.kpis[0]!.figure.notes, ['money-invalid']);
+    assert.deepEqual(vm.kpis[1]!.figure.notes, ['money-disagree']);
     // An Information notice is logged, not noted.
     assert.ok(!vm.notes.some((n) => /column-used/.test(n.id)));
+  });
+
+  test('a pie slice is labelled from 2.00% as the table rounds it: 1.995 is labelled "2.0%", 1.994 is not (D-039)', () => {
+    for (const [v, label, table] of [[1.995, 'Commodity 2.0%', '2.00%'], [1.994, null, '1.99%'], [1.9949999999999, null, '1.99%'], [2, 'Commodity 2.0%', '2.00%']] as const) {
+      const r = sampleReview('standard');
+      const com = r.assets.assets.find((b) => b.asset === 'Commodity')!;
+      com.line = { ...com.line, pct: { ...com.line.pct, v } as typeof com.line.pct };
+      const slice = buildOverviewVM(r).charts.asset.slices.find((s) => s.category === 'Commodity')!;
+      assert.equal(slice.pct.display.text, table, String(v));
+      assert.equal(slice.label, label, String(v));
+    }
+  });
+
+  test('the partial invested note counts holdings when the share of market value is missing or outside 0 to 100', () => {
+    // A total market value of 0: the coverage is NOT APPLICABLE, so the note counts holdings, never the dash.
+    const zero = sampleReview('blank-invested');
+    zero.totals = { ...zero.totals, cmv: { ...zero.totals.cmv, v: 0 } as typeof zero.totals.cmv,
+      investedCoveragePct: missing(STATUS.NOT_APPLICABLE, 'the market value is 0') };
+    const z = buildOverviewVM(zero).notes.find((n) => n.id === 'partial-invested')!.text;
+    assert.equal(z, 'p: invested value, gain and absolute return cover the 4 of 6 holdings that have an invested value.');
+    assert.ok(!z.includes('\u2014'));
+    // Negative market values: a coverage of 150% says nothing true.
+    const neg = sampleReview('blank-invested');
+    neg.totals = { ...neg.totals, investedCoveragePct: { ...neg.totals.investedCoveragePct, v: 150 } as typeof neg.totals.investedCoveragePct };
+    assert.equal(buildOverviewVM(neg).notes.find((n) => n.id === 'partial-invested')!.text,
+      'p: invested value, gain and absolute return cover the 4 of 6 holdings that have an invested value.');
+    // One of six: the singular.
+    const one = sampleReview('blank-invested');
+    one.totals = { ...one.totals, investedCoveragePct: missing(STATUS.NOT_APPLICABLE, 'test'),
+      counts: { ...one.totals.counts, withoutInvested: 5 } };
+    assert.equal(buildOverviewVM(one).notes.find((n) => n.id === 'partial-invested')!.text,
+      'p: invested value, gain and absolute return cover the 1 of 6 holdings that has an invested value.');
   });
 
   test('the as-on date not set: no as-on text and the note says so (KI-087)', () => {

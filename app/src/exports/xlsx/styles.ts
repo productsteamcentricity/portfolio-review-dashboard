@@ -24,9 +24,15 @@ export const COLOURS = {
 export const FONT_NAME = 'Cambria';
 export const FONT_SIZE = 9;
 
-/** Custom number formats from id 164 (the first id free for a workbook's own formats). */
+/**
+ * Custom number formats from id 164 (the first id free for a workbook's own formats). Money and units use Indian
+ * digit grouping through the same conditional pattern (a Lakh-only book above 1,00,000 L reads "1,23,456.00" as on
+ * screen; D-039 point 5): literal commas from 1,00,000 and from 1,00,00,000, the locale's grouping below 1,00,000,
+ * where Indian and Western grouping agree. Excel allows two conditions, so a negative amount of -1,00,000 or less
+ * falls in the last section and is grouped as the locale groups it.
+ */
 export const NUM_FMT_CODES = {
-  money: '#,##0.00',
+  money: '[>=10000000]##\\,##\\,##\\,##0.00;[>=100000]##\\,##\\,##0.00;##,##0.00',
   pct: '0.00"%"',
   units: '[>=10000000]##\\,##\\,##\\,##0.000;[>=100000]##\\,##\\,##0.000;##,##0.000',
   date: 'd mmm yyyy',

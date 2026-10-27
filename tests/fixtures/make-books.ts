@@ -458,8 +458,29 @@ export function overviewVariants(xlsx: SheetJS, book: readonly BookRow[], prefix
   const fifty = generatedBook(book, 50, (k) => MANY_PRODUCTS[(k * 7) % MANY_PRODUCTS.length]!);
   add('fifty', '50 holdings across 18 products (the performance test)', rowsOf(fifty, STANDARD));
 
+  // Labels with an en or an em dash (D-039: the engine's label is the join key, plainText is for the text shown):
+  // holding 0 the product DASH_PRODUCT; holdings 1 and 2, both Equity, the products DASH_PAIR[0] and DASH_PAIR[1],
+  // which print alike once the en dash becomes a hyphen; a Liquidity column with DASH_LIQUIDITY[0] (en dash) on
+  // holdings 0 and 3, DASH_LIQUIDITY[1] (em dash) on holding 1, and "Daily" on the others.
+  const dl: Layout = { ...STANDARD, liquidity: true };
+  const dashLiq = [DASH_LIQUIDITY[0], DASH_LIQUIDITY[1], 'Daily', DASH_LIQUIDITY[0], 'Daily', 'Daily'];
+  add('dash-labels', 'labels with an en or em dash: a product, two products that print alike once the dash is a hyphen, and two liquidity labels',
+    rowsOf(book.map((h, i) => (i === 0 ? { ...h, product: DASH_PRODUCT } : i === 1 ? { ...h, asset: 'Equity', product: DASH_PAIR[0] }
+      : i === 2 ? { ...h, asset: 'Equity', product: DASH_PAIR[1] } : h)), dl,
+    (i) => ({ liquidity: dashLiq[i % dashLiq.length] ?? null })));
+
+  // Letter case (D-039: the legacy keys clients and distributors on the label as spelt): holding 1 names holding 0's
+  // client and distributor in capitals, so each stays a column of its own, with the Warning entity-case-variant.
+  add('case-variants', 'holding 1 names the client and the distributor of holding 0 in capital letters (two labels that differ only in letter case)',
+    rowsOf(book.map((h, i) => (i === 1 ? { ...h, client: book[0]!.client.toUpperCase(), dist: book[0]!.dist.toUpperCase() } : h)), STANDARD));
+
   return out;
 }
+
+/** The dash-labels variant's labels: an en dash (U+2013) and an em dash (U+2014) in labels from the file. */
+export const DASH_PRODUCT = 'PMS \u2013 Equity';
+export const DASH_PAIR = ['A \u2013 B', 'A - B'] as const;
+export const DASH_LIQUIDITY = ['T\u20133', 'T\u20141'] as const;
 
 // ---------------------------------------------------------------------------------------------------------------
 // The sample book of tools/make-sample-base.js

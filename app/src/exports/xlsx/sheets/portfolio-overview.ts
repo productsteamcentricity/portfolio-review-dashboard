@@ -98,9 +98,11 @@ export function portfolioOverviewSheet(ctx: BuildContext): SheetSpec {
         asset = row.asset;
         crit.push([col('assetClass'), here('asset')]);
         if (row.kind === 'product') {
-          product = row.product ?? row.label;
-          const pk = ctx.productKeys.get(product);
-          if (pk === undefined) throw new Error(`workbook: no product key for "${product}"`);
+          // The key is looked up by the engine's label; the cell shows the view-model's text (D-039).
+          const raw = row.product ?? row.label;
+          product = row.label;
+          const pk = ctx.productKeys.get(raw);
+          if (pk === undefined) throw new Error(`workbook: no product key for "${raw}"`);
           key = pk;
           crit.push([col('productKey'), here('key')]);
         } else key = row.asset;
@@ -114,8 +116,9 @@ export function portfolioOverviewSheet(ctx: BuildContext): SheetSpec {
       case 'liquidity': {
         block = 'Liquidity';
         liquidity = row.label;
-        const lk = ctx.liquidityKeys.get(row.label);
-        if (lk === undefined) throw new Error(`workbook: no liquidity key for "${row.label}"`);
+        const raw = row.liquidity ?? row.label;
+        const lk = ctx.liquidityKeys.get(raw);
+        if (lk === undefined) throw new Error(`workbook: no liquidity key for "${raw}"`);
         key = lk;
         crit.push([col('liquidityKey'), here('key')]);
         break;

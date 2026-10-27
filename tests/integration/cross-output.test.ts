@@ -3,19 +3,20 @@
 // (Figure.key): renderC08 records where each figure prints on the slide, and the workbook's _manifest lists the
 // '<sheet>!<cell>' of each figure it writes. For every key present in two or more outputs, the screen text (the
 // figure's display), the slide text read back from the pptx, and the sheet value (evaluated independently, then put
-// through the same formatter) are equal after display rounding. A missing figure is the marker alone on screen and
+// through tests/helpers/excel-text.ts, which rounds as Excel shows a cell and is written apart from the app's
+// formatter) are equal after display rounding (D-039). A missing figure is the marker alone on screen and
 // slide, and a blank cell in the workbook.
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Figure, OverviewVM } from '../../app/src/views/overview-vm.ts';
-import { formatIndian } from '../../app/src/views/format.ts';
 import { MISSING_MARKER } from '../../app/src/config/formats.ts';
 import { fixtureById, nodeWiring, reviewOf } from '../helpers/node-wiring.ts';
 import { loadPptxGenJS } from '../helpers/pptxgenjs.ts';
 import { slideInventory, textAt } from '../helpers/slide-inventory.ts';
 import { readWorkbookForEval, evaluateAll, closeTo } from '../helpers/formula-eval.ts';
 import { readXlsx, sheetByName, sheetTable } from '../helpers/xlsx-read.ts';
+import { excelText } from '../helpers/excel-text.ts';
 
 const { JSZip } = loadPptxGenJS();
 
@@ -37,15 +38,16 @@ function figuresByKey(vm: OverviewVM): Map<string, Figure> {
   return out;
 }
 
-/** A sheet number through the screen's formatter, with the decimals and the "%" of the figure's own display. */
+/** A sheet number as Excel shows it (excel-text.ts), with the decimals and the "%" of the figure's own display. */
 function asScreen(v: number, display: string): string {
   const pct = display.endsWith('%');
   const body = pct ? display.slice(0, -1) : display;
   const dot = body.indexOf('.');
-  return formatIndian(v, dot < 0 ? 0 : body.length - dot - 1) + (pct ? '%' : '');
+  return excelText(v, dot < 0 ? 0 : body.length - dot - 1) + (pct ? '%' : '');
 }
 
-const FIXTURES = ['syn-standard', 'syn-lakh', 'syn-blank-invested', 'syn-na-cmv', 'syn-all-classes', 'syn-money-columns', 'syn-single-entity', 'syn-zero-cmv', 'family-a'];
+const FIXTURES = ['syn-standard', 'syn-lakh', 'syn-blank-invested', 'syn-na-cmv', 'syn-all-classes', 'syn-money-columns', 'syn-single-entity', 'syn-zero-cmv',
+  'syn-dash-labels', 'syn-case-variants', 'family-a', 'family-a-dash-labels'];
 
 for (const id of FIXTURES) {
   describe(id, () => {

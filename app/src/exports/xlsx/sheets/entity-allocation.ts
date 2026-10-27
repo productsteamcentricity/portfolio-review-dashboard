@@ -3,7 +3,8 @@
 // view-model's order | Grand Total | Status. Each cell is
 //   SUMIFS(Hd!X, Hd!C, "C01", Hd!O, $A r, Hd!AL, "Yes")      (distributors: Hd!H with D keys)
 // with Hd!K = $C r added on product rows; the Grand Total row drops the class; the Grand Total column drops the
-// entity; the last row is the share of the family, entity total / grand total * 100.
+// entity; the last row is the share of the family, entity total / grand total * 100, below the Grand Total and outside
+// the autoFilter range and the negative red (SheetSpec.tableRows; D-039).
 
 import type { BuildContext } from '../overview-workbook.ts';
 import type { EntityMatrixVM, Figure, MatrixRow } from '../../../views/overview-vm.ts';
@@ -78,9 +79,11 @@ export function entityAllocationSheet(ctx: BuildContext, level: 'client' | 'dist
       a = row.asset;
       crit.push([hcol('assetClass'), fx.cell(null, 'asset', r, { col: true })]);
       if (row.kind === 'product') {
-        b = row.product ?? row.label;
-        const pk = ctx.productKeys.get(b);
-        if (pk === undefined) throw new Error(`workbook: no product key for "${b}"`);
+        // The key is looked up by the engine's label; the cell shows the view-model's text (D-039).
+        const raw = row.product ?? row.label;
+        b = row.label;
+        const pk = ctx.productKeys.get(raw);
+        if (pk === undefined) throw new Error(`workbook: no product key for "${raw}"`);
         key = pk;
         crit.push([hcol('productKey'), fx.cell(null, 'key', r, { col: true })]);
       } else key = row.asset;
@@ -110,7 +113,10 @@ export function entityAllocationSheet(ctx: BuildContext, level: 'client' | 'dist
     if (c.cmv.shown.kind === 'value' && rows[totalRow]!.cells[i]!.shown.kind === 'value') ctx.record(c.cmv, sheet, entityKeys[i]!, totalRow);
   });
 
+  // The share row sits below the Grand Total but outside the table: the autoFilter and the negative red stop at the
+  // Grand Total, so a sort or a sum over a money column never takes in the percentages (D-039).
   const share = sheet.rows.length;
+  sheet.tableRows = share;
   const statuses: string[] = [];
   const shareCells: CellSpec[] = [strCell('Share of family (%)'), null, null];
   const grand = rows[totalRow]!.total;

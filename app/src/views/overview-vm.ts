@@ -28,10 +28,18 @@ export type KpiId = 'invested' | 'cmv' | 'gain' | 'absReturn' | 'holdings' | 'cl
 export type Kpi = { id: KpiId; label: string; figure: Figure };
 
 export type AllocationRowKind = 'asset' | 'product' | 'total' | 'liquidity';
+/**
+ * One line of the allocation table or of the liquidity block. `product` and `liquidity` are the engine's labels as
+ * read (the join key of the figure keys and the workbook's product and liquidity keys); `label` is the text shown,
+ * passed through plainText. Two labels that print alike keep their own keys (D-039).
+ */
 export type AllocationRow = {
   kind: AllocationRowKind;
   asset: AssetKey | null;
+  /** The product as the engine reads it, on a product row; null otherwise. */
   product: string | null;
+  /** The liquidity label as the engine reads it, on a liquidity row; null otherwise. */
+  liquidity: string | null;
   label: string;
   invested: Figure;
   cmv: Figure;
@@ -49,6 +57,7 @@ export type MatrixColumn = { id: string; label: string; cmv: Figure; share: Figu
 export type MatrixRow = {
   kind: 'asset' | 'product' | 'total';
   asset: AssetKey | null;
+  /** The product as the engine reads it (the join key); `label` is the text shown. */
   product: string | null;
   label: string;
   cells: Figure[];

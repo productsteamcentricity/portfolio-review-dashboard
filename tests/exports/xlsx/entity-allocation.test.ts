@@ -1,4 +1,4 @@
-// covers: E-79 E-24
+// covers: E-79 E-24 D-039
 // Client Allocation and Distributor Allocation: entity columns in the view-model's order (by CMV, highest first),
 // every cell, the Grand Total row and column and the share row by formula over Holdings (as loaded) with the generated
 // keys as criteria (never a label: Excel would read * ? ~ in a label as wildcards); C00 and D00 for not given.
@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildOverviewWorkbook } from '../../../app/src/exports/xlsx/overview-workbook.ts';
 import { evaluateAll, readWorkbookForEval, closeTo } from '../../helpers/formula-eval.ts';
-import { readXlsx, sheetByName, sheetTable } from '../../helpers/xlsx-read.ts';
+import { kid, kids, readXlsx, sheetByName, sheetTable } from '../../helpers/xlsx-read.ts';
 import { sampleInput } from './sample-input.ts';
 
 test('columns in the view-model order; asset and product rows, the Grand Total row and the share row', () => {
@@ -83,4 +83,24 @@ test('labels with wildcard characters never reach a criterion', () => {
     if (c.f === null) continue;
     for (const lit of c.f.match(/"[^"]*"/g) ?? []) assert.match(lit, /^"(Yes|[CDPL]\d{2,})"$/, `${s.name}!${c.ref}: ${lit}`);
   }
+});
+
+test('the share row sits below the Grand Total, outside the autoFilter range and the negative red (D-039)', () => {
+  const wb = readXlsx(buildOverviewWorkbook(sampleInput('standard')));
+  for (const name of ['Client Allocation', 'Distributor Allocation']) {
+    const s = sheetByName(wb, name);
+    const t = sheetTable(s);
+    // Row 11 is the Grand Total, row 12 the share of the family: the filter and the red stop at row 11.
+    assert.equal(t[10]![0], 'Grand Total', name);
+    assert.equal(t[11]![0], 'Share of family (%)', name);
+    assert.equal(kid(s.root, 'autoFilter')!.attrs.ref, 'A1:G11', name);
+    const db = wb.definedNames.find((d) => d.name === '_xlnm._FilterDatabase' && d.localSheetId === wb.sheets.indexOf(s))!;
+    assert.equal(db.ref, `'${name}'!$A$1:$G$11`, name);
+    const sqref = kids(s.root, 'conditionalFormatting').map((c) => c.attrs.sqref);
+    assert.deepEqual(sqref, ['D2:D11 E2:E11 F2:F11'], name);
+    assert.equal(kid(s.root, 'dimension')!.attrs.ref, 'A1:G12', 'the share row is still written');
+  }
+  // Every other table filters every row.
+  const po = sheetByName(wb, 'Portfolio Overview');
+  assert.equal(kid(po.root, 'autoFilter')!.attrs.ref, `A1:L${sheetTable(po).length}`);
 });

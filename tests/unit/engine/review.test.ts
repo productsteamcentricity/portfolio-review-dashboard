@@ -174,7 +174,10 @@ describe('the review\'s fields', () => {
     assert.deepEqual(r.labels, labels);
     assert.equal(r.schemaVersion, 1);
     assert.deepEqual(r.build, BUILD);
-    assert.deepEqual(r.sources, [loaded.source]);
+    // The register records the Review stage: a Review exists only for an accepted file (L12). The loaded file's own
+    // record is not changed (it stays at the reader's stage until the store moves it).
+    assert.deepEqual(r.sources, [{ ...loaded.source, stage: 'review' }]);
+    assert.equal(loaded.source.stage, 'validate');
   });
   test('holding metrics: class, liquidity, gain (CMV minus invested) and share; an excluded holding has no share', () => {
     const r = review('syn-standard');

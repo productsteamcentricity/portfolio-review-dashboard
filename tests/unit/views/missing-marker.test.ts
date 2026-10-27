@@ -38,9 +38,16 @@ function strings(value: unknown, path = 'vm', out: Array<[string, string]> = [])
   return out;
 }
 
+/**
+ * The join keys keep the engine's label as read (D-039: allocation rows' product and liquidity, the figure keys), so
+ * two labels that print alike stay apart; no renderer prints them. Every other string is text shown.
+ */
+const JOIN_KEY = /\.(key|product|liquidity)$/;
+
 function assertNoDashExceptMarker(vm: OverviewVM): void {
   for (const [path, s] of strings(vm)) {
     if (!/[\u2013\u2014]/.test(s)) continue;
+    if (JOIN_KEY.test(path) && s !== DASH) continue;
     assert.ok(s === DASH && path.endsWith('.display.text'), `${path}: ${JSON.stringify(s)}`);
   }
 }
@@ -112,7 +119,13 @@ describe('no en or em dash outside the marker', () => {
     const vm = buildOverviewVM(r);
     assertNoDashExceptMarker(vm);
     assert.equal(vm.meta.familyLabel, 'Sample - Family');
-    assert.ok(vm.allocation.rows.some((row) => row.label === 'Mutual - Funds'));
+    const mf = vm.allocation.rows.find((row) => row.label === 'Mutual - Funds')!;
+    // The text shown loses the dash; the join key keeps the engine's label (D-039).
+    assert.equal(mf.product, 'Mutual \u2014 Funds');
+    assert.equal(mf.cmv.key, 'alloc.product.Equity.Mutual \u2014 Funds.cmv');
+    const liq = vm.liquidity.rows[0]!;
+    assert.deepEqual([liq.label, liq.liquidity], ['Open - Ended', 'Open \u2013 Ended']);
+    assert.equal(vm.charts.liquidity.slices[0]!.category, 'Open - Ended');
     assert.equal(vm.matrices.client.columns[0]!.label, 'Client - One');
     assert.equal(vm.notes.find((n) => n.id === 'unknown')!.text, 'Unknown: holdings whose Asset Name is blank or not recognised (Gold - ETF).');
   });
