@@ -5,11 +5,10 @@
 // projected into the legacy row shape (labels as strings, XIRR as a fraction, Crore amounts, the purchase date as
 // "D Mon YYYY", folios joined by "/"). The asset is the new canonical class, null when unknown, never the label as
 // given: an Asset Name the new reader does not recognise must show as a difference from the legacy label, not compare
-// equal to it. The class is compared with the legacy label exactly. The legacy label is already whitespace-normalised
-// (ws(), 07_engine.js:818), and its letter case matters to the legacy: it lower-cases the label where it routes a
-// holding (for example isCommodity, 07_engine.js:626, and bucketOf, :1605), but its Asset Allocation keys on the exact
-// label (07_engine.js:1150-1159), and the IPS reads the allocation rows by assignment (11_app_ui.js:4871-4878). So
-// "EQUITY" beside "Equity" is a second allocation row in the legacy and one class in the new reader (BF-26, KI-145).
+// equal to it. The class is compared with the legacy label exactly. Since fix batch 4 (D-041, CR-0009) the legacy
+// reads the Asset Name as its class too (ENGINE.assetLabel: letter case, spacing and the OD-7 synonyms folded, KI-145),
+// so "EQUITY" is Equity on both sides; a blank label is still Equity in the legacy (BF-14) and an unrecognised one keeps
+// its label (BF-19). Entries the live page has caught up with are retired (kept for the record, matching nothing).
 
 import type { BaseFileImport } from '../../app/src/ingest/base-file.ts';
 import type { Holding } from '../../app/src/model/holding.ts';
@@ -17,7 +16,9 @@ import type { LegacyHost } from '../fixtures/make-books.ts';
 import { formatDay } from '../../app/src/engine/dates.ts';
 
 export type LegacyRow = Record<string, unknown>;
-export type LegacyParse = { rows: LegacyRow[]; unitHint: string };
+/** The legacy notices for the status line (fix batch 4, D-041): one plain sentence each; warn when the analyst should look. */
+export type LegacyNotice = { text: string; warn: boolean };
+export type LegacyParse = { rows: LegacyRow[]; unitHint: string; notices: LegacyNotice[] };
 
 /** The legacy upload path exactly as the page runs it (11_app_ui.js handle(), engine-host build()). */
 export function legacyParse(host: LegacyHost, bytes: Uint8Array): LegacyParse {
@@ -25,7 +26,8 @@ export function legacyParse(host: LegacyHost, bytes: Uint8Array): LegacyParse {
   const sh = wb.Sheets['Base File'] || wb.Sheets[wb.SheetNames[0]];
   const aoa = host.XLSX.utils.sheet_to_json(sh, { header: 1, raw: true });
   const rows = host.E.parseBaseRows(aoa);
-  return { rows: Array.from(rows as LegacyRow[]), unitHint: String(rows.unitHint) };
+  const notices = Array.isArray(rows.notices) ? Array.from(rows.notices as LegacyNotice[]) : [];
+  return { rows: Array.from(rows as LegacyRow[]), unitHint: String(rows.unitHint), notices };
 }
 
 /** Fields compared value by value. */
@@ -133,6 +135,10 @@ export type LedgerEntry = {
   class: 'correction' | 'improvement' | 'regression';
   reference: string;
   description: string;
+  /** Why the entry no longer applies: the live page now behaves as the new reader (a legacy fix). It matches nothing. */
+  retired?: string;
+  /** The legacy pattern before the fix that retired the entry. */
+  legacyBefore?: Pattern;
 };
 
 export type Ledger = { schema: string; area: string; legacy: string; entries: LedgerEntry[] };
@@ -150,9 +156,9 @@ function fits(p: Pattern, v: unknown, other: unknown): boolean {
   return v === p;
 }
 
-/** The entries a difference matches. */
+/** The active (not retired) entries a difference matches. */
 export function entriesFor(d: Diff, ledger: Ledger): LedgerEntry[] {
-  return ledger.entries.filter((e) => e.kind === d.kind
+  return ledger.entries.filter((e) => !e.retired && e.kind === d.kind
     && (e.field === undefined || ('field' in d && e.field === d.field))
     && (e.fixtures === '*' || e.fixtures.includes(d.fixture))
     && fits(e.legacy, d.legacy, d.new)

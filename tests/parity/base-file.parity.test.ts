@@ -63,10 +63,15 @@ describe(`base-file parity (TZ=${process.env.TZ ?? 'system'})`, () => {
       assert.ok(e.description.length > 20, e.id);
       assert.ok(!/[–—]/.test(e.description), `${e.id}: no en or em dash`);
       if (e.fixtures !== '*') for (const f of e.fixtures) assert.ok(fixtures.some((x) => x.id === f), `${e.id}: unknown fixture ${f}`);
+      if (e.retired !== undefined) {
+        assert.ok(e.retired.length > 20 && !/[–—]/.test(e.retired), `${e.id}: a plain retired reason`);
+        assert.match(e.retired, /\bD-\d+\b/, `${e.id}: the retired reason names the decision of the legacy fix`);
+        assert.ok('legacyBefore' in e, `${e.id}: a retired entry keeps its former legacy pattern`);
+      }
     }
   });
 
-  test('every difference matches exactly one ledger entry, and every entry is used', () => {
+  test('every difference matches exactly one active ledger entry, and every active entry is used', () => {
     const unmatched: string[] = [];
     const ambiguous: string[] = [];
     const used = new Map<string, number>();
@@ -80,13 +85,16 @@ describe(`base-file parity (TZ=${process.env.TZ ?? 'system'})`, () => {
     }
     assert.deepEqual(unmatched, [], `differences not in the ledger:\n${unmatched.join('\n')}`);
     assert.deepEqual(ambiguous, [], `differences matching more than one entry:\n${ambiguous.join('\n')}`);
-    const unused = ledger.entries.filter((e) => !used.has(e.id)).map((e) => e.id);
-    assert.deepEqual(unused, [], 'every ledger entry is exercised by a fixture');
+    // A retired entry matches nothing (entriesFor), so its difference coming back is unmatched above.
+    const unused = ledger.entries.filter((e) => !e.retired && !used.has(e.id)).map((e) => e.id);
+    assert.deepEqual(unused, [], 'every active ledger entry is exercised by a fixture');
   });
 
   test('files without an intended difference agree on every compared field', () => {
     const plain = ['family-a', 'family-b', 'family-a-standard', 'family-a-lakh', 'family-a-rupee', 'family-a-na-cmv',
-      'family-a-blank-invested', 'family-a-skipped-rows', 'family-a-holders', 'family-a-text-dates'];
+      'family-a-blank-invested', 'family-a-skipped-rows', 'family-a-holders', 'family-a-text-dates',
+      // fix batch 4 (D-041): the live page reads text that is not a number and an impossible date as the new reader does
+      'family-a-invalid-text'];
     for (const id of plain) {
       const r = results.find((x) => x.fixture.id === id);
       assert.ok(r, id);
@@ -101,22 +109,24 @@ describe(`base-file parity (TZ=${process.env.TZ ?? 'system'})`, () => {
     assert.equal(r.legacyRows, r.newIncluded);
   });
 
-  test('text that is not a number and an impossible date: the legacy read a number off the front of the text and rolled the date; the new reader marks each INVALID SOURCE DATA (BF-21 to BF-25)', () => {
+  test('text that is not a number and an impossible date: both readers leave the value blank and say so (BF-21 to BF-25, retired by fix batch 4, D-041)', () => {
     const r = results.find((x) => x.fixture.id === 'family-a-invalid-text')!;
-    const close = (a: unknown, b: number, msg: string): void => {
-      assert.ok(typeof a === 'number' && Math.abs(a - b) <= 1e-12, `${msg}: ${String(a)} != ${b}`);
-    };
-    const legacyOf = (h: BookRow) => r.legacy.rows.find((x) => x.client === h.client && x.name === h.name)!;
+    const legacyOf = (h: BookRow) => r.legacy.rows.find((x) => x.client === h.client && x.name === h.name);
     const newOf = (h: BookRow) => r.imp.holdings.find((x) => x.clientLabel === h.client && x.instrumentName === h.name)!;
     const status = (v: { kind: string; status?: string }): string | null => (v.kind === 'missing' ? v.status ?? null : null);
-    // Known answers from the cell text: parseFloat("1.25 Cr") = 1.25 and parseFloat("12abc") = 12; new Date(2024, 1, 31)
-    // is 2 March 2024. The legacy XIRR is the percent number divided by 100.
-    close(legacyOf(book[0]!).cmvCr, 1.25, 'legacy CMV "1.25 Cr"');
-    close(legacyOf(book[1]!).cmvCr, 12, 'legacy CMV "12abc"');
-    close(legacyOf(book[2]!).invCr, 1.25, 'legacy invested "1.25 Cr"');
-    close(legacyOf(book[3]!).xirrFrac, 0.12, 'legacy XIRR "12abc"');
-    assert.equal(legacyOf(book[4]!).purchaseDate, '2 Mar 2024');
-    close(legacyOf(book[5]!).bmxirrFrac, 0.0125, 'legacy BMXIRR "1.25 Cr"');
+    // Known answers from the cell text: "1.25 Cr" and "12abc" are not numbers and 31 February 2024 does not exist. Before
+    // fix batch 4 the legacy read 1.25 and 12 off the front of the text (parseFloat) and rolled the date to 2 Mar 2024.
+    assert.equal(legacyOf(book[0]!), undefined, 'legacy: a market value "1.25 Cr" with no other market value leaves the holding out');
+    assert.equal(legacyOf(book[1]!), undefined, 'legacy: a market value "12abc" leaves the holding out');
+    assert.equal(legacyOf(book[2]!)!.invCr, null, 'legacy invested "1.25 Cr" is blank');
+    assert.equal(legacyOf(book[3]!)!.xirrFrac, null, 'legacy XIRR "12abc" is blank');
+    assert.equal(legacyOf(book[4]!)!.purchaseDate, '', 'legacy purchase date "31-02-2024" is blank');
+    assert.equal(legacyOf(book[5]!)!.bmxirrFrac, null, 'legacy BMXIRR "1.25 Cr" is blank');
+    const notes = r.legacy.notices.map((n) => n.text);
+    assert.ok(notes.some((t) => t.startsWith('5 cells hold text that is not a number and are read as blank: ')
+      && t.endsWith(' 2 holdings have no other market value and are left out.')), `legacy notice of the cells: ${notes.join(' | ')}`);
+    assert.ok(notes.includes('1 date in the "Purchase Date" column does not exist (such as 31-02-2024) and is left blank.'),
+      `legacy notice of the date: ${notes.join(' | ')}`);
     for (const h of [book[0]!, book[1]!]) {
       const n = newOf(h);
       assert.deepEqual(n.inclusion, { status: 'excluded', reasons: ['no-market-value'] }, h.name);
@@ -136,22 +146,25 @@ describe(`base-file parity (TZ=${process.env.TZ ?? 'system'})`, () => {
     assert.deepEqual([ex.severity, ex.count], ['Warning', 2]);
   });
 
-  test('an unrecognised Asset Name is unknown in the new reader, not its label (BF-19); REITs/InvITs is a class (BF-20); letter case is folded (BF-26)', () => {
+  test('an unrecognised Asset Name is unknown in the new reader and kept by the legacy (BF-19); spacing, letter case and the OD-7 synonyms are read as the class by both (BF-15, BF-16, BF-20, BF-26, retired by fix batch 4, D-041)', () => {
     const r = results.find((x) => x.fixture.id === 'family-a-odd-asset-labels')!;
     const byLabel = (label: string) => r.imp.holdings.find((h) => h.assetLabel === label)!;
     assert.equal(byLabel('Gold').assetClass, null);
     assert.equal(byLabel('REITs / InvITs').assetClass, 'REITs/InvITs');
     assert.equal(byLabel('REITs/InvITs').assetClass, 'REITs/InvITs');
     assert.deepEqual(r.legacy.rows.map((x) => x.asset).filter((a) => a === 'Gold' || /REIT/.test(String(a))),
-      ['Gold', 'REITs / InvITs', 'REITs/InvITs']);
-    // BF-26: the fixture writes "  EQUITY  ". The legacy row keeps it as written with its spaces collapsed
-    // (ws(), 07_engine.js:818), so "EQUITY" beside "Equity"; the new reader keeps the label and reads the class.
-    const legacyCaps = r.legacy.rows.filter((x) => String(x.asset).toLowerCase() === 'equity' && x.asset !== 'Equity');
-    assert.deepEqual(legacyCaps.map((x) => x.asset), ['EQUITY']);
+      ['Gold', 'REITs/InvITs', 'REITs/InvITs']);
+    // BF-26: the fixture writes "  EQUITY  ". The new reader keeps the label and reads the class; since fix batch 4 the
+    // legacy reads the class too (ENGINE.assetLabel), so the holding is Equity on both sides and one allocation row.
     const newCaps = r.imp.holdings.filter((h) => h.assetLabel !== null && h.assetLabel !== 'Equity'
       && h.assetLabel.toLowerCase() === 'equity');
     assert.deepEqual(newCaps.map((h) => [h.assetLabel, h.assetClass]), [['EQUITY', 'Equity']]);
-    assert.deepEqual([newCaps[0]!.clientLabel, newCaps[0]!.instrumentName], [legacyCaps[0]!.client, legacyCaps[0]!.name],
-      'the same holding on both sides');
+    const legacySame = r.legacy.rows.find((x) => x.client === newCaps[0]!.clientLabel && x.name === newCaps[0]!.instrumentName);
+    assert.equal(legacySame?.asset, 'Equity', 'the same holding is Equity in the legacy');
+    assert.ok(!r.legacy.rows.some((x) => ['EQUITY', 'Fixed Income', 'Debt Funds', 'REITs / InvITs'].includes(String(x.asset))),
+      'no legacy holding keeps a variant label of a class');
+    const note = r.legacy.notices.find((n) => n.text.startsWith('Asset Names read as their class: '));
+    assert.ok(note && ['"EQUITY" as Equity', '"Fixed Income" as Debt', '"Debt Funds" as Debt', '"REITs / InvITs" as REITs/InvITs']
+      .every((s) => note.text.includes(s)), `the legacy notice lists the labels read as a class: ${note?.text}`);
   });
 });
