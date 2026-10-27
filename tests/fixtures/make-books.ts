@@ -97,6 +97,8 @@ type Layout = {
   allocation: boolean;
   holders: boolean;
   dates: 'serial' | 'text';
+  /** A "Liquidity" column after the Purchase Date (optional: absent leaves the bytes of every older fixture unchanged). */
+  liquidity?: boolean;
 };
 
 const STANDARD: Layout = { money: ['rupee', 'crore'], xirr: 'percent', allocation: true, holders: false, dates: 'serial' };
@@ -109,6 +111,7 @@ function headerFor(layout: Layout): string[] {
   if (layout.allocation) head.push('Allocation (%)');
   head.push('XIRR (%)', 'BMXIRR (%)', 'Avg. Holding Days', 'Purchase Date');
   if (layout.holders) head.push('Second Holder', 'Third Holder', 'Mode of Holding');
+  if (layout.liquidity) head.push('Liquidity');
   return head;
 }
 
@@ -140,6 +143,8 @@ type RowOverrides = Partial<{
   /** The Purchase Date cell as written (for example an impossible text date). */
   date: CellSpec;
   holders: [string | null, string | null, string | null];
+  /** The Liquidity cell, when the layout has the column. */
+  liquidity: string | null;
 }>;
 
 function holdingRow(h: BookRow, layout: Layout, total: number, i: number, o: RowOverrides = {}): CellSpec[] {
@@ -162,6 +167,7 @@ function holdingRow(h: BookRow, layout: Layout, total: number, i: number, o: Row
   }
   row.push(h.days, o.date !== undefined ? o.date : dateCell(h.purchase, layout, i));
   if (layout.holders) row.push(...(o.holders ?? [null, null, null]));
+  if (layout.liquidity) row.push(o.liquidity ?? null);
   return row;
 }
 
@@ -320,6 +326,142 @@ export function buildVariants(xlsx: SheetJS, book: readonly BookRow[], prefix: s
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// The overview variants (milestone M1.4): totals, allocations, liquidity, the client and distributor matrices, the
+// KI-147 money-column rule, pagination and hostile labels. Kept apart from buildVariants, so the base-file parity
+// ledger is untouched. Known answers for the synthetic book: tests/fixtures/overview-answers.ts.
+
+/** The 18 products of the many-products variant, by class (one line each on slide C-08, for pagination). */
+export const MANY_PRODUCTS: ReadonlyArray<readonly [string, string]> = [
+  ['Equity', 'Mutual Funds'], ['Equity', 'PMS'], ['Equity', 'AIF Category III'], ['Equity', 'Direct Equity'],
+  ['Equity', 'Specialised Investment Fund'], ['Equity', 'ETF'],
+  ['Debt', 'Debt Mutual Funds'], ['Debt', 'Corporate Bonds'], ['Debt', 'AIF Category II'], ['Debt', 'Government Securities'],
+  ['Hybrid', 'Hybrid Mutual Funds'], ['Hybrid', 'Hybrid PMS'], ['Hybrid', 'Hybrid SIF'],
+  ['Commodity', 'Gold ETF'], ['Commodity', 'Silver ETF'], ['Commodity', 'Commodity Mutual Funds'],
+  ['REITs/InvITs', 'REITs'], ['REITs/InvITs', 'InvITs'],
+];
+
+/** Forty characters shared by the two long client names of the hostile variant. */
+export const HOSTILE_PREFIX_40 = 'Sample Client With A Name Of Forty Chars';
+
+/** Generated holdings: n rows cycling the book's categories, AMCs and dates, with deterministic amounts. */
+function generatedBook(book: readonly BookRow[], n: number, product: (k: number) => readonly [string, string]): BookRow[] {
+  const clients = ['Sample Client A', 'Sample Client B', 'Sample Client C'];
+  const dists = ['Centricity', 'Other Distributor'];
+  return Array.from({ length: n }, (_, k) => {
+    const base = book[k % book.length]!;
+    const [asset, prod] = product(k);
+    const invested = 1000000 * (k + 1) + 250000 * (k % 3);
+    return {
+      ...base,
+      client: clients[k % clients.length]!,
+      name: `Sample ${prod} Holding ${k + 1}`,
+      asset,
+      product: prod,
+      dist: dists[k % dists.length]!,
+      folio: `GEN-${String(3001 + k)}`,
+      units: null,
+      invested,
+      mv: invested + 50000 * (k % 5) * (k + 1),
+    };
+  });
+}
+
+/** Overwrites the cell under `header` in a built row (the money-columns variant writes each column on its own). */
+function setCell(head: string[], row: CellSpec[], header: string, value: CellSpec): void {
+  const j = head.indexOf(header);
+  if (j < 0) throw new Error(`no column ${header}`);
+  row[j] = value;
+}
+
+/** The overview variants of a book: "syn" for SYNTHETIC_BOOK, "family-a" for the sample book. */
+export function overviewVariants(xlsx: SheetJS, book: readonly BookRow[], prefix: string): Fixture[] {
+  if (book.length < 6) throw new Error('a book needs at least six holdings for the variants');
+  const total = book.reduce((s, h) => s + h.mv, 0);
+  const out: Fixture[] = [];
+  const add = (id: string, description: string, rows: CellSpec[][]): void => {
+    out.push({ id: `${prefix}-${id}`, description, bytes: toWorkbook(xlsx, [{ name: 'Base File', rows }]) });
+  };
+  const rowsOf = (b: readonly BookRow[], layout: Layout, o: (i: number) => RowOverrides = () => ({})): CellSpec[][] => {
+    const t = b.reduce((s, h) => s + h.mv, 0);
+    return [headerFor(layout), ...b.map((h, i) => holdingRow(h, layout, t, i, o(i)))];
+  };
+
+  add('all-classes', 'every class: holding 1 is REITs/InvITs, holding 4 is a smaller Commodity holding (invested 4 Lakh, value 5 Lakh) and holding 5 has a blank Asset Name (Unknown, OD-7)',
+    rowsOf(book, STANDARD, (i) => (i === 1 ? { asset: 'REITs/InvITs' } : i === 4 ? { invested: 400000, mv: 500000 } : i === 5 ? { asset: '' } : {})));
+
+  add('single-entity', 'one client ("Sample Client A") and one distributor ("Centricity") for every holding (OD-21)',
+    rowsOf(book.map((h) => ({ ...h, client: 'Sample Client A', dist: 'Centricity' })), STANDARD));
+
+  add('blank-entities', 'holdings 0 and 3 without a Client Name and holding 2 without a Distributor Name (the "not given" columns)',
+    rowsOf(book.map((h, i) => ({ ...h, client: i === 0 || i === 3 ? '' : h.client, dist: i === 2 ? '' : h.dist })), STANDARD));
+
+  add('negative-gain', 'every market value at 70% of the book, so every gain is negative',
+    rowsOf(book.map((h) => ({ ...h, mv: Math.round(h.mv * 0.7) })), STANDARD));
+
+  add('no-invested', 'no holding has an invested value (invested, gain and absolute return are missing, never 0)',
+    rowsOf(book, STANDARD, () => ({ invested: null, gain: null })));
+
+  add('zero-cmv', 'holding 4 has a market value of exactly 0 (a real zero, included: open with the owner)',
+    rowsOf(book, STANDARD, (i) => (i === 4 ? { mv: 0 } : {})));
+
+  const liq: Layout = { ...STANDARD, liquidity: true };
+  const liqLabels: Array<string | null> = ['Daily', 'T+3', null, 'T+3', 'Daily', null];
+  add('liquidity-labels', 'a Liquidity column with "Daily" and "T+3" and two blanks, which take the legacy rule',
+    rowsOf(book, liq, (i) => ({ liquidity: liqLabels[i % liqLabels.length] ?? null })));
+
+  const totalRow = (layout: Layout): CellSpec[] => {
+    const inv = book.reduce((s, h) => s + h.invested, 0);
+    const row = holdingRow({ ...book[0]!, client: '', name: 'Grand Total', cat: '', asset: '', folio: '', amc: '', product: '', dist: '', units: null,
+      invested: inv, mv: total }, layout, total, book.length);
+    return row;
+  };
+  add('total-like', 'a last row named "Grand Total" with the book\'s total market value and invested value, read as a holding (KI-142)',
+    [...rowsOf(book, STANDARD), totalRow(STANDARD)]);
+
+  // KI-147 (the owner's answer of 24 Oct 2026 and the lead's decisions in D-039), in Crore and Lakh columns:
+  // holding 0 "12abc" in the Crore market value (invalid: excluded, the Lakh value not used); holding 1 "NA" in it
+  // (a placeholder: the Lakh value is used, with a notice); holding 2 Crore 1.0 beside Lakh 999 (they disagree: the
+  // Crore amount is used, with a warning); holding 3 a blank Crore market value (the Lakh value is used, with a notice);
+  // holding 4 "12abc" in the Crore invested value (invalid: the holding stays included without an invested value).
+  const mc: Layout = { ...STANDARD, money: ['crore', 'lakh'] };
+  const mcHead = headerFor(mc);
+  const mcRows: CellSpec[][] = [mcHead, ...book.map((h, i) => {
+    const row = holdingRow(h, mc, total, i);
+    if (i === 0) setCell(mcHead, row, 'Current Market Value (Cr.)', '12abc');
+    if (i === 1) setCell(mcHead, row, 'Current Market Value (Cr.)', 'NA');
+    if (i === 2) { setCell(mcHead, row, 'Current Market Value (Cr.)', 1); setCell(mcHead, row, 'Current Market Value (Lakh)', 999); }
+    if (i === 3) setCell(mcHead, row, 'Current Market Value (Cr.)', null);
+    if (i === 4) setCell(mcHead, row, 'Invested Value (Cr.)', '12abc');
+    return row;
+  })];
+  add('money-columns', 'Crore and Lakh columns (KI-147): "12abc" and "NA" in the Crore market value, Crore 1.0 beside Lakh 999, a blank Crore market value, and "12abc" in the Crore invested value',
+    mcRows);
+
+  const many = generatedBook(book, 24, (k) => MANY_PRODUCTS[k % MANY_PRODUCTS.length]!);
+  add('many-products', '24 holdings in 18 products across 5 classes and 3 clients (slide C-08 pagination)', rowsOf(many, STANDARD));
+
+  // Hostile labels: markup, formula starters, characters Excel refuses in sheet names, two client names equal in their
+  // first 40 characters, Unicode, and labels that are names of Object.prototype members.
+  const hostile: Array<Partial<BookRow> & { liquidity?: string }> = [
+    { client: '<script>alert(1)</script>', name: '=HYPERLINK(1)', asset: 'constructor', liquidity: '__proto__' },
+    { client: '+1 Sample Client', name: '@x Sample Fund', product: ': / ? * [ ]', asset: '__proto__', liquidity: 'constructor' },
+    { client: `${HOSTILE_PREFIX_40} Alpha`, dist: 'Distributeur Ünïcödé 名前', liquidity: 'Daily' },
+    { client: `${HOSTILE_PREFIX_40} Beta`, product: '=SUM(A1:A9)', liquidity: 'Daily' },
+    { name: 'Sample Ünïcödé Fund 名前 ✓', product: '@Product', liquidity: 'hasOwnProperty' },
+    { client: '-1 Sample Client', dist: 'toString', liquidity: 'T+3' },
+  ];
+  const hl: Layout = { ...STANDARD, liquidity: true };
+  add('hostile', 'markup, formula starters (= + - @), sheet-name characters, two client names equal in their first 40 characters, Unicode, and the labels "constructor", "__proto__", "hasOwnProperty" and "toString"',
+    rowsOf(book.map((h, i) => ({ ...h, ...hostile[i % hostile.length] })), hl,
+      (i) => ({ liquidity: hostile[i % hostile.length]!.liquidity ?? null })));
+
+  const fifty = generatedBook(book, 50, (k) => MANY_PRODUCTS[(k * 7) % MANY_PRODUCTS.length]!);
+  add('fifty', '50 holdings across 18 products (the performance test)', rowsOf(fifty, STANDARD));
+
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // The sample book of tools/make-sample-base.js
 
 const require = createRequire(import.meta.url);
@@ -351,10 +493,18 @@ export function syntheticFixtures(xlsx: SheetJS = loadSheetJS()): Fixture[] {
   return buildVariants(xlsx, SYNTHETIC_BOOK, 'syn');
 }
 
+/** The overview variants of the synthetic book and of the sample book. */
+export function overviewFixtures(xlsx: SheetJS = loadSheetJS(), host?: LegacyHost): Fixture[] {
+  const out = overviewVariants(xlsx, SYNTHETIC_BOOK, 'syn');
+  if (host) out.push(...overviewVariants(host.XLSX as SheetJS, sampleFixtures(host).book, 'family-a'));
+  return out;
+}
+
 if (import.meta.main) {
   const outDir = path.resolve(process.argv[2] ?? path.join(REPO, 'test-data', 'new-build'));
   fs.mkdirSync(outDir, { recursive: true });
-  const all = [...syntheticFixtures(), ...sampleFixtures(loadLegacyHost()).fixtures];
+  const host = loadLegacyHost();
+  const all = [...syntheticFixtures(), ...sampleFixtures(host).fixtures, ...overviewFixtures(loadSheetJS(), host)];
   for (const f of all) {
     fs.writeFileSync(path.join(outDir, `${f.id}.xlsx`), f.bytes);
     console.log(`${f.id.padEnd(36)} ${f.description}`);

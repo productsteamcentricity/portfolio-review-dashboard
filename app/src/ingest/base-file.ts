@@ -16,7 +16,11 @@
 //   - blank invested value stays missing (KI-007); merged folios with a blank invested value, gain or units leave
 //     that total missing instead of partial (KI-113), and the holding names it in `mergeGaps`;
 //   - Allocation (%) is not read: weights are computed from market values by the engine (KI-093, OD-22), and the
-//     file's own rupee columns are not echoed (OD-22).
+//     file's own rupee columns are not echoed (OD-22);
+//   - money in more than one column (KI-147, config/money-columns.ts): text that is not an amount in the column the
+//     reader would use makes the amount INVALID SOURCE DATA and no later column stands in (the owner's answer of
+//     24 Oct 2026); a blank or placeholder cell passes to the next column with a notice; a later column whose amount
+//     differs from the one used by more than 0.005 Cr is warned.
 // Column aliases, the money-unit precedence (Cr., then Lakh, then rupees) and the merge key (client, instrument,
 // product, distributor) are the legacy ones. Pure function: no globals, no network, no clock unless injected.
 
@@ -42,6 +46,7 @@ import { missing, present } from '../engine/value.ts';
 import { idFactory, keyOf, normaliseLabel } from '../engine/ids.ts';
 import { readAssetLabel } from '../engine/classify/asset.ts';
 import { defaultOwnership, ownershipFromColumns, parseHoldingMode } from '../engine/ownership.ts';
+import { MONEY_COLUMN_RULE } from '../config/money-columns.ts';
 
 export const BASE_FILE_PARSER_VERSION = 'base-file@1';
 /** Rows searched for the header on each sheet (KI-074; the audit's fix asks for about 20, the legacy read 5). */
@@ -275,9 +280,27 @@ type RowRecord = {
   holder3: string | null;
   guardian: string | null;
   modeText: string | null;
+  /** What the money columns of each field said on this row (KI-147 notices). */
+  money: Record<MoneyField, MoneyRead>;
 };
 
 type InvalidTally = Map<string, number>;
+
+/** The three money fields of a holding. */
+type MoneyField = 'invested' | 'cmv' | 'fileGain';
+
+/** What the reader did with the money columns of one field on one row (KI-147). */
+type MoneyRead = {
+  value: Value<number>;
+  /** The header whose number was used; null when none was. */
+  from: string | null;
+  /** Earlier columns of the field that were blank (text null) or held a placeholder, before the one used. */
+  passedOver: Array<{ header: string; text: string | null }>;
+  /** The column whose text is not an amount: the amount is INVALID SOURCE DATA; `later` are the columns not used. */
+  invalid: { header: string; text: string; later: string[] } | null;
+  /** Later columns of the field whose number differs from the one used by more than the tolerance. */
+  disagree: Array<{ header: string; otherCr: number }>;
+};
 
 function bump(t: InvalidTally, header: string): void {
   t.set(header, (t.get(header) ?? 0) + 1);
@@ -313,41 +336,57 @@ function numberValue(
   return missing(STATUS.INVALID_SOURCE, `"${header}" holds "${n.text}", which is not a number`, prov(`base-file "${header}"`));
 }
 
-/** Money in Crore, with the legacy precedence per row: the Cr. column, then Lakh, then rupees (pickCr). */
+/**
+ * Money in Crore, with the legacy precedence per row: the Cr. column, then Lakh, then rupees (pickCr), under the
+ * KI-147 rule (config/money-columns.ts). The first cell that is not blank and not a placeholder decides: a number is
+ * used (and checked against the later columns of the field that hold a number); text that is not an amount, or a
+ * percent, makes the amount INVALID SOURCE DATA and no later column is read in its place.
+ */
 function readMoney(
   row: Cell[], cols: Columns, labels: string[], fields: readonly [BaseField, BaseField, BaseField], what: string,
   prov: (m: string) => Provenance, invalid: InvalidTally,
-): Value<number> {
+): MoneyRead {
   const units: readonly MoneyUnit[] = ['crore', 'lakh', 'rupee'];
-  let sawColumn = false;
-  let firstInvalid: { header: string; text: string } | null = null;
-  let placeholder: { header: string; text: string } | null = null;
+  const present3: Array<{ unit: MoneyUnit; col: number; header: string }> = [];
   for (let i = 0; i < 3; i++) {
     const col = cols[fields[i]!];
-    if (col === undefined) continue;
-    sawColumn = true;
-    const header = labels[col] ?? '';
+    if (col !== undefined) present3.push({ unit: units[i]!, col, header: labels[col] ?? '' });
+  }
+  const none = (value: Value<number>): MoneyRead => ({ value, from: null, passedOver: [], invalid: null, disagree: [] });
+  if (present3.length === 0) return none(missing(STATUS.NOT_AVAILABLE, `the base file has no ${what} column`));
+  const passedOver: MoneyRead['passedOver'] = [];
+  for (let k = 0; k < present3.length; k++) {
+    const { unit, col, header } = present3[k]!;
     const n = readNumber(row[col]);
-    if (n.kind === 'number') {
-      if (n.percentText) {
-        bump(invalid, header);
-        firstInvalid ??= { header, text: `${n.v}%` };
-        continue;
+    if (n.kind === 'number' && !n.percentText) {
+      const cr = toCrore(n.v, unit);
+      const disagree: MoneyRead['disagree'] = [];
+      for (const later of present3.slice(k + 1)) {
+        const m = readNumber(row[later.col]);
+        if (m.kind !== 'number' || m.percentText) continue;
+        const other = toCrore(m.v, later.unit);
+        if (Math.abs(cr - other) > MONEY_COLUMN_RULE.crossCheckToleranceCr + 1e-9) disagree.push({ header: later.header, otherCr: other });
       }
-      return present(toCrore(n.v, units[i]!), 'cr', prov(`base-file "${header}"`));
+      return { value: present(cr, 'cr', prov(`base-file "${header}"`)), from: header, passedOver, invalid: null, disagree };
     }
-    if (n.kind === 'invalid') { bump(invalid, header); firstInvalid ??= { header, text: n.text }; }
-    if (n.kind === 'placeholder') placeholder ??= { header, text: n.text };
+    if (n.kind === 'number' || n.kind === 'invalid') {
+      const text = n.kind === 'invalid' ? n.text : `${n.v}%`;
+      bump(invalid, header);
+      return {
+        value: missing(STATUS.INVALID_SOURCE, `"${header}" holds "${text}", which is not an amount`, prov(`base-file "${header}"`)),
+        from: null,
+        passedOver: [],
+        invalid: { header, text, later: present3.slice(k + 1).map((p) => p.header) },
+        disagree: [],
+      };
+    }
+    passedOver.push({ header, text: n.kind === 'placeholder' ? n.text : null });
   }
-  if (!sawColumn) return missing(STATUS.NOT_AVAILABLE, `the base file has no ${what} column`);
-  if (firstInvalid) {
-    return missing(STATUS.INVALID_SOURCE, `"${firstInvalid.header}" holds "${firstInvalid.text}", which is not an amount`,
-      prov(`base-file "${firstInvalid.header}"`));
-  }
+  const placeholder = passedOver.find((p) => p.text !== null);
   if (placeholder) {
-    return missing(STATUS.NOT_AVAILABLE, `"${placeholder.header}" says "${placeholder.text}"`, prov(`base-file "${placeholder.header}"`));
+    return none(missing(STATUS.NOT_AVAILABLE, `"${placeholder.header}" says "${placeholder.text}"`, prov(`base-file "${placeholder.header}"`)));
   }
-  return missing(STATUS.NOT_AVAILABLE, `the ${what} is blank`, prov('base-file'));
+  return none(missing(STATUS.NOT_AVAILABLE, `the ${what} is blank`, prov('base-file')));
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -464,6 +503,100 @@ function mergedXirr(members: RowRecord[], pick: (m: RowRecord) => Value<number>,
 
 const EMPTY_COUNTS = (): Record<SkipReason, number> =>
   ({ 'blank-row': 0, 'repeated-header': 0, 'total-row': 0, 'no-instrument-name': 0 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// KI-147 notices: money in more than one column
+
+const MONEY_WHAT: Record<MoneyField, { what: string; article: string }> = {
+  cmv: { what: 'market value', article: 'a' },
+  invested: { what: 'invested value', article: 'an' },
+  fileGain: { what: 'gain or loss', article: 'a' },
+};
+const MONEY_FIELDS_IN_ORDER: readonly MoneyField[] = ['cmv', 'invested', 'fileGain'];
+
+/** "row 7", "rows 2 and 5", "rows 2, 5 and 9", at most ten numbers. */
+function rowsText(rows: number[]): string {
+  const sorted = [...new Set(rows)].sort((a, b) => a - b);
+  if (sorted.length === 1) return `row ${sorted[0]}`;
+  const shown = sorted.slice(0, 10);
+  const more = sorted.length - shown.length;
+  if (more > 0) return `rows ${shown.join(', ')} and ${more} more`;
+  return `rows ${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`;
+}
+
+type MoneyGroup = { field: MoneyField; holdingIds: HoldingId[]; rows: number[] };
+
+function addTo<G extends MoneyGroup>(groups: Map<string, G>, key: string, make: () => G, id: HoldingId, row: number): G {
+  let g = groups.get(key);
+  if (!g) { g = make(); groups.set(key, g); }
+  if (!g.holdingIds.includes(id)) g.holdingIds.push(id);
+  g.rows.push(row);
+  return g;
+}
+
+/**
+ * The three KI-147 notices, grouped by field and columns, each scoped to the holdings and naming the rows:
+ * base-file.money-invalid (Warning), base-file.money-column-used (Information) and base-file.money-disagree (Warning).
+ */
+function moneyNotices(records: RowRecord[], holdingOfRow: Map<number, HoldingId>, issues: Issues): void {
+  const invalidG = new Map<string, MoneyGroup & { header: string; later: string[] }>();
+  const usedG = new Map<string, MoneyGroup & { from: string; passed: Map<string, { blank: boolean; texts: string[] }> }>();
+  const disagreeG = new Map<string, MoneyGroup & { from: string; other: string }>();
+  for (const rec of records) {
+    const id = holdingOfRow.get(rec.r);
+    if (id === undefined) continue;
+    for (const field of MONEY_FIELDS_IN_ORDER) {
+      const m = rec.money[field];
+      if (m.invalid) {
+        const inv = m.invalid;
+        const g = addTo(invalidG, keyOf([field, inv.header]), () => ({ field, holdingIds: [], rows: [], header: inv.header, later: [] }), id, rec.at.row);
+        for (const l of inv.later) if (!g.later.includes(l)) g.later.push(l);
+      }
+      if (m.from !== null && m.passedOver.length > 0) {
+        const from = m.from;
+        const g = addTo(usedG, keyOf([field, from, ...m.passedOver.flatMap((p) => [p.header, p.text])]),
+          () => ({ field, holdingIds: [], rows: [], from, passed: new Map() }), id, rec.at.row);
+        for (const p of m.passedOver) {
+          let e = g.passed.get(p.header);
+          if (!e) { e = { blank: false, texts: [] }; g.passed.set(p.header, e); }
+          if (p.text === null) e.blank = true;
+          else if (!e.texts.includes(p.text)) e.texts.push(p.text);
+        }
+      }
+      for (const d of m.disagree) {
+        const from = m.from!;
+        addTo(disagreeG, keyOf([field, from, d.header]), () => ({ field, holdingIds: [], rows: [], from, other: d.header }), id, rec.at.row);
+      }
+    }
+  }
+  const scope = (g: MoneyGroup): ValidationScope => ({ kind: 'holdings', holdingIds: g.holdingIds });
+  for (const g of invalidG.values()) {
+    const n = g.holdingIds.length;
+    const { what } = MONEY_WHAT[g.field];
+    const excluded = g.field === 'cmv' ? ` and ${n === 1 ? 'it is' : 'they are'} excluded from every total` : '';
+    const later = g.later.length ? `; ${quoteList(g.later)} ${g.later.length === 1 ? 'is' : 'are'} not used instead` : '';
+    issues.add('base-file.money-invalid', 'Warning', scope(g),
+      `${plural(n, 'holding has', 'holdings have')} text that is not an amount in "${g.header}" (${rowsText(g.rows)}), so ${n === 1 ? 'its' : 'their'} ${what} ${n === 1 ? 'is' : 'are'} invalid source data${excluded}${later}.`,
+      { decision: 'KI-147', count: n });
+  }
+  for (const g of usedG.values()) {
+    const n = g.holdingIds.length;
+    const because = [...g.passed.entries()].map(([header, e]) => {
+      const says = e.texts.length ? `says ${e.texts.map((t) => `"${t}"`).join(' or ')}` : '';
+      return `"${header}" ${e.blank && says ? `is blank or ${says}` : e.blank ? 'is blank' : says}`;
+    }).join(' and ');
+    issues.add('base-file.money-column-used', 'Information', scope(g),
+      `${plural(n, 'holding takes', 'holdings take')} ${n === 1 ? 'its' : 'their'} ${MONEY_WHAT[g.field].what} from "${g.from}" because ${because} (${rowsText(g.rows)}).`,
+      { decision: 'KI-147', count: n, resolution: 'auto-resolved', status: 'resolved' });
+  }
+  for (const g of disagreeG.values()) {
+    const n = g.holdingIds.length;
+    const { what, article } = MONEY_WHAT[g.field];
+    issues.add('base-file.money-disagree', 'Warning', scope(g),
+      `${plural(n, 'holding has', 'holdings have')} ${article} ${what} in "${g.from}" that differs from "${g.other}" by more than ${MONEY_COLUMN_RULE.crossCheckToleranceCr} Cr (${rowsText(g.rows)}); the amount in "${g.from}" is used.`,
+      { decision: 'KI-147', count: n });
+  }
+}
 
 export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImport {
   const now = opts.now ?? ((): string => new Date().toISOString());
@@ -589,6 +722,11 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
           d.kind === 'empty' ? `"${pdHeader}" is blank` : `"${pdHeader}" says "${d.text}"`, prov(`base-file "${pdHeader}"`));
       }
     }
+    const money: Record<MoneyField, MoneyRead> = {
+      invested: readMoney(row, cols, headerLabels, ['invCr', 'invLk', 'invR'], 'invested value', prov, invalid),
+      cmv: readMoney(row, cols, headerLabels, ['cmvCr', 'mvLk', 'mvR'], 'market value', prov, invalid),
+      fileGain: readMoney(row, cols, headerLabels, ['glCr', 'glLk', 'glR'], 'gain or loss', prov, invalid),
+    };
     return {
       r,
       at: at(r),
@@ -603,9 +741,9 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       liquidity: textOrNull(row, cols.liq),
       purchaseDate,
       units: readPlainNumber(row, cols.units, header('units'), 'units', 'Units', prov, invalid),
-      invested: readMoney(row, cols, headerLabels, ['invCr', 'invLk', 'invR'], 'invested value', prov, invalid),
-      cmv: readMoney(row, cols, headerLabels, ['cmvCr', 'mvLk', 'mvR'], 'market value', prov, invalid),
-      fileGain: readMoney(row, cols, headerLabels, ['glCr', 'glLk', 'glR'], 'gain or loss', prov, invalid),
+      invested: money.invested.value,
+      cmv: money.cmv.value,
+      fileGain: money.fileGain.value,
       holdingDays: readPlainNumber(row, cols.days, header('days'), 'days', 'holding days', prov, invalid),
       xirr: readXirr(row, cols.xirr, xPlan, prov, invalid),
       bmXirr: readXirr(row, cols.bmxirr, bPlan, prov, invalid),
@@ -613,6 +751,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       holder3: textOrNull(row, cols.holder3),
       guardian: textOrNull(row, cols.guardian),
       modeText: textOrNull(row, cols.mode),
+      money,
     };
   });
 
@@ -750,15 +889,18 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
     };
   };
   const built: Array<{ firstRow: number; h: Holding }> = [];
+  /** The holding each holding row went into (for the KI-147 notices: a merged holding carries its folios'). */
+  const holdingOfRow = new Map<number, HoldingId>();
   for (const g of groupOrder) {
-    built.push({ firstRow: g.members[0]!.r, h: holdingFrom(g.members, holdingId(keyOf(['in', g.key])), { status: 'included' }) });
+    const h = holdingFrom(g.members, holdingId(keyOf(['in', g.key])), { status: 'included' });
+    for (const m of g.members) holdingOfRow.set(m.r, h.id);
+    built.push({ firstRow: g.members[0]!.r, h });
   }
   for (const rec of excludedRecs) {
-    built.push({
-      firstRow: rec.r,
-      h: holdingFrom([rec], holdingId(keyOf(['ex', sheetName, String(rec.at.row)])),
-        { status: 'excluded', reasons: ['no-market-value'] }),
-    });
+    const h = holdingFrom([rec], holdingId(keyOf(['ex', sheetName, String(rec.at.row)])),
+      { status: 'excluded', reasons: ['no-market-value'] });
+    holdingOfRow.set(rec.r, h.id);
+    built.push({ firstRow: rec.r, h });
   }
   built.sort((a, b) => a.firstRow - b.firstRow);
   const holdings = built.map((b) => b.h);
@@ -820,6 +962,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
         { decision: 'KI-113', count: partial.length, resolution: 'auto-resolved', status: 'resolved' });
     }
   }
+  moneyNotices(records, holdingOfRow, issues);
   if (invalid.size) {
     const parts = [...invalid.entries()].map(([h, n]) => `"${h}" (${n})`);
     const n = [...invalid.values()].reduce((a, b) => a + b, 0);
