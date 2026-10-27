@@ -110,8 +110,8 @@ date of merged holdings whose first row was not the earliest.
 - `check-invariants`: all invariants hold, 1 known warning (KI-027). `smoke-review`: all checks pass.
   `test-ai-analyst`: all checks pass. `run-regression`: 19 files, all pass.
 - Fail before: the seven new test files run on `main` (`911A0465…`) fail: KI-140 4 checks, KI-141 11, KI-142 7,
-  KI-143 14, KI-144 10, KI-145 and KI-146 at their first check (no `ENGINE.assetLabel`, no class sums; KI-146's
-  actuals give 6.21% equity for 54.37%).
+  KI-143 14 (then stops: no notices), KI-144 10, KI-145 at its first check (no `ENGINE.assetLabel`), KI-146 12 (no
+  class sums, and its actuals give 6.21% equity where 54.37% is right).
 - New build: 234 of 234 tests pass in IST and in UTC; `data-extract --check`: equal; traceability: ok.
 - Not verified: the page in a browser (the status-line notices are checked headless, with `baseNotes` cut from the UI
   script); PowerPoint and Excel rendering (no layout changed); the live page after publishing.
