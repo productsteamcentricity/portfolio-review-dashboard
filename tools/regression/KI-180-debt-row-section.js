@@ -57,8 +57,11 @@ Object.keys(REF.STOCK_INFO).forEach(k => note({ product: 'Direct Equity', asset:
  ['Debt', 'Mutual Funds', 'Equity Linked Savings Scheme', 'X ELSS Tax Saver Fund']].forEach(([a, p, c, n]) => note({ asset: a, product: p, category: c, name: n }));
 const missing = [...seen.keys()].filter(c => !INST.has(c));
 ok(missing.length === 0 && seen.size >= 30, seen.size + ' distinct classes returned, every one a TAX_RULES row' + (missing.length ? '; missing: ' + missing.join(', ') : ''));
-const unused = [...INST].filter(i => !seen.has(i));
-ok(unused.length === 0, 'and every TAX_RULES row is reachable' + (unused.length ? '; not reached: ' + unused.join(', ') : ''));
+/* tax batch T2 (KI-161): a row for units bought before 1 Apr 2023 is reached through the "before" of a
+   Specified row, by the lot's date, never by taxClassify */
+const viaBefore = new Set(REF.TAX_RULES.filter(r => r.before && seen.has(r.inst)).map(r => r.before));
+const unused = [...INST].filter(i => !seen.has(i) && !viaBefore.has(i));
+ok(unused.length === 0, 'and every TAX_RULES row is reachable (directly, or through a Specified row\'s "before")' + (unused.length ? '; not reached: ' + unused.join(', ') : ''));
 
 console.log('--- a class with no row is unclassified, with a reason ---');
 const noDebt = Object.assign({}, REF, { TAX_RULES: REF.TAX_RULES.filter(r => r.inst !== DEBT) });

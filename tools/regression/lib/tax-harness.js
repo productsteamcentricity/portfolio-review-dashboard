@@ -44,7 +44,19 @@ Book.prototype.add = function (o) {
     d: D(l[0]), a: -l[1] * l[2], price: o.noUnits ? null : l[2] }));
   return this;
 };
-Book.prototype.parsed = function () { return host().E.parseBaseRows([HEAD].concat(this.rows)); };
+/* trade({client, name, date:'YYYY-MM-DD', units, price, type}): an IRR trade only, not in the base row
+   (tax batch T2: a trade after the valuation date). A sale is a positive amount, a purchase negative. */
+Book.prototype.trade = function (o) {
+  const sell = /redemption|sell|switch[- ]?out/i.test(o.type || '');
+  this.tx.push({ client: o.client || 'Client A', instrument: o.name, ttype: o.type || 'Purchase', rtype: '',
+    d: D(o.date), a: (sell ? 1 : -1) * o.units * o.price, price: o.price });
+  return this;
+};
+/* opts.valuationDate (tax batch T2, KI-176): the cell value of a "Valuation Date" column on every row */
+Book.prototype.parsed = function (opts) {
+  if (!opts || opts.valuationDate === undefined) return host().E.parseBaseRows([HEAD].concat(this.rows));
+  return host().E.parseBaseRows([HEAD.concat(['Valuation Date'])].concat(this.rows.map(r => r.concat([opts.valuationDate]))));
+};
 /* REF with this book's IRR history; a Closing row per holding on `asOn` sets the IRR date */
 Book.prototype.ref = function (asOn) {
   const H = host();
@@ -57,10 +69,14 @@ Book.prototype.tax = function (asOn, refOverride) {
   const H = host();
   return H.E.computeTaxation(this.parsed(), refOverride || this.ref(null), D(asOn));
 };
-/* the whole review (as the page computes it), holding periods measured to `asOn` (the IRR date) */
-Book.prototype.review = function (asOn) {
+/* the whole review (as the page computes it). The IRR sheet's Closing rows are dated `asOn`. With no
+   opts the review has no portfolio date and no base-file valuation date, so holding periods run to the
+   IRR sheet's latest date (`asOn`). opts.asOnDate is the portfolio date ("d Mon yyyy", as the page's
+   date picker gives it); opts.valuationDate a base-file "Valuation Date" cell (tax batch T2, KI-176). */
+Book.prototype.review = function (asOn, opts) {
   const H = host();
-  return H.E.computeReview(this.parsed(), this.ref(asOn), { familyName: 'Synthetic Family', asOnDate: '' });
+  opts = opts || {};
+  return H.E.computeReview(this.parsed(opts), this.ref(asOn), { familyName: 'Synthetic Family', asOnDate: opts.asOnDate || '' });
 };
 
 /* ---- screen: the Taxation tab, cut out of the UI script ---- */

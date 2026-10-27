@@ -3,9 +3,10 @@
 - **Requested:** 24 Oct 2026, by the product owner, who supplied `India_Taxation_Reckoner_TY2026-27.xlsx` (law as on
   19 Oct 2026; the Income-tax Act 2025 in force from 1 Apr 2026) as the source of record for the current tax year.
   The lead commissioned a financial review of the live page against it (24 Oct 2026) and set the defaults in D-040.
-  Built in parts on `fix/legacy-batch-3-tax`; part T1 built 27 Oct 2026.
-- **Status:** in progress: part T1 (classification and the TAX_RULES rows) is committed on the branch, not pushed;
-  the later parts follow on the same branch. Under D-028 these are calculation and data fixes for the live page.
+  Built in parts: part T1 on `fix/legacy-batch-3-tax` (27 Oct 2026); part T2 on `fix/legacy-batch-3-tax-p2`, on top of
+  T1's commit (27 Oct 2026).
+- **Status:** in progress: parts T1 (classification and the TAX_RULES rows) and T2 (holding periods and lots) are
+  committed, not pushed; the later parts follow. Under D-028 these are calculation and data fixes for the live page.
 
 ## Request
 Make the Taxation tab, the tax slides and the AI Analyst tax signal follow the reckoner. The review found 23
@@ -16,11 +17,13 @@ repository (it quotes no client data, but it is the working file of the review).
 | Part | Scope | KI (TX) | State |
 |---|---|---|---|
 | T1 | classification and the TAX_RULES rows | KI-162 to KI-165 (TX-03 to TX-06), KI-170 (TX-11), KI-172 to KI-174 (TX-13 to TX-15), KI-178 to KI-180 (TX-19 to TX-21) | built 27 Oct 2026 |
-| later | lot dating (TX-01, TX-02, TX-17), fund-level and pass-through AIFs (TX-07, TX-12), harvest (TX-08, TX-09, TX-16), PMS (TX-10), grandfathering disclosure (TX-18), wording (TX-22), crypto source (TX-23) | KI-160, KI-161, KI-166 to KI-169, KI-171, KI-175 to KI-177, KI-181, KI-182 | open |
+| T2 | holding periods and lots: the anniversary rule, the 1 Apr 2023 purchase-date rule, the valuation date, the 1 Feb 2018 disclosure | KI-160 (TX-01), KI-161 (TX-02), KI-176 (TX-17), KI-177 step 1 (TX-18) | built 27 Oct 2026 |
+| later | fund-level and pass-through AIFs (TX-07, TX-12), harvest (TX-08, TX-09, TX-16), PMS (TX-10), wording (TX-22), crypto source (TX-23); the grandfathering step-up (TX-18 step 2, owner rulings first) | KI-166 to KI-169, KI-171, KI-175, KI-177 step 2, KI-181, KI-182 | open |
 
 **Part T1 must not be merged alone:** it maps conservative hybrids, debt FoFs, debt SIFs and debt ETFs filed as "ETF" or
 "Index Fund" to the Specified rows, which treat every lot as short term; units bought before 1 Apr 2023 need the
-purchase-date rule of KI-161 (TX-02), as the review's verifier required for TX-19. The batch merges as one change.
+purchase-date rule of KI-161 (TX-02), as the review's verifier required for TX-19. Part T2 adds that rule. The batch
+merges as one change.
 
 ## Scope of part T1
 - **Acceptance:**
@@ -168,10 +171,116 @@ harvest; newly classified ones (aggressive hybrids, FoFs, SIFs, international ET
   checked in the tests); real client books (no client data used); the later parts' interaction (TX-01 changes the
   bucket test this part's lock-in test sits beside).
 
+## Scope of part T2 (holding periods and lots)
+- **Acceptance:**
+  - a lot is long term from the day after the anniversary of its purchase (more than 12 or 24 months), the months
+    added in calendar months and clamped to the month end; exactly 12 months is short term (TX-01, D-040 b);
+  - Specified treatment (always short term, slab) applies only to units bought on or after 1 Apr 2023; older units of
+    debt funds (with target maturity funds, debt ETFs and debt FoFs) and of conservative hybrids follow the general rule
+    in their own class: long term after 24 months (12 for a listed ETF), 12.5%, no exemption (TX-02);
+  - holding periods run to the base file's valuation date; IRR trades after it are left out of the lots with a notice
+    (TX-17, D-040 a);
+  - lots bought before 1 Feb 2018 in a class the grandfathering can cover are counted and disclosed, with no price
+    invented (TX-18, the verifier's step 1);
+  - "Long term after" reads "More than N months" on the tab and the slides;
+  - the synthetic sample book's taxation is unchanged.
+- **Non-goals (later parts):** the exemption, the per-client harvest, the slab-rate ranking, AIF and PMS treatment, the
+  31 Jan 2018 step-up itself, the carry-forward wording, the crypto source note. The sample book
+  (`tools/make-sample-base.js`) is not extended: the tests build their own lots.
+
+## Decisions settled while building part T2 (for the owner to confirm; also in D-040)
+- **The valuation date (D-040 a).** The page reads it, in this order: the base file's own "Valuation Date" column
+  when it has one (the latest date in it; some holding-report formats carry it), else the portfolio date the analyst
+  sets for the review ("As on"; the slides print it as "Portfolio as on"), read strictly as "d Mon yyyy", never the
+  built-in "20 May 2026"; with neither, the IRR sheet's latest date as before, and the tab says so. The portfolio
+  date picker opens on today's date, so when the base file has no Valuation Date column the analyst must set it to the
+  base file's date; the tab says so when the IRR sheet ends before it. This also meets OD-2 (the review's as-on date).
+- **Trades after the valuation date** are left out of the lots and counted; the tab names the instruments, the class
+  slide counts them, and an unreconciled holding's reason says when some of its trades were left out.
+- **The pre-2023 classes.** Two new TAX_RULES rows, reached only through the Specified rows' `before` field by each
+  lot's date: "Debt MF bought before 1 Apr 2023" (24 months, `listedEtfMonths` 12: a name or category with "ETF" or
+  "BeES" and no "FoF") and "Hybrid MF (conservative) bought before 1 Apr 2023" (24 months). The SIF debt row has no
+  date rule: SIFs began in 2025. A holding with lots on both sides is two records, each with its own units, CMV,
+  Gain/Loss and lots, adding back to the holding exactly; the second is marked and never counted as another holding.
+- **The 1 Feb 2018 classes** are Listed Equity Shares, Equity Mutual Funds, Equity ETFs, ELSS, Hybrid MF
+  (equity-oriented), Equity ETF FoF, Equity PMS, REIT and InvIT units (old Sec 112A's scope: shares, equity-oriented
+  fund units and business trust units). The disclosure is shown only when such a lot is open.
+- **Free-text IRR dates** ("01-Apr-2023") are read as their calendar day; on an IST machine they were 31 Mar in UTC.
+
+## The new TAX_RULES rows and fields (part T2)
+
+| Row | Long term after | STCG | LTCG | Reckoner |
+|---|---|---|---|---|
+| Debt Mutual Funds – Sec. 76 (old 50AA): adds `specifiedFrom` 2023-04-01, `before` "Debt MF bought before 1 Apr 2023" | always short term (units from 1 Apr 2023) | slab | none | Mutual Funds R17; Master #16, #18 |
+| Hybrid MF (Specified, Sec. 76): adds the same, `before` "Hybrid MF (conservative) bought before 1 Apr 2023" | always short term (units from 1 Apr 2023) | slab | none | Hybrid Funds & FoFs R7 (J7), R24 |
+| Debt MF bought before 1 Apr 2023 (new; `boughtBefore` 2023-04-01) | 24 months (12 for a listed ETF, `listedEtfMonths`) | slab | 12.5%, no exemption | Mutual Funds R26 (#8); Master #17, P27 |
+| Hybrid MF (conservative) bought before 1 Apr 2023 (new) | 24 months | slab | 12.5% | Hybrid Funds & FoFs R24 (J24); Mutual Funds R26 |
+
+TAX_RULES goes from 32 to 34 rows.
+
+## What changes, and for which books (part T2)
+- **Every book with a lot one day to a month past its 12- or 24-month anniversary:** that lot moves from short to long
+  term (and into the 12.5% pool where the short-term rate was 20%, or out of the unquantified slab pool).
+- **Every book with debt or conservative hybrid units bought before 1 Apr 2023:** those lots move from short term at
+  slab to their own class, now long term at 12.5% (any lot bought before 1 Apr 2023 is more than 24 months old after
+  31 Mar 2025); their gains enter the quantified harvest, and their losses become long-term losses. On the verifier's
+  book: tax before Rs 875, after Rs 250, saving Rs 625 (was 0, 0, 0).
+- **Books whose IRR sheet ends before the base file's valuation date, or has trades after it:** lots are aged to the
+  valuation date, and later trades no longer make a holding unreconciled.
+- **Books with equity lots bought before 1 Feb 2018:** a note names those holdings; no figure changes.
+- **The synthetic sample book:** identical taxation (CMV 8.7443, long term 5.547273, short term 2.400027, not
+  classified 0.797, tax before 0.267175 Cr); it has no lot in the anniversary window, no debt lot before 1 Apr 2023 and
+  no trade after 30 Sep 2026.
+
+## Changes (part T2)
+- `tools/patches/2026-10-27-tax-2-holding-period.js` (reference data, engine, exporters, parsers, UI); `index.html` MD5
+  `5717A7967294FA13ED3A65111D80DA61` → `AE70F78B0C89E57692EE9C71A2AC8358` (16,841,457 → 16,856,968 bytes).
+  - Engine: `taxBucket(rule, buy, asOn, etf)` tests the anniversary to the day (`taxMonthsBetween` removed);
+    `taxListedEtf`; `taxRefDate` (the valuation date and its source), `taxParseDMY` and `taxCellDay` (strict dates);
+    `parseBaseRows` reads a "Valuation Date" column into `valuationDate`; `computeTaxation` leaves trades after its date
+    out of FIFO (`later`, `irrThrough`), splits a holding at 1 Apr 2023 (`splitPart`), counts lots before 1 Feb 2018
+    (`gfLots`), and its totals carry holding counts (`nPos`, `nHold`); `computeReview` passes the valuation date and
+    its source (`asOnSource`, `portfolioDate`); the AI Analyst tax signal counts a split holding once and names lots
+    before 1 Feb 2018.
+  - Parsers: `irrParseDate` reads free text as its calendar day.
+  - Screen: "More than N months"; the date's source, the anniversary rule and the 29 Feb clamp in the sub-heading;
+    notes on the valuation date (IRR sheet ending earlier, trades left out, the fallback), the 1 Apr 2023 rule and the
+    lots before 1 Feb 2018 (also as the harvest footnote); the grand total counts holdings once; one client's view
+    carries the date fields. Slides: "More than N months"; the class footnote's date tag and short notes on 1 Apr 2023
+    and 1 Feb 2018; the harvest footer's 1 Feb 2018 sentence; totals and holding detail count holdings once.
+- `data/refdata/TAX_RULES.json` and `VINTAGE.json` regenerated.
+- Tests: `tools/regression/KI-160-anniversary-rule.js`, `KI-161-specified-from-2023.js`, `KI-176-valuation-date.js`,
+  `KI-177-grandfathering-disclosure.js` (118 checks); `tools/regression/lib/tax-harness.js` (IRR-only trades, a
+  Valuation Date column, a portfolio date); `KI-170` and `KI-173` expect "More than N months"; `KI-180` reaches the two
+  new rows through the Specified rows.
+- Docs: D-040, KNOWN_ISSUES (KI-160, KI-161, KI-176, KI-177, KI-022, KI-178, KI-109), this record, the change-request
+  index, CHANGELOG, PROJECT_STATE, legacy ARCHITECTURE, TESTING.
+
+## Verification (part T2)
+- `check-invariants`: all invariants hold, 1 known warning (KI-027). `smoke-review` 35/35. `test-ai-analyst`
+  24/24. `run-regression`: 27 files, 950 checks, all pass (also with `TZ=UTC` for the tax files).
+- **Fail before:** the 4 new files run against the T1 page (`5717A796…`) all exit 1 (KI-160: 18 checks fail;
+  KI-161: 30; KI-176: 15, then it stops where `later` does not exist; KI-177: 10).
+- Known answers from units x price: an equity fund bought 10 Oct 2025 is long term on 23 Oct 2026, Rs 625 (was short
+  term, Rs 1,000); it turns long term on 11 Oct 2026; 29 Feb 2024 lots on 28 Feb and 1 Mar 2025; the verifier's debt
+  book Rs 875 / Rs 250 / Rs 625; an old gilt lot at a loss no longer offsets a short-term gain (tax Rs 800, was Rs 600);
+  a purchase after the valuation date leaves the holding reconciled (it was unreconciled); the verifier's 2017 lot keeps
+  LTCG Rs 70,000 and Rs 8,750 of tax, now disclosed.
+- The patch re-run changes nothing; it applies cleanly to the T1 build; `node scripts/data-extract.ts --check`
+  passes; `node --test` 234/234 in IST and in UTC.
+- The tax slides of a synthetic worst-case book (16 classes, both pre-2023 classes, ELSS lock-in, lots before 1 Feb
+  2018, two later trades, an unreconciled and an unclassified holding) were rendered in PowerPoint and looked at: the
+  class table fits with its two wrapped "Long term after" cells ("More than 12 months (3-yr lock-in)", "More than 24
+  months (12 if listed ETF)"); with every conditional sentence at once the class footnote runs to a third line that
+  touches the black band (recorded under KI-109); the harvest footer fits on two lines.
+- **Not verified:** the Taxation tab in a browser (its HTML was rendered headlessly from the shipped renderer and
+  checked in the tests); real client books and real base files with a Valuation Date column (no client data used).
+
 ## Questions for the owner and the tax adviser
 1. Confirm the D-040 defaults (a) to (h).
 2. ELSS: is a lot redeemable on the third anniversary of its purchase or from the next day (built: the next day)?
-3. 29 Feb purchases: anniversary clamped to 28 Feb (built for the ELSS lock-in; D-040 b for the long-term rule)?
+3. 29 Feb purchases: anniversary clamped to 28 Feb (built for the ELSS lock-in, and in part T2 for the long-term rule,
+   D-040 b), so long term from 1 Mar; or from 2 Mar?
 4. Foreign shares held directly: which marker do the real base files carry (ISIN, product or category label)? The
    embedded data marks only one share (NXP Semiconductors).
 5. Confirm the 90/90 status of each equity ETF FoF, and whether Bharat 22, ESG sector leaders and multi-ETF FoFs
@@ -182,7 +291,15 @@ harvest; newly classified ones (aggressive hybrids, FoFs, SIFs, international ET
    year-end classification, or approve the reckoner's usual bucket?
 8. SIFs under their own rows (built) or under the mutual-fund rows?
 9. What Asset Name and Category do real base files give gold or silver ETFs and FoFs, Balanced Hybrid funds and FoFs?
+10. The valuation date (part T2): the base file's Valuation Date column first, then the portfolio date, then the IRR
+    sheet (built). Does every current base file format carry a Valuation Date column, and is it one date for the file?
+11. How does the IRR sheet record an AMC scheme merger? A merger is not a transfer (Mutual Funds R43); if it arrives as
+    a switch-in dated on the merger, units bought before 1 Apr 2023 would be redated and wrongly made Specified.
+12. Grandfathering (KI-177 step 2): confirm the formula (cost = the higher of actual cost and the lower of the 31 Jan
+    2018 value and the sale value) and its Act 2025 section; the share price basis (highest quote or close); the
+    scope (equity ETFs, arbitrage funds, REIT and InvIT units, shares inside a PMS); and the source of 31 Jan 2018
+    prices and NAVs, adjusted for corporate actions and scheme mergers.
 
 ## Status
-Part T1 committed on `fix/legacy-batch-3-tax` (not pushed). Next: the later parts on the same branch, a financial
-re-review, the browser acceptance (docs/TESTING.md), then one pull request for the batch.
+Part T1 committed on `fix/legacy-batch-3-tax`, part T2 on `fix/legacy-batch-3-tax-p2` (neither pushed). Next: the later
+parts, a financial re-review, the browser acceptance (docs/TESTING.md), then one pull request for the batch.

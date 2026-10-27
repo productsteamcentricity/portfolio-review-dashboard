@@ -449,10 +449,31 @@ for the owner to confirm or change:
   columns, the amounts available for rebalancing and tax harvesting.
 - **REIT and InvIT funds.** A fund is recognised by its name (index fund, ETF, FoF) or a fund product other than plain
   "Mutual Funds", so a REIT held directly whose blank Product parses as "Mutual Funds" stays a REIT unit.
+
+Settled while building part T2 (holding periods and lots, 27 Oct 2026), within the decisions above, for the owner to
+confirm or change:
+- **Where the valuation date comes from (a).** The base file's own "Valuation Date" column when it has one (the latest
+  date in it), else the portfolio date the analyst sets for the review ("As on", printed as "Portfolio as on"), read
+  strictly as "d Mon yyyy" and never the built-in default; with neither, the IRR sheet's latest date, as before, with a
+  note. When the base file has no such column the portfolio date is taken as its valuation date (consistent with
+  OD-2), and the tab says when the IRR sheet ends before it. Trades after the date are left out of the lots, counted
+  and named.
+- **The month-end clamp (b)** applies to the long-term rule as it already did to the ELSS lock-in: a lot bought on 29 Feb
+  reaches its 12- or 24-month anniversary on 28 Feb and is long term from 1 Mar (for the tax adviser to confirm).
+- **Units bought before 1 Apr 2023** of a Specified fund take their own class, one per Specified row: "Debt MF bought
+  before 1 Apr 2023" (24 months, 12 for a listed ETF: "ETF" or "BeES" in the name or category and no "FoF") and "Hybrid
+  MF (conservative) bought before 1 Apr 2023" (24 months), both STCG at slab and LTCG 12.5% with no exemption (Mutual
+  Funds R26). The SIF debt row has no date rule (SIFs began in 2025). A holding with lots on both sides of the date is
+  two records that add back to it exactly and count as one holding.
+- **The 1 Feb 2018 disclosure (TX-18 step 1)** covers the classes of old Sec 112A: listed shares, equity-oriented fund
+  units (equity funds and ETFs, ELSS, equity-oriented hybrids, equity ETF FoFs, equity PMS) and REIT and InvIT units.
+  It is shown only when such a lot is open; no figure changes until the owner rules on step 2.
+- **Labels.** "Long term after" reads "More than N months", the reckoner's own words.
 **Alternatives.** Leaving every hybrid and SIF unclassified until an AMC classification exists (rejected for the
 categories whose bucket is fixed by their SEBI limits); mapping funds by plan name (rejected: wrong for 3 of 7
 retirement plans on the review's measure); a fund whitelist for the international test (rejected: it loses
 international funds with a blank product).
 **Consequences.** CR-0008 implements the fixes in parts on `fix/legacy-batch-3-tax`; part T1 is KI-162 to KI-165,
-KI-170, KI-172 to KI-174 and KI-178 to KI-180. The owner's and tax adviser's questions are listed in CR-0008. The new
-build ports each rule with the same known answer (D-028).
+KI-170, KI-172 to KI-174 and KI-178 to KI-180; part T2 (`fix/legacy-batch-3-tax-p2`) is KI-160, KI-161, KI-176 and
+step 1 of KI-177. The owner's and tax adviser's questions are listed in CR-0008. The new build ports each rule with
+the same known answer (D-028).

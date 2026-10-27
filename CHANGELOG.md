@@ -5,6 +5,24 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ## [Unreleased]
 
 ### Fixed
+- **Tax batch, part T2 (CR-0008, D-040): holding periods and lots follow the TY 2026-27 Tax Reckoner.** `index.html`
+  MD5 `5717A7967294FA13ED3A65111D80DA61` → `AE70F78B0C89E57692EE9C71A2AC8358` (patch
+  `tools/patches/2026-10-27-tax-2-holding-period.js`). On branch `fix/legacy-batch-3-tax-p2`, on top of part T1; the
+  batch merges as one change.
+  - A lot is long term from the day after the anniversary of its purchase (more than 12 or 24 months), not after 13 or
+    25 whole months; the months are calendar months, clamped to the month end (29 Feb to 28 Feb, for the tax adviser to
+    confirm) (KI-160). "Long term after" reads "More than N months".
+  - Debt fund units (with target maturity funds, debt ETFs and debt FoFs) and conservative hybrid units bought before
+    1 Apr 2023 are no longer Specified: two new rows give them the general rule, long term after 24 months (12 for a
+    listed ETF) at 12.5%; a holding bought on both sides of the date is split into two records that add back to it and
+    count as one holding (KI-161). Free-text IRR dates are read as their calendar day.
+  - Holding periods run to the base file's valuation date: its own Valuation Date column, else the portfolio date set
+    for the review, else (with a note) the IRR sheet's latest date; IRR trades after it are left out of the lots and
+    named (KI-176, with KI-022).
+  - Lots of shares, equity-oriented funds and REIT or InvIT units bought before 1 Feb 2018 are counted and disclosed as
+    measured on actual cost, without the 31 Jan 2018 step-up (KI-177, step 1; no figure changes).
+  - TAX_RULES 32 → 34 rows (`data/refdata/` regenerated). 4 regression files (118 checks), each failing on the T1
+    page; 27 files, 950 checks in all. The synthetic sample book's taxation is unchanged.
 - **Tax batch, part T1 (CR-0008, D-040): the tax classes follow the TY 2026-27 Tax Reckoner.** `index.html` MD5
   `911A04659CB34383E478416B54E9C306` → `5717A7967294FA13ED3A65111D80DA61` (patch
   `tools/patches/2026-10-27-tax-1-classification.js`). On branch `fix/legacy-batch-3-tax`; it merges with the later

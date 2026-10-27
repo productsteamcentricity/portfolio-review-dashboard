@@ -22,4 +22,4 @@ Monthly data refreshes are recorded separately in [`../refresh-log/`](../refresh
 | [CR-0005](CR-0005-audit-fixes-and-redesign.md) | 16 Oct 2026 | Share the review link; find and fix the dashboard's issues; prepare the full redesign | In progress |
 | [CR-0006](CR-0006-new-build.md) | 21 Oct 2026 | Build the next-generation dashboard: a clean new application with feature parity, per the owner's brief | Phase 0 delivered; M1.1 in progress |
 | [CR-0007](CR-0007-legacy-batch-2a.md) | 21–22 Oct 2026 | Fix batch 2a: empty Home slide download (KI-124), renamed fund houses (OD-32), "AMC not given" (OD-34, KI-112) | Done (PR #9) |
-| [CR-0008](CR-0008-live-tax-rules.md) | 24 Oct 2026 | Live-page tax rules follow the TY 2026-27 Tax Reckoner (KI-160 to KI-182, D-040) | In progress: part T1 built |
+| [CR-0008](CR-0008-live-tax-rules.md) | 24 Oct 2026 | Live-page tax rules follow the TY 2026-27 Tax Reckoner (KI-160 to KI-182, D-040) | In progress: parts T1 and T2 built |

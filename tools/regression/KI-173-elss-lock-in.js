@@ -103,13 +103,13 @@ const m = book.review('2026-10-19');
 (async () => {
   try {
     const html = T.renderTaxTab(m), tx = T.text(html);
-    ok(/&gt; 12 months; 3-year lock-in per instalment/.test(html), 'Taxation tab: "Long term after" reads "> 12 months; 3-year lock-in per instalment"');
+    ok(/More than 12 months; 3-year lock-in per instalment/.test(html), 'Taxation tab: "Long term after" reads "More than 12 months; 3-year lock-in per instalment" (tax batch T2, KI-160)');
     ok(/N\/A \(lock-in\)/.test(tx), 'Taxation tab: the STCG rate reads "N/A (lock-in)"');
     ok(/ELSS units are locked in for 3 years/.test(tx) && /still inside its lock-in/.test(tx) && /counted as not classified/.test(tx),
       'Taxation tab: a note gives the locked CMV and says it is left out of the columns and harvesting');
     ok(/of which ELSS in lock-in/.test(tx), 'Taxation tab: the Total Gain/Loss tile names the locked part');
     const sl = await T.taxSlidesText(m);
-    ok(sl.indexOf('> 12 months (3-yr lock-in)') >= 0, 'slide: "Long term after" reads "> 12 months (3-yr lock-in)"');
+    ok(sl.indexOf('More than 12 months (3-yr lock-in)') >= 0, 'slide: "Long term after" reads "More than 12 months (3-yr lock-in)" (tax batch T2, KI-160)');
     ok(/ELSS units still in lock-in .* are unclassified and not harvested/.test(sl), 'slide: the class footnote names the locked units');
     ok(sl.indexOf('ELSS units in lock-in are in neither') >= 0, 'holding-detail slide: the footnote says locked units are in neither column');
     const sig = T.aiaTaxSignal({ name: 'Synthetic ELSS Tax Saver Fund-Reg(G)' }, m);

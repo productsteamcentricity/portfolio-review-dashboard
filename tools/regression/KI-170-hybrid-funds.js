@@ -88,7 +88,7 @@ console.log('--- screen ---');
 const m = new T.Book().add({ name: 'X Balanced Hybrid Fund-Reg(G)', product: 'Mutual Funds', asset: 'Hybrid', category: 'Balanced Hybrid Fund', nav: 110, lots: [['2025-02-19', 1000, 100]] })
   .add({ name: 'X Balanced Advantage Fund-Reg(G)', product: 'Mutual Funds', asset: 'Hybrid', category: 'Balanced Advantage', nav: 110, lots: [['2025-02-19', 1000, 100]] }).review('2026-10-19');
 const html = T.renderTaxTab(m), tx = T.text(html);
-ok(tx.indexOf(GEN) >= 0 && /Slab rate/.test(tx) && html.indexOf('&gt; 24 months') >= 0, 'Taxation tab: the general-rule row shows "> 24 months" and "Slab rate"');
+ok(tx.indexOf(GEN) >= 0 && /Slab rate/.test(tx) && html.indexOf('More than 24 months') >= 0, 'Taxation tab: the general-rule row shows "More than 24 months" (tax batch T2, KI-160) and "Slab rate"');
 ok(/1 holding is not placed in a tax class/.test(tx) && /year-end tax classification/.test(tx) && !/Add a row for the product/.test(tx),
   'Taxation tab: the balanced advantage fund is listed with its reason, not "Add a row for the product"');
 done();
