@@ -5,7 +5,8 @@
   The lead commissioned a financial review of the live page against it (24 Oct 2026) and set the defaults in D-040.
   Built in parts: part T1 on `fix/legacy-batch-3-tax` (27 Oct 2026); part T2 on `fix/legacy-batch-3-tax-p2`, on top of
   T1's commit (27 Oct 2026); part T3 and part T4 (the corrections from the financial re-review of part T3) on
-  `fix/legacy-batch-3-tax-p3-r2`, on top of T2's commit (27 Oct 2026).
+  `fix/legacy-batch-3-tax-p3-r2`, on top of T2's commit (27 Oct 2026). That branch then merged `main` with fix batch
+  4 and its page was rebuilt (27 Oct 2026; "Rebased on fix batch 4" below).
 - **Status:** built: parts T1 (classification and the TAX_RULES rows), T2 (holding periods and lots), T3 (the
   harvest, AIF and PMS treatment, the wording) and T4 (crypto kept out of set-off) are committed, not pushed. 22 of
   the 23 findings are fixed and KI-177 in part; KI-177's step-up (TX-18 step 2) waits for the owner's rulings. The
@@ -457,6 +458,51 @@ and found one calculation finding and two corrections to the records. Everything
   sentence when crypto is held; its rows are fitted to the note's length, as in part T3, but the layout was not looked
   at); `family-isolation.js` (still not run in a browser); real client books (no client data used).
 
+## Rebased on fix batch 4
+On 27 Oct 2026 the branch merged `main` at `6443826` (PR #14 and #15, new-build records; PR #16, fix batch 4: base-file
+reading, CR-0009, D-041). `index.html` was rebuilt from main's page (`12B5E5727FCA01EF2EA162C59913F01D`) with the four
+tax patches in file-name order: T1 `22019426…`, T2 `B8722C4E…`, T3 `D321DBA0…`, T4
+`0713C6BEEFCB35D778730AB9BEF3E430`. T1, T3 and T4 apply unchanged. T2 has two anchor revisions, both where the two
+batches' logic meets in `computeTaxation`; no other tax behaviour changes:
+1. **"An unreconciled holding says when trades were left out (TX-17), no lots"**: its anchor, the one line
+   `out.unreconciled.push(rec); return; }`, occurred twice on main's page, because fix batch 4 (KI-140) added an
+   unreconciled exit for a merged folio with blank units that closes with the same text. The anchor now carries the
+   line before it, the end of the no-lots reason; the inserted TX-17 line is unchanged.
+2. **New edit, "... (TX-17), merged units blank (KI-140)"**, anchored on fix batch 4's closing line with the end of
+   its reason. Part T2 says an unreconciled holding's reason says when some of its trades were left out; fix batch 4's
+   merged folio with blank units is an unreconciled holding, so its reason (fix batch 4's, unchanged) is followed by
+   the same TX-17 sentence when one of its IRR trades is dated after the valuation date. With the anchor revision
+   alone it would not say so. Known answer in `KI-176-valuation-date.js` (2 new checks; the second fails on the
+   anchor-only build `F87DB859…`).
+
+Where the two batches meet, as built (no further code change; pinned by new checks):
+- A Category III AIF (fund level) and a Category I or II AIF (pass-through) are never reconciled (D-040 d), so their
+  check runs before fix batch 4's blank-units exit: a merged AIF with a folio without units stays fund level or
+  pass-through, never unreconciled (`KI-166-aif-cat-iii.js`, 1 new check).
+- A PMS is not split only after its capital flows reconcile (part T3). A merged PMS with a folio with units beside one
+  without cannot be checked, so it is unreconciled with fix batch 4's reason, out of the harvest and not classified; a
+  PMS whose folios all lack units is priced in rupees, not a gap, and stays not split (`KI-169-pms-not-split.js`, 2
+  new checks).
+- KI-145's reading of the Asset Name reaches the tax classes, as CR-0009 intends: `taxClassify` reads the label, so
+  "Fixed Income" is Debt for the AIF, PMS and unlisted classes. KI-145's own tax check passes on the combined page.
+- Fix batch 4's merged purchase dates, holding days and notices do not reach Taxation, which ages the IRR sheet's lots.
+
+Not changed, for the lead: CR-0009's acceptance notes that the Taxation tab's unreconciled table keeps its general
+heading ("the history is missing an event") for a merged holding with blank units, "worded by reason in the tax batch".
+The tax batch words the table of holdings with no tax class by reason, not the unreconciled one, so on the combined
+page that heading is still general (with an em dash that predates both batches); each row's own reason is right. It
+is wording, not a figure, and outside a rebase of the anchors.
+
+Verification on the rebuilt page: two rebuilds from main's page in scratch copies both give `0713C6BE…`, the committed
+page; each patch run a second time right after itself reports no change, and a second run of the whole sequence
+writes nothing (T1 to T3 stop as already superseded, T4 reports no change, as on the branch before the merge).
+`check-invariants --expect-md5 0713C6BEEFCB35D778730AB9BEF3E430`: all invariants hold, 1 known warning (KI-027).
+`smoke-review` 36/36 (IST and UTC), `test-ai-analyst` 24/24. `run-regression`: 43 files, 1,277 checks, all pass in IST
+and with `TZ=UTC` (fix batch 4's 7 files 150 checks, the 24 tax files 628). `data-extract --check` passes
+(`data/refdata/` regenerated from the page: unchanged). `node --test` 234/234 in IST and in UTC; `docs-links`
+and `traceability` pass. Not verified: the browser acceptance of the combined page (still due before the merge, as for
+part T4).
+
 ## Questions for the owner and the tax adviser
 1. Confirm the D-040 defaults (a) to (h).
 2. ELSS: is a lot redeemable on the third anniversary of its purchase or from the next day (built: the next day)?
@@ -502,7 +548,8 @@ and found one calculation finding and two corrections to the records. Everything
 
 ## Status
 Part T1 committed on `fix/legacy-batch-3-tax`, part T2 on `fix/legacy-batch-3-tax-p2`, parts T3 and T4 on
-`fix/legacy-batch-3-tax-p3-r2` (none pushed). The financial re-review of part T3 is answered by part T4. Next: the check
+`fix/legacy-batch-3-tax-p3-r2` (none pushed), which is rebased on fix batch 4 (`index.html` MD5 `0713C6BE…`). The
+financial re-review of part T3 is answered by part T4. Next: the check
 of part T4, the browser acceptance (docs/TESTING.md, with `family-isolation.js` and its new assumption-reset check),
 the owner's answers above (questions 17 and 18 before the merge: the AIF note and the crypto behaviour depend on
 them), then one pull request for the batch. KI-177's step-up waits for question 12.

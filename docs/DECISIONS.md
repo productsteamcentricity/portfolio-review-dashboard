@@ -394,6 +394,72 @@ or CI fails. The legacy reading defects the parity work found are KI-140 to KI-1
 KI-146: live-page data fixes for a later legacy batch (D-028). The new reader's money-column fallback is KI-147,
 decided in M1.4. The owner's questions are in `DATA_DICTIONARY.md` §8.
 
+## D-036 — The capital-gains upload accepts the platform's export as it is (23 Oct 2026, lead under D-033; amends D-032)
+**Context.** D-032 (the owner's answer to ND-8) asked for capital-gains statements in a template the app defines, and
+allowed "the format of your choice". On 22 Oct 2026 the owner supplied a real statement: the "Capital Gain Report"
+export of the wealth platform that also produces the base file. Profiled locally (counts and checks only, nothing
+committed), it is one sheet with 29 named columns, one row per purchase lot consumed by a sale, a totals row and a
+text block at its foot. It carries the investor's PAN inside the account name and the folio inside the instrument
+name, marks grandfathered, indexed and merger lots through its acquisition columns, covers the client's whole
+realised history, repeats some lots exactly (its own totals include the repeats) and leaves its tax columns empty.
+**Decision.**
+1. **The export is the format.** The capital-gains slot accepts that export as produced: columns found by header name
+   (any order, aliases, extra columns ignored and listed), the totals row used to reconcile and the footer text never
+   kept. The app's blank template has the same headers (and a Read Me) for statements from other sources; one reader
+   serves both. A file without the required columns is still refused with them named (D-032 unchanged on that point;
+   no per-issuer parsers).
+2. **The PAN never enters the app.** It is removed from every text cell at read time, before any copy is kept;
+   only the count of removals is recorded.
+3. **The app computes indicative tax itself**, per lot, per person and per financial year (1 April to 31 March,
+   from the sale date), from a dated tax-rule table that the financial-domain reviewer approves before any M7 code
+   (given on 27 Oct 2026), with the analyst entering the slab rate, the surcharge rate and the regime per person and year (none has a
+   default; totals are shown "before surcharge" until the surcharge rate is entered). Lot classes (merger,
+   grandfathered, indexed cost shown, standard) come from the statement's acquisition columns, and the rule's cost
+   basis governs; the tax class from the scheme for the year of sale (OD-17; its amendment by the dated table is an
+   owner item of the design), not from the statement's Equity or Debt label alone; the term from OD-2 (strictly after
+   the anniversary). Every figure assumes a resident individual.
+4. **Repeated rows are never dropped silently:** the analyst answers per sale event (one folio, scheme and sale date),
+   with "apply to all" as a shortcut, whether to count them as stated or once; until then the affected years' totals
+   are INSUFFICIENT EVIDENCE.
+The design is [new-build/capital-gains-upload.md](new-build/capital-gains-upload.md); the columns go into
+`DATA_DICTIONARY.md` §5.17 and the parity matrix gains rows E-150 to E-156, U-71 and U-72.
+**Alternatives.** Our own column set, with analysts retyping the export into it (rejected: slow, error-prone, and the
+export already has every field the tax view needs); a parser per registrar (rejected by D-032); trusting the
+statement's Equity or Debt label for tax (rejected: international fund of funds are labelled Equity but taxed as
+non-equity, and hybrids follow OD-17); dropping exact repeats (rejected: the statement is the source of record and
+its totals include them).
+**Consequences.** M7 builds `ingest/capital-gains.ts`, the tax engine and the template download from that design; the
+tax-rule table and the design were approved by the financial-domain reviewer on 27 Oct 2026, as the design's change log records. The design was revised on 27 Oct 2026 after a financial, a completeness and a security
+review, again the same day after the financial and completeness re-reviews, a third time after their approval
+reviews and a fourth time after the second approval reviews (its §10.11). The owner is asked to raise the repeated rows with the platform's support, and to answer the
+design's other owner items (its §15).
+## D-037 — Section tabs across the top, in the look of the owner's design reference (24 Oct 2026, owner)
+**Context.** M1.2 built the new app's shell with the nine sections listed in a navigation column beside the section
+(17rem wide). Phase 0 had read the brief's design reference, a Claude Artifact upload console, as a workflow reference
+with no layout to follow (`ARCHITECTURE.md` §13.1, Q-84). On 24 Oct 2026 the owner asked for the section tabs across
+the top, as that console shows them, so that analysts have more width to work in, and for the app to be built on
+that layout from now on.
+**Decision.**
+1. **Layout.** The header holds, in order: the preview banner (D-024, still first and still in view on a wide
+   screen), the black masthead with the 4 px gold rule, and the nine section tabs in one row across the top. The
+   section below uses the full page width (up to 90rem). The tab row never wraps: where the nine tabs do not fit it
+   scrolls sideways, so the header keeps one height (one row from 1280 px). The app measures the pinned header and
+   keeps a focused heading, and the target of the skip link, just below it. On a narrow screen (52rem or less)
+   nothing is pinned (the 375 px item carried from M1.2's QA: a sticky header covered a focused heading).
+2. **The MF Screener link** (D-027) is a navigation item at the right end of the masthead, in its own `<nav>`, so
+   the tab row is the sections only. It is still the one remote URL, in one static anchor.
+3. **The reference's look** for the screen from now on: Cambria; tabs on a sand ground with the current tab black
+   with white text; black table headers in small uppercase letters with zebra rows; bordered groups with a sand header;
+   dashed upload slots; status chips; a black footer bar. Colours come from `app/src/config/tokens.json` only.
+4. **The Screener pack's cycle date and status** (D-026) show in the masthead beside the Screener link, since there is
+   no sidebar.
+**Alternatives.** Keeping the column (rejected by the owner: it takes width from every section); the Screener link at
+the end of the tab row (tried: at 1440 px it pushed the row onto two lines).
+**Consequences.** `shell.css`, the page template and `scripts/build.mjs` (`navHtml` for the tabs, `screenerHtml` for
+the link) change; the shell tests now expect the link in the masthead; `ARCHITECTURE.md` §6.9 and §7, `DATA_DICTIONARY.md`
+§5.16, the PRD and `toolchain.md` say masthead where they said sidebar or column. Every later milestone builds its
+screens in this layout.
+
 ## D-040 — Live-page tax rules follow the TY2026-27 reckoner (24 Oct 2026, lead under D-033; CR-0008)
 **Context.** The owner supplied `India_Taxation_Reckoner_TY2026-27.xlsx` (law as on 19 Oct 2026; the Income-tax Act
 2025 in force from 1 Apr 2026) as the source of record for the current tax year. A financial review compared it with
@@ -514,3 +580,84 @@ step 1 of KI-177; part T3 (`fix/legacy-batch-3-tax-p3-r2`) is KI-166 to KI-169, 
 KI-130; part T4 (the same branch) keeps crypto out of set-off after the re-review (KI-182, KI-175). The owner's and
 tax adviser's questions are listed in CR-0008. The new build ports each rule with
 the same known answer (D-028).
+
+## D-041 — Live-page base-file reading fixes (27 Oct 2026, lead under D-033)
+**Context.** The parity work of milestone M1.3 found how the live page's `parseBaseRows` misreads some base files
+(KI-140 to KI-145) and how the IPS then takes the wrong asset-class figures (KI-146, P1). Under D-028 the live page
+takes such data and calculation fixes. Before building them the lead measured, privately and read-only, how often the
+cases occur in the real base files on the owner's laptop (counts only, no file or value copied; the counts are in
+`change-requests/CR-0009-live-base-file-reading.md`). In 32 base files with 1,705 holding rows there was no variant
+Asset Name, no synonym, no total row, no text in a number cell and no impossible date. There were 65 groups of
+duplicate folios in 19 files: none with a folio lacking units, 44 whose folios carry different purchase dates, 18 of
+them with the earliest date on a later row. Of the 316 rows that have both a purchase date and holding days, only 190
+count to their file's most common date, and no file reaches 90%: the "Avg. Holding Days" column behaves as an average
+holding period, not as days since the purchase date.
+**Decision.** Fix batch 4 (CR-0009, `tools/patches/2026-10-27-basefile-reading.js`) changes the live page as follows.
+1. **Merged units (KI-140).** Units of merged folios are summed only when every folio has them; otherwise they are
+   blank, never a partial sum (KI-113 extended to units, as D-035 accepted for the new reader), and the holding is
+   marked. Taxation never reconciles such a holding on its invested value, the path meant for products priced in
+   rupees: it leaves it unsplit, with the reason. This is the live page's answer to D-035's M7 rule ("not split, with
+   its status"); the new build decides its own in M7. A holding whose folios all lack units is unchanged.
+2. **Merged purchase date and holding days (KI-141).** A merged holding takes the earliest purchase date of its
+   folios, whatever the row order. Its holding days are recomputed from that date: a folio's purchase date plus its
+   holding days is the date the file counts to, and when every folio with holding days has a date and they count to
+   the same date (within a day), the merged days run from the earliest purchase date to that date. Folios without
+   purchase dates and with the same holding days keep that figure. Otherwise the merged days are blank, never one
+   folio's figure. The figure so kept is the oldest folio's age on the date the file counts to: like the rejected
+   as-on-date rule below, it is not an average of the folios. A merged holding whose folios were bought on different
+   dates can therefore lose its holding days. Measured on the real base files for the financial review (counts only,
+   CR-0009): 6 of the 12 merged holdings that carry holding days lose them, each with different holding days across
+   its folios (3 bought on different dates, 3 without purchase dates); the 6 whose folios agree keep them; none
+   changes to another figure. Only the workbook's "Base File" sheet shows them ("Avg. Holding Days") and no
+   calculation reads them. The new reader keeps the first row's date and days (`DATA_DICTIONARY.md` §8, "Merged
+   folios, first-row fields"), so the new build must align with this rule, or the owner chooses another for both
+   (question 1 below).
+3. **Total rows (KI-142).** A row whose Instrument Name is "Total" or "Grand Total" (any letter case, spaces trimmed)
+   is skipped and counted in a notice. A fund whose name only begins with "Total" is still a holding. The new reader
+   reads such a name as a holding with a Warning; on the live page a total row is never added to the book.
+4. **Numbers (KI-143).** A number cell counts only when all of it is a number, with the new reader's rule: digits with
+   thousands commas or spaces, a sign (the minus sign U+2212 too), a decimal part, an exponent, and a trailing "%"
+   only in XIRR and BMXIRR. Anything else is blank, never 0, and a warning names each column with its count and the
+   holdings left out for want of a market value. Text that says "not available" ("NA", "-", "nil") stays blank without
+   a notice. A Crore cell so blanked falls through to the Lakh or rupee column, as a blank one does and as the new
+   reader does today (KI-147 decides that rule for the new build in M1.4).
+5. **Dates (KI-144).** A text date that does not exist ("31-02-2024", "31 Feb 2024") is blank with a warning naming
+   the column; it used to roll into the next month. The formats read do not change.
+6. **Asset Names (KI-145).** `ENGINE.assetLabel` reads the five classes of the Asset Allocation (Equity, Debt, Hybrid,
+   Commodity, REITs/InvITs) without regard to letter case or spacing, "Fixed Income" and "Debt Funds" as Debt (OD-7)
+   and "Commodities" as Commodity (as the live page's commodity test and the new reader already do). Any other label
+   keeps the first form written in the file, so its case variants are one row too; a blank one is still Equity (the
+   new reader's OD-7 rule for blanks stays out of the live page, BF-14), and an unrecognised one keeps its label
+   (BF-19, open with the owner). Every reader of the asset follows: the allocation, the client sheets, analytics
+   routing, performance buckets and benchmarks, tax classes and the IRR placement of unreached instruments. Folding
+   the letter case is the owner's open question BF-26; the lead applies it on the live page, where a split row is a
+   wrong number today, and the owner may reverse it for both builds.
+7. **IPS actuals (KI-146).** The IPS adds up every Asset Allocation row of a class and reads each label as its class
+   first. Its hybrid remainder is not changed: with look-through data it hands equity and debt the look-through does
+   not cover to REITs and Commodities (KI-066), and summed class rows make that larger on a book with split labels
+   (`family-a-odd-asset-labels`: REITs 2.06% to 7.40%, Commodities 14.37% to 32.22%, against true shares of 3.30% and
+   14.37%; CR-0009). It waits for the owner's KI-066 decision.
+8. **Notices.** `parseBaseRows` returns its notices, one plain sentence each, and the status line shows them after the
+   load summary, escaped. Total rows, unreadable cells, impossible dates and units left blank are warnings; holding
+   days left blank and labels read as a class are information. A row that repeats the header is skipped before its
+   cells are read and gives no notice (the financial review; it had given a false warning).
+**Question for the owner (1): the "Avg. Holding Days" of a merged holding.** One fund held in several folios shows as
+one line. Should that line carry (a) the oldest folio's age counted to the file's own date, blank when the folios'
+figures do not agree on one date (as built; 6 merged holdings on today's files show blank); (b) an average of the
+folios' holding days weighted by units; or (c) the first row's figure, as before? The answer applies to both builds.
+**Alternatives.** For holding days: the review's as-on date minus the earliest purchase date (rejected: the as-on date
+is the analyst's, not the file's; the chosen rule is no more an average than this one, since it too gives the oldest
+folio's age, counted to the file's own date instead); a unit-weighted average of the folios' holding days (the other
+choice `DATA_DICTIONARY.md` §8 names, and the only one of these that is an average; not taken, kept for the owner);
+the first row's figure (rejected: it depends on the row order). For total rows: reading them with a warning, as the new reader does (rejected for the
+live page: one total row doubles every figure). For Asset Names: folding them only in the Asset Allocation (rejected:
+the routing, client sheets, IPS and tax classes read the same label, and would disagree with it).
+**Consequences.** `index.html` MD5 `911A04659CB34383E478416B54E9C306` → `558A50F356406B2237AF247179A2186E`, then
+`12B5E5727FCA01EF2EA162C59913F01D` with the financial review's patch (`tools/patches/2026-10-27-basefile-review.js`).
+Known issues KI-140 to KI-146 are fixed, each with a known-answer test in `tools/regression/`. The parity ledger
+retires BF-15, BF-16, BF-18 and BF-20 to BF-26: the live page now behaves as the new reader there, and a retired entry
+matches nothing, so the difference coming back fails the parity test. Points 2 and 3 open differences no parity
+fixture exercises yet; the ledger notes list them and KI-148 tracks them for M1.4. The new build must align
+`DATA_DICTIONARY.md` §5.3 and §8 with point 2 (and consider point 3) before its reader ships: their "as the legacy"
+wording on merged purchase dates and holding days is stale once this merges. The owner's questions BF-19 and BF-26
+stay open for both, with question 1 above.

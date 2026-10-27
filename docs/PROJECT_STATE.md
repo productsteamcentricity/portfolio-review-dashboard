@@ -6,6 +6,17 @@
   (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is merged (PR #9; `index.html` MD5
   `911A04659CB34383E478416B54E9C306`); its browser acceptance passed on 22 Oct 2026, and the QA found KI-127 and
   KI-128 (both also on main before the batch).
+- **Fix batch 4, base-file reading (CR-0009, D-041), is accepted and merged** (PR #16; 27 Oct 2026: financial review, browser
+  acceptance and security gate passed; branch `fix/legacy-batch-4-basefile-r2`): KI-140 to KI-146, the
+  reading defects the new build's parity work found, fixed on the live page (merged units and purchase dates, total
+  rows, text in number cells, impossible dates, Asset Name variants, and the P1 IPS actuals), each with a known-answer
+  regression test; the review added the skip of a repeated header row (no false warning); `index.html` MD5
+  `12B5E5727FCA01EF2EA162C59913F01D` on `main`. A private census of the 32 real base files on the laptop found none
+  of these cases except merged folios: 18 merged holdings take an earlier purchase date and 6 lose their "Avg.
+  Holding Days". Open for the owner: question 1 of D-041 (holding days of merged folios) and the other choices in
+  CR-0009 (total rows skipped, letter case folded); KI-066 (the IPS hybrid remainder, which KI-146's sums make larger
+  on books with split labels). For the new build: KI-148 (M1.4: fixture cases for D-041 points 2 and 3; align
+  `DATA_DICTIONARY.md` §5.3 and §8, whose "as the legacy" wording is stale once this merges).
 - **Tax batch (CR-0008, 27 Oct 2026):** the owner's TY 2026-27 Tax Reckoner is the source of record for the live
   page's taxation. The review found 23 discrepancies (KI-160 to KI-182); the lead's defaults are D-040, each open to the
   owner's confirmation. Part T1 (classification and the TAX_RULES rows: KI-162 to KI-165, KI-170, KI-172 to KI-174,
@@ -16,8 +27,10 @@
   analyst's slab rate, AIF Category III at fund level, AIF Category I and II and PMS not split, the carry-forward
   wording and the crypto source: KI-166 to KI-169, KI-171, KI-175, KI-181, KI-182, with KI-130) and part T4 (the
   financial re-review of T3: crypto kept out of set-off until the owner rules, CR-0008 question 18; two figures in the
-  records corrected) are committed on `fix/legacy-batch-3-tax-p3-r2`, on top of T2 (`index.html` MD5 `61FC0FB2…`,
-  not pushed). 22 of the 23 findings are fixed and KI-177 in part; KI-177's step-up waits for the owner's rulings.
+  records corrected) are committed on `fix/legacy-batch-3-tax-p3-r2`, on top of T2 (`index.html` MD5 `61FC0FB2…`).
+  The branch then merged `main` with fix batch 4 (PR #16) and its page was rebuilt from main's page with the four
+  tax patches, two anchors of part T2 revised where the batches meet (CR-0008, "Rebased on fix batch 4"; `index.html` MD5
+  `0713C6BE…`, not pushed). 22 of the 23 findings are fixed and KI-177 in part; KI-177's step-up waits for the owner's rulings.
   The batch merges as one pull request after the check of part T4, the browser acceptance (with
   `family-isolation.js`'s new assumption-reset check) and the owner's answers to CR-0008 questions 17 and 18.
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
@@ -28,7 +41,10 @@
     D-024 to D-033, and gave Claude full charge of GitHub and the dashboard (D-033). In short: Screener scores and
     ranks never in a public page, the pack uploaded by the owner each cycle and kept in the browser (D-026); missing
     values keep the dash, sentences never use one (D-029); a fund pair overlaps from 35% (D-030); capital-gains
-    statements in our own template (D-032); no branch ruleset (D-033). Data and return conventions are in D-023; the
+    statements as the wealth platform's own export, accepted as produced, with a blank template of the same headers
+    for other sources (D-032 as amended by D-036, 23 Oct 2026; design in
+    [`new-build/capital-gains-upload.md`](new-build/capital-gains-upload.md), revised 27 Oct 2026 after three
+    reviews, two re-reviews, two approval reviews and two second approval reviews, the design and its tax-rule table approved by the financial-domain reviewer on 27 Oct 2026); no branch ruleset (D-033). Data and return conventions are in D-023; the
     Index TRI files are its index data.
   - **Milestone M1.1 is complete once its last branch merges** (next step 4; the root README's two-apps section,
     the one item left over, is written in M1.2's records). Merged in PR #10 (`2a65a62`): the safety tooling
@@ -57,8 +73,12 @@
     twice) merged on top of M1.2, the type check over M1.3's code with `"type": "module"`, the re-review's fixes
     (the asset class compared exactly, BF-26) and the records, with D-035 and KI-140 to KI-147. 234 of 234 tests
     pass in IST and UTC; the `/next/` build is unchanged. No application code is on `main` yet.
+  - **Layout (D-037, the owner's request of 24 Oct 2026):** the nine section tabs run across the top in the look of
+    the owner's design reference, the MF Screener link sits in the masthead and each section uses the full width
+    (PR #14; three independent browser QA rounds and the security gate passed on the final commit, spike 99 of 99).
   - **M1.4 is next** (the first vertical slice: the portfolio overview end to end), starting with the rule for a
-    Crore cell that is not a number (KI-147, an owner decision).
+    Crore cell that is not a number (KI-147, an owner decision); it also carries KI-148 (the two differences fix
+    batch 4 opens with the live page, which no parity fixture exercises yet).
 - The owner answered the 28 audit decisions: all accepted except OD-11 (keep the monitor uploads, fixed), D-021.
 - The previous owner's second export is expected this week (CR-0004).
 - The October 2026 data refresh is due when the files arrive, around 13–17 Nov 2026.
@@ -111,7 +131,14 @@
      "Gold" (BF-19), letter case of Asset Names (BF-26), a market value of 0, and, for M1.4, a Crore cell that is not
      a number beside a Lakh amount (KI-147);
    - count, privately, how often the real base files carry variant asset labels (letter case, spacing, synonyms):
-     it sizes KI-145 and KI-146 on the live page.
+     it sizes KI-145 and KI-146 on the live page;
+   - ask the wealth platform's support whether its capital-gains export repeats lot rows by design (D-036; the
+     sample repeated whole sales, and its own totals include the repeats);
+   - answer the other owner items of the capital-gains design
+     ([`new-build/capital-gains-upload.md`](new-build/capital-gains-upload.md) §15): the dated rule table in place of
+     OD-17's bands and OD-2's single 12-month test; anniversary-day sales; numbering PANs in memory to group persons;
+     for the tax adviser, the FY 2016-17 index and the old-law 10% or 20% choice; and confirming the lead's two
+     defaults (the FY 2024-25 exemption order, and the reckoner's usual bucket from tax year 2026-27).
    ND-1 to ND-10 were answered on 22 Oct 2026 (D-024 to D-033).
    OD-29 to OD-36 were accepted on 21 Oct 2026 (D-022); OD-32 (renamed fund houses) and OD-34 ("AMC not given")
    are built in fix batch 2a (PR #9, merged), with KI-124 (empty Home slide export).
@@ -150,7 +177,7 @@ Other items:
 | P1 | Risk-ratio computation in this repository (from the previous owner's toolchain) | operations |
 | P2 | Expense-ratio sanity checks as a script (today a manual runbook step) | operations |
 | P3 | KI-029: AI Analyst signal weights sign-off | product decision |
-| P1 | The legacy page's base-file reading defects found by M1.3: KI-146 (the IPS takes only the last allocation row of a class) and KI-140 to KI-145 (partial merged units, first-folio dates, total rows read as holdings, text read by `parseFloat`, impossible dates rolled, variant asset labels split into rows); live-page data fixes under D-028, measured on the real base files first | legacy fix batch |
+| P1 | The legacy page's base-file reading defects found by M1.3: KI-146 (the IPS takes only the last allocation row of a class) and KI-140 to KI-145 (partial merged units, first-folio dates, total rows read as holdings, text read by `parseFloat`, impossible dates rolled, variant asset labels split into rows); live-page data fixes under D-028, measured on the real base files first. Fixed in fix batch 4 (CR-0009, D-041), merged in PR #16 | legacy fix batch |
 | P1 | The legacy `FUND_RANKS` block (fund ranks issued 15 Aug 2026) is an open item: whether the legacy page removes it now (a data change under D-028, which would also remove what uses it, such as the AI Analyst's rank signal) or keeps it until switch-over is to be decided by the lead under D-033 and recorded | decision, then a legacy data change |
 
 ## Records

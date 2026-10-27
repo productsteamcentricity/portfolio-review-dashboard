@@ -37,6 +37,10 @@
                      class slide, harvest slide, AI Analyst tax signal): they are on actual cost,
                      the 31 Jan 2018 grandfathered cost is not applied. No price is invented.
 
+   Rebased on fix batch 4 (CR-0008, "Rebased on fix batch 4"): the TX-17 sentence on an unreconciled
+   holding with no lots anchors on the end of that reason, and the same sentence follows batch 4's
+   reason for a merged folio with blank units (KI-140), which is an unreconciled holding too.
+
      node tools/patches/2026-10-27-tax-2-holding-period.js
    ========================================================================== */
 'use strict';
@@ -346,9 +350,25 @@ applyPatch('Tax batch T2: holding periods and lots (CR-0008)', [
         '      if(asDay!=null&&taxDayNum(t.d)!=null&&taxDayNum(t.d)>asDay){ out.later.n++; laterK[k]=(laterK[k]||0)+1; if(out.later.names.indexOf(t.instrument)<0) out.later.names.push(t.instrument); return; }\n'
   },
   {
+    /* Rebased on fix batch 4 (CR-0008, "Rebased on fix batch 4"): batch 4 (KI-140, D-041) added an unreconciled
+       exit for a merged folio with blank units, ahead of the no-lots one. Its reason is batch 4's; CR-0008 says an
+       unreconciled holding's reason also says when some of its trades were left out, so the same TX-17 sentence
+       follows it. The anchor is batch 4's own closing line, with the end of its reason. */
+    label: 'engine: an unreconciled holding says when trades were left out (TX-17), merged units blank (KI-140)',
+    from: ' No split is shown rather than one on a partial unit count.";\n' +
+          '                      out.unreconciled.push(rec); return; }\n',
+    to: ' No split is shown rather than one on a partial unit count.";\n' +
+        '                      if(laterK[_k]) rec.reason=taxWithLater(rec.reason,laterK[_k],asOn);   /* TX-17 */\n' +
+        '                      out.unreconciled.push(rec); return; }\n'
+  },
+  {
     label: 'engine: an unreconciled holding says when trades were left out (TX-17), no lots',
-    from: '                     out.unreconciled.push(rec); return; }\n',
-    to: '                     if(laterK[_k]) rec.reason=taxWithLater(rec.reason,laterK[_k],asOn);   /* TX-17 */\n' +
+    /* Rebased on fix batch 4: the anchor carries the line before it, the end of the no-lots reason, since
+       batch 4's blank-units exit (above) closes with a line that contains the old one-line anchor. */
+    from: '                                           :"No purchase transactions in the IRR history");\n' +
+          '                     out.unreconciled.push(rec); return; }\n',
+    to: '                                           :"No purchase transactions in the IRR history");\n' +
+        '                     if(laterK[_k]) rec.reason=taxWithLater(rec.reason,laterK[_k],asOn);   /* TX-17 */\n' +
         '                     out.unreconciled.push(rec); return; }\n'
   },
   {

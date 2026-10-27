@@ -37,7 +37,7 @@ open questions are recorded in [DECISIONS.md](../DECISIONS.md) and marked "answe
 | [02-capability-inventory.md](02-capability-inventory.md) | One table of every legacy capability (E-nn engine and exports, U-nn UI and workflows) and the capabilities the brief adds (brief §0.2) |
 | [03-architecture.md](03-architecture.md) | The new application's architecture: stack, layers, data and calculation model, modules, engine, look-through, observations, Snapshot modes, product bank, monthly engine, Excel model, PowerPoint library, validation, security, deployment |
 | [04-reuse-and-migration-plan.md](04-reuse-and-migration-plan.md) | For each capability: what is reused, how, where it lands and in which milestone; the legacy side during the parallel run |
-| [05-feature-parity-matrix.md](05-feature-parity-matrix.md) | The release requirement (brief §0.4): 376 rows that must reach parity or be accounted for before the legacy page is retired |
+| [05-feature-parity-matrix.md](05-feature-parity-matrix.md) | The release requirement (brief §0.4): 385 rows (376 at Phase 0, nine added by D-036) that must reach parity or be accounted for before the legacy page is retired |
 | [06-data-source-inventory.md](06-data-source-inventory.md) | Every data source: producer, cadence, identifiers, consumers, ingestion, gaps, publication class |
 | [07-implementation-roadmap.md](07-implementation-roadmap.md) | Milestones M1 to M16 mapped to the brief's phases, with scope, acceptance and what waits on the owner |
 | [08-regression-test-plan.md](08-regression-test-plan.md) | Legacy preservation tests, the 24 acceptance cases (AC-01 to AC-24), fixtures and CI gates |
@@ -80,5 +80,12 @@ working folders and are not committed; they held no client data.
 |---|---|
 | [toolchain.md](toolchain.md) | The pinned npm tooling (esbuild, TypeScript, Preact), the one-file build and its CSP, the invariants `check-next.mjs` enforces, the spike results (CSP and IndexedDB from disk and served), the built file's size and SHA-256, and the browser QA steps |
 
+## Designs for later milestones
+
+| File | What it is |
+|---|---|
+| [capital-gains-upload.md](capital-gains-upload.md) | The capital-gains upload of M7 (D-036): the platform's export accepted as produced and the blank template with its headers, PAN removal, lot classes, repeated rows, reconciliation, financial years, indicative tax with the dated tax-rule table, and the synthetic fixture generator |
+
 Every file in this folder passed `scripts/validation/privacy-scan.mjs` with the private deny-list and
-`scripts/validation/docs-links.mjs` before it was committed (22 Oct 2026, and again after the revision of 22 Oct 2026).
+`scripts/validation/docs-links.mjs` before it was committed (22 Oct 2026, and again after the revision of 22 Oct 2026; `capital-gains-upload.md` on
+27 Oct 2026).

@@ -5,6 +5,16 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ## [Unreleased]
 
 ### Fixed (fix batch 3: tax rules per the TY2026-27 reckoner, CR-0008)
+- **Tax batch rebased on fix batch 4 (CR-0008): the branch merged `main` (PR #14 to #16) and its page was rebuilt**
+  from main's page (fix batch 4) with the four tax patches in file-name order: `index.html` MD5
+  `12B5E5727FCA01EF2EA162C59913F01D` → `0713C6BEEFCB35D778730AB9BEF3E430`. Parts T1, T3 and T4 apply unchanged. Part T2
+  has two anchor revisions where the batches meet: the TX-17 sentence on an unreconciled holding with no lots anchors
+  on the end of that reason (its one-line anchor occurred twice once fix batch 4, KI-140, added an unreconciled exit for
+  a merged folio with blank units), and a new edit puts the same sentence after fix batch 4's reason for that holding,
+  which is unreconciled too, when one of its IRR trades is dated after the valuation date. New checks: KI-176 (2),
+  KI-166 (1: a merged AIF with blank units stays fund level) and KI-169 (2: a merged PMS with blank units is
+  unreconciled; one whose folios all lack units stays not split). 43 regression files, 1,277 checks, pass in IST and
+  UTC; detail in CR-0008, "Rebased on fix batch 4".
 - **Tax batch, part T4 (CR-0008, D-040): the financial re-review of part T3. Crypto is kept out of set-off until the
   owner rules.** `index.html` MD5 `BB888D8E272AADE90291ED0A6ECA1721` → `61FC0FB25FB1429F805B140FBA6B308E` (patch
   `tools/patches/2026-10-27-tax-4-review.js`). On branch `fix/legacy-batch-3-tax-p3-r2` with part T3, on top of part
@@ -87,7 +97,41 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - Recorded: D-040 (the lead's defaults for the rules the reckoner leaves open, each open to the owner), KI-160 to
     KI-182, CR-0008.
 
+### Changed
+- **The new app's layout (CR-0006, D-037, the owner's request of 24 Oct 2026): the nine section tabs run across the
+  top** in the look of the owner's design reference, and each section uses the full page width. The black masthead
+  with the gold rule carries the MF Screener link at its right; the preview banner stays first and in view on a wide
+  screen; on a narrow screen nothing is pinned and the tab row scrolls sideways (which also fixes M1.2's QA note of
+  a header covering a focused heading at 375 px). The tab row never wraps (one row from 1280 px; narrower, it scrolls
+  sideways, bringing the current tab into view), and the app keeps a focused heading, the skip link's target and a
+  section address opened directly below the pinned header, without moving the page when focus enters the header.
+  A tab reached with the keyboard is brought fully into its row, the focused current tab shows a gold ring, and the
+  skip link no longer scrolls the page. The headless browser spike now runs at 1440 x 900 and checks the layout at
+  1440, 1366, 1280, 1024 and 375 px (99 of 99 pass). The `/next/` build: 46,905 bytes, SHA-256 `0407eb12…`
+  (deterministic). `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
+
 ### Added
+- **The capital-gains upload design for M7 (CR-0006, D-036, amending D-032).** Documents only; no code, `/next/` and
+  `index.html` unchanged. The upload accepts the wealth platform's "Capital Gain Report" export as produced (columns
+  by header name, PAN removed at read time, folio parsed from the instrument name, totals row reconciled, footer text
+  never kept, exactly repeated rows put to the analyst), with a blank template of the same headers for other sources;
+  lots are classed (non-taxable or taxable consolidation, grandfathered, indexed cost shown, standard, other) and indicative tax is computed per person and
+  financial year from the dated tax-rule table v1 (§10, approved by the financial-domain reviewer on 27 Oct 2026), with the slab rate, surcharge rate and regime the analyst enters per person and year.
+  Revised on 27 Oct 2026 after a financial, a completeness and a security review (the design's §10.11: decision ids
+  TR-n, the rule key with the listed flag and sub-type, the category map, the merger date gates, one repeats answer
+  per sale event, the footer and totals rules, set-off and exemption order, the validation ids, the known answers and
+  the tests), and again the same day after the financial and completeness re-reviews (long-term losses set off before
+  short-term losses, successor lots after a taxable merger, the Sectoral and Thematic default flagged, funds of funds
+  never equity-oriented on the statement's Equity label, the valid rule keys, known answers KA-18 and KA-19, and the
+  lead's two defaults put to the owner), a third time after their approval reviews (the old-law NE-LT-1 choice
+  made per lot before set-off, with known answer KA-20; a person-year with lots not computed shown as PARTIAL
+  COVERAGE, known answer KA-21; the analyst's class on a fund of funds; the successor re-base formula; each fixture's
+  analyst inputs recorded), and a fourth time after the second approval reviews (no claim that the per-lot NE-LT-1
+  choice is the lower, with the year's-total figure shown beside it, known answer KA-22; the 90/90 class per year).
+  Approved by the financial-domain reviewer on 27 Oct 2026. Design: `docs/new-build/capital-gains-upload.md`, with its synthetic fixture generator;
+  `docs/DATA_DICTIONARY.md` v0.4 (§3, §5.5, §5.17, §6, §7, §8), PRD 0.5 (R-IN-6, R-TX-3), parity rows E-141, E-150 to
+  E-156, U-71, U-72 and BR-3.1 (385 rows), the test plan's capital-gains fixtures, cases and test rows (§4, §5.6,
+  AC-20), the roadmap's M7 scope and acceptance, D-036.
 - **Milestone M1.3 of the new build (CR-0006): the shared model, the base-file reader, the reference data and the
   parity ledger.** No page uses them yet: the `/next/` shell builds to the same bytes (42,280 bytes, SHA-256
   `e74e8a07…`). `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
@@ -351,6 +395,47 @@ and `-invested-and-irr-join.js`. Each fix had two financial reviews and known-an
   files in `tools/regression/` (380 checks); browser check `tools/browser-checks/cvs-refresh.js`.
 - **Docs:** decisions OD-29 to OD-36 (answered by the as-built behaviour unless the owner says otherwise);
   KI-101 to KI-123 recorded (found while fixing; none caused by this batch).
+
+### Fixed (fix batch 4: base-file reading, CR-0009)
+`index.html` MD5 `911A04659CB34383E478416B54E9C306` → `558A50F356406B2237AF247179A2186E` (16,836,871 bytes), by the
+patch `tools/patches/2026-10-27-basefile-reading.js` (engine and UI scripts), then →
+`12B5E5727FCA01EF2EA162C59913F01D` (16,837,249 bytes) by `tools/patches/2026-10-27-basefile-review.js` (engine), the
+financial review's fix. The reading defects the new build's parity work found (M1.3, D-035), fixed on the live page
+under D-028; the choices are D-041.
+- **KI-140, merged units:** duplicate folios add up units only when every folio has them; otherwise the units are
+  blank, never a partial sum, and Taxation leaves the fund unsplit with its reason instead of matching it on invested
+  value.
+- **KI-141, merged purchase date:** a merged holding shows its earliest purchase date, whatever the row order; its
+  holding days are recomputed from it when the folios count to one date, and are blank otherwise. So a merged holding
+  whose folios were bought on different dates can lose its "Avg. Holding Days": the figure becomes the oldest folio's
+  age on the file's own count date, or blank (D-041 point 2; owner question 1).
+- **KI-142, total rows:** a row named "Total" or "Grand Total" is skipped, not added to the book as a holding.
+- **KI-143, text in number cells:** "12abc" or "1.25 Cr" is blank, never read as 12 or 1.25; the status line names the
+  columns and counts the holdings left out.
+- **KI-144, impossible dates:** "31-02-2024" is blank, no longer 2 Mar 2024.
+- **KI-145, Asset Names:** "EQUITY" and "Equity", "REITs / InvITs" and "REITs/InvITs" are one Asset Allocation row;
+  "Fixed Income" and "Debt Funds" are Debt (OD-7), so such funds are also routed, benchmarked and taxed as debt
+  funds; "Commodities" is Commodity. `ENGINE.assetLabel` is new.
+- **KI-146 (P1), IPS actuals:** each asset class adds up all its allocation rows (it kept only the last); on the
+  synthetic book `family-a-odd-asset-labels` the equity CMV is 4.7545 Cr instead of 0.5427 Cr. With look-through
+  data (the live page's normal state) that book's IPS actuals move from Equity 47.31%, Debt 9.51%, REITs 2.06%,
+  Commodities 14.37%, Listed Equity 201.8% to 39.86%, 20.51%, 7.40%, 32.22%, 136.4% (true CMV shares 54.37%, 27.96%,
+  3.30%, 14.37%): the IPS hybrid remainder (KI-066, open with the owner) hands equity and debt the look-through does
+  not cover to REITs and Commodities, and the summed class rows make that larger. Not changed in this batch.
+- **Notices:** each case above shows a plain sentence on the status line after the load summary, escaped.
+- **A row that repeats the header** (financial review): skipped before its cells are read and not counted, so its
+  column labels are no longer reported as text in number cells and as a holding left out (a false warning on the
+  synthetic book `family-a-skipped-rows`); the rows read are unchanged.
+- **Census (private, counts only):** 32 real base files with 1,705 holding rows show none of these cases except
+  merged folios: 18 merged holdings take an earlier purchase date (16 in files the live page reads today), and 6 lose
+  their "Avg. Holding Days" (3 in files read today), each a holding whose folios carry different holding days; the 6
+  merged holdings whose folios all carry the same holding days keep them. CR-0009 has the counts.
+- **Tests:** seven regression files, `KI-140-merged-units.js` to `KI-146-ips-actuals.js` (136 checks at first, 150
+  after the financial review; 19 files, 649 checks in all), each failing on `main`. The new build's parity ledger retires BF-15,
+  BF-16, BF-18 and BF-20 to BF-26 (the live page now agrees with the new reader there; a retired entry matches nothing)
+  and lists the two differences D-041 opens that no fixture exercises yet (KI-148, for M1.4); 234 of 234 tests pass
+  in IST and UTC. `check-invariants` lists `assetLabel` in the engine surface.
+- **Browser acceptance** (27 Oct 2026, commit `b8a8d7f`, synthetic data): passed; recorded in CR-0009.
 
 ### Fixed (fix batch 2a: KI-124, OD-32 and OD-34, CR-0007)
 `index.html` MD5 `EF2FF4F1…` → `911A04659CB34383E478416B54E9C306` (16,826,633 bytes), by the patch

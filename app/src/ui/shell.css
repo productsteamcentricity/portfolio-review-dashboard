@@ -5,17 +5,27 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html { font-size: 100%; }
+
+/* The pinned header's height (D-037): a default here for the first layout, then the value the app measures. Only the
+   targets of fragment links are offset by it (the skip link's #main and a section address), never the page as a
+   whole, so moving focus into the header does not scroll the page. */
+:root { --header-h: 8.5rem; }
+#main, .panel { scroll-margin-top: calc(var(--header-h) + 1rem); }
+/* A control inside a section that receives focus is scrolled clear of the header too (WCAG 2.4.11). */
+#main a, #main button, #main input, #main select, #main textarea, #main summary, #main [tabindex] {
+  scroll-margin-top: calc(var(--header-h) + 1rem);
+}
 body {
   margin: 0;
   font-family: var(--font);
   font-size: 1rem;
   line-height: 1.45;
   color: var(--c-textBody);
-  background: var(--c-stone);
+  background: var(--c-white);
 }
 
 .skip-link {
-  position: absolute;
+  position: fixed;
   left: 0.5rem;
   top: -10rem;
   z-index: 10;
@@ -33,100 +43,137 @@ a:focus-visible, [tabindex="-1"]:focus-visible, .skip-link:focus {
 }
 h2[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
 
-/* Header: the persistent preview banner (D-024) above the black bar with the gold rule. */
-.app-header { position: sticky; top: 0; z-index: 5; }
+/* Header (D-024, D-037): the preview banner, the black masthead with the gold rule, and the section tabs across the
+   top, after the owner's design reference (the upload console's masthead and step tabs). On a wide screen the whole
+   header stays in view, so the banner is always visible; on a narrow one nothing is pinned, so no heading hides under it. */
+.app-header { position: sticky; top: 0; z-index: 5; background: var(--c-white); }
 .preview-banner {
   margin: 0;
-  padding: 0.5rem 1rem;
+  padding: 0.35rem 1rem;
   background: var(--c-honey);
   color: var(--c-brown);
   border-bottom: 1px solid var(--c-gold);
-  font-size: 0.95rem;
+  font-size: 0.875rem;
 }
 .preview-banner strong { color: var(--c-ink); }
 .app-bar {
-  display: flex;
-  align-items: baseline;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
+  padding: 0.7rem 1rem 0.6rem;
   background: var(--c-ink);
   color: var(--c-white);
   border-bottom: 4px solid var(--c-gold);
 }
-.app-title { font-size: 1.25rem; font-weight: bold; letter-spacing: 0.02em; text-transform: uppercase; }
-.app-subtitle { font-size: 0.95rem; color: var(--c-grey85); }
-
-/* Layout: navigation beside the section, stacked on narrow screens. */
-.app-layout {
-  display: grid;
-  grid-template-columns: 17rem minmax(0, 1fr);
-  gap: 1.25rem;
-  max-width: 82rem;
+.app-bar-in {
+  max-width: 90rem;
   margin: 0 auto;
-  padding: 1.25rem 1rem 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1.25rem;
 }
-@media (max-width: 52rem) {
-  .app-layout { grid-template-columns: minmax(0, 1fr); }
-}
+.app-tools { margin-left: auto; }
+.app-title { font-size: 1.3rem; font-weight: bold; letter-spacing: 0.06em; text-transform: uppercase; }
+.app-subtitle { font-size: 0.85rem; color: var(--c-tan); }
 
+/* Section tabs: one row across the top, the full width of the page. */
+.app-tabs { background: var(--c-white); border-bottom: 2px solid var(--c-ink); }
 .app-nav {
-  align-self: start;
-  background: var(--c-white);
-  border: 1px solid var(--c-grey85);
-  padding: 0.5rem 0;
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: 0.15rem calc(1rem - 3px) 0;
 }
 .nav-heading {
-  margin: 0.25rem 1rem 0.5rem;
-  font-size: 0.8rem;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--c-textLabel);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
-.nav-sections { list-style: none; margin: 0; padding: 0; }
+/* One row that never wraps, so the header keeps one height; where the screen is too narrow for the nine tabs the
+   row scrolls sideways. The small top padding keeps a focused tab's outline inside the scrolling box. */
+.nav-sections {
+  list-style: none;
+  margin: 0;
+  padding: 6px 3px 0;
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 2px;
+}
 .nav-sections a {
   display: flex;
-  gap: 0.6rem;
-  padding: 0.45rem 1rem;
-  border-left: 4px solid transparent;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.45rem 0.47rem;
+  border: 1px solid var(--c-grey85);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: var(--c-sand);
+  color: var(--c-textBody);
+  font-size: 0.85rem;
   text-decoration: none;
+  white-space: nowrap;
 }
-.nav-sections a:hover { background: var(--c-sand); }
+.nav-sections a:hover { background: var(--c-tan); }
+/* The focus ring is drawn inside the tab, so the sideways-scrolling row never clips it; on the black current tab it is
+   gold, so it shows (#C69958 on black is about 8:1). */
+.nav-sections a:focus-visible { outline-offset: -3px; }
+.nav-sections a[aria-current="page"]:focus-visible { outline-color: var(--c-goldRing); }
 .nav-sections a[aria-current="page"] {
-  background: var(--c-tan);
-  border-left-color: var(--c-gold);
+  background: var(--c-ink);
+  border-color: var(--c-ink);
+  color: var(--c-white);
   font-weight: bold;
 }
-.nav-num { min-width: 1.1rem; text-align: right; color: var(--c-textLabel); }
-.nav-sections a[aria-current="page"] .nav-num { color: var(--c-ink); }
+.nav-num { font-size: 0.75rem; color: var(--c-textLabel); }
+.nav-sections a[aria-current="page"] .nav-num { color: var(--c-tan); }
 .nav-external {
-  display: block;
-  margin: 0.5rem 0 0;
-  padding: 0.6rem 1rem 0.45rem;
-  border-top: 1px solid var(--c-grey85);
+  display: inline-block;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--c-brown);
+  border-radius: 4px;
+  background: var(--c-gold);
+  color: var(--c-ink);
+  font-size: 0.9rem;
   font-weight: bold;
   text-decoration: none;
+  white-space: nowrap;
 }
-.nav-external:hover { background: var(--c-sand); text-decoration: underline; }
-.nav-external-note { display: block; font-weight: normal; font-size: 0.8rem; color: var(--c-textLabel); }
+.nav-external:hover { background: var(--c-tan); }
+.nav-external:focus-visible { outline-color: var(--c-gold); }
+.nav-external-note {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Layout: the section uses the full width under the tabs. */
+.app-layout {
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 0;
+}
+
+/* Narrow screens: nothing pinned (the tabs still scroll sideways in their one row). */
+@media (max-width: 52rem) {
+  :root { --header-h: 0px; }
+  .app-header { position: static; }
+  .app-tools { margin-left: 0; }
+}
 
 /* Section panels. */
 .app-main:focus { outline: none; }
-.panel {
-  scroll-margin-top: 8rem;
-  background: var(--c-white);
-  border: 1px solid var(--c-grey85);
-  padding: 1rem 1.25rem 1.25rem;
-}
 .panel h2 {
   margin: 0 0 0.25rem;
-  font-size: 1.5rem;
-  border-bottom: 3px solid var(--c-gold);
-  padding-bottom: 0.35rem;
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
 }
 .panel-num { color: var(--c-textLabel); margin-right: 0.25rem; }
-.panel-summary { margin: 0.5rem 0 1rem; }
-.empty-state { background: var(--c-cream); border: 1px solid var(--c-grey85); padding: 0.75rem 1rem 1rem; }
+.panel-summary { margin: 0.25rem 0 1rem; color: var(--c-textLabel); max-width: 72ch; }
+.empty-state { border: 1px solid var(--c-grey85); border-radius: 4px; padding: 0.75rem 1rem 1rem; background: var(--c-white); }
 .empty-lead { margin: 0 0 0.75rem; font-style: italic; }
 
 table.arriving { width: 100%; border-collapse: collapse; font-size: 0.95rem; background: var(--c-white); }
@@ -144,14 +191,16 @@ table.arriving th, table.arriving td {
   text-align: left;
   vertical-align: top;
 }
-table.arriving th { background: var(--c-ink); color: var(--c-white); }
+table.arriving th { background: var(--c-ink); color: var(--c-white); font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase; }
+table.arriving tbody tr:nth-child(even) td { background: var(--c-cream); }
 .arriving-milestone { white-space: nowrap; font-weight: bold; width: 7rem; }
 
 .slot {
   margin-top: 1.25rem;
   padding: 0.75rem 1rem;
-  background: var(--c-panel);
-  border: 2px dashed var(--c-gold);
+  background: var(--c-white);
+  border: 1.5px dashed var(--c-grey75);
+  border-radius: 4px;
 }
 .slot h3 { margin: 0 0 0.35rem; font-size: 1.15rem; }
 .slot p { margin: 0.35rem 0; }
@@ -164,5 +213,6 @@ table.arriving th { background: var(--c-ink); color: var(--c-white); }
   font-size: 0.85rem;
 }
 
-.app-footer { margin-top: 1rem; font-size: 0.85rem; color: var(--c-textLabel); }
+.app-footer { margin-top: 1.75rem; padding: 0.6rem 1rem; background: var(--c-ink); color: var(--c-tan); font-size: 0.8rem; text-align: center; }
+.app-footer p { margin: 0; }
 .noscript-note { background: var(--c-white); border: 1px solid var(--c-grey85); padding: 1rem; }

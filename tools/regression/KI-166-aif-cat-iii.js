@@ -48,6 +48,14 @@ ok(T.near(r(A.harvest.taxBefore), 0) && A.harvest.pools.length === 0, 'tax befor
 ok(T.near(r(A.totals.fundLevelCmv), 10000000) && T.near(r(A.totals.fundLevelGain), 5000000) && T.near(r(A.totals.unclassCmv), 0) && T.near(r(A.totals.ltcgCmv + A.totals.stcgCmv), 0),
   'CMV Rs 1 Cr and gain Rs 50 lakh are fund level, not "not classified"');
 ok(T.near(A.totals.ltcgCmv + A.totals.stcgCmv + A.totals.unclassCmv + A.totals.fundLevelCmv, A.totals.cmv, 1e-12), 'LT + ST + not classified + fund level = CMV');
+/* Rebased on fix batch 4 (CR-0008): a Category III AIF is not reconciled at all, so a merged folio with blank units
+   (KI-140, D-041) changes nothing: it is still fund level, never listed as unreconciled */
+const gb = new T.Book().add(Object.assign(aif('Synthetic Long Short Fund', 'AIF (CAT III) - Long Short', 'Equity', 5000000, 10000000), { noUnits: false }));
+const g0 = gb.rows.pop(), ga = g0.slice(), gc = g0.slice();
+[8, 9, 10].forEach(k => { ga[k] = g0[k] * 0.6; gc[k] = g0[k] * 0.4; }); ga[7] = 0.6; gc[7] = null; gb.rows.push(ga, gc);
+const G = gb.tax(AS_ON), gp = G.positions[0];
+ok(gb.parsed()[0].unitsGap === true && G.unreconciled.length === 0 && gp && gp.notSplit === 'fundLevel' && T.near(r(G.totals.fundLevelCmv), 10000000) && T.near(r(G.totals.fundLevelGain), 5000000),
+  'merged from a folio with units and one without: still fund level, CMV Rs 1 Cr and gain Rs 50 lakh, not unreconciled');
 
 console.log('--- with an equity fund\'s short-term loss of Rs 20 lakh ---');
 const B = tax([aif('Synthetic Long Short Fund', 'AIF (CAT III) - Long Short', 'Equity', 5000000, 10000000), eq('Synthetic Focused Fund-Reg(G)', 3000, 1000, '2026-06-10')]);

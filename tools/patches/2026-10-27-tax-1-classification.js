@@ -3,7 +3,8 @@
    (CR-0008; decision D-040; Tax Reckoner TY 2026-27, law as on 19 Oct 2026).
    Edits the reference data (TAX_RULES), the engine script (07_engine.js), the
    exporters script (08_exporters.js) and the UI script (11_app_ui.js). Applies
-   after 2026-10-22-legacy-batch-2a.js.
+   after 2026-10-27-basefile-review.js (fix batch 4; written after 2026-10-22-legacy-batch-2a.js
+   and rebased on fix batch 4 with no change to this script's edits, CR-0008).
 
    Fixed here (TX-nn of the tax review of 24 Oct 2026 is KI-(159+nn)):
      KI-162 (TX-03)  shares held directly are tested before the international test, so a

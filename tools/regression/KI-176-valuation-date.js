@@ -90,6 +90,17 @@ ok(L2.unreconciled.length === 0 && L2.positions[0].baseUnits === 150 && T.near(T
 const L3 = mk([['2026-10-05', 100, 100]]).review('2026-10-20', { asOnDate: '30 Sep 2026' }).taxation;
 ok(L3.unreconciled.length === 1 && /No purchase transactions in the IRR history\. 1 IRR transaction for this holding dated after 30 Sep 2026, the date holding periods run to, is left out\./.test(L3.unreconciled[0].reason),
   'a holding bought only after the valuation date is unreconciled, and its reason says the purchase was left out (' + (L3.unreconciled[0] && L3.unreconciled[0].reason) + ')');
+/* Rebased on fix batch 4 (CR-0008): a merged folio with blank units (KI-140, D-041) is unreconciled with batch 4's
+   reason; as every unreconciled holding's reason does, it also says when some of its trades were left out */
+const mb = mk([['2025-01-10', 100, 100]]).trade({ name: EQ.name, date: '2026-10-05', units: 50, price: 140 });
+const r0 = mb.rows.pop(), fa = r0.slice(), fb = r0.slice();
+[8, 9, 10].forEach(k => { fa[k] = r0[k] * 0.6; fb[k] = r0[k] * 0.4; }); fa[7] = 60; fb[7] = null; mb.rows.push(fa, fb);
+const L4 = mb.review('2026-10-20', { asOnDate: '30 Sep 2026' }).taxation;
+const g4 = L4.unreconciled[0];
+ok(L4.positions.length === 0 && L4.unreconciled.length === 1 && g4.baseUnits === null && !g4.amtMode && T.near(T.RS(g4.cmv), 15000),
+  'a merged holding with a folio without units (60 units and blank): unsplit, not matched on invested value, CMV Rs 15,000 (fix batch 4, KI-140)');
+ok(g4 && /^Units are blank: a merged folio of this holding has no units in the base file, so they cannot be checked against the transaction history\. No split is shown rather than one on a partial unit count\. 1 IRR transaction for this holding dated after 30 Sep 2026, the date holding periods run to, is left out\.$/.test(g4.reason) && L4.later.n === 1,
+  'its reason is fix batch 4\'s, then the left-out trade (' + (g4 && g4.reason) + ')');
 
 console.log('--- with no valuation date: the IRR sheet\'s latest date, never the built-in default ---');
 const n0 = mk([['2025-09-20', 100, 100]]).review('2026-09-30');

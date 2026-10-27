@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | **v0.3**, 23 Oct 2026 (the financial review of M1.3; v0.2 was M1.3's shared model types in `app/src/model/`; v0.1 was M1.1 with the owner's answers D-024 to D-033) |
+| Version | **v0.4**, 23 Oct 2026, revised 27 Oct 2026 (D-036, the capital-gains upload, and its review; v0.3 was the financial review of M1.3; v0.2 was M1.3's shared model types in `app/src/model/`; v0.1 was M1.1 with the owner's answers D-024 to D-033) |
 | Scope | the data model of the **new** Portfolio Review application. The legacy `index.html` is described in [legacy/ARCHITECTURE.md](legacy/ARCHITECTURE.md) and the conventions section of `CLAUDE.md`; how the new application is built is in [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Owns | every entity, field, metric path, missing-data status, unit and calculation definition of the new application ([09-repository-and-docs-structure.md](new-build/09-repository-and-docs-structure.md) §3). The PRD (§6), the architecture and the observation rule bank link here and do not restate these definitions |
 | Built from | the Phase 0 architecture's model section ([03-architecture.md](new-build/03-architecture.md) §6, with §8, §9, §12, §16) and the record and metric-path sections of [observation-rule-bank.md](new-build/observation-rule-bank.md) (§1, §2) |
@@ -86,7 +86,7 @@ marker characters are configuration.
 
 | Item | Convention | Phase 0 source |
 |---|---|---|
-| Money | held in **Crore**, unrounded; displayed in the base file's unit (Crore, Lakh or rupees; rupee-only files in Crore from 1 Cr, else Lakh) through one formatter | `03` §6.7 |
+| Money | held in **Crore**, unrounded; displayed in the base file's unit (Crore, Lakh or rupees; rupee-only files in Crore from 1 Cr, else Lakh) through one formatter. Exception: realised lots and their tax (§5.5, the `tax.fy` paths of §6) are held and computed in rupees, because tax thresholds and known answers are in rupees, and converted to Crore only for display (D-036) | `03` §6.7; D-036 |
 | Percentages | held as **percent numbers** (8.79 means 8.79 %), unit `pct`, never as fractions (decided in M1.3, §8); two decimals for display; inflation one decimal | `03` §6.7; rule bank §1 (thresholds such as 35 are percent numbers) |
 | Rounding | unrounded maths; rounding only in the renderer; Excel receives unrounded values with number formats | `03` §6.1 rule 3 |
 | Dates | day numbers, converted from raw Excel serials by one timezone-free function (the legacy +12 h shift stays in the legacy only); tests run under `TZ=Asia/Kolkata` and `TZ=UTC`. M1.3: `DayNumber` = whole days since 1970-01-01; `app/src/engine/dates.ts` `excelSerialToDay` (1900 and 1904 systems; the phantom 29 Feb 1900 is refused; a serial within one minute of midnight counts as that midnight, which absorbs the 10-second drift SheetJS adds when it writes a local-time date in IST) | `03` §6.7 |
@@ -114,7 +114,9 @@ M1.3 (`app/src/model/ids.ts`, `app/src/engine/ids.ts`): ids are strings typed by
 prefix (`cl`, `ds`, `ac`, `fo`, `h`) and the first 12 hex digits of the FNV-1a 64-bit hash of the normalised key
 (labels lower-cased with spaces collapsed), so a file read twice, or with its rows in another order, gives the same
 ids. Keys: client and distributor by label; account by client and distributor (the plan joins in M2); folio by
-account, AMC label and folio number (a blank folio number by its row); an included holding by the merge key
+account, AMC label and folio number (a blank folio number by its row), except that a statement lot's folio is keyed by
+account, scheme label and folio number until its scheme is matched (the statement has no AMC column;
+[new-build/capital-gains-upload.md](new-build/capital-gains-upload.md) §2.5); an included holding by the merge key
 (client, instrument, product, distributor); an excluded holding by its sheet and row. `InstrumentRef` is as in §5.2
 and is null on a holding until engine/match resolves it (M2).
 
@@ -226,18 +228,32 @@ Rows that are skipped are reported by reason, never dropped silently (`03` §7).
 
 ### 5.5 `RealisedGain` (L2)
 
-From the client's capital-gains statement in the app's template (section 5.17; E-141, D-032), else derived from
-IRR-file redemptions by FIFO.
+From the client's capital-gains statement (the platform's export or the blank template, section 5.17; E-141, D-032,
+D-036), else derived from IRR-file redemptions by FIFO.
 
 | Field | Meaning | Phase 0 source |
 |---|---|---|
-| scheme, folio | the instrument and folio | `03` §7 |
+| scheme, folio | the instrument (the `InstrumentRef`, null on a statement lot until its scheme is matched, M2) and folio; for a statement lot, `schemeLabel` (the instrument name without its tag) and `folio` (from the tag or the Folio Number column), with `tagAsset` (the tag's Equity or Debt), `category` (Category Name) and `statementAsset` (Asset Name) | `03` §7; D-036 |
+| clientId, accountId, distributorId | the person (the client id of §4: the normalised Client Name, else the name part of Account Name; tax is computed per `clientId`), the account (client and distributor) and the distributor | `03` §6.8; D-036 |
+| accountLabel, accountNote | statement lots: Account Name split at its last " - " once the PAN tag is removed (`accountNote` for example "Held Away"; empty when there is no " - ") | D-036 |
 | saleDate, units, saleValue | the redemption | `03` §7 |
-| cost, costBasis | cost and its basis (for example grandfathered cost) | `03` §6.7, §7 |
+| salePrice, purchasePrice, salePriceDerived, purchasePriceDerived | rupees per unit, as stated or derived from the amount and the units; the flag is true when derived, and the lot is labelled | D-036 |
+| purchaseValue | the lot's actual cost (Invested Value); this field was `cost` before D-036 | `03` §6.7, §7; D-036 |
+| costForTax, costBasis | the cost the taxable gain is computed on and its basis (`actual`, `grandfathered`, `indexed`, or `none` for an exempt lot, a non-taxable transfer or a lot without a computable taxable gain (no valid key, tax class not set, listed flag missing, rule to be confirmed, cost input missing, or outside the rule table); a lot whose tax waits only for the slab or surcharge rate keeps its rule's basis), always the basis of the lot's rule; the lot class only supplies inputs (L4); an NE-LT-1 lot records the basis of its chosen leg | `03` §6.7, §7; D-036 |
 | purchaseDate | the lot's purchase date | `03` §7 |
-| term | short or long term; long term is more than 12 months to the review's as-on date (OD-2) | `03` §7, §8 |
-| gain, financialYear | the realised gain and the financial year it belongs to | `03` §7 |
+| term | short or long term; for an unrealised holding, long term is more than 12 months to the review's as-on date; for a realised lot, the holding period of its rule (section 7, "Tax rules") to the sale date; in both, strictly after the anniversary (OD-2) | `03` §7, §8; D-036 |
+| realised, financialYear | the economic gain (sale value minus actual cost; this field was `gain` before D-036) and the financial year of the sale; a non-taxable transfer's gain is left out of the year's realised total unless its successor lots are `successor-reset` (design §4) | `03` §7; D-036 |
+| taxableGain, ruleId | sale value minus cost for tax, and the id of the rate row of the dated table that applied (L4) | D-036 |
+| taxClass, listed, subType | the scheme's tax facts for the year of sale (L4): `taxClass` (`equity-oriented`, `specified-mf`, `other-non-equity`), `listed` (`Value<boolean>`: the analyst's flag, else true for an ETF by name that is not a fund of funds, else false; missing for a close-ended non-equity scheme without the analyst's flag), `subType` (`none`, `elss`, `etf-fof-90-90`); with the purchase and sale dates they are the rule key | D-036 |
+| lotClass | `non-taxable-transfer`, `taxable-transfer`, `grandfathered`, `indexed-cost-shown`, `standard`, `other` (design §5) | D-036 |
+| duplicateOf | the first row of a group of exact repeats (design §6) | D-036 |
+| statement | the stated Realized G/L, LTCG, STCG, acquisition date and price, holding days, principal repayment, interest and tax columns, as read | D-036 |
 | source | `statement` or `derived from transactions`, named in every output; when both exist they are reconciled per scheme and financial year, and a difference beyond tolerance raises a High validation result | `03` §6.7 |
+
+Types: dates are `DayNumber`; units, prices and money are numbers, money in rupees (§3); ids are the typed ids of §4;
+flags are booleans, except `listed`, a `Value<boolean>`; enumerations as listed; each `statement` cell is a `Value`
+that is missing when the cell is blank.
+The field names follow the design ([new-build/capital-gains-upload.md](new-build/capital-gains-upload.md) §4, §5).
 
 ### 5.6 `Client`, `Account`, `Folio`, `Ownership`, `Distributor` (L2)
 
@@ -402,7 +418,7 @@ The pack the owner uploads into section 1's "MF Screener data pack" slot, kept i
 
 | Field | Meaning | Source |
 |---|---|---|
-| cycle | the pack's cycle date, from its `manifest.json`; shown in the sidebar | `03` §6.9 |
+| cycle | the pack's cycle date, from its `manifest.json`; shown in the masthead (D-037) | `03` §6.9 |
 | sha256 | fingerprint of the zip; loading the same value again changes nothing | `03` §6.9, §7 |
 | contractVersion | `pr-datapack-v1` | `03` §7 |
 | counts | record counts per file, as checked against the manifest | `03` §7 |
@@ -411,34 +427,51 @@ The pack the owner uploads into section 1's "MF Screener data pack" slot, kept i
 | role | `current` (the newest cycle; a newer cycle replaces it) or `history` (the month-end holdings of replaced packs and of the backfill, kept for historical analytics) | `03` §6.9 |
 | holdingsMonthEnds | the month-end dates whose fund holdings are stored | `03` §6.9 (Q-27) |
 
-### 5.17 Capital-gains template (D-032; proposal for M7)
+### 5.17 Capital-gains statement (D-032 as amended by D-036; built in M7)
 
-Analysts upload capital-gains statements in this template, as they do with the base-file template; the app offers it
-blank for download with a Read Me sheet, reads it by header name (aliases allowed) and refuses a file without the
-required columns, naming them. **One row per realised lot:** a sale matched to two purchase lots is two rows. Money in
-rupees with two decimals (converted to Crore by the engine), units to three decimals, dates as Excel dates. The
-columns below are a **proposal**, fixed in M7 when `ingest/capital-gains.ts` is built (`03` §6.10). [I]
+The capital-gains slot accepts the wealth platform's "Capital Gain Report" export **as produced**, and the app's blank
+template, which has the same headers and a Read Me sheet, for statements from other sources; one reader serves both
+(`ingest/capital-gains.ts`). Columns are found by header name after normalising (trim, inner spaces collapsed, letter
+case ignored, `(₹)`, `(Rs)`, `(Rs.)`, `(INR)` or no unit treated alike), in any order; extra columns are ignored and
+listed; a file without the required columns is refused, naming them. **One row per purchase lot consumed by a sale**
+(FIFO as the issuer matched it). Money in rupees (kept in rupees by the tax engine, converted to Crore for display,
+§3), units with every decimal given,
+dates as Excel dates. The full design (footer, PAN removal, lot classes, repeated rows, reconciliation, tax) is
+[new-build/capital-gains-upload.md](new-build/capital-gains-upload.md). Fixed by D-036 (23 Oct 2026); the M7 code
+follows it.
 
-| # | Column | Required | Type and unit | Meaning |
+| # | Header (trimmed) | Required | Type and unit | Becomes |
 |---|---|---|---|---|
-| 1 | Client Name | yes | text | the client as named in the base file; joins the row to the review's client; never shown on slides |
-| 2 | Folio Number | recommended | text | the folio as printed (suffixes such as "/01" kept); a join key inside the review only |
-| 3 | Scheme Name | yes | text | the scheme as named on the statement |
-| 4 | ISIN | no | text, 12 characters | the preferred identifier when the statement prints it |
-| 5 | Sale Type | no | text: Redemption, Switch Out, SWP, STP Out, Other | the kind of sale |
-| 6 | Sale Date | yes | date | the date of the sale; the financial year (1 April to 31 March) is derived from it |
-| 7 | Units Sold | yes | number, 3 decimals | units of this lot sold |
-| 8 | Sale Value (₹) | yes | number, rupees | proceeds for these units |
-| 9 | Purchase Date | yes | date | the lot's purchase date |
-| 10 | Purchase Value (₹) | yes | number, rupees | the lot's actual cost for these units |
-| 11 | Cost for Tax (₹) | no | number, rupees | the cost the gain is computed on when it differs from the purchase value (for example grandfathered cost); blank means the purchase value |
-| 12 | Cost Basis | no | text: Actual, Grandfathered, Indexed | how Cost for Tax was set |
-| 13 | Term | no | text: Short, Long | the issuer's classification; blank means derived from the purchase and sale dates under the tax-rules table, and labelled as derived |
-| 14 | Gain (₹) | no | number, rupees; negative for a loss | as stated; blank means Sale Value minus Cost for Tax; a stated gain that differs from that beyond the tolerance set in M7 raises a validation result |
-| 15 | Statement Source | no | text | who issued the figures (for example the registrar or the platform), for the source register |
+| 1 | Sale Date | yes | date | `saleDate`; a row is a lot row when this cell is a date |
+| 2 | Account Name | one of 2, 4 | text; the `[PAN: ...]` tag removed at read | `accountLabel`, `accountNote` |
+| 3 | Family Name | no | text | not kept |
+| 4 | Client Name | one of 2, 4 | text | `clientId` (by normalised label, as the base file) |
+| 5 | Instrument Name | yes | text with the tag `[Folio No: <folio> \|\| Asset: <Equity or Debt>]` | `schemeLabel`, `folio`, `tagAsset` |
+| 6 | Category Name | one of 6, 7 | text (SEBI category) | `category` |
+| 7 | Asset Name | one of 6, 7 | text: Equity or Debt | `statementAsset` |
+| 8 | Distributor Name | no | text | `distributorId`, `accountId` |
+| 9 | Purchase Date | yes | date | `purchaseDate` |
+| 10 | Purchase Price (₹) | no | rupees per unit | `purchasePrice` (blank: derived, labelled) |
+| 11 | Sale Price (₹) | no | rupees per unit | `salePrice` (blank: derived, labelled) |
+| 12 | Sale Unit | yes | number above 0 | `units` |
+| 13 | Sell Amount (₹) | yes | rupees | `saleValue` |
+| 14 | Principal Repayment (₹) | no | rupees | `statement.principalRepayment` |
+| 15 | Invested Value (₹) | yes | rupees | `purchaseValue` (actual cost) |
+| 16 | Realized G/L (₹) | no | rupees | `statement.realised` |
+| 17 | LTCG G/L (₹) | no | rupees | `statement.ltcg` |
+| 18 | STCG G/L (₹) | no | rupees | `statement.stcg` |
+| 19 | Acquisition Date | no | date | `statement.acquisitionDate` |
+| 20 | Acquisition Price (₹) | no | rupees per unit | `statement.acquisitionPrice` |
+| 21 | Holding Terms | no | whole days | `statement.holdingDays` |
+| 22 | Interest Earned (₹) | no | rupees | `statement.interest` |
+| 23 | XIRR (%) | no | percent number | not kept |
+| 24 to 29 | Pre Tax G/L (₹), Tax Amount (₹), Surcharge (₹), Cess (₹), Total Tax (₹), Post Tax G/L (₹) | no | rupees | `statement.tax.*`, shown beside the app's estimate, never used in its place |
+| (extra) | Folio Number | no | text | `folio`, ahead of the tag |
 
-Each row becomes a `RealisedGain` (section 5.5) with source `statement`. A statement covers whole financial years: the
-reconciliation with gains derived from the IRR file runs per scheme and financial year (`03` §6.7).
+The aliases of each header are listed in the design (§2.3). Each lot row becomes a `RealisedGain` (section 5.5) with
+source `statement`; a PAN never reaches the model (removed from every text cell at read time). A statement covers the
+client's realised history: every tax figure is per financial year, and the reconciliation with gains derived from
+the IRR file runs per scheme and financial year (`03` §6.7).
 
 ## 6. Metric paths
 
@@ -476,7 +509,8 @@ path is a `Value<T>` in the `Review` (rule bank §2; `03` §11, §16).
 | `equity.thematicPct` | thematic and sectoral funds as a share of equity |
 | `flows.recentPct`, `flows.firstByHolding[i]`, `flows.lastRebalance` | timing of inflows and the date of the last switch, redemption or transfer out (IRR file) |
 | `ips.rows[]` | IPS bands and actuals for the selected profile |
-| `tax.unrealised.{st,lt}`, `tax.realisedFY.{st,lt,source}`, `tax.harvestableLoss`, `tax.exemptionUsed` | tax position (realised gains from the statement or derived, section 5.5) |
+| `tax.unrealised.{st,lt}`, `tax.realisedFY.{st,lt,source}`, `tax.harvestableLoss[p]`, `tax.exemptionUsed[p]` | tax position (realised gains from the statement or derived, section 5.5). With a capital-gains statement these are read from the per-person paths below: `tax.realisedFY.{st,lt}` is the as-on financial year's `tax.fy[y].familySum` realised gain split by the app's term, with its `source`; `tax.exemptionUsed[p]` and `tax.harvestableLoss[p]` are per person (`tax.exemptionUsed[p]` = `tax.fy[as-on FY].person[p].exemption.applied`); a family figure is only their sum, labelled "sum of separate computations", and is never compared with a per-person limit. The rule bank's `tax.exemptionUsed` and `tax.harvestableLoss` (its §2 and TAX-01) are these per-person paths, and TAX-01 is evaluated per person |
+| `tax.fy[y].person[p].{realised,exempt,nonTaxable}`, `tax.fy[y].person[p].exemption.{limit,applied}`, `tax.fy[y].person[p].unabsorbed.{st,lt}`, `tax.fy[y].person[p].buckets[ruleId].{gain,setOff,taxable}`, `tax.fy[y].person[p].estimate.{tax,surcharge,cess,total}`, `tax.fy[y].person[p].alternatives.{anniversaryLongTerm,fy2425OtherOrder,oldLawYearTotal}`, `tax.fy[y].person[p].statementSplit.{lt,st}`, `tax.fy[y].familySum.*`, `tax.fy[y].rulesVersion` | per financial year `y` and person `p` (the `clientId`, section 5.5) from a capital-gains statement (D-036), in rupees: the economic gain and the exempt and non-taxable lines (a non-taxable transfer's gain is in `nonTaxable` only and is left out of `realised` and of the IRR reconciliation, unless its successor lots are `successor-reset`); the annual exemption's limit and the part applied; the losses left after set-off, by term (reported, not carried forward); each rate bucket before and after set-off; the indicative tax (slab buckets missing until the slab rate is entered; totals "before surcharge" until the surcharge rate is entered, and from FY 2023-24 while the regime is not entered and the entry is above 25%; the rates and the regime are the analyst's inputs per person and year); the alternatives (the anniversary-day lots as long term; in FY 2024-25 the exemption's other order; in a year with NE-LT-1 lots, `oldLawYearTotal`: the year's tax computed twice, set-off (TR-10) included, once with every NE-LT-1 lot on its 20% leg and once with every one on its 10% leg, the lower shown as the year's-total figure); the statement's own split. Lots without a computable taxable gain (no valid key, tax class not set, listed flag missing, rule to be confirmed, cost input missing, outside the rule table) enter no bucket: the person-year's set-off, exemption and tax are then computed over the other lots and are PARTIAL COVERAGE (§2), the footnote naming the count of lots left out and their economic gain; the total tax is also PARTIAL while the slab rate is not set, unless the set-off makes the figures the dash. `familySum` holds the same lines added over the review's clients, labelled "sum of separate computations", never re-run on pooled lots, and is PARTIAL when any person's figure is; a client not in the review is its own person and is never added to it; `rulesVersion` is the rule-table version used |
 | `scenario.valid`, `scenario.post.*`, `scenario.exits[]`, `scenario.tradeoffs` | Review with Rebalancing only |
 
 The mandatory facts F1 to F11 of the Review Only Snapshot map to these paths in [ARCHITECTURE.md](ARCHITECTURE.md) §11 (from `03-architecture.md` §11).
@@ -490,13 +524,16 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
 |---|---|---|
 | Weights | on current market value; per-client sheets re-based to the client; scopes re-based to the scope | [PO §3.3] |
 | Unrealised gain/loss | CMV minus invested, everywhere | OD-18 |
-| Realised gain/loss | from the capital-gains statement when supplied in the app's template (section 5.17; the source of record for a financial year), else derived from IRR-file redemptions by FIFO; source named; reconciled per scheme and financial year when both exist | Q-49; D-032 |
+| Realised gain/loss | from the capital-gains statement (the platform export or the blank template, D-036; section 5.17; the source of record for a financial year), else derived from IRR-file redemptions by FIFO; source named; reconciled per scheme and financial year when both exist; a non-taxable transfer's gain is left out of the realised total (section 5.5) | Q-49; D-032; D-036 |
 | Absolute return | gain / invested x 100 | the previous owner's [decisions log](previous-owner/knowledge/DECISIONS_LOG.md), 15 Jun |
 | XIRR | actual/365, bisection to a bracket width below 1e-12, Newton fallback (the legacy solver, ported as is) | [IE E-26] |
 | Benchmark XIRR | the client's cash flows invested in each fund's own benchmark | [IE E-27] |
 | Subtotal fund vs benchmark | averaged over the holdings that have both values; a fund-only average carries its coverage | OD-26 |
 | IRR reconciliation | redeemed instruments and IRR-only clients per OD-4; an invalid benchmark is excluded on both sides; a scope whose flows do not reconcile to its holdings shows INSUFFICIENT EVIDENCE | OD-4 |
 | Long-term holding | more than 12 months to the review's as-on date | OD-2 |
+| Financial year of a realised lot | 1 April to 31 March, from the sale date | D-036 |
+| Tax rules for a realised lot | the rate row of the dated tax-rule table for the lot's rule key: tax class, listed flag, sub-type (none, ELSS, equity ETF fund of funds 90/90), purchase date and sale date (exactly one row per valid key, except a key with the listed flag missing, possible only for a close-ended non-equity scheme, whose rule depends on the flag: no row, the dash; ELSS only with the equity-oriented class, the 90/90 sub-type equity-oriented from 2018-04-01 and other non-equity before, any other combination refused at input); a fund of funds is never equity-oriented on the statement's Equity label, and the analyst's equity-oriented class on a fund of funds is accepted only for sales from 2018-04-01, where it gives the 90/90 sub-type to that scheme's sales in that financial year only, without setting the per-scheme 90/90 flag; long term when the sale date is strictly after the anniversary of the rule's holding period (OD-2); cost for tax as the rule's basis says, the lot class only supplying inputs: actual; grandfathered, only under EQ-LT-2, EQ-LT-4, EQ-LT-6 and EQ-LT-8 (the higher of actual cost and the lower of the 31 Jan 2018 value and the sale price, per unit; without the value, actual cost, labelled "gain may be overstated"); or indexed: actual cost x CII of the sale year / CII of the later of the year first held and the series' base year (FY 1981-82 or FY 2001-02), in the series the law used for the sale year; the FMV on the base date (an option of the assessee) is not supplied, so the actual cost is used and the lot is labelled. Table and decisions in [new-build/capital-gains-upload.md](new-build/capital-gains-upload.md) §10, to become `data/owner/tax-rules.json` | D-036; OD-2; OD-17 |
+| Indicative tax for a financial year | per person (the `clientId`, never pooled across the family; a client not in the review is its own person) and per rate bucket of the year, in rupees: gains less losses, long-term losses set off first, only against long-term gains, highest rate first, then short-term losses against the remaining gains of either term, highest-taxed first (slab gains included, at the person's slab rate; section 112A or Sec 198 gains inside the unused exemption ranked at 0% and last; among equal rates, non-exempt gains first; with no slab rate and a short-term loss beside slab gains, the person's figures after set-off show the dash), the order giving the lowest tax for the year for the rate buckets as formed (NE-LT-1 legs chosen per lot) and leaving any unabsorbed loss short term where possible; less the annual exemption on section 112A (Sec 198) gains (FY 2024-25: first against the 12.5% gains, the other order in a note), times the rate (slab buckets at the person's slab rate, no default; NE-LT-1 the lower of its two figures per lot (on equal positive figures, the 20% leg), on signed amounts, before set-off, as the per-asset reading; the year's-total figure is shown beside it; which is lower depends on the year's losses); lots without a computable taxable gain left out of the buckets, the person-year then PARTIAL COVERAGE with the count and economic gain of those lots named, the total tax PARTIAL while the slab rate is not set, and a family sum PARTIAL when any person's figure is; plus surcharge at the person's rate for the year (no default: "before surcharge" until entered; limited to the year's maximum for the regime entered, and capped for capital gains; from FY 2023-24, while the regime is not entered, an entry above 25% is held and the totals stay "before surcharge (regime not set)"); plus cess at the year's rate. Labelled "Indicative, not tax advice; resident individual assumed" with the table's date | D-036 |
 | AMC cap | 20% of the mutual-fund book; breach strictly above 20.00%; the same basis everywhere, including the AI Analyst; group PMS, AIF and stocks outside the cap; a blank AMC is "AMC not given" | OD-1, OD-33, OD-34 |
 | Blank asset | unknown, with a notice (not Equity); "Fixed Income" and "Debt Funds" are Debt | OD-7 |
 | Missing CMV | the holding is excluded and listed | OD-8 |
@@ -563,12 +600,21 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
   the holding is included, as in the legacy (the legacy skipped only a row with no number in any market value
   column); `tests/unit/ingest/base-file.test.ts` pins this. Question: is a market value of 0 "no market value" under
   OD-8 (excluded and listed), or a real zero (included)?
+- **Rule bank tax paths keyed by person (follow-up for the rule bank's owner).** The rule bank (its §2 inputs row and
+  TAX-01, trigger (c)) names `tax.exemptionUsed` and `tax.harvestableLoss` without a person key. This dictionary
+  reads them as the per-person paths of §6 and TAX-01 is evaluated per person; the rule bank, a dated Phase 0 record,
+  is to be keyed by person by its owner (like DS-C8; capital-gains design §15).
 - **Cross-output registry name:** `03-architecture.md` §16 lists `xirr.portfolio` among the figures checked across
   outputs; the rule bank's path for the same figure is `irr.portfolio.fund`. This dictionary uses the rule bank's
   form; the registry is aligned when it is built (M13).
 - **Thresholds** used by metric paths (for example `class_present_pct`) are values in the threshold table, not
   definitions. The owner approved the table on 22 Oct 2026 (D-030); a fund pair counts as overlapping from 35%.
-- **Capital-gains template columns** (section 5.17) are a proposal until M7.
+- **Capital-gains columns: decided (D-036, 23 Oct 2026).** The platform's export is accepted as produced and the
+  blank template has its headers (section 5.17). Their field types are fixed in M7 with `ingest/capital-gains.ts`.
+  The design's open owner items ([new-build/capital-gains-upload.md](new-build/capital-gains-upload.md) §15) touch
+  this dictionary: whether realised lots, and later unrealised ones, follow the dated rule table instead of the single
+  12-month test of "Long-term holding" (section 7, OD-2, OD-17); anniversary-day sales; and grouping persons by a
+  per-file PAN number held in memory only. The dated tax-rule table was approved by the financial-domain reviewer on 27 Oct 2026.
 
 ## Change log
 
@@ -581,3 +627,8 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
 | v0.3 | 23 Oct 2026 | M1.3 financial review: REITs/InvITs is the fifth asset class, as in the legacy allocation order (§5.3); `Holding.mergeGaps` tells a merge gap from a value no folio has, and units are named as the tax reconciliation base (§5.3); a market value that is not a number counts as none, and 0 is a real zero (§5.3); three open questions for the owner: unrecognised Asset Names, merged units and the M7 requirement, a market value of 0 (§8) |
 | v0.3 (re-review) | 23 Oct 2026 | Open items only, definitions unchanged (M1.3 re-review): folding the letter case of Asset Names goes beyond OD-7 and waits for the owner (§5.3, §8, BF-26); a Crore cell that is not a number beside a Lakh or rupee amount, decided in M1.4 (§8, KI-147) |
 | v0.3 (D-035) | 23 Oct 2026 | Status only (§8): BF-17 (KI-113) and BF-18 (KI-113 extended to units) accepted by the lead (D-035); BF-19 and BF-26 wait for the owner |
+| v0.4 | 23 Oct 2026 | D-036, the capital-gains upload: §5.17 is the platform export's 29 columns (and the blank template with the same headers), replacing the proposal; §5.5 gains the statement lot fields and the realised-lot term; §6 the per-year tax paths; §7 the financial year, the tax rules for a realised lot and the indicative tax; §8 records the decision |
+| v0.4 (review) | 27 Oct 2026 | The review of the capital-gains design (its §10.11): §3 realised lots and their tax held in rupees; §5.5 aligned with the design (`purchaseValue` and `realised` replace `cost` and `gain`; the client, account, scheme, category, price, flag and tax-fact fields; `taxable-transfer`; types); §6 the tax paths keyed by person and year, with the exemption, unabsorbed-loss and alternative lines and the family sum; §7 the realised row's source wording, the rule key with the listed flag and sub-type, the indexation base year, and the per-person tax with its set-off ranking, exemption order and rates per person and year; §8 the design's owner items |
+| v0.4 (re-review) | 27 Oct 2026 | The re-reviews of the capital-gains design (its §10.11, LD-24 to LD-32): §4 a statement lot's folio keyed by account, scheme label and folio number until its scheme is matched; §5.5 `scheme` null until matched, `costBasis` gains `none` (an NE-LT-1 lot records its chosen leg's basis), `listed` becomes `Value<boolean>`, missing for a close-ended scheme without the analyst's flag; §6 `tax.realisedFY`, `tax.exemptionUsed[p]` and `tax.harvestableLoss[p]` defined from the per-person paths (a family figure only their sum, never compared with a per-person limit), the old-law year-total alternative, and `familySum` over the review's clients only; §7 the valid rule keys and funds of funds, long-term losses set off before short-term losses, unmatched clients as their own person, and the surcharge held while the regime is not entered |
+| v0.4 (approval review) | 27 Oct 2026 | The approval reviews of the capital-gains design (its §10.11, LD-33 to LD-39): §5.5 `costBasis` `none` only for a lot without a computable taxable gain, and `listed` missing only for a close-ended non-equity scheme; §6 `oldLawYearTotal` computed with set-off on each leg, PARTIAL COVERAGE for a person-year with lots not computed or the slab rate not set and for the family sum, and the rule bank's `tax.exemptionUsed` and `tax.harvestableLoss` read per person; §7 the listed-flag-missing key, the analyst's class on a fund of funds, the set-off order's "lowest tax for the rate buckets as formed", NE-LT-1 chosen before set-off, and the PARTIAL figures; §8 the rule bank follow-up |
+| v0.4 (second approval review) | 27 Oct 2026 | The second approval reviews of the capital-gains design (its §10.11, LD-40 to LD-42): §7 NE-LT-1 per lot without the claim that it gives a tax lower than or equal to the year's-total figure (which is lower depends on the year's losses), and the 20% leg on equal positive figures; the analyst's equity-oriented class on a fund of funds gives the 90/90 sub-type to that scheme's sales in that financial year only, without setting the per-scheme 90/90 flag |

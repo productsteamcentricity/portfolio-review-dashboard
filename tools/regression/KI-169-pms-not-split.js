@@ -61,6 +61,21 @@ const odd = new T.Book().add(pms(10000000, 14000000, '2023-04-10'));
 odd.tx[0].ttype = 'Capital Infusion';
 const O = odd.tax(AS_ON);
 ok(O.unreconciled.length === 1 && O.positions.length === 0, 'a flow typed "Capital Infusion" (not a purchase) leaves the PMS unreconciled, as before');
+/* Rebased on fix batch 4 (CR-0008): a PMS is not split only after its capital flows reconcile; a merged folio with
+   units beside one without (KI-140, D-041) cannot be checked, so it is unreconciled with batch 4's reason, and a PMS
+   whose folios all lack units (priced in rupees) is not a gap and stays not split */
+const mgap = new T.Book().add(Object.assign(pms(10000000, 14000000, '2023-04-10'), { noUnits: false }));
+const m0 = mgap.rows.pop(), ma = m0.slice(), mc = m0.slice();
+[8, 9, 10].forEach(k => { ma[k] = m0[k] * 0.6; mc[k] = m0[k] * 0.4; }); ma[7] = 0.6; mc[7] = null; mgap.rows.push(ma, mc);
+const MG = mgap.tax(AS_ON);
+ok(MG.positions.length === 0 && MG.unreconciled.length === 1 && /^Units are blank: a merged folio of this holding has no units/.test(MG.unreconciled[0].reason) &&
+   T.near(r(MG.totals.unclassCmv), 14000000) && MG.harvest.pools.length === 0, 'merged from a folio with units and one without: unreconciled with the blank-units reason, CMV Rs 1.40 Cr not classified, no pool');
+const mrs = new T.Book().add(pms(10000000, 14000000, '2023-04-10'));
+const n0 = mrs.rows.pop(), na = n0.slice(), nc = n0.slice();
+[8, 9, 10].forEach(k => { na[k] = n0[k] * 0.6; nc[k] = n0[k] * 0.4; }); mrs.rows.push(na, nc);
+const MR = mrs.tax(AS_ON);
+ok(MR.unreconciled.length === 0 && MR.positions.length === 1 && MR.positions[0].notSplit === 'pms' && T.near(r(MR.positions[0].unknownGain), 4000000),
+  'merged from two folios without units: not split, the Rs 40 lakh gain not classified, as for one folio');
 const blankB = new T.Book().add(pms(10000000, 14000000, '2023-04-10'));
 blankB.rows[0][8] = null; blankB.rows[0][10] = null;
 const BL = blankB.tax(AS_ON);

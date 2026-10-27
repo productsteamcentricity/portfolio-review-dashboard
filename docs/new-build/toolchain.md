@@ -87,8 +87,8 @@ tests/fixtures/next-build/     a synthetic vendored library and two test entries
    Chart.js is inlined yet; the mechanism is tested with a synthetic library (`tests/fixtures/next-build/`).
 3. **Styles.** The colour tokens and the font of `tokens.json` become CSS custom properties, followed by
    `shell.css`, in one `<style>` element.
-4. **Static navigation.** The nine section links and the MF Screener link are written as static HTML from
-   `sections.json` and `links.json`. The page reads without scripts, and the one remote URL sits in one static
+4. **Static navigation.** The nine section tabs and the MF Screener link (in the masthead, D-037) are written as
+   static HTML from `sections.json` and `links.json`. The page reads without scripts, and the one remote URL sits in one static
    anchor that the check can verify in its exact form. No module imports `links.json` (the check enforces it).
 5. **Data blocks.** `build-info` (channel, libraries) and `third-party-licences` (the licence text of every bundled
    or vendored library) are `<script type="application/json">` blocks with `<`, `>`, `&` and the JavaScript line
@@ -192,10 +192,10 @@ way.
    and each shows its panel; section 1 shows the "MF Screener data pack" slot (M10); the footer names Preact 10.29.8.
 2. DevTools: Console has no error or CSP message; Network shows one request, the page itself.
 3. "MF Screener" opens the Screener in a new tab and leaves this tab as it was; the new tab gets no referrer.
-4. Keyboard: Tab reaches "Skip to the section", then the section links; Enter on a section moves focus to its
+4. Keyboard: Tab reaches "Skip to the section", then "MF Screener" in the masthead, then the section tabs; Enter on a section moves focus to its
    heading, also on the section already on screen and after the skip link (D1); a screen reader reads each link as
-   "1 Uploads and inputs" and so on; the focus outline is visible. At 200% zoom or a narrow window, the navigation
-   stacks above the section.
+   "1 Uploads and inputs" and so on; the focus outline is visible. At 200% zoom or a narrow window, nothing is
+   pinned and the tab row scrolls sideways (D-037).
 5. `npm run serve`, open http://127.0.0.1:8100/next/ and repeat 1 to 3; http://127.0.0.1:8100/ still opens the legacy
    dashboard unchanged.
 6. After the merge: https://productsteamcentricity.github.io/portfolio-review-dashboard/next/ shows the preview, and
