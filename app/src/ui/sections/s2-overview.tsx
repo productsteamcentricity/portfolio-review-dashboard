@@ -12,6 +12,7 @@ import { EntityMatrix } from '../components/entity-matrix.tsx';
 import { Notes } from '../components/notes.tsx';
 import { Downloads } from '../components/downloads.tsx';
 import { matrixNote } from '../matrix-text.ts';
+import { emptyLiquiditySentence } from '../overview-text.ts';
 
 export const OVERVIEW_EMPTY = 'Nothing to show yet: upload and accept a base file in section 1.';
 
@@ -25,6 +26,9 @@ export function S2Overview({ store, state, chart }: { store: Store; state: AppSt
     );
   }
   const liquidityHeaders = ['Liquidity', vm.allocation.headers[1], vm.allocation.headers[2], vm.allocation.headers[3]];
+  // A liquidity table with no line is the pies' kind of sentence, never a header row alone (N12).
+  const noLiquidity = emptyLiquiditySentence(vm);
+  const counts = review.totals.counts;
   return (
     <>
       <KpiTiles kpis={vm.kpis} />
@@ -38,16 +42,18 @@ export function S2Overview({ store, state, chart }: { store: Store; state: AppSt
           <PieChart pie={vm.charts.asset} lib={chart} />
           <div>
             <PieChart pie={vm.charts.liquidity} lib={chart} />
-            <AllocationTable id="liquidity-table" caption="Liquidity" headers={liquidityHeaders} rows={vm.liquidity.rows} />
+            {noLiquidity !== null
+              ? <p class="muted" id="liquidity-empty">{noLiquidity}</p>
+              : <AllocationTable id="liquidity-table" caption="Liquidity" headers={liquidityHeaders} rows={vm.liquidity.rows} />}
           </div>
         </div>
       </Group>
 
-      <Group id="group-clients" title="Client allocation" note={matrixNote(vm.matrices.client)}>
+      <Group id="group-clients" title="Client allocation" note={matrixNote(vm.matrices.client, counts.withoutClient)}>
         <EntityMatrix matrix={vm.matrices.client} unitHeader={vm.meta.unitHeader} />
       </Group>
 
-      <Group id="group-distributors" title="Distributor allocation" note={matrixNote(vm.matrices.distributor)}>
+      <Group id="group-distributors" title="Distributor allocation" note={matrixNote(vm.matrices.distributor, counts.withoutDistributor)}>
         <EntityMatrix matrix={vm.matrices.distributor} unitHeader={vm.meta.unitHeader} />
       </Group>
 

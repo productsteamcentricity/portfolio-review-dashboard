@@ -423,6 +423,8 @@ table.data thead th {
 table.data tbody tr:nth-child(even) > * { background: var(--c-cream); }
 table.data .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 table.data thead th.num { text-align: right; }
+/* Client and distributor labels as the file spells them: two labels that differ only in letter case stay apart (N12). */
+table.data thead th.entity { text-transform: none; }
 table.data .neg { color: var(--c-negative); }
 table.data tbody th { font-weight: normal; }
 table.data tr.row-asset > *, table.data tr.row-total > * { font-weight: bold; }

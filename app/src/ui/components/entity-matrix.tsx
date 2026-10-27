@@ -1,7 +1,8 @@
 // The client or distributor allocation matrix: asset classes and products down, clients (or distributors) across,
 // each column with its market value and share. With fewer than two columns the matrix is hidden behind one line
 // (OD-21, KI-092), as the workbook leaves out its sheet; with no column at all (no included holding) the line says
-// so (L14). The words are ui/matrix-text.ts.
+// so (L14). The words are ui/matrix-text.ts. A column header is the label as the file spells it (class "entity": no
+// upper case), so two labels that differ only in letter case stay apart on screen (D-039 point 3; N12).
 
 import type { EntityMatrixVM } from '../../views/overview-vm.ts';
 import { FigureCell } from './figure-text.tsx';
@@ -19,7 +20,7 @@ export function EntityMatrix({ matrix, unitHeader }: { matrix: EntityMatrixVM; u
         <thead>
           <tr>
             <th scope="col">Asset Class</th>
-            {matrix.columns.map((c) => <th scope="col" class="num" key={c.id}>{c.label}</th>)}
+            {matrix.columns.map((c) => <th scope="col" class="num entity" key={c.id}>{c.label}</th>)}
             <th scope="col" class="num">Total</th>
           </tr>
         </thead>

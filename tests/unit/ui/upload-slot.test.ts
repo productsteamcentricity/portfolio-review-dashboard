@@ -242,20 +242,20 @@ describe('the client and distributor lines (L14)', () => {
 
   test('no column: "No included holding", never "Single client"', () => {
     const m = matrix('client', [], false);
-    assert.equal(matrixNote(m), 'No included holding');
+    assert.equal(matrixNote(m, 0), 'No included holding');
     assert.equal(hiddenMatrixSentence(m), 'No included holding: no client matrix is shown, and the workbook has no Client Allocation sheet.');
     const d = matrix('distributor', [], false);
-    assert.equal(matrixNote(d), 'No included holding');
+    assert.equal(matrixNote(d, 0), 'No included holding');
     assert.equal(hiddenMatrixSentence(d), 'No included holding: no distributor matrix is shown, and the workbook has no Distributor Allocation sheet.');
   });
 
   test('one column: the single client or distributor; two or more: the count', () => {
     const one = matrix('client', ['Sample Client A'], false);
-    assert.equal(matrixNote(one), 'Single client');
+    assert.equal(matrixNote(one, 0), 'Single client');
     assert.equal(hiddenMatrixSentence(one),
       'Single client: Sample Client A holds every included holding. No client matrix is shown, and the workbook has no Client Allocation sheet.');
-    assert.equal(matrixNote(matrix('distributor', ['Centricity'], false)), 'Single distributor');
-    assert.equal(matrixNote(matrix('client', ['A', 'B'], true)), '2 clients');
-    assert.equal(matrixNote(matrix('distributor', ['A', 'B', 'C'], true)), '3 distributors');
+    assert.equal(matrixNote(matrix('distributor', ['Centricity'], false), 0), 'Single distributor');
+    assert.equal(matrixNote(matrix('client', ['A', 'B'], true), 0), '2 clients');
+    assert.equal(matrixNote(matrix('distributor', ['A', 'B', 'C'], true), 0), '3 distributors');
   });
 });

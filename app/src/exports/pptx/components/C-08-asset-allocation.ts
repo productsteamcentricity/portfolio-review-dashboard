@@ -59,6 +59,15 @@ export const C08_LAYOUT = {
     liquidity: { x: 504, y: 285.5, w: 443, h: 209.5 },
   } as Record<ChartId, Box>,
   pie: { x: 615.5, dy: 19.5, w: 220, h: 190 },
+  /**
+   * The pie's plot area when its legend wraps to two rows, as it does from 5 categories (M1.4 fix round 2, N13).
+   * Measured in PowerPoint (Office acceptance of 27 Oct 2026, the 220 x 190 pt chart): a two-row legend's top is at
+   * 148.6 pt and the pie PowerPoint places itself spans 16.5 to 128 pt, so a label outside a slice at 6 o'clock sat
+   * about 2.5 pt above the legend and read as part of it. The manual layout keeps that top and leaves 26 pt between
+   * the pie and the legend's top: the height of a two-line label (24.1 pt) and its gap to the slice. With fewer
+   * categories the legend is one row and PowerPoint places the pie itself.
+   */
+  piePlot: { minCategories: 5, top: 16.5, legendTop: 148.6, gapAboveLegend: 26 },
   altText: {
     asset: 'Pie chart of asset classes by share of total market value',
     liquidity: 'Pie chart of liquidity categories by share of total market value',
@@ -215,6 +224,25 @@ export function pieLabelLines(slice: Pick<PieSlice, 'category' | 'label'>): stri
   return lines.length ? lines : null;
 }
 
+/** The inner plot box of a chart, as fractions of the chart's width and height (PptxGenJS `layout`). */
+export type PlotLayout = { x: number; y: number; w: number; h: number };
+
+const r4 = (x: number): number => Math.round(x * 10000) / 10000;
+
+/**
+ * The manual plot layout of a pie with this many categories (N13): from 5 categories, a square inner box centred
+ * across the chart, its top at `piePlot.top` and its bottom `piePlot.gapAboveLegend` above the two-row legend's
+ * top; null below 5, where PowerPoint places the pie. On the 220 x 190 pt chart the diameter is
+ * 148.6 - 26 - 16.5 = 106.1 pt: x 0.2589, y 0.0868, w 0.4823, h 0.5584.
+ */
+export function piePlotLayout(categories: number): PlotLayout | null {
+  const p = C08_LAYOUT.piePlot;
+  if (categories < p.minCategories) return null;
+  const { w, h } = C08_LAYOUT.pie;
+  const d = p.legendTop - p.gapAboveLegend - p.top;
+  return { x: r4((w - d) / 2 / w), y: r4(p.top / h), w: r4(d / w), h: r4(d / h) };
+}
+
 /** The text a chart that is not drawn shows: "Chart not drawn: " and its status as the screen's notes word it. */
 export function chartNotDrawnText(chart: Pick<PieChart, 'emptyStatus'>): string {
   return `Chart not drawn: ${STATUS_PHRASE[chart.emptyStatus ?? STATUS.NOT_AVAILABLE]}.`;
@@ -233,6 +261,8 @@ function pieChart(slide: PptxSlide, chart: PieChart, figures: FigureLocation[], 
     return null;
   }
   const colours = chart.slices.map((s) => normaliseColour(s.colour));
+  // The legend lists every slice; from 5 it wraps to two rows and the pie takes the manual plot layout (N13).
+  const layout = piePlotLayout(chart.slices.length);
   slide.addChart(
     CHART.pie,
     [{
@@ -248,6 +278,7 @@ function pieChart(slide: PptxSlide, chart: PieChart, figures: FigureLocation[], 
       showLegend: true, legendPos: 'b', legendFontFace: FONT, legendFontSize: typeSize('legend'), legendColor: colour('textBody'),
       dataLabelFormatCode: '0.0%', dataLabelColor: colour('textBody'), dataLabelFontFace: FONT,
       dataLabelFontSize: typeSize('chartLabel'), dataLabelFontBold: false, dataLabelPosition: 'bestFit',
+      ...(layout ? { layout: { ...layout } } : {}),
       altText: C08_LAYOUT.altText[chart.id], objectName: C08_NAMES.pie(chart.id),
     },
   );
