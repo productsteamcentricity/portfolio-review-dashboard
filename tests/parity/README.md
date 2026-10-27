@@ -30,20 +30,19 @@ test, and so does an active (not retired) entry no fixture uses. Each entry has:
 
 Fix batch 4 (D-041, CR-0009) retired BF-15, BF-16, BF-18 and BF-20 to BF-26 (KI-140, KI-143, KI-144, KI-145).
 
-### Known differences no fixture exercises
+### Total rows and merged purchase dates (KI-148, done in M1.4)
 
-Fix batch 4 also opened two differences that no fixture shows, so the test cannot see them (tracked as
-[KI-148](../../docs/KNOWN_ISSUES.md#found-by-milestone-m13-23-oct-2026), for M1.4):
+Fix batch 4 also opened two differences no fixture showed then
+([KI-148](../../docs/KNOWN_ISSUES.md#found-by-milestone-m13-23-oct-2026)). The M1.4 fix round 2 aligned the new
+reader with the live page, and two fixtures of `tests/fixtures/make-books.ts` now exercise both rules with no
+difference in either ledger:
 
-| D-041 | Live page | New reader | Why no fixture shows it |
+| D-041 | Both readers | Fixture | Test |
 |---|---|---|---|
-| point 2, merged purchase date and holding days | the earliest purchase date of the folios; holding days recomputed from it, blank when the folios do not count to one date | the first row's purchase date and holding days (`DATA_DICTIONARY.md` §5.3 and §8) | `family-a-merged-folios` gives every folio of a holding the same date and days |
-| point 3, an Instrument Name "Total" or "Grand Total" | skipped, with a warning | read as a holding, with a Warning | `family-a-skipped-rows` has a total row only with a blank Instrument Name, which both skip |
+| point 2, merged purchase date and holding days | the earliest purchase date of the folios, whatever the row order; holding days recomputed from it when the folios count to one date (within a day), else blank with an Information notice | `merged-dates` (the cases of `tools/regression/KI-141-merged-purchase-date.js`) | `tests/regression/ki-148-merged-dates.test.ts` |
+| point 3, an Instrument Name "Total" or "Grand Total" | skipped, with a Warning naming the rows; a fund whose name only begins with "Total" is a holding | `total-rows` (and `total-like`) | `tests/regression/ki-148-total-rows.test.ts` |
 
-Neither is a ledger entry yet: a fixture case would need a class for a legacy fix the new reader has not followed,
-and the ledger has only `correction`, `improvement` and `regression`. M1.4 adds the fixture cases with the owner's
-answer to D-041 question 1 (the holding days of a merged holding) and the new build's rule for total rows, and either
-aligns the reader or ledgers what still differs.
+The owner's question 1 of D-041 (the holding days of a merged holding) stays open for both builds.
 
 Before comparing, representation is normalised (`base-file-compare.ts` `projectNew`): labels as strings, XIRR as a
 fraction, Crore amounts, the purchase date as "D Mon YYYY", folios joined by "/", the asset as the new class (null
@@ -79,6 +78,12 @@ the legacy engine, which keys its allocation on a plain object. It compares the 
 The ledger has no regression. Its corrections follow from the base-file entries they name (BF-nn): a holding the new
 reader excludes or reads into another class moves the totals, the percentages and the matrix cells with it. The
 improvements are the D-039 rules (one asset order in the matrices; the not-given column label).
+
+Retired entries work as in the base-file ledger (`retired` and `legacyBefore`; a retired entry matches nothing).
+The legacy is the live page after fix batch 4 (`index.html` MD5 `12B5E5727FCA01EF2EA162C59913F01D`), which retired
+AG-01, AG-02, AG-05, AG-06 and AG-08. AG-13 and AG-14 (KI-147) now differ by design: the live page (D-041 point 4)
+takes the Lakh value when the Crore cell holds text, the new app excludes and lists the holding (the owner's answer
+of 24 Oct 2026); the parity test checks that legacy minus new is exactly those Lakh amounts.
 
 ## Golden files
 

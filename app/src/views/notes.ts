@@ -13,13 +13,14 @@ import type { Note } from './overview-vm.ts';
 import { MISSING_STATUSES, STATUS } from '../model/status.ts';
 import { formatDay } from '../engine/dates.ts';
 import { fromCrore } from '../engine/units.ts';
+import { liquidityLeftOut } from '../engine/aggregate/allocation.ts';
 import { MONEY_COLUMN_RULE } from '../config/money-columns.ts';
 import { STATUS_PHRASE, displayPct, plainText, plural, unitName } from './format.ts';
 
 /** The fixed notes, in the order they are shown. */
 export const NOTE_ORDER = [
-  'as-on', 'unit', 'gain-def', 'partial-invested', 'no-invested', 'excluded', 'unknown', 'money-invalid',
-  'money-disagree', 'no-client', 'zero-total',
+  'as-on', 'unit', 'gain-def', 'partial-invested', 'no-invested', 'excluded', 'unknown', 'pie-left-out',
+  'liquidity-left-out', 'money-invalid', 'money-disagree', 'no-client', 'zero-total',
 ] as const;
 export type FixedNoteId = (typeof NOTE_ORDER)[number];
 
@@ -123,6 +124,21 @@ export function zeroTotal(review: Review): boolean {
   return review.totals.cmv.kind === 'value' && review.totals.cmv.v === 0;
 }
 
+/**
+ * The asset classes the asset pie leaves out because their market value is 0 or less (a pie shows shares above zero;
+ * D-039 point 2), in the asset order. Only while the total market value is above zero: then a share above zero is a
+ * market value above zero; otherwise the pie is not drawn and says why.
+ */
+export function pieLeftOut(review: Review): string[] {
+  if (!(review.totals.cmv.kind === 'value' && review.totals.cmv.v > 0)) return [];
+  return review.assets.assets.filter((b) => b.line.cmv.kind === 'value' && b.line.cmv.v <= 0).map((b) => b.asset);
+}
+
+/** The liquidity lines left out of the liquidity table and pie for a market value of 0 or less (the engine's rule). */
+export function liquidityLinesLeftOut(review: Review): string[] {
+  return liquidityLeftOut(review.holdings, review.totals);
+}
+
 function unknownText(labels: readonly string[]): string {
   const blank = labels.includes('');
   const named = labels.filter((l) => l !== '').map((l) => plainText(l));
@@ -167,6 +183,12 @@ export function fixedNotes(review: Review): Map<FixedNoteId, string> {
   if (review.assets.unknownLabels.length > 0 || review.assets.assets.some((b) => b.asset === 'Unknown')) {
     out.set('unknown', unknownText(review.assets.unknownLabels));
   }
+  // A market value of 0 or less (negative values, D-039): the numbers are the legacy's; the overview says what the
+  // pies and the liquidity table leave out (M1.4 fix round 2).
+  const pieOut = pieLeftOut(review);
+  if (pieOut.length > 0) out.set('pie-left-out', `Asset classes with a market value of 0 or less are left out of the pie: ${pieOut.join(', ')}.`);
+  const liqOut = liquidityLinesLeftOut(review);
+  if (liqOut.length > 0) out.set('liquidity-left-out', `Liquidity lines with a market value of 0 or less are left out: ${liqOut.map((l) => plainText(l)).join(', ')}.`);
   const invalid = moneyFindingsAffecting(review, 'invalid');
   if (invalid.length > 0) out.set('money-invalid', moneyInvalidText(invalid));
   const disagree = moneyFindingsAffecting(review, 'disagree');

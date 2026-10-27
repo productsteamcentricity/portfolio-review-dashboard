@@ -1,15 +1,16 @@
-// covers: E-21 E-22 E-24 E-18 OD-7 OD-8 OD-18 KI-143 KI-147 D-039
+// covers: E-21 E-22 E-24 E-18 OD-7 OD-8 OD-18 KI-142 KI-143 KI-147 KI-148 D-039 D-041
 // Parity of the overview aggregates (app/src/engine/review.ts) with the legacy computeReview (index.html, run through
 // tools/engine-host.js with the page's own upload path) on the synthetic fixtures: both books' variants
 // (tests/fixtures/make-books.ts), tools/make-sample-base.js's two files and the overview variants except hostile.
-// Every difference must match exactly one entry of tests/parity/aggregation-ledger.json and every entry must be used.
-// CI runs this under TZ=Asia/Kolkata and TZ=UTC.
+// Every difference must match exactly one active entry of tests/parity/aggregation-ledger.json and every active entry
+// must be used; a retired entry (the live page caught up, D-041) matches nothing. The legacy is the live page after
+// fix batch 4 (index.html MD5 12B5E5727FCA01EF2EA162C59913F01D). CI runs this under TZ=Asia/Kolkata and TZ=UTC.
 
 import { before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Fixture, LegacyHost } from '../fixtures/make-books.ts';
+import type { BookRow, Fixture, LegacyHost } from '../fixtures/make-books.ts';
 import type { AggDiff, AggLedger } from './aggregation-compare.ts';
 import { loadLegacyHost, overviewVariants, sampleFixtures, SYNTHETIC_BOOK, syntheticFixtures } from '../fixtures/make-books.ts';
 import { aggEntriesFor, compareAggregates, legacyAggregates, projectReview } from './aggregation-compare.ts';
@@ -23,11 +24,13 @@ const describeDiff = (d: AggDiff): string =>
 
 let host: LegacyHost;
 let fixtures: Fixture[];
+let sampleBook: BookRow[];
 const results: Array<{ fixture: Fixture; diffs: AggDiff[] }> = [];
 
 before(() => {
   host = loadLegacyHost();
   const sample = sampleFixtures(host);
+  sampleBook = sample.book;
   fixtures = [
     ...syntheticFixtures(host.XLSX),
     ...sample.fixtures,
@@ -55,10 +58,17 @@ describe(`aggregation parity (TZ=${process.env.TZ ?? 'system'})`, () => {
       assert.ok(e.description.length > 20, e.id);
       assert.ok(!/[–—]/.test(e.description), `${e.id}: no en or em dash`);
       if (e.fixtures !== '*') for (const f of e.fixtures) assert.ok(fixtures.some((x) => x.id === f), `${e.id}: unknown fixture ${f}`);
+      if (e.retired !== undefined) {
+        assert.ok(e.retired.length > 20 && !/[–—]/.test(e.retired), `${e.id}: a plain retired reason`);
+        assert.match(e.retired, /\bD-\d+\b/, `${e.id}: the retired reason names the decision of the legacy fix`);
+        assert.ok('legacyBefore' in e, `${e.id}: a retired entry keeps its former legacy pattern`);
+      }
     }
+    // Fix batch 4 (D-041) retired these: the live page now gives the new app's figures on their files.
+    assert.deepEqual(ledger.entries.filter((e) => e.retired !== undefined).map((e) => e.id), ['AG-01', 'AG-02', 'AG-05', 'AG-06', 'AG-08']);
   });
 
-  test('every difference matches exactly one ledger entry, and every entry is used', () => {
+  test('every difference matches exactly one active ledger entry, and every active entry is used', () => {
     const unmatched: string[] = [];
     const ambiguous: string[] = [];
     const used = new Map<string, number>();
@@ -72,8 +82,9 @@ describe(`aggregation parity (TZ=${process.env.TZ ?? 'system'})`, () => {
     }
     assert.deepEqual(unmatched, [], `differences not in the ledger:\n${unmatched.join('\n')}`);
     assert.deepEqual(ambiguous, [], `differences matching more than one entry:\n${ambiguous.join('\n')}`);
-    const unused = ledger.entries.filter((e) => !used.has(e.id)).map((e) => e.id);
-    assert.deepEqual(unused, [], 'every ledger entry is exercised by a fixture');
+    // A retired entry matches nothing (aggEntriesFor), so its difference coming back is unmatched above.
+    const unused = ledger.entries.filter((e) => !e.retired && !used.has(e.id)).map((e) => e.id);
+    assert.deepEqual(unused, [], 'every active ledger entry is exercised by a fixture');
   });
 
   test('files without an intended difference agree on every total, row, liquidity line and matrix cell', () => {
@@ -83,7 +94,11 @@ describe(`aggregation parity (TZ=${process.env.TZ ?? 'system'})`, () => {
       'family-a-liquidity-labels', 'family-a-many-products',
       // D-039: labels with an en or em dash join on the engine's label, and client and distributor labels that differ
       // only in letter case stay apart, as in the legacy: no difference beyond AG-11.
-      'syn-dash-labels', 'family-a-dash-labels', 'syn-case-variants', 'family-a-case-variants'];
+      'syn-dash-labels', 'family-a-dash-labels', 'syn-case-variants', 'family-a-case-variants',
+      // D-041 (fix batch 4) and the M1.4 fix round 2: text that is not a number (AG-01 and AG-02 retired), total rows
+      // skipped by both readers (N1), merged folios dated by the earliest folio (N2), a negative market value (N10).
+      'syn-invalid-text', 'family-a-invalid-text', 'syn-total-like', 'family-a-total-like', 'syn-total-rows', 'family-a-total-rows',
+      'syn-merged-dates', 'family-a-merged-dates', 'syn-negative-cmv', 'family-a-negative-cmv'];
     for (const id of plain) {
       const r = results.find((x) => x.fixture.id === id);
       assert.ok(r, id);
@@ -92,49 +107,69 @@ describe(`aggregation parity (TZ=${process.env.TZ ?? 'system'})`, () => {
     }
   });
 
-  test('AG-01 and AG-13 hold only what the excluded holdings explain: legacy minus new is the legacy reading of their text', () => {
-    // The legacy parseFloat read "1.25 Cr" as 1.25 and "12abc" as 12 Crore (invalid-text: holdings 0 and 1; money-columns:
-    // holding 0). Every market value difference these entries absorb (a total, a row, a column, a cell) is a sum of some
-    // of those amounts; every share difference is a row CMV that moved by 0 or by such a sum; rows only vanish; and
-    // only orders that a market value decides change. A regression in another row of these files fails here.
-    const parts: Record<string, number[]> = {
-      'syn-invalid-text': [1.25, 12], 'family-a-invalid-text': [1.25, 12], 'syn-money-columns': [12], 'family-a-money-columns': [12],
-    };
+  test('AG-01 and AG-02 are retired: on the invalid-text files the live page gives the new app\'s figures (D-041 point 4)', () => {
+    // Since fix batch 4 the live page reads "1.25 Cr" and "12abc" as blank (KI-143): the two holdings whose market value
+    // is such text are left out on both sides, and the invested value "1.25 Cr" is blank on both.
+    for (const id of ['syn-invalid-text', 'family-a-invalid-text']) {
+      const r = results.find((x) => x.fixture.id === id)!;
+      // Only the level matrices' class order differs (AG-11).
+      assert.deepEqual(r.diffs.filter((d) => !(d.kind === 'row-order' && /^(client|distributor) rows$/.test(d.key))).map(describeDiff), [], id);
+      assert.ok(r.diffs.every((d) => aggEntriesFor(d, ledger).every((e) => !['AG-01', 'AG-02'].includes(e.id))), id);
+    }
+  });
+
+  test('AG-13 and AG-14 hold only what the KI-147 holdings explain: legacy minus new is the Lakh amounts the live page reads in place of the text', () => {
+    // The money-columns file writes "12abc" in the Crore market value of holding 0 and the Crore invested value of
+    // holding 4, beside their Lakh values. The live page (D-041 point 4) reads the text as blank and takes the Lakh
+    // value; the new app (KI-147, the owner's answer of 24 Oct 2026) excludes holding 0 and leaves holding 4 without an
+    // invested value. So the legacy market value is larger by holding 0's Lakh value, its invested value by the Lakh
+    // invested values of holdings 0 and 4, and it counts no holding without an invested value. Every market value
+    // difference AG-13 absorbs (a total, a row, a column, a cell) moved by exactly that amount; every share difference is
+    // a row CMV that moved by 0 or by it; rows only vanish; and only orders that a market value decides change.
+    const lakhCr = (rupees: number): number => Math.round((rupees / 1e5) * 100) / 100 / 100; // the Lakh cell, in Crore
+    const parts: Record<string, BookRow[]> = { 'syn-money-columns': [...SYNTHETIC_BOOK], 'family-a-money-columns': sampleBook };
     const near = (a: number, b: number): boolean => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
     const ORDERS = ['client columns', 'distributor columns', 'products of Equity', 'client products of Equity', 'distributor products of Equity'];
-    for (const [id, amounts] of Object.entries(parts)) {
+    for (const [id, book] of Object.entries(parts)) {
       const r = results.find((x) => x.fixture.id === id)!;
-      const sums = amounts.length === 1 ? amounts : [amounts[0]!, amounts[1]!, amounts[0]! + amounts[1]!];
-      const all = amounts.reduce((a, b) => a + b, 0);
-      const total = r.diffs.find((d) => d.kind === 'total' && d.key === 'review' && d.field === 'cmv')!;
-      const lt = total.legacy as number;
-      const nt = total.new as number;
-      assert.ok(near(lt - nt, all), `${id}: the totals differ by ${lt - nt}, not ${all}`);
+      const cmv0 = lakhCr(book[0]!.mv);
+      const inv04 = lakhCr(book[0]!.invested) + lakhCr(book[4]!.invested);
+      const pick = (key: string, field: string) => r.diffs.find((d) => d.kind === 'total' && d.key === key && d.field === field)!;
+      const lt = pick('review', 'cmv').legacy as number;
+      const nt = pick('review', 'cmv').new as number;
+      assert.ok(near(lt - nt, cmv0), `${id}: the totals differ by ${lt - nt}, not ${cmv0}`);
+      const inv = pick('review', 'invested');
+      assert.ok(near((inv.legacy as number) - (inv.new as number), inv04), `${id}: invested differs by ${(inv.legacy as number) - (inv.new as number)}`);
+      assert.deepEqual([pick('review', 'withoutInvested').legacy, pick('review', 'withoutInvested').new], [0, 1], id);
       let checked = 0;
       for (const d of r.diffs) {
         const e = aggEntriesFor(d, ledger);
-        if (e.length !== 1 || !['AG-01', 'AG-13'].includes(e[0]!.id)) continue;
+        if (e.length !== 1 || e[0]!.id !== 'AG-13') continue;
         checked += 1;
         if (d.field === 'cmv') {
           const delta = (d.legacy as number) - (d.new as number);
-          assert.ok(sums.some((s) => near(delta, s)), `${describeDiff(d)}: moved by ${delta}`);
+          assert.ok(near(delta, cmv0), `${describeDiff(d)}: moved by ${delta}`);
         } else if (d.field === 'pct') {
           const delta = ((d.legacy as number) * lt - (d.new as number) * nt) / 100;
-          assert.ok(near(delta, 0) || sums.some((s) => near(delta, s)), `${describeDiff(d)}: row moved by ${delta}`);
+          assert.ok(near(delta, 0) || near(delta, cmv0), `${describeDiff(d)}: row moved by ${delta}`);
         } else if (d.field === 'presence' || d.field === 'row-presence') {
           assert.equal(d.new, null, `${describeDiff(d)}: a row may vanish, never appear`);
         } else if (d.field === 'order') {
           assert.ok(ORDERS.includes(d.key), describeDiff(d));
-        } else assert.fail(`${describeDiff(d)}: field ${d.field} is not one these entries hold`);
+        } else assert.fail(`${describeDiff(d)}: field ${d.field} is not one AG-13 holds`);
       }
       assert.ok(checked > 10, `${id}: ${checked} differences checked`);
     }
   });
 
-  test('the KI-147 file: the legacy counted the "12abc" market value as 12 Crore; the new review leaves the holding out', () => {
+  test('the KI-147 file: the live page takes the Lakh value of the "12abc" Crore market value (D-041 point 4); the new review leaves the holding out', () => {
     const r = results.find((x) => x.fixture.id === 'syn-money-columns')!;
-    const total = r.diffs.find((d) => d.kind === 'total' && d.key === 'review' && d.field === 'cmv')!;
-    // 12 (the legacy's parseFloat of "12abc") + 0.452 + 1.0 + 0.339 + 0.131 + 0.91 = 14.832; the new total leaves it out.
-    assert.ok(Math.abs((total.legacy as number) - 14.832) < 1e-9 && Math.abs((total.new as number) - 2.832) < 1e-9);
+    const total = (field: string) => r.diffs.find((d) => d.kind === 'total' && d.key === 'review' && d.field === field)!;
+    // Market value: 0.625 (holding 0's 62.5 Lakh, which the live page reads in place of "12abc") + 0.452 + 1.0 + 0.339 +
+    // 0.131 + 0.91 = 3.457 Crore; the new total leaves holding 0 out: 2.832. (Before fix batch 4 the legacy read 12.)
+    assert.ok(Math.abs((total('cmv').legacy as number) - 3.457) < 1e-9 && Math.abs((total('cmv').new as number) - 2.832) < 1e-9);
+    // Invested: 0.5 + 0.4 + 0.8 + 0.3 + 0.1 (holding 4's 10 Lakh in place of "12abc") + 0.75 = 2.85 on the live page; the
+    // new review leaves out holding 0 (excluded) and holding 4's invalid amount: 0.4 + 0.8 + 0.3 + 0.75 = 2.25.
+    assert.ok(Math.abs((total('invested').legacy as number) - 2.85) < 1e-9 && Math.abs((total('invested').new as number) - 2.25) < 1e-9);
   });
 });

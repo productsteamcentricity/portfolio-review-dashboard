@@ -82,3 +82,46 @@ describe('letter case in client and distributor labels (D-039)', () => {
     assert.equal(l.base.issues.some((i) => i.ruleId === 'base-file.entity-case-variant'), false);
   });
 });
+
+describe('a joint-holder label in another letter case (the M1.4 fix round 2, N11)', () => {
+  // Holding 1 (Sample Client A) names "SAMPLE CLIENT B" as its second holder; holding 3 (Sample Client B) names
+  // "Sample Client A" exactly. Only Client Name keys a holding's client, so the matrices and the Clients KPI have the
+  // two clients; the holder spelled in capitals is a person of its own, not linked to Sample Client B.
+  const wb = xlsx.utils.book_new();
+  xlsx.utils.book_append_sheet(wb, xlsx.utils.aoa_to_sheet([
+    ['Client Name', 'Instrument Name', 'Distributor Name', 'Current Market Value (Cr.)', 'Second Holder'],
+    ['Sample Client A', 'Sample Fund 1', 'Centricity', 1, 'SAMPLE CLIENT B'],
+    ['Sample Client B', 'Sample Fund 2', 'Centricity', 2, null],
+    ['Sample Client B', 'Sample Fund 3', 'Centricity', 3, 'Sample Client A'],
+  ]), 'Base File');
+  const l = loadBaseFile(new Uint8Array(xlsx.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer), 'holders.xlsx', xlsx, { now: NOW });
+  assert.ok(isLoaded(l));
+  const review = computeReview({ loaded: l, asOn: 20726, labels: { family: 'Sample Family', clients: {} }, acknowledged: [], answers: {} },
+    { now: NOW, build: { buildId: 'case', channel: 'preview', libraries: [] } });
+
+  test('no entity-case Warning: the holder label keys no holding; the Clients KPI and the matrix keep two clients', () => {
+    assert.equal(review.issues.some((i) => i.ruleId === 'base-file.entity-case-variant'), false);
+    assert.equal(review.totals.counts.clients, 2);
+    assert.deepEqual(buildOverviewVM(review).matrices.client.columns.map((c) => c.label), ['Sample Client B', 'Sample Client A']);
+  });
+
+  test('an Information notice says the holder is not linked to the client, scoped to the holding that names it', () => {
+    const n = review.issues.filter((i) => i.ruleId === 'base-file.holder-case-variant');
+    assert.deepEqual(n.map((i) => [i.severity, i.decision, i.count, i.status]), [['Information', 'D-039', 1, 'resolved']]);
+    assert.equal(n[0]!.message, 'The joint holder "SAMPLE CLIENT B" is not linked to "Sample Client B": the letter case differs.');
+    assert.deepEqual(n[0]!.scope, { kind: 'holdings', holdingIds: [review.holdings[0]!.id] });
+    assert.equal(review.gate.canExport, true);
+  });
+
+  test('the ownership: the holder in capitals is its own person; the holder spelled exactly is the client', () => {
+    const idOf = (label: string) => l.base.clients.find((c) => c.label === label)!.id;
+    assert.deepEqual(l.base.clients.map((c) => c.label), ['Sample Client A', 'SAMPLE CLIENT B', 'Sample Client B']);
+    const holders = (h: number) => {
+      const o = l.base.ownership.find((x) => x.folioId === review.holdings[h]!.folioIds[0])!;
+      return o.jointHolders.kind === 'value' ? o.jointHolders.v.map((j) => j.clientId) : null;
+    };
+    assert.deepEqual(holders(0), [idOf('SAMPLE CLIENT B')]);
+    assert.notEqual(idOf('SAMPLE CLIENT B'), idOf('Sample Client B'));
+    assert.deepEqual(holders(2), [idOf('Sample Client A')]);
+  });
+});

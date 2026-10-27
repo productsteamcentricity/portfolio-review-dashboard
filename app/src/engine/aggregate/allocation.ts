@@ -76,7 +76,8 @@ export function computeAssetAllocation(holdings: readonly Holding[], totals: Tot
   return { assets, total: makeLine('total', 'Grand Total', inc, totals, 'the review'), unknownLabels };
 }
 
-export function computeLiquidity(holdings: readonly Holding[], totals: Totals): LiquidityAllocation {
+/** Every liquidity line over the included holdings, in first appearance (the rule's lines Open Ended then Close Ended). */
+function liquidityLines(holdings: readonly Holding[], totals: Totals): { fileHasLabels: boolean; lines: AllocationLine[] } {
   const inc = holdings.filter(isIncluded);
   const fileHasLabels = inc.some((h) => h.liquidity !== null);
   const groups = new Map<string, Holding[]>();
@@ -88,9 +89,22 @@ export function computeLiquidity(holdings: readonly Holding[], totals: Totals): 
   }
   const lines: AllocationLine[] = [];
   for (const [label, members] of groups) {
-    if (members.length === 0) continue;
-    const line = makeLine(`liquidity:${label}`, label, members, totals, label);
-    if (line.cmv.kind === 'value' && line.cmv.v > 0) lines.push(line);
+    if (members.length > 0) lines.push(makeLine(`liquidity:${label}`, label, members, totals, label));
   }
-  return { basis: fileHasLabels ? 'file-labels' : 'rule', lines };
+  return { fileHasLabels, lines };
+}
+
+const aboveZero = (l: AllocationLine): boolean => l.cmv.kind === 'value' && l.cmv.v > 0;
+
+export function computeLiquidity(holdings: readonly Holding[], totals: Totals): LiquidityAllocation {
+  const { fileHasLabels, lines } = liquidityLines(holdings, totals);
+  return { basis: fileHasLabels ? 'file-labels' : 'rule', lines: lines.filter(aboveZero) };
+}
+
+/**
+ * The labels of the liquidity lines computeLiquidity leaves out because their market value is 0 or less (a negative
+ * market value, D-039 point 2), in first appearance. The overview names them in a note (M1.4 fix round 2).
+ */
+export function liquidityLeftOut(holdings: readonly Holding[], totals: Totals): string[] {
+  return liquidityLines(holdings, totals).lines.filter((l) => !aboveZero(l)).map((l) => l.label);
 }

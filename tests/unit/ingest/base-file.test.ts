@@ -1,4 +1,4 @@
-// covers: E-01 E-02 E-03 BR-2.5 BR-2.6 BR-13.4 BR-13.5 U-60 OD-3 OD-7 OD-8 KI-005 KI-007 KI-057 KI-074 KI-093 KI-113 KI-147
+// covers: E-01 E-02 E-03 BR-2.5 BR-2.6 BR-13.4 BR-13.5 U-60 OD-3 OD-7 OD-8 KI-005 KI-007 KI-057 KI-074 KI-093 KI-113 KI-142 KI-147 KI-148 D-041
 // The base-file parser on synthetic books, against known answers worked out by hand from the fixture values
 // (tests/fixtures/make-books.ts SYNTHETIC_BOOK), never from the code under test. Money: rupees / 1e7 = Crore.
 
@@ -273,13 +273,34 @@ describe('asset labels (OD-7) and other labels', () => {
     assert.doesNotMatch(unknown.message, /REIT/);
     assert.equal(issue(imp, 'base-file.asset-synonym')?.count, 2);
   });
-  test('a blank Product Name reads as Mutual Funds, flagged; a blank Client Name and a total-like name are warned', () => {
-    const imp = parseBaseFile(tiny([{ product: null }, { client: null }, { name: 'Grand Total' }]), { sourceId: SRC, now: NOW });
+  test('a blank Product Name reads as Mutual Funds, flagged; a blank Client Name and a name beginning with "Total" are warned', () => {
+    const imp = parseBaseFile(tiny([{ product: null }, { client: null }, { name: 'Total Return Sample Fund' }]), { sourceId: SRC, now: NOW });
     assert.deepEqual([imp.holdings[0]!.product, imp.holdings[0]!.productLabel, imp.holdings[0]!.productDefaulted], ['Mutual Funds', null, true]);
     assert.equal(issue(imp, 'base-file.product-defaulted')?.severity, 'Information');
     assert.equal(imp.holdings[1]!.clientId, null);
     assert.equal(issue(imp, 'base-file.blank-client')?.severity, 'Warning');
+    // A fund whose name only begins with "Total" is still a holding (D-041 point 3), with the Warning it always had.
+    assert.equal(imp.holdings.length, 3);
     assert.equal(issue(imp, 'base-file.total-like-name')?.severity, 'Warning');
+    assert.equal(issue(imp, 'base-file.total-row-skipped'), undefined);
+  });
+  test('a row named "Total" or "Grand Total" (any case, spaces collapsed) is skipped with one Warning naming the rows (D-041 point 3, N1)', () => {
+    // Rows 2 to 9 of the sheet: four holdings and four total rows; row 6 is " total " and row 9 "Grand  Total".
+    const imp = parseBaseFile(tiny([{}, {}, { name: 'Total', cmv: 2 }, { name: 'Total Return Sample Fund' }, { name: ' total ', cmv: 4 },
+      { name: 'GRAND TOTAL', cmv: 9 }, { name: 'Sample Fund 7' }, { name: 'Grand  Total', cmv: 9 }]), { sourceId: SRC, now: NOW });
+    assert.deepEqual(imp.holdings.map((h) => h.instrumentName), ['Sample Fund 1', 'Sample Fund 2', 'Total Return Sample Fund', 'Sample Fund 7']);
+    close(imp.holdings.reduce((s, h) => s + (v(h.cmv) ?? 0), 0), 4, 'four holdings of 1 Cr, no total counted');
+    assert.deepEqual(imp.skipped.map((r) => [r.at.row, r.reason, r.hasMoney]), [[4, 'total-row', true], [6, 'total-row', true], [7, 'total-row', true], [9, 'total-row', true]]);
+    assert.equal(imp.counts.skipped['total-row'], 4);
+    const w = issue(imp, 'base-file.total-row-skipped')!;
+    assert.deepEqual([w.severity, w.count, w.decision, w.blocksPublication], ['Warning', 4, 'KI-142', false]);
+    assert.equal(w.message, '4 rows named "Total" or "Grand Total" in the Instrument Name column were skipped as total rows, not read as holdings (rows 4, 6, 7 and 9).');
+    assert.deepEqual(w.scope, { kind: 'rows', sourceId: SRC, rows: [4, 6, 7, 9].map((row) => ({ sourceId: SRC, sheet: 'Base File', row })) });
+    assert.equal(issue(imp, 'base-file.skipped-total-row'), undefined, 'the named total rows are not counted twice');
+    const one = parseBaseFile(tiny([{}, { name: 'Grand Total' }]), { sourceId: SRC, now: NOW });
+    assert.equal(issue(one, 'base-file.total-row-skipped')!.message,
+      '1 row named "Total" or "Grand Total" in the Instrument Name column was skipped as a total row, not read as a holding (row 3).');
+    assert.equal(issue(one, 'base-file.total-like-name'), undefined, 'no holding is named like a total');
   });
 });
 

@@ -39,9 +39,13 @@ function run(argv: string[]) {
 }
 
 describe('the legacy blocks', () => {
-  test('index.html is the page the libraries were vendored from (MD5), and stays it', () => {
-    assert.equal(md5(fs.readFileSync(INDEX)), LEGACY_MD5);
+  test('LEGACY_MD5 records the page the libraries were vendored from; the live guard is block equality, never an MD5 (N4)', () => {
+    // The record (the MANIFEST "source" lines): index.html when the libraries were vendored (M1.4). The live page
+    // changes with every legacy fix (D-041 made it 12B5E572...), so no test pins its MD5: what must hold is that each
+    // library block of today's index.html still equals its vendored file, which --check recomputes.
     assert.equal(LEGACY_MD5, '911A04659CB34383E478416B54E9C306');
+    assert.match(md5(fs.readFileSync(INDEX)), /^[0-9A-F]{32}$/);
+    assert.equal(run(['--check']).code, 0, 'the library blocks of the live page equal the vendored files');
   });
 
   test('each library block and the logos block is found by its marker exactly once', () => {

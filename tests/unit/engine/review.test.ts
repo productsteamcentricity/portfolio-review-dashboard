@@ -1,4 +1,4 @@
-// covers: E-21 E-22 E-24 E-03 E-124 E-135 U-05 U-65 KI-001 KI-087
+// covers: E-21 E-22 E-24 E-03 E-124 E-135 U-05 U-65 KI-001 KI-087 KI-142
 // computeReview (engine/review.ts): the display unit, the fingerprint, a new request replacing everything (KI-001),
 // acknowledgements and the audit log (no client data), the holding metrics, and every figure of the known answers
 // (tests/fixtures/overview-answers.ts, worked out by hand from the synthetic book).
@@ -93,9 +93,9 @@ describe('a new request replaces everything (KI-001)', () => {
     assert.ok(!text.includes(first.fingerprint));
   });
   test('the request is not changed', () => {
-    const req = request('syn-total-like');
+    const req = request('syn-total-rows');
     const before = JSON.stringify(req);
-    const r = computeReview({ ...req, acknowledged: ['review.total-like-holding:5'] }, { now: CLOCK, build: BUILD });
+    const r = computeReview({ ...req, acknowledged: ['review.total-like-holding:3'] }, { now: CLOCK, build: BUILD });
     assert.equal(JSON.stringify(req), before);
     assert.ok(r.issues.some((i) => i.status === 'acknowledged'));
     assert.ok(req.loaded.base.issues.every((i) => i.status !== 'acknowledged'), 'the reader\'s results are not changed');
@@ -116,12 +116,12 @@ describe('results, acknowledgements and the audit log', () => {
     }
   });
   test('an acknowledged High result becomes "acknowledged", with one validation-decision audit entry each', () => {
-    const open = review('syn-total-like');
+    const open = review('syn-total-rows');
     const high = open.issues.find((i) => i.ruleId === 'review.total-like-holding')!;
     assert.deepEqual([high.severity, high.status], ['High', 'open']);
     assert.equal(open.gate.canExport, false);
     const warning = open.issues.find((i) => i.severity === 'Warning')!;
-    const ack = review('syn-total-like', { acknowledged: [high.id, warning.id] });
+    const ack = review('syn-total-rows', { acknowledged: [high.id, warning.id] });
     assert.equal(ack.issues.find((i) => i.id === high.id)!.status, 'acknowledged');
     assert.equal(ack.issues.find((i) => i.id === warning.id)!.status, 'open', 'only High results are acknowledged');
     const decisions = ack.audit.filter((a) => a.kind === 'validation-decision');

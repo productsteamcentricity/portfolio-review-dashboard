@@ -322,8 +322,67 @@ export function buildVariants(xlsx: SheetJS, book: readonly BookRow[], prefix: s
   add('invalid-text', 'text that is not a number in the market value, invested value, XIRR and BMXIRR ("12abc", "1.25 Cr") and an impossible text date ("31-02-2024"), in Crore columns only',
     [{ name: 'Base File', rows: [headerFor(crore), ...book.map((h, i) => holdingRow(h, crore, total, i, bad[i] ?? {}))] }]);
 
+  // Total rows (D-041 point 3, KI-142, KI-148; M1.4 fix round 2, N1): a row named "Total" after holding 2 with the sum
+  // of holdings 0 to 2, and a last row named "  GRAND TOTAL  " with the book's totals; both readers skip both. Holding
+  // 4 is named TOTAL_NAMED_FUND, a fund whose name only begins with "Total": a holding in both.
+  const sub = book.slice(0, 3);
+  const totalsRow = (h: BookRow, name: string, invested: number, mv: number, i: number): CellSpec[] =>
+    holdingRow({ ...h, name, cat: '', asset: '', folio: '', amc: '', units: null, invested, mv }, STANDARD, total, i);
+  const tr: CellSpec[][] = [headerFor(STANDARD)];
+  book.forEach((h, i) => {
+    tr.push(holdingRow(i === 4 ? { ...h, name: TOTAL_NAMED_FUND } : h, STANDARD, total, i));
+    if (i === 2) tr.push(totalsRow(h, 'Total', sub.reduce((s, x) => s + x.invested, 0), sub.reduce((s, x) => s + x.mv, 0), i));
+  });
+  tr.push(totalsRow({ ...book[0]!, client: '', product: '', dist: '' }, '  GRAND TOTAL  ', book.reduce((s, x) => s + x.invested, 0), total, book.length));
+  add('total-rows', 'a row named "Total" after holding 2 and a last row "  GRAND TOTAL  " (both skipped, D-041 point 3), and holding 4 named "Total Return Sample Fund - Growth" (a holding)',
+    [{ name: 'Base File', rows: tr }]);
+
+  // Merged folios' purchase dates and holding days (D-041 point 2, KI-141, KI-148; N2): holdings 0 to 5 each in two
+  // folios (60% and 40% of the amounts and units), with the cases of tools/regression/KI-141-merged-purchase-date.js.
+  // MERGED_DATE_CASES gives each folio's purchase date and holding days (null: blank); the answers are by hand there.
+  const md: CellSpec[][] = [headerFor(STANDARD)];
+  const mdHead = headerFor(STANDARD);
+  book.forEach((h, i) => {
+    const c = MERGED_DATE_CASES[i];
+    if (!c) { md.push(holdingRow(h, STANDARD, total, i)); return; }
+    c.folios.forEach((f, k) => {
+      const share = k === 0 ? 0.6 : 0.4;
+      const row = holdingRow({ ...h, days: f.days ?? 0, purchase: f.date ?? h.purchase }, STANDARD, total, i, {
+        invested: r2(h.invested * share), mv: r2(h.mv * share), folio: `${h.folio}-${k === 0 ? 'A' : 'B'}`,
+        units: h.units === null ? null : r4(h.units * share), ...(f.date === null ? { date: null } : {}),
+      });
+      if (f.days === null) setCell(mdHead, row, 'Avg. Holding Days', null);
+      md.push(row);
+    });
+  });
+  add('merged-dates', 'holdings 0 to 5 each in two folios with the purchase dates and holding days of MERGED_DATE_CASES (D-041 point 2: the earliest date, the days recomputed or blank)',
+    [{ name: 'Base File', rows: md }]);
+
   return out;
 }
+
+/** The fund of the total-rows variant whose name only begins with "Total": a holding (D-041 point 3). */
+export const TOTAL_NAMED_FUND = 'Total Return Sample Fund - Growth';
+
+type FolioDate = { date: readonly [number, number, number] | null; days: number | null };
+/**
+ * The folios of holdings 0 to 5 in the merged-dates variant (D-041 point 2) and the merged answer, worked by hand with
+ * Date.UTC day counts: 16 Jan 2023 to 30 Sep 2026 is 1353 days, 10 Mar 2025 to 30 Sep 2026 is 569.
+ */
+export const MERGED_DATE_CASES: ReadonlyArray<{ folios: readonly [FolioDate, FolioDate]; date: string | null; days: number | null; why: string }> = [
+  { folios: [{ date: [2025, 3, 10], days: 569 }, { date: [2023, 1, 16], days: 1353 }], date: '16 Jan 2023', days: 1353,
+    why: 'both count to 30 Sep 2026: the earliest date and its own days, whatever the row order' },
+  { folios: [{ date: [2023, 1, 16], days: 900 }, { date: [2025, 3, 10], days: 200 }], date: '16 Jan 2023', days: null,
+    why: 'they count to 4 Jul 2025 and 26 Sep 2025: blank, never one folio\'s figure' },
+  { folios: [{ date: [2025, 3, 10], days: 569 }, { date: [2023, 1, 16], days: null }], date: '16 Jan 2023', days: 1353,
+    why: 'the earliest folio has no days: recomputed from 16 Jan 2023 to 30 Sep 2026, the date the other counts to' },
+  { folios: [{ date: null, days: 500 }, { date: null, days: 500 }], date: null, days: 500,
+    why: 'no purchase date and the same days: that figure stands' },
+  { folios: [{ date: null, days: 500 }, { date: null, days: 700 }], date: null, days: null,
+    why: 'no purchase date and different days: blank' },
+  { folios: [{ date: [2025, 3, 10], days: 569 }, { date: [2023, 1, 16], days: 1354 }], date: '16 Jan 2023', days: 1354,
+    why: 'they count to dates one day apart (within the tolerance): the earliest folio\'s own figure' },
+];
 
 // ---------------------------------------------------------------------------------------------------------------
 // The overview variants (milestone M1.4): totals, allocations, liquidity, the client and distributor matrices, the
@@ -474,6 +533,45 @@ export function overviewVariants(xlsx: SheetJS, book: readonly BookRow[], prefix
   add('case-variants', 'holding 1 names the client and the distributor of holding 0 in capital letters (two labels that differ only in letter case)',
     rowsOf(book.map((h, i) => (i === 1 ? { ...h, client: book[0]!.client.toUpperCase(), dist: book[0]!.dist.toUpperCase() } : h)), STANDARD));
 
+  // A negative market value (D-039; M1.4 fix round 2, N10): holding 4 at -20 Lakh (-0.2 Cr, invested unchanged), the
+  // only holding with the liquidity label "T+3"; the others are "Daily". The legacy and the new review count it in
+  // every total and leave the T+3 line (and, on the synthetic book, the Commodity slice) out of the pies.
+  const negLiq: Layout = { ...STANDARD, liquidity: true };
+  add('negative-cmv', 'holding 4 with a market value of -20 Lakh, the only holding of liquidity "T+3" (the others "Daily")',
+    rowsOf(book.map((h, i) => (i === 4 ? { ...h, mv: -2000000 } : h)), negLiq, (i) => ({ liquidity: i === 4 ? 'T+3' : 'Daily' })));
+
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// The KI-151 grid (M1.4 fix round 2, N5): a label of the book replaced by the name of an Object.prototype member.
+
+/** The seven label fields of the grid: the template's header and the BookRow field that writes it. */
+export const LABEL_GRID_FIELDS = [
+  ['Asset Name', 'asset'], ['Client Name', 'client'], ['Category Name', 'cat'], ['Product Name', 'product'],
+  ['AMC', 'amc'], ['Distributor Name', 'dist'], ['Instrument Name', 'name'],
+] as const;
+/** The five names a plain-object lookup finds on Object.prototype (KI-151). */
+export const PROTOTYPE_KEYS = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf'] as const;
+
+export type LabelGridFixture = Fixture & { header: (typeof LABEL_GRID_FIELDS)[number][0]; key: (typeof PROTOTYPE_KEYS)[number] };
+
+/**
+ * The 35 books of the grid: SYNTHETIC_BOOK in the template layout with one label of holding 0 replaced by one key
+ * ("k151-<field>-<key>"). Amounts are unchanged, so every total is the standard book's.
+ */
+export function labelGridFixtures(xlsx: SheetJS = loadSheetJS(), book: readonly BookRow[] = SYNTHETIC_BOOK): LabelGridFixture[] {
+  const out: LabelGridFixture[] = [];
+  for (const [header, field] of LABEL_GRID_FIELDS) {
+    for (const key of PROTOTYPE_KEYS) {
+      const changed = book.map((h, i) => (i === 0 ? { ...h, [field]: key } : h));
+      out.push({
+        id: `k151-${field}-${key}`, header, key,
+        description: `the standard book with the ${header} of holding 0 replaced by "${key}" (KI-151)`,
+        bytes: toWorkbook(xlsx, [{ name: 'Base File', rows: standardRows(changed) }]),
+      });
+    }
+  }
   return out;
 }
 
