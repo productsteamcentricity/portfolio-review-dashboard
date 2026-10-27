@@ -12,9 +12,12 @@
 //   3a. keyboard and mouse (real input events): Enter or a click on any section link puts focus on that section's
 //      heading, including the section already on screen and after the skip link (QA defect D1); each section link's
 //      accessible name reads "<n> <title>" (for example "1 Uploads and inputs");
-//   3b. the layout of D-037 at 1440, 1280 and 1024 px: the header pinned, the tabs in one row, a focused heading and
-//      the skip link's target below the header at the end of a long section; at 375 px nothing pinned and no
-//      sideways scroll of the page;
+//   3b. the layout of D-037 at 1440, 1366, 1280 and 1024 px: the header pinned, the tabs in one row, a focused heading
+//      and the skip link's target below the header at the end of a long section, focus moving through the header
+//      (skip link included) without moving the page, a section address opened directly below the header (1440 x 400
+//      and 1024 x 400), the current tab in view and every tab reached with the Tab key fully inside the row, a visible
+//      focus ring on the black current tab; at 375 px nothing pinned, no sideways scroll of the page and a focused
+//      heading 16 px from the top;
 //   4. the page requests nothing but itself;
 //   5. IndexedDB: a record written by the page is read back after a reload and after a browser restart with the
 //      same profile (the store of the MF Screener data pack, D-026);
@@ -274,6 +277,46 @@ const LONG_AND_SCROLLED = `(() => {
   return Math.round(scrollY);
 })()`;
 
+// Moving focus into the header (each tab and the MF Screener link, as the Tab key would) must not scroll the page.
+const HEADER_FOCUS_KEEPS_PLACE = `new Promise((r) => {
+  const before = Math.round(scrollY);
+  const links = [document.querySelector('a.skip-link'), ...document.querySelectorAll('header a')];
+  const moved = [];
+  let i = 0;
+  const next = () => {
+    if (i === links.length) { r({ before, after: Math.round(scrollY), moved, links: links.length }); return; }
+    const a = links[i++];
+    const y = scrollY;
+    a.focus();
+    requestAnimationFrame(() => { if (Math.abs(scrollY - y) > 1) moved.push(a.dataset.section || a.className); next(); });
+  };
+  next();
+})`;
+
+// The focused element, when it is a tab, is fully inside the visible part of the row.
+const FOCUSED_TAB_INSIDE = `(() => {
+  const a = document.activeElement;
+  if (!a || !a.matches('.nav-sections a')) return { inside: false, focused: a ? (a.dataset.section || a.className || a.tagName) : null };
+  const row = document.querySelector('.nav-sections').getBoundingClientRect();
+  const t = a.getBoundingClientRect();
+  return { section: a.dataset.section, inside: t.left >= row.left - 1 && t.right <= row.right + 1, tab: [Math.round(t.left), Math.round(t.right)], row: [Math.round(row.left), Math.round(row.right)] };
+})()`;
+
+// The current tab's focus ring against its background.
+const CURRENT_TAB_RING = `(() => {
+  const a = document.activeElement;
+  const s = getComputedStyle(a);
+  return { current: a.getAttribute('aria-current') === 'page', focusVisible: a.matches(':focus-visible'), outline: s.outlineColor, outlineWidth: parseFloat(s.outlineWidth), background: s.backgroundColor };
+})()`;
+
+// The current tab is inside the visible part of the tab row (the row may scroll sideways).
+const CURRENT_TAB_VISIBLE = `(() => {
+  const row = document.querySelector('.nav-sections').getBoundingClientRect();
+  const a = document.querySelector('nav a[aria-current="page"]');
+  const t = a.getBoundingClientRect();
+  return { section: a.dataset.section, visible: t.left >= row.left - 1 && t.right <= row.right + 1, tab: [Math.round(t.left), Math.round(t.right)], row: [Math.round(row.left), Math.round(row.right)] };
+})()`;
+
 const FETCH_PROBE = (url) => `new Promise((r) => {
   const before = (window.__cspv || []).length;
   fetch(${JSON.stringify(url)}).then(
@@ -440,9 +483,9 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
         JSON.stringify(names) === JSON.stringify(sectionsConfig.map((s) => `${s.n} ${s.title}`)), names);
       await page.eval(GOTO('uploads'));
 
-      // The layout of D-037 at three laptop widths: the tabs in one row (or scrolling sideways in it), and a heading
+      // The layout of D-037 at four laptop widths: the tabs in one row (or scrolling sideways in it), and a heading
       // focused at the end of a long section, or the target of the skip link, never under the pinned header.
-      for (const [w, h] of [[1440, 900], [1280, 800], [1024, 768]]) {
+      for (const [w, h] of [[1440, 900], [1366, 768], [1280, 800], [1024, 768]]) {
         await page.viewport(w, h);
         await page.eval(GOTO('uploads'));
         const l0 = await page.eval(LAYOUT);
@@ -460,7 +503,50 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
         const l2 = await page.eval(LAYOUT);
         expect(`${w} px: the skip link brings the section below the header`,
           l2.focused === 'main' && l2.headingTop >= l2.headerBottom, l2);
+        await page.eval(LONG_AND_SCROLLED);
+        const hf = await page.eval(HEADER_FOCUS_KEEPS_PLACE);
+        expect(`${w} px: moving focus through the header's links keeps the page where it was`,
+          hf.moved.length === 0 && Math.abs(hf.after - hf.before) <= 1 && hf.links === 11, hf);
       }
+      // A bookmarked section address, opened in a short window: its heading lands below the pinned header.
+      for (const w of [1440, 1024]) {
+        await page.viewport(w, 400);
+        await page.navigate('about:blank'); // a new document, so the load event fires
+        await page.navigate(`${mode.url}#annexure`);
+        const bm = await page.eval(LAYOUT);
+        expect(`a section address opened directly (${w} x 400) shows its heading below the header`,
+          bm.headingTop >= bm.headerBottom, bm);
+      }
+      // Where the tab row scrolls sideways, the current tab is in view.
+      await page.viewport(1024, 768);
+      await page.navigate('about:blank'); // a new document, so the load event fires
+      await page.navigate(`${mode.url}#annexure`);
+      const cv = await page.eval(CURRENT_TAB_VISIBLE);
+      expect('1024 px: opening the Annexure address scrolls the tab row to show its tab', cv.section === 'annexure' && cv.visible, cv);
+      await page.eval(GOTO('market-updates'));
+      const cv2 = await page.eval(CURRENT_TAB_VISIBLE);
+      expect('1024 px: hash navigation keeps the current tab in view', cv2.section === 'market-updates' && cv2.visible, cv2);
+      // The Tab key through the row: every focused tab fully inside the row (real key presses).
+      await page.eval(GOTO('uploads'));
+      await page.eval(FOCUS('a.nav-external'));
+      const outside = [];
+      for (let k = 0; k < 9; k++) {
+        await page.press('Tab');
+        const ft = await page.eval(FOCUSED_TAB_INSIDE);
+        if (!ft.inside) outside.push(ft);
+      }
+      expect('1024 px: each tab reached with the Tab key is fully inside the row', outside.length === 0, outside);
+      // The focus ring on the black current tab differs from the tab (real key presses: skip link, Screener, tab 1).
+      await page.viewport(1440, 900);
+      await page.eval(GOTO('uploads'));
+      await page.eval(FOCUS('a.skip-link'));
+      await page.press('Tab');
+      await page.press('Tab');
+      const ring = await page.eval(CURRENT_TAB_RING);
+      expect('the focused current tab shows a focus ring that differs from its background',
+        ring.current && ring.focusVisible && ring.outline !== ring.background && ring.outlineWidth > 0, ring);
+      await page.navigate('about:blank'); // a new document, so the load event fires
+      await page.navigate(mode.url);
       await page.viewport(1280, 800);
       await page.eval(GOTO('uploads'));
       const one = await page.eval(LAYOUT);
@@ -470,11 +556,13 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
       await page.eval(GOTO('uploads'));
       const ph = await page.eval(LAYOUT);
       expect('375 px: nothing is pinned and the page does not scroll sideways', ph.header === 'static' && !ph.pageScrollsSideways, ph);
+      await page.eval(GOTO('taxation'));
+      await page.eval(LONG_AND_SCROLLED);
       await page.eval(FOCUS(link('taxation')));
       await page.press('Enter');
       const ph2 = await page.eval(LAYOUT);
-      expect('375 px: Enter on a tab shows its section with the heading in view',
-        ph2.focused === 'taxation-title' && ph2.focusedTop >= 0 && ph2.focusedTop < 812, ph2);
+      expect('375 px: Enter on a tab at the end of a long section puts its heading 16 px from the top, ring in view',
+        ph2.focused === 'taxation-title' && ph2.focusedTop >= 12 && ph2.focusedTop <= 20, ph2);
       await page.viewport(1440, 900);
       await page.eval(GOTO('uploads'));
 

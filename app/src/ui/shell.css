@@ -4,11 +4,16 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html {
-  font-size: 100%;
-  /* Fragment links (the skip link, a section address) scroll below the pinned header. --header-h is the header's
-     measured height, set by the app (0 when the header is not pinned); D-037. */
-  scroll-padding-top: calc(var(--header-h, 0px) + 1rem);
+html { font-size: 100%; }
+
+/* The pinned header's height (D-037): a default here for the first layout, then the value the app measures. Only the
+   targets of fragment links are offset by it (the skip link's #main and a section address), never the page as a
+   whole, so moving focus into the header does not scroll the page. */
+:root { --header-h: 8.5rem; }
+#main, .panel { scroll-margin-top: calc(var(--header-h) + 1rem); }
+/* A control inside a section that receives focus is scrolled clear of the header too (WCAG 2.4.11). */
+#main a, #main button, #main input, #main select, #main textarea, #main summary, #main [tabindex] {
+  scroll-margin-top: calc(var(--header-h) + 1rem);
 }
 body {
   margin: 0;
@@ -20,7 +25,7 @@ body {
 }
 
 .skip-link {
-  position: absolute;
+  position: fixed;
   left: 0.5rem;
   top: -10rem;
   z-index: 10;
@@ -99,7 +104,7 @@ h2[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
   display: flex;
   align-items: baseline;
   gap: 0.35rem;
-  padding: 0.45rem 0.5rem;
+  padding: 0.45rem 0.47rem;
   border: 1px solid var(--c-grey85);
   border-bottom: none;
   border-radius: 4px 4px 0 0;
@@ -110,6 +115,10 @@ h2[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
   white-space: nowrap;
 }
 .nav-sections a:hover { background: var(--c-tan); }
+/* The focus ring is drawn inside the tab, so the sideways-scrolling row never clips it; on the black current tab it is
+   gold, so it shows (#C69958 on black is about 8:1). */
+.nav-sections a:focus-visible { outline-offset: -3px; }
+.nav-sections a[aria-current="page"]:focus-visible { outline-color: var(--c-goldRing); }
 .nav-sections a[aria-current="page"] {
   background: var(--c-ink);
   border-color: var(--c-ink);
@@ -150,6 +159,7 @@ h2[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
 
 /* Narrow screens: nothing pinned (the tabs still scroll sideways in their one row). */
 @media (max-width: 52rem) {
+  :root { --header-h: 0px; }
   .app-header { position: static; }
   .app-tools { margin-left: 0; }
 }

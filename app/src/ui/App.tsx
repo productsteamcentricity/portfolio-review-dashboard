@@ -3,7 +3,7 @@
 // page is readable without JavaScript and the one remote URL can be checked in its exact form (D-027). This component
 // renders the panel of the selected section and marks the matching navigation link.
 
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import config from '../config/sections.json' with { type: 'json' };
 
 export type Arriving = { milestone: string; what: string };
@@ -35,24 +35,42 @@ export function sectionFromHash(hash: string): Section | null {
 function markNavigation(activeId: string): void {
   const links = document.querySelectorAll<HTMLAnchorElement>('nav a[data-section]');
   links.forEach((a) => {
-    if (a.dataset['section'] === activeId) a.setAttribute('aria-current', 'page');
-    else a.removeAttribute('aria-current');
+    if (a.dataset['section'] === activeId) {
+      a.setAttribute('aria-current', 'page');
+      // Where the tab row scrolls sideways, bring the current tab into view; only the row scrolls, never the page.
+      const row = a.closest<HTMLElement>('.nav-sections');
+      if (row && row.scrollWidth > row.clientWidth) {
+        row.scrollLeft = a.offsetLeft - row.offsetLeft - (row.clientWidth - a.offsetWidth) / 2;
+      }
+    } else a.removeAttribute('aria-current');
   });
 }
 
-/** The pinned header's height plus a gap, in pixels; 0 when the header is not pinned (narrow screens, D-037). */
+/** Scrolls only the tab row (never the page) so that a tab is fully inside it, with a small margin. */
+function revealInRow(tab: HTMLElement): void {
+  const row = tab.closest<HTMLElement>('.nav-sections');
+  if (!row || row.scrollWidth <= row.clientWidth) return;
+  const pad = 8;
+  const left = tab.offsetLeft - row.offsetLeft;
+  const right = left + tab.offsetWidth;
+  if (left - pad < row.scrollLeft) row.scrollLeft = Math.max(0, left - pad);
+  else if (right + pad > row.scrollLeft + row.clientWidth) row.scrollLeft = right + pad - row.clientWidth;
+}
+
+/** The pinned header's height (0 when it is not pinned, on narrow screens; D-037) plus a 16 px gap, in pixels. */
 function headerOffset(): number {
   const h = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h'));
-  return Number.isFinite(h) && h > 0 ? h + 16 : 0;
+  return (Number.isFinite(h) && h > 0 ? h : 0) + 16;
 }
 
 /**
- * Keeps --header-h on the root equal to the pinned header's height (0 when it is not pinned), so fragment links
- * (the skip link) scroll below it (shell.css, scroll-padding-top) and focused headings are placed below it.
- * Set through the CSSOM, which the page's CSP allows.
+ * Keeps --header-h on the root equal to the pinned header's height (0 when it is not pinned), so the targets of
+ * fragment links (the skip link's #main, a section address) scroll below it (shell.css, scroll-margin-top) and focused
+ * headings are placed below it. Set through the CSSOM, which the page's CSP allows; a layout effect, so the measured
+ * value replaces the stylesheet's default before the browser lays the page out.
  */
 function useHeaderHeight(): void {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const header = document.querySelector<HTMLElement>('.app-header');
     if (!header) return;
     const update = () => {
@@ -162,11 +180,19 @@ export function App({ build }: { build: BuildInfo | null }) {
       const next = sectionFromHash(link.hash);
       if (next) show(next);
     };
+    // A tab reached with the keyboard is brought fully into its row where the row scrolls sideways (the browser does
+    // not scroll an element that is already partly visible).
+    const onFocusIn = (event: FocusEvent) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && target.matches('.nav-sections a')) revealInRow(target);
+    };
     window.addEventListener('hashchange', onHash);
     document.addEventListener('click', onClick);
+    document.addEventListener('focusin', onFocusIn);
     return () => {
       window.removeEventListener('hashchange', onHash);
       document.removeEventListener('click', onClick);
+      document.removeEventListener('focusin', onFocusIn);
     };
   }, []);
 
