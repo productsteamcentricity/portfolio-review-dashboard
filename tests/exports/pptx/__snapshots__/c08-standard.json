@@ -1,0 +1,1079 @@
+{
+ "core": {
+  "title": "Sample Family Portfolio overview",
+  "subject": "Portfolio overview",
+  "creator": "Portfolio Review",
+  "created": "2026-10-24T00:00:00Z",
+  "modified": "2026-10-24T00:00:00Z"
+ },
+ "themeFonts": {
+  "major": "Cambria",
+  "minor": "Cambria"
+ },
+ "parts": ["[Content_Types].xml","_rels/.rels","docProps/app.xml","docProps/core.xml","ppt/_rels/presentation.xml.rels","ppt/theme/theme1.xml","ppt/presentation.xml","ppt/presProps.xml","ppt/tableStyles.xml","ppt/viewProps.xml","ppt/slideLayouts/slideLayout1.xml","ppt/slideLayouts/_rels/slideLayout1.xml.rels","ppt/slides/slide1.xml","ppt/slides/_rels/slide1.xml.rels","ppt/notesSlides/notesSlide1.xml","ppt/notesSlides/_rels/notesSlide1.xml.rels","ppt/slideMasters/slideMaster1.xml","ppt/slideMasters/_rels/slideMaster1.xml.rels","ppt/notesMasters/notesMaster1.xml","ppt/notesMasters/_rels/notesMaster1.xml.rels","ppt/media/image-1-1.png","ppt/embeddings/Microsoft_Excel_Worksheet1.xlsx","ppt/charts/_rels/chart1.xml.rels","ppt/charts/chart1.xml","ppt/embeddings/Microsoft_Excel_Worksheet2.xlsx","ppt/charts/_rels/chart2.xml.rels","ppt/charts/chart2.xml"],
+ "slides": [
+  {
+   "index": 1,
+   "notes": "",
+   "shapes": [
+    {
+     "kind": "shape",
+     "id": 2,
+     "name": "chrome header bar",
+     "descr": "",
+     "box": [0,0,960,64.8],
+     "rot": 0,
+     "geom": "rect",
+     "fill": "000000",
+     "line": null,
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 3,
+     "name": "chrome header rule",
+     "descr": "",
+     "box": [0,63.4,960,3.6],
+     "rot": 0,
+     "geom": "rect",
+     "fill": "BD9568",
+     "line": null,
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 4,
+     "name": "chrome title",
+     "descr": "",
+     "box": [13,10.1,738,47.5],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": "ctr",
+     "insets": [0,0,0,0],
+     "runs": ["ASSET ALLOCATION|22|Cambria|FFFFFF|b"]
+    },
+    {
+     "kind": "picture",
+     "id": 5,
+     "name": "chrome logo",
+     "descr": "Logo",
+     "box": [791.2,13,155.6,38.9],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 6,
+     "name": "chrome footnote",
+     "descr": "",
+     "box": [13,498.2,931,18.7],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": "t",
+     "insets": [0,0,0,0],
+     "runs": ["Portfolio as on 30 Sep 2026.|8|Cambria|6B6B6B|i"]
+    },
+    {
+     "kind": "shape",
+     "id": 7,
+     "name": "chrome footer band",
+     "descr": "",
+     "box": [0,520.6,960,19.4],
+     "rot": 0,
+     "geom": "rect",
+     "fill": "000000",
+     "line": null,
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 8,
+     "name": "chrome preview marker",
+     "descr": "",
+     "box": [13,520.6,931,19.4],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": "ctr",
+     "insets": [0,0,0,0],
+     "runs": ["Preview build, not for client use|8|Cambria|FFFFFF|i"]
+    },
+    {
+     "kind": "shape",
+     "id": 9,
+     "name": "C-08 kpi invested tile",
+     "descr": "",
+     "box": [13,76,154,47.5],
+     "rot": 0,
+     "geom": "rect",
+     "fill": "FCFAF7",
+     "line": {
+      "width": 0.75,
+      "colour": "D9D9D9"
+     },
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 10,
+     "name": "C-08 kpi invested strip",
+     "descr": "",
+     "box": [13,76,154,4],
+     "rot": 0,
+     "geom": "rect",
+     "fill": "BD9568",
+     "line": null,
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 11,
+     "name": "C-08 kpi invested value",
+     "descr": "",
+     "box": [19,82,142,22],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": "ctr",
+     "insets": [0,0,0,0],
+     "runs": ["3.40|13.5|Cambria|000000|b"]
+    },
+    {
+     "kind": "shape",
+     "id": 12,
+     "name": "C-08 kpi invested label",
+     "descr": "",
+     "box": [19,104,142,15],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": "ctr",
+     "insets": [0,0,0,0],
+     "runs": ["Invested Value (Cr.)|7.5|Cambria|555555|"]
+    },
+    {
+     "kind": "shape",
+     "id": 13,
+     "name": "C-08 kpi cmv tile",
+     "descr": "",
+     "box": [173.5,76,154,47.5],
+     "rot": 0,
+     "geom": "rect",
+     "fill": "FCFAF7",
+     "line": {
+      "width": 0.75,
+      "colour": "D9D9D9"
+     },
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 14,
+     "name": "C-08 kpi cmv strip",
+     "descr": "",
+     "box": [173.5,76,154,4],
+     "rot": 0,
+     "geom": "rect",
+     "fill": "BD9568",
+     "line": null,
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 15,
+     "name": "C-08 kpi cmv value",
+     "descr": "",
+     "box": [179.5,82,142,22],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": "ctr",
+     "insets": [0,0,0,0],
+     "runs": ["4.00|13.5|Cambria|000000|b"]
+    },
+    {
+     "kind": "shape",
+     "id": 16,
+     "name": "C-08 kpi cmv label",
+     "descr": "",
+     "box": [179.5,104,142,15],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": "ctr",
+     "insets": [0,0,0,0],
+     "runs": ["Current Market Value (Cr.)|7.5|Cambria|555555|"]
+    },
+    {
+     "kind": "shape",
+     "id": 17,
+     "name": "C-08 kpi gain tile",
+     "descr": "",
+     "box": [334,76,154,47.5],
+     "rot": 0,
+     "geom": "rect",
+     "fill": "FCFAF7",
+     "line": {
+      "width": 0.75,
+      "colour": "D9D9D9"
+     },
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 18,
+     "name": "C-08 kpi gain strip",
+     "descr": "",
+     "box": [334,76,154,4],
+     "rot": 0,
+     "geom": "rect",
+     "fill": "BD9568",
+     "line": null,
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 19,
+     "name": "C-08 kpi gain value",
+     "descr": "",
+     "box": [340,82,142,22],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": "ctr",
+     "insets": [0,0,0,0],
+     "runs": ["0.60|13.5|Cambria|000000|b"]
+    },
+    {
+     "kind": "shape",
+     "id": 20,
+     "name": "C-08 kpi gain label",
+     "descr": "",
+     "box": [340,104,142,15],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": "ctr",
+     "insets": [0,0,0,0],
+     "runs": ["Unrealised Gain/Loss (Cr.)|7.5|Cambria|555555|"]
+    },
+    {
+     "kind": "shape",
+     "id": 21,
+     "name": "C-08 section label block",
+     "descr": "",
+     "box": [13,143,8.6,17.3],
+     "rot": 0,
+     "geom": "rect",
+     "fill": "BD9568",
+     "line": null,
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 22,
+     "name": "C-08 section label",
+     "descr": "",
+     "box": [25.6,143,462.4,17.3],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": "ctr",
+     "insets": [0,0,0,0],
+     "runs": ["Allocation by Asset Class & Product|11|Cambria|000000|b"]
+    },
+    {
+     "kind": "table",
+     "id": 23,
+     "name": "C-08 table",
+     "descr": "",
+     "box": [13,168.5,475,229.2],
+     "rot": 0,
+     "geom": null,
+     "fill": null,
+     "line": null,
+     "anchor": null,
+     "insets": null
+    },
+    {
+     "kind": "shape",
+     "id": 24,
+     "name": "C-08 asset panel",
+     "descr": "",
+     "box": [504,72,443,209.5],
+     "rot": 0,
+     "geom": "roundRect",
+     "fill": "FBF7F1",
+     "line": {
+      "width": 0.75,
+      "colour": "D9D9D9"
+     },
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 25,
+     "name": "C-08 asset panel title",
+     "descr": "",
+     "box": [514,75,423,15],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": "ctr",
+     "insets": [0,0,0,0],
+     "runs": ["Asset Allocation by Asset Class (% of total CMV)|11|Cambria|000000|b"]
+    },
+    {
+     "kind": "chart",
+     "id": 26,
+     "name": "C-08 asset pie",
+     "descr": "Pie chart of asset classes by share of total market value",
+     "box": [615.5,91.5,220,190],
+     "rot": 0,
+     "geom": null,
+     "fill": null,
+     "line": null,
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 27,
+     "name": "C-08 liquidity panel",
+     "descr": "",
+     "box": [504,285.5,443,209.5],
+     "rot": 0,
+     "geom": "roundRect",
+     "fill": "FBF7F1",
+     "line": {
+      "width": 0.75,
+      "colour": "D9D9D9"
+     },
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    },
+    {
+     "kind": "shape",
+     "id": 28,
+     "name": "C-08 liquidity panel title",
+     "descr": "",
+     "box": [514,288.5,423,15],
+     "rot": 0,
+     "geom": "rect",
+     "fill": null,
+     "line": null,
+     "anchor": "ctr",
+     "insets": [0,0,0,0],
+     "runs": ["Liquidity Structure (% of total CMV)|11|Cambria|000000|b"]
+    },
+    {
+     "kind": "chart",
+     "id": 29,
+     "name": "C-08 liquidity pie",
+     "descr": "Pie chart of liquidity categories by share of total market value",
+     "box": [615.5,305,220,190],
+     "rot": 0,
+     "geom": null,
+     "fill": null,
+     "line": null,
+     "anchor": null,
+     "insets": null,
+     "runs": []
+    }
+   ],
+   "tables": [
+    {
+     "name": "C-08 table",
+     "box": [13,168.5,475,229.2],
+     "colW": [180,104,119,72],
+     "rows": [
+      {
+       "h": 27.6,
+       "cells": [
+        {
+         "runs": ["Asset Class|9|Cambria|FFFFFF|b"],
+         "paragraphs": 1,
+         "fill": "000000",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["Investment Amount (Cr.)|9|Cambria|FFFFFF|b"],
+         "paragraphs": 1,
+         "fill": "000000",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["Current Market Value (Cr.)|9|Cambria|FFFFFF|b"],
+         "paragraphs": 1,
+         "fill": "000000",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["% CMV|9|Cambria|FFFFFF|b"],
+         "paragraphs": 1,
+         "fill": "000000",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      },
+      {
+       "h": 16.8,
+       "cells": [
+        {
+         "runs": ["Equity|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "l",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["1.80|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["2.22|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["55.50%|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      },
+      {
+       "h": 16.8,
+       "cells": [
+        {
+         "runs": ["Mutual Funds|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "l",
+         "margins": [3,5,3,14],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["1.20|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["1.52|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["38.00%|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      },
+      {
+       "h": 16.8,
+       "cells": [
+        {
+         "runs": ["PMS|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "l",
+         "margins": [3,5,3,14],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.60|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.70|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["17.50%|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      },
+      {
+       "h": 16.8,
+       "cells": [
+        {
+         "runs": ["Debt|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "l",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.85|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.94|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["23.50%|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      },
+      {
+       "h": 16.8,
+       "cells": [
+        {
+         "runs": ["Mutual Funds|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "l",
+         "margins": [3,5,3,14],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.85|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.94|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["23.50%|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      },
+      {
+       "h": 16.8,
+       "cells": [
+        {
+         "runs": ["Hybrid|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "l",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.40|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.46|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["11.50%|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      },
+      {
+       "h": 16.8,
+       "cells": [
+        {
+         "runs": ["Mutual Funds|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "l",
+         "margins": [3,5,3,14],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.40|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.46|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["11.50%|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      },
+      {
+       "h": 16.8,
+       "cells": [
+        {
+         "runs": ["Commodity|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "l",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.30|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.32|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["8.00%|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      },
+      {
+       "h": 16.8,
+       "cells": [
+        {
+         "runs": ["Mutual Funds|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "l",
+         "margins": [3,5,3,14],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.30|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.32|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["8.00%|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      },
+      {
+       "h": 16.8,
+       "cells": [
+        {
+         "runs": ["REITs/InvITs|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "l",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.05|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.06|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["1.50%|9|Cambria|000000|b"],
+         "paragraphs": 1,
+         "fill": "BFBFBF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      },
+      {
+       "h": 16.8,
+       "cells": [
+        {
+         "runs": ["REITs and InvITs|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "l",
+         "margins": [3,5,3,14],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.05|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["0.06|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["1.50%|9|Cambria|000000|"],
+         "paragraphs": 1,
+         "fill": "FFFFFF",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      },
+      {
+       "h": 16.8,
+       "cells": [
+        {
+         "runs": ["Grand Total|9|Cambria|FFFFFF|b"],
+         "paragraphs": 1,
+         "fill": "000000",
+         "align": "l",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["3.40|9|Cambria|FFFFFF|b"],
+         "paragraphs": 1,
+         "fill": "000000",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["4.00|9|Cambria|FFFFFF|b"],
+         "paragraphs": 1,
+         "fill": "000000",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        },
+        {
+         "runs": ["100.00%|9|Cambria|FFFFFF|b"],
+         "paragraphs": 1,
+         "fill": "000000",
+         "align": "ctr",
+         "margins": [3,5,3,5],
+         "borders": ["L 0.5 D9D9D9","R 0.5 D9D9D9","T 0.5 D9D9D9","B 0.5 D9D9D9"]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "charts": [
+    {
+     "name": "C-08 asset pie",
+     "descr": "Pie chart of asset classes by share of total market value",
+     "part": "ppt/charts/chart1.xml",
+     "type": "pieChart",
+     "series": 1,
+     "categories": ["Equity","Debt","Hybrid","Commodity","REITs/InvITs"],
+     "values": [55.5,23.5,11.5,8,1.5],
+     "pointColours": ["DBC8B2","BD9568","BFBFBF","808080","8C6B43"],
+     "pointLines": [
+      {
+       "width": 0.75,
+       "colour": "BFBFBF"
+      },
+      {
+       "width": 0.75,
+       "colour": "BFBFBF"
+      },
+      {
+       "width": 0.75,
+       "colour": "BFBFBF"
+      },
+      {
+       "width": 0.75,
+       "colour": "BFBFBF"
+      },
+      {
+       "width": 0.75,
+       "colour": "BFBFBF"
+      }
+     ],
+     "seriesLine": {
+      "width": 0.75,
+      "colour": "BFBFBF"
+     },
+     "labels": [
+      {
+       "idx": 0,
+       "deleted": false,
+       "text": "Equity 55.5%",
+       "position": "bestFit",
+       "size": 9,
+       "font": "Cambria",
+       "colour": "222222"
+      },
+      {
+       "idx": 1,
+       "deleted": false,
+       "text": "Debt 23.5%",
+       "position": "bestFit",
+       "size": 9,
+       "font": "Cambria",
+       "colour": "222222"
+      },
+      {
+       "idx": 2,
+       "deleted": false,
+       "text": "Hybrid 11.5%",
+       "position": "bestFit",
+       "size": 9,
+       "font": "Cambria",
+       "colour": "222222"
+      },
+      {
+       "idx": 3,
+       "deleted": false,
+       "text": "Commodity 8.0%",
+       "position": "outEnd",
+       "size": 9,
+       "font": "Cambria",
+       "colour": "222222"
+      },
+      {
+       "idx": 4,
+       "deleted": true,
+       "text": null,
+       "position": null,
+       "size": null,
+       "font": null,
+       "colour": null
+      }
+     ],
+     "defaults": {
+      "numFmt": "0.0%",
+      "position": "bestFit",
+      "separator": " ",
+      "size": 9,
+      "font": "Cambria",
+      "colour": "222222"
+     },
+     "legend": {
+      "position": "b",
+      "size": 9,
+      "font": "Cambria"
+     },
+     "gridlines": false,
+     "embedding": "ppt/embeddings/Microsoft_Excel_Worksheet1.xlsx",
+     "embeddingParts": ["[Content_Types].xml","_rels/.rels","docProps/app.xml","docProps/core.xml","xl/_rels/workbook.xml.rels","xl/styles.xml","xl/theme/theme1.xml","xl/workbook.xml","xl/worksheets/_rels/sheet1.xml.rels","xl/sharedStrings.xml","xl/tables/table1.xml","xl/worksheets/sheet1.xml"]
+    },
+    {
+     "name": "C-08 liquidity pie",
+     "descr": "Pie chart of liquidity categories by share of total market value",
+     "part": "ppt/charts/chart2.xml",
+     "type": "pieChart",
+     "series": 1,
+     "categories": ["Open Ended","Close Ended"],
+     "values": [92.5,7.5],
+     "pointColours": ["BD9568","BFBFBF"],
+     "pointLines": [
+      {
+       "width": 0.75,
+       "colour": "BFBFBF"
+      },
+      {
+       "width": 0.75,
+       "colour": "BFBFBF"
+      }
+     ],
+     "seriesLine": {
+      "width": 0.75,
+      "colour": "BFBFBF"
+     },
+     "labels": [
+      {
+       "idx": 0,
+       "deleted": false,
+       "text": "Open Ended 92.5%",
+       "position": "bestFit",
+       "size": 9,
+       "font": "Cambria",
+       "colour": "222222"
+      },
+      {
+       "idx": 1,
+       "deleted": false,
+       "text": "Close Ended 7.5%",
+       "position": "bestFit",
+       "size": 9,
+       "font": "Cambria",
+       "colour": "222222"
+      }
+     ],
+     "defaults": {
+      "numFmt": "0.0%",
+      "position": "bestFit",
+      "separator": " ",
+      "size": 9,
+      "font": "Cambria",
+      "colour": "222222"
+     },
+     "legend": {
+      "position": "b",
+      "size": 9,
+      "font": "Cambria"
+     },
+     "gridlines": false,
+     "embedding": "ppt/embeddings/Microsoft_Excel_Worksheet2.xlsx",
+     "embeddingParts": ["[Content_Types].xml","_rels/.rels","docProps/app.xml","docProps/core.xml","xl/_rels/workbook.xml.rels","xl/styles.xml","xl/theme/theme1.xml","xl/workbook.xml","xl/worksheets/_rels/sheet1.xml.rels","xl/sharedStrings.xml","xl/tables/table1.xml","xl/worksheets/sheet1.xml"]
+    }
+   ]
+  }
+ ]
+}
