@@ -1,13 +1,16 @@
 // covers: U-16 U-45 E-52
 // The presentation manifest (architecture §15; deck-design-system.md §6): it lists C-08 in section 4, always
 // included; a download exists only for a section with at least one slide (the KI-124 class); and the overview
-// download always yields at least one slide, even for a book with nothing to chart.
+// download always yields at least one slide, even for a book with nothing to chart, whose panels say "Chart not
+// drawn" with the status in words.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { checkManifest, plannedComponents, sectionDownloads, SLIDE_MANIFEST } from '../../../app/src/exports/pptx/manifest.ts';
+import { chartNotDrawnText } from '../../../app/src/exports/pptx/components/C-08-asset-allocation.ts';
+import { MISSING_STATUSES, type MissingStatus } from '../../../app/src/model/status.ts';
 import type { OverviewVM } from '../../../app/src/views/overview-vm.ts';
 import { REPO } from '../../helpers/pptxgenjs.ts';
 import { shapeNamed, type Slide } from '../../helpers/slide-inventory.ts';
@@ -68,8 +71,34 @@ test('the overview download always yields at least one slide', async () => {
   const { inv } = await buildDeck(emptyVM());
   const s = inv.slides[0] as Slide;
   assert.equal(s.charts.length, 0);
-  assert.equal(shapeNamed(s, 'C-08 asset pie empty').text, 'Chart not drawn: NOT APPLICABLE.');
-  assert.equal(shapeNamed(s, 'C-08 liquidity pie empty').text, 'Chart not drawn: NOT APPLICABLE.');
+  assert.equal(shapeNamed(s, 'C-08 asset pie empty').text, 'Chart not drawn: not applicable.');
+  assert.equal(shapeNamed(s, 'C-08 liquidity pie empty').text, 'Chart not drawn: not applicable.');
   assert.deepEqual(s.tables[0]!.rows[1]!.cells.map((c) => c.text), ['Grand Total', '\u2014', '\u2014', '\u2014']);
   assert.equal(shapeNamed(s, 'C-08 kpi cmv value').text, '\u2014');
+});
+
+test('L28: a chart not drawn names its status as the screen\'s notes word it, never the raw status', async () => {
+  // Written out by hand from the data dictionary's status table (DATA_DICTIONARY.md \u00a72).
+  const want: Array<[MissingStatus | null, string]> = [
+    ['NOT APPLICABLE', 'Chart not drawn: not applicable.'],
+    ['NOT AVAILABLE IN SUPPLIED DATA', 'Chart not drawn: not available in supplied data.'],
+    ['INVALID SOURCE DATA', 'Chart not drawn: invalid source data.'],
+    ['NOT DISCLOSED', 'Chart not drawn: not disclosed.'],
+    ['STALE DATA', 'Chart not drawn: stale data.'],
+    ['PARTIAL COVERAGE', 'Chart not drawn: partial coverage.'],
+    // No status given (a view-model with no slice to show and no status): as the screen, not available.
+    [null, 'Chart not drawn: not available in supplied data.'],
+  ];
+  for (const [status, text] of want) assert.equal(chartNotDrawnText({ emptyStatus: status }), text, String(status));
+  for (const status of MISSING_STATUSES) {
+    const text = chartNotDrawnText({ emptyStatus: status });
+    assert.match(text, /^Chart not drawn: [a-z][a-z ]+\.$/, `${status}: a lower-case phrase in one sentence`);
+    assert.ok(!text.includes(status), `${status}: not the raw status`);
+  }
+  // On the slide: an empty liquidity pie with INVALID SOURCE DATA beside a drawn asset pie.
+  const vm = standardVM();
+  vm.charts.liquidity = { ...vm.charts.liquidity, slices: [], emptyStatus: 'INVALID SOURCE DATA' };
+  const s = (await buildDeck(vm)).inv.slides[0] as Slide;
+  assert.equal(shapeNamed(s, 'C-08 liquidity pie empty').text, 'Chart not drawn: invalid source data.');
+  assert.deepEqual(s.charts.map((c) => c.name), ['C-08 asset pie']);
 });

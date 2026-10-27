@@ -953,7 +953,7 @@
       {
        "idx": 0,
        "deleted": false,
-       "text": "Equity 55.5%",
+       "text": "Equity\n55.5%",
        "position": "bestFit",
        "size": 9,
        "font": "Cambria",
@@ -962,7 +962,7 @@
       {
        "idx": 1,
        "deleted": false,
-       "text": "Debt 23.5%",
+       "text": "Debt\n23.5%",
        "position": "bestFit",
        "size": 9,
        "font": "Cambria",
@@ -971,7 +971,7 @@
       {
        "idx": 2,
        "deleted": false,
-       "text": "Hybrid 11.5%",
+       "text": "Hybrid\n11.5%",
        "position": "bestFit",
        "size": 9,
        "font": "Cambria",
@@ -980,7 +980,7 @@
       {
        "idx": 3,
        "deleted": false,
-       "text": "Commodity 8.0%",
+       "text": "Commodity\n8.0%",
        "position": "outEnd",
        "size": 9,
        "font": "Cambria",
@@ -999,7 +999,7 @@
      "defaults": {
       "numFmt": "0.0%",
       "position": "bestFit",
-      "separator": " ",
+      "separator": "\n",
       "size": 9,
       "font": "Cambria",
       "colour": "222222"
@@ -1040,7 +1040,7 @@
       {
        "idx": 0,
        "deleted": false,
-       "text": "Open Ended 92.5%",
+       "text": "Open Ended\n92.5%",
        "position": "bestFit",
        "size": 9,
        "font": "Cambria",
@@ -1049,7 +1049,7 @@
       {
        "idx": 1,
        "deleted": false,
-       "text": "Close Ended 7.5%",
+       "text": "Close Ended\n7.5%",
        "position": "bestFit",
        "size": 9,
        "font": "Cambria",
@@ -1059,7 +1059,7 @@
      "defaults": {
       "numFmt": "0.0%",
       "position": "bestFit",
-      "separator": " ",
+      "separator": "\n",
       "size": 9,
       "font": "Cambria",
       "colour": "222222"
