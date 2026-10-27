@@ -394,6 +394,33 @@ or CI fails. The legacy reading defects the parity work found are KI-140 to KI-1
 KI-146: live-page data fixes for a later legacy batch (D-028). The new reader's money-column fallback is KI-147,
 decided in M1.4. The owner's questions are in `DATA_DICTIONARY.md` §8.
 
+## D-037 — Section tabs across the top, in the look of the owner's design reference (24 Oct 2026, owner)
+**Context.** M1.2 built the new app's shell with the nine sections listed in a navigation column beside the section
+(17rem wide). Phase 0 had read the brief's design reference, a Claude Artifact upload console, as a workflow reference
+with no layout to follow (`ARCHITECTURE.md` §13.1, Q-84). On 24 Oct 2026 the owner asked for the section tabs across
+the top, as that console shows them, so that analysts have more width to work in, and for the app to be built on
+that layout from now on.
+**Decision.**
+1. **Layout.** The header holds, in order: the preview banner (D-024, still first and still in view on a wide
+   screen), the black masthead with the 4 px gold rule, and the nine section tabs in one row across the top. The
+   section below uses the full page width (up to 90rem). The tab row never wraps: where the nine tabs do not fit it
+   scrolls sideways, so the header keeps one height (one row from 1280 px). The app measures the pinned header and
+   keeps a focused heading, and the target of the skip link, just below it. On a narrow screen (52rem or less)
+   nothing is pinned (the 375 px item carried from M1.2's QA: a sticky header covered a focused heading).
+2. **The MF Screener link** (D-027) is a navigation item at the right end of the masthead, in its own `<nav>`, so
+   the tab row is the sections only. It is still the one remote URL, in one static anchor.
+3. **The reference's look** for the screen from now on: Cambria; tabs on a sand ground with the current tab black
+   with white text; black table headers in small uppercase letters with zebra rows; bordered groups with a sand header;
+   dashed upload slots; status chips; a black footer bar. Colours come from `app/src/config/tokens.json` only.
+4. **The Screener pack's cycle date and status** (D-026) show in the masthead beside the Screener link, since there is
+   no sidebar.
+**Alternatives.** Keeping the column (rejected by the owner: it takes width from every section); the Screener link at
+the end of the tab row (tried: at 1440 px it pushed the row onto two lines).
+**Consequences.** `shell.css`, the page template and `scripts/build.mjs` (`navHtml` for the tabs, `screenerHtml` for
+the link) change; the shell tests now expect the link in the masthead; `ARCHITECTURE.md` §6.9 and §7, `DATA_DICTIONARY.md`
+§5.16, the PRD and `toolchain.md` say masthead where they said sidebar or column. Every later milestone builds its
+screens in this layout.
+
 ## D-041 — Live-page base-file reading fixes (27 Oct 2026, lead under D-033)
 **Context.** The parity work of milestone M1.3 found how the live page's `parseBaseRows` misreads some base files
 (KI-140 to KI-145) and how the IPS then takes the wrong asset-class figures (KI-146, P1). Under D-028 the live page

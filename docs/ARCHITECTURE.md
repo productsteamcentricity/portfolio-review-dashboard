@@ -215,7 +215,7 @@ Screener scores and ranks are never in a public page: the pack is never embedded
 | Slot | section 1, "MF Screener data pack", for `pr-datapack_<cycle>.zip` (contract `pr-datapack-v1`) and, once, the holdings backfill; the Upload, Validate, Preview and Review stages of every upload (§13.1) |
 | Validation | `ingest/screener-pack/` checks contract version, cycle, file list, per-file SHA-256, counts and schemas with the vendored JSZip; a failing pack is refused with the reason and nothing is stored |
 | Storage | `services/screener-store.ts` writes the accepted pack to IndexedDB (`prd.next.v1.screener`), keyed by cycle and SHA-256, until a newer cycle replaces it as a whole; an older cycle is refused, the same SHA-256 is a no-op; month-end holdings of replaced packs and the backfill are kept as history (Q-27); the analyst can remove it; a family switch never clears it |
-| Sidebar | the stored cycle date and its status: "validated pack" (SHA-256 in the published manifest), "not in the published manifest", STALE DATA (Q-21) or "not loaded" |
+| Masthead (D-037) | the stored cycle date and its status, beside the MF Screener link: "validated pack" (SHA-256 in the published manifest), "not in the published manifest", STALE DATA (Q-21) or "not loaded" |
 | Absence | every screen that needs the pack names it and the slot; slides and sheets use the named fallback source or show the dash with "Screener data not supplied for this review"; score and rank have no other source; the export dialog warns |
 | Scope | IndexedDB belongs to one browser profile and origin: the Pages site, the local preview and a double-clicked copy each load the pack once per cycle; the M1.2 spike found IndexedDB available under `file://` and served, kept across a reload and a browser restart (headless Edge 155 and Chrome 155), as best-effort storage; every local file shares the one `file://` origin ([toolchain.md](new-build/toolchain.md) §6) |
 | Never | in `localStorage`, logs or exports beyond the figures a review uses; sent anywhere; in a build (`scripts/validation/check-next.mjs` fails on pack content, from M10); committed |
@@ -260,6 +260,12 @@ columns, naming them. The proposed columns are in [DATA_DICTIONARY.md](DATA_DICT
 | `exports/pptx/`, `exports/xlsx/` | §15 and §14 | read globals; write user text into formulas |
 | `ui/` | sections, inputs and inspectors rendering view-models | calculate |
 | `services/` | files in and out, storage, the Screener pack store, audit log, an injectable clock | use the network; store client data |
+
+**Screen layout (D-037, 24 Oct 2026).** The header holds the preview banner, the black masthead (title, the Screener
+pack status and the MF Screener link at its right) and the nine section tabs in one row; the section below uses the
+full width (up to 90rem). On a wide screen the header stays in view; on a narrow one nothing is pinned and the tabs
+scroll sideways. The look follows the owner's design reference (the upload console of the brief): sand tabs with the
+current one black, black table headers, bordered groups, dashed upload slots, status chips.
 
 ## 8. Calculation engine
 

@@ -48,7 +48,7 @@ monthly from a designated folder of approved source material.
 
 | # | Section | Contains | Legacy tabs mapped here |
 |---|---|---|---|
-| 1 | Uploads and inputs | base file (with holder columns when present), IRR, **capital-gains statement** (in the app's template, D-032), PMS/AIF look-through, bonds, monitors, the **MF Screener data pack** slot (kept in this browser until a newer pack is loaded; its cycle date in the sidebar; D-026), an analyst **price file** for direct equity, workbook re-upload; the **disclaimer in use** (version and date from the monthly folder) with an override limited to approved files; the month's data vintages; every upload passes Upload, Validate, Preview and Review stages before it feeds the review; import status, reporting dates, source register, missing files, validation results; family, entity and holder labels; logo; review mode | Home (part), sidebar inputs |
+| 1 | Uploads and inputs | base file (with holder columns when present), IRR, **capital-gains statement** (in the app's template, D-032), PMS/AIF look-through, bonds, monitors, the **MF Screener data pack** slot (kept in this browser until a newer pack is loaded; its cycle date in the masthead; D-026, D-037), an analyst **price file** for direct equity, workbook re-upload; the **disclaimer in use** (version and date from the monthly folder) with an override limited to approved files; the month's data vintages; every upload passes Upload, Validate, Preview and Review stages before it feeds the review; import status, reporting dates, source register, missing files, validation results; family, entity and holder labels; logo; review mode | Home (part), sidebar inputs |
 | 2 | Portfolio overview | KPIs, asset and product allocation, client-level and advisor-level allocation, AMC, IPS | IPS, Asset, Distributor, Client, AMC |
 | 3 | Portfolio observations | Review Snapshot (RO or RB), observations (Evidence, Diagnosis, Implication, Action) under "What drives portfolio risk" and "What drives portfolio return", with the editor; one-slide SWOT | Observations |
 | 4 | Analytics and overlap | equity and debt look-through, overlap (native), index overlap and active share, scopes (family, client, advisor) including returns by scope, **contributors and laggards**, historical analytics, **drawdown comparison on index data** | Analytics, Overlap, Fund IRR (contributors) |
@@ -93,7 +93,7 @@ Each requirement carries its brief reference and parity-matrix id (`docs/new-bui
   (`pr-datapack_<cycle>.zip`, contract `pr-datapack-v1`) and its holdings backfill: validate the manifest, files,
   counts and schemas; refuse a failing pack with the reason; keep the accepted pack in this browser's IndexedDB until a
   newer cycle is loaded (the month-end holdings of earlier cycles kept for history); show its cycle date in the
-  sidebar, with "validated pack" when its SHA-256 matches the published manifest; keep it across a family switch; let
+  masthead (D-037), with "validated pack" when its SHA-256 matches the published manifest; keep it across a family switch; let
   the analyst remove it; loading the same pack twice changes nothing. Screener scores and ranks are never embedded in
   a public build, and the pack is never committed. (E-126; Q-18 answered; D-026)
 - R-IN-11 Accept an analyst price file (for example the Stock Price to Return Calculator's Fetch Price sheet) for
