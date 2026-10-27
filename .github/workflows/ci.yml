@@ -70,6 +70,8 @@ jobs:
         run: node scripts/validation/traceability.mjs
       - name: Reference data equal to the blocks in index.html (data/refdata, M1.3)
         run: node scripts/data-extract.ts --check
+      - name: Vendored libraries equal to the blocks in index.html (app/vendor, M1.4)
+        run: node scripts/vendor-extract.mjs --check
       - name: Fetch main for the release check (the checkout is shallow)
         run: |
           git fetch --no-tags --unshallow origin '+refs/heads/main:refs/remotes/origin/main' \

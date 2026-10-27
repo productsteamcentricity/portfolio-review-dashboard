@@ -160,6 +160,11 @@ dashboard (D-033); every other question proceeds on its default.
   cross-checked against Lakh or rupees when both are numbers and disagree.
 - **Analyst value.** The first slide that already meets the brief's allocation rules (6.1), available for preview on
   `/next/` (not for client use until switch-over).
+- **Status (27 Oct 2026): built and integrated on `feat/m1-4-overview`** (D-038, D-039), its pull request to follow
+  the browser QA and the reviews. R1 passed in Excel, so ExcelJS is not needed. KI-147 settled by the owner's answer
+  of 24 Oct 2026 (no fallback; D-039 point 1). Scope moved: U-06 (the base-file template download) to M7, beside the
+  capital-gains template; the basic validation panel ships here and U-67 in full stays in M13; the insight box of
+  C-08 comes with the observation engine (M5). The built-in logos ship (the generic scan is clean on them).
 
 ### M2 Identifiers, matching, classification and reference data (brief phases 2, 11, 13) (L): can start now
 - **M2.1 Crosswalk and matcher.** `data/identifiers/crosswalk.json` (AMFI code map, `FUND_RANKS` scheme codes only (D-026), `STOCK_RET` ISIN,

@@ -49,10 +49,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const DIST = path.join(ROOT, 'app', 'dist', 'index.html');
 const ALL_VENDOR_ENTRY = 'tests/fixtures/next-build/uses-all-vendor.js';
 
-// Controls the "scrolled clear of the pinned header" gate (3c) focuses with the Tab key. The test-only button is
-// injected into section 1 by the gate; the integration of M1.4 adds section 1's file input, date input and Accept
-// button here once they exist (selectors of controls on the uploads section).
-const CONTROLS_UNDER_HEADER = ['.spike-control'];
+// Controls the "scrolled clear of the pinned header" gate (3c) focuses with the Tab key: a test-only button the gate
+// injects into section 1, and section 1's own base-file input (visible, so tabbable) and as-on date input (M1.4).
+// The Accept button is disabled, so not tabbable, until a file is read; tests/browser/overview.cdp.mjs reaches it.
+const CONTROLS_UNDER_HEADER = ['.spike-control', '#base-file-input', '#as-on-date'];
 
 // ---------------------------------------------------------------------------------------------------------------
 // Page probes (evaluated in the page; the CDP evaluation itself is not subject to the page's CSP)
@@ -357,7 +357,8 @@ async function main(argv) {
 async function runSpike({ exe, work, opt, received, expect, results, setBrowser }) {
   // The negative control (wrong script hash) and the vendored-library fixture page.
   const html = fs.readFileSync(DIST, 'utf8');
-  const badHash = html.replace(/script-src 'sha256-[A-Za-z0-9+/]{43}='/, `script-src 'sha256-${'A'.repeat(43)}='`);
+  // The app script's hash is the last one in script-src (the vendored libraries come first): break that one.
+  const badHash = html.replace(/(script-src [^;"]*)'sha256-[A-Za-z0-9+/]{43}='/, `$1'sha256-${'A'.repeat(43)}='`);
   const badFile = path.join(work, 'wrong-hash.html');
   fs.writeFileSync(badFile, badHash);
   const { buildNext } = await import(pathToFileURL(path.join(ROOT, 'scripts', 'build.mjs')).href);
@@ -473,7 +474,10 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
         expect(`${w} px: moving focus through the header's links keeps the page where it was`,
           hf.moved.length === 0 && Math.abs(hf.after - hf.before) <= 1 && hf.links === 11, hf);
         // R8: the same walk with real keys, Shift+Tab from a control at the end of the long section back through the
-        // nine tabs, the MF Screener link and the skip link; the page must not move at any step.
+        // nine tabs, the MF Screener link and the skip link; the page must not move at any step. The walk runs on a
+        // section with no control of its own (section 9 in M1.4): from section 1 it would first walk back through the
+        // section's own inputs (M1.4), which rightly scroll into view.
+        await page.eval(GOTO('annexure'));
         await page.eval(LONG_AND_SCROLLED);
         const start = await page.eval(END_CONTROL);
         const walk = [];

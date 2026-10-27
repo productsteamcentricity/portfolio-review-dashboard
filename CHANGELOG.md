@@ -18,6 +18,63 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   (deterministic). `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
 
 ### Added
+- **Milestone M1.4 of the new build (CR-0006): the portfolio overview.** Section 1 reads a base file through its
+  Upload, Validate, Preview and Review stages, and section 2 shows the headline figures, the allocations and the pies;
+  the overview deck (slide C-08) and the overview workbook download from it. Every number on screen, slide and sheet
+  is a figure of one view-model (D-038, D-039). The `/next/` build: 1,972,788 bytes, SHA-256 `cf4b5fc4…`
+  (deterministic), with the four vendored libraries inlined. `index.html` is unchanged (MD5
+  `911A04659CB34383E478416B54E9C306`).
+  - Platform (D-038). Chart.js 4.4.0, chartjs-plugin-datalabels 2.2.0, SheetJS CE 0.18.5 and PptxGenJS 3.12.0 are
+    vendored byte for byte from `index.html` (`scripts/vendor-extract.mjs`, `--check` in CI); licence texts are in
+    `app/vendor/licences/`. The build accepts vendored files under the HTML parsing rule and the jszip alias, and
+    writes `buildId` and each library's SHA-256 in build-info. `check-next` adds pinned per-library allowances, the
+    OOXML namespace names, a licence-URL rule and the pure-layer globals rule (U-53). New
+    `app/src/services/download.ts`: CSP-safe Blob downloads, the object URL revoked after 30 s. The built-in logos are
+    extracted to `app/src/config/brand-logos.json`. The browser spike drives the keys through a CDP helper
+    (`tests/browser/lib/cdp.mjs`): R8's gates (a real Shift+Tab walk, focus-ring contrast, controls scrolled clear of
+    the pinned header, section 1's file and date inputs included) and the four-library page from disk and served,
+    whose Blob downloads save the page's bytes with no request: 141 of 141.
+  - Engine. The KI-147 money-column rule: there is no fallback for text that is not an amount (the owner's answer of
+    24 Oct 2026); a blank or placeholder Crore cell takes the Lakh value with a notice, and Crore and Lakh amounts more
+    than 0.005 Cr apart are warned. `computeReview` gives totals over included holdings (gain is CMV minus invested
+    over the holdings with an invested value), the asset allocation in one order with Unknown last, liquidity by the
+    legacy rule, client and distributor matrices with "not given" columns, reconciliation, the export gate, the audit
+    log and the review fingerprint. Tests: the overview variants of the synthetic books, the hand-worked
+    `OVERVIEW_ANSWERS`, and the aggregation parity ledger AG-01 to AG-14 with no regression.
+  - Section 1, Uploads and inputs: the base file through its stages, with an import report (the sheet and header row
+    used, the sheets tried, the money unit, the counts, the skipped rows by reason, the excluded holdings by name, the
+    XIRR question with one-click answers, and "Instrument matching arrives in M2"); the as-on date (never a fallback,
+    KI-087); the family and client labels; the logo (built in or uploaded, kept in this browser); "Disclaimer in use"
+    (not available in supplied data until M11); a basic validation panel with Acknowledge on High results; and the
+    source register.
+  - Section 2, Portfolio overview: headline figures, the asset and product allocation table, the asset class and
+    liquidity pies, the client and distributor allocation (hidden behind one line for a single client or
+    distributor, OD-21), the notes, and the downloads, disabled with the gate's reasons until the review may be
+    exported. One formatter (`views/format.ts`) and one overview view-model (`views/overview.ts`) serve the screen,
+    the slide and the workbook; chart colours are fixed by category name (KI-150).
+  - The look of the owner's design reference (D-037, R4): a review bar under the tabs (logo, family label, as-on
+    date), bordered groups with a sand header band, dashed upload slots, stage pills, status chips, ledger KPI tiles,
+    and black-header tables that scroll inside their own box on a phone; the tab row's scrollbar is slim and keeps a
+    focused tab's ring clear. `tokens.json` gains the deck design system tokens and the status colours.
+  - The overview deck: slide C-08 Asset Allocation with three KPIs (Invested Value, Current Market Value, Unrealised
+    Gain/Loss, OD-18), the asset and product table over continuation pages with the header and the Grand Total on
+    every page, and the asset class and liquidity pies with colours fixed by category name, labels to one decimal and
+    no label under 2%. Cambria throughout; the preview marker in the footer band of a preview build; native, editable
+    charts with their workbooks; the same view-model and clock give byte-identical files.
+  - The overview workbook, written by an in-house deterministic STORE zip and SpreadsheetML writer
+    (`app/src/exports/xlsx`, D-038 amends A3) with a typed formula builder: Read Me and Controls, Source Register,
+    Holdings (as loaded), Portfolio Overview, Client and Distributor Allocation (only for two or more, OD-21), Audit
+    Log and a hidden `_manifest`. Every aggregate is a SUMIFS over the holdings by generated keys, cached at the
+    view-model figure; a missing figure is a blank cell with its status. An independent formula evaluator checks every
+    formula in the tests. Spike gate R1 passed in Excel on 27 Oct 2026, so the ExcelJS fallback (Q-13) is not needed;
+    the Office acceptance scripts are `npm run accept:office` (local only).
+  - Integration: `app/src/ui/wiring.ts` joins the reader, the engine and both exporters to the page;
+    `tests/helpers/node-wiring.ts` builds the same wiring in Node; `tests/integration/overview.test.ts`,
+    `cross-output.test.ts` (one figure, one text on screen, slide and sheet) and `labels.test.ts` (labels in every
+    output, never in the audit; the family switch leaves nothing behind).
+  - Fixed in the new app (the legacy page is unchanged, D-028): KI-007, KI-020, KI-021, KI-071, KI-078, KI-084,
+    KI-087, KI-089, KI-091, KI-092, KI-093, KI-094 and KI-147. Filed for the legacy page: KI-150 (PptxGenJS random pie
+    colours) and KI-151 (an Asset Name such as "constructor" breaks `computeReview`).
 - **Milestone M1.3 of the new build (CR-0006): the shared model, the base-file reader, the reference data and the
   parity ledger.** No page uses them yet: the `/next/` shell builds to the same bytes (42,280 bytes, SHA-256
   `e74e8a07…`). `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).

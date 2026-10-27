@@ -16,7 +16,7 @@ open questions are recorded in [DECISIONS.md](../DECISIONS.md) and marked "answe
 | Topic | Owned now by | Phase 0 source |
 |---|---|---|
 | What the product must do | [docs/PRD.md](../PRD.md) (the living PRD; draft 0.4 with the owner's answers) | the PRD draft, committed there directly |
-| Field, metric, status and unit definitions | [docs/DATA_DICTIONARY.md](../DATA_DICTIONARY.md) (v0.1) | `03-architecture.md` §6, §8, §16; `observation-rule-bank.md` §1, §2 |
+| Field, metric, status and unit definitions | [docs/DATA_DICTIONARY.md](../DATA_DICTIONARY.md) (v0.4, M1.4) | `03-architecture.md` §6, §8, §16; `observation-rule-bank.md` §1, §2 |
 | The monthly process, and the files the owner supplies each month | [docs/MONTHLY_UPDATE_GUIDE.md](../MONTHLY_UPDATE_GUIDE.md) (new engine, planned; the tracked list of monthly files, in use now); [docs/MONTHLY_REFRESH.md](../MONTHLY_REFRESH.md) (legacy pipeline, in use) | `03-architecture.md` §13 |
 | The monthly PRD | [docs/monthly-prds/](../monthly-prds/README.md) | the brief's Phase 12 |
 | How the new application is built | [docs/ARCHITECTURE.md](../ARCHITECTURE.md) (from M1.1, with the same section numbers); the legacy architecture moved to [docs/legacy/ARCHITECTURE.md](../legacy/ARCHITECTURE.md) (`09` §6) | `03-architecture.md` |

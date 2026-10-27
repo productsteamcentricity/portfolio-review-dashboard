@@ -195,11 +195,11 @@ legacy (E-02, KI-113).
 | `folios`, `folioIds` | string[], `FolioId[]` | folio numbers as supplied, one per merged row that has one |
 | `purchaseDate` | `Value<DayNumber>` | an Excel serial or a text date (`YYYY-MM-DD`, `DD-MM-YYYY` with the legacy month-first swap above 12, `D Mon YYYY`); an impossible date is INVALID SOURCE DATA |
 | `units` | `Value<number>`, unit `units` | the base the tax split reconciles a holding against (M7): the legacy reconciles base-file units with its unit FIFO and, when they are missing, switches to its rupee ledger (`amtMode`, 07_engine.js:393-405), which suits products priced in rupees (PMS, unlisted AIF) |
-| `invested`, `cmv`, `fileGain` | `Value<number>`, unit `cr` | per row the Cr. column, else Lakh / 100, else rupees / 1e7 (the legacy precedence); `fileGain` is the file's own G/L, kept for reconciliation only (the gain shown is CMV minus invested, OD-18) |
+| `invested`, `cmv`, `fileGain` | `Value<number>`, unit `cr` | per row the Cr. column, else Lakh / 100, else rupees / 1e7 (the legacy precedence); `fileGain` is the file's own G/L, kept for reconciliation only (the gain shown is CMV minus invested, OD-18). Under the KI-147 rule (`app/src/config/money-columns.ts`, D-039 point 1) a blank or placeholder cell passes to the next column (Information `base-file.money-column-used`); text that is not an amount stops the reading (INVALID SOURCE DATA, Warning `base-file.money-invalid`; an invalid invested value leaves the holding included without one, counted in `totals.counts.invalidInvested`); a later column whose amount differs from the one used by more than 0.005 Cr raises Warning `base-file.money-disagree`, and the amount used is kept |
 | `xirr`, `bmXirr` | `Value<number>`, unit `pct` | OD-3: a percent-formatted cell is read as a percentage; an unformatted column whose values are all below 1.5 in size raises an analyst question and stays INSUFFICIENT EVIDENCE until answered; otherwise percent numbers |
 | `holdingDays` | `Value<number>`, unit `days` | "Avg. Holding Days" |
 | `mergeGaps` | `('invested' \| 'fileGain' \| 'units')[]` | the merged totals left missing because some merged folios have the value and others do not (a merge gap, KI-007, KI-113), in that order; empty for a one-row holding and when every folio or no folio has the value. Code reads this list, never the reason text; it is what tells a merge gap in units from a product without units (§8) |
-| `inclusion` | `{ status: 'included' }` or `{ status: 'excluded', reasons: ['no-market-value'] }` | OD-8: a row without a market value in any unit is excluded and listed by name (Warning), never valued at zero. A market value that is not a number ("12abc", "1.25 Cr") is INVALID SOURCE DATA and counts as none; a market value of 0 is a real zero and the row is included, as in the legacy (open, §8) |
+| `inclusion` | `{ status: 'included' }` or `{ status: 'excluded', reasons: ['no-market-value'] }` | OD-8: a row without a market value in any unit is excluded and listed by name (Warning), never valued at zero. A market value that is not a number ("12abc", "1.25 Cr", a percent) in the column the reader would use is INVALID SOURCE DATA: the holding is excluded and listed, and no later money column is read in its place (KI-147, the owner's answer of 24 Oct 2026, D-039 point 1); a market value of 0 is a real zero and the row is included, as in the legacy (open, §8) |
 
 Text that is not a number is INVALID SOURCE DATA (Warning, counted by column); blank cells and placeholders ("NA",
 "N/A", "-", "--", "nil") are NOT AVAILABLE IN SUPPLIED DATA. The file's Allocation (%) column is recognised but not
@@ -314,6 +314,20 @@ Base-file results in M1.3: Blocking `no-header`, `no-holdings`, `no-market-value
 `xirr-unit-answered`, `asset-synonym`, `product-defaulted`, `merged-folios`, `merge-incomplete` and the other
 skipped-row reports.
 
+Added in M1.4 (D-039): the base-file Warnings `money-invalid` (a money cell that is not an amount, scoped to the
+holdings, naming the column and the rows; KI-147) and `money-disagree` (a Crore amount and a Lakh or rupee amount
+more than 0.005 Cr apart), and the Information `money-column-used` (a blank or placeholder Crore cell, the column
+used named). The review's own results (`app/src/engine/validate/gate.ts`, `reconcile.ts`): Blocking
+`review.as-on-missing` (KI-087: never a fallback date) and `review.no-included-holdings` (OD-8); High
+`review.total-like-holding` (KI-142, scoped to the holdings of `base-file.total-like-name`; exports wait until the
+analyst acknowledges it); Blocking `reconcile.products-to-class`, `reconcile.classes-to-total`, `reconcile.pct-sum`,
+`reconcile.invested-to-total`, `reconcile.liquidity-to-total`, `reconcile.entity-columns` and
+`reconcile.entity-cells` (BR-13.1, tolerance 1e-9 relative plus 1e-12 absolute); Information `reconcile.passed`
+(count = the checks passed, out of 7) and `reconcile.file-gain-differs` (OD-18: the file's gain differs from CMV
+minus invested by more than 0.005 Cr). Review results are numbered `ruleId:n` after the reader's, the gate's
+results first, so the id of the total-like result, which an acknowledgement names, stays the same when the as-on
+date changes.
+
 ### 5.9 `Review` (L4) and `Scope`
 
 `Review` is the session object for one family. It holds L1 to L10, and every metric in it is a `Value<T>` with lineage
@@ -323,6 +337,17 @@ keeps the scenario and slide picks (OD-24). Its metrics are the paths of section
 `Scope` is `family`, `client` (ids) or `advisor` (distributor ids). Every calculated view is computed on the rows of the
 scope, with weights re-based within it and totals reconciled to the family; the same mechanism serves analytics,
 overlap, AMC, cost and returns. (`03` §6.5)
+
+**Fields as built in M1.4** (`app/src/model/review.ts`, computed by `computeReview` in `app/src/engine/review.ts`
+from a `ReviewRequest`: the loaded base file, the as-on date, the labels, the acknowledged result ids and the XIRR
+answers): `schemaVersion`, `fingerprint` (SHA-256 of the request), `asOn` (`Value<DayNumber>`, NOT AVAILABLE IN
+SUPPLIED DATA until the analyst sets it), `labels` (family and client labels), `displayUnit` (Crore; Lakh for a
+Lakh book; a rupee book in Crore from 1 Cr, else Lakh), `build` (build id, channel, libraries with their SHA-256),
+`sources`, `base` (the reader's import record), `holdings`, `holdingMetrics` (per holding id, excluded holdings
+included: asset key, liquidity, gain, `cmvPct`), `clients`, `distributors`, `ownership`, `totals`, `assets` (asset
+and product lines in the D-039 order), `liquidity`, `byClient` and `byDistributor` (matrices with the "not given"
+columns), `issues` (the reader's results, then the review's), `questions`, `gate` (`blocking`, `highOpen`,
+`canExport`, `reasons`) and `audit`.
 
 ### 5.10 `Assumptions` (L5)
 
@@ -371,6 +396,33 @@ scope) and the divider rule; one manifest drives the full deck, the slide picker
 `WorkbookSpec`: sheets, named inputs, formulas (from the typed builder only), styles and the hidden `_manifest` sheet
 (schema version, build id, review fingerprint, map of named inputs and editable ranges, fingerprint of every formula
 cell). The sheet list is `03` §14. (`03` §6.1, §14)
+
+**Sheets as built in M1.4** (`app/src/exports/xlsx/`, D-039 point 5); `(L)` replaces `(Cr.)` on a Lakh book:
+- **Read Me and Controls**: Item | Detail | Status. Rows in order: the preview marker (preview builds only); Purpose,
+  Review id, Family label, Scope, Mode, As-on date (a date, or blank with NOT AVAILABLE IN SUPPLIED DATA), Money
+  unit; Base file, Base file SHA-256, Reference data, MF Screener, Build id, Build channel; one row per library; How
+  to edit and re-upload, Colour key, Key columns, Sheets in this workbook; Sheet left out (one row per sheet left
+  out, OD-21); one row per note.
+- **Source Register**: Role | File Name | Data Date | Data Date Status | SHA-256 | Class | Stage | Parser | Size (bytes).
+- **Holdings (as loaded)**, 43 columns A to AQ: Instrument Name, Client, Client Key, Joint Holders, Joint Holders
+  Status, Mode of Holding, Distributor, Distributor Key, Folio No, Product, Product Key, Category, AMC, Asset Name (as
+  given), Asset Class, Liquidity, Liquidity Key, Purchase Date, Purchase Date Status, Units, Units Status, Invested
+  (Cr.), Invested Status, Current Market Value (Cr.), Current Market Value Status, Unrealised Gain/Loss (Cr.),
+  Unrealised Gain/Loss Status, File Gain/Loss (Cr.), File Gain/Loss Status, Allocation (% CMV), Allocation Status,
+  XIRR (%), XIRR Status, BMXIRR (%), BMXIRR Status, Avg. Holding Days, Avg. Holding Days Status, Included, Exclusion
+  Reason, Invested Present, Merge Gaps, Holding Id, Base File Rows.
+- **Portfolio Overview**: Block | Asset Class | Product | Liquidity | Key | Investment Amount (Cr.) | Current Market
+  Value (Cr.) | % CMV | Unrealised Gain/Loss (Cr.) | Absolute Return (%) | Invested Coverage (% of CMV) | Status.
+  Row blocks: "Asset and product", "Total" (Grand Total, key ALL), "Liquidity".
+- **Client Allocation** and **Distributor Allocation** (only when the screen shows the matrix, OD-21): Asset Class |
+  Product | Key | `<label> (Cr.)` for each entity in view-model order | Grand Total (Cr.) | Status. The last row is
+  "Share of family (%)".
+- **Audit Log**: Seq | Time (UTC) | Kind | Rule | Severity | Status | Decision | Count | Summary | Detail | Source
+  SHA-256. Audit entries come first, then the validation results with Kind "validation" and no message text.
+- **_manifest** (hidden, protected without a password): Key | Value. schemaVersion, workbookSchema
+  (`overview-workbook@1`), buildId, channel, reviewFingerprint, sourceSha256, namedInputs and editableRanges (none
+  in this version), formulaCount, one `formula <sheet>!<cell>` row per formula with the SHA-256 of its text, and one
+  `figure <key>` row per view-model figure with the `<sheet>!<cell>` it is written to (the cross-output join).
 
 ### 5.14 `AuditEntry` (L10)
 
@@ -448,7 +500,13 @@ path is a `Value<T>` in the `Review` (rule bank §2; `03` §11, §16).
 | Path | Meaning |
 |---|---|
 | `totals.cmv`, `totals.invested`, `totals.gain` | portfolio totals (Crore, unrounded; gain = CMV minus invested, OD-18) |
+| `totals.absReturnPct`, `totals.investedCoveragePct` | gain / invested x 100 over the holdings with an invested value (NOT APPLICABLE when invested is 0); the share of CMV those holdings cover (M1.4, D-039 point 2) |
+| `totals.counts.{included,excluded,withoutInvested,invalidInvested,clients,withoutClient,distributors,withoutDistributor}` | holding and entity counts of the review (M1.4) |
 | `alloc.asset[k].pct`, `alloc.product[k].pct` | labelled allocation shares |
+| `alloc.asset[k].{cmv,invested,gain,absReturnPct,investedCoveragePct}`, `alloc.product[k].*` | the same figures per asset class and per product (M1.4) |
+| `alloc.liquidity[l].{cmv,pct}` | liquidity lines; lines with a CMV of 0 or less are left out (M1.4) |
+| `distributors[d].{cmv,sharePct,assetMix}`, `clients[c].cmv` | the distributor matrix, and the client CMV (M1.4) |
+| `holdings[i].{gain,cmvPct}` | per holding (`holdingMetrics`; `cmvPct` NOT APPLICABLE for an excluded holding, M1.4) |
 | `alloc.effectiveEquity.gross`, `.netOfHedges` | look-through equity share of the book (E-134, Q-50) |
 | `alloc.classesPresent[]` | classes at or above `class_present_pct` among equity, debt, gold and commodities, international, alternatives |
 | `holdings[i]` | holding: `id`, `label`, `category` (canonical), `assetClass`, `productClass`, `amcKey`, `clientId`, `distributorId`, `cmvPct`, `xirr`, `bmXirr`, `ageMonths`, `isPassive`, `isFoF`, `liquidity` |
@@ -543,11 +601,11 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
   last of such rows (KNOWN_ISSUES KI-145 and KI-146). Parity entry BF-26. Questions for the owner: confirm the
   folding; and measure, privately, how common variant labels (letter case, spacing, synonyms) are in the real base
   files, which sizes KI-145 and KI-146 on the live page.
-- **A Crore cell that is not a number beside a Lakh or rupee amount (M1.3 re-review; decided in M1.4).** §5.3 says
-  a market value that is not a number "counts as none"; today the reader then takes the Lakh or rupee column of
-  the same row, as the legacy `pickCr` order does, without a notice on the holding (KNOWN_ISSUES KI-147). The rule,
-  the notice, a unit test and a clear §5.3 sentence are M1.4 acceptance items
-  ([07-implementation-roadmap.md](new-build/07-implementation-roadmap.md) M1.4).
+- **A Crore cell that is not a number beside a Lakh or rupee amount: decided (D-039 point 1).** Text that is not an
+  amount in the column the reader would use is INVALID SOURCE DATA and no later column is read in its place (the
+  owner's answer of 24 Oct 2026, "no fallback"); a blank or placeholder Crore cell takes the next column with a
+  notice, and amounts more than 0.005 Cr apart are warned (the lead's decisions). §5.3 and §5.8 state the rule;
+  KNOWN_ISSUES KI-147 is fixed in the new app.
 - **Units of merged folios and the tax base (M1.3; BF-17 (KI-113) and BF-18 (KI-113 extended to units) accepted by the lead, D-035).** Base-file units are
   the base the legacy tax split reconciles each holding against (07_engine.js:393-405); when a holding has no units,
   that split switches to the rupee ledger (`amtMode`), which suits products priced in rupees (PMS, unlisted AIF). The
@@ -581,3 +639,4 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
 | v0.3 | 23 Oct 2026 | M1.3 financial review: REITs/InvITs is the fifth asset class, as in the legacy allocation order (§5.3); `Holding.mergeGaps` tells a merge gap from a value no folio has, and units are named as the tax reconciliation base (§5.3); a market value that is not a number counts as none, and 0 is a real zero (§5.3); three open questions for the owner: unrecognised Asset Names, merged units and the M7 requirement, a market value of 0 (§8) |
 | v0.3 (re-review) | 23 Oct 2026 | Open items only, definitions unchanged (M1.3 re-review): folding the letter case of Asset Names goes beyond OD-7 and waits for the owner (§5.3, §8, BF-26); a Crore cell that is not a number beside a Lakh or rupee amount, decided in M1.4 (§8, KI-147) |
 | v0.3 (D-035) | 23 Oct 2026 | Status only (§8): BF-17 (KI-113) and BF-18 (KI-113 extended to units) accepted by the lead (D-035); BF-19 and BF-26 wait for the owner |
+| v0.4 | 27 Oct 2026 | Milestone M1.4 (D-039): the KI-147 money-column rule (§5.3, §8); the base-file and review results, reconciliation and the export gate (§5.8); the `Review` fields (§5.9); the columns of the M1.4 workbook sheets (§5.13); totals, allocation, liquidity and entity metric paths (§6) |

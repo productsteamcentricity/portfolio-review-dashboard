@@ -3,11 +3,10 @@
 - **Requested:** 21 Oct 2026, by the product owner (a full brief; sanitised copy in
   [`../new-build/00-owner-brief.md`](../new-build/00-owner-brief.md): login details and client names removed).
 - **Status:** Phase 0 done (delivered on 22 Oct 2026; the owner answered ND-1 to ND-10 on 22 Oct 2026, recorded as
-  D-024 to D-033). Milestone M1.1: the safety tooling and the Phase 0 records merged in PR #10 (`2a65a62`); the rest
-  of M1.1, with the lead's records, is on `chore/m1-1-rest-int`, ready for its pull request (Changes, below). M1.2
-  is integrated on `feat/m1-2-int`, stacked on it, with its records and D-034 (23 Oct 2026), ready for its own pull
-  request after M1.1. M1.3 is integrated on `feat/m1-3-int`, stacked on M1.2, with its records, D-035 and KI-140 to
-  KI-147 (23 Oct 2026), ready for its own pull request after M1.2. M1.4 is next.
+  D-024 to D-033). Milestones M1.1 to M1.3 are merged (PRs #10 to #13, the last at `517becf`), and the layout of
+  D-037 (PR #14, `c9ec1cc`). M1.4, the portfolio overview (sections 1 and 2, slide C-08, the overview workbook;
+  D-038, D-039, KI-150, KI-151), is integrated on `feat/m1-4-overview` (27 Oct 2026), ready for its browser QA,
+  reviews and pull request. M2 is next.
 
 ## Request
 Build a clean new application that keeps every capability of the existing dashboard and improves it:
@@ -89,21 +88,23 @@ rebalancing method) is out of scope; the data structures for it are in scope.
 | M1.2 | Integration on top of M1.1: the merge (conflicts resolved keeping both sides; CI job `next` in one order with the release check last); the fix of QA defect D1 (Enter or a click on any section link moves focus to its heading; links read "1 Uploads and inputs"); the Pages fallback (a failing preview never blocks the legacy page, D-034); the records: D-034, `CLAUDE.md` (the new app's working rules), the living architecture, DEPLOYMENT, the root README's two-apps section, HANDOVER, PROJECT_STATE, CHANGELOG, the PRD's §13 | `feat/m1-2-int` (on `chore/m1-1-rest-int`) | ready for its pull request after M1.1's; the browser QA by hand (`toolchain.md` §9) and the first CI and Pages runs are still to come |
 | M1.3 | The shared model (`app/src/model/`), the workbook and base-file readers (`app/src/ingest/`) and their engine helpers, `scripts/data-extract.ts` with `data/refdata/` and `VINTAGE.json`, `scripts/validation/traceability.mjs`, the fixture generator, unit and parity tests with the ledger BF-01 to BF-25; the financial review's fixes (REITs/InvITs, merge gaps, the asset class compared honestly, invalid text) | `feat/m1-3-model-ingest-r2` | reviewed twice; carried by `feat/m1-3-int` |
 | M1.3 | Integration on top of M1.2: the merge (CI job `next` with M1.3's tests in both zones, traceability and `data-extract.ts --check`); the type check over M1.3's code, `"type": "module"` with the legacy tooling kept CommonJS, `// covers:` headers for M1.2's tests; the re-review's fixes (the asset class compared exactly, BF-26); the records: D-035, KI-140 to KI-147, `CLAUDE.md`, the living architecture, DATA_DICTIONARY §8, the roadmap's M1.4 items, MONTHLY_REFRESH Step 8, HANDOVER, PROJECT_STATE, CHANGELOG, the PRD's §13 | `feat/m1-3-int` (on `feat/m1-2-int`) | ready for its pull request after M1.2's |
-| Layout | The owner's request of 24 Oct 2026 (D-037): section tabs across the top in the look of the design reference, the MF Screener link in the masthead, full-width sections | `feat/next-top-tabs` | in review |
+| Layout | The owner's request of 24 Oct 2026 (D-037): section tabs across the top in the look of the design reference, the MF Screener link in the masthead, full-width sections | `feat/next-top-tabs` | merged in PR #14 (`c9ec1cc`) |
+| M1.4 | Five units in parallel from `c9ec1cc`: the platform (four libraries vendored byte for byte with pinned allowances, CSP-safe downloads, the spike's R8 gates); the engine (the KI-147 rule, totals, allocations, liquidity, client and distributor matrices, reconciliation, the export gate, the audit log, the aggregation parity ledger AG-01 to AG-14); views and UI (sections 1 and 2, one formatter, one overview view-model); the PowerPoint exporter (slide C-08); the Excel exporter (STORE zip, SpreadsheetML writer, typed formulas, the M1.4 sheets, Office acceptance; R1 passed in Excel) | unit branches, merged into `feat/m1-4-overview` | integrated |
+| M1.4 | Integration: the final `app/src/ui/wiring.ts`, the built-in logos, `tests/helpers/node-wiring.ts` and the cross-unit tests (overview, cross-output, labels and the family switch); section 1's controls in the spike's pinned-header gate; the records: D-038, D-039, KI-147 fixed, KI-150, KI-151, the parity matrix (47 rows in progress), `DATA_DICTIONARY.md` v0.4, `CLAUDE.md`, the architecture, toolchain, testing and deck documents, PROJECT_STATE, CHANGELOG | `feat/m1-4-overview` | browser QA, financial and security reviews, the private deny-list scan and the Office run on the wired files to come; then the pull request |
 
 `CHANGELOG.md` stays at the repository root rather than moving to `docs/` as `09-repository-and-docs-structure.md` §6
 planned (the lead's decision, 22 Oct 2026). Still to do in M1.1: its last pull request (push `chore/m1-1-rest-int`,
 attach the report of `release-check.mjs --after-push` to the pull request, merge it once CI is green, D-017). The root
 README's section on the two applications during the parallel run and how to run both (`09` §6), proposed for M1.2's
-records, is written on `feat/m1-2-int`. After M1.3, M1.4 (the first vertical slice: the portfolio overview end to
-end) is next; its acceptance list carries KI-147 from M1.3.
+records, is written on `feat/m1-2-int`. M1.4, the first vertical slice (the portfolio overview end to end), carried
+KI-147 from M1.3 and settled it by the owner's answer of 24 Oct 2026 (D-039 point 1).
 
 ## Open
 - **Owner:** your own list of issues with the existing dashboard (screenshots or notes).
 - **Screener owner:** run the data pack prompt and send the first pack and the backfill.
 - **Owner, from M1.3** ([`../DATA_DICTIONARY.md`](../DATA_DICTIONARY.md) §8): unrecognised Asset Names such as
-  "Gold" (BF-19); letter case of Asset Names (BF-26); a market value of 0; for M1.4, a Crore cell that is not a
-  number beside a Lakh amount (KI-147); and a private count of variant asset labels in the real base files (KI-145,
-  KI-146).
+  "Gold" (BF-19); letter case of Asset Names (BF-26); a market value of 0 (M1.4 runs on the M1.3 defaults, D-039
+  point 12); and a private count of variant asset labels in the real base files (KI-145, KI-146). KI-147 was
+  answered on 24 Oct 2026.
 - **Answered on 22 Oct 2026:** ND-1 to ND-10 (D-024 to D-033); the index data for drawdown comparisons is the five
   Index TRI files already in each month's inbox (D-023 addendum).

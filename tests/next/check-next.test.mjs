@@ -31,6 +31,12 @@ function rehash(html) {
   return html.replace(CSP_META_RE, `<meta http-equiv="Content-Security-Policy" content="${csp}">`);
 }
 
+/** Inserts `insert` before the page's own closing body tag, the last one: SheetJS holds the same text. */
+function beforeBodyEnd(html, insert) {
+  const at = html.lastIndexOf('</body>');
+  return html.slice(0, at) + insert + html.slice(at);
+}
+
 /** Inserts code at the start of the app script (the last inline script). */
 function plantInScript(html, code) {
   const at = html.lastIndexOf('<script>') + '<script>'.length;
@@ -132,7 +138,7 @@ describe('check-next on the built page (needs npm ci)', { skip: NEEDS_BUILD }, (
   });
 
   test('a script loading a file, a stylesheet link or a frame fails', () => {
-    assertFails(rehash(html.replace('</body>', '<script src="x.js"></script></body>')), /no script loads a file/);
+    assertFails(rehash(beforeBodyEnd(html, '<script src="x.js"></script>')), /no script loads a file/);
     assertFails(html.replace('</head>', '<link rel="stylesheet" href="x.css"></head>'), /external resource/, { only: true });
     assertFails(html.replace('</main>', '<iframe></iframe></main>'), /external resource/, { only: true });
   });
@@ -172,7 +178,7 @@ describe('check-next on the built page (needs npm ci)', { skip: NEEDS_BUILD }, (
   });
 
   test('a second app script (a script that is no library) fails', () => {
-    assertFails(rehash(html.replace('</body>', '<script>void 0;</script></body>')), /vendored library of the manifest .* or the app script/, { only: true });
+    assertFails(rehash(beforeBodyEnd(html, '<script>void 0;</script>')), /vendored library of the manifest .* or the app script/, { only: true });
   });
 });
 

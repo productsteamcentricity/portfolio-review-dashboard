@@ -135,7 +135,8 @@ feature parity. Phase 0 is delivered (22 Oct 2026); the owner answered ND-1 to N
 D-033) and gave Claude full charge of GitHub and the dashboard (D-033). Milestone M1.1 (safety tooling, these
 records, the release checks and the folder skeleton) is complete once its last pull request merges; M1.2 (the pinned
 toolchain, the one-file build and its check, the nine-section shell and the `/next/` preview, D-034) follows it, then
-M1.3 (the shared model, the base-file reader with its parity ledger, and `data/refdata/`, D-035); M1.4 is next.
+M1.3 (the shared model, the base-file reader with its parity ledger, and `data/refdata/`, D-035), then M1.4 (the
+portfolio overview: sections 1 and 2, slide C-08 and the overview workbook, D-038, D-039); M2 is next.
 Every rule above applies; rules 1 and 5 are about the legacy `index.html`, and the new application in `app/` has its
 own working rules (below; `app/README.md`, `docs/new-build/toolchain.md`).
 - Working on the new app (Node 24, npm 11): `npm ci` (never `npm install`, except a deliberate pin change with a
@@ -152,7 +153,15 @@ own working rules (below; `app/README.md`, `docs/new-build/toolchain.md`).
   and written by the build into one static `<a target="_blank" rel="noopener noreferrer">` (D-027); no module
   imports that file. A vendored library is used only as `import X from 'vendor:<name>'`, listed with its SHA-256 in
   `app/vendor/MANIFEST.json`; the build checks the hash and inlines it only when imported. Pinned versions change
-  only by a recorded decision (D-025, D-034).
+  only by a recorded decision (D-025, D-034). Libraries come only from `scripts/vendor-extract.mjs` (byte for byte
+  from index.html, pinned by SHA-256; `--check` in CI); a library's network-API names, URLs and inline sequences are
+  pinned in its MANIFEST allow block and allowed only inside that library's script (D-038). The OOXML namespace names
+  live only in `app/src/exports/ooxml/namespaces.ts`. The pure layers (model, ingest, engine, views, exports) read no
+  browser global: no `window.`, `document.`, `globalThis.`, `localStorage.`, `sessionStorage.` or `indexedDB.` there.
+  The source scan also matches words in comments. Downloads go through `app/src/services/download.ts`, never a
+  library `writeFile`; only `app/src/ui/wiring.ts` imports SheetJS and PptxGenJS. Before pushing a change to an
+  exporter, run the Office acceptance (`npm run accept:office`, local only); the Office scripts run under the
+  session's execution policy, and a run blocked by that policy is reported as "not run", never as passed.
 - Start at `docs/new-build/README.md` (the Phase 0 record and which living document owns what); the living PRD is
   `docs/PRD.md`; the new application's living architecture `docs/ARCHITECTURE.md` (the legacy page's is
   `docs/legacy/ARCHITECTURE.md`); the data model `docs/DATA_DICTIONARY.md`; the roadmap
@@ -167,8 +176,9 @@ own working rules (below; `app/README.md`, `docs/new-build/toolchain.md`).
   with `PRD_PRIVACY_DENYLIST` naming the private deny-list; never copy a deny-list term into the repository
   (`docs/new-build/safety-tooling.md`). Docs: `node scripts/validation/docs-links.mjs`. Tests:
   `node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"` (IST and UTC); `node scripts/validation/traceability.mjs`;
-  `node scripts/data-extract.ts --check`. Before a merge: `node scripts/validation/release-check.mjs` on the branch,
-  its report attached to the pull request (`--after-push` once pushed).
+  `node scripts/data-extract.ts --check`; `node scripts/vendor-extract.mjs --check`. Before a merge:
+  `node scripts/validation/release-check.mjs` on the branch, its report attached to the pull request (`--after-push`
+  once pushed).
 - `data/refdata/*.json` is generated from `index.html` by `node scripts/data-extract.ts`, never edited by hand; CI
   checks it equal (`--check`), so a data refresh regenerates it in the same change (D-035). Every difference of the new
   app from the legacy is classified in the area's parity ledger (`tests/parity/<area>-ledger.json`; an unclassified

@@ -420,3 +420,142 @@ the end of the tab row (tried: at 1440 px it pushed the row onto two lines).
 the link) change; the shell tests now expect the link in the masthead; `ARCHITECTURE.md` §6.9 and §7, `DATA_DICTIONARY.md`
 §5.16, the PRD and `toolchain.md` say masthead where they said sidebar or column. Every later milestone builds its
 screens in this layout.
+
+## D-038 — Vendored libraries, the workbook zip and downloads under the CSP (27 Oct 2026, lead under D-033)
+**Context.** Milestone M1.4 (the portfolio overview: section 1 uploads, section 2 overview, slide C-08 and the overview
+workbook) is the first to run the four libraries of the legacy page in the new app. As they stand, SheetJS holds
+`<!--` and PptxGenJS holds `<script`, which the build's inline rule refused; both carry dozens of URLs, and PptxGenJS
+also holds `XMLHttpRequest` and `importScripts`, which `check-next.mjs` refused. Architecture A2 requires byte-for-byte
+copies, so the libraries cannot be edited to pass. The workbook writer must write the Office Open XML namespace names,
+which the source scan refused as remote URLs. PptxGenJS's and SheetJS's `writeFile` set a style attribute on their
+anchor, which `style-src` refuses.
+**Decision.**
+1. **Extracted, pinned, checked.** `scripts/vendor-extract.mjs` copies Chart.js 4.4.0 (SHA-256 `321e3a3f...`),
+   chartjs-plugin-datalabels 2.2.0 (`20c08f3d...`), SheetJS CE 0.18.5 (`c9506197...`) and PptxGenJS 3.12.0
+   (`cd078ca9...`) byte for byte from the blocks of `index.html` into `app/vendor/`, with their licence texts in
+   `app/vendor/licences/`. Each `MANIFEST.json` entry cites the index.html MD5 it came from. JSZip ships inside
+   PptxGenJS and is imported as `vendor:jszip`, an alias of that entry. The built-in logos are extracted the same way
+   into `app/src/config/brand-logos.json`. `node scripts/vendor-extract.mjs --check` recomputes the files, hashes,
+   allowances and logos from `index.html` and fails on any difference; CI runs it.
+2. **The inline rule for vendored files only.** A vendored file is refused for `</script`, and for `<!--` only when
+   `<script` follows it later in the same text (the pair that breaks HTML parsing). The app script keeps the strict
+   rule: no `<!--` and no `<script` at all.
+3. **Pinned allowances.** Each manifest entry has an `allow` block: the inline sequences, the network-API names with
+   exact counts (PptxGenJS: `XMLHttpRequest` 1, `importScripts` 1), the scheme URLs with exact counts (Chart.js 2,
+   datalabels 1, SheetJS 72, PptxGenJS 56) and the URLs of its licence text. `check-next.mjs` identifies each
+   executable script by its SHA-256 and applies a block only inside the script whose hash is that library's. A
+   library must equal its file in `app/vendor/` and hold exactly what its block pins. The app script must be the only
+   other script, and it comes last; no network API is allowed in it. `connect-src 'none'` stays the run-time guard.
+4. **OOXML namespace names.** The seven names the workbook writer writes are allowed only as quoted strings in the app
+   script, and in the sources only in `app/src/exports/ooxml/namespaces.ts`.
+5. **Pure layers.** The model, ingest, engine, views and exports read no browser global: no `window.`, `document.`,
+   `globalThis.`, `localStorage.`, `sessionStorage.` or `indexedDB.` there (U-53). The source scan also matches these
+   words in comments. The exporters take the libraries as arguments; only `app/src/ui/wiring.ts` imports SheetJS and
+   PptxGenJS, and only `app/src/ui/chart-lib.ts` imports Chart.js.
+6. **The workbook zip.** The overview workbook is zipped by an in-house, synchronous, deterministic STORE writer with
+   CRC-32 (`app/src/exports/zip/`), every entry dated 1980-01-01, so Node and the browser write the same bytes. This
+   amends the wording of A3. JSZip, from the PptxGenJS bundle, is used only to post-process the deck.
+7. **Downloads.** Every file is saved by `app/src/services/download.ts`: a Blob behind an object URL, an anchor
+   created in code and hidden by its `hidden` property, clicked and removed. The object URL is revoked 30 seconds
+   later, not at once, so that a browser still reading the Blob does not cancel the download. The libraries'
+   `writeFile` helpers are never used; the deck is written with `write({ outputType: 'uint8array' })` and a logo is
+   passed as a data URI.
+8. **build-info** also carries `buildId` (16 hex digits of the SHA-256 over the executable scripts in page order, each
+   followed by a NUL byte) and the SHA-256 of each library, so the deck and the workbook can name the exact build.
+**Alternatives.** Editing the libraries to pass the rules (rejected: A2); loosening the page-wide rules (rejected: a
+network API in the app script would pass unseen); JSZip for the workbook (rejected: it stamps the current time and
+works asynchronously); ExcelJS 4.4.0 (Q-13, the fallback if Excel had repaired the in-house writer's output; not
+needed, spike gate R1 passed in Excel on 27 Oct 2026).
+**Consequences.** A library change is visible in review as a change of hash and pinned counts. The browser spike
+(`tests/browser/next-spike.mjs`) proves the four libraries run under the CSP from disk and served, with no violation
+or console message, and that both Blob downloads save the page's bytes with no request (Edge and Chrome). core-js
+2.6.11 inside PptxGenJS replaces `Function.prototype.toString` page-wide; Promise and `Array.prototype.includes` stay
+the browser's own (recorded for the security review, no action). `CLAUDE.md`, `toolchain.md` sections 5 and 8 and
+`ARCHITECTURE.md` sections 3, 17 and 18 describe the rules.
+
+## D-039 — The portfolio overview rules (27 Oct 2026, lead under D-033; point 1(a) the owner's answer of 24 Oct 2026)
+**Context.** M1.4 builds the totals, the asset, product, liquidity, client and distributor allocations, slide C-08 and
+the overview workbook from one view-model. The rules below settle what the brief and the earlier decisions leave
+open; every difference from the legacy is a classified entry of `tests/parity/aggregation-ledger.json` (AG-01 to
+AG-14, no regression). KI-147 (the reader's money columns) was left for M1.4 by D-035.
+**Decision.**
+1. **Money columns (KI-147).** `MONEY_COLUMN_RULE` (`app/src/config/money-columns.ts`) is
+   `{ invalidText: 'invalid-source', crossCheckToleranceCr: 0.005 }`. The reader takes the Crore column, then Lakh,
+   then rupees, and acts on the column it would use:
+   (a) **the owner's answer, 24 Oct 2026, "no fallback"**: text that is not an amount (a percent included) makes the
+   amount INVALID SOURCE DATA. No later column is read in its place. A holding whose market value is invalid is
+   excluded and listed (OD-8), with the Warning `base-file.money-invalid`, scoped to the holdings, naming the column
+   and the rows. An invalid invested value leaves the holding included without one (counted in
+   `totals.counts.invalidInvested`);
+   (b) the lead's decision: a blank Crore cell is not text, so the reader takes the Lakh, then the rupee column, with
+   the Information notice `base-file.money-column-used` naming the column used and the column passed over;
+   (c) the lead's decision: a placeholder in the Crore cell ("NA", "N/A", "-", "nil" and the rest of the reader's
+   placeholders) counts as blank, and `base-file.money-column-used` names the placeholder;
+   (d) the lead's decision: when the amount used and a later column's amount for the same field are both numbers and
+   differ by more than 0.005 Cr (plus 1e-9), the Warning `base-file.money-disagree` names both columns, and the amount
+   used is kept.
+   The rule applies to invested value, market value and gain alike. There is no fallback mode and no
+   `base-file.money-fallback`.
+2. **Totals and gain.** Totals cover included holdings only. Invested is the sum over included holdings that have an
+   invested value; gain is the CMV of those same holdings minus that invested (OD-18), never the file's gain/loss,
+   which appears only in Holdings (as loaded); absolute return is gain / invested x 100 over the same holdings. Below
+   full coverage these carry the share of CMV covered and show the "p" marker with a note. When no included holding
+   has an invested value they are NOT AVAILABLE IN SUPPLIED DATA (INVALID SOURCE DATA when every one is invalid),
+   never 0. The percent of CMV is NOT APPLICABLE when the total CMV is 0; absolute return when invested is 0;
+   invested coverage on a line whose CMV is 0. Allocation lines follow the same rule line by line. Liquidity lines
+   with a CMV of 0 or less are left out, as in the legacy pie.
+3. **One asset order.** Equity, Debt, Hybrid, Commodity, REITs/InvITs, Unknown, in the asset table, the pie and the
+   client and distributor matrices; only classes present get a row. The unknown row is labelled "Unknown", comes last,
+   is coloured #D9D9D9, and a note lists the labels read as unknown. Products within a class are ordered by CMV,
+   highest first, ties in file order. Holdings without a client or distributor go to a column labelled "Client not
+   given" or "Distributor not given". Groups keyed by names are held in Maps, so a label such as "constructor" is an
+   ordinary label (KI-151).
+4. **Single client or distributor (OD-21) across outputs.** With fewer than two clients (or distributors) holding
+   included holdings, the screen hides that matrix behind one line, and the workbook leaves out its sheet; the Read
+   Me says why.
+5. **The workbook.** Sheets in order: Read Me and Controls, Source Register, Holdings (as loaded), Portfolio
+   Overview, Client Allocation and Distributor Allocation (only when shown), Audit Log and a hidden, protected
+   `_manifest`. Portfolio Overview is one table with a Block column (asset and product rows, the Grand Total, the
+   liquidity rows, the liquidity percent always in the % CMV column). Every aggregate is a SUMIFS over the holdings,
+   with criteria only on canonical asset classes, the generated keys (P01, L01, C01, D01; C00 and D00 when not given)
+   and Yes/No flags; its cached value is the view-model's figure. A missing value is a blank cell with its status,
+   never a formula. Cambria 9; money `#,##0.00`; percent `0.00"%"`; units in Indian grouping; dates `d mmm yyyy`;
+   negatives in #931621 by conditional formatting; thin #D9D9D9 borders; inline strings with a quote prefix when they
+   start with = + - @, a tab or a carriage return; values unrounded with number formats. `_manifest` lists each
+   formula's hash and the cell of each view-model figure (the cross-output join).
+6. **Chart labels and colours.** A pie label is the category and its percent to one decimal ("Equity 59.3%"), and no
+   label is drawn under 2.00%: the value stays in the legend and the table. Colours are fixed by category name: Equity
+   tan, Hybrid grey75, Debt gold, Commodity #808080, REITs/InvITs #8C6B43, Alternatives #C9A876, Cash #E5DACB, Unknown
+   #D9D9D9; liquidity Open Ended gold, Close Ended grey75, other labels the rating ramp in alphabetical order (KI-150).
+   On screen the labels sit outside the pie on the white panel (#222222 on white, 15.9:1); labels inside slices failed
+   4.5:1 on Commodity and REITs. On the slide each label is written as text from the view-model, not built by
+   PowerPoint from the value, and a label that would read under 4.5:1 on its slice is placed outside it. Declared
+   repeats on C-08: the KPI invested value and CMV with the Grand Total row, and the asset pie labels with the table's
+   % CMV. The deck title in the file properties is the family label followed by "Portfolio overview".
+7. **Preview marker.** "Preview build, not for client use" sits in the black footer band of every slide (white Cambria
+   8 pt italic), in the first row of the workbook's Read Me, and file names end in `_PREVIEW`, exactly when the build
+   channel is preview.
+8. **C-08 in M1.4** carries the three KPIs (Invested Value, Current Market Value, Unrealised Gain/Loss), the asset and
+   product table over continuation pages and the two pies; the insight box waits for the observation engine (M5).
+   The liquidity rule of the legacy (`07_engine.js:607-615`) is ported as it is (E-18); M2.2 turns it into data.
+9. **Validation and the export gate.** A failed reconciliation is Blocking (tolerance 1e-9 relative plus 1e-12
+   absolute); `review.as-on-missing` is Blocking (there is never a fallback date, KI-087); `review.no-included-holdings`
+   is Blocking; `review.total-like-holding` is High (KI-142). A High result blocks exports until the analyst
+   acknowledges it in the basic validation panel, which writes an audit entry. Reader Warnings that touch overview
+   figures become notes. U-67 in full stays in M13.
+10. **Scope.** U-06 (the base-file template) moves to M7. "Disclaimer in use" shows NOT AVAILABLE IN SUPPLIED DATA
+    until the monthly folder arrives (M11). Matching arrives in M2. Family scope only. Family and client labels are
+    editable. The built-in logos ship (the generic scan is clean on them; the private deny-list runs before the push).
+11. **The Audit Log** lists audit entries, then validation results by rule, severity, status, decision and count,
+    without message text. An export entry records the file kind, SHA-256 and size; in its file name the family label
+    is replaced by `<family label>`.
+12. **Open owner items.** BF-19 (an unrecognised Asset Name is Unknown), BF-26 (letter case and spacing folded) and a
+    market value of exactly 0 (a real zero, included) stay on the M1.3 defaults; their ledger entries say "pending
+    owner" (`DATA_DICTIONARY.md` §8).
+**Alternatives.** The fallback to the Lakh value, flagged on the holding (the lead's earlier default for KI-147;
+rejected by the owner); the legacy asset order Equity, Hybrid, Debt in the matrices (rejected: no record supports it);
+PowerPoint's own pie labels with its separator and rounding (rejected: the slide would not show the screen's text).
+**Consequences.** KI-147 is fixed in the new app; KI-007, KI-020, KI-021, KI-071, KI-078, KI-084, KI-087, KI-089,
+KI-091, KI-092, KI-093, KI-094 and KI-150 are fixed there too (the legacy page is unchanged, D-028). `DATA_DICTIONARY.md` §5.3, §5.8, §5.13 and §6,
+`ARCHITECTURE.md` §14 and §15 and `deck-design-system.md` describe the rules; the parity ledger lists the corrections
+that change client numbers.

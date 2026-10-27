@@ -318,9 +318,9 @@ weights (KI-029). Documented in full at M16.
 | Area | Status |
 |---|---|
 | Phase 0 audit and design | done; the owner's answers of 22 Oct 2026 applied |
-| New application | M1.1: the safety tooling, the Phase 0 records and the living documents merged (PR #10); the rest (the release and monthly PRD checks, the folder skeleton, the living `ARCHITECTURE.md`) ready for its pull request. M1.2, stacked on it and ready for its own pull request: the first application code, the pinned toolchain, the one-file offline build with its invariant check, and the shell with the nine sections of §3 as empty states and the MF Screener data pack slot in section 1, published at `/next/` with the preview banner (D-024, D-034; a failing preview never blocks the legacy page). No requirement is implemented yet beyond the shell. M1.3, stacked on M1.2 and ready for its own pull request: the shared model, the base-file reader with its parity ledger and the reference data in `data/refdata/` (D-035); no page uses them yet. M1.4 (the portfolio overview end to end) is next; M1.3's questions for the owner are in `DATA_DICTIONARY.md` §8 |
+| New application | M1.1 to M1.3 merged (PRs #10 to #13): the safety tooling and records; the pinned toolchain, the one-file offline build with its invariant check and the nine-section shell with the MF Screener data pack slot, published at `/next/` with the preview banner (D-024, D-034); the shared model, the base-file reader with its parity ledger and `data/refdata/` (D-035). The layout of D-037 (PR #14). M1.4 (27 Oct 2026, integrated on `feat/m1-4-overview`): sections 1 and 2 in preview, meeting R-IN-4, R-IN-5, R-IN-7 (display only), R-IN-8, R-IN-9 and R-OUT-1 within the M1.4 limits (family scope, no insight box until M5, instrument matching in M2), with slide C-08 and the overview workbook (D-038, D-039). M2 is next; the owner's open questions are in `DATA_DICTIONARY.md` §8 |
 | Legacy application | live at `/` (`index.html` with fix batch 2a since PR #9, MD5 `911A0465…`; this PRD's legacy reference stays `782794f`, tag `legacy-baseline-782794f`); during the parallel run it receives calculation, data and security fixes only (D-028) |
-| Feature parity | 376 matrix rows, all "not started" |
+| Feature parity | 376 matrix rows: 47 "in progress" after M1.4, the rest "not started" |
 | Owner decisions outstanding | none: ND-1 to ND-10 answered on 22 Oct 2026 (D-024 to D-033); every other question proceeds on its default, and Claude decides open technical questions under D-033 |
 
 ## 14. Change log of this PRD
@@ -336,3 +336,4 @@ weights (KI-029). Documented in full at M16.
 | 0.4 (status) | 23 Oct 2026 | §13 status at the end of M1.1: the rest of M1.1 ready for its pull request, M1.2 and M1.3 built on their own branches, the legacy page with fix batch 2a; requirements unchanged |
 | 0.4 (M1.2) | 23 Oct 2026 | §13 status for M1.2: the first application code (toolchain, one-file build, nine-section shell, `/next/` preview; D-034); requirements unchanged |
 | 0.4 (M1.3) | 23 Oct 2026 | §13 status for M1.3: the shared model, the base-file reader and the reference data (D-035); requirements unchanged |
+| 0.4 (M1.4) | 27 Oct 2026 | §13 status for M1.4: sections 1 and 2, slide C-08 and the overview workbook in preview (D-038, D-039); requirements unchanged |
