@@ -29,7 +29,7 @@ const SENT = 'Lots bought before 1 Feb 2018 are measured on actual cost; the 31 
 
 console.log('--- the verifier\'s lot: 1,000 units bought 1 Jun 2017 at Rs 50, now Rs 120 ---');
 const book = new T.Book().add(Object.assign({ nav: 120, lots: [['2017-06-01', 1000, 50]] }, EQ));
-const X = book.tax('2026-10-19'), p = X.positions[0];
+const X = book.tax('2026-10-19', null, book.exemptionUsed()), p = X.positions[0];   /* tax batch T3: before the Sec 198 exemption, as stated (KI-168 tests it) */
 ok(p.gfLots === 1, 'the holding has 1 open lot bought before 1 Feb 2018 (gfLots ' + p.gfLots + ')');
 ok(T.near(T.RS(p.ltGain), 70000) && T.near(T.RS(X.harvest.taxBefore), 8750), 'figures unchanged: LTCG Rs 70,000 on actual cost, tax before Rs 8,750 (no price is invented)');
 

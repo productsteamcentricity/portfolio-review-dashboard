@@ -52,7 +52,7 @@ ok(row && row.months === 12 && row.lockMonths === 36 && row.st.rate === null && 
 console.log('--- the review\'s three-lot holding, as on 19 Oct 2026 ---');
 const book = new T.Book().add({ name: 'Synthetic ELSS Tax Saver Fund-Reg(G)', product: 'Mutual Funds', asset: 'Equity',
   category: 'Equity Linked Savings Scheme', nav: 90, lots: [['2022-06-15', 100, 50], ['2024-12-10', 100, 80], ['2026-06-10', 100, 100]] });
-const X = book.tax('2026-10-19');
+const X = book.tax('2026-10-19', null, book.exemptionUsed());   /* tax batch T3: before the Sec 198 exemption, as stated (KI-168 tests it) */
 const p = X.positions[0];
 ok(p && p.cls === ELSS, 'the holding is classed ' + ELSS + ' (' + (p && p.cls) + ')');
 ok(T.near(T.RS(p.ltCmv), 9000) && T.near(T.RS(p.ltGain), 4000), 'long term: Rs 9,000 of CMV with a Rs 4,000 gain (got ' + T.RS(p.ltCmv) + ' / ' + T.RS(p.ltGain) + ')');

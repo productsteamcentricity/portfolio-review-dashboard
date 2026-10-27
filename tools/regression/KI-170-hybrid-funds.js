@@ -65,7 +65,8 @@ const sheet = (blk, s) => Object.keys(REF[blk]).filter(k => REF[blk][k].sheet ==
 
 console.log('--- known answers, as on 19 Oct 2026 (1,000 units, Rs 100 to Rs 110) ---');
 const run = (name, cat, lots, asset) => {
-  const X = new T.Book().add({ name, product: 'Mutual Funds', asset: asset || 'Hybrid', category: cat, nav: 110, lots }).tax('2026-10-19');
+  const b = new T.Book().add({ name, product: 'Mutual Funds', asset: asset || 'Hybrid', category: cat, nav: 110, lots });
+  const X = b.tax('2026-10-19', null, b.exemptionUsed());   /* tax batch T3: before the Sec 198 exemption, as stated (KI-168 tests it) */
   return { p: X.positions[0], h: X.harvest };
 };
 const a11 = run('X Aggressive Hybrid Fund-Reg(G)', 'Aggressive Hybrid Fund', [['2025-11-19', 1000, 100]]);

@@ -59,7 +59,7 @@ ok(REF.TAX_RULES.some(r => r.inst === FOREIGN && r.months === 24 && r.st.rate ==
 
 console.log('--- known answers, as on 19 Oct 2026 ---');
 const stock = (name, d, nav) => new T.Book().add({ name, product: 'Direct Equity', asset: 'Equity', category: 'Large Cap', nav: nav || 140, lots: [[d, 100, 100]] });
-const one = (name, d) => { const X = stock(name, d).tax('2026-10-19'); return { p: X.positions[0], h: X.harvest }; };
+const one = (name, d) => { const b = stock(name, d), X = b.tax('2026-10-19', null, b.exemptionUsed()); return { p: X.positions[0], h: X.harvest }; };   /* tax batch T3: before the Sec 198 exemption, as stated (KI-168 tests it) */
 const c1 = one('Coromandel International Ltd.', '2025-06-19');
 ok(c1.p.cls === LES && T.near(T.RS(c1.p.ltGain), 4000) && T.near(T.RS(c1.h.taxBefore), 500),
   'Coromandel International, 16 months: ' + LES + ', LTCG Rs 4,000, tax before Rs 500 (got ' + c1.p.cls + ', ' + T.RS(c1.p.ltGain) + ', ' + T.RS(c1.h.taxBefore) + '; was Global Funds, STCG at slab, Rs 0)');
@@ -81,7 +81,7 @@ const lossBook = new T.Book()
   .add({ name: 'KEC International Ltd.', product: 'Direct Equity', asset: 'Equity', category: 'Mid Cap', nav: 70, lots: [['2025-09-19', 100, 100]] })
   .add({ name: 'Asian Paints Ltd.', product: 'Direct Equity', asset: 'Equity', category: 'Large Cap', nav: 150, lots: [['2025-06-19', 100, 100]] })
   .add({ name: 'Infosys Ltd.', product: 'Direct Equity', asset: 'Equity', category: 'Large Cap', nav: 120, lots: [['2026-06-19', 100, 100]] });
-const LB = lossBook.tax('2026-10-19').harvest;
+const LB = lossBook.tax('2026-10-19', null, lossBook.exemptionUsed()).harvest;   /* tax batch T3: before the Sec 198 exemption, as stated (KI-168 tests it) */
 ok(T.near(T.RS(LB.ltLosses), 3000) && T.near(T.RS(LB.taxBefore), 1025) && T.near(T.RS(LB.taxAfter), 650) && T.near(T.RS(LB.saving), 375),
   'loss set-off: the Rs 3,000 long-term loss offsets long-term gains only: tax 1,025 to 650, saving Rs 375 (got ' +
   T.RS(LB.taxBefore) + ' / ' + T.RS(LB.taxAfter) + ' / ' + T.RS(LB.saving) + '; was Rs 525)');

@@ -31,7 +31,8 @@ const GAIN = 100 * (150 - 100);                       /* Rs 5,000 */
 const LT_TAX = GAIN * 0.125, ST_TAX = GAIN * 0.20;    /* Rs 625, Rs 1,000 */
 /* one lot of 100 units at Rs 100, valued at Rs 150, held as `kind`, bought `buy`, measured to `asOn` */
 const one = (kind, buy, asOn) => {
-  const X = new T.Book().add(Object.assign({ nav: 150, lots: [[buy, 100, 100]] }, kind)).tax(asOn);
+  const b = new T.Book().add(Object.assign({ nav: 150, lots: [[buy, 100, 100]] }, kind));
+  const X = b.tax(asOn, null, b.exemptionUsed());   /* tax batch T3: before the Sec 198 exemption, as stated (KI-168 tests it) */
   return { p: X.positions[0], h: X.harvest };
 };
 const isLT = r => r.p && T.near(T.RS(r.p.ltGain), GAIN) && T.near(T.RS(r.p.stGain), 0);
@@ -94,7 +95,7 @@ ok(isLT(r), 'and as on 1 Feb 2026: long term');
 
 console.log('--- one holding whose FIFO lots straddle the anniversary ---');
 const sb = new T.Book().add(Object.assign({ nav: 150, lots: [['2025-10-22', 100, 100], ['2025-10-24', 100, 120]] }, EQ));
-const S = sb.tax('2026-10-23'), sp = S.positions[0];
+const S = sb.tax('2026-10-23', null, sb.exemptionUsed()), sp = S.positions[0];   /* tax batch T3: before the Sec 198 exemption, as stated (KI-168 tests it) */
 /* long term: 100 units, CMV 15,000, gain 100 x (150 - 100) = 5,000; short term: 100 units, CMV 15,000, gain 100 x (150 - 120) = 3,000 */
 ok(T.near(T.RS(sp.ltCmv), 15000) && T.near(T.RS(sp.ltGain), 5000) && T.near(T.RS(sp.stCmv), 15000) && T.near(T.RS(sp.stGain), 3000),
   'lots of 22 and 24 Oct 2025: long term Rs 15,000 CMV with Rs 5,000 gain, short term Rs 15,000 with Rs 3,000');

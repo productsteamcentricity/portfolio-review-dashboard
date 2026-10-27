@@ -81,7 +81,10 @@ const iw = H.XLSX.read(fx.irrBuf, { type: 'buffer', cellDates: true });
 const m = E.computeReview(base, Object.assign({}, REF, { IRR: E.parsers.parseIRR(iw.SheetNames, n => aoa(iw, n)) }), { familyName: 'Sample Family', asOnDate: '30 Sep 2026' });
 const t = m.taxation.totals, r6 = v => Math.round(v * 1e6) / 1e6;
 const got = [t.cmv, t.ltcgCmv, t.stcgCmv, t.unclassCmv, t.ltcgGain, t.stcgGain, t.unclassGain, m.taxation.harvest.taxBefore].map(r6);
-ok(JSON.stringify(got) === JSON.stringify([8.7443, 5.547273, 2.400027, 0.797, 2.047273, 0.350027, 0.147, 0.267175]), 'totals and tax before unchanged (' + got.join(', ') + ')');
+/* tax batch T3 moves the PMS (1.2565 Cr, gain 0.5065, KI-169) and the Category I/II AIF (0.6516 Cr, gain 0.1516, KI-171) from
+   long term to not classified, and applies each client's Rs 1.25 lakh exemption (KI-168): tax before 0.267175 - 0.0633125
+   (PMS at 12.5%) - 0.01895 (AIF at 12.5%) - 2 x 0.0015625 (12.5% of 0.0125 Cr per client) = 0.181787 Cr */
+ok(JSON.stringify(got) === JSON.stringify([8.7443, 3.639173, 2.400027, 2.7051, 1.389173, 0.350027, 0.8051, 0.181787]), 'totals and tax before as tax batch T3 gives them (' + got.join(', ') + ')');
 const debts = m.taxation.positions.filter(p => /^Debt Mutual Funds/.test(p.cls));
 ok(debts.length === 2 && debts.every(p => p.cls === DEBT) && r6(debts.reduce((s, p) => s + p.stCmv, 0)) === 1.7937, 'its two debt funds carry the new label (short-term CMV 1.7937 Cr)');
 (async () => {

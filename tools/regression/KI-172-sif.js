@@ -55,7 +55,8 @@ ok(E.taxClassOf({ asset: 'Equity', product: 'Mutual Funds', category: 'Flexi Cap
 
 console.log('--- known answers, as on 30 Sep 2026 (1,000 units, Rs 10 to Rs 12) ---');
 const run = (name, lots, cat) => {
-  const X = new T.Book().add({ name, product: 'SIF', asset: 'Equity', category: cat || 'Long-Short Fund', nav: 12, lots }).tax('2026-09-30');
+  const b = new T.Book().add({ name, product: 'SIF', asset: 'Equity', category: cat || 'Long-Short Fund', nav: 12, lots });
+  const X = b.tax('2026-09-30', null, b.exemptionUsed());   /* tax batch T3: before the Sec 198 exemption, as stated (KI-168 tests it) */
   return { p: X.positions[0], h: X.harvest, X };
 };
 const s1 = run('Qsif Equity Long-Short Fund-Reg(G)', [['2026-06-15', 1000, 10]]);

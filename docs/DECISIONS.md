@@ -469,11 +469,48 @@ confirm or change:
   units (equity funds and ETFs, ELSS, equity-oriented hybrids, equity ETF FoFs, equity PMS) and REIT and InvIT units.
   It is shown only when such a lot is open; no figure changes until the owner rules on step 2.
 - **Labels.** "Long term after" reads "More than N months", the reckoner's own words.
+
+Settled while building part T3 (the harvest, AIF and PMS treatment, the wording, 27 Oct 2026), within the decisions
+above, for the owner to confirm or change:
+- **The two assumptions (e, f) are per client**, entered on the Taxation tab's harvest card: the slab rate used to
+  order the set-off (default 30%, held to 0% to 30%, before surcharge and cess) and the Sec 198 exemption already used
+  this tax year (default Rs 0, held to Rs 0 to 1,25,000). A value equal to the default is shown as "(default)"; blank
+  restores it. Both are stated on the harvest slide. They are per-family state, cleared when another family loads.
+- **Slab-rate gains are ranked, never quantified.** A loss set against a slab-rate gain saves tax at the client's slab
+  rate; that saving is not in "Estimated tax saved", and the amount sheltered is shown beside the "floor" warning.
+- **The exemption in the order of set-off.** The Sec 198 gains inside the unused exemption count as taxed at 0%, so
+  losses reach them after every other gain; a loss still left then goes to them (set-off comes before the exemption, so
+  it is not carried forward while gains remain). At an equal rate the order is fixed: a slab-rate gain first (so the
+  saving shown is never the larger figure), then other gains before Sec 198 gains, short term before long term, then
+  by class name; never by the size of a holding. The total is the same whichever 12.5% pool a loss reaches first.
+- **Sec 198 rows**: listed shares, equity funds and ETFs, ELSS, equity-oriented hybrids, equity ETF FoFs, equity
+  long-short SIFs, equity PMS, REIT and InvIT units (Master Summary column J). Not AIF Category I or II: the page cannot
+  see the listed-equity part of a pass-through gain (the review's question 3).
+- **Not split, three kinds.** A Category III AIF is "fund level": no lot ageing, no reconciliation, its CMV and
+  Gain/Loss in their own totals and column. A Category I or II AIF is "pass-through" and a PMS "per security": neither
+  is split, both stay in "not classified", both are out of the harvest; a Cat I/II AIF needs no lot reconciliation, a
+  PMS still reconciles its capital flows (as the verifier's tests require). The Cat I/II rows stay two rows (rate label
+  "Pass-through"); the PMS row keeps 20% / 12.5% (listed equity held directly). For the AI Analyst such a holding is
+  "n/a" with the reason.
+- **Holdings with no client name** are one group, treated as one person for the set-off and the exemption, and counted
+  on the tab and the slide.
+- **Crypto is kept out of set-off** (part T4, after the financial re-review of part T3 found that part T3 left crypto
+  gains in the short-term pools, ranked at 30%, so a loss went to them first): until the owner answers CR-0008
+  question 18 from an approved source, the page takes the safe behaviour. The Crypto row carries `noSetOff` and its
+  basis (the reckoner is silent; Sec 115BBH of the 1961 Act allowed no set-off either way and no carry-forward). No
+  loss is set against a crypto gain, which is taxed in full before and after; a crypto loss reduces no other gain, is
+  never shown as carried forward and is not offered as a holding to sell; a crypto gain and a crypto loss of one client
+  do not net. The tab's harvest card and the harvest slide say so in one sentence. If the owner allows set-off, the
+  flag comes off the row and the ranking at 30% applies again.
+- **The carry-forward sentence** says "tax years" for every review (the review's question on reviews valued before 1
+  Apr 2026 is open).
 **Alternatives.** Leaving every hybrid and SIF unclassified until an AMC classification exists (rejected for the
 categories whose bucket is fixed by their SEBI limits); mapping funds by plan name (rejected: wrong for 3 of 7
 retirement plans on the review's measure); a fund whitelist for the international test (rejected: it loses
 international funds with a blank product).
 **Consequences.** CR-0008 implements the fixes in parts on `fix/legacy-batch-3-tax`; part T1 is KI-162 to KI-165,
 KI-170, KI-172 to KI-174 and KI-178 to KI-180; part T2 (`fix/legacy-batch-3-tax-p2`) is KI-160, KI-161, KI-176 and
-step 1 of KI-177. The owner's and tax adviser's questions are listed in CR-0008. The new build ports each rule with
+step 1 of KI-177; part T3 (`fix/legacy-batch-3-tax-p3-r2`) is KI-166 to KI-169, KI-171, KI-175, KI-181 and KI-182, with
+KI-130; part T4 (the same branch) keeps crypto out of set-off after the re-review (KI-182, KI-175). The owner's and
+tax adviser's questions are listed in CR-0008. The new build ports each rule with
 the same known answer (D-028).

@@ -70,7 +70,8 @@ ok(['Equity ETF FoF (90/90)|12|0.2|0.125', 'Fund of Funds (general rule)|24|null
 
 console.log('--- known answers, as on 19 Oct 2026 (1,000 units, Rs 100 to Rs 120) ---');
 const run = (name, d) => {
-  const X = new T.Book().add({ name, product: 'Mutual Funds', asset: 'Debt', category: 'Debt Oriented', nav: 120, lots: [[d, 1000, 100]] }).tax('2026-10-19');
+  const b = new T.Book().add({ name, product: 'Mutual Funds', asset: 'Debt', category: 'Debt Oriented', nav: 120, lots: [[d, 1000, 100]] });
+  const X = b.tax('2026-10-19', null, b.exemptionUsed());   /* tax batch T3: before the Sec 198 exemption, as stated (KI-168 tests it) */
   return { p: X.positions[0], h: X.harvest };
 };
 const a = run('Groww Nifty 200 ETF FOF-Reg(G)', '2025-09-19');

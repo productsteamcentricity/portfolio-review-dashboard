@@ -1,6 +1,6 @@
 # Project state
 
-**Last updated:** 23 Oct 2026.
+**Last updated:** 27 Oct 2026.
 - The full audit is done: 67 issues, see [`audits/`](audits/).
 - Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done. Fix batch 2a
   (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is merged (PR #9; `index.html` MD5
@@ -11,8 +11,15 @@
   owner's confirmation. Part T1 (classification and the TAX_RULES rows: KI-162 to KI-165, KI-170, KI-172 to KI-174,
   KI-178 to KI-180) is committed on `fix/legacy-batch-3-tax` (`index.html` MD5 `5717A796…`, not pushed). Part T2
   (holding periods and lots: KI-160, KI-161, KI-176 and the disclosure step of KI-177) is committed on
-  `fix/legacy-batch-3-tax-p2`, on top of T1 (`index.html` MD5 `AE70F78B…`, not pushed). The later parts follow; the
-  batch merges as one pull request after its financial re-review and browser acceptance.
+  `fix/legacy-batch-3-tax-p2`, on top of T1 (`index.html` MD5 `AE70F78B…`, not pushed). Part T3 (the harvest per
+  client, the Rs 1.25 lakh Sec 198 exemption with the analyst's "already used" input, the set-off order with the
+  analyst's slab rate, AIF Category III at fund level, AIF Category I and II and PMS not split, the carry-forward
+  wording and the crypto source: KI-166 to KI-169, KI-171, KI-175, KI-181, KI-182, with KI-130) and part T4 (the
+  financial re-review of T3: crypto kept out of set-off until the owner rules, CR-0008 question 18; two figures in the
+  records corrected) are committed on `fix/legacy-batch-3-tax-p3-r2`, on top of T2 (`index.html` MD5 `61FC0FB2…`,
+  not pushed). 22 of the 23 findings are fixed and KI-177 in part; KI-177's step-up waits for the owner's rulings.
+  The batch merges as one pull request after the check of part T4, the browser acceptance (with
+  `family-isolation.js`'s new assumption-reset check) and the owner's answers to CR-0008 questions 17 and 18.
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
   - **Phase 0 is done.** The record is in [`new-build/`](new-build/README.md) (audit, capability inventory,
     architecture, reuse plan, parity matrix, data sources, roadmap, test plan, repository structure, rule bank, deck
@@ -96,7 +103,10 @@
    - confirm the tax defaults of D-040 and answer CR-0008's questions (ELSS unlock day, the 29 Feb clamp, the marker
      of foreign shares in real base files, the 90/90 status of equity ETF FoFs, the AMC year-end classifications, the
      Valuation Date column of real base files, how the IRR sheet records a scheme merger, and the rulings the 31 Jan
-     2018 grandfathering needs); OD-28 is answered by the reckoner (Sec. 76, old 50AA);
+     2018 grandfathering needs; from part T3: whether a base-file client is one assessee, the default slab rate and
+     exemption already used, whether "Listed AIF" means Category III, and set-off against crypto, which part T4 keeps
+     out of set-off until answered; questions 17 and 18 are needed before the batch merges); OD-28 is answered by the
+     reckoner (Sec. 76, old 50AA);
    - answer M1.3's questions in [`DATA_DICTIONARY.md`](DATA_DICTIONARY.md) §8: unrecognised Asset Names such as
      "Gold" (BF-19), letter case of Asset Names (BF-26), a market value of 0, and, for M1.4, a Crore cell that is not
      a number beside a Lakh amount (KI-147);

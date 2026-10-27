@@ -4,9 +4,14 @@
   19 Oct 2026; the Income-tax Act 2025 in force from 1 Apr 2026) as the source of record for the current tax year.
   The lead commissioned a financial review of the live page against it (24 Oct 2026) and set the defaults in D-040.
   Built in parts: part T1 on `fix/legacy-batch-3-tax` (27 Oct 2026); part T2 on `fix/legacy-batch-3-tax-p2`, on top of
-  T1's commit (27 Oct 2026).
-- **Status:** in progress: parts T1 (classification and the TAX_RULES rows) and T2 (holding periods and lots) are
-  committed, not pushed; the later parts follow. Under D-028 these are calculation and data fixes for the live page.
+  T1's commit (27 Oct 2026); part T3 and part T4 (the corrections from the financial re-review of part T3) on
+  `fix/legacy-batch-3-tax-p3-r2`, on top of T2's commit (27 Oct 2026).
+- **Status:** built: parts T1 (classification and the TAX_RULES rows), T2 (holding periods and lots), T3 (the
+  harvest, AIF and PMS treatment, the wording) and T4 (crypto kept out of set-off) are committed, not pushed. 22 of
+  the 23 findings are fixed and KI-177 in part; KI-177's step-up (TX-18 step 2) waits for the owner's rulings. The
+  financial re-review of part T3 (27 Oct 2026) asked for part T4; the batch waits for the check of part T4, the
+  browser acceptance and the owner's answers to questions 17 and 18. Under D-028 these are calculation and data fixes
+  for the live page.
 
 ## Request
 Make the Taxation tab, the tax slides and the AI Analyst tax signal follow the reckoner. The review found 23
@@ -18,7 +23,9 @@ repository (it quotes no client data, but it is the working file of the review).
 |---|---|---|---|
 | T1 | classification and the TAX_RULES rows | KI-162 to KI-165 (TX-03 to TX-06), KI-170 (TX-11), KI-172 to KI-174 (TX-13 to TX-15), KI-178 to KI-180 (TX-19 to TX-21) | built 27 Oct 2026 |
 | T2 | holding periods and lots: the anniversary rule, the 1 Apr 2023 purchase-date rule, the valuation date, the 1 Feb 2018 disclosure | KI-160 (TX-01), KI-161 (TX-02), KI-176 (TX-17), KI-177 step 1 (TX-18) | built 27 Oct 2026 |
-| later | fund-level and pass-through AIFs (TX-07, TX-12), harvest (TX-08, TX-09, TX-16), PMS (TX-10), wording (TX-22), crypto source (TX-23); the grandfathering step-up (TX-18 step 2, owner rulings first) | KI-166 to KI-169, KI-171, KI-175, KI-177 step 2, KI-181, KI-182 | open |
+| T3 | the harvest per client (TX-08), the Sec 198 exemption (TX-09), the set-off order (TX-16), fund-level and pass-through AIFs (TX-07, TX-12), PMS (TX-10), the carry-forward wording (TX-22), the crypto source (TX-23) | KI-166 to KI-169, KI-171, KI-175, KI-181, KI-182 (and KI-130) | built 27 Oct 2026 |
+| T4 | the financial re-review of T3: crypto kept out of set-off (finding F1); two figures in the records corrected (F2, F3) | KI-182, KI-175 | built 27 Oct 2026 |
+| later | the grandfathering step-up (TX-18 step 2) | KI-177 step 2 | waits for the owner's rulings |
 
 **Part T1 must not be merged alone:** it maps conservative hybrids, debt FoFs, debt SIFs and debt ETFs filed as "ETF" or
 "Index Fund" to the Specified rows, which treat every lot as short term; units bought before 1 Apr 2023 need the
@@ -276,6 +283,180 @@ TAX_RULES goes from 32 to 34 rows.
 - **Not verified:** the Taxation tab in a browser (its HTML was rendered headlessly from the shipped renderer and
   checked in the tests); real client books and real base files with a Valuation Date column (no client data used).
 
+## Scope of part T3 (the harvest, AIF and PMS treatment, the wording)
+- **Acceptance:**
+  - each client's harvest is worked out on that client's holdings alone; the family figures are the sum of the
+    clients' figures, field by field; one client's loss never reduces another client's tax (TX-08, D-040 f);
+  - the Rs 1.25 lakh Sec 198 exemption applies per client after set-off, only to listed shares, equity-oriented funds
+    and REIT and InvIT units, less the amount already used this tax year that the analyst enters (default 0) (TX-09);
+  - losses go first to the gains taxed at the highest rate; a slab-rate gain is ranked at the analyst's slab rate
+    (default 30%) but never given a tax figure; gains inside the exemption are reached last (TX-16, D-040 e);
+  - a Category III AIF has no investor-level gain, loss or tax (fund level); a Category I or II AIF (pass-through) and
+    a PMS (per security) are not split by the investor's own flows; none is in the harvest; each is explained (TX-07,
+    TX-12, TX-10, D-040 d, h);
+  - the carry-forward sentence says "tax years" and the due-date condition on the tab and the slide (TX-22); the Crypto
+    row states its source (TX-23, D-040 g);
+  - every analyst input is on the Taxation tab, defaults marked, and stated on the harvest slide; the inputs are
+    per-family state, cleared with the family (KI-001).
+- **Non-goals:** the 31 Jan 2018 step-up (TX-18 step 2); security-level PMS statements and the AIF's annual statement
+  (Form 64C) as inputs (new build, M7); whether "Listed AIF" means Category III; set-off against crypto gains; any
+  change to the classes of T1 or the holding periods of T2.
+
+## Decisions settled while building part T3 (for the owner to confirm; also in D-040)
+- **Per client inputs.** The slab rate (0% to 30%, default 30%) and the Sec 198 exemption already used this tax year
+  (Rs 0 to 1,25,000, default 0) are entered per client on the harvest card; a default is marked "(default)"; blank
+  restores it; the slide states them (one line when every client has the same values).
+- **Ranking.** Slab-rate gains are ranked at the slab rate and never quantified; the amount of slab-rate gains a loss
+  shelters is shown. Sec 198 gains inside the unused exemption count as 0%, so they are reached last; a loss left
+  after every other gain still goes to them (set-off comes before the exemption). Ties: a slab-rate gain first, then
+  other gains before Sec 198 gains, short term before long term, then by class name.
+- **Sec 198 rows:** listed shares, equity funds and ETFs, ELSS, equity-oriented hybrids, equity ETF FoFs, equity
+  long-short SIFs, equity PMS, REIT and InvIT units. Not AIF Category I or II.
+- **Not split.** Category III: "fund level", its own totals (CMV, Gain/Loss) and a Fund level column on the tab and the
+  totals slide, no lot reconciliation. Category I and II: "pass-through", not classified, no lot reconciliation. PMS:
+  "per security", not classified, its capital flows still reconciled. The AI Analyst gives each the reason, verdict n/a.
+- **The family slide** adds the clients' pools up by class and head (each after its own set-off) with one exemption
+  line; the tab lists them per client with a Client column. Holdings with no client name are one group, counted.
+- **Crypto** stayed in the short-term pools at 30%; the re-review found that wrong while the owner's ruling is open,
+  and part T4 keeps crypto out of set-off (below).
+
+## The TAX_RULES fields (part T3)
+
+| Field | Rows | Meaning |
+|---|---|---|
+| `sec198` | Listed Equity Shares, Equity Mutual Funds, Equity ETFs, Equity PMS, REIT Units, InvIT Units, Hybrid MF (equity-oriented), Equity ETF FoF (90/90), ELSS (3-year lock-in), SIF (equity long-short) | long-term gains share the Rs 1.25 lakh exemption (Master Summary column J) |
+| `fundLevel` (months null, rate label "Fund-level", period "Fund level") | Equity AIF – Cat III (Listed Equity), Equity AIF – Cat III (Long Short) (the 39% rate removed), Debt AIF – Cat III | taxed at fund level (Master Summary #25) |
+| `passThrough` (months null, rate label "Pass-through", period "At AIF level, per asset") | Equity AIF – Cat I/II, Debt AIF – Cat I/II | pass-through per underlying asset (Master Summary #24) |
+| `perSecurity` | Equity PMS (rates unchanged) | taxed per security as if held directly (Master Summary #23) |
+| `source` | Crypto (30%, any period, unchanged) | no reckoner row; kept as the law is unchanged (D-040 g) |
+| `noSetOff`, `noSetOffSource` (part T4) | Crypto | kept out of set-off until the owner answers question 18; the basis in the row |
+
+TAX_RULES stays at 34 rows.
+
+## What changes, and for which books (part T3)
+- **Every family with more than one client** whose losses sit with one member and gains with another: the family
+  saving falls to what each person can achieve; the loss left over is shown against its owner.
+- **Every client with Sec 198 long-term gains:** up to Rs 15,625 less tax before and after harvesting per client
+  (12.5% of Rs 1,25,000), unless the analyst enters the exemption as used.
+- **Every client with slab-rate gains and losses:** at the default 30% slab a loss shelters slab-rate gains before 20%
+  or 12.5% gains, so the quantified saving can fall (the sheltered amount is shown).
+- **Books with AIFs or a PMS:** their gains leave the long- and short-term columns and the harvest; a Category III AIF
+  shows as fund level.
+- **The synthetic sample book** (as on 30 Sep 2026): long term 5.547273 → 3.639173 Cr, not classified 0.797 → 2.7051
+  Cr (its PMS 1.2565 and Alchemy 0.6516); tax before harvesting 0.267175 → 0.181787 Cr (− 0.0633125 PMS, − 0.01895
+  Alchemy, − 2 × 0.0015625 exemption); client A 0.08756 Cr, client B 0.094227 Cr; no losses, so the saving stays 0.
+
+## Changes (part T3)
+- `tools/patches/2026-10-27-tax-3-harvest.js` (reference data, engine, exporters, UI); `index.html` MD5
+  `AE70F78B0C89E57692EE9C71A2AC8358` → `BB888D8E272AADE90291ED0A6ECA1721` (16,856,968 → 16,885,458 bytes).
+  - Engine: `taxAssumeFor`, `taxBuildHarvest` (one client's harvest: pools, the ranked set-off, the exemption),
+    `taxSumHarvests` and `taxApplyAssumptions` (the family sum; exposed for the tab), `taxNotSplit`, at engine scope;
+    `computeTaxation(rows, REF, asOn, assume)` builds per-client harvests, `fundLevel`/`passThrough` holdings skip the
+    lots, `perSecurity` ones are not split after reconciling; the summariser keeps them out of the pools and reports
+    `fundLevelCmv`, `fundLevelGain`, `notSplit` counts and `unnamedN`; `computeReview` passes `opts.taxAssume`; the AI
+    Analyst tax signal gives a not-split holding its reason.
+  - Screen: the assumptions table with the two inputs per client; the per-client pool table, the exemption line, "*" on
+    Sec 198 pools and the new footnote; the method, ordering, sheltered slab gains, left-out and no-client-name notes;
+    whose loss carries forward; "Fund level", "Not split", "Per security" and "At AIF level, per asset" in the class,
+    holding and roll-up tables (a Fund level column when held); the notes on Category III, I and II and PMS; the Crypto
+    source. `taxAssume` is cleared by `resetFamilyState`.
+  - Slides: the class table and its footnote, the Total Gain/Loss tile, the totals (Fund level column when held), the
+    holding detail cells, and the harvest slide (assumptions, per-client set-off, the exemption line, carry-forward,
+    the sheltered slab gains, the holdings left out, rows fitted to the space above the note).
+- `data/refdata/TAX_RULES.json` and `VINTAGE.json` regenerated.
+- Tests: `tools/regression/KI-166-aif-cat-iii.js`, `KI-167-per-client-harvest.js`, `KI-168-sec198-exemption.js`,
+  `KI-169-pms-not-split.js`, `KI-171-aif-cat-i-ii.js`, `KI-175-set-off-order.js`, `KI-181-carry-forward-wording.js`,
+  `KI-182-crypto-source.js` (142 checks); `tools/regression/lib/tax-harness.js` (assumptions; `exemptionUsed()`; `taxTabLive`, the tab with its inputs live);
+  KI-160, KI-162, KI-165, KI-170, KI-172, KI-173, KI-177 and KI-179 state their tax figures with the exemption taken as
+  used, KI-180 the sample book's new totals; `tools/smoke-review.js` (fund level in the CMV check; the family harvest
+  equals the clients' sum); `tools/browser-checks/family-isolation.js` (an assumption is cleared with the family).
+- Docs: D-040, KNOWN_ISSUES (KI-166 to KI-169, KI-171, KI-175, KI-181, KI-182, KI-130, KI-064, KI-109), this record,
+  the change-request index, CHANGELOG, PROJECT_STATE, legacy ARCHITECTURE, TESTING.
+
+## Verification (part T3)
+- `check-invariants`: all invariants hold, 1 known warning (KI-027). `smoke-review` 36/36. `test-ai-analyst` 24/24.
+  `run-regression`: 35 files, 1,092 checks, all pass. `node scripts/data-extract.ts --check` passes. `node --test`
+  234/234 in IST and in UTC.
+- **Fail before:** the 8 new files run against the T2 page (`AE70F78B…`) all exit 1 (KI-166: 20 checks fail; KI-167:
+  16; KI-168: 13; KI-169: 6; KI-171: 15; KI-175 stops at the first per-client harvest; KI-181: 5; KI-182: 3).
+- Known answers from units x price, worked in each test: the verifier's S2 and S4 family books (saving 0 and Rs 2,000,
+  were Rs 6,000), gains of Rs 1,00,000, 1,25,000, 1,25,001 and 1,50,000 (tax 0, 0, Rs 0.125, Rs 3,125), the verifier's
+  cases 3 and 4 in both size orders (Rs 15,625 / 3,125 / 12,500), two clients each inside their own exemption (0),
+  a Lakh file (same rupees), the set-off scenarios A, B and C at slab 30% and 10%, a Cat III gain of Rs 50 lakh (tax 0,
+  was Rs 19,50,000), a Cat II AIF with drawdowns either side of 24 months (not split), a PMS shortfall (no "saving"
+  of Rs 62,500).
+- The patch re-run changes nothing. The tax slides of a synthetic two-client family (14 classes, a PMS, both AIF
+  kinds, crypto, losses left over, a client with entered assumptions; family and one-client views) were rendered in
+  PowerPoint and looked at: the class footnote fits on two lines, the totals tables with the Fund level column fit,
+  the holding-detail rows show "Not split" and "Fund level", the harvest slide's table and note fit above the footer
+  with the cut stated. The Taxation tab's HTML from the shipped renderer, with the page's CSS, was screenshotted in
+  headless Edge: the assumptions table with its inputs, the per-client pool table and the notes lay out correctly.
+  The inputs' handler runs headlessly in KI-168 (`taxTabLive`): typing Rs 1,25,000 for one client recomputes the
+  harvest through `ENGINE.taxApplyAssumptions` (Rs 3,125 to 18,750), a blank restores the default, 50% is held to 30%.
+- **Not verified:** the Taxation tab in a real browser (typing in the field, focus and layout at narrow widths), and
+  `family-isolation.js`'s new check (written, not run in a browser); real client books (no client data used).
+
+## Scope of part T4 (the financial re-review of part T3)
+The re-review of part T3 (27 Oct 2026) checked the T3 patch against the reckoner's cells and its own recomputation
+and found one calculation finding and two corrections to the records. Everything else in part T3 checked out.
+- **F1 (P2), crypto set-off.** Part T3 left crypto gains in the short-term pools, ranked at 30%: a loss went to a
+  crypto gain before every 20% and 12.5% gain, and a crypto loss reduced other gains or showed as carried forward,
+  while whether either is allowed is question 18 below. Acceptance, until the owner answers it from an approved
+  source (the safe behaviour):
+  - the Crypto row carries a no-set-off flag and cites its basis in the row;
+  - no loss is set against a crypto gain, which is taxed in full before and after;
+  - a crypto holding's own loss is in no loss pool: it reduces no other gain and is never shown as carried forward;
+  - a crypto holding at a loss is not offered as a harvest candidate;
+  - one sentence on the tab's harvest card and on the harvest slide says so;
+  - the family figures are the sum of the clients'; a book with no crypto is unchanged.
+- **F2 (P3).** The PMS probe's former saving is Rs 62,500 (the T2 engine: Rs 1,25,000 before, Rs 62,500 after), not
+  Rs 63,000 (KI-169, this record, the test's text).
+- **F3 (P3).** 22 of the 23 findings are fixed and KI-177 in part, not 21 (this record, PROJECT_STATE).
+
+## Changes (part T4)
+- `tools/patches/2026-10-27-tax-4-review.js` (reference data, engine, exporters, UI); `index.html` MD5
+  `BB888D8E272AADE90291ED0A6ECA1721` → `61FC0FB25FB1429F805B140FBA6B308E` (16,885,458 → 16,887,846 bytes). A new
+  script, so the T3 patch stays as reviewed; re-running T3 on the T4 build stops as "partly present", as for every
+  later patch.
+  - Reference data: the Crypto row gets `"noSetOff":true` and `noSetOffSource` ("No set-off either way until the owner
+    rules (CR-0008, question 18): the Tax Reckoner TY 2026-27 is silent on virtual digital assets, and Sec 115BBH of
+    the 1961 Act allowed no loss to be set against a crypto gain and no crypto loss to be set against other income or
+    carried forward."). TAX_RULES stays at 34 rows.
+  - Engine (`taxBuildHarvest`, `07_engine.js:537`, T4 build): a pool of a `noSetOff` row is marked and gets no set-off
+    slot (`:561`); the class's losses go to `noSetOffLoss` instead of the loss pools, and its gains are counted in
+    `noSetOffGain`; a holding of such a row is not a candidate (`:603`); `TAX_HARVEST_SUM` adds both, so the family sums
+    them.
+  - Screen: the harvest card shows when the only loss is a crypto loss, and says "Crypto gains and losses are kept out
+    of set-off pending the owner's ruling, as the reckoner is silent on them: no loss is set against a crypto gain (the
+    gain, taxed in full before and after), and a crypto loss (the loss) reduces no other gain, is not carried forward
+    and is not listed as a holding to sell." Slide: the same, in the harvest note, worded for the client ("pending a
+    ruling on their treatment"), and the slide is made when the only loss is a crypto loss.
+- `data/refdata/TAX_RULES.json` and `VINTAGE.json` regenerated.
+- Tests: `tools/regression/KI-182-crypto-no-set-off.js` (30 checks); `tools/smoke-review.js` (the family sum includes
+  the two new figures); `KI-169-pms-not-split.js` (its text: Rs 62,500).
+- Docs: D-040 (the crypto bullet of the T3 notes, the consequences), KNOWN_ISSUES (KI-182, KI-175, KI-169; the
+  introduction), this record, the change-request index, CHANGELOG (the part T2 entry's lost heading line restored),
+  PROJECT_STATE, legacy ARCHITECTURE, TESTING.
+
+## Verification (part T4)
+- `check-invariants`: all invariants hold, 1 known warning (KI-027). `smoke-review` 36/36. `test-ai-analyst` 24/24.
+  `run-regression`: 36 files, 1,122 checks, all pass; the 27 tax files also with `TZ=UTC`. `node scripts/data-extract.ts
+  --check` passes. `node --test` 234/234 in IST and in UTC.
+- **Fail before:** `KI-182-crypto-no-set-off.js` run against the T3 page (`BB888D8E…`) exits 1 with 28 of its 30 checks
+  failing (the two that pass there: the family adds up, and a book with no crypto shows no crypto sentence).
+- Known answers from units x price, worked in the test: (i) a Rs 1,00,000 crypto gain, a Rs 20,000 equity short-term
+  loss and a Rs 2,00,000 equity long-term gain: before Rs 39,375, after Rs 36,875, saving Rs 2,500 (part T3: Rs 6,000);
+  crypto tax Rs 30,000 before and after; the loss takes the 12.5% part above the exemption. (ii) A Rs 1,00,000 crypto
+  loss and a Rs 1,00,000 equity short-term gain: Rs 20,000 before and after, saving 0 (part T3: Rs 20,000); no loss
+  pool, no carry-forward, no candidate. (iii) Their family: Rs 59,375, Rs 56,875, Rs 2,500, each figure the sum of the
+  clients'; one client's crypto gain and crypto loss do not net. (iv) Without the crypto holding, case (i) gives Rs
+  9,375, Rs 6,875 and Rs 2,500, as before; the sample book (KI-180) is unchanged. The same family ten times larger in
+  a Lakh file shows Rs 7.34 L, Rs 7.09 L and Rs 0.25 L on the tab and the slide, the same as the engine.
+- The patch re-run changes nothing.
+- **Not verified:** the tab and the slide in a browser and in PowerPoint (the harvest slide's note grows by one
+  sentence when crypto is held; its rows are fitted to the note's length, as in part T3, but the layout was not looked
+  at); `family-isolation.js` (still not run in a browser); real client books (no client data used).
+
 ## Questions for the owner and the tax adviser
 1. Confirm the D-040 defaults (a) to (h).
 2. ELSS: is a lot redeemable on the third anniversary of its purchase or from the next day (built: the next day)?
@@ -299,7 +480,29 @@ TAX_RULES goes from 32 to 34 rows.
     2018 value and the sale value) and its Act 2025 section; the share price basis (highest quote or close); the
     scope (equity ETFs, arbitrage funds, REIT and InvIT units, shares inside a PMS); and the source of 31 Jan 2018
     prices and NAVs, adjusted for corporate actions and scheme mergers.
+13. Is each base-file client one assessee (one PAN)? How should HUF folios, a minor's holdings (clubbed with a parent),
+    assets transferred to a spouse and joint holdings be treated? The harvest now works per client (part T3).
+14. The harvest assumptions (part T3): is 30% the right default slab rate, and 0 the right default for the exemption
+    already used (Q-52)? Should the slab rate include surcharge and cess (39% at the top of the new regime) when it
+    only orders the set-off?
+15. May long-term losses be set against Sec 197 gains before Sec 198 gains? Built: gains inside the unused exemption
+    are reached last, so the result is the lowest tax; the reckoner is silent on the order.
+16. Does any part of the Rs 1.25 lakh exemption apply to an AIF Category I or II's listed-equity gains (Master Summary
+    J35)? Built: no, the page cannot see that part.
+17. Are the "Listed AIF" funds in AIF_PERF Category III? Built: they stay Category I or II (now pass-through, so no
+    figure either way; the class name and the note differ).
+18. Crypto: may a loss be set against a crypto gain, and may a crypto loss offset other gains (the 1961 Act's Sec
+    115BBH barred both)? Built (part T4, the safe behaviour until answered from an approved source): no set-off either
+    way; a crypto gain is taxed in full, a crypto loss is not carried forward and is not offered as a harvest
+    candidate.
+19. For reviews valued before 1 Apr 2026, should the carry-forward sentence say "assessment years" (1961 Act)? Built:
+    "tax years" always.
+20. AI Analyst: is "n/a" right for a fund-level or not-split holding (built), or should a Category III AIF score green
+    (no investor tax on redemption)?
 
 ## Status
-Part T1 committed on `fix/legacy-batch-3-tax`, part T2 on `fix/legacy-batch-3-tax-p2` (neither pushed). Next: the later
-parts, a financial re-review, the browser acceptance (docs/TESTING.md), then one pull request for the batch.
+Part T1 committed on `fix/legacy-batch-3-tax`, part T2 on `fix/legacy-batch-3-tax-p2`, parts T3 and T4 on
+`fix/legacy-batch-3-tax-p3-r2` (none pushed). The financial re-review of part T3 is answered by part T4. Next: the check
+of part T4, the browser acceptance (docs/TESTING.md, with `family-isolation.js` and its new assumption-reset check),
+the owner's answers above (questions 17 and 18 before the merge: the AIF note and the crypto behaviour depend on
+them), then one pull request for the batch. KI-177's step-up waits for question 12.

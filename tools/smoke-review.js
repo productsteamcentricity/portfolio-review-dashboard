@@ -13,7 +13,8 @@
        above 20% is a breach
      - look-through market-cap and rating mixes sum to 100
      - transaction XIRR equals the exact answer the flows were built to give
-     - taxation reconciles, and LTCG + STCG + unclassified = CMV
+     - taxation reconciles, LTCG + STCG + unclassified + fund level = CMV, and the
+       family harvest is the sum of the per-client harvests
      - overlap matrix is square, symmetric, 100 on the diagonal
      - no NaN / Infinity anywhere in the model
      - the AI Analyst plan is deterministic
@@ -87,7 +88,12 @@ ok(tot && tot.fund > Math.min(...gs) && tot.fund < Math.max(...gs), 'portfolio X
 
 const T = m.taxation;
 ok(T.hasData && T.unreconciled.length === 0, 'taxation: every position reconciles to its lots');
-ok(near(T.totals.ltcgCmv + T.totals.stcgCmv + T.totals.unclassCmv, T.totals.cmv, 1e-6), 'taxation: LTCG + STCG + unclassified = CMV');
+/* tax batch T3 (KI-166): a Category III AIF is fund level, its own bucket */
+ok(near(T.totals.ltcgCmv + T.totals.stcgCmv + T.totals.unclassCmv + (T.totals.fundLevelCmv || 0), T.totals.cmv, 1e-6), 'taxation: LTCG + STCG + unclassified + fund level = CMV');
+/* tax batch T3 (KI-167): set-off is per person, so the family harvest is the sum of the clients' harvests */
+/* tax batch T4 (KI-182): with the crypto gain and loss kept out of set-off (0 here: the sample book holds no crypto) */
+ok(T.harvest.perClient && ['taxBefore', 'taxAfter', 'saving', 'ltUnused', 'stUnused', 'exBefore', 'exAfter', 'noSetOffGain', 'noSetOffLoss'].every(k =>
+  near(T.harvest[k], sum(T.clients, c => c.harvest[k]), 1e-12)), 'taxation: the family harvest is the sum of the per-client harvests');
 ok(T.totals.ltcgCmv > 0 && T.totals.stcgCmv > 0, 'taxation: lots on both sides of the 12-month line are split');
 
 const OV = m.overlap, n = OV.matrix.length;

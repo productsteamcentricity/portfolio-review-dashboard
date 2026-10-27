@@ -47,7 +47,7 @@ ok(tcx('X Flexi Cap Fund-Reg(G)', 'Flexi Cap Fund', 'Equity').cls === 'Equity Mu
 console.log('--- the holding on the Taxation tab, as on 19 Oct 2026 ---');
 const book = new T.Book().add({ name: 'ICICI Pru Retirement Fund-Pure Debt Plan(G)', product: 'Mutual Funds', asset: 'Debt', category: 'Solution Oriented,ETFs,FOFs', nav: 110, lots: [['2025-04-19', 1000, 100]] })
   .add({ name: 'X Flexi Cap Fund-Reg(G)', product: 'Mutual Funds', asset: 'Equity', category: 'Flexi Cap Fund', nav: 120, lots: [['2025-04-19', 1000, 100]] });
-const X = book.tax('2026-10-19');
+const X = book.tax('2026-10-19', null, book.exemptionUsed());   /* tax batch T3: before the Sec 198 exemption, as stated (KI-168 tests it) */
 ok(X.unmapped.length === 1 && X.unmapped[0].name === 'ICICI Pru Retirement Fund-Pure Debt Plan(G)' && /retirement or children's fund/.test(X.unmapped[0].reason),
   'the retirement fund is unclassified, with its reason');
 ok(T.near(T.RS(X.totals.unclassCmv), 110000) && T.near(T.RS(X.totals.unclassGain), 10000) && X.harvest.pools.length === 1 && T.near(T.RS(X.harvest.taxBefore), 2500),

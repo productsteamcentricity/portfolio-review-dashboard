@@ -4,7 +4,48 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
-### Fixed
+### Fixed (fix batch 3: tax rules per the TY2026-27 reckoner, CR-0008)
+- **Tax batch, part T4 (CR-0008, D-040): the financial re-review of part T3. Crypto is kept out of set-off until the
+  owner rules.** `index.html` MD5 `BB888D8E272AADE90291ED0A6ECA1721` → `61FC0FB25FB1429F805B140FBA6B308E` (patch
+  `tools/patches/2026-10-27-tax-4-review.js`). On branch `fix/legacy-batch-3-tax-p3-r2` with part T3, on top of part
+  T2; the batch merges as one change.
+  - The Crypto row carries `noSetOff` and its basis (`noSetOffSource`): no loss is set against a crypto gain, which is
+    taxed in full before and after; a crypto loss reduces no other gain, is never shown as carried forward and is not
+    offered as a holding to sell. One sentence on the tab's harvest card and on the harvest slide says so (KI-182,
+    KI-175; CR-0008 question 18). A book with no crypto is unchanged.
+  - Known answer: a Rs 1,00,000 crypto gain, a Rs 20,000 equity short-term loss and a Rs 2,00,000 equity long-term
+    gain save Rs 2,500 (part T3: Rs 6,000), crypto tax Rs 30,000 before and after; a Rs 1,00,000 crypto loss against a
+    Rs 1,00,000 equity short-term gain saves 0 (part T3: Rs 20,000).
+  - Corrections: the PMS probe's former saving is Rs 62,500, not Rs 63,000 (KI-169); the findings fixed are 22 of the
+    23 and KI-177 in part, not 21; the part T2 entry below had lost its heading line.
+  - `data/refdata/` regenerated. 1 regression file, `KI-182-crypto-no-set-off.js` (30 checks, 28 failing on the T3
+    page); 36 files in all. `smoke-review` sums the two new harvest figures in its family check.
+- **Tax batch, part T3 (CR-0008, D-040): the harvest, AIF and PMS treatment and the wording follow the TY 2026-27 Tax
+  Reckoner.** `index.html` MD5 `AE70F78B0C89E57692EE9C71A2AC8358` → `BB888D8E272AADE90291ED0A6ECA1721` (patch
+  `tools/patches/2026-10-27-tax-3-harvest.js`). On branch `fix/legacy-batch-3-tax-p3-r2`, on top of part T2; the batch
+  merges as one change.
+  - The harvest is worked out per client and the family view adds the clients' results; one client's loss is never set
+    against another's gain, and the tab and slide say whose loss is left over (KI-167).
+  - The Rs 1.25 lakh Sec 198 exemption applies per client after set-off, to listed shares, equity-oriented funds and
+    REIT and InvIT units only, less the amount the analyst enters as already used this tax year (default 0); it has its
+    own line in the pool table and the footnote no longer implies it for other gains (KI-168, closes KI-130).
+  - Losses go first to the gains taxed at the highest rate: slab-rate gains are ranked at the analyst's slab rate
+    (default 30%, never given a tax figure, the gains they shelter shown); gains inside the exemption are reached last;
+    ties follow a fixed order (KI-175).
+  - AIF Category III is taxed at fund level: no investor-level gain, loss or tax, its own "Fund level" amounts, out of
+    the harvest (KI-166). AIF Category I and II are pass-through and a PMS is taxed per security: neither is split by
+    the investor's own flows any more; both stay in the totals as not classified, out of the harvest, with a note
+    (KI-171, KI-169).
+  - Carry-forward reads "for up to eight tax years, provided the return is filed by the due date" on the tab and the
+    slide (KI-181). The Crypto row keeps 30% for any period and states its source (KI-182).
+  - Both assumptions (slab rate, exemption already used) are inputs per client on the Taxation tab, marked default
+    until changed, stated on the harvest slide, and cleared when another family is loaded (`resetFamilyState`, KI-001).
+  - The synthetic sample book: tax before harvesting Rs 0.267175 Cr → Rs 0.181787 Cr (its PMS and Category I/II AIF
+    leave the long-term pools; each of the two clients' exemption applies); long term 5.547273 → 3.639173 Cr, not
+    classified 0.797 → 2.7051 Cr.
+  - TAX_RULES still 34 rows (fields `sec198`, `fundLevel`, `passThrough`, `perSecurity`, `source`; `data/refdata/`
+    regenerated). 8 regression files (142 checks), each failing on the T2 page; 9 earlier tax tests state their
+    figures with the exemption taken as used; 35 files in all. `smoke-review` 36 checks.
 - **Tax batch, part T2 (CR-0008, D-040): holding periods and lots follow the TY 2026-27 Tax Reckoner.** `index.html`
   MD5 `5717A7967294FA13ED3A65111D80DA61` → `AE70F78B0C89E57692EE9C71A2AC8358` (patch
   `tools/patches/2026-10-27-tax-2-holding-period.js`). On branch `fix/legacy-batch-3-tax-p2`, on top of part T1; the

@@ -65,18 +65,26 @@ Book.prototype.ref = function (asOn) {
   let maxd = null; fund.forEach(t => { if (!maxd || t.d > maxd) maxd = t.d; });
   return Object.assign({}, H.REF, { IRR: { fund: fund, bench: [], date: maxd } });
 };
-Book.prototype.tax = function (asOn, refOverride) {
+/* assume (tax batch T3): the analyst's harvest assumptions, {clients: {name: {slabPct, usedRs}}} */
+Book.prototype.tax = function (asOn, refOverride, assume) {
   const H = host();
-  return H.E.computeTaxation(this.parsed(), refOverride || this.ref(null), D(asOn));
+  return H.E.computeTaxation(this.parsed(), refOverride || this.ref(null), D(asOn), assume);
+};
+/* tax batch T3 (KI-168): every client of this book has used its Rs 1.25 lakh Sec 198 exemption this tax
+   year, so a long-term gain is taxed at 12.5% on the whole gain. The tests written before the exemption
+   (KI-160 to KI-180) state their tax figures that way; the exemption itself is tested in KI-168. */
+Book.prototype.exemptionUsed = function () {
+  const c = {}; this.rows.forEach(r => { c[r[0]] = { usedRs: 125000 }; }); return { clients: c };
 };
 /* the whole review (as the page computes it). The IRR sheet's Closing rows are dated `asOn`. With no
    opts the review has no portfolio date and no base-file valuation date, so holding periods run to the
    IRR sheet's latest date (`asOn`). opts.asOnDate is the portfolio date ("d Mon yyyy", as the page's
-   date picker gives it); opts.valuationDate a base-file "Valuation Date" cell (tax batch T2, KI-176). */
+   date picker gives it); opts.valuationDate a base-file "Valuation Date" cell (tax batch T2, KI-176);
+   opts.taxAssume the analyst's harvest assumptions (tax batch T3). */
 Book.prototype.review = function (asOn, opts) {
   const H = host();
   opts = opts || {};
-  return H.E.computeReview(this.parsed(opts), this.ref(asOn), { familyName: 'Synthetic Family', asOnDate: opts.asOnDate || '' });
+  return H.E.computeReview(this.parsed(opts), this.ref(asOn), { familyName: 'Synthetic Family', asOnDate: opts.asOnDate || '', taxAssume: opts.taxAssume });
 };
 
 /* ---- screen: the Taxation tab, cut out of the UI script ---- */
@@ -105,6 +113,36 @@ function renderTaxTab(model, scope) {
   if (scope) api.scope(scope);
   api.render();
   return el.innerHTML;
+}
+/* tax batch T3: the tab with its harvest-assumption inputs live. The fake DOM hands the renderer one input object per
+   <input class="taxas"> in the HTML it wrote; setting .value and calling .onchange() runs the shipped handler, which
+   recomputes through ENGINE.taxApplyAssumptions and renders again. */
+function taxTabLive(model) {
+  const html = readHtml();
+  const helpers = cutBetween(html, '  var taxScope=null;', '  function taxD(d){') + cutBetween(html, '  function taxD(d){', '\n');
+  const render = cutBetween(html, '  function renderTaxation(){', '  /* Taxation exports like any other tab now');
+  let inputs = [];
+  const el = {
+    innerHTML: '', querySelector: () => null,
+    querySelectorAll: sel => {
+      if (sel !== 'input.taxas') return [];
+      inputs = [];
+      const re = /<input class="taxas" data-ci="(\d+)" data-k="(\w+)"[^>]*value="([^"]*)"/g; let m;
+      while ((m = re.exec(el.innerHTML))) { const a = { 'data-ci': m[1], 'data-k': m[2] }; inputs.push({ value: m[3], getAttribute: n => a[n] }); }
+      return inputs;
+    }
+  };
+  const win = {};
+  const f = new Function('model', 'document', 'window', 'E',
+    'function taxCss(){}\nfunction dlBarSafe(){ return ""; }\n' + helpers + '\n' + render +
+    '\nreturn { render: renderTaxation, assume: function(){ return taxAssume; } };');
+  const api = f(model, { getElementById: id => (id === 's-tax' ? el : null) }, win, host().E);
+  api.render();
+  return {
+    html: () => el.innerHTML, window: win, assume: api.assume,
+    input: (ci, k) => inputs.find(x => x.getAttribute('data-ci') === String(ci) && x.getAttribute('data-k') === k),
+    set: (ci, k, v) => { const x = inputs.find(y => y.getAttribute('data-ci') === String(ci) && y.getAttribute('data-k') === k); x.value = v; x.onchange(); }
+  };
 }
 const text = h => String(h).replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&gt;/g, '>').replace(/&lt;/g, '<')
   .replace(/&amp;/g, '&').replace(/&rsquo;/g, '’').replace(/&middot;/g, '·').replace(/\s+/g, ' ');
@@ -138,4 +176,4 @@ function checker() {
 }
 const near = (a, b, tol) => a != null && b != null && Math.abs(a - b) <= (tol == null ? 0.005 : tol);   /* rupees, half a paisa */
 
-module.exports = { host, D, CR, RS, Book, renderTaxTab, text, taxSlidesText, aiaTaxSignal, checker, near };
+module.exports = { host, D, CR, RS, Book, renderTaxTab, taxTabLive, text, taxSlidesText, aiaTaxSignal, checker, near };
