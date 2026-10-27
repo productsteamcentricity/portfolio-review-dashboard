@@ -15,6 +15,11 @@
    (ENGINE.assetLabel). KI-145 already makes one row per class for a base
    file, so the test also feeds getIPSData split rows directly, as a model
    built any other way could carry them.
+   With look-through data (the live page's normal state) the IPS actuals of
+   that book are pinned as they are now (Equity 39.86%, Debt 20.51%, REITs
+   7.40%, Commodities 32.22%, Listed Equity 136.4%; before fix batch 4:
+   47.31%, 9.51%, 2.06%, 14.37%, 201.8%). They depend on KI-066: the test
+   asserts that hybridAccounted is negative, so a KI-066 fix shows up here.
 
    getIPSData is cut out of index.html's UI script by anchor and run with the
    shipped ENGINE (Node cannot load the UI script itself). Known answers: the
@@ -106,6 +111,32 @@ console.log('--- the synthetic book family-a-odd-asset-labels ---');
     const O = getIPSData(old).classCMV || {};
     ok(near(O.equity, want.equity) && near(O.debt, want.debt) && near(O.reit, want.reit),
       'the same book as split rows ("Equity", "EQUITY", "Fixed Income", "Debt Funds", "REITs / InvITs" ...): the same sums (' + [O.equity, O.debt, O.reit].map(f4).join(', ') + ')');
+
+    /* With look-through data, the live page's normal state (the embedded analytics cover this book). These actuals are
+       PINNED, not independently known: they depend on KI-066 (NEW-20), the IPS's hybrid remainder. getIPSData counts
+       hybridAccounted = (equity exposure - equity CMV) + (debt exposure - debt CMV) as the hybrid funds' sleeves. Here no
+       fund is Hybrid and the look-through covers less than the class CMVs, so it is negative, and max(0, hybridCMV -
+       hybridAccounted) hands the uncovered equity and debt to REITs and Commodities. Summing the class rows (KI-146)
+       makes that effect larger on a book with split labels: main took only the last row of each class (equity 0.5427,
+       debt 0.962 Cr), hybridAccounted was positive and nothing was handed on. Before fix batch 4 (main, 911A0465...):
+       Equity 47.31%, Debt 9.51%, REITs 2.06%, Commodities 14.37%, Listed Equity 201.8%. True CMV shares: 54.37%, 27.96%,
+       3.30%, 14.37% (the independent sums above). A fix of KI-066 changes the pinned figures and fails these checks on
+       purpose: re-derive them then, with the owner's KI-066 decision. */
+    console.log('--- with look-through data: pinned, depending on KI-066 ---');
+    const W = getIPSData(m), WA = W.actuals, WC = W.classCMV || {};
+    const EA = m.equityAnalytics || {}, DA = m.debtAnalytics || {};
+    ok(EA.hasData === true && DA.hasData === true, 'the embedded look-through data applies to the book (equity and debt analytics have data)');
+    const hybridAccounted = (EA.exposureCr - WC.equity) + (DA.exposureCr - WC.debt);
+    ok(hybridAccounted < 0, 'KI-066: hybridAccounted is negative, (' + f4(EA.exposureCr) + ' - ' + f4(WC.equity) + ') + (' + f4(DA.exposureCr) + ' - ' +
+      f4(WC.debt) + ') = ' + f4(hybridAccounted) + ' Cr; a KI-066 fix shows up here');
+    const p2 = x => (x == null ? String(x) : (x * 100).toFixed(2));
+    [['Equity', WA.effEq, '39.86'], ['Debt', WA.effDebt, '20.51'], ['REITs/ INVITs', WA.reit, '7.40'], ['Commodities (Gold & Others)', WA.commodity, '32.22']]
+      .forEach(t => ok(p2(t[1]) === t[2], 'with analytics, the IPS ' + t[0] + ' actual is ' + t[2] + '% (pinned; depends on KI-066) (got ' + p2(t[1]) + '%)'));
+    ok(WA.listedOfEq != null && (WA.listedOfEq * 100).toFixed(1) === '136.4', 'with analytics, Listed Equity is 136.4% of equity (pinned; depends on KI-066) (got ' +
+      (WA.listedOfEq == null ? 'null' : (WA.listedOfEq * 100).toFixed(1)) + '%)');
+    ok(near((WA.reit + WA.commodity) * tot - (want.reit + want.commodity), want.hybrid - hybridAccounted, 1e-9),
+      'KI-066: REITs and Commodities carry their own ' + (want.reit + want.commodity).toFixed(4) + ' Cr plus ' + (-hybridAccounted).toFixed(4) +
+      ' Cr of equity and debt the look-through does not cover (got ' + ((WA.reit + WA.commodity) * tot).toFixed(4) + ' Cr)');
   } catch (e) { ok(false, 'the fixture case runs: ' + (e && e.stack || e)); }
   console.log(fail ? fail + ' FAILURE(S)' : 'all KI-146 checks passed');
   process.exit(fail ? 1 : 0);

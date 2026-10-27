@@ -284,13 +284,17 @@ and `-invested-and-irr-join.js`. Each fix had two financial reviews and known-an
 
 ### Fixed (fix batch 4: base-file reading, CR-0009)
 `index.html` MD5 `911A04659CB34383E478416B54E9C306` → `558A50F356406B2237AF247179A2186E` (16,836,871 bytes), by the
-patch `tools/patches/2026-10-27-basefile-reading.js` (engine and UI scripts). The reading defects the new build's
-parity work found (M1.3, D-035), fixed on the live page under D-028; the choices are D-041.
+patch `tools/patches/2026-10-27-basefile-reading.js` (engine and UI scripts), then →
+`12B5E5727FCA01EF2EA162C59913F01D` (16,837,249 bytes) by `tools/patches/2026-10-27-basefile-review.js` (engine), the
+financial review's fix. The reading defects the new build's parity work found (M1.3, D-035), fixed on the live page
+under D-028; the choices are D-041.
 - **KI-140, merged units:** duplicate folios add up units only when every folio has them; otherwise the units are
   blank, never a partial sum, and Taxation leaves the fund unsplit with its reason instead of matching it on invested
   value.
 - **KI-141, merged purchase date:** a merged holding shows its earliest purchase date, whatever the row order; its
-  holding days are recomputed from it when the folios count to one date, and are blank otherwise.
+  holding days are recomputed from it when the folios count to one date, and are blank otherwise. So a merged holding
+  whose folios were bought on different dates can lose its "Avg. Holding Days": the figure becomes the oldest folio's
+  age on the file's own count date, or blank (D-041 point 2; owner question 1).
 - **KI-142, total rows:** a row named "Total" or "Grand Total" is skipped, not added to the book as a holding.
 - **KI-143, text in number cells:** "12abc" or "1.25 Cr" is blank, never read as 12 or 1.25; the status line names the
   columns and counts the holdings left out.
@@ -299,14 +303,24 @@ parity work found (M1.3, D-035), fixed on the live page under D-028; the choices
   "Fixed Income" and "Debt Funds" are Debt (OD-7), so such funds are also routed, benchmarked and taxed as debt
   funds; "Commodities" is Commodity. `ENGINE.assetLabel` is new.
 - **KI-146 (P1), IPS actuals:** each asset class adds up all its allocation rows (it kept only the last); on the
-  synthetic book `family-a-odd-asset-labels` the equity CMV is 4.7545 Cr instead of 0.5427 Cr.
+  synthetic book `family-a-odd-asset-labels` the equity CMV is 4.7545 Cr instead of 0.5427 Cr. With look-through
+  data (the live page's normal state) that book's IPS actuals move from Equity 47.31%, Debt 9.51%, REITs 2.06%,
+  Commodities 14.37%, Listed Equity 201.8% to 39.86%, 20.51%, 7.40%, 32.22%, 136.4% (true CMV shares 54.37%, 27.96%,
+  3.30%, 14.37%): the IPS hybrid remainder (KI-066, open with the owner) hands equity and debt the look-through does
+  not cover to REITs and Commodities, and the summed class rows make that larger. Not changed in this batch.
 - **Notices:** each case above shows a plain sentence on the status line after the load summary, escaped.
+- **A row that repeats the header** (financial review): skipped before its cells are read and not counted, so its
+  column labels are no longer reported as text in number cells and as a holding left out (a false warning on the
+  synthetic book `family-a-skipped-rows`); the rows read are unchanged.
 - **Census (private, counts only):** 32 real base files with 1,705 holding rows show none of these cases except
-  merged folios bought on different dates (44 groups); CR-0009 has the counts.
-- **Tests:** seven regression files, `KI-140-merged-units.js` to `KI-146-ips-actuals.js` (136 checks; 19 files, 635
-  checks in all), each failing on `main`. The new build's parity ledger retires BF-15, BF-16, BF-18 and BF-20 to BF-26
-  (the live page now agrees with the new reader there; a retired entry matches nothing); 234 of 234 tests pass in IST
-  and UTC. `check-invariants` lists `assetLabel` in the engine surface.
+  merged folios: 18 merged holdings take an earlier purchase date (16 in files the live page reads today), and 6 lose
+  their "Avg. Holding Days" (3 in files read today), each a holding whose folios carry different holding days; the 6
+  merged holdings whose folios all carry the same holding days keep them. CR-0009 has the counts.
+- **Tests:** seven regression files, `KI-140-merged-units.js` to `KI-146-ips-actuals.js` (136 checks at first, 150
+  after the financial review; 19 files, 649 checks in all), each failing on `main`. The new build's parity ledger retires BF-15,
+  BF-16, BF-18 and BF-20 to BF-26 (the live page now agrees with the new reader there; a retired entry matches nothing)
+  and lists the two differences D-041 opens that no fixture exercises yet (KI-148, for M1.4); 234 of 234 tests pass
+  in IST and UTC. `check-invariants` lists `assetLabel` in the engine surface.
 
 ### Fixed (fix batch 2a: KI-124, OD-32 and OD-34, CR-0007)
 `index.html` MD5 `EF2FF4F1…` → `911A04659CB34383E478416B54E9C306` (16,826,633 bytes), by the patch

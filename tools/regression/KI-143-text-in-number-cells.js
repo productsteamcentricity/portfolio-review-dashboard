@@ -15,9 +15,13 @@
    holding whose only market value is such text is left out and counted. A
    Crore cell so blanked falls through to the Lakh or rupee column, as a blank
    one does (the new reader's order; its notice is KI-147, M1.4).
+   Financial review (tools/patches/2026-10-27-basefile-review.js): a row that
+   repeats the header is skipped before its cells are read, uncounted, so its
+   column labels are not reported as text in number cells (a false warning on
+   family-a-skipped-rows before the review).
 
-   Known answers are the cell texts' own numbers, written here. Synthetic rows
-   only. Exit code 1 on any failure.
+   Known answers are the cell texts' own numbers, written here, and the
+   fixture's own holdings. Synthetic rows only. Exit code 1 on any failure.
    ========================================================================== */
 'use strict';
 const { load } = require('../engine-host.js');
@@ -97,5 +101,44 @@ if (i0 >= 0 && i1 > i0) {
      ui.baseNotesWarn(null) === false, 'no notice, no text and no warning');
 }
 
-console.log(fail ? fail + ' FAILURE(S)' : 'all KI-143 checks passed');
-process.exit(fail ? 1 : 0);
+console.log('--- a row that repeats the header (financial review of fix batch 4) ---');
+/* A repeated header is not a holding and was always skipped without a word: its market value cells hold the
+   column labels, which the old parseFloat read as no number. With strict number cells those labels must not be
+   counted as "text that is not a number", nor the row as a holding "left out". Known answers: the rows written
+   here, and the fixture's own holdings (tests/fixtures/make-books.ts writes family-a-skipped-rows as the
+   family-a-standard sheet plus a blank row, a repeated header, a row without an Instrument Name and a total row
+   with a blank Instrument Name; main, 911A0465..., read the same 13 rows from both with no notice). */
+const RH = ['Client Name', 'Instrument Name', 'Asset Name', 'Units', 'Current Market Value (Cr.)', 'Market Value (' + RUPEE + ')', 'XIRR (%)', 'Purchase Date'];
+const rep = E.parseBaseRows([RH,
+  ['Sample Client', 'Fund P', 'Equity', 10, 1, 10000000, 8, '16-01-2023'],
+  RH.slice(),
+  [' CLIENT  NAME ', 'instrument name', 'ASSET NAME', 'UNITS', 'current market value (cr.)', 'Market Value', 'XIRR', 'Purchase Date'],
+  ['Sample Client', 'Fund Q', 'Debt', 20, 0.5, 5000000, 7, '17-01-2023']]);
+ok(rep.length === 2 && rep.map(h => h.name).join('|') === 'Fund P|Fund Q' && near(rep[0].cmvCr, 1) && near(rep[1].cmvCr, 0.5),
+  'two repeated headers (one in another letter case and spacing) are skipped: the 2 holdings Fund P (1.00 Cr) and Fund Q (0.50 Cr) (got ' +
+  rep.map(h => h.name + ' ' + h.cmvCr).join(', ') + ')');
+ok(Array.isArray(rep.notices) && rep.notices.length === 0, 'and no notice: no "cells hold text", no "left out" (got ' + JSON.stringify(rep.notices) + ')');
+const notHdr = E.parseBaseRows([RH, ['Another Client', 'Instrument Name', 'Equity', 1, 2, 20000000, 9, '18-01-2023']]);
+ok(notHdr.length === 1 && near(notHdr[0].cmvCr, 2) && notHdr.notices.length === 0,
+  'a row whose Instrument cell is the label but whose Client cell is a client is still read (the new reader\'s test: both cells)');
+
+(async () => {
+  try {
+    const { pathToFileURL } = require('url');
+    const ROOT = require('../engine-host.js').ROOT;
+    const mb = await import(pathToFileURL(path.join(ROOT, 'tests', 'fixtures', 'make-books.ts')).href);
+    const { book, fixtures } = mb.sampleFixtures(H);
+    const read = id => { const fx = fixtures.find(f => f.id === id); const wb = H.XLSX.read(fx.bytes, { type: 'array', cellDates: true });
+      return E.parseBaseRows(H.XLSX.utils.sheet_to_json(wb.Sheets['Base File'] || wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true })); };
+    const sk = read('family-a-skipped-rows'), st = read('family-a-standard');
+    const r4 = x => Math.round(x * 10000) / 10000;
+    ok(sk.length === book.length && sk.every((h, i) => h.name === book[i].name && near(h.cmvCr, r4(book[i].mv / 1e7))),
+      'family-a-skipped-rows: the ' + book.length + ' holdings of the book, in order, each at its Crore cell (got ' + sk.length + ' rows)');
+    ok(JSON.stringify(Array.from(sk)) === JSON.stringify(Array.from(st)), 'family-a-skipped-rows reads the same rows, field by field, as family-a-standard');
+    const txt = (sk.notices || []).map(x => x.text).join(' | ');
+    ok(!/cells? holds? text/.test(txt) && !/left out/.test(txt) && (sk.notices || []).length === 0,
+      'family-a-skipped-rows: no "cells hold text" and no "left out" notice, no notice at all (got ' + JSON.stringify(txt) + ')');
+  } catch (e) { ok(false, 'the fixture case runs: ' + (e && e.stack || e)); }
+  console.log(fail ? fail + ' FAILURE(S)' : 'all KI-143 checks passed');
+  process.exit(fail ? 1 : 0);
+})();

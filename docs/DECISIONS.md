@@ -443,10 +443,15 @@ holding period, not as days since the purchase date.
    holding days is the date the file counts to, and when every folio with holding days has a date and they count to
    the same date (within a day), the merged days run from the earliest purchase date to that date. Folios without
    purchase dates and with the same holding days keep that figure. Otherwise the merged days are blank, never one
-   folio's figure. The census says this leaves most merged holdings with folios bought on different dates without
-   holding days; only the workbook's "Base File" sheet shows them ("Avg. Holding Days") and no calculation reads them.
-   The new reader keeps the first row's date and days (`DATA_DICTIONARY.md` §8, "Merged folios, first-row fields"),
-   so the new build must align with this rule, or the owner chooses a unit-weighted average for both.
+   folio's figure. The figure so kept is the oldest folio's age on the date the file counts to: like the rejected
+   as-on-date rule below, it is not an average of the folios. A merged holding whose folios were bought on different
+   dates can therefore lose its holding days. Measured on the real base files for the financial review (counts only,
+   CR-0009): 6 of the 12 merged holdings that carry holding days lose them, each with different holding days across
+   its folios (3 bought on different dates, 3 without purchase dates); the 6 whose folios agree keep them; none
+   changes to another figure. Only the workbook's "Base File" sheet shows them ("Avg. Holding Days") and no
+   calculation reads them. The new reader keeps the first row's date and days (`DATA_DICTIONARY.md` §8, "Merged
+   folios, first-row fields"), so the new build must align with this rule, or the owner chooses another for both
+   (question 1 below).
 3. **Total rows (KI-142).** A row whose Instrument Name is "Total" or "Grand Total" (any letter case, spaces trimmed)
    is skipped and counted in a notice. A fund whose name only begins with "Total" is still a holding. The new reader
    reads such a name as a holding with a Warning; on the live page a total row is never added to the book.
@@ -468,18 +473,31 @@ holding period, not as days since the purchase date.
    the letter case is the owner's open question BF-26; the lead applies it on the live page, where a split row is a
    wrong number today, and the owner may reverse it for both builds.
 7. **IPS actuals (KI-146).** The IPS adds up every Asset Allocation row of a class and reads each label as its class
-   first.
+   first. Its hybrid remainder is not changed: with look-through data it hands equity and debt the look-through does
+   not cover to REITs and Commodities (KI-066), and summed class rows make that larger on a book with split labels
+   (`family-a-odd-asset-labels`: REITs 2.06% to 7.40%, Commodities 14.37% to 32.22%, against true shares of 3.30% and
+   14.37%; CR-0009). It waits for the owner's KI-066 decision.
 8. **Notices.** `parseBaseRows` returns its notices, one plain sentence each, and the status line shows them after the
    load summary, escaped. Total rows, unreadable cells, impossible dates and units left blank are warnings; holding
-   days left blank and labels read as a class are information.
+   days left blank and labels read as a class are information. A row that repeats the header is skipped before its
+   cells are read and gives no notice (the financial review; it had given a false warning).
+**Question for the owner (1): the "Avg. Holding Days" of a merged holding.** One fund held in several folios shows as
+one line. Should that line carry (a) the oldest folio's age counted to the file's own date, blank when the folios'
+figures do not agree on one date (as built; 6 merged holdings on today's files show blank); (b) an average of the
+folios' holding days weighted by units; or (c) the first row's figure, as before? The answer applies to both builds.
 **Alternatives.** For holding days: the review's as-on date minus the earliest purchase date (rejected: the as-on date
-is the analyst's, not the file's, and the column is an average); a unit-weighted average of the folios' holding days
-(the other choice `DATA_DICTIONARY.md` §8 names; not taken, kept for the owner); the first row's figure (rejected:
-it depends on the row order). For total rows: reading them with a warning, as the new reader does (rejected for the
+is the analyst's, not the file's; the chosen rule is no more an average than this one, since it too gives the oldest
+folio's age, counted to the file's own date instead); a unit-weighted average of the folios' holding days (the other
+choice `DATA_DICTIONARY.md` §8 names, and the only one of these that is an average; not taken, kept for the owner);
+the first row's figure (rejected: it depends on the row order). For total rows: reading them with a warning, as the new reader does (rejected for the
 live page: one total row doubles every figure). For Asset Names: folding them only in the Asset Allocation (rejected:
 the routing, client sheets, IPS and tax classes read the same label, and would disagree with it).
-**Consequences.** `index.html` MD5 `911A04659CB34383E478416B54E9C306` → `558A50F356406B2237AF247179A2186E`. Known
-issues KI-140 to KI-146 are fixed, each with a known-answer test in `tools/regression/`. The parity ledger retires
-BF-15, BF-16, BF-18 and BF-20 to BF-26: the live page now behaves as the new reader there, and a retired entry matches
-nothing, so the difference coming back fails the parity test. The new build must align `DATA_DICTIONARY.md` §8 with
-point 2 (and consider point 3) before its reader ships; the owner's questions BF-19 and BF-26 stay open for both.
+**Consequences.** `index.html` MD5 `911A04659CB34383E478416B54E9C306` → `558A50F356406B2237AF247179A2186E`, then
+`12B5E5727FCA01EF2EA162C59913F01D` with the financial review's patch (`tools/patches/2026-10-27-basefile-review.js`).
+Known issues KI-140 to KI-146 are fixed, each with a known-answer test in `tools/regression/`. The parity ledger
+retires BF-15, BF-16, BF-18 and BF-20 to BF-26: the live page now behaves as the new reader there, and a retired entry
+matches nothing, so the difference coming back fails the parity test. Points 2 and 3 open differences no parity
+fixture exercises yet; the ledger notes list them and KI-148 tracks them for M1.4. The new build must align
+`DATA_DICTIONARY.md` §5.3 and §8 with point 2 (and consider point 3) before its reader ships: their "as the legacy"
+wording on merged purchase dates and holding days is stale once this merges. The owner's questions BF-19 and BF-26
+stay open for both, with question 1 above.

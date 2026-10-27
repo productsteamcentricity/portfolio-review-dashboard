@@ -125,7 +125,7 @@ text, not position:
 
 | Field | Header rule | Notes |
 |---|---|---|
-| client / name | contains "client" / "instrument" | name is the fuzzy-match key; a row named "Total" or "Grand Total" (any case) is skipped as a total row (KI-142) |
+| client / name | contains "client" / "instrument" | name is the fuzzy-match key; a row named "Total" or "Grand Total" (any case) is skipped as a total row (KI-142); a row that repeats the header (its Instrument and Client cells equal to the header's labels, case and spacing aside, the new reader's test) is skipped before any of its cells is read and is not counted in a notice (fix batch 4 review) |
 | category / asset / product | contains "category" / "asset"+"name" / "product" | asset read as its class by `assetLabel` (KI-145: the five allocation classes in any case or spacing, "Fixed Income" and "Debt Funds" as Debt, "Commodities" as Commodity; other labels keep their first written form); blank asset → Equity, blank product → Mutual Funds; Product is the class used for matching (PMS / AIF / SIF / else MF) |
 | folio / distributor / amc / units | "folio" / "distributor" / exactly "amc" / exactly "units" | AMC is the brand anchor |
 | money | "invested" / "market value" / "gain" + unit: "cr" → Cr, "lakh"/"lac" → ÷100, none → ₹ ÷1e7 | the display unit follows the file; rows with no market value are skipped; a blank invested value stays **null**, never 0 (KI-007), and merged folios with any blank are blank |

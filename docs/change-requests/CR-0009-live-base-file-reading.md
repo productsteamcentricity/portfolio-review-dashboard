@@ -3,7 +3,8 @@
 - **Requested:** 27 Oct 2026, by the lead under D-028 and D-033, so that the owner can test the live page while the new
   build is made: the base-file reading defects that the new build's parity work found (milestone M1.3, D-035) are
   fixed on the live page. Built 27 Oct 2026.
-- **Status:** in review: branch `fix/legacy-batch-4-basefile`, not yet pushed.
+- **Status:** in review: branch `fix/legacy-batch-4-basefile`, then `fix/legacy-batch-4-basefile-r2` with the
+  financial review's changes (27 Oct 2026), not yet pushed.
 
 ## Request
 Fix, on `index.html`, matching the new reader where a decision exists:
@@ -58,9 +59,26 @@ a sheet whose header, within its first 20 rows, has Client, Instrument, Asset Na
 | Merged groups whose holding days differ | 6 |
 | Rows with a purchase date and holding days / counting to their file's most common date / files at 90% or more | 316 / 190 / 0 of 6 |
 
-So, on today's files, KI-145, KI-146, KI-142, KI-143, KI-144 and KI-140 change nothing; KI-141 changes the purchase
-date of up to 18 merged holdings (some are in the files the live page cannot read yet). The last row shows that "Avg. Holding Days" is an average holding period, which shaped
-the holding-days rule of KI-141 (D-041 point 2).
+Re-run for the financial review (27 Oct 2026), same files and rules, counts only: each base file read from its header
+row by the shipped `parseBaseRows` of `main` (`911A0465…`) and of this branch, and every merged group compared.
+"Read today": the header is in the first five rows, so the live page reads the file now (KI-074).
+
+| Measure (merged groups of duplicate folios) | Count (in files read today) |
+|---|---|
+| Merged groups / with holding days on `main` | 65 (58) / 12 |
+| Purchase date changes (an earlier folio's date) | 18 (16) |
+| Holding days change: in all / left blank / another figure / a figure where `main` had none | 6 (3) / 6 / 0 / 0 |
+| Of those 6: same holding days on every folio / different holding days across folios / folios bought on different dates / no purchase dates | 0 / 6 / 3 / 3 |
+| Groups with the same holding days on every folio: unchanged | 6 of 6 |
+
+So, on today's files, KI-145, KI-146, KI-142, KI-143, KI-144 and KI-140 change nothing. KI-141 changes merged
+holdings only: 18 take an earlier purchase date (16 in files the live page reads today), and 6 lose their "Avg.
+Holding Days", which becomes blank (3 in files read today). Those 6 are every merged holding whose folios carry
+different holding days: 3 were bought on different dates, 3 have no purchase dates. Point 2 of D-041 blanks a merged
+holding whose folios were bought on different dates unless their dates and holding days count to one date, so such a
+holding can lose its "Avg. Holding Days"; the 6 merged holdings whose folios carry the same holding days keep them.
+The row on counting to a common date shows that the column does not behave as days since the purchase date, which
+shaped that rule; the owner decides it (question 1 below).
 
 ## Decisions
 - **Lead (D-041, under D-033), 27 Oct 2026.** The fixes as requested, with these choices, for the owner to confirm or
@@ -68,12 +86,26 @@ the holding-days rule of KI-141 (D-041 point 2).
   - KI-140: Taxation never reconciles a fund with blank merged units on its invested value; it leaves it unsplit,
     with the reason (D-035's M7 rule, as "not split, with its status").
   - KI-141: holding days of a merged holding run from the earliest purchase date to the date its folios count to,
-    when they count to one date (within a day); otherwise blank with a notice. The new build's
-    `DATA_DICTIONARY.md` §8 must align, or the owner picks a unit-weighted average for both.
+    when they count to one date (within a day); otherwise blank with a notice. That figure is the oldest folio's
+    age on the file's own count date, not an average of the folios; on today's files 6 merged holdings lose the
+    figure and none changes to another. The new build's `DATA_DICTIONARY.md` §8 must align, or the owner picks
+    another rule for both (question 1).
+  - KI-146: the IPS formula for the hybrid remainder is not changed here; with look-through data it hands equity and
+    debt the look-through does not cover to REITs and Commodities, and the summed class rows make that larger (see
+    the IPS row below). That waits for the owner's KI-066 decision.
   - KI-142: the live page skips a total row; the new reader reads a total-like name as a holding with a Warning.
   - KI-143: a Crore cell that is not a number falls through to the Lakh or rupee column, as a blank one does (KI-147).
   - KI-145: letter case is folded on the live page (the owner's open question BF-26); "Commodities" is read as
     Commodity, as the live page's commodity test and the new reader already do; a blank label stays Equity.
+  - Review (27 Oct 2026): a row that repeats the header is skipped before its cells are read, without a notice, as
+    the new reader does; KI-143 had made it a false warning.
+- **Question 1 for the owner: the "Avg. Holding Days" of a merged holding.** When one fund is held in several folios,
+  the page shows one line for it. Which holding days should that line carry? (a) As built: the age of the oldest
+  folio, counted to the date the file's figures count to, and blank when the folios' figures do not agree on one
+  date (6 merged holdings on today's files show blank, all of them holdings whose folios carry different holding
+  days); (b) an average of the folios' holding days weighted by their units (never blank when every folio has a
+  figure); (c) the first row's figure, as before this batch (depends on the row order). The figure appears only on
+  the workbook's "Base File" sheet; no calculation reads it. The answer applies to both builds.
 
 ## What changes, and for which books
 
@@ -82,15 +114,18 @@ the holding-days rule of KI-141 (D-041 point 2).
 | Every tab, slide and sheet (totals, weights) | books with a row named "Total" or "Grand Total" | the row is no longer a holding: totals and weights are those of the real holdings (a synthetic book of 4.00 Cr with 12.00 Cr of total rows was read as 16.00 Cr) |
 | the same | books with text in a number cell | the cell is blank instead of the number at its front; a holding whose only market value is such text is left out (synthetic: 1.25 and 12 Cr no longer added) |
 | Holdings tab, slide and sheets (purchase date) | books with an impossible text date, or duplicate folios bought on different dates | an impossible date is blank; a merged holding shows its earliest purchase date |
-| Workbook "Base File" sheet (Avg. Holding Days, Units) | books with duplicate folios | merged holding days recomputed or blank; merged units blank when a folio has none |
+| Workbook "Base File" sheet (Avg. Holding Days, Units) | books with duplicate folios | merged holding days are the oldest folio's age on the file's count date, or blank when the folios do not count to one date, so a merged holding whose folios were bought on different dates can lose its "Avg. Holding Days" (on today's files: 6 left blank, none changed to another figure); merged units blank when a folio has none |
 | Asset Allocation (tab, slide, sheet), client sheets, Observations | books with Asset Names in another case or spacing, or "Fixed Income", "Debt Funds", "Commodities" | one row per class instead of several (synthetic: Equity 48.1662% and EQUITY 6.2063% become Equity 54.3726%) |
 | Analytics routing, performance tables and benchmarks, tax classes | books with "Fixed Income" or "Debt Funds" | such funds are debt funds (OD-7): debt look-through, the Debt MF table and a debt benchmark, the debt tax class |
-| IPS Profile Compliance (tab, slide) | books with more than one allocation row in a class (before KI-145) or a synonym | the class actual is the sum of its rows (synthetic: equity 0.5427 Cr becomes 4.7545 Cr, debt 0.962 becomes 2.4446, REITs 0.1799 becomes 0.2887) |
+| IPS Profile Compliance (tab, slide) | books with more than one allocation row in a class (before KI-145) or a synonym | the class actual is the sum of its rows (synthetic: equity 0.5427 Cr becomes 4.7545 Cr, debt 0.962 becomes 2.4446, REITs 0.1799 becomes 0.2887). Without look-through data the actuals are the true CMV shares: Equity 54.37%, Debt 27.96%, REITs 3.30%, Commodities 14.37%. With look-through data, the page's normal state, the same book's actuals move from Equity 47.31%, Debt 9.51%, REITs 2.06%, Commodities 14.37%, Listed Equity 201.8% to 39.86%, 20.51%, 7.40%, 32.22%, 136.4%. These depend on KI-066: equity and debt actuals are the look-through exposures, and the IPS hands what the look-through does not cover (here 1.9196 Cr, a negative `hybridAccounted`) to REITs and Commodities; summing the rows makes that larger (before, only the last row of a class counted and nothing was handed on). Not changed in this batch (KI-066 waits for the owner) |
 | Taxation | books with duplicate folios where one lacks units | the fund is unsplit, with the reason, instead of being reconciled on too few units |
-| Status line | books with any of the above | a notice for each kind, after the load summary |
+| Status line | books with any of the above | a notice for each kind, after the load summary; a row that repeats the header gives none (review fix) |
 
-A book with none of these cases (every file in the census) gets the same numbers as before, apart from the purchase
-date of merged holdings whose first row was not the earliest.
+A book with none of these cases (every file in the census) gets the same numbers as before, apart from merged
+holdings: the purchase date of those whose first row was not the earliest (18 on today's files), and the "Avg.
+Holding Days" of those whose folios do not count to one date, which is now blank. A merged holding whose folios were
+bought on different dates can lose its "Avg. Holding Days" this way. On today's files 6 merged holdings lose it,
+each with different holding days across its folios (3 of them bought on different dates, 3 without purchase dates).
 
 ## Changes
 - `tools/patches/2026-10-27-basefile-reading.js` (engine, UI); `index.html` MD5 `911A04659CB34383E478416B54E9C306` →
@@ -105,6 +140,17 @@ date of merged holdings whose first row was not the earliest.
   the books without an intended difference; `tests/parity/README.md`.
 - Docs: DECISIONS (D-041), KNOWN_ISSUES (KI-140 to KI-146 fixed), legacy ARCHITECTURE, TESTING, PROJECT_STATE,
   CHANGELOG, this record and the index.
+- Financial review (27 Oct 2026, branch `fix/legacy-batch-4-basefile-r2`): a new patch,
+  `tools/patches/2026-10-27-basefile-review.js` (engine), applied after the first in file-name order; `index.html` MD5
+  `558A50F356406B2237AF247179A2186E` → `12B5E5727FCA01EF2EA162C59913F01D` (16,836,871 → 16,837,249 bytes). Rebuilt
+  from `main` (`911A0465…`) by both patches in order: the same MD5. `parseBaseRows` skips a row that repeats the header
+  before reading its cells, uncounted (the new reader's test: Instrument and Client cells equal to the header's
+  labels). Tests: `KI-143-text-in-number-cells.js` (6 checks: a hand-built sheet with two repeated headers, a row
+  that only looks like one, and `family-a-skipped-rows` read as `family-a-standard` with no notice);
+  `KI-146-ips-actuals.js` (8 checks: the with-analytics actuals of `family-a-odd-asset-labels` pinned as depending on
+  KI-066, and `hybridAccounted < 0`). Records: this one (census re-run, IPS row, question 1), D-041, KNOWN_ISSUES
+  (KI-066 note, KI-141, KI-143, KI-146, new KI-148), the parity ledger's notes and `tests/parity/README.md` (the two
+  differences D-041 opens that no fixture exercises), CHANGELOG, PROJECT_STATE, TESTING, legacy ARCHITECTURE.
 
 ## Verification
 - `check-invariants`: all invariants hold, 1 known warning (KI-027). `smoke-review`: all checks pass.
@@ -113,9 +159,20 @@ date of merged holdings whose first row was not the earliest.
   KI-143 14 (then stops: no notices), KI-144 10, KI-145 at its first check (no `ENGINE.assetLabel`), KI-146 12 (no
   class sums, and its actuals give 6.21% equity where 54.37% is right).
 - New build: 234 of 234 tests pass in IST and in UTC; `data-extract --check`: equal; traceability: ok.
+- After the financial review (`12B5E572…`): `check-invariants` all hold, 1 known warning (KI-027); `smoke-review` and
+  `test-ai-analyst` pass; `run-regression` 19 files, 649 checks, all pass (the seven batch files 150 checks); the new
+  build 234 of 234 in IST and in UTC; `data-extract --check` equal; docs links 0 broken; traceability ok; the pre-push
+  scan passes. Fail before: on `7869676` (`558A50F3…`) the new KI-143 checks fail 2 of 6 (the false warning, on the
+  hand-built sheet and on `family-a-skipped-rows`); on `main` KI-146 now fails 19 checks (its 7 new failures show
+  47.31%, 9.51%, 2.06%, 14.37% and 201.8%). Every synthetic fixture of the parity suite reads the same rows on this
+  branch as on `7869676`, and the same as on `main` except `family-a-odd-asset-labels`, `family-a-merged-folios` and
+  `family-a-invalid-text`; `family-a-skipped-rows` reads the same 13 rows as on `main`, now with no notice.
 - Not verified: the page in a browser (the status-line notices are checked headless, with `baseNotes` cut from the UI
   script); PowerPoint and Excel rendering (no layout changed); the live page after publishing.
 
 ## Status
-In review. Follow-ups: the owner confirms the choices above; the new build aligns `DATA_DICTIONARY.md` §8 with D-041
-point 2 and considers point 3; BF-19 and BF-26 stay open with the owner for both builds.
+In review. Follow-ups: the owner answers question 1 and confirms the other choices above; KI-066 (the IPS hybrid
+remainder) waits for the owner; the new build, under KI-148 in M1.4, adds fixture cases for D-041 points 2 and 3 and
+aligns `DATA_DICTIONARY.md` §5.3 (line 213) and §8 (lines 526-527), whose "as the legacy" wording on merged purchase
+dates and holding days is stale once this merges, with point 2 and question 1, and considers point 3; BF-19 and BF-26
+stay open with the owner for both builds.

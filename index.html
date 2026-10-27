@@ -1328,6 +1328,9 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     function _asset(v){ var w=ws(v); if(!w) return "Equity"; var a=assetLabel(w,_seenAsset); if(a!==w) _assetRead[w]=a; return a; }
     for (var ri=hi+1; ri<aoa.length; ri++){
       var r=aoa[ri]; if(!r) continue;
+      /* a row repeating the header (Instrument and Client cells equal to the header's labels, as the new reader
+         tests) is not a holding: skipped before its cells are read, so no number cell of it is counted (KI-143) */
+      if (col.name>=0 && ws(r[col.name]).toLowerCase()===H[col.name] && (col.client<0 || ws(r[col.client]).toLowerCase()===H[col.client])) continue;
       var nm = ws(gv(r,col.name)); if(!nm) continue;
       /* KI-142: a total row of the book is never a holding (it would double every total) */
       if (/^(grand ?)?total$/i.test(nm)){ _totalRows++; continue; }
