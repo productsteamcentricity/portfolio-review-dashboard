@@ -37,7 +37,7 @@ for (const id of ['syn-dash-labels', 'family-a-dash-labels']) {
       for (const raw of [DASH_PRODUCT, DASH_PAIR[0], DASH_PAIR[1]]) {
         const r = products.find((x) => x.product === raw)!;
         assert.ok(r, raw);
-        assert.equal(r.label, raw.replace(/[–—]/g, '-'));
+        assert.equal(r.label, raw.replace(/[\u2013\u2014]/g, '-'));
         assert.equal(r.cmv.key, `alloc.product.Equity.${raw}.cmv`);
       }
       const pair = products.filter((r) => r.label === 'A - B');
@@ -69,7 +69,7 @@ for (const id of ['syn-dash-labels', 'family-a-dash-labels']) {
       // The overview sheets show the text of the screen: no en or em dash in their cells.
       for (const name of ['Portfolio Overview', 'Client Allocation', 'Distributor Allocation']) {
         if (!wb.sheets.some((s) => s.name === name)) continue;
-        for (const row of sheetTable(sheetByName(wb, name))) for (const c of row) assert.ok(typeof c !== 'string' || !/[–—]/.test(c), `${name}: ${String(c)}`);
+        for (const row of sheetTable(sheetByName(wb, name))) for (const c of row) assert.ok(typeof c !== 'string' || !/[\u2013\u2014]/.test(c), `${name}: ${String(c)}`);
       }
       await w.exportDeck(review, vm, null);
       assert.ok(w.last.pptx!.bytes.length > 0, 'the deck builds too');

@@ -260,7 +260,7 @@ describe('the other sample books', () => {
       investedCoveragePct: missing(STATUS.NOT_APPLICABLE, 'the market value is 0') };
     const z = buildOverviewVM(zero).notes.find((n) => n.id === 'partial-invested')!.text;
     assert.equal(z, 'p: invested value, gain and absolute return cover the 4 of 6 holdings that have an invested value.');
-    assert.ok(!z.includes('—'));
+    assert.ok(!z.includes('\u2014'));
     // Negative market values: a coverage of 150% says nothing true.
     const neg = sampleReview('blank-invested');
     neg.totals = { ...neg.totals, investedCoveragePct: { ...neg.totals.investedCoveragePct, v: 150 } as typeof neg.totals.investedCoveragePct };

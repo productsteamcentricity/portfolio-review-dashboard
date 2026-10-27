@@ -121,10 +121,10 @@ describe('no en or em dash outside the marker', () => {
     assert.equal(vm.meta.familyLabel, 'Sample - Family');
     const mf = vm.allocation.rows.find((row) => row.label === 'Mutual - Funds')!;
     // The text shown loses the dash; the join key keeps the engine's label (D-039).
-    assert.equal(mf.product, 'Mutual — Funds');
-    assert.equal(mf.cmv.key, 'alloc.product.Equity.Mutual — Funds.cmv');
+    assert.equal(mf.product, 'Mutual \u2014 Funds');
+    assert.equal(mf.cmv.key, 'alloc.product.Equity.Mutual \u2014 Funds.cmv');
     const liq = vm.liquidity.rows[0]!;
-    assert.deepEqual([liq.label, liq.liquidity], ['Open - Ended', 'Open – Ended']);
+    assert.deepEqual([liq.label, liq.liquidity], ['Open - Ended', 'Open \u2013 Ended']);
     assert.equal(vm.charts.liquidity.slices[0]!.category, 'Open - Ended');
     assert.equal(vm.matrices.client.columns[0]!.label, 'Client - One');
     assert.equal(vm.notes.find((n) => n.id === 'unknown')!.text, 'Unknown: holdings whose Asset Name is blank or not recognised (Gold - ETF).');

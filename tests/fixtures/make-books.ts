@@ -478,9 +478,9 @@ export function overviewVariants(xlsx: SheetJS, book: readonly BookRow[], prefix
 }
 
 /** The dash-labels variant's labels: an en dash (U+2013) and an em dash (U+2014) in labels from the file. */
-export const DASH_PRODUCT = 'PMS – Equity';
-export const DASH_PAIR = ['A – B', 'A - B'] as const;
-export const DASH_LIQUIDITY = ['T–3', 'T—1'] as const;
+export const DASH_PRODUCT = 'PMS \u2013 Equity';
+export const DASH_PAIR = ['A \u2013 B', 'A - B'] as const;
+export const DASH_LIQUIDITY = ['T\u20133', 'T\u20141'] as const;
 
 // ---------------------------------------------------------------------------------------------------------------
 // The sample book of tools/make-sample-base.js
