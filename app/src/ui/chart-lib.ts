@@ -1,63 +1,32 @@
 // The chart library of section 2: Chart.js 4.4.0 with chartjs-plugin-datalabels 2.2.0, vendored byte for byte from
 // the legacy page (app/vendor, D-038 point 1). The only module that imports them; every chart is drawn through
-// drawPie, with its colours, labels and text from the view-model, so the screen shows what the slide shows.
+// drawPie, with its colours, labels and text from the view-model, so the screen shows what the slide shows. The
+// configuration itself is ui/pie-config.ts (pure, so the Node tests read it).
 
 import Chart from 'vendor:chartjs';
 import ChartDataLabels from 'vendor:chartjs-datalabels';
-import tokens from '../config/tokens.json' with { type: 'json' };
 import type { PieChart } from '../views/overview-vm.ts';
+import { PIE_FONT_SIZE, PIE_LABEL_FONT, pieConfig } from './pie-config.ts';
+import type { LayoutBox } from './pie-config.ts';
 
 /** A drawn chart: destroyed when its canvas leaves the page or its data changes. */
 export type ChartHandle = { destroy(): void };
 export type ChartLib = { drawPie(canvas: HTMLCanvasElement, pie: PieChart): ChartHandle };
 
-type ChartContext = { dataIndex: number };
-type ChartCtor = new (canvas: HTMLCanvasElement, config: Record<string, unknown>) => ChartHandle;
+type ChartCtor = (new (canvas: HTMLCanvasElement, config: Record<string, unknown>) => ChartHandle) & {
+  layouts?: { addBox(chart: unknown, box: LayoutBox): void };
+};
 
-const colour = tokens.colour;
-
-/** The Chart.js configuration of a pie (pure: no canvas needed, so it can be inspected). */
-export function pieConfig(pie: PieChart, plugin: unknown): Record<string, unknown> {
-  const font = { family: tokens.font, size: 12 };
-  return {
-    type: 'pie',
-    data: {
-      labels: pie.slices.map((s) => s.category),
-      datasets: [{
-        // The engine's unrounded shares: the arcs are exact, the labels rounded on display.
-        data: pie.slices.map((s) => (s.pct.value.kind === 'value' ? s.pct.value.v : 0)),
-        backgroundColor: pie.slices.map((s) => s.colour),
-        borderColor: colour.grey75,
-        borderWidth: 1,
-      }],
-    },
-    plugins: [plugin],
-    options: {
-      animation: false,
-      responsive: true,
-      maintainAspectRatio: false,
-      // Room for the labels, which sit outside the pie on the white panel (#222222 on white, 15.9:1).
-      layout: { padding: { top: 28, bottom: 8, left: 64, right: 64 } },
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { font, color: colour.textBody, boxWidth: 12, boxHeight: 12 },
-        },
-        tooltip: {
-          callbacks: { label: (c: ChartContext) => `${pie.slices[c.dataIndex]?.category ?? ''}: ${pie.slices[c.dataIndex]?.pct.display.text ?? ''}` },
-        },
-        datalabels: {
-          anchor: 'end',
-          align: 'end',
-          offset: 6,
-          clamp: true,
-          clip: false,
-          color: colour.textBody,
-          font: { family: tokens.font, size: 12, weight: 'bold' },
-          formatter: (_v: number, c: ChartContext) => pie.slices[c.dataIndex]?.label ?? '',
-        },
-      },
-    },
+/** The width of a label's text in the label font, measured on the canvas (an estimate where no 2D context exists). */
+function measurer(canvas: HTMLCanvasElement): (text: string) => number {
+  const ctx = canvas.getContext('2d');
+  return (text) => {
+    if (!ctx) return text.length * PIE_FONT_SIZE * 0.6;
+    ctx.save();
+    ctx.font = PIE_LABEL_FONT;
+    const w = ctx.measureText(text).width;
+    ctx.restore();
+    return w;
   };
 }
 
@@ -69,7 +38,8 @@ export const chartLib: ChartLib | null = typeof Chart === 'function' && ChartDat
   ? {
     drawPie(canvas, pie) {
       const Ctor = Chart as unknown as ChartCtor;
-      return new Ctor(canvas, pieConfig(pie, ChartDataLabels));
+      const addBox = (chart: unknown, box: LayoutBox) => { Ctor.layouts?.addBox(chart, box); };
+      return new Ctor(canvas, pieConfig(pie, { datalabels: ChartDataLabels, addBox, measure: measurer(canvas) }));
     },
   }
   : null;

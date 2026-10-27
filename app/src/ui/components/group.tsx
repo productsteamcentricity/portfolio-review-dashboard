@@ -2,12 +2,19 @@
 
 import type { ComponentChildren } from 'preact';
 
-export function Group({ id, title, note, children }: { id: string; title: string; note?: ComponentChildren; children: ComponentChildren }) {
+export function Group({ id, title, note, focusable, children }: {
+  id: string;
+  title: string;
+  note?: ComponentChildren;
+  /** The heading can take focus from code (tabIndex -1), as the place focus moves to when a control inside goes. */
+  focusable?: boolean;
+  children: ComponentChildren;
+}) {
   const headingId = `${id}-heading`;
   return (
     <section class="group" id={id} aria-labelledby={headingId}>
       <div class="group-head">
-        <h3 id={headingId}>{title}</h3>
+        <h3 id={headingId} tabIndex={focusable ? -1 : undefined}>{title}</h3>
         {note !== undefined && note !== null ? <span class="group-note">{note}</span> : null}
       </div>
       <div class="group-body">{children}</div>

@@ -6,9 +6,9 @@
 // review's gate allows them (D-039 point 9). The reader, the engine and the exporters are reached only through the
 // injected Wiring (ui/wiring.ts), imported here as types only, so this module runs in Node tests with a fake.
 
-import type { UploadStage } from '../model/source.ts';
 import type { DayNumber } from '../model/value.ts';
 import type { LoadedBaseFile, LoadError, Review, ReviewLabels } from '../model/review.ts';
+import type { UploadState } from './upload-slot.ts';
 import type { XirrUnitChoice } from '../model/validation.ts';
 import type { AuditEntry } from '../model/audit.ts';
 import type { OverviewVM } from '../views/overview-vm.ts';
@@ -18,9 +18,14 @@ import { buildOverviewVM } from '../views/overview.ts';
 import { DEFAULT_FAMILY_LABEL, checkLabel } from '../views/labels.ts';
 import { imageSize } from '../views/logo.ts';
 import { formatDay } from '../engine/dates.ts';
+import { canAccept } from './upload-slot.ts';
 
 export type AppState = {
-  upload: { stage: UploadStage | null; fileName: string | null; size: number; loaded: LoadedBaseFile | null; error: LoadError | null };
+  /**
+   * The base file: its stage, name and size, what the reader read, and the reader's refusal (a LoadError) or an
+   * exception of the reader or the engine while it was reviewed ('review-failed', never shown as unreadable: L15).
+   */
+  upload: UploadState;
   asOn: number | null;
   labels: ReviewLabels;
   acknowledged: string[];
@@ -128,7 +133,8 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
     try {
       result = deps.wiring.loadBaseFile(bytes, fileName, s.answers);
     } catch (err) {
-      result = { kind: 'unreadable', message: messageOf(err) };
+      // The reader refuses a file with a LoadError; an exception is the app's own failure, not the file's (L15).
+      return { ...s, upload: { ...s.upload, stage: 'upload', loaded: null, error: { kind: 'review-failed', message: messageOf(err) } }, review: null, vm: null };
     }
     if (isLoadError(result)) return { ...s, upload: { ...s.upload, stage: 'upload', loaded: null, error: result }, review: null, vm: null };
     return { ...s, upload: { ...s.upload, stage: 'validate', loaded: result, error: null }, review: null, vm: null };
@@ -145,7 +151,7 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
     } catch (err) {
       return {
         ...s,
-        upload: { ...s.upload, stage: 'validate', error: { kind: 'unreadable', message: `The review could not be computed: ${messageOf(err)}` } },
+        upload: { ...s.upload, stage: 'validate', error: { kind: 'review-failed', message: messageOf(err) } },
         review: null,
         vm: null,
       };
@@ -174,7 +180,8 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
         return;
       }
       case 'accept':
-        if (!state.upload.loaded) return;
+        // Only a file read, not refused (L14: no holding, or a Blocking reader result) and not failed is accepted.
+        if (!canAccept(state.upload)) return;
         set(compute(state));
         return;
       case 'remove':
