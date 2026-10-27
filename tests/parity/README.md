@@ -7,6 +7,7 @@ through `tools/engine-host.js` (from a script file, never `node -e`, KI-011).
 | Test | Ledger |
 |---|---|
 | `base-file.parity.test.ts` (with `base-file-compare.ts`) | `base-file-ledger.json` |
+| `aggregation.parity.test.ts` (with `aggregation-compare.ts`) | `aggregation-ledger.json` |
 | `refdata.parity.test.ts` | none: the extracted reference data must equal the embedded blocks exactly |
 
 ## The ledger
@@ -38,6 +39,28 @@ letter case matters to the legacy: it lower-cases the label where it routes a ho
 To add an entry: make the new behaviour, run the test to see the unmatched difference, and add the narrowest entry
 that matches it (name the fixture; prefer an exact legacy value) with its decision. Improvements that change a
 client-facing number are listed in the pull request for the owner.
+
+## The aggregation ledger
+
+`aggregation.parity.test.ts` runs the legacy `computeReview` (from a script file, through `tools/engine-host.js`, on
+the rows of `parseBaseRows`) and the new `engine/review.ts` on the same fixtures: the variants of the synthetic book
+and of `tools/make-sample-base.js`'s book, that script's two files, and the overview variants of
+`tests/fixtures/make-books.ts` (`overviewVariants`) except `hostile`, whose labels (`constructor`, `__proto__`) break
+the legacy engine, which keys its allocation on a plain object. It compares the totals (`totalCMV`, `totalInv`,
+`totalGL`, `invMissing`), the Asset Allocation rows, the liquidity pie and the client and distributor matrices, at
+1e-9 relative plus 1e-12 absolute, after projecting both sides into one shape (`aggregation-compare.ts`). Entries are
+`AG-nn`, with the fields of the table above and these differences:
+
+| Field | Meaning |
+|---|---|
+| `kind` | `total` (the review totals and the Grand Total row), `asset-row`, `product-row`, `row-order` (the order of the rows both sides have, or of the matrix columns), `liquidity`, `matrix-col`, `matrix-cell` (a cell, or a matrix row present on one side only), `column-label` (the not-given column, labelled with the dash in the legacy), or `"*"` for any |
+| `field` | `cmv`, `invested`, `gain`, `withoutInvested`, `pct`, `presence`, `row-presence`, `order` or `label`; one, a list, or absent for any |
+| `key` | the row: the class, "class / product", the liquidity label, "level: column", "level: row @ column", or "client rows" for an order; exact, a list, or a regular expression between slashes |
+| `legacy`, `new` | value patterns: an exact JSON value, `"*"`, or `{"type": "number"}` |
+
+The ledger has no regression. Its corrections follow from the base-file entries they name (BF-nn): a holding the new
+reader excludes or reads into another class moves the totals, the percentages and the matrix cells with it. The
+improvements are the D-039 rules (one asset order in the matrices; the not-given column label).
 
 ## Golden files
 
