@@ -459,3 +459,84 @@ the end of the tab row (tried: at 1440 px it pushed the row onto two lines).
 the link) change; the shell tests now expect the link in the masthead; `ARCHITECTURE.md` §6.9 and §7, `DATA_DICTIONARY.md`
 §5.16, the PRD and `toolchain.md` say masthead where they said sidebar or column. Every later milestone builds its
 screens in this layout.
+
+## D-041 — Live-page base-file reading fixes (27 Oct 2026, lead under D-033)
+**Context.** The parity work of milestone M1.3 found how the live page's `parseBaseRows` misreads some base files
+(KI-140 to KI-145) and how the IPS then takes the wrong asset-class figures (KI-146, P1). Under D-028 the live page
+takes such data and calculation fixes. Before building them the lead measured, privately and read-only, how often the
+cases occur in the real base files on the owner's laptop (counts only, no file or value copied; the counts are in
+`change-requests/CR-0009-live-base-file-reading.md`). In 32 base files with 1,705 holding rows there was no variant
+Asset Name, no synonym, no total row, no text in a number cell and no impossible date. There were 65 groups of
+duplicate folios in 19 files: none with a folio lacking units, 44 whose folios carry different purchase dates, 18 of
+them with the earliest date on a later row. Of the 316 rows that have both a purchase date and holding days, only 190
+count to their file's most common date, and no file reaches 90%: the "Avg. Holding Days" column behaves as an average
+holding period, not as days since the purchase date.
+**Decision.** Fix batch 4 (CR-0009, `tools/patches/2026-10-27-basefile-reading.js`) changes the live page as follows.
+1. **Merged units (KI-140).** Units of merged folios are summed only when every folio has them; otherwise they are
+   blank, never a partial sum (KI-113 extended to units, as D-035 accepted for the new reader), and the holding is
+   marked. Taxation never reconciles such a holding on its invested value, the path meant for products priced in
+   rupees: it leaves it unsplit, with the reason. This is the live page's answer to D-035's M7 rule ("not split, with
+   its status"); the new build decides its own in M7. A holding whose folios all lack units is unchanged.
+2. **Merged purchase date and holding days (KI-141).** A merged holding takes the earliest purchase date of its
+   folios, whatever the row order. Its holding days are recomputed from that date: a folio's purchase date plus its
+   holding days is the date the file counts to, and when every folio with holding days has a date and they count to
+   the same date (within a day), the merged days run from the earliest purchase date to that date. Folios without
+   purchase dates and with the same holding days keep that figure. Otherwise the merged days are blank, never one
+   folio's figure. The figure so kept is the oldest folio's age on the date the file counts to: like the rejected
+   as-on-date rule below, it is not an average of the folios. A merged holding whose folios were bought on different
+   dates can therefore lose its holding days. Measured on the real base files for the financial review (counts only,
+   CR-0009): 6 of the 12 merged holdings that carry holding days lose them, each with different holding days across
+   its folios (3 bought on different dates, 3 without purchase dates); the 6 whose folios agree keep them; none
+   changes to another figure. Only the workbook's "Base File" sheet shows them ("Avg. Holding Days") and no
+   calculation reads them. The new reader keeps the first row's date and days (`DATA_DICTIONARY.md` §8, "Merged
+   folios, first-row fields"), so the new build must align with this rule, or the owner chooses another for both
+   (question 1 below).
+3. **Total rows (KI-142).** A row whose Instrument Name is "Total" or "Grand Total" (any letter case, spaces trimmed)
+   is skipped and counted in a notice. A fund whose name only begins with "Total" is still a holding. The new reader
+   reads such a name as a holding with a Warning; on the live page a total row is never added to the book.
+4. **Numbers (KI-143).** A number cell counts only when all of it is a number, with the new reader's rule: digits with
+   thousands commas or spaces, a sign (the minus sign U+2212 too), a decimal part, an exponent, and a trailing "%"
+   only in XIRR and BMXIRR. Anything else is blank, never 0, and a warning names each column with its count and the
+   holdings left out for want of a market value. Text that says "not available" ("NA", "-", "nil") stays blank without
+   a notice. A Crore cell so blanked falls through to the Lakh or rupee column, as a blank one does and as the new
+   reader does today (KI-147 decides that rule for the new build in M1.4).
+5. **Dates (KI-144).** A text date that does not exist ("31-02-2024", "31 Feb 2024") is blank with a warning naming
+   the column; it used to roll into the next month. The formats read do not change.
+6. **Asset Names (KI-145).** `ENGINE.assetLabel` reads the five classes of the Asset Allocation (Equity, Debt, Hybrid,
+   Commodity, REITs/InvITs) without regard to letter case or spacing, "Fixed Income" and "Debt Funds" as Debt (OD-7)
+   and "Commodities" as Commodity (as the live page's commodity test and the new reader already do). Any other label
+   keeps the first form written in the file, so its case variants are one row too; a blank one is still Equity (the
+   new reader's OD-7 rule for blanks stays out of the live page, BF-14), and an unrecognised one keeps its label
+   (BF-19, open with the owner). Every reader of the asset follows: the allocation, the client sheets, analytics
+   routing, performance buckets and benchmarks, tax classes and the IRR placement of unreached instruments. Folding
+   the letter case is the owner's open question BF-26; the lead applies it on the live page, where a split row is a
+   wrong number today, and the owner may reverse it for both builds.
+7. **IPS actuals (KI-146).** The IPS adds up every Asset Allocation row of a class and reads each label as its class
+   first. Its hybrid remainder is not changed: with look-through data it hands equity and debt the look-through does
+   not cover to REITs and Commodities (KI-066), and summed class rows make that larger on a book with split labels
+   (`family-a-odd-asset-labels`: REITs 2.06% to 7.40%, Commodities 14.37% to 32.22%, against true shares of 3.30% and
+   14.37%; CR-0009). It waits for the owner's KI-066 decision.
+8. **Notices.** `parseBaseRows` returns its notices, one plain sentence each, and the status line shows them after the
+   load summary, escaped. Total rows, unreadable cells, impossible dates and units left blank are warnings; holding
+   days left blank and labels read as a class are information. A row that repeats the header is skipped before its
+   cells are read and gives no notice (the financial review; it had given a false warning).
+**Question for the owner (1): the "Avg. Holding Days" of a merged holding.** One fund held in several folios shows as
+one line. Should that line carry (a) the oldest folio's age counted to the file's own date, blank when the folios'
+figures do not agree on one date (as built; 6 merged holdings on today's files show blank); (b) an average of the
+folios' holding days weighted by units; or (c) the first row's figure, as before? The answer applies to both builds.
+**Alternatives.** For holding days: the review's as-on date minus the earliest purchase date (rejected: the as-on date
+is the analyst's, not the file's; the chosen rule is no more an average than this one, since it too gives the oldest
+folio's age, counted to the file's own date instead); a unit-weighted average of the folios' holding days (the other
+choice `DATA_DICTIONARY.md` §8 names, and the only one of these that is an average; not taken, kept for the owner);
+the first row's figure (rejected: it depends on the row order). For total rows: reading them with a warning, as the new reader does (rejected for the
+live page: one total row doubles every figure). For Asset Names: folding them only in the Asset Allocation (rejected:
+the routing, client sheets, IPS and tax classes read the same label, and would disagree with it).
+**Consequences.** `index.html` MD5 `911A04659CB34383E478416B54E9C306` → `558A50F356406B2237AF247179A2186E`, then
+`12B5E5727FCA01EF2EA162C59913F01D` with the financial review's patch (`tools/patches/2026-10-27-basefile-review.js`).
+Known issues KI-140 to KI-146 are fixed, each with a known-answer test in `tools/regression/`. The parity ledger
+retires BF-15, BF-16, BF-18 and BF-20 to BF-26: the live page now behaves as the new reader there, and a retired entry
+matches nothing, so the difference coming back fails the parity test. Points 2 and 3 open differences no parity
+fixture exercises yet; the ledger notes list them and KI-148 tracks them for M1.4. The new build must align
+`DATA_DICTIONARY.md` §5.3 and §8 with point 2 (and consider point 3) before its reader ships: their "as the legacy"
+wording on merged purchase dates and holding days is stale once this merges. The owner's questions BF-19 and BF-26
+stay open for both, with question 1 above.

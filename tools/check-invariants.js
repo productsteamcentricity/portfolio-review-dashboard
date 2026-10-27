@@ -45,7 +45,7 @@ const APP_BLOCKS = ['engine', 'exporters', 'parsers', 'app_ui', 'boot'];
 const NETWORK = [/\bfetch\s*\(/, /XMLHttpRequest/, /\bWebSocket\b/, /\bEventSource\b/, /sendBeacon/, /\bimport\s*\(/,
   /https?:\/\//, /navigator\.serviceWorker/, /\bnew\s+Worker\s*\(/];
 const ENGINE_KEYS = ['palette', 'FONT', 'amcDisplay', 'normalize', 'matchInstrument', 'matchPMS', 'resolveBench',
-  'benchmarkFor', 'bucketDefs', 'parseBaseRows', 'computeReview', 'computeTaxation', 'taxClassOf', 'aiaCompute',
+  'benchmarkFor', 'bucketDefs', 'parseBaseRows', 'assetLabel', 'computeReview', 'computeTaxation', 'taxClassOf', 'aiaCompute',
   'aiaWeights', 'aiaAmcCap', 'aiaOvBands', 'fmt', 'buildPPTX', 'buildXLSX', 'parsers'];
 const PARSER_KEYS = ['parseEquitySide', 'parseDebtSide', 'parseMonitor', 'parseSIF', 'parsePMS', 'parseIRR', 'fmtDate',
   'parseAdditionalDebt', 'parseSOA'];

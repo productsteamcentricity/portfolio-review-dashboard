@@ -1,11 +1,22 @@
 # Project state
 
-**Last updated:** 23 Oct 2026.
+**Last updated:** 27 Oct 2026.
 - The full audit is done: 67 issues, see [`audits/`](audits/).
 - Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done. Fix batch 2a
   (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is merged (PR #9; `index.html` MD5
   `911A04659CB34383E478416B54E9C306`); its browser acceptance passed on 22 Oct 2026, and the QA found KI-127 and
   KI-128 (both also on main before the batch).
+- **Fix batch 4, base-file reading (CR-0009, D-041), is accepted** (27 Oct 2026: financial review, browser
+  acceptance and security gate passed) on `fix/legacy-batch-4-basefile-r2`: KI-140 to KI-146, the
+  reading defects the new build's parity work found, fixed on the live page (merged units and purchase dates, total
+  rows, text in number cells, impossible dates, Asset Name variants, and the P1 IPS actuals), each with a known-answer
+  regression test; the review added the skip of a repeated header row (no false warning); `index.html` MD5
+  `12B5E5727FCA01EF2EA162C59913F01D` once merged. A private census of the 32 real base files on the laptop found none
+  of these cases except merged folios: 18 merged holdings take an earlier purchase date and 6 lose their "Avg.
+  Holding Days". Open for the owner: question 1 of D-041 (holding days of merged folios) and the other choices in
+  CR-0009 (total rows skipped, letter case folded); KI-066 (the IPS hybrid remainder, which KI-146's sums make larger
+  on books with split labels). For the new build: KI-148 (M1.4: fixture cases for D-041 points 2 and 3; align
+  `DATA_DICTIONARY.md` §5.3 and §8, whose "as the legacy" wording is stale once this merges).
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
   - **Phase 0 is done.** The record is in [`new-build/`](new-build/README.md) (audit, capability inventory,
     architecture, reuse plan, parity matrix, data sources, roadmap, test plan, repository structure, rule bank, deck
@@ -50,7 +61,8 @@
     the owner's design reference, the MF Screener link sits in the masthead and each section uses the full width
     (PR #14; three independent browser QA rounds and the security gate passed on the final commit, spike 99 of 99).
   - **M1.4 is next** (the first vertical slice: the portfolio overview end to end), starting with the rule for a
-    Crore cell that is not a number (KI-147, an owner decision).
+    Crore cell that is not a number (KI-147, an owner decision); it also carries KI-148 (the two differences fix
+    batch 4 opens with the live page, which no parity fixture exercises yet).
 - The owner answered the 28 audit decisions: all accepted except OD-11 (keep the monitor uploads, fixed), D-021.
 - The previous owner's second export is expected this week (CR-0004).
 - The October 2026 data refresh is due when the files arrive, around 13–17 Nov 2026.
@@ -143,7 +155,7 @@ Other items:
 | P1 | Risk-ratio computation in this repository (from the previous owner's toolchain) | operations |
 | P2 | Expense-ratio sanity checks as a script (today a manual runbook step) | operations |
 | P3 | KI-029: AI Analyst signal weights sign-off | product decision |
-| P1 | The legacy page's base-file reading defects found by M1.3: KI-146 (the IPS takes only the last allocation row of a class) and KI-140 to KI-145 (partial merged units, first-folio dates, total rows read as holdings, text read by `parseFloat`, impossible dates rolled, variant asset labels split into rows); live-page data fixes under D-028, measured on the real base files first | legacy fix batch |
+| P1 | The legacy page's base-file reading defects found by M1.3: KI-146 (the IPS takes only the last allocation row of a class) and KI-140 to KI-145 (partial merged units, first-folio dates, total rows read as holdings, text read by `parseFloat`, impossible dates rolled, variant asset labels split into rows); live-page data fixes under D-028, measured on the real base files first. Built in fix batch 4 (CR-0009, D-041), in review | legacy fix batch |
 | P1 | The legacy `FUND_RANKS` block (fund ranks issued 15 Aug 2026) is an open item: whether the legacy page removes it now (a data change under D-028, which would also remove what uses it, such as the AI Analyst's rank signal) or keeps it until switch-over is to be decided by the lead under D-033 and recorded | decision, then a legacy data change |
 
 ## Records
