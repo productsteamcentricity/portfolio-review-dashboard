@@ -220,12 +220,19 @@ Screener scores and ranks are never in a public page: the pack is never embedded
 | Scope | IndexedDB belongs to one browser profile and origin: the Pages site, the local preview and a double-clicked copy each load the pack once per cycle; the M1.2 spike found IndexedDB available under `file://` and served, kept across a reload and a browser restart (headless Edge 155 and Chrome 155), as best-effort storage; every local file shares the one `file://` origin ([toolchain.md](new-build/toolchain.md) §6) |
 | Never | in `localStorage`, logs or exports beyond the figures a review uses; sent anywhere; in a build (`scripts/validation/check-next.mjs` fails on pack content, from M10); committed |
 
-### 6.10 The capital-gains template (D-032)
+### 6.10 The capital-gains statement (D-032, D-036)
 
-Capital-gains statements are uploaded in a template the app defines, as the base file is; no issuer's own layout is
-parsed. Section 1 offers the blank template (a header row and a Read Me sheet); `ingest/capital-gains.ts` reads it by
-header name, one row per realised lot, money in rupees converted to Crore, and refuses a file without the required
-columns, naming them. The proposed columns are in [DATA_DICTIONARY.md](DATA_DICTIONARY.md) §5.17, fixed in M7.
+Capital-gains statements arrive as the wealth platform's "Capital Gain Report" export, accepted as produced (D-036,
+amending D-032): `ingest/capital-gains.ts` finds its columns by header name in any order, removes the PAN from every
+text cell at read time, parses the folio out of the instrument name, tells the lot rows from the totals row and the
+footer text, and reconciles the lots with the statement's totals. Statements from other sources go into the blank
+template that section 1 offers, with the same headers and a Read Me; one reader serves both, and a file without the
+required columns is refused, naming them. No issuer's own layout is parsed. `engine/tax/` classes each lot (merger,
+grandfathered, indexed cost shown, standard), maps it to one rule of the dated tax-rule table by its rule key (tax
+class, listed flag, sub-type, purchase date and sale date), and computes indicative tax in rupees per person and
+financial year, with the slab rate, surcharge rate and regime the analyst enters per person and year (no defaults).
+The tax-rule table was approved by the financial-domain reviewer on 27 Oct 2026. Columns:
+[DATA_DICTIONARY.md](DATA_DICTIONARY.md) §5.17; design: [new-build/capital-gains-upload.md](new-build/capital-gains-upload.md).
 
 ## 7. Module responsibilities
 
@@ -235,7 +242,7 @@ columns, naming them. The proposed columns are in [DATA_DICTIONARY.md](DATA_DICT
 | `ingest/workbook.ts` | SheetJS wrapper: raw serials, formulas and cached values, sheet and header discovery by name, size limits | interpret business meaning |
 | `ingest/base-file.ts` | base file to holdings: aliases, units by column label, the XIRR unit question (OD-3), blank asset unknown (OD-7), rows without CMV excluded and listed (OD-8), folio merge | guess units silently |
 | `ingest/irr-file.ts` | fund and benchmark flows, transaction types (OD-16), the DISTRIBUTOR column, skipped rows by reason | drop rows silently |
-| `ingest/capital-gains.ts` | the capital-gains template to realised-gain records; the blank template (§6.10) | read a file not in the template |
+| `ingest/capital-gains.ts` | the platform's capital-gains export, or the blank template with its headers, to realised-gain records; PAN removed at read; footer and repeated rows (§6.10, D-036) | keep a PAN; read a file without the required columns |
 | `ingest/disclaimer.ts` | the disclaimer in use; a session override only for an approved fingerprint | accept unapproved text |
 | `ingest/` vendor parsers (MF and SIF Monitor, expense ratio, analytics, listed equity, fund manager, risk ratios, fund ranks, PMS and AIF performance) | vendor and in-house files to reference records **by header name**, with the monthly pipeline's rules | read columns by position (KI-033) |
 | `ingest/soa-lookthrough.ts`, `bonds.ts` | client look-through uploads; ambiguous formats refused (KI-056, KI-077) | overwrite reference data |
@@ -557,7 +564,7 @@ defined in M8; no decision engine is built now.
 The decisions behind this design are recorded in [DECISIONS.md](DECISIONS.md), which owns them: D-023 (publication
 and return methods), D-024 (the `/next/` preview), D-025 (npm for build tooling), D-026 (data classes; the Screener
 pack never public), D-027 (the MF Screener link), D-028 (what the live page receives), D-029 (the missing-value dash),
-D-030 (observation thresholds), D-031 (borders and Actionables), D-032 (the capital-gains template), D-033
+D-030 (observation thresholds), D-031 (borders and Actionables), D-032 (the capital-gains template, amended by D-036: the platform export accepted as produced), D-033
 (Claude's charge of GitHub and the dashboard), D-034 (the toolchain, the one-file build and the preview that never
 blocks the legacy page) and D-035 (reference data in the repository and the base-file reading conventions). The
 owner's audit decisions are OD-nn in
@@ -572,7 +579,7 @@ Each is a gate of the milestone named, and this section is updated when it close
   theme XML post-processing (M9).
 - A real double-click of the built page on an analyst's own browser profile (the M1.2 spikes ran headless; the browser
   QA steps of [toolchain.md](new-build/toolchain.md) §9).
-- The capital-gains template's columns (D-032; a proposal, not yet tried by analysts; M7).
+- The capital-gains columns (D-036: the platform export's, decided 23 Oct 2026; the blank template not yet tried by analysts; M7).
 - The MF Screener data pack: no pack has been received, so its parser and limits are designed against the contract
   only, and its size in IndexedDB is unmeasured (M10).
 - The exact columns of the Index TRI files (known from the data-source survey; confirmed on the first files read, M11).

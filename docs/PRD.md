@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Document | `docs/PRD.md` (draft 0.4, from Phase 0, 21 Oct 2026, revised twice on 22 Oct 2026 and on 22 Oct 2026) |
-| Status | The living PRD from M1.1; draft 0.4 applies the owner's answers of 22 Oct 2026 (D-024 to D-033) |
+| Document | `docs/PRD.md` (draft 0.5, from Phase 0, 21 Oct 2026, revised twice on 22 Oct 2026, on 22 Oct 2026 and on 23 Oct 2026) |
+| Status | The living PRD from M1.1; draft 0.4 applied the owner's answers of 22 Oct 2026 (D-024 to D-033); draft 0.5 the capital-gains upload (D-036) |
 | Product | The new Portfolio Review application (`app/`, served at `/next/` until parity, then `/`) |
 | Legacy reference | `index.html` as of commit `782794f` (unchanged on `main` at `8cb320d`; served at `/` until parity) |
 | Companion documents | `docs/ARCHITECTURE.md`, `docs/DATA_DICTIONARY.md`, `docs/MONTHLY_UPDATE_GUIDE.md`, `docs/HANDOVER.md`, `docs/DECISIONS.md`, `docs/KNOWN_ISSUES.md`, the owner brief (`docs/new-build/00-owner-brief.md`), CR-0006, the open questions and the owner decisions (`docs/new-build/open-questions.md`, `docs/new-build/owner-decisions-new-build.md`) |
@@ -48,7 +48,7 @@ monthly from a designated folder of approved source material.
 
 | # | Section | Contains | Legacy tabs mapped here |
 |---|---|---|---|
-| 1 | Uploads and inputs | base file (with holder columns when present), IRR, **capital-gains statement** (in the app's template, D-032), PMS/AIF look-through, bonds, monitors, the **MF Screener data pack** slot (kept in this browser until a newer pack is loaded; its cycle date in the masthead; D-026, D-037), an analyst **price file** for direct equity, workbook re-upload; the **disclaimer in use** (version and date from the monthly folder) with an override limited to approved files; the month's data vintages; every upload passes Upload, Validate, Preview and Review stages before it feeds the review; import status, reporting dates, source register, missing files, validation results; family, entity and holder labels; logo; review mode | Home (part), sidebar inputs |
+| 1 | Uploads and inputs | base file (with holder columns when present), IRR, **capital-gains statement** (the platform's export as produced, or the blank template with its headers; D-032, D-036), PMS/AIF look-through, bonds, monitors, the **MF Screener data pack** slot (kept in this browser until a newer pack is loaded; its cycle date in the masthead; D-026, D-037), an analyst **price file** for direct equity, workbook re-upload; the **disclaimer in use** (version and date from the monthly folder) with an override limited to approved files; the month's data vintages; every upload passes Upload, Validate, Preview and Review stages before it feeds the review; import status, reporting dates, source register, missing files, validation results; family, entity and holder labels; logo; review mode | Home (part), sidebar inputs |
 | 2 | Portfolio overview | KPIs, asset and product allocation, client-level and advisor-level allocation, AMC, IPS | IPS, Asset, Distributor, Client, AMC |
 | 3 | Portfolio observations | Review Snapshot (RO or RB), observations (Evidence, Diagnosis, Implication, Action) under "What drives portfolio risk" and "What drives portfolio return", with the editor; one-slide SWOT | Observations |
 | 4 | Analytics and overlap | equity and debt look-through, overlap (native), index overlap and active share, scopes (family, client, advisor) including returns by scope, **contributors and laggards**, historical analytics, **drawdown comparison on index data** | Analytics, Overlap, Fund IRR (contributors) |
@@ -78,11 +78,13 @@ Each requirement carries its brief reference and parity-matrix id (`docs/new-bui
   it blocks. (U-60, U-67)
 - R-IN-5 Replace the whole review when a new family is loaded; keep the plan and picks on a same-family date change
   (D-015, OD-24); nothing of the previous family survives in any export. (U-50, U-05)
-- R-IN-6 Accept the client's capital-gains statement, in the app's capital-gains template (one row per realised lot;
-  the proposed columns are in `DATA_DICTIONARY.md` §5.17 and are fixed in M7), as the source of record for realised
-  gains of a financial year; offer the blank template for download; refuse a file that is not in the template, naming
-  the missing columns; reconcile with gains derived from the IRR file and raise a High result on a difference.
-  (E-141; D-032)
+- R-IN-6 Accept the client's capital-gains statement as the wealth platform exports it, without reformatting (one row
+  per purchase lot consumed by a sale; columns in `DATA_DICTIONARY.md` §5.17, found by header name), as the source of
+  record for realised gains of a financial year; remove the PAN when the file is read; reconcile the lots with the
+  statement's totals and ask the analyst, per sale event, how to count exactly repeated rows; offer a blank template
+  with the same headers for statements from other sources; refuse a file without the required columns, naming them; reconcile with
+  gains derived from the IRR file and raise a High result on a difference. (E-141, E-150 to E-153, E-156, U-71; D-032,
+  D-036)
 - R-IN-7 Show the disclaimer in use (version, date, source) and accept an override only for an approved file. (E-137;
   Q-77)
 - R-IN-8 Model accounts, folios and ownership: holders and mode of holding read when the base file carries them,
@@ -192,6 +194,13 @@ Each requirement carries its brief reference and parity-matrix id (`docs/new-bui
   exemption already used; lots grouped by assessee. (E-41 to E-43, E-141)
 - R-TX-2 Tax rules as a versioned owner table with effective dates, refreshed from an approved workbook in the monthly
   folder (never per review), with a generated tax-rules summary for compliance sign-off. (E-106, E-144; Q-82)
+- R-TX-3 From a capital-gains statement, indicative tax per person and financial year: each lot classed (merger,
+  grandfathered, indexed cost shown, standard) and mapped to one rule of the dated tax-rule table by its tax class,
+  listed flag, sub-type, purchase date and sale date; set-off and the annual exemption per person; the slab rate,
+  surcharge rate and regime the analyst enters per person and year (none with a default); the rule set and its date
+  shown; the statement's own split beside the app's; labelled "Indicative, not tax advice; resident individual
+  assumed". The tax-rule table was approved by the financial-domain reviewer on 27 Oct 2026. (E-152, E-154, E-155,
+  U-72; D-036)
 - R-CO-1 Portfolio cost from base expense ratios, blanks footnoted (OD-9), one Regular/Direct switch (OD-10). (E-60)
 - R-IP-1 IPS compliance on CMV including hybrid sleeves (OD-13), per review. (E-51)
 
@@ -239,7 +248,7 @@ Sources, classes and freshness rules: `docs/new-build/06-data-source-inventory.m
 |---|---|---|
 | Weights | on current market value (CMV); per-client sheets re-based to the client; scopes re-based to the scope | [PO §3.3] |
 | Unrealised gain/loss | CMV minus invested, everywhere | OD-18 |
-| Realised gain/loss | from the capital-gains statement (in the app's template) when supplied, else derived from IRR-file redemptions (FIFO), source named, reconciled when both exist | Q-49; D-032 |
+| Realised gain/loss | from the capital-gains statement (the platform export or the blank template, D-036) when supplied, else derived from IRR-file redemptions (FIFO), source named, reconciled when both exist | Q-49; D-032 |
 | Absolute return | gain / invested x 100 | DL 15 Jun |
 | XIRR | actual/365, bisection to a bracket width below 1e-12, Newton fallback | [IE E-26] |
 | Benchmark XIRR | the client's cash flows invested in each fund's own benchmark | [IE E-27] |
@@ -336,3 +345,5 @@ weights (KI-029). Documented in full at M16.
 | 0.4 (status) | 23 Oct 2026 | §13 status at the end of M1.1: the rest of M1.1 ready for its pull request, M1.2 and M1.3 built on their own branches, the legacy page with fix batch 2a; requirements unchanged |
 | 0.4 (M1.2) | 23 Oct 2026 | §13 status for M1.2: the first application code (toolchain, one-file build, nine-section shell, `/next/` preview; D-034); requirements unchanged |
 | 0.4 (M1.3) | 23 Oct 2026 | §13 status for M1.3: the shared model, the base-file reader and the reference data (D-035); requirements unchanged |
+| 0.5 | 23 Oct 2026 | D-036, the capital-gains upload: §3 section 1 and R-IN-6 accept the platform's export as produced (PAN removed, totals reconciled, repeated rows asked about) with a blank template for other sources; R-TX-3 indicative tax per financial year from the statement; §6 realised gain wording |
+| 0.5 (review) | 27 Oct 2026 | The review of the capital-gains design: R-IN-6 asks about repeated rows per sale event; R-TX-3 computes per person, keys the rule by tax class, listed flag, sub-type and dates, takes the rates and regime per person and year with no defaults, assumes a resident individual, and waits for the tax-rule table's approval |
