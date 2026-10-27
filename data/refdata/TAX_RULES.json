@@ -8,7 +8,7 @@
 {"alwaysShort":true,"inst":"Equity AIF – Cat III (Long Short)","lt":{"label":"0.39","period":"Always treated as Short Term","rate":0.39},"months":null,"st":{"label":"0.39","period":"Always treated as Short Term","rate":0.39}},
 {"inst":"Debt AIF – Cat I/II","lt":{"label":"Slab rate","period":">24","rate":null},"months":24,"st":{"label":"Slab rate","period":"≤24","rate":null}},
 {"inst":"Debt AIF – Cat III","lt":{"label":"Fund-level","period":">24","rate":null},"months":24,"st":{"label":"Fund-level","period":"≤24","rate":null}},
-{"alwaysShort":true,"inst":"Debt Mutual Funds – Sec. 50AA","lt":{"label":"Slab rate","period":"Always treated as Short Term","rate":null},"months":null,"st":{"label":"Slab rate","period":"Always treated as Short Term","rate":null}},
+{"alwaysShort":true,"inst":"Debt Mutual Funds – Sec. 76 (old 50AA)","lt":{"label":"Slab rate","period":"Always treated as Short Term","rate":null},"months":null,"st":{"label":"Slab rate","period":"Always treated as Short Term","rate":null}},
 {"inst":"Commodity ETF","lt":{"label":"0.125","period":">12","rate":0.125},"months":12,"st":{"label":"Slab rate","period":"≤12","rate":null}},
 {"inst":"Commodity Mutual Fund","lt":{"label":"0.125","period":">24","rate":0.125},"months":24,"st":{"label":"Slab rate","period":"≤24","rate":null}},
 {"inst":"Listed Bonds / NCDs","lt":{"label":"0.125","period":">12","rate":0.125},"months":12,"st":{"label":"Slab rate","period":"≤12","rate":null}},
@@ -21,7 +21,14 @@
 {"anyPeriod":true,"inst":"Crypto","lt":{"label":"0.3","period":"Any","rate":0.3},"months":null,"st":{"label":"0.3","period":"Any","rate":0.3}},
 {"inst":"Global Funds","lt":{"label":"0.125","period":">24","rate":0.125},"months":24,"st":{"label":"Slab rate","period":"≤24","rate":null}},
 {"alwaysShort":true,"inst":"MLD","lt":{"label":"Slab rate","period":"Always treated as Short Term","rate":null},"months":null,"st":{"label":"Slab rate","period":"Always treated as Short Term","rate":null}},
-{"inst":"Hybrid Mutual Funds (Equity: 35%-65%)","lt":{"label":"0.125","period":">24","rate":0.125},"months":24,"st":{"label":"0.2","period":"≤24","rate":0.2}},
-{"inst":"Hybrid Mutual Funds (Equity: >65%)","lt":{"label":"0.125","period":">12","rate":0.125},"months":12,"st":{"label":"0.2","period":"≤12","rate":0.2}},
-{"alwaysShort":true,"inst":"Hybrid Mutual Funds (Debt: >65%)","lt":{"label":"Slab rate","period":"Always treated as Short Term","rate":null},"months":null,"st":{"label":"Slab rate","period":"Always treated as Short Term","rate":null}}
+{"inst":"Hybrid MF (equity-oriented)","lt":{"label":"0.125","period":">12","rate":0.125},"months":12,"st":{"label":"0.2","period":"≤12","rate":0.2}},
+{"inst":"Hybrid MF (general rule)","lt":{"label":"0.125","period":">24","rate":0.125},"months":24,"st":{"label":"Slab rate","period":"≤24","rate":null}},
+{"alwaysShort":true,"inst":"Hybrid MF (Specified, Sec. 76)","lt":{"label":"Slab rate","period":"Always treated as Short Term","rate":null},"months":null,"st":{"label":"Slab rate","period":"Always treated as Short Term","rate":null}},
+{"inst":"Equity ETF FoF (90/90)","lt":{"label":"0.125","period":">12","rate":0.125},"months":12,"st":{"label":"0.2","period":"≤12","rate":0.2}},
+{"inst":"Fund of Funds (general rule)","lt":{"label":"0.125","period":">24","rate":0.125},"months":24,"st":{"label":"Slab rate","period":"≤24","rate":null}},
+{"inst":"International ETFs (listed in India)","lt":{"label":"0.125","period":">12","rate":0.125},"months":12,"st":{"label":"Slab rate","period":"≤12","rate":null}},
+{"inst":"ELSS (3-year lock-in)","lockMonths":36,"lt":{"label":"0.125","period":">12, after the lock-in","rate":0.125},"months":12,"st":{"label":"N/A (lock-in)","period":"Not possible","rate":null}},
+{"inst":"SIF (equity long-short)","lt":{"label":"0.125","period":">12","rate":0.125},"months":12,"st":{"label":"0.2","period":"≤12","rate":0.2}},
+{"alwaysShort":true,"inst":"SIF (debt long-short, Specified)","lt":{"label":"Slab rate","period":"Always treated as Short Term","rate":null},"months":null,"st":{"label":"Slab rate","period":"Always treated as Short Term","rate":null}},
+{"inst":"Foreign-listed shares (held directly)","lt":{"label":"0.125","period":">24","rate":0.125},"months":24,"st":{"label":"Slab rate","period":"≤24","rate":null}}
 ]

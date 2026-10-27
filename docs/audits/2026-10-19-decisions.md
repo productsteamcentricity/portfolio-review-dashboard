@@ -26,7 +26,9 @@ Each question has a **recommendation**, built on two rules:
     embedded data.
 
 Follow-ups that the accepted answers leave with the owner:
-- **OD-28:** ask the tax adviser for the current section reference under the Income-tax Act 2025.
+- **OD-28:** ask the tax adviser for the current section reference under the Income-tax Act 2025. **Answered by the
+  owner's TY 2026-27 Tax Reckoner** (Section Map #15): Sec. 76 (old 50AA); the row is renamed in tax batch T1
+  (KI-180, CR-0008).
 - **OD-25 (optional):** turn on GitHub's "Keep my email addresses private".
 - **OD-5:** new fund-name and AMC aliases are added only after the owner approves them. The first list comes
   with fix batch 1b.

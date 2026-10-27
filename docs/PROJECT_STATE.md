@@ -6,6 +6,12 @@
   (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is merged (PR #9; `index.html` MD5
   `911A04659CB34383E478416B54E9C306`); its browser acceptance passed on 22 Oct 2026, and the QA found KI-127 and
   KI-128 (both also on main before the batch).
+- **Tax batch (CR-0008, 27 Oct 2026):** the owner's TY 2026-27 Tax Reckoner is the source of record for the live
+  page's taxation. The review found 23 discrepancies (KI-160 to KI-182); the lead's defaults are D-040, each open to the
+  owner's confirmation. Part T1 (classification and the TAX_RULES rows: KI-162 to KI-165, KI-170, KI-172 to KI-174,
+  KI-178 to KI-180) is committed on `fix/legacy-batch-3-tax` (`index.html` MD5 `5717A796…`, not pushed). The later
+  parts follow on the same branch; the batch merges as one pull request after its financial re-review and browser
+  acceptance.
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
   - **Phase 0 is done.** The record is in [`new-build/`](new-build/README.md) (audit, capability inventory,
     architecture, reuse plan, parity matrix, data sources, roadmap, test plan, repository structure, rule bank, deck
@@ -86,7 +92,9 @@
    (a degraded Exit falls back to Retain).
 3. **Owner:**
    - send your own list of issues;
-   - ask the tax adviser about OD-28;
+   - confirm the tax defaults of D-040 and answer CR-0008's questions (ELSS unlock day, the 29 Feb clamp, the marker
+     of foreign shares in real base files, the 90/90 status of equity ETF FoFs, the AMC year-end classifications);
+     OD-28 is answered by the reckoner (Sec. 76, old 50AA);
    - answer M1.3's questions in [`DATA_DICTIONARY.md`](DATA_DICTIONARY.md) §8: unrecognised Asset Names such as
      "Gold" (BF-19), letter case of Asset Names (BF-26), a market value of 0, and, for M1.4, a Crore cell that is not
      a number beside a Lakh amount (KI-147);

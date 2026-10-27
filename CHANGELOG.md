@@ -4,6 +4,30 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Fixed
+- **Tax batch, part T1 (CR-0008, D-040): the tax classes follow the TY 2026-27 Tax Reckoner.** `index.html` MD5
+  `911A04659CB34383E478416B54E9C306` → `5717A7967294FA13ED3A65111D80DA61` (patch
+  `tools/patches/2026-10-27-tax-1-classification.js`). On branch `fix/legacy-batch-3-tax`; it merges with the later
+  parts of the batch, never alone (the 1 Apr 2023 rule of KI-161 is needed by the Specified rows it maps).
+  - Listed Indian companies named "International", "Global" or "Overseas" are listed equity shares, not Global Funds
+    (KI-162, 286 names); Equity, Shares and Stocks count as direct-equity products; a share with a foreign marker takes
+    the new row "Foreign-listed shares (held directly)".
+  - Gold and silver ETF FoFs are 24-month Commodity Mutual Funds (KI-163, 35 per plan); international funds and FoFs are
+    Global Funds and international ETFs a new 12-month slab row (KI-164); funds of funds get their own branch: equity
+    ETF FoF (new row), debt FoF (Sec. 76), general rule (new row) (KI-165).
+  - Hybrids take the reckoner's buckets in three new rows that replace the obsolete 35% rows (KI-170); SIFs are classed
+    by strategy in two new rows (KI-172); ELSS has a 3-year lock-in row, and locked units leave the long- and
+    short-term amounts and the harvest (KI-173); REIT FoFs and index funds are not REIT units (KI-174); "ETF", "Index
+    Fund" and "FoF" products are mutual funds for the tax classes, through the AMC tab's one test (KI-178, KI-099);
+    retirement and children's funds are unclassified with the reason instead of equity (KI-179).
+  - The debt row cites Sec. 76 (old 50AA) of the Income-tax Act 2025 (KI-180, OD-28); a class with no TAX_RULES row is
+    unclassified with a reason. Every unclassified holding shows why on the Taxation tab and in the AI Analyst tax
+    signal; the slides count them.
+  - TAX_RULES 25 → 32 rows (`data/refdata/` regenerated). 11 regression files (333 checks), each failing on the
+    previous page. The synthetic sample book's taxation is unchanged apart from the debt row's name.
+  - Recorded: D-040 (the lead's defaults for the rules the reckoner leaves open, each open to the owner), KI-160 to
+    KI-182, CR-0008.
+
 ### Added
 - **Milestone M1.3 of the new build (CR-0006): the shared model, the base-file reader, the reference data and the
   parity ledger.** No page uses them yet: the `/next/` shell builds to the same bytes (42,280 bytes, SHA-256

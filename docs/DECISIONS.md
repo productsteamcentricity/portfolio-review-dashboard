@@ -393,3 +393,66 @@ refresh that changes `index.html` regenerates `data/refdata/` in the same change
 or CI fails. The legacy reading defects the parity work found are KI-140 to KI-145, with their IPS consequence
 KI-146: live-page data fixes for a later legacy batch (D-028). The new reader's money-column fallback is KI-147,
 decided in M1.4. The owner's questions are in `DATA_DICTIONARY.md` §8.
+
+## D-040 — Live-page tax rules follow the TY2026-27 reckoner (24 Oct 2026, lead under D-033; CR-0008)
+**Context.** The owner supplied `India_Taxation_Reckoner_TY2026-27.xlsx` (law as on 19 Oct 2026; the Income-tax Act
+2025 in force from 1 Apr 2026) as the source of record for the current tax year. A financial review compared it with
+the live page's Taxation tab, slides and AI Analyst tax signal and found 23 discrepancies, TX-01 to TX-23, each
+re-verified (all confirmed); they are KI-160 to KI-182 (TX-nn is KI-(159+nn)). Under D-028 they are calculation and
+data fixes for the live page. Some fixes need a rule the reckoner leaves open; the lead set a default for each, and
+**every default below is open to the owner's confirmation** (and the tax adviser's, where marked).
+**Decision.** Where the review's verifier gave a corrected fix it is followed; in addition:
+- **(a) Reference date.** Holding periods run to the base file's valuation date (the date of the market values and
+  gains), not to the latest IRR transaction. IRR transactions dated after it are left out of FIFO, with a notice
+  (TX-17, KI-176).
+- **(b) "More than N months".** A lot is long term strictly after its anniversary: the threshold in calendar months is
+  added to the purchase date, clamped to the month end (29 Feb 2024 + 12 months = 28 Feb 2025), and the lot is long
+  term from the next day (TX-01, KI-160). The clamp is for the tax adviser to confirm.
+- **(c) Shares held directly.** A foreign-listed share is 24 months, short term at slab, long term 12.5%, no
+  exemption, only on a positive marker: an ISIN not starting with IN, or a product or category label naming foreign,
+  international, US or overseas equity. Every other direct equity is Listed Equity Shares, and direct-equity product
+  labels such as Equity, Shares and Stocks count as direct equity (TX-03, KI-162). The reckoner has no row for
+  foreign-listed shares.
+- **(d) AIFs.** Category III is taxed at fund level: no investor-level gain, loss or tax, kept out of the harvest
+  pools, with a plain note (TX-07, KI-166). Category I and II pass through per the AIF's annual statement: no
+  investor-level tax figure is computed and they are kept out of the harvest pools, with a note (TX-12, KI-171).
+- **(e) Set-off order.** Short-term losses go first against the gains taxed at the highest rate. Slab-rate gains are
+  ranked at an analyst-set slab rate that defaults to 30% and is shown as an assumption (TX-16, KI-175).
+- **(f) The Rs 1.25 lakh exemption** is per client (person) and per tax year, shared across listed shares,
+  equity-oriented funds and REIT and InvIT units. The harvest assumes it is unused unless the analyst enters the
+  amount already used this tax year (default 0), and says so (TX-09, KI-168). Set-off and the exemption are never
+  pooled across a family: the family view sums the per-client results (TX-08, KI-167).
+- **(g) Crypto and virtual digital assets** keep 30% for any holding period (the reckoner has no row; the law is
+  unchanged), with the source noted in the row (TX-23, KI-182).
+- **(h) PMS** is taxed per security as if held directly (TX-10, OD-12, KI-169): the verifier's corrected fix within
+  what the base file and IRR sheet can express, with the limitation stated where per-security data is missing.
+- Where a fix needs data the page does not have (annual holdings tests, 31 Jan 2018 prices for grandfathering, the
+  AMC's year-end classification), the page discloses it and takes the safe behaviour the verifier proposes; it never
+  invents a number.
+
+Settled while building part T1 (classification and the TAX_RULES rows, 27 Oct 2026), within the decisions above,
+for the owner to confirm or change:
+- **Usual buckets.** Hybrid funds take the reckoner's bucket for their SEBI category: aggressive hybrid
+  equity-oriented, balanced hybrid the general rule, conservative hybrid Specified. Balanced advantage, dynamic asset
+  allocation, equity savings, multi asset and life cycle funds, and retirement and children's funds, stay
+  unclassified with the reason until the AMC's year-end classification is an input. SIFs are classed by strategy
+  name: equity long-short and sector rotation equity-oriented, debt long-short Specified; ex-top 100, hybrid and active
+  asset allocator unclassified. A single equity ETF or BeES fund of funds is "Equity ETF FoF (90/90)", pending the
+  owner's or AMC's confirmation fund by fund; other multi-ETF or index FoFs (Bharat 22, ESG sector leaders, multi
+  factor) follow the general rule; a conservative FoF stays unclassified.
+- **Class names.** SIFs get their own rows ("SIF (equity long-short)", "SIF (debt long-short, Specified)") with the
+  same parameters as the mutual-fund rows, so no slide calls a SIF a mutual fund; the debt row cites Sec. 76 (old
+  50AA) of the Income-tax Act 2025 (answers OD-28); US treasury and US debt FoFs are international FoFs (Global
+  Funds), not Specified.
+- **ELSS lock-in.** A lot is locked up to and including the third anniversary of its purchase and can be sold from the
+  next day. Locked units count as not classified: in the holding's CMV and Gain/Loss, out of the long- and short-term
+  columns, the amounts available for rebalancing and tax harvesting.
+- **REIT and InvIT funds.** A fund is recognised by its name (index fund, ETF, FoF) or a fund product other than plain
+  "Mutual Funds", so a REIT held directly whose blank Product parses as "Mutual Funds" stays a REIT unit.
+**Alternatives.** Leaving every hybrid and SIF unclassified until an AMC classification exists (rejected for the
+categories whose bucket is fixed by their SEBI limits); mapping funds by plan name (rejected: wrong for 3 of 7
+retirement plans on the review's measure); a fund whitelist for the international test (rejected: it loses
+international funds with a blank product).
+**Consequences.** CR-0008 implements the fixes in parts on `fix/legacy-batch-3-tax`; part T1 is KI-162 to KI-165,
+KI-170, KI-172 to KI-174 and KI-178 to KI-180. The owner's and tax adviser's questions are listed in CR-0008. The new
+build ports each rule with the same known answer (D-028).

@@ -193,8 +193,8 @@
       "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
       "class": "P",
       "file": "TAX_RULES.json",
-      "records": 25,
-      "sha256": "747648911a144e92597f6145f6694f960610eeedd0ff778fc4adef76c7044d96",
+      "records": 32,
+      "sha256": "0e56f89aae1b489a7a434b9a4cb94186ae2c0aefd5f9a619f06a41a702ebc8b9",
       "source": "DS-O1 Tax rules, Centricity owner table"
     }
   },
