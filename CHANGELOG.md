@@ -342,6 +342,7 @@ under D-028; the choices are D-041.
   BF-16, BF-18 and BF-20 to BF-26 (the live page now agrees with the new reader there; a retired entry matches nothing)
   and lists the two differences D-041 opens that no fixture exercises yet (KI-148, for M1.4); 234 of 234 tests pass
   in IST and UTC. `check-invariants` lists `assetLabel` in the engine surface.
+- **Browser acceptance** (27 Oct 2026, commit `b8a8d7f`, synthetic data): passed; recorded in CR-0009.
 
 ### Fixed (fix batch 2a: KI-124, OD-32 and OD-34, CR-0007)
 `index.html` MD5 `EF2FF4F1…` → `911A04659CB34383E478416B54E9C306` (16,826,633 bytes), by the patch

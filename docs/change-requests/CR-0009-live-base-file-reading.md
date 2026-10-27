@@ -3,8 +3,8 @@
 - **Requested:** 27 Oct 2026, by the lead under D-028 and D-033, so that the owner can test the live page while the new
   build is made: the base-file reading defects that the new build's parity work found (milestone M1.3, D-035) are
   fixed on the live page. Built 27 Oct 2026.
-- **Status:** in review: branch `fix/legacy-batch-4-basefile`, then `fix/legacy-batch-4-basefile-r2` with the
-  financial review's changes (27 Oct 2026), not yet pushed.
+- **Status:** accepted (27 Oct 2026): branch `fix/legacy-batch-4-basefile`, then `fix/legacy-batch-4-basefile-r2` with
+  the financial review's changes; browser acceptance passed and the security gate gave GO on `b8a8d7f`.
 
 ## Request
 Fix, on `index.html`, matching the new reader where a decision exists:
@@ -167,11 +167,23 @@ each with different holding days across its folios (3 of them bought on differen
   47.31%, 9.51%, 2.06%, 14.37% and 201.8%). Every synthetic fixture of the parity suite reads the same rows on this
   branch as on `7869676`, and the same as on `main` except `family-a-odd-asset-labels`, `family-a-merged-folios` and
   `family-a-invalid-text`; `family-a-skipped-rows` reads the same 13 rows as on `main`, now with no notice.
-- Not verified: the page in a browser (the status-line notices are checked headless, with `baseNotes` cut from the UI
-  script); PowerPoint and Excel rendering (no layout changed); the live page after publishing.
+- **Browser acceptance** (27 Oct 2026, commit `b8a8d7f`, page MD5 `12B5E572…`, synthetic data only): passed, with
+  `main` served beside it for the before and after. A variant book with a total row, text in a crore cell, an
+  impossible date, "EQUITY" and "Fixed Income" labels and a merged folio without units reads 13 holdings, 2 clients
+  and CMV 8.9943 Cr (main: 15 holdings, 3 clients, 29.99 Cr); one Asset Allocation row per class (Equity 71.24%, Debt
+  22.72%, Hybrid 6.03%) on the tab, the client and distributor tabs, Observations, the workbook and the slides; the
+  IPS actuals without look-through 42.86 / 42.86 / 5.71 / 8.57% (main: 14.29% equity, 22.86% debt); one escaped notice
+  per case on the status line, cleared on the next family; KI-001 isolation 9/9, IRR before base 3/3, remove then
+  reload 3/3; the standard sample book byte-identical to `main` on the status line, all 20 tab texts, the 15-sheet
+  workbook and the 61-slide deck; no network request but the page and the test files; a clean console. One minor
+  wording note, not a wrong figure: Taxation's unreconciled table keeps its general heading ("the history is missing
+  an event") for a merged holding whose base-file units are blank; the row's own reason is right (the heading is
+  worded by reason in the tax batch, CR-0008).
+- Not verified: PowerPoint and Excel rendering in the Office apps (the slide and sheet XML was checked; no layout
+  changed); the live page after publishing.
 
 ## Status
-In review. Follow-ups: the owner answers question 1 and confirms the other choices above; KI-066 (the IPS hybrid
+Accepted (27 Oct 2026): browser acceptance passed, security gate GO. Follow-ups: the owner answers question 1 and confirms the other choices above; KI-066 (the IPS hybrid
 remainder) waits for the owner; the new build, under KI-148 in M1.4, adds fixture cases for D-041 points 2 and 3 and
 aligns `DATA_DICTIONARY.md` §5.3 (line 213) and §8 (lines 526-527), whose "as the legacy" wording on merged purchase
 dates and holding days is stale once this merges, with point 2 and question 1, and considers point 3; BF-19 and BF-26

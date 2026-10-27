@@ -6,8 +6,8 @@
   (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is merged (PR #9; `index.html` MD5
   `911A04659CB34383E478416B54E9C306`); its browser acceptance passed on 22 Oct 2026, and the QA found KI-127 and
   KI-128 (both also on main before the batch).
-- **Fix batch 4, base-file reading (CR-0009, D-041), is built and in review** on `fix/legacy-batch-4-basefile-r2`
-  (the financial review's changes on top of `fix/legacy-batch-4-basefile`; not yet pushed): KI-140 to KI-146, the
+- **Fix batch 4, base-file reading (CR-0009, D-041), is accepted** (27 Oct 2026: financial review, browser
+  acceptance and security gate passed) on `fix/legacy-batch-4-basefile-r2`: KI-140 to KI-146, the
   reading defects the new build's parity work found, fixed on the live page (merged units and purchase dates, total
   rows, text in number cells, impossible dates, Asset Name variants, and the P1 IPS actuals), each with a known-answer
   regression test; the review added the skip of a repeated header row (no false warning); `index.html` MD5
@@ -16,8 +16,7 @@
   Holding Days". Open for the owner: question 1 of D-041 (holding days of merged folios) and the other choices in
   CR-0009 (total rows skipped, letter case folded); KI-066 (the IPS hybrid remainder, which KI-146's sums make larger
   on books with split labels). For the new build: KI-148 (M1.4: fixture cases for D-041 points 2 and 3; align
-  `DATA_DICTIONARY.md` §5.3 and §8, whose "as the legacy" wording is stale once this merges). Browser acceptance not
-  yet run.
+  `DATA_DICTIONARY.md` §5.3 and §8, whose "as the legacy" wording is stale once this merges).
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
   - **Phase 0 is done.** The record is in [`new-build/`](new-build/README.md) (audit, capability inventory,
     architecture, reuse plan, parity matrix, data sources, roadmap, test plan, repository structure, rule bank, deck
