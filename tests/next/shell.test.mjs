@@ -1,4 +1,4 @@
-// covers: BR-3.10 D-024 D-026 D-027 D-029 M1.2-shell
+// covers: BR-3.10 U-55 D-024 D-026 D-027 D-029 D-038 M1.2-shell M1.4
 // Static tests of the application shell (M1.2): the nine sections of the brief, the preview banner, exactly one
 // remote URL (the MF Screener link, D-027), the MF Screener data pack slot in section 1 (D-026), the house palette
 // and the dash rule (D-029). Expected values come from docs/PRD.md section 3, CLAUDE.md and the decisions, not from
@@ -8,7 +8,10 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 
 import { buildNext } from '../../scripts/build.mjs';
-import { parseHtml, attr, readScreenerUrl, NAMESPACE_URIS, BANNER_TEXT } from '../../scripts/validation/check-next.mjs';
+import {
+  parseHtml, attr, readScreenerUrl, NAMESPACE_URIS, OOXML_NAMESPACE_URIS, BANNER_TEXT, LICENCES_BLOCK_ID,
+  findSchemeUrls, vendorAllowance, loadManifest, sha256Hex,
+} from '../../scripts/validation/check-next.mjs';
 import { ROOT, NEEDS_BUILD, readJson } from './helpers.mjs';
 
 // docs/PRD.md section 3 (the brief's Phase 3), in order.
@@ -17,6 +20,33 @@ const NINE = [
   'Holdings and performance', 'Rebalancing', 'Taxation', 'Market updates', 'Annexure',
 ];
 const MILESTONE_RE = /^M\d+(?:\.\d+)?(?: and M\d+(?:\.\d+)?)?$/;
+
+/**
+ * The remote URLs of a page, with check-next's own functions, setting aside: the URLs inside a vendored library's
+ * script (identified by the SHA-256 the manifest pins; check-next counts them against the library's allow block), the
+ * manifest's licence URLs inside the third-party-licences block, and the W3C and OOXML namespace names written as
+ * quoted strings in the app script. Every other URL in the page is listed.
+ */
+function remoteUrls(page) {
+  const parsedPage = parseHtml(page);
+  const manifest = loadManifest();
+  const allowance = vendorAllowance(manifest);
+  const scripts = parsedPage.raw.filter((r) => r.name === 'script');
+  const executable = scripts.filter((s) => attr(s.tag, 'type') === null);
+  const isLibrary = (s) => executable.includes(s) && allowance.has(sha256Hex(Buffer.from(s.content, 'utf8')));
+  const app = executable.filter((s) => !isLibrary(s)).pop();
+  const licences = scripts.find((s) => attr(s.tag, 'id') === LICENCES_BLOCK_ID);
+  const licenceUrls = new Set(manifest.libraries.flatMap((l) => l.allow?.licenceUrls ?? []));
+  return findSchemeUrls(page).filter(({ url, index }) => {
+    const s = scripts.find((x) => index >= x.contentStart && index < x.contentEnd);
+    if (s && isLibrary(s)) return false;
+    if (s && s === licences && licenceUrls.has(url)) return false;
+    const q = page[index - 1];
+    const quoted = (q === '"' || q === "'" || q === '`') && page[index + url.length] === q;
+    if (s && s === app && quoted && (NAMESPACE_URIS.has(url) || OOXML_NAMESPACE_URIS.has(url))) return false;
+    return true;
+  }).map((u) => u.url);
+}
 
 function allStrings(value, out = []) {
   if (typeof value === 'string') out.push(value);
@@ -130,10 +160,16 @@ describe('the built shell (needs npm ci)', { skip: NEEDS_BUILD }, () => {
     assert.ok(html.slice(banner.end, banner.end + 200).includes(`${BANNER_TEXT}.`));
   });
 
-  test('exactly one remote URL: the MF Screener link (namespace names inside scripts aside)', () => {
-    const urls = [...html.matchAll(/[A-Za-z][A-Za-z0-9+.-]*:\/\/[^\s"'<>`)\\]*/g)].map((m) => m[0])
-      .filter((u) => !NAMESPACE_URIS.has(u));
-    assert.deepEqual(urls, ['https://centricity-mf-dashboard.pages.dev/']);
+  test('exactly one remote URL: the MF Screener link (vendored library scripts, licence URLs and namespace names in the app script aside)', () => {
+    assert.deepEqual(remoteUrls(html), ['https://centricity-mf-dashboard.pages.dev/']);
+  });
+
+  test('the same holds on a page carrying all four vendored libraries and an OOXML namespace name in its app script', async () => {
+    const all = (await buildNext({ entry: 'tests/fixtures/next-build/uses-all-vendor.js' })).html;
+    const ns = [...OOXML_NAMESPACE_URIS][0];
+    const at = all.lastIndexOf('<script>') + '<script>'.length;
+    const withNs = `${all.slice(0, at)}void ${JSON.stringify(ns)};\n${all.slice(at)}`;
+    assert.deepEqual(remoteUrls(withNs), ['https://centricity-mf-dashboard.pages.dev/']);
   });
 
   test('the app script renders the section panels and the data pack slot text', () => {
