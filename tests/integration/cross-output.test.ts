@@ -102,11 +102,17 @@ for (const id of FIXTURES) {
         if (outputs.length >= 2) shared += 1;
       }
       assert.ok(shared >= 10, `${shared} figures are shared by two or more outputs`);
-      // The pie labels on the slide are the screen's labels.
-      for (const loc of deck.deck!.components[0]!.result.figures.filter((l) => l.cell.startsWith('pie:'))) {
+      // The pie labels on the slide are the screen's labels on two lines: the category, a line break, the percent
+      // (D-039 point 6); a pie of one slice prints no label (the legend and the table carry its 100%).
+      const pieLocs = deck.deck!.components[0]!.result.figures.filter((l) => l.cell.startsWith('pie:'));
+      for (const loc of pieLocs) {
         const [, chart, i] = loc.cell.split(':') as [string, 'asset' | 'liquidity', string];
         const slice = vm.charts[chart].slices[Number(i)]!;
-        assert.equal(textAt(inv.slides[loc.page - 1]!, loc.cell), slice.label, `${loc.cell}`);
+        assert.ok(slice.label !== null, `${loc.cell}: a label printed on the slide is a screen label`);
+        assert.equal(textAt(inv.slides[loc.page - 1]!, loc.cell), slice.label.replace(/ (?=[^ ]+$)/, '\n'), `${loc.cell}`);
+      }
+      for (const p of [vm.charts.asset, vm.charts.liquidity]) {
+        if (p.slices.length === 1) assert.ok(!pieLocs.some((l) => l.cell.startsWith(`pie:${p.id}:`)), `${p.id}: a pie of one slice prints no label`);
       }
     });
 

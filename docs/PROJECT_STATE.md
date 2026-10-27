@@ -33,10 +33,16 @@
     distributor allocation, with notes; the overview deck (slide C-08) and the overview workbook download once the
     export gate is clear. Every figure comes from one view-model, and a test proves screen, slide and sheet show the
     same text. The four legacy libraries are vendored byte for byte (D-038). KI-147 follows the owner's answer of
-    24 Oct 2026 (no fallback, D-039 point 1). Spike gate R1 passed in Excel; the browser spike passes 141 of 141.
-    Still to do before the merge: the independent browser QA, the financial and security reviews, the private
-    deny-list scan, `npm run accept:office --full` on the wired deck and workbook, then push, CI and the pull
-    request. **M2 is next** (instrument matching).
+    24 Oct 2026 (no fallback, D-039 point 1). Spike gate R1 passed in Excel. The browser QA and the financial,
+    Office and security reviews ran on 27 Oct 2026, and the lead's fix round (D-039 points 1 to 15) is merged on the
+    branch: display rounding as Excel, the KI-147 notes by holding, raw labels as join keys, client and distributor
+    letter case kept with a Warning, Indian money format, the review bar, the screen and slide pies, focus, refusal
+    sentences, and the M1.4 cross-unit tests (L26): upload, as-on-change, W-1 and AC-01 (38 tests), with the browser
+    check `tests/browser/overview.cdp.mjs` (112 of 112). The suite passes 837 tests under IST and UTC; the spike 149
+    of 149. `npm run accept:office --full` passed on the numbers fixer's branch (6 workbooks, 6 decks); it has not
+    run on the merged HEAD, so PowerPoint has not yet opened the two-line pie labels or the one-slice pie without an
+    outline. Still to do before the merge: that Office run, then push, CI and the pull request. **M2 is next**
+    (instrument matching).
 - The owner answered the 28 audit decisions: all accepted except OD-11 (keep the monitor uploads, fixed), D-021.
 - The previous owner's second export is expected this week (CR-0004).
 - The October 2026 data refresh is due when the files arrive, around 13–17 Nov 2026.
@@ -81,7 +87,8 @@
    - ask the tax adviser about OD-28;
    - answer M1.3's questions in [`DATA_DICTIONARY.md`](DATA_DICTIONARY.md) §8: unrecognised Asset Names such as
      "Gold" (BF-19), letter case of Asset Names (BF-26) and a market value of 0 (M1.4 runs on the M1.3 defaults;
-     KI-147 was answered on 24 Oct 2026, D-039);
+     KI-147 was answered on 24 Oct 2026, D-039), and, from M1.4, whether to fold letter case for client and
+     distributor labels (kept as spelt today, as in the legacy);
    - count, privately, how often the real base files carry variant asset labels (letter case, spacing, synonyms):
      it sizes KI-145 and KI-146 on the live page;
    - ask the wealth platform's support whether its capital-gains export repeats lot rows by design (D-036; the
@@ -94,12 +101,15 @@
    ND-1 to ND-10 were answered on 22 Oct 2026 (D-024 to D-033).
    OD-29 to OD-36 were accepted on 21 Oct 2026 (D-022); OD-32 (renamed fund houses) and OD-34 ("AMC not given")
    are built in fix batch 2a (PR #9, merged), with KI-124 (empty Home slide export).
-4. **Claude: M1.4** (`feat/m1-4-overview`): the independent browser QA at 1440 x 900, 1366 x 768 and 375 x 812
-   (Blob downloads served and from a double-clicked copy), the financial review of the totals, gain, allocation,
-   KI-147 and SUMIFS semantics, the security review of the allowances, CSP, downloads and storage, the private
-   deny-list scan (`prepush-scan.mjs` with `PRD_PRIVACY_DENYLIST`, app/vendor and the logos included), and
-   `npm run accept:office` on the wired deck and workbook; then push, the release-check report, merge once CI is
-   green (D-017), and check the Pages deploy (`/` byte-identical to `index.html`, `/next/` the overview).
+4. **Claude: M1.4** (`feat/m1-4-overview`): the browser QA, the financial, Office and security reviews and the
+   lead's fix round are done (27 Oct 2026). Left: `npm run accept:office --full` on the merged HEAD (the two-line
+   C-08 pie labels and the one-slice pie in PowerPoint), the private deny-list scan before the push, then push, the
+   release-check report, the pull request (stating the SheetJS CE 0.18.5 risk carried, CVE-2023-30533 and
+   CVE-2024-22363, Q-12; the corrections that change client numbers, the AG list; and what stays open), merge once
+   CI is green (D-017), and check the Pages deploy (`/` byte-identical to `index.html`, `/next/` the overview). Open
+   for the lead: labels of adjacent small pie slices can sit close together on screen; `base-file.entity-case-variant`
+   makes no note although it touches the Clients KPI; no KI number yet for the Excel money format's third section
+   (locale grouping) or Excel's -0.00.
 5. **Claude: M2**, instrument matching ([roadmap](new-build/07-implementation-roadmap.md)).
 6. **When the second export arrives:**
    - Claude verifies and files it;

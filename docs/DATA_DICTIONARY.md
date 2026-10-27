@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | **v0.5**, 27 Oct 2026 (milestone M1.4, D-039; v0.4 was D-036, the capital-gains upload, 23 Oct 2026, revised 27 Oct 2026, and its review; v0.3 was the financial review of M1.3; v0.2 was M1.3's shared model types in `app/src/model/`; v0.1 was M1.1 with the owner's answers D-024 to D-033) |
+| Version | **v0.5**, 27 Oct 2026 (milestone M1.4, D-039, with its fix round the same day; v0.4 was D-036, the capital-gains upload, 23 Oct 2026, revised 27 Oct 2026, and its review; v0.3 was the financial review of M1.3; v0.2 was M1.3's shared model types in `app/src/model/`; v0.1 was M1.1 with the owner's answers D-024 to D-033) |
 | Scope | the data model of the **new** Portfolio Review application. The legacy `index.html` is described in [legacy/ARCHITECTURE.md](legacy/ARCHITECTURE.md) and the conventions section of `CLAUDE.md`; how the new application is built is in [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Owns | every entity, field, metric path, missing-data status, unit and calculation definition of the new application ([09-repository-and-docs-structure.md](new-build/09-repository-and-docs-structure.md) §3). The PRD (§6), the architecture and the observation rule bank link here and do not restate these definitions |
 | Built from | the Phase 0 architecture's model section ([03-architecture.md](new-build/03-architecture.md) §6, with §8, §9, §12, §16) and the record and metric-path sections of [observation-rule-bank.md](new-build/observation-rule-bank.md) (§1, §2) |
@@ -88,7 +88,7 @@ marker characters are configuration.
 |---|---|---|
 | Money | held in **Crore**, unrounded; displayed in the base file's unit (Crore, Lakh or rupees; rupee-only files in Crore from 1 Cr, else Lakh) through one formatter. Exception: realised lots and their tax (§5.5, the `tax.fy` paths of §6) are held and computed in rupees, because tax thresholds and known answers are in rupees, and converted to Crore only for display (D-036) | `03` §6.7; D-036 |
 | Percentages | held as **percent numbers** (8.79 means 8.79 %), unit `pct`, never as fractions (decided in M1.3, §8); two decimals for display; inflation one decimal | `03` §6.7; rule bank §1 (thresholds such as 35 are percent numbers) |
-| Rounding | unrounded maths; rounding only in the renderer; Excel receives unrounded values with number formats | `03` §6.1 rule 3 |
+| Rounding | unrounded maths; rounding only in the renderer; Excel receives unrounded values with number formats. **Display rounding (M1.4, D-039 point 13):** one formatter (`app/src/views/format.ts`: `excelFixed`, `displayRounded`, `formatIndian`) rounds as Excel shows a cell, first to 15 significant digits, then half up on that decimal, on the decimal digits and never on the binary double: 1.005 shows 1.01, 0.145 shows 0.15, 2.675 shows 2.68, -1.005 shows -1.01, 35.67499999999998 shows 35.68. A value that rounds to zero shows no sign (Excel shows -0.00; the Office check ignores only that sign). Pie labels compare the share so rounded to two decimals with 2.00 (D-039 point 6) | `03` §6.1 rule 3; D-039 |
 | Dates | day numbers, converted from raw Excel serials by one timezone-free function (the legacy +12 h shift stays in the legacy only); tests run under `TZ=Asia/Kolkata` and `TZ=UTC`. M1.3: `DayNumber` = whole days since 1970-01-01; `app/src/engine/dates.ts` `excelSerialToDay` (1900 and 1904 systems; the phantom 29 Feb 1900 is refused; a serial within one minute of midnight counts as that midnight, which absorbs the 10-second drift SheetJS adds when it writes a local-time date in IST) | `03` §6.7 |
 | Evidence units | `pct`, `pp`, `bp`, `count`, `ratio`, `cr` (Crore), `years`, `label` | rule bank §1 |
 | Weights | on current market value (CMV); per-client sheets re-based to the client; scopes re-based to the scope | PRD §6 |
@@ -113,7 +113,9 @@ M1.3 (`app/src/model/ids.ts`, `app/src/engine/ids.ts`): ids are strings typed by
 (`SourceFileId`, `FamilyId`, `ClientId`, `DistributorId`, `AccountId`, `FolioId`, `HoldingId`). Per-review ids are a
 prefix (`cl`, `ds`, `ac`, `fo`, `h`) and the first 12 hex digits of the FNV-1a 64-bit hash of the normalised key
 (labels lower-cased with spaces collapsed), so a file read twice, or with its rows in another order, gives the same
-ids. Keys: client and distributor by label; account by client and distributor (the plan joins in M2); folio by
+ids. Keys: client and distributor by label as the file spells it, spaces collapsed and letter case kept, as the
+legacy keys its matrices (M1.4 fix round, D-039 point 3; folding letter case is the owner's question, §8); account by
+client and distributor (the plan joins in M2); folio by
 account, AMC label and folio number (a blank folio number by its row), except that a statement lot's folio is keyed by
 account, scheme label and folio number until its scheme is matched (the statement has no AMC column;
 [new-build/capital-gains-upload.md](new-build/capital-gains-upload.md) §2.5); an included holding by the merge key
@@ -138,7 +140,9 @@ Types (M1.3, `app/src/model/source.ts`): `id: SourceFileId` (SHA-256, lower-case
 `fileName`, `role: SourceRole` (`base-file`, `irr-file`, `capital-gains`, `soa-lookthrough`, `bonds`, `price-file`,
 `mf-monitor`, `mf-monitor-direct`, `sif-monitor`, `screener-pack`, `index-data`, `workbook-reupload`),
 `class: 'P' | 'C' | 'N'`, `asOn: Value<DayNumber>`, `parserVersion` (for example `base-file@1`),
-`stage: 'upload' | 'validate' | 'preview' | 'review'`, `bytes`. A raw row's position is a `RowRef`
+`stage: 'upload' | 'validate' | 'preview' | 'review'`, `bytes`. The reader records `validate`; a `Review` lists its
+sources at `review` (M1.4 fix round), and before Accept the screen's register shows the stage of the stage strip,
+`preview` for a file read and waiting for Accept, `validate` for a file refused or failed there (§5.18). A raw row's position is a `RowRef`
 `{ sourceId, sheet, row }` with the row number Excel shows. The raw cells are those of the workbook reader
 (`app/src/ingest/workbook.ts`: numbers with their number format and a date flag, text, booleans, errors, formulas
 kept beside their cached value).
@@ -149,7 +153,12 @@ money unit of the file (`crore`, `lakh` or `rupee`), the holdings, clients, dist
 ownership, the **skipped rows** with their reason (`blank-row`, `repeated-header`, `total-row`,
 `no-instrument-name`, each with its row and whether it carries an amount), the analyst questions, the validation
 results, the audit entries and the counts (rows, holding rows, holdings, included, excluded, merged rows, skipped
-rows by reason).
+rows by reason). From the M1.4 fix round it also carries `moneyFindings: MoneyFinding[]`, what the KI-147 rule
+found per holding, field and row: `{ holdingId, field: 'invested' | 'cmv' | 'fileGain', kind: 'invalid' |
+'disagree', column: { header, unit }, others: [{ header, unit }] }`, where `column` is the column whose text is not
+an amount (invalid) or whose amount is used (disagree), as the file heads it, and `others` the later columns of the
+field (not read in its place, or whose amount differs). The overview's money notes count these by holding (D-039
+point 9).
 
 ### 5.2 `InstrumentRef` (L2)
 
@@ -189,7 +198,7 @@ legacy (E-02, KI-113).
 | `rows` | `RowRef[]` | every base-file row in the holding, in file order (several when folios merged) |
 | `instrumentName` | string | "Instrument Name" as given, spaces collapsed; a row without one is skipped and reported |
 | `instrument` | `InstrumentRef \| null` | null until engine/match (M2) |
-| `clientLabel`, `clientId`, `distributorLabel`, `distributorId` | string or null, id or null | a blank Client Name is warned |
+| `clientLabel`, `clientId`, `distributorLabel`, `distributorId` | string or null, id or null | a blank Client Name is warned; the id is keyed on the label as spelt (spaces collapsed, letter case kept, as the legacy); labels that differ only in letter case are separate entities with the Warning `base-file.entity-case-variant` (M1.4 fix round, D-039 point 3) |
 | `accountId` | `AccountId` | §5.6 |
 | `productLabel`, `product`, `productDefaulted` | string or null, string, boolean | a blank Product Name reads as "Mutual Funds", the legacy default, flagged and noted (Information) |
 | `categoryLabel`, `amcLabel`, `liquidity` | string or null | as given |
@@ -197,7 +206,7 @@ legacy (E-02, KI-113).
 | `folios`, `folioIds` | string[], `FolioId[]` | folio numbers as supplied, one per merged row that has one |
 | `purchaseDate` | `Value<DayNumber>` | an Excel serial or a text date (`YYYY-MM-DD`, `DD-MM-YYYY` with the legacy month-first swap above 12, `D Mon YYYY`); an impossible date is INVALID SOURCE DATA |
 | `units` | `Value<number>`, unit `units` | the base the tax split reconciles a holding against (M7): the legacy reconciles base-file units with its unit FIFO and, when they are missing, switches to its rupee ledger (`amtMode`, 07_engine.js:393-405), which suits products priced in rupees (PMS, unlisted AIF) |
-| `invested`, `cmv`, `fileGain` | `Value<number>`, unit `cr` | per row the Cr. column, else Lakh / 100, else rupees / 1e7 (the legacy precedence); `fileGain` is the file's own G/L, kept for reconciliation only (the gain shown is CMV minus invested, OD-18). Under the KI-147 rule (`app/src/config/money-columns.ts`, D-039 point 1) a blank or placeholder cell passes to the next column (Information `base-file.money-column-used`); text that is not an amount stops the reading (INVALID SOURCE DATA, Warning `base-file.money-invalid`; an invalid invested value leaves the holding included without one, counted in `totals.counts.invalidInvested`); a later column whose amount differs from the one used by more than 0.005 Cr raises Warning `base-file.money-disagree`, and the amount used is kept |
+| `invested`, `cmv`, `fileGain` | `Value<number>`, unit `cr` | per row the Cr. column, else Lakh / 100, else rupees / 1e7 (the legacy precedence); `fileGain` is the file's own G/L, kept for reconciliation only (the gain shown is CMV minus invested, OD-18). Under the KI-147 rule (`app/src/config/money-columns.ts`, D-039 point 1) a blank or placeholder cell passes to the next column (Information `base-file.money-column-used`); text that is not an amount stops the reading (INVALID SOURCE DATA, Warning `base-file.money-invalid`; an invalid invested value leaves the holding included without one, counted in `totals.counts.invalidInvested`); a later column whose amount differs from the one used by more than 0.005 Cr raises Warning `base-file.money-disagree`, and the amount used is kept. For `fileGain`, which no figure uses (OD-18), both results are Information (auto-resolved, resolved) and their message ends "no figure uses the file's gain or loss (OD-18)" (M1.4 fix round, D-039 point 1(e)) |
 | `xirr`, `bmXirr` | `Value<number>`, unit `pct` | OD-3: a percent-formatted cell is read as a percentage; an unformatted column whose values are all below 1.5 in size raises an analyst question and stays INSUFFICIENT EVIDENCE until answered; otherwise percent numbers |
 | `holdingDays` | `Value<number>`, unit `days` | "Avg. Holding Days" |
 | `mergeGaps` | `('invested' \| 'fileGain' \| 'units')[]` | the merged totals left missing because some merged folios have the value and others do not (a merge gap, KI-007, KI-113), in that order; empty for a one-row holding and when every folio or no folio has the value. Code reads this list, never the reason text; it is what tells a merge gap in units from a product without units (§8) |
@@ -344,6 +353,13 @@ minus invested by more than 0.005 Cr). Review results are numbered `ruleId:n` af
 results first, so the id of the total-like result, which an acknowledgement names, stays the same when the as-on
 date changes.
 
+Added in the M1.4 fix round (D-039 points 1(e) and 3): the base-file Warning `entity-case-variant` (client or
+distributor labels that differ only in letter case; one result per level, listing the sets of labels, scoped to
+their holdings, count = the number of sets, decision D-039; listed in the validation panel and the Audit Log, no
+note); and two severities for `money-invalid` and `money-disagree`: Warning for the market and invested values,
+Information (auto-resolved, resolved) for the file's own gain or loss, whose message ends "no figure uses the file's
+gain or loss (OD-18)" and which never becomes a note.
+
 ### 5.9 `Review` (L4) and `Scope`
 
 `Review` is the session object for one family. It holds L1 to L10, and every metric in it is a `Value<T>` with lineage
@@ -426,13 +442,21 @@ cell). The sheet list is `03` §14. (`03` §6.1, §14)
   (Cr.), Invested Status, Current Market Value (Cr.), Current Market Value Status, Unrealised Gain/Loss (Cr.),
   Unrealised Gain/Loss Status, File Gain/Loss (Cr.), File Gain/Loss Status, Allocation (% CMV), Allocation Status,
   XIRR (%), XIRR Status, BMXIRR (%), BMXIRR Status, Avg. Holding Days, Avg. Holding Days Status, Included, Exclusion
-  Reason, Invested Present, Merge Gaps, Holding Id, Base File Rows.
+  Reason, Invested Present, Merge Gaps, Holding Id, Base File Rows. The Exclusion Reason follows the market value's
+  status, as the import report words it (`views/import-report.ts` `exclusionReason`): "Market value not a number
+  (invalid source data, OD-8)" or "No market value (OD-8)" (M1.4 fix round).
 - **Portfolio Overview**: Block | Asset Class | Product | Liquidity | Key | Investment Amount (Cr.) | Current Market
   Value (Cr.) | % CMV | Unrealised Gain/Loss (Cr.) | Absolute Return (%) | Invested Coverage (% of CMV) | Status.
   Row blocks: "Asset and product", "Total" (Grand Total, key ALL), "Liquidity".
 - **Client Allocation** and **Distributor Allocation** (only when the screen shows the matrix, OD-21): Asset Class |
   Product | Key | `<label> (Cr.)` for each entity in view-model order | Grand Total (Cr.) | Status. The last row is
-  "Share of family (%)".
+  "Share of family (%)", below the Grand Total and outside the autoFilter, its `_xlnm._FilterDatabase` name and the
+  negative red (`SheetSpec.tableRows` set to the Grand Total row; M1.4 fix round).
+- **Number formats** (`app/src/exports/xlsx/styles.ts`): money in Indian grouping,
+  `[>=10000000]##\,##\,##\,##0.00;[>=100000]##\,##\,##0.00;##,##0.00` (the units' pattern with two decimals, M1.4
+  fix round; Excel allows two conditions, so amounts at or below -1,00,000 and from 99,999.995 to 99,999.999 take the
+  system locale's grouping); units the same with three decimals; percent `0.00"%"`; dates `d mmm yyyy`.
+- **Source Register** Stage of an accepted base file: `review`.
 - **Audit Log**: Seq | Time (UTC) | Kind | Rule | Severity | Status | Decision | Count | Summary | Detail | Source
   SHA-256. Audit entries come first, then the validation results with Kind "validation" and no message text.
 - **_manifest** (hidden, protected without a password): Key | Value. schemaVersion, workbookSchema
@@ -525,6 +549,17 @@ source `statement`; a PAN never reaches the model (removed from every text cell 
 client's realised history: every tax figure is per financial year, and the reconciliation with gains derived from
 the IRR file runs per scheme and financial year (`03` §6.7).
 
+### 5.18 Section 1 upload state (browser, M1.4)
+
+`AppState.upload` (`app/src/ui/store.ts`; the type `UploadState` is in `app/src/ui/upload-slot.ts`): `stage`
+(`upload`, `validate`, `review` or null; the store's own values), `fileName`, `size`, `loaded` (the reader's result)
+and `error: UploadError | null`, where `UploadError = LoadError | { kind: 'review-failed'; message: string }`: a
+reader refusal (`too-large`, `too-many-sheets`, `too-many-cells`, `unreadable`) or an exception of the reader or the
+engine, never shown as "unreadable" (D-039 point 14). The stage the strip and the source register show is derived
+by `shownStage`: Preview for a file read and waiting for Accept, Validate for a file refused (no holding, or an open
+Blocking reader result, `baseFileRefusal`) or failed, Review once accepted. Nothing of this state is stored in the
+browser.
+
 ## 6. Metric paths
 
 The contract between `engine/` and `observations/`, the view-models and the cross-output consistency check. Every
@@ -537,7 +572,7 @@ path is a `Value<T>` in the `Review` (rule bank §2; `03` §11, §16).
 | `totals.counts.{included,excluded,withoutInvested,invalidInvested,clients,withoutClient,distributors,withoutDistributor}` | holding and entity counts of the review (M1.4) |
 | `alloc.asset[k].pct`, `alloc.product[k].pct` | labelled allocation shares |
 | `alloc.asset[k].{cmv,invested,gain,absReturnPct,investedCoveragePct}`, `alloc.product[k].*` | the same figures per asset class and per product (M1.4) |
-| `alloc.liquidity[l].{cmv,pct}` | liquidity lines; lines with a CMV of 0 or less are left out (M1.4) |
+| `alloc.liquidity[l].{cmv,pct}` | liquidity lines; lines with a CMV of 0 or less are left out (M1.4). In the overview view-model (`views/overview-vm.ts` `AllocationRow`) a row's `product` and `liquidity` (added in the M1.4 fix round) are the engine's labels as read, the join key of the figure keys, the workbook's product and liquidity keys and the liquidity colours; `label` is the text shown, passed through `plainText`, so two labels that print alike keep their own keys (D-039 point 3) |
 | `distributors[d].{cmv,sharePct,assetMix}`, `clients[c].cmv` | the distributor matrix, and the client CMV (M1.4) |
 | `holdings[i].{gain,cmvPct}` | per holding (`holdingMetrics`; `cmvPct` NOT APPLICABLE for an excluded holding, M1.4) |
 | `alloc.effectiveEquity.gross`, `.netOfHedges` | look-through equity share of the book (E-134, Q-50) |
@@ -638,6 +673,12 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
   last of such rows (KNOWN_ISSUES KI-145 and KI-146). Parity entry BF-26. Questions for the owner: confirm the
   folding; and measure, privately, how common variant labels (letter case, spacing, synonyms) are in the real base
   files, which sizes KI-145 and KI-146 on the live page.
+- **Letter case of client and distributor labels (M1.4 fix round, open; question for the owner, beside BF-26).** The
+  reader keys clients and distributors on the label as the file spells it (spaces collapsed, letter case kept), as
+  the legacy keys its matrices, so the numbers match the legacy: "Sample Client A" and "SAMPLE CLIENT A" are two
+  matrix columns and count as two clients, with the Warning `base-file.entity-case-variant` listing the pair (D-039
+  point 3; fixtures `syn-case-variants` and `family-a-case-variants`, no difference in the parity ledger). Question:
+  fold letter case for client and distributor labels?
 - **A Crore cell that is not a number beside a Lakh or rupee amount: decided (D-039 point 1).** Text that is not an
   amount in the column the reader would use is INVALID SOURCE DATA and no later column is read in its place (the
   owner's answer of 24 Oct 2026, "no fallback"); a blank or placeholder Crore cell takes the next column with a
@@ -690,4 +731,4 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
 | v0.4 (re-review) | 27 Oct 2026 | The re-reviews of the capital-gains design (its §10.11, LD-24 to LD-32): §4 a statement lot's folio keyed by account, scheme label and folio number until its scheme is matched; §5.5 `scheme` null until matched, `costBasis` gains `none` (an NE-LT-1 lot records its chosen leg's basis), `listed` becomes `Value<boolean>`, missing for a close-ended scheme without the analyst's flag; §6 `tax.realisedFY`, `tax.exemptionUsed[p]` and `tax.harvestableLoss[p]` defined from the per-person paths (a family figure only their sum, never compared with a per-person limit), the old-law year-total alternative, and `familySum` over the review's clients only; §7 the valid rule keys and funds of funds, long-term losses set off before short-term losses, unmatched clients as their own person, and the surcharge held while the regime is not entered |
 | v0.4 (approval review) | 27 Oct 2026 | The approval reviews of the capital-gains design (its §10.11, LD-33 to LD-39): §5.5 `costBasis` `none` only for a lot without a computable taxable gain, and `listed` missing only for a close-ended non-equity scheme; §6 `oldLawYearTotal` computed with set-off on each leg, PARTIAL COVERAGE for a person-year with lots not computed or the slab rate not set and for the family sum, and the rule bank's `tax.exemptionUsed` and `tax.harvestableLoss` read per person; §7 the listed-flag-missing key, the analyst's class on a fund of funds, the set-off order's "lowest tax for the rate buckets as formed", NE-LT-1 chosen before set-off, and the PARTIAL figures; §8 the rule bank follow-up |
 | v0.4 (second approval review) | 27 Oct 2026 | The second approval reviews of the capital-gains design (its §10.11, LD-40 to LD-42): §7 NE-LT-1 per lot without the claim that it gives a tax lower than or equal to the year's-total figure (which is lower depends on the year's losses), and the 20% leg on equal positive figures; the analyst's equity-oriented class on a fund of funds gives the 90/90 sub-type to that scheme's sales in that financial year only, without setting the per-scheme 90/90 flag |
-| v0.5 | 27 Oct 2026 | Milestone M1.4 (D-039): the KI-147 money-column rule (§5.3, §8); the base-file and review results, reconciliation and the export gate (§5.8); the `Review` fields (§5.9); the columns of the M1.4 workbook sheets (§5.13); totals, allocation, liquidity and entity metric paths (§6) |
+| v0.5 | 27 Oct 2026 | Milestone M1.4 (D-039): the KI-147 money-column rule (§5.3, §8); the base-file and review results, reconciliation and the export gate (§5.8); the `Review` fields (§5.9); the columns of the M1.4 workbook sheets (§5.13); totals, allocation, liquidity and entity metric paths (§6). The fix round the same day: the display rounding rule, half up on the 15-significant-digit decimal (§3, D-039 point 13); client and distributor ids keyed on the label as spelt (§4, §5.3); `BaseFileImport.moneyFindings` (§5.1); the Review stage of an accepted file's source (§5.1); the rule `base-file.entity-case-variant` and the Information severity of `money-invalid` and `money-disagree` for the file's gain or loss (§5.3, §5.8); the money number format, `SheetSpec.tableRows` and the Exclusion Reason texts (§5.13); the section 1 upload state with `UploadError` (§5.18); `AllocationRow.product` and `.liquidity` as raw labels (§6); the owner question on folding letter case for client and distributor labels beside BF-26 (§8) |

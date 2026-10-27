@@ -142,8 +142,9 @@ strings inside a script, and lists them in its output; the same text anywhere el
 - PptxGenJS 3.12.0 (`cd078ca9...`), which also defines JSZip, imported as `vendor:jszip`.
 
 Each MANIFEST entry has an allow block: the inline sequences (`<!--` for SheetJS, `<script` for PptxGenJS), the
-network-API names with exact counts (PptxGenJS: `XMLHttpRequest` 1, `importScripts` 1), the scheme URLs with exact
-counts (Chart.js 2, datalabels 1, SheetJS 72, PptxGenJS 56), and the URLs of its licence text (the two Apache-2.0
+network-API names with exact counts (PptxGenJS: `XMLHttpRequest` 1, `importScripts` 1), the scheme URLs (Chart.js 2,
+datalabels 1; SheetJS and PptxGenJS 72 and 56 distinct URLs, 82 and 138 occurrences), each pinned with its count,
+and the URLs of its licence text (the two Apache-2.0
 URLs for SheetJS). `check-next` identifies each executable script by its SHA-256. A library must also equal its file
 in `app/vendor/` and hold exactly what its allow block pins. The app script must be the only other script, and it
 comes last. No network API is allowed in the app script. The third-party-licences block may hold only licenceUrls.
@@ -182,7 +183,12 @@ and read back, a PptxGenJS deck with a native chart read back with JSZip) with n
 exception; Promise and `Array.prototype.includes` stay the browser's own (core-js inside PptxGenJS replaces only
 `Function.prototype.toString`); and the two Blob downloads of `app/src/services/download.ts` save exactly the
 page's bytes with no request. The negative control breaks the app script's hash, the last in `script-src`. The
-Shift+Tab walk runs on section 9, which has no control of its own. **141 of 141** on the M1.4 build.
+Shift+Tab walk runs on section 9, which has no control of its own. **141 of 141** on the M1.4 build. The M1.4 fix
+round (D-039 point 15) adds the review-bar gate (a real click on each of the nine tabs from the end of a long
+section, at 1440 x 900 and 1366 x 768: the review bar at or below the pinned header, the focused heading clear of
+it; at 375 px the review bar 16 px from the top) and section 1's Accept button in the pinned-header gate: **149 of
+149** in Edge on the fix-round build. The sections themselves are checked by `tests/browser/overview.cdp.mjs`
+([TESTING.md](../TESTING.md) §1).
 
 **What the IndexedDB result means for M10** (the Screener pack slot): the slot can keep the pack under `file://`,
 so no "not kept here" message is needed for Edge or Chrome. Three facts to design for: (1) every local file opened in

@@ -24,7 +24,7 @@ found later is a **regression** and fails CI until fixed or reclassified with th
 
 **Status** values, in order: not started · in progress · parity · accounted for. Rows move to "in progress" when a
 milestone builds them and a test covers them (M1.4, 27 Oct 2026: the base-file reader, the portfolio overview, slide
-C-08 and the overview workbook); every other row is "not started".
+C-08 and the overview workbook; its fix round the same day added AC-01 and W-1); every other row is "not started".
 
 **Test naming.** `tests/parity/<area>.parity.test.ts` compares the new engine with the legacy engine through
 `tools/engine-host.js` on the synthetic books; calculations that live in the legacy UI script (IPS, cost, CVS, MF
@@ -38,10 +38,10 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 
 | Id | Legacy capability | New-build component | Parity or acceptance test | Expected difference | Status |
 |---|---|---|---|---|---|
-| E-01 | Base-file parsing | `ingest/base-file.ts` | `parity/base-file.parity.test.ts`; `unit/ingest/base-file.test.ts` | correction (KI-005 via OD-3, KI-057 OD-8, KI-074, OD-7) | in progress |
+| E-01 | Base-file parsing | `ingest/base-file.ts` | `parity/base-file.parity.test.ts`; `unit/ingest/base-file.test.ts`; `unit/ingest/entity-case.test.ts`; `integration/upload.test.ts` | correction (KI-005 via OD-3, KI-057 OD-8, KI-074, OD-7) | in progress |
 | E-02 | Folio merge | `ingest/base-file.ts` | same | correction (KI-093, KI-113) | in progress |
-| E-03 | Display unit | `engine/review.ts` (`displayUnitFor`), views formatter | `unit/engine/review.test.ts`; `unit/views/format.test.ts`; `integration/overview.test.ts` (a Lakh book); `acceptance/ac-01` later | correction (KI-079, KI-104) | in progress |
-| E-04 | Dates and as-on | `engine/dates.ts` | `unit/engine/dates.test.ts` (both time zones) | correction (KI-075, KI-087) | in progress |
+| E-03 | Display unit | `engine/review.ts` (`displayUnitFor`), views formatter | `unit/engine/review.test.ts`; `unit/views/format.test.ts`; `integration/overview.test.ts` (a Lakh book); `unit/views/rounding.test.ts`; `acceptance/ac-01-standard-review.test.ts` (family-a, its Lakh and rupee variants) | correction (KI-079, KI-104); improvement (display text rounds as Excel shows a cell, half up on 15 significant digits, D-039 point 13; at half-way values it differs from the legacy, 0.145 shows 0.15 where the legacy shows 0.14) | in progress |
+| E-04 | Dates and as-on | `engine/dates.ts` | `unit/engine/dates.test.ts` (both time zones); `integration/as-on-change.test.ts` | correction (KI-075, KI-087) | in progress |
 | E-05 | IRR parser | `ingest/irr-file.ts` | `parity/irr.parity.test.ts`; `unit/ingest/irr-file.test.ts` (incl. the DISTRIBUTOR column) | correction (KI-075, OD-16); improvement (DISTRIBUTOR read, E-142) | not started |
 | E-06 | MF Monitor parser | `ingest/mf-monitor.ts` | `unit/ingest/mf-monitor.test.ts`; upload equals embedded | correction (KI-026, KI-058, KI-076, OD-11) | not started |
 | E-07 | SIF Monitor parser | `ingest/sif-monitor.ts` | `unit/ingest/sif-monitor.test.ts` | none | not started |
@@ -58,10 +58,10 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | E-18 | Liquidity | `engine/classify/liquidity.ts` | `unit/engine/liquidity.test.ts` | none | in progress |
 | E-19 | Unmatched surfacing | `engine/match/`, validation | `parity/matching.parity.test.ts` | improvement (matched-to disclosure) | not started |
 | E-20 | AMC key | `engine/match/amc.ts` | `regression/ki-061-amc-canonical-key.test.ts`; `unit/match/amc.test.ts` | correction (N-10, OD-32, OD-34) | not started |
-| E-21 | Totals | `engine/aggregate/totals.ts` | `parity/aggregation.parity.test.ts`; `unit/engine/totals.test.ts`; `integration/overview.test.ts`; `regression/ki-007-blank-invested.test.ts` | correction (OD-18, OD-8) | in progress |
-| E-22 | Asset allocation | `engine/aggregate/allocation.ts` | `parity/aggregation.parity.test.ts`; `unit/engine/allocation.test.ts`; `integration/overview.test.ts` | correction (OD-7 unknown asset) | in progress |
+| E-21 | Totals | `engine/aggregate/totals.ts` | `parity/aggregation.parity.test.ts`; `unit/engine/totals.test.ts`; `integration/overview.test.ts`; `regression/ki-007-blank-invested.test.ts`; `acceptance/ac-01-standard-review.test.ts` | correction (OD-18, OD-8) | in progress |
+| E-22 | Asset allocation | `engine/aggregate/allocation.ts` | `parity/aggregation.parity.test.ts`; `unit/engine/allocation.test.ts`; `integration/overview.test.ts`; `exports/xlsx/dash-labels.test.ts`; `acceptance/ac-01-standard-review.test.ts` | correction (OD-7 unknown asset) | in progress |
 | E-23 | AMC concentration | `engine/aggregate/amc.ts` | same | none | not started |
-| E-24 | Distributor and client allocation | `engine/aggregate/allocation.ts` | `parity/aggregation.parity.test.ts`; `unit/engine/entities.test.ts`; `integration/overview.test.ts` | none | in progress |
+| E-24 | Distributor and client allocation | `engine/aggregate/allocation.ts` | `parity/aggregation.parity.test.ts`; `unit/engine/entities.test.ts`; `integration/overview.test.ts`; `unit/ingest/entity-case.test.ts`; `acceptance/ac-01-standard-review.test.ts` | none (client and distributor labels keyed as the legacy spells them, letter case kept, with a Warning for case variants, D-039 point 3) | in progress |
 | E-25 | Holding sheets | `engine/aggregate/holdings-sheet.ts` | same; `regression/ki-006-partial-xirr.test.ts` | correction (KI-071, KI-121, KI-123, OD-26); improvement (sort, brief 7.1) | not started |
 | E-26 | XIRR | `engine/returns/xirr.ts` | `unit/returns/xirr.test.ts`; `regression/ki-047-xirr-same-day.test.ts` | none | not started |
 | E-27 | IRR tree | `engine/returns/irr-tree.ts` | `parity/irr.parity.test.ts`; `unit/returns/irr-reconcile.test.ts` | correction (KI-049 OD-4, KI-111) | not started |
@@ -119,7 +119,7 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | E-49 | Deck framework, picker, single-tab decks | `exports/pptx/build.ts`, `manifest.ts` | `exports/pptx/manifest.test.ts`; `parity/deck-inventory.parity.test.ts` | correction (KI-078, KI-124 class); improvement (manifest) | not started |
 | E-50 | Market divider and images | C-03, C-04 | `exports/pptx/c04-market-update.test.ts` | none (position kept first) | not started |
 | E-51 | IPS slide | C-12 | `exports/pptx/c12-ips.test.ts` | correction (KI-066 OD-13, KI-018) | not started |
-| E-52 | Asset allocation slide | C-08 | `exports/pptx/c08-asset-allocation.test.ts` | improvement (fixed colours, outlines); correction (KI-078, KI-091) | in progress |
+| E-52 | Asset allocation slide | C-08 | `exports/pptx/c08-asset-allocation.test.ts`; `exports/pptx/c08-wired.test.ts`; `acceptance/ac-01-standard-review.test.ts` | improvement (fixed colours, outlines); correction (KI-078, KI-091) | in progress |
 | E-53 | Distributor-level slides | C-10 | `exports/pptx/c10-alloc-advisor.test.ts` | improvement (two slides into one) | not started |
 | E-54 | Client-level slides | C-09 | `exports/pptx/c09-alloc-client.test.ts` | improvement (two slides into one) | not started |
 | E-55 | AMC slide | C-11 | `exports/pptx/c11-amc.test.ts` | none | not started |
@@ -144,9 +144,9 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | E-74 | Section dividers | C-03 | `exports/pptx/c03-divider.test.ts` | improvement (native, logo lower right) | not started |
 | E-75 | Workbook framework | `exports/xlsx/` | `exports/xlsx/structure.test.ts`; `parity/workbook.parity.test.ts` | improvement (formulas, styles, panes) | in progress |
 | E-76 | Base File sheet | Holdings (as loaded) | `exports/xlsx/holdings-as-loaded.test.ts` | correction (OD-22) | in progress |
-| E-77 | Asset Allocation sheet | Portfolio Overview | `exports/xlsx/portfolio-overview.test.ts`; `integration/overview.test.ts` | correction (KI-084) | in progress |
+| E-77 | Asset Allocation sheet | Portfolio Overview | `exports/xlsx/portfolio-overview.test.ts`; `integration/overview.test.ts`; `exports/xlsx/acceptance-cases.test.ts`; `exports/xlsx/dash-labels.test.ts`; `acceptance/ac-01-standard-review.test.ts` | correction (KI-084); improvement (money in Indian grouping, D-039 point 5) | in progress |
 | E-78 | AMC sheet | Portfolio Overview | same | none | not started |
-| E-79 | Distributor and Client sheets | Client Allocation, Distributor Allocation (after Portfolio Overview; only when shown, OD-21) | `exports/xlsx/entity-allocation.test.ts`; `integration/overview.test.ts` | correction (KI-094) | in progress |
+| E-79 | Distributor and Client sheets | Client Allocation, Distributor Allocation (after Portfolio Overview; only when shown, OD-21) | `exports/xlsx/entity-allocation.test.ts`; `integration/overview.test.ts`; `acceptance/ac-01-standard-review.test.ts` | correction (KI-094); improvement (the share row outside the filter and the negative red, D-039 point 5) | in progress |
 | E-80 | Per-client sheets | Holdings | `exports/xlsx/holdings.test.ts` | correction (KI-021, KI-123) | not started |
 | E-81 | Equity Analytics sheet | Equity Analytics | `exports/xlsx/equity-analytics.test.ts` | correction (KI-085) | not started |
 | E-82 | Debt Analytics sheet | Debt Analytics | `exports/xlsx/debt-analytics.test.ts` | correction (KI-085, N-1) | not started |
@@ -163,11 +163,11 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 |---|---|---|---|---|---|
 | U-01 | App shell | `ui/app.tsx` | `browser/sections.cdp.mjs` (render, no console errors) | improvement (nine sections) | not started |
 | U-02 | Section nav | `ui/nav.tsx` | `unit/views/nav.test.ts` | improvement | not started |
-| U-03 | Status line | section 1 import report | `unit/views/import-report.test.ts` | improvement | in progress |
-| U-04 | Base-file upload | section 1 | `unit/ui/store.test.ts`; `regression/ki-089-repick-same-file.test.ts`; `browser/repick.cdp.mjs` later | correction (KI-089) | in progress |
-| U-05 | As-on date | section 1 | `unit/ui/store.test.ts`; `regression/ki-087-as-on-no-fallback.test.ts` | correction (KI-087, KI-019 OD-24) | in progress |
+| U-03 | Status line | section 1 import report | `unit/views/import-report.test.ts`; `unit/ui/upload-slot.test.ts`; `workflows/w-01-load-family.test.ts` | improvement | in progress |
+| U-04 | Base-file upload | section 1 | `unit/ui/store.test.ts`; `regression/ki-089-repick-same-file.test.ts`; `integration/upload.test.ts`; `unit/ui/upload-slot.test.ts`; `workflows/w-01-load-family.test.ts`; `browser/overview.cdp.mjs`; `browser/repick.cdp.mjs` later | correction (KI-089) | in progress |
+| U-05 | As-on date | section 1 | `unit/ui/store.test.ts`; `regression/ki-087-as-on-no-fallback.test.ts`; `integration/as-on-change.test.ts`; `workflows/w-01-load-family.test.ts` | correction (KI-087, KI-019 OD-24) | in progress |
 | U-06 | Template download | section 1 | `unit/ingest/template.test.ts` (template loads with zero warnings) | correction (KI-093) | not started |
-| U-07 | Logo choice | section 1 | `exports/pptx/logo-placement.test.ts` | correction (KI-020) | in progress |
+| U-07 | Logo choice | section 1 | `exports/pptx/logo-placement.test.ts`; `workflows/w-01-load-family.test.ts` | correction (KI-020) | in progress |
 | U-08 | MF Monitor upload | section 1 | `integration/monitor-upload.test.ts` | correction (OD-11) | not started |
 | U-09 | Direct Monitor upload | section 1 | same | correction (OD-11, KI-054) | not started |
 | U-10 | SIF Monitor upload | section 1 | same | correction (KI-026) | not started |
@@ -175,10 +175,10 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | U-12 | Bonds upload | section 1 | same | correction (KI-056) | not started |
 | U-13 | IRR upload | section 1 | same | correction (KI-075, KI-032) | not started |
 | U-14 | Market Update upload | section 8 | `integration/market-update.test.ts` | correction (KI-009); improvement (preview) | not started |
-| U-15 | Data dates | source register panel | `unit/views/source-register.test.ts` | improvement | in progress |
+| U-15 | Data dates | source register panel | `unit/views/source-register.test.ts`; `unit/ui/upload-slot.test.ts` | improvement | in progress |
 | U-16 | Home | overview landing | `exports/pptx/manifest.test.ts` (no empty download) | correction (KI-124) | in progress |
 | U-17 | IPS tab | section 2 | `parity/ips.parity.test.ts` (golden) | correction (KI-066 OD-13, KI-035) | not started |
-| U-18 | Asset Allocation tab | section 2 | `integration/cross-output.test.ts` | none | in progress |
+| U-18 | Asset Allocation tab | section 2 | `integration/cross-output.test.ts`; `unit/ui/pie-config.test.ts`; `browser/overview.cdp.mjs` | none | in progress |
 | U-19 | Distributor Allocation tab | section 2 | same | correction (OD-21) | in progress |
 | U-20 | Client Allocation tab | section 2 | same | correction (OD-21) | in progress |
 | U-21 | AMC tab | section 2 | same | correction (OD-1, OD-34) | not started |
@@ -231,8 +231,8 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | E-120 | Pre/post projection | `engine/projection.ts`, C-31 (pre and post weighted 3Y and 5Y returns per D-023 point 3; analyst expected returns for products without history) | `unit/engine/projection.test.ts` (uses the E-147 known answers; labels "historical" and "illustrative") | new | not started |
 | E-121 | Rule bank | `observations/` | `unit/observations/*.test.ts` | new | not started |
 | E-122 | Formula workbook and re-upload | `exports/xlsx/`, `ingest/workbook-reupload.ts` | `acceptance/ac-17` | new | not started |
-| E-123 | Status vocabulary; the dash "—" as the missing-value marker with a status footnote, never in sentences (D-029) | `model/status.ts`, `config/formats` | `unit/model/value.test.ts`; `unit/views/missing-marker.test.ts` | new (the legacy dash kept as the marker; the footnote is new) | in progress |
-| E-124 | Validation layer | `engine/validate/` | `integration/gate.test.ts` (M1.4 rules); `acceptance/ac-19` later | new | in progress |
+| E-123 | Status vocabulary; the dash "—" as the missing-value marker with a status footnote, never in sentences (D-029) | `model/status.ts`, `config/formats` | `unit/model/value.test.ts`; `unit/views/missing-marker.test.ts`; `acceptance/ac-01-standard-review.test.ts` | new (the legacy dash kept as the marker; the footnote is new) | in progress |
+| E-124 | Validation layer | `engine/validate/` | `integration/gate.test.ts` (M1.4 rules); `integration/as-on-change.test.ts`; `acceptance/ac-19` later | new | in progress |
 | E-125 | Stable identifiers | `engine/match/crosswalk.ts` | `unit/match/crosswalk.test.ts` | new | not started |
 | E-126 | MF Screener data pack and Screener metrics; the "MF Screener data pack" upload slot in section 1, the pack kept in the browser's IndexedDB until a newer cycle, its cycle date in the sidebar, absence messages, never embedded or committed (D-026) | `ingest/screener-pack/` (contract `pr-datapack-v1`), `services/screener-store.ts`, `engine/returns/quants.ts` | `acceptance/ac-16`; `unit/ingest/screener-pack.test.ts` (pack validation); `integration/screener-pack-reimport.test.ts` (idempotent re-import); `unit/services/screener-store.test.ts`; `unit/views/screener-absent.test.ts`; `monthly/screener-pack-role.test.ts`; `scripts/check-next.mjs` (no pack content in the build) | new | not started |
 | E-127 | Performance per the brief | `engine/returns/performance.ts`, C-22 | `exports/pptx/c22-performance.test.ts` | new | not started |
@@ -268,7 +268,7 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | U-57 | MF Screener link | `ui/nav.tsx`, `config/links.json` | `unit/views/nav.test.ts`; `scripts/check-next.mjs` allow-list | new | not started |
 | U-58 | Advisor scope | `engine/scope.ts` | `acceptance/ac-02` | new | not started |
 | U-59 | Mode selector and Snapshot section | section 3 | `acceptance/ac-03`, `ac-04`, `ac-05` | new | not started |
-| U-60 | Import status and source register | section 1 | `unit/views/import-report.test.ts` | new | in progress |
+| U-60 | Import status and source register | section 1 | `unit/views/import-report.test.ts`; `unit/ui/upload-slot.test.ts`; `integration/upload.test.ts`; `workflows/w-01-load-family.test.ts` | new | in progress |
 | U-61 | Observation editor | section 3 | `unit/observations/edit.test.ts` | new | not started |
 | U-62 | Market Update preview | section 8 | `integration/market-update.test.ts` | new | not started |
 | U-63 | Annexure product selection | section 9 | `exports/pptx/c41-annexure.test.ts` | new | not started |
@@ -291,7 +291,7 @@ component from data (never the deck's client content).
 |---|---|---|---|---|---|---|
 | DA-01 | 1 | Cover | C-01 | `exports/pptx/c01-cover.test.ts` | new (no legacy cover) | not started |
 | DA-02 | 2 | Title slide (native shapes) | C-02 | `exports/pptx/c02-title.test.ts` | new; logo lower right | not started |
-| DA-03 | 3 | Asset allocation | C-08 | `exports/pptx/c08-asset-allocation.test.ts` | improvement (fixed colours, gain label per OD-18) | in progress |
+| DA-03 | 3 | Asset allocation | C-08 | `exports/pptx/c08-asset-allocation.test.ts`; `exports/pptx/c08-wired.test.ts` | improvement (fixed colours, gain label per OD-18) | in progress |
 | DA-04 | 4 | Review Snapshot, with rebalancing | C-07 (RB) | `exports/pptx/c07-snapshot.test.ts` | new (fixed slots instead of free text boxes) | not started |
 | DA-05 | 5 | Portfolio Quants, current | C-20 (current) | `exports/pptx/c20-quants.test.ts` | new (metrics with source and date; 8 pt minimum) | not started |
 | DA-06 | 6 | Rebalancing proposal | C-27 | `exports/pptx/c27-rebal-proposal.test.ts` | improvement (Actionables tan) | not started |
@@ -404,14 +404,14 @@ component from data (never the deck's client content).
 | BR-12.2 | Monthly PRD with sections A to I, no client data, every cycle | E-130; hand-written from the 2026-10 cycle until M14 (Q-76) | `scripts/validation/monthly-prd-check.mjs` (M1.1); `acceptance/ac-23` (M14) | not started |
 | BR-12.3 | `HANDOVER.md`, `MONTHLY_UPDATE_GUIDE.md`, `CHANGELOG.md` maintained | `docs/` | definition of done | not started |
 | BR-12.4 | Resume from PRD, monthly PRD, handover, README and git alone | docs set | M15 resume drill | not started |
-| BR-13.1 | Reconciliations (values, units, gains, allocations, subtotals, look-through, ratings, periods, pre/post, tax, cross-output) | `engine/validate/reconcile.ts` | `integration/reconcile.test.ts` | in progress |
+| BR-13.1 | Reconciliations (values, units, gains, allocations, subtotals, look-through, ratings, periods, pre/post, tax, cross-output) | `engine/validate/reconcile.ts` | `integration/reconcile.test.ts`; `acceptance/ac-01-standard-review.test.ts` | in progress |
 | BR-13.2 | Unrounded maths, rounding for display | architecture §6.1 rule 3 | `unit/views/rounding.test.ts` | in progress |
 | BR-13.3 | Outlier checks (six sigma where meaningful); keep source; review required | `engine/validate/outliers.ts` | `acceptance/ac-19` | not started |
 | BR-13.4 | Missing data, duplicates, conflicting names, incomplete benchmarks, partial look-through, invalid denominators, unexpected categories, incomplete lots, stale data, inconsistent workbooks, overflow handled | validation catalogue | `acceptance/ac-11`, `ac-12`, `ac-18`, `ac-19` | not started |
-| BR-13.5 | Severity: Blocking, High, Warning, Information, with publication effect | E-124 | `integration/gate.test.ts` | in progress |
+| BR-13.5 | Severity: Blocking, High, Warning, Information, with publication effect | E-124 | `integration/gate.test.ts`; `integration/as-on-change.test.ts` | in progress |
 | BR-14.1 | PowerPoint QA list (incl. no overlaps, no unintended watermarks, no stale client data) | `tests/exports/pptx/`; `deck-design-system.md` §8 | `acceptance/ac-20`; `integration/export-isolation.test.ts` | not started |
 | BR-14.2 | Excel QA list (incl. no formula errors) | `tests/exports/xlsx/`; formula builder and evaluator | `acceptance/ac-17`; `exports/xlsx/formulas.test.ts`; local Excel recalculation | not started |
-| BR-14.3 | Cross-output agreement or recorded reason | `integration/cross-output.test.ts` | same | in progress |
+| BR-14.3 | Cross-output agreement or recorded reason | `integration/cross-output.test.ts` | same; `unit/views/rounding.test.ts`; `acceptance/ac-01-standard-review.test.ts` | in progress |
 | BR-14.4 | Deployment QA and public-push checks | CI, Pages, `prepush-scan.mjs` | `acceptance/ac-21` | not started |
 | BR-15.x | The 24 acceptance cases | `tests/acceptance/ac-01` to `ac-24` | see `08-regression-test-plan.md` §3 | not started |
 | BR-16.1 | No advanced rebalancing engine now | scope rule | review | not started |
@@ -423,7 +423,7 @@ component from data (never the deck's client content).
 
 | Id | Case | Test file | Status |
 |---|---|---|---|
-| AC-01 | Standard review generation | `acceptance/ac-01-standard-review.test.ts` | not started |
+| AC-01 | Standard review generation | `acceptance/ac-01-standard-review.test.ts` | in progress |
 | AC-02 | Client- and advisor-level analytics | `acceptance/ac-02-client-advisor-scope.test.ts` | not started |
 | AC-03 | Review Only | `acceptance/ac-03-review-only.test.ts` | not started |
 | AC-04 | Review with Rebalancing | `acceptance/ac-04-review-with-rebalancing.test.ts` | not started |
@@ -456,7 +456,7 @@ parity only when its workflow test passes and the M15 browser drill confirms it.
 
 | Id | Workflow | Capabilities | Test | Status |
 |---|---|---|---|---|
-| W-1 | Open the page, upload the base file, set the as-on date and logo, read the load message and unmatched list | U-04, U-05, U-07, U-03, U-60 | `integration/workflows/w-01-load-family.test.ts`; M15 drill | not started |
+| W-1 | Open the page, upload the base file, set the as-on date and logo, read the load message and unmatched list | U-04, U-05, U-07, U-03, U-60 | `workflows/w-01-load-family.test.ts`; M15 drill | in progress |
 | W-2 | Add the IRR sheet for transaction XIRR, Fund IRR and Taxation | U-13, U-28, U-31 | `integration/workflows/w-02-irr.test.ts`; M15 drill | not started |
 | W-3 | Add PMS/AIF statement look-through and direct bonds | U-11, U-12 | `integration/workflows/w-03-client-lookthrough.test.ts`; M15 drill | not started |
 | W-4 | Upload a newer MF, Direct or SIF Monitor | U-08, U-09, U-10 | `integration/workflows/w-04-monitor-upload.test.ts`; M15 drill | not started |
@@ -471,4 +471,7 @@ parity only when its workflow test passes and the M15 browser drill confirms it.
 Counted by script on 23 Oct 2026: sections A to D hold 228 capability rows (A 73, B 40, C 56, D 59: E-01 to E-156,
 U-01 to U-72); section E 31 deck A rows covering all 41 slides; section F 93 brief requirement rows (BR-15.x expands
 into the 24 rows of section G); section G 24 rows; section H 9 workflow rows. Total 385 rows, all "not started" (376
-on 22 Oct 2026; D-036 added nine; the review of 27 Oct 2026 added none). On 27 Oct 2026 (M1.4) 47 rows are "in progress" and the rest "not started".
+on 22 Oct 2026; D-036 added nine; the review of 27 Oct 2026 added none). On 27 Oct 2026 (M1.4) 47 rows are "in progress" and the rest "not started"; after the M1.4 fix round the same day
+(AC-01 and W-1 moved to "in progress", tests added to rows E-01, E-03, E-04, E-21, E-22, E-24, E-52, E-77, E-79,
+E-123, E-124, U-03, U-04, U-05, U-07, U-15, U-18, U-60, DA-03, BR-13.1, BR-13.5 and BR-14.3), 49 rows are "in
+progress".

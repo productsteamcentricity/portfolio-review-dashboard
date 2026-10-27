@@ -83,7 +83,9 @@ lines copied, never guessed:
 - `chartjs.txt`: Chart.js at tag v4.4.0 (chartjs/Chart.js), and the @kurkle/color 0.3.2 it bundles (kurkle/color at
   tag v0.3.2);
 - `chartjs-plugin-datalabels.txt`: chartjs/chartjs-plugin-datalabels at tag v2.2.0;
-- `sheetjs.txt`: the Apache License 2.0 with the SheetJS notice, SheetJS/sheetjs at tag v0.18.5;
+- `sheetjs.txt`: the Apache License 2.0 with the SheetJS notice, SheetJS/sheetjs at tag v0.18.5. The licence body is
+  the standard Apache-2.0 text, written from that standard text and not byte-compared with the upstream LICENSE
+  file;
 - `pptxgenjs.txt`: gitbrent/PptxGenJS at tag v3.12.0, and what its bundle includes: JSZip 3.5.0 under its MIT option
   (Stuk/jszip at tag v3.5.0), pako 1.0, lie 3.3, immediate 3.0 and set-immediate-shim 1.0.1 (bundled by JSZip),
   core-js 2.6.11 (zloirock/core-js at tag v2.6.11) and regenerator-runtime 0.13 (both through @babel/polyfill). The

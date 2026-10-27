@@ -28,8 +28,9 @@ test('KI-091: one decimal, nothing under 2 %', async () => {
   const { inv } = await buildDeck(vm);
   const s = inv.slides[0] as Slide;
   const pie = s.charts.find((c) => c.name === 'C-08 asset pie')!;
-  assert.deepEqual(pie.labels.map((l) => (l.deleted ? null : l.text)), ['Equity 66.7%', 'Debt 19.1%', 'Hybrid 10.2%', 'Commodity 2.0%', null]);
-  for (const l of pie.labels) if (!l.deleted) assert.match(l.text ?? '', /^\S.* \d+\.\d%$/);
+  // On the slide each label is on two lines, the category and then the percent (D-039 point 6).
+  assert.deepEqual(pie.labels.map((l) => (l.deleted ? null : l.text)), ['Equity\n66.7%', 'Debt\n19.1%', 'Hybrid\n10.2%', 'Commodity\n2.0%', null]);
+  for (const l of pie.labels) if (!l.deleted) assert.match(l.text ?? '', /^\S.*\n\d+\.\d%$/);
   assert.equal(pie.defaults.numFmt, '0.0%');
   // The value under 2 % stays in the legend (its category) and in the table, to two decimals.
   assert.equal(pie.categories[4], 'REITs/InvITs');

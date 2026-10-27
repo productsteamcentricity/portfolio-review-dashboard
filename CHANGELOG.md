@@ -21,9 +21,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **Milestone M1.4 of the new build (CR-0006): the portfolio overview.** Section 1 reads a base file through its
   Upload, Validate, Preview and Review stages, and section 2 shows the headline figures, the allocations and the pies;
   the overview deck (slide C-08) and the overview workbook download from it. Every number on screen, slide and sheet
-  is a figure of one view-model (D-038, D-039). The `/next/` build: 1,972,788 bytes, SHA-256 `cf4b5fc4…`
-  (deterministic), with the four vendored libraries inlined. `index.html` is unchanged (MD5
-  `911A04659CB34383E478416B54E9C306`).
+  is a figure of one view-model (D-038, D-039). The `/next/` build, after the fix round: 1,991,388 bytes, SHA-256
+  `9b9962cd…` (deterministic, build id `739379c2249b8cfe`), with the four vendored libraries inlined. `index.html` is
+  unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
   - Platform (D-038). Chart.js 4.4.0, chartjs-plugin-datalabels 2.2.0, SheetJS CE 0.18.5 and PptxGenJS 3.12.0 are
     vendored byte for byte from `index.html` (`scripts/vendor-extract.mjs`, `--check` in CI); licence texts are in
     `app/vendor/licences/`. The build accepts vendored files under the HTML parsing rule and the jszip alias, and
@@ -75,6 +75,39 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - Fixed in the new app (the legacy page is unchanged, D-028): KI-007, KI-020, KI-021, KI-071, KI-078, KI-084,
     KI-087, KI-089, KI-091, KI-092, KI-093, KI-094 and KI-147. Filed for the legacy page: KI-150 (PptxGenJS random pie
     colours) and KI-151 (an Asset Name such as "constructor" breaks `computeReview`).
+  - **Fix round, 27 Oct 2026** (CR-0006; the lead's decisions after the browser QA and the financial, Office and
+    security reviews; D-039 points 1 to 15, D-037 point 1 amended, D-038's counts):
+    - Numbers and Excel. Display rounding agrees with Excel (half up on the 15-significant-digit decimal; 0.145 shows
+      0.15, family-a's Hybrid absolute return 35.68%). The KI-147 notes count the holdings whose figure changes, name
+      the file's column and never come from the file's gain or loss, which only reaches the import report and the
+      Audit Log. Labels with an en or em dash no longer break the workbook (the raw label is the join key). Client
+      and distributor letter case is kept, as in the legacy, with a Warning for labels that differ only in case.
+      Workbook money is in Indian grouping. The pie label threshold applies to the displayed share. The share row of
+      the client and distributor sheets sits outside the filter and the red. The source register records the Review
+      stage. The Exclusion Reason follows the market value's status. The partial invested note counts holdings when
+      the share is meaningless. The Office scripts quit Excel and PowerPoint cleanly and never use or stop a
+      PowerPoint that holds someone else's deck; the Office acceptance adds syn-negative-gain (red at I2), the date
+      format at R2, a Lakh book above 1,00,000 L and Excel's `Range.Text` of every figure compared with the screen.
+      `npm run accept:office --full` passed on the FC branch: 6 workbooks and 6 decks.
+    - Sections 1 and 2. The review bar stays in view when a section opens from its tab. Pie labels no longer collide
+      with the legend or get cut off at the canvas edge, and the percent alone shows on a narrow canvas. A one-slice
+      pie shows no label or radius line. The source register and the stage strip agree (Preview before Accept).
+      Keyboard focus is kept after every action. A file with no holding is refused, and refusals read as plain
+      sentences; an internal error reads "could not be reviewed", never "unreadable". A missing date is the dash
+      alone with a footnote. The import report shows the full SHA-256.
+    - Slide C-08. The pie labels sit on two lines, the category then the percent, in a text body that never wraps,
+      so PowerPoint no longer breaks a label inside a word ("Commodi / ty 3.9%"). A pie of one slice has no label and
+      no outline. The footnote states the excluded holdings once, in the view-model's words. A chart not drawn names
+      its status in words ("Chart not drawn: not applicable.").
+    - Tests: the M1.4 cross-unit tests. `tests/integration/upload.test.ts` (U-04): the upload limits at and one past
+      20 MB, 40 sheets and 400,000 cells on a sheet; unreadable files; a refused file builds no review; re-picking the
+      same file (KI-089). `tests/integration/as-on-change.test.ts` (U-05): a changed date recomputes the review id,
+      the as-on note and the Read Me and keeps labels and figures; a cleared date is Blocking with no fallback
+      (KI-087). `tests/workflows/w-01-load-family.test.ts` (W-1). `tests/acceptance/ac-01-standard-review.test.ts`
+      (AC-01): family-a and its Lakh and rupee variants against sums of the file's own money column; deck and
+      workbook equal to the screen; one display unit; house style D-029. New browser check
+      `tests/browser/overview.cdp.mjs` (112 of 112, served and from disk); the spike now 149 of 149. The suite: 837
+      tests under IST and under UTC. The parity matrix has 49 rows in progress (AC-01 and W-1 added).
 - **The capital-gains upload design for M7 (CR-0006, D-036, amending D-032).** Documents only; no code, `/next/` and
   `index.html` unchanged. The upload accepts the wealth platform's "Capital Gain Report" export as produced (columns
   by header name, PAN removed at read time, folio parsed from the instrument name, totals row reconciled, footer text

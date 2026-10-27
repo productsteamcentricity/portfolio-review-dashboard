@@ -446,6 +446,8 @@ that layout from now on.
    scrolls sideways, so the header keeps one height (one row from 1280 px). The app measures the pinned header and
    keeps a focused heading, and the target of the skip link, just below it. On a narrow screen (52rem or less)
    nothing is pinned (the 375 px item carried from M1.2's QA: a sticky header covered a focused heading).
+   Amended by D-039 point 15 (27 Oct 2026, M1.4): a section opened from its tab places its review bar, not its
+   heading, 16 px below the pinned header, with the focused heading under the bar.
 2. **The MF Screener link** (D-027) is a navigation item at the right end of the masthead, in its own `<nav>`, so
    the tab row is the sections only. It is still the one remote URL, in one static anchor.
 3. **The reference's look** for the screen from now on: Cambria; tabs on a sand ground with the current tab black
@@ -480,8 +482,9 @@ anchor, which `style-src` refuses.
    `<script` follows it later in the same text (the pair that breaks HTML parsing). The app script keeps the strict
    rule: no `<!--` and no `<script` at all.
 3. **Pinned allowances.** Each manifest entry has an `allow` block: the inline sequences, the network-API names with
-   exact counts (PptxGenJS: `XMLHttpRequest` 1, `importScripts` 1), the scheme URLs with exact counts (Chart.js 2,
-   datalabels 1, SheetJS 72, PptxGenJS 56) and the URLs of its licence text. `check-next.mjs` identifies each
+   exact counts (PptxGenJS: `XMLHttpRequest` 1, `importScripts` 1), the scheme URLs (Chart.js 2, datalabels 1;
+   SheetJS and PptxGenJS 72 and 56 distinct URLs, 82 and 138 occurrences), each pinned with its count, and the URLs
+   of its licence text. `check-next.mjs` identifies each
    executable script by its SHA-256 and applies a block only inside the script whose hash is that library's. A
    library must equal its file in `app/vendor/` and hold exactly what its block pins. The app script must be the only
    other script, and it comes last; no network API is allowed in it. `connect-src 'none'` stays the run-time guard.
@@ -516,7 +519,12 @@ the browser's own (recorded for the security review, no action). `CLAUDE.md`, `t
 **Context.** M1.4 builds the totals, the asset, product, liquidity, client and distributor allocations, slide C-08 and
 the overview workbook from one view-model. The rules below settle what the brief and the earlier decisions leave
 open; every difference from the legacy is a classified entry of `tests/parity/aggregation-ledger.json` (AG-01 to
-AG-14, no regression). KI-147 (the reader's money columns) was left for M1.4 by D-035.
+AG-14, no regression). KI-147 (the reader's money columns) was left for M1.4 by D-035. The same day the browser QA
+and the financial, Office and security reviews of the integrated branch found defects; the lead's fix round
+(CR-0006) amends points 1, 2, 3, 5, 6, 7, 8, 9 and 12 and adds points 13 to 15. In that round the lead decided the
+display rounding (point 13), the raw label as join key (point 3), the letter case of client and distributor labels
+(point 3), the workbook's money format and share row (point 5), the pie label threshold (point 6), the file's own
+gain or loss (point 1(e)) and the Read Me wording (point 7).
 **Decision.**
 1. **Money columns (KI-147).** `MONEY_COLUMN_RULE` (`app/src/config/money-columns.ts`) is
    `{ invalidText: 'invalid-source', crossCheckToleranceCr: 0.005 }`. The reader takes the Crore column, then Lakh,
@@ -535,6 +543,12 @@ AG-14, no regression). KI-147 (the reader's money columns) was left for M1.4 by 
    used is kept.
    The rule applies to invested value, market value and gain alike. There is no fallback mode and no
    `base-file.money-fallback`.
+   (e) the lead's decision (fix round): for the file's own gain or loss, which no figure uses (OD-18), the results
+   `base-file.money-invalid` and `base-file.money-disagree` are Information (auto-resolved, resolved), and their
+   message ends "no figure uses the file's gain or loss (OD-18)". They are listed in the import report's validation
+   panel and the Audit Log and never become a note. For the market and invested values they stay Warnings, so the
+   two rule ids carry two severities.
+   The notes of the overview count the holdings whose figure the rule changes (KI-147, point 9).
 2. **Totals and gain.** Totals cover included holdings only. Invested is the sum over included holdings that have an
    invested value; gain is the CMV of those same holdings minus that invested (OD-18), never the file's gain/loss,
    which appears only in Holdings (as loaded); absolute return is gain / invested x 100 over the same holdings. Below
@@ -542,13 +556,25 @@ AG-14, no regression). KI-147 (the reader's money columns) was left for M1.4 by 
    has an invested value they are NOT AVAILABLE IN SUPPLIED DATA (INVALID SOURCE DATA when every one is invalid),
    never 0. The percent of CMV is NOT APPLICABLE when the total CMV is 0; absolute return when invested is 0;
    invested coverage on a line whose CMV is 0. Allocation lines follow the same rule line by line. Liquidity lines
-   with a CMV of 0 or less are left out, as in the legacy pie.
+   with a CMV of 0 or less are left out, as in the legacy pie. When the share of CMV covered is missing (a total CMV
+   of 0) or outside 0 to 100 (negative values), the partial note counts holdings instead: "p: invested value, gain
+   and absolute return cover the 4 of 6 holdings that have an invested value." ("that has" for one).
 3. **One asset order.** Equity, Debt, Hybrid, Commodity, REITs/InvITs, Unknown, in the asset table, the pie and the
    client and distributor matrices; only classes present get a row. The unknown row is labelled "Unknown", comes last,
    is coloured #D9D9D9, and a note lists the labels read as unknown. Products within a class are ordered by CMV,
    highest first, ties in file order. Holdings without a client or distributor go to a column labelled "Client not
    given" or "Distributor not given". Groups keyed by names are held in Maps, so a label such as "constructor" is an
    ordinary label (KI-151).
+   **Labels as join keys (the lead's decisions, fix round).** The engine's label as read is the join key
+   everywhere: an allocation row's `product` and its new `liquidity` field, figure keys, the workbook's product and
+   liquidity keys (P01, L01) and the liquidity colours. `plainText` (which turns an en or em dash into a hyphen)
+   applies to the text shown only, so two labels that print alike ("A (en dash) B" and "A - B") keep their own rows,
+   keys and SUMIFS. Clients and distributors are keyed on the label as the file spells it, after the whitespace
+   collapse the legacy applies (its `ws()`), because the legacy keys its matrices on that exact label: letter case is
+   not folded. Labels that differ only in letter case stay separate clients or distributors (their own matrix
+   columns, counted apart in the Clients KPI) and raise the Warning `base-file.entity-case-variant`, one per level,
+   listing the sets of labels and scoped to their holdings. Whether to fold letter case is put to the owner (point
+   12).
 4. **Single client or distributor (OD-21) across outputs.** With fewer than two clients (or distributors) holding
    included holdings, the screen hides that matrix behind one line, and the workbook leaves out its sheet; the Read
    Me says why.
@@ -558,30 +584,71 @@ AG-14, no regression). KI-147 (the reader's money columns) was left for M1.4 by 
    liquidity rows, the liquidity percent always in the % CMV column). Every aggregate is a SUMIFS over the holdings,
    with criteria only on canonical asset classes, the generated keys (P01, L01, C01, D01; C00 and D00 when not given)
    and Yes/No flags; its cached value is the view-model's figure. A missing value is a blank cell with its status,
-   never a formula. Cambria 9; money `#,##0.00`; percent `0.00"%"`; units in Indian grouping; dates `d mmm yyyy`;
-   negatives in #931621 by conditional formatting; thin #D9D9D9 borders; inline strings with a quote prefix when they
-   start with = + - @, a tab or a carriage return; values unrounded with number formats. `_manifest` lists each
-   formula's hash and the cell of each view-model figure (the cross-output join).
+   never a formula. Cambria 9; money in Indian grouping through the units' conditional pattern
+   `[>=10000000]##\,##\,##\,##0.00;[>=100000]##\,##\,##0.00;##,##0.00` (the lead's decision, fix round: a Lakh book
+   above 1,00,000 L reads as on screen; Excel allows two conditions, so amounts at or below -1,00,000 and from
+   99,999.995 to 99,999.999 fall in the third section and take the system locale's grouping); percent `0.00"%"`;
+   units in Indian grouping; dates `d mmm yyyy`; negatives in #931621 by conditional formatting; thin #D9D9D9
+   borders; inline strings with a quote prefix when they start with = + - @, a tab or a carriage return; values
+   unrounded with number formats. `_manifest` lists each formula's hash and the cell of each view-model figure (the
+   cross-output join).
+   **Fix round.** (a) The lead's decision: the "Share of family (%)" row of Client and Distributor Allocation stays
+   below the Grand Total but outside the autoFilter range, its `_xlnm._FilterDatabase` name and the negative red
+   (`SheetSpec.tableRows`). (b) The Exclusion Reason of Holdings (as loaded) follows the market value's status, as
+   the import report words it: "Market value not a number (invalid source data, OD-8)" or "No market value (OD-8)".
+   (c) The Source Register records the Review stage for an accepted file: `review.sources[0].stage` is `review`.
+   **The writer's interface as built (U5).** A formula reference (`Fx` cell) is relative unless `absCol` or
+   `absRow` is set; `ColumnSpec.key` is the name formulas use for a column (the header when not set, unique in the
+   sheet); `SheetSpec.rowStyles` merges a style per data row (a bold asset row) under each cell's own style;
+   `SheetSpec.tableRows` limits the filter and the conditional formats to the first rows; the workbook input carries
+   `entityKeys` (each client and distributor id with its generated key, C01 or D01, C00 and D00 when not given);
+   Client and Distributor Allocation end each row with a Status column naming the status of a blank figure; and
+   `_manifest` has one `figure <key>` row per view-model figure, with the cell it is written to.
 6. **Chart labels and colours.** A pie label is the category and its percent to one decimal ("Equity 59.3%"), and no
-   label is drawn under 2.00%: the value stays in the legend and the table. Colours are fixed by category name: Equity
+   label is drawn under 2.00%: the value stays in the legend and the table. The lead's decision (fix round): a slice
+   gets a label when its share, rounded to two decimals by the display rule (point 13), is 2.00 or more, so the
+   table and the chart agree (1.995 is labelled "2.0%", 1.994 is not). A pie with one slice draws no label, on screen
+   and on the slide: the legend and the table carry its 100%. Colours are fixed by category name: Equity
    tan, Hybrid grey75, Debt gold, Commodity #808080, REITs/InvITs #8C6B43, Alternatives #C9A876, Cash #E5DACB, Unknown
    #D9D9D9; liquidity Open Ended gold, Close Ended grey75, other labels the rating ramp in alphabetical order (KI-150).
    On screen the labels sit outside the pie on the white panel (#222222 on white, 15.9:1); labels inside slices failed
-   4.5:1 on Commodity and REITs. On the slide each label is written as text from the view-model, not built by
-   PowerPoint from the value, and a label that would read under 4.5:1 on its slice is placed outside it. Declared
+   4.5:1 on Commodity and REITs. On screen (fix round) each pie keeps the same 32 px band above and below for its
+   labels (6 px offset, 4 px padding on each side, one 12 px line at 1.2), and the legend starts below that band: a
+   blank layout box of the band's height sits between the pie and the legend. Left and right room is the longest
+   label drawn, measured on the canvas, plus 18 px, and never less than 64 px. Below 360 px of canvas width a label
+   is the percent alone ("59.3%"). A pie with one slice draws no label and no outline. The rules live in
+   `app/src/ui/pie-config.ts`. On the slide each label is written as text from the view-model, not built by
+   PowerPoint from the value. It is set on two lines: in each data label the text body is `<a:bodyPr wrap="none"/>`,
+   then the category run, a line break (`<a:br/>` with the run's properties), then the percent run, and the
+   separator is a new line, so a label reset in PowerPoint reads the same. PowerPoint caps a pie label's width: in
+   the Office acceptance of 27 Oct 2026 "Commodity 3.9%" broke as "Commodi / ty 3.9%", and `wrap="none"` alone
+   clipped "Unknown 27.8%" at the chart edge. On the slide a pie with one slice also has no slice outline
+   (`<a:ln><a:noFill/></a:ln>` on the slice and the series): the outline of the 360 degree slice showed as a radius
+   at 12 o'clock. A label that would read under 4.5:1 on its slice is placed outside it. Declared
    repeats on C-08: the KPI invested value and CMV with the Grand Total row, and the asset pie labels with the table's
    % CMV. The deck title in the file properties is the family label followed by "Portfolio overview".
 7. **Preview marker.** "Preview build, not for client use" sits in the black footer band of every slide (white Cambria
-   8 pt italic), in the first row of the workbook's Read Me, and file names end in `_PREVIEW`, exactly when the build
-   channel is preview.
+   8 pt italic), in the first data row of the Read Me (row 2, under the frozen header), and file names end in
+   `_PREVIEW`, exactly when the build channel is preview.
 8. **C-08 in M1.4** carries the three KPIs (Invested Value, Current Market Value, Unrealised Gain/Loss), the asset and
    product table over continuation pages and the two pies; the insight box waits for the observation engine (M5).
    The liquidity rule of the legacy (`07_engine.js:607-615`) is ported as it is (E-18); M2.2 turns it into data.
+   The C-08 footnote is the as-on date, then the view-model's notes that the page's figures refer to, in the
+   view-model's order, each sentence once. The slide words nothing of its own: the excluded holdings are the
+   view-model's "excluded" note. A chart with nothing to show reads "Chart not drawn: " and its status as
+   `STATUS_PHRASE` words it, for example "Chart not drawn: not applicable.".
 9. **Validation and the export gate.** A failed reconciliation is Blocking (tolerance 1e-9 relative plus 1e-12
    absolute); `review.as-on-missing` is Blocking (there is never a fallback date, KI-087); `review.no-included-holdings`
    is Blocking; `review.total-like-holding` is High (KI-142). A High result blocks exports until the analyst
    acknowledges it in the basic validation panel, which writes an audit entry. Reader Warnings that touch overview
-   figures become notes. U-67 in full stays in M13.
+   figures become notes. U-67 in full stays in M13. The KI-147 money notes (fix round, the financial reviewer's
+   fix) count distinct holdings whose figure the rule changes: a market value, or the invested value of an included
+   holding, from the reader's findings (`BaseFileImport.moneyFindings`), never from rule results and never from the
+   file's gain or loss. They name the column as the file heads it, name later columns by their unit only when the
+   file has them, give the tolerance in the display unit ("0.005 Crore", "0.5 Lakh") and agree in number; each is
+   attached only to the KPI whose figure it changes. For example: '1 holding has a market value in "Current Market
+   Value (Lakh)" that is not a number: it is invalid source data.' The Warning `base-file.entity-case-variant`
+   (point 3) is listed in the validation panel and the Audit Log and makes no note.
 10. **Scope.** U-06 (the base-file template) moves to M7. "Disclaimer in use" shows NOT AVAILABLE IN SUPPLIED DATA
     until the monthly folder arrives (M11). Matching arrives in M2. Family scope only. Family and client labels are
     editable. The built-in logos ship (the generic scan is clean on them; the private deny-list runs before the push).
@@ -590,11 +657,56 @@ AG-14, no regression). KI-147 (the reader's money columns) was left for M1.4 by 
     is replaced by `<family label>`.
 12. **Open owner items.** BF-19 (an unrecognised Asset Name is Unknown), BF-26 (letter case and spacing folded) and a
     market value of exactly 0 (a real zero, included) stay on the M1.3 defaults; their ledger entries say "pending
-    owner" (`DATA_DICTIONARY.md` §8).
+    owner" (`DATA_DICTIONARY.md` §8). Beside BF-26 the owner is asked whether to fold letter case for client and
+    distributor labels (point 3; until then they are kept as spelt, as in the legacy).
+13. **Display rounding (the lead's decision, fix round).** Every figure is shown by one formatter
+    (`views/format.ts`: `excelFixed`, `displayRounded`, `formatIndian`). It rounds as Excel shows a cell: first to 15
+    significant digits, then half up on that decimal, on the decimal digits and never on the binary double. So 1.005
+    shows 1.01, 0.145 shows 0.15, 2.675 shows 2.68, -1.005 shows -1.01, and 35.67499999999998 (family-a's Hybrid
+    absolute return, (0.5427 - 0.4) / 0.4 x 100) shows 35.68%. A value that rounds to zero is shown without a sign;
+    Excel shows -0.00, and the Office check ignores only that sign. The Office acceptance compares Excel's
+    `Range.Text` of every `_manifest` figure with the screen's text. At half-way values the text differs from the
+    legacy page, which rounds the binary value (0.145 shows 0.14 there).
+14. **Section 1, the base-file slot (fix round).** A reader refusal is a sentence built from its `LoadError` kind,
+    never the reader's text: "Refused: the file is 21.0 MB; the limit is 20 MB." ("just over 20 MB" where one
+    decimal cannot show the excess); "Refused: the workbook has 41 sheets; the limit is 40."; 'Refused: the sheet
+    "<name>" has more than 4,00,000 filled cells; the limit is 4,00,000 on one sheet.'; "Refused: the file could
+    not be read as an Excel workbook." A file read with no holding, or with an open Blocking reader result (no
+    header row, no holding row, no market value column), is refused too: the error state, the "Refused" chip, the
+    reader's sentence and Accept not available. An exception of the reader or the engine is `review-failed`: "The
+    file could not be reviewed: an internal error stopped the review." with its technical detail, never
+    "unreadable". After a refusal the Accept reason is "The file was refused: choose another base file." Before
+    Accept the source register lists the base file at Preview, as the stage strip shows it (Validate for a file
+    refused or failed there); after Accept it lists the review's sources (stage Review). A missing data date in the
+    source register is the dash alone in its cell; its status is read to screen readers and named in a footnote: "A
+    dash in the Data date column marks a missing date: not available in supplied data." The import report shows the
+    base file's full 64-hex SHA-256 in monospace, wrapping in its cell; the source register keeps the 12-digit form
+    with the full hash in its title. With no included holding the client and distributor groups read "No included
+    holding" in both the note and the line, never "Single client".
+15. **Focus and the review bar (fix round).** The focus never falls to the body. After a pick or Remove it goes to
+    the new file input. Accept and the downloads are `aria-disabled` (`aria-busy` while a file is prepared), not
+    disabled, and ignore clicks while not available. An answered XIRR question moves the focus to the next question,
+    else to the import report heading; an acknowledged result moves it to the next Acknowledge, else to the
+    validation heading. Opening a section from its tab places the review bar 16 px below the pinned header, with
+    the focused heading under it; where nothing is pinned (52rem or less) the review bar is 16 px from the top. This
+    amends the wording of D-037 point 1.
 **Alternatives.** The fallback to the Lakh value, flagged on the holding (the lead's earlier default for KI-147;
 rejected by the owner); the legacy asset order Equity, Hybrid, Debt in the matrices (rejected: no record supports it);
-PowerPoint's own pie labels with its separator and rounding (rejected: the slide would not show the screen's text).
+PowerPoint's own pie labels with its separator and rounding (rejected: the slide would not show the screen's text);
+rounding with `toFixed` on the binary double (the first M1.4 formatter; rejected in the fix round: screen and slide
+differed from Excel's text at half-way values); folding the letter case of client and distributor labels (the M1.3
+reader's rule; rejected in the fix round until the owner answers: it changed client numbers against the legacy with
+no ledger entry); the money format `#,##0.00` (rejected in the fix round: a Lakh book above 1,00,000 L read in
+Western grouping in Excel only).
 **Consequences.** KI-147 is fixed in the new app; KI-007, KI-020, KI-021, KI-071, KI-078, KI-084, KI-087, KI-089,
 KI-091, KI-092, KI-093, KI-094 and KI-150 are fixed there too (the legacy page is unchanged, D-028). `DATA_DICTIONARY.md` §5.3, §5.8, §5.13 and §6,
 `ARCHITECTURE.md` §14 and §15 and `deck-design-system.md` describe the rules; the parity ledger lists the corrections
-that change client numbers.
+that change client numbers. The fix round adds its tests: `tests/unit/views/rounding.test.ts` against an oracle
+written apart (`tests/helpers/excel-text.ts`), `tests/regression/ki-147-money-notes.test.ts`,
+`tests/unit/ingest/entity-case.test.ts`, `tests/exports/xlsx/dash-labels.test.ts` and `acceptance-cases.test.ts`,
+`tests/exports/pptx/c08-wired.test.ts`, `tests/unit/ui/pie-config.test.ts` and `upload-slot.test.ts`, the
+legacy-minus-new check of AG-01 and AG-13 in `tests/parity/aggregation.parity.test.ts`, and the cross-unit tests
+`tests/integration/upload.test.ts` (U-04), `as-on-change.test.ts` (U-05), `tests/workflows/w-01-load-family.test.ts`
+(W-1) and `tests/acceptance/ac-01-standard-review.test.ts` (AC-01: family-a, family-a-lakh and family-a-rupee end to
+end against sums of the file's own money column), with the browser check `tests/browser/overview.cdp.mjs`. The
+case-variant and dash-label fixtures show no difference from the legacy beyond AG-11.

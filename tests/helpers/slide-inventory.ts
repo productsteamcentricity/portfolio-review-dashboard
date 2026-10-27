@@ -214,6 +214,13 @@ function relsMap(xml: string | null): Map<string, { type: string; target: string
   return m;
 }
 
+/** A chart label's text: the runs of each paragraph in order, a line break (a:br) as a line feed, paragraphs joined by one. */
+function richText(rich: XmlNode): string {
+  return kids(rich, 'a:p')
+    .map((p) => p.children.map((c) => (c.name === 'a:r' ? (kid(c, 'a:t')?.text ?? '') : c.name === 'a:br' ? '\n' : '')).join(''))
+    .join('\n');
+}
+
 async function chartOf(zip: JSZipInstance, JSZip: JSZipStatic, frame: XmlNode, part: string): Promise<Chart> {
   const xml = (await text(zip, part)) ?? '';
   const doc = parseXml(xml);
@@ -231,7 +238,7 @@ async function chartOf(zip: JSZipInstance, JSZip: JSZipStatic, frame: XmlNode, p
     return {
       idx: Number(kid(d, 'c:idx')?.attrs.val),
       deleted: kid(d, 'c:delete')?.attrs.val === '1',
-      text: rich ? all(rich, 'a:t').map((t) => t.text).join('') : null,
+      text: rich ? richText(rich) : null,
       position: kid(d, 'c:dLblPos')?.attrs.val ?? null,
       ...labelProps(d),
     };

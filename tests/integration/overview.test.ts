@@ -63,7 +63,8 @@ for (const [id, ans] of Object.entries(OVERVIEW_ANSWERS)) {
         const slide = inv.slides[loc.page - 1]!;
         const got = textAt(slide, loc.cell);
         if (loc.cell.startsWith('pie:')) {
-          assert.equal(got, labels.get(loc.key), `${loc.cell}`);
+          // The screen label on two lines: the category, a line break, the percent (D-039 point 6).
+          assert.equal(got, labels.get(loc.key)?.replace(/ (?=[^ ]+$)/, '\n'), `${loc.cell}`);
         } else {
           const f = byKey.get(loc.key);
           assert.ok(f, `figure ${loc.key} is in the view-model`);

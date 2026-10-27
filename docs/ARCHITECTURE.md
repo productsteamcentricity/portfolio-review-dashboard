@@ -417,6 +417,11 @@ for the monthly update, the owner reads the report and the pull request), **Appr
 update only) and **Final**. Only an accepted file feeds the review; the source register records each stage. The
 reference has no portfolio-review layout; the screen follows the nine sections and the deck design system.
 
+As built in M1.4 (D-039 point 14): the stage strip and the source register agree. A base file read and waiting for
+Accept shows **Preview**; a file refused (no holding, or an open Blocking reader result) or failed (`review-failed`)
+shows **Validate**; once accepted the register lists the review's sources, whose stage is **Review**
+(`app/src/ui/upload-slot.ts` `shownStage`, `registerSources`; `engine/review.ts`).
+
 ## 14. Excel model
 
 One table per sheet, so filters and frozen panes work:
@@ -448,7 +453,9 @@ Allocation and 5b Distributor Allocation, written only when the view-model shows
 Me saying why a sheet was left out; 19 Audit Log; 20 `_manifest`. Conventions: Cambria 9; header rows white bold on
 black; thin borders in #D9D9D9; the header row frozen on every sheet, and column A also on Holdings and the
 allocation sheets; an autoFilter on every table, with its hidden `_xlnm._FilterDatabase`; no merged cells; number
-formats money `#,##0.00`, percent `0.00"%"`, units in Indian grouping and dates `d mmm yyyy`; negatives in #931621
+formats money and units in Indian grouping (two conditional sections, D-039 point 5), percent `0.00"%"` and dates
+`d mmm yyyy`; the "Share of family (%)" row outside the filter and the conditional formats (`SheetSpec.tableRows`);
+negatives in #931621
 through conditional formatting; `fullCalcOnLoad`. SUMIFS criteria refer only to canonical asset classes, the
 generated keys (P01, L01, C01, D01; C00 and D00 when not given) and Yes/No flags. A missing value is a blank cell
 with its status in the next column (Holdings) or in the row's Status column. `_manifest` lists the schema, build,
@@ -482,11 +489,14 @@ Catalogue and tokens: [deck-design-system.md](new-build/deck-design-system.md).
 - **Market updates first**, then one Review Snapshot per deck in the selected mode.
 - **Build channel marker:** exports from a build not released for client use carry "Preview build, not for client use"
   in every slide's black footer band (white Cambria 8 pt italic; the footnote box keeps the sources and statuses) and
-  the first row of the workbook's Read Me, and file names end in `_PREVIEW` (D-024, D-039 point 7); a release build
+  the first data row of the Read Me (row 2, under the frozen header), and file names end in `_PREVIEW` (D-024,
+  D-039 point 7); a release build
   carries none.
 - **Post-processing** (`exports/pptx/postprocess.ts`, with the JSZip of the PptxGenJS bundle, M1.4): it writes each
-  pie label as text from the view-model and deletes the labels under 2%; applies token-based label defaults and the
-  slice outline; keeps one paragraph-properties element per paragraph and one paragraph per table cell; gives unique
+  pie label as text from the view-model on two lines (the category run, a line break, the percent run) in a text
+  body that never wraps, with a new line as the separator, and deletes the labels under 2% and the label of a pie
+  of one slice; applies token-based label defaults and the slice outline, none on a pie of one slice (D-039 point
+  6); keeps one paragraph-properties element per paragraph and one paragraph per table cell; gives unique
   shape ids; drops content types for parts that do not exist; numbers chart parts from 1; and sets the core-property
   and zip dates to the export clock, zipping the embedded workbooks again. The same view-model and clock therefore
   give a byte-identical deck. Text from the view-model is stripped of characters XML 1.0 cannot carry. The exporter
@@ -561,9 +571,10 @@ Commands (built in M1.2 unless marked planned; [toolchain.md](new-build/toolchai
 | `npm run check` | `scripts/validation/check-next.mjs`: CSP first, hashes match, no network, one allowed link, banner, size budget, a scan of `app/src`; `-- --rebuild` for the deterministic build |
 | `npm run serve` | `scripts/serve.mjs`, 127.0.0.1:8100: legacy at `/`, new at `/next/` |
 | `node scripts/vendor-extract.mjs [--check]` | writes `app/vendor/` (the four libraries, their licences and manifest) and `app/src/config/brand-logos.json` from the blocks of `index.html`, or checks them equal (M1.4, D-038; CI runs `--check`) |
-| `node tests/browser/next-spike.mjs` | the CSP, network, layout, focus and IndexedDB gates, and the four-library page with its Blob downloads, in headless Edge or Chrome (local only; 141 checks in M1.4) |
+| `node tests/browser/next-spike.mjs` | the CSP, network, layout, focus and IndexedDB gates, and the four-library page with its Blob downloads, in headless Edge or Chrome (local only; 149 checks in M1.4, with the review-bar gate of D-039 point 15) |
+| `node tests/browser/overview.cdp.mjs [--served \| --file \| --url <url>] [--port] [--browser] [--out] [--json]` | sections 1 and 2 with synthetic files (from `tests/fixtures/make-books.ts`), real keys and clicks, in headless Edge or Chrome, served and from disk: Accept under the pinned header, the review bar, focus after every action, refusals, the register stage, the full SHA-256, the KPIs, tables, matrices and notes, the pies' drawn labels (the pure Chart.js configuration is `app/src/ui/pie-config.ts`, which `chart-lib.ts` uses), both downloads and the logo after a reload (local only, M1.4) |
 | `npm run update -- <YYYY-MM>` (planned, M11) | the monthly update engine (local; `PRD_MONTHLY_INBOX`) |
-| `npm run accept:office` | local only (M1.4): `scripts/office/run-acceptance.ts --full` builds the wired deck and workbook for syn-standard, syn-lakh, syn-blank-invested and family-a, opens each in Excel or PowerPoint through COM with a negative control, and writes the reports under `app/dist/office/`; `--spike`, `--samples` and `--check-file <xlsx>` (evaluator only, no Office) also exist |
+| `npm run accept:office` | local only (M1.4): `scripts/office/run-acceptance.ts --full` builds the wired deck and workbook for syn-standard, syn-lakh, syn-blank-invested, syn-negative-gain, family-a and a Lakh book above 1,00,000 L, opens each in Excel or PowerPoint through COM with a negative control (Excel's `Range.Text` of every `_manifest` figure compared with the screen's text; the scripts quit Office cleanly and never use or stop a PowerPoint that holds someone else's presentation), and writes the reports under `app/dist/office/`; `--spike`, `--samples` and `--check-file <xlsx>` (evaluator only, no Office) also exist |
 
 **CI today** (`.github/workflows/ci.yml`): the job `checks` runs the legacy gates (invariants, smoke, AI Analyst,
 regression) unchanged; the job `next` runs the privacy scan of the documentation, the docs link check and the monthly
