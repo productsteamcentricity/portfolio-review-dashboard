@@ -1,4 +1,4 @@
-// covers: U-15 U-60 D-026
+// covers: U-15 U-60 D-026 E-75
 // The source register: role, file name, the data date or the status of a missing one (the marker alone, with its
 // status), the SHA-256, publication class N for a client file, and the stage reached.
 
@@ -10,6 +10,10 @@ import { STATUS } from '../../../app/src/model/status.ts';
 import { missing, present } from '../../../app/src/engine/value.ts';
 import { buildSourceRegister } from '../../../app/src/views/source-register.ts';
 import { sampleLoaded } from '../../helpers/sample-review.ts';
+import { computeReview } from '../../../app/src/engine/review.ts';
+import { buildOverviewVM } from '../../../app/src/views/overview.ts';
+import { buildOverviewWorkbook, workbookInputFrom } from '../../../app/src/exports/xlsx/overview-workbook.ts';
+import { readXlsx, sheetByName, sheetTable } from '../../helpers/xlsx-read.ts';
 
 describe('the source register', () => {
   test('a base file: role, name, no date (not available in supplied data), SHA-256, class N, stage', () => {
@@ -41,6 +45,19 @@ describe('the source register', () => {
       ['Base file (holdings)', '\u2014', 'not available in supplied data', 'Review (accepted)', 'N'],
       ['MF Monitor', '30 Sep 2026', null, 'Review (accepted)', 'P'],
     ]);
+  });
+
+  test('an accepted file: the review\'s register is at the Review stage, on screen and in the workbook (L12)', () => {
+    const loaded = sampleLoaded('standard');
+    const review = computeReview({ loaded, asOn: 20726, labels: { family: 'Sample Family', clients: {} }, acknowledged: [], answers: {} },
+      { now: () => '2026-10-27T00:00:00.000Z', build: { buildId: 'l12', channel: 'preview', libraries: [] } });
+    assert.equal(review.sources[0]!.stage, 'review');
+    assert.equal(loaded.source.stage, 'validate', 'the loaded file is not changed');
+    const row = buildSourceRegister(review.sources).rows[0]!;
+    assert.deepEqual([row.stage, row.stageText], ['review', 'Review (accepted)']);
+    const sheet = sheetTable(sheetByName(readXlsx(buildOverviewWorkbook(workbookInputFrom(review, buildOverviewVM(review)))), 'Source Register'));
+    assert.equal(sheet[0]![6], 'Stage');
+    assert.equal(sheet[1]![6], 'review');
   });
 
   test('no file: no row', () => {

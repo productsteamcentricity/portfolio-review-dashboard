@@ -22,6 +22,7 @@ import { columnKey, columnLetter, excelRow } from './layout.ts';
 import { renderFormulas, writeWorkbook } from './writer.ts';
 import { SHEETS } from './sheet-names.ts';
 import { readMeSheet } from './sheets/read-me.ts';
+import { exclusionReason } from '../../views/import-report.ts';
 import { sourceRegisterSheet } from './sheets/source-register.ts';
 import { holdingsSheet } from './sheets/holdings-as-loaded.ts';
 import { portfolioOverviewSheet } from './sheets/portfolio-overview.ts';
@@ -109,7 +110,15 @@ export type BuildContext = {
 };
 
 const MODE_TEXT: Readonly<Record<string, string>> = { single: 'Single', joint: 'Joint', 'anyone-or-survivor': 'Anyone or Survivor' };
-const EXCLUSION_TEXT: Readonly<Record<string, string>> = { 'no-market-value': 'No market value (OD-8)' };
+/**
+ * The Exclusion Reason of a holding: the import report's reason (views/import-report.ts), from its market value's
+ * status, with the decision: "No market value (OD-8)", "Market value not a number (invalid source data, OD-8)".
+ */
+function exclusionText(h: Holding): string {
+  const r = exclusionReason(h);
+  const phrase = `${r.phrase.charAt(0).toUpperCase()}${r.phrase.slice(1)}`;
+  return `${phrase} (${r.status === null ? '' : `${r.status}, `}OD-8)`;
+}
 
 function missingValue(reason: string): Value<number> {
   return { kind: 'missing', status: STATUS.NOT_AVAILABLE, reason };
@@ -177,7 +186,7 @@ export function workbookInputFrom(review: Review, vm: OverviewVM): WorkbookInput
       bmXirr: h.bmXirr,
       holdingDays: h.holdingDays,
       included: h.inclusion.status === 'included',
-      exclusion: h.inclusion.status === 'excluded' ? h.inclusion.reasons.map((r) => EXCLUSION_TEXT[r] ?? r).join('; ') : null,
+      exclusion: h.inclusion.status === 'excluded' ? exclusionText(h) : null,
       investedPresent: h.invested.kind === 'value',
       mergeGaps: h.mergeGaps.join(', '),
     };

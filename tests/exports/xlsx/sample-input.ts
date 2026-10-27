@@ -23,6 +23,7 @@ import type {
 } from '../../../app/src/views/overview-vm.ts';
 import type { HoldingRowInput, WorkbookInput } from '../../../app/src/exports/xlsx/overview-workbook.ts';
 import { buildOverviewWorkbook } from '../../../app/src/exports/xlsx/overview-workbook.ts';
+import { NUM_FMT_CODES } from '../../../app/src/exports/xlsx/styles.ts';
 import { SYNTHETIC_BOOK } from '../../fixtures/make-books.ts';
 import { sheetByName, sheetTable, type ReadWorkbook } from '../../helpers/xlsx-read.ts';
 
@@ -526,10 +527,10 @@ export function officeSampleCases(): Array<{ id: string; bytes: Uint8Array; edit
   const Hs = 'Holdings (as loaded)';
   const formats = [
     { sheet: Hs, cell: 'A2', numberFormat: 'General' },
-    { sheet: Hs, cell: 'X2', numberFormat: '#,##0.00' },
+    { sheet: Hs, cell: 'X2', numberFormat: NUM_FMT_CODES.money },
     { sheet: Hs, cell: 'AF2', numberFormat: '0.00"%"' },
     { sheet: Hs, cell: 'R2', numberFormat: 'd mmm yyyy' },
-    { sheet: 'Portfolio Overview', cell: 'G2', numberFormat: '#,##0.00' },
+    { sheet: 'Portfolio Overview', cell: 'G2', numberFormat: NUM_FMT_CODES.money },
     { sheet: 'Portfolio Overview', cell: 'H2', numberFormat: '0.00"%"' },
   ];
   const cases: Array<[SampleName, { sheet: string; cell: string } | null]> = [

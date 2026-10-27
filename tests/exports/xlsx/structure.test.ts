@@ -72,18 +72,21 @@ test('Holdings freezes column A too; the overview rows carry the house fills', (
   assert.equal(fillOf(`G${product}`), null, 'product rows plain');
 });
 
+/** Money in Indian grouping, the conditional pattern of units (D-039 point 5). */
+const MONEY = '[>=10000000]##\\,##\\,##\\,##0.00;[>=100000]##\\,##\\,##0.00;##,##0.00';
+
 test('number formats: money, percent, units with Indian grouping, dates', () => {
   const st = standard.styles!;
   const fmt = (sheet: string, ref: string): string => {
     const id = st.xfs[sheetByName(standard, sheet).cells.get(ref)!.s]!.numFmtId;
     return st.numFmts.get(id) ?? `builtin ${id}`;
   };
-  assert.equal(fmt('Holdings (as loaded)', 'X2'), '#,##0.00');
-  assert.equal(fmt('Holdings (as loaded)', 'V2'), '#,##0.00');
+  assert.equal(fmt('Holdings (as loaded)', 'X2'), MONEY);
+  assert.equal(fmt('Holdings (as loaded)', 'V2'), MONEY);
   assert.equal(fmt('Holdings (as loaded)', 'AF2'), '0.00"%"');
   assert.equal(fmt('Holdings (as loaded)', 'T2'), '[>=10000000]##\\,##\\,##\\,##0.000;[>=100000]##\\,##\\,##0.000;##,##0.000');
   assert.equal(fmt('Holdings (as loaded)', 'R2'), 'd mmm yyyy');
-  assert.equal(fmt('Portfolio Overview', 'G2'), '#,##0.00');
+  assert.equal(fmt('Portfolio Overview', 'G2'), MONEY);
   assert.equal(fmt('Portfolio Overview', 'H2'), '0.00"%"');
   assert.equal(fmt('Portfolio Overview', 'K2'), '0.00"%"');
 });

@@ -5,8 +5,9 @@
 //   values   the engine's figures: money in Crore, unrounded; percentages as percent numbers; null for a missing value
 //            (its status in `investedStatus` where it matters);
 //   shown    what the one formatter (views/format.ts) shows: two decimals in the display unit (Lakh is Crore x 100),
-//            percentages with "%", the missing-value marker alone, and the marker "p" after a partial value. Ties
-//            follow toFixed on the binary value, as the legacy does (0.625 shows as 0.63);
+//            percentages with "%", the missing-value marker alone, and the marker "p" after a partial value. A
+//            half-way value rounds up on its 15-digit decimal, as Excel shows it (D-039: 0.625 shows as 0.63, 1.005
+//            as 1.01);
 //   rows     the engine's allocation lines in order: each class, then every one of its products (highest CMV first),
 //            then the Grand Total;
 //   chartLabels  the asset pie's labels, one per class in order: "Equity 59.3%", or null under 2.00% (D-039).

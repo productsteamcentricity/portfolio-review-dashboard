@@ -124,7 +124,8 @@ export function computeReview(req: ReviewRequest, deps: { now: () => string; bui
     labels: { family: req.labels.family, clients: { ...req.labels.clients } },
     displayUnit,
     build: deps.build,
-    sources: [source],
+    // A Review exists only for an accepted file, so its register records the Review stage (architecture §13.1).
+    sources: [{ ...source, stage: 'review' }],
     base,
     holdings,
     holdingMetrics,

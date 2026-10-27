@@ -56,6 +56,18 @@ function lastRef(s: SheetSpec): string {
   return `${columnLetter(s.columns.length - 1)}${Math.max(1, s.rows.length + 1)}`;
 }
 
+/** The data rows the autoFilter and the conditional formats cover: the first `tableRows`, else every row. */
+function tableRowCount(s: SheetSpec): number {
+  const n = s.tableRows ?? s.rows.length;
+  if (!Number.isInteger(n) || n < 0 || n > s.rows.length) throw new Error(`workbook: bad tableRows ${String(n)} on "${s.name}"`);
+  return n;
+}
+
+/** The last cell of the table under the filter. */
+function tableLastRef(s: SheetSpec): string {
+  return `${columnLetter(s.columns.length - 1)}${Math.max(1, tableRowCount(s) + 1)}`;
+}
+
 function paneXml(s: SheetSpec): string {
   const { rows, cols } = s.freeze;
   if (rows === 0 && cols === 0) return '<selection activeCell="A1" sqref="A1"/>';
@@ -118,15 +130,16 @@ function sheetXml(s: SheetSpec, index: number, styles: StyleTable, formulas: Map
   });
   parts.push(`<sheetData>${rows.join('')}</sheetData>`);
   if (s.protected) parts.push('<sheetProtection sheet="1" objects="1" scenarios="1"/>');
-  if (s.filter) parts.push(`<autoFilter ref="A1:${lastRef(s)}"/>`);
+  if (s.filter) parts.push(`<autoFilter ref="A1:${tableLastRef(s)}"/>`);
   let priority = 1;
+  const tableRows = tableRowCount(s);
   for (const cf of s.conditional ?? []) {
-    if (s.rows.length === 0) continue;
+    if (tableRows === 0) continue;
     const ranges = cf.columns.map((k) => {
       const i = s.columns.findIndex((c) => columnKey(c) === k);
       if (i < 0) throw new Error(`workbook: conditional format on unknown column "${k}" of "${s.name}"`);
       const L = columnLetter(i);
-      return `${L}${excelRow(0)}:${L}${excelRow(s.rows.length - 1)}`;
+      return `${L}${excelRow(0)}:${L}${excelRow(tableRows - 1)}`;
     });
     if (ranges.length === 0) continue;
     parts.push(`<conditionalFormatting sqref="${ranges.join(' ')}"><cfRule type="cellIs" dxfId="${NEGATIVE_DXF}" priority="${priority++}" operator="lessThan"><formula>0</formula></cfRule></conditionalFormatting>`);
@@ -156,7 +169,7 @@ export function writeWorkbook(spec: WorkbookSpec): Uint8Array {
   const names: string[] = [];
   spec.sheets.forEach((s, i) => {
     if (s.filter) {
-      names.push(`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">${escapeXml(`${sheetPrefix(s.name)}$A$1:$${columnLetter(s.columns.length - 1)}$${Math.max(1, s.rows.length + 1)}`)}</definedName>`);
+      names.push(`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">${escapeXml(`${sheetPrefix(s.name)}$A$1:$${columnLetter(s.columns.length - 1)}$${Math.max(1, tableRowCount(s) + 1)}`)}</definedName>`);
     }
   });
   for (const d of spec.definedNames) {

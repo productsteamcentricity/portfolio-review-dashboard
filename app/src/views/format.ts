@@ -23,13 +23,55 @@ export type CellDisplay = {
   negative: boolean;
 };
 
+/** Significant digits Excel keeps of a number, and from which it rounds what a cell shows. */
+const EXCEL_DIGITS = 15;
+
 /**
- * A number with Indian digit grouping (1,23,45,678.90) and a hyphen-minus for negatives (D-029). A value that
- * rounds to zero is shown without a sign.
+ * The size of `v` rounded to `decimals` places as Excel shows it (D-039): first to 15 significant digits, then half
+ * up on that decimal, so 1.005 gives "1.01", 2.675 "2.68" and 35.67499999999998 (35.675 to 15 digits) "35.68". Exact
+ * decimal arithmetic on the digits, never on the binary double: toFixed would give "1.00", "2.67" and "35.67". The
+ * result is unsigned, with exactly `decimals` digits after the point.
+ */
+export function excelFixed(v: number, decimals: number): string {
+  if (!Number.isFinite(v)) throw new RangeError(`cannot format ${String(v)}`);
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 20) throw new RangeError(`bad decimals ${String(decimals)}`);
+  const a = Math.abs(v);
+  let scaled: bigint;
+  if (a === 0) scaled = BigInt(0);
+  else {
+    // "d.ddddddddddddddde±x": the 15 significant digits and the power of ten of the first one.
+    const m = /^(\d)\.(\d+)e([+-]\d+)$/.exec(a.toExponential(EXCEL_DIGITS - 1));
+    if (!m) throw new RangeError(`cannot format ${String(v)}`);
+    const digits = BigInt(`${m[1]}${m[2]}`);
+    // value = digits x 10^(exp - 14); the shown number is value x 10^decimals, rounded half up.
+    const shift = Number(m[3]) - (EXCEL_DIGITS - 1) + decimals;
+    if (shift >= 0) scaled = digits * BigInt(10) ** BigInt(shift);
+    else {
+      const unit = BigInt(10) ** BigInt(-shift);
+      const q = digits / unit;
+      scaled = (digits % unit) * BigInt(2) >= unit ? q + BigInt(1) : q;
+    }
+  }
+  const s = scaled.toString().padStart(decimals + 1, '0');
+  return decimals === 0 ? s : `${s.slice(0, -decimals)}.${s.slice(-decimals)}`;
+}
+
+/**
+ * `v` rounded to `decimals` places by the display rule (excelFixed), as a number with its sign: the number a cell
+ * shows, for a comparison such as the pie-label threshold (D-039 point 6).
+ */
+export function displayRounded(v: number, decimals: number = DEFAULT_DECIMALS): number {
+  const n = Number(excelFixed(v, decimals));
+  return v < 0 && n !== 0 ? -n : n;
+}
+
+/**
+ * A number with Indian digit grouping (1,23,45,678.90) and a hyphen-minus for negatives (D-029), rounded as Excel
+ * rounds (excelFixed), so the screen, the slide and the workbook show the same text. A value that rounds to zero is
+ * shown without a sign.
  */
 export function formatIndian(v: number, decimals: number = DEFAULT_DECIMALS): string {
-  if (!Number.isFinite(v)) throw new RangeError(`cannot format ${String(v)}`);
-  const fixed = Math.abs(v).toFixed(decimals);
+  const fixed = excelFixed(v, decimals);
   const [int, frac] = fixed.split('.') as [string, string | undefined];
   let grouped = int;
   if (int.length > 3) {

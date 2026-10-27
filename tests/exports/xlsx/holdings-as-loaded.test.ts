@@ -1,4 +1,4 @@
-// covers: E-76 OD-22 OD-18
+// covers: E-76 OD-22 OD-18 OD-8 KI-147
 // Holdings (as loaded): the 43 columns A to AQ; one row per holding, excluded ones included with their reason
 // (OD-8); a missing number is a blank cell with its status in the next column; joint holders, or NOT AVAILABLE IN
 // SUPPLIED DATA when the file has no holder columns (Q-79); values only; the file's own gain/loss only here (OD-18).
@@ -17,6 +17,7 @@ import { closeTo } from '../../helpers/formula-eval.ts';
 import { loadSheetJS } from '../../helpers/sheetjs.ts';
 import { syntheticFixtures } from '../../fixtures/make-books.ts';
 import { sampleInput } from './sample-input.ts';
+import { buildImportReport } from '../../../app/src/views/import-report.ts';
 
 const HEADERS = ['Instrument Name', 'Client', 'Client Key', 'Joint Holders', 'Joint Holders Status', 'Mode of Holding',
   'Distributor', 'Distributor Key', 'Folio No', 'Product', 'Product Key', 'Category', 'AMC', 'Asset Name (as given)',
@@ -91,7 +92,7 @@ describe('workbookInputFrom on the real reader', () => {
       holdings: base.holdings, holdingMetrics, clients: base.clients, distributors: base.distributors, ownership: base.ownership,
       build: { buildId: 'test', channel: 'preview', libraries: [] }, fingerprint: 'f'.repeat(64),
       sources: [{ id: SRC, fileName: `${id}.xlsx`, role: 'base-file', class: 'N', asOn: { kind: 'missing', status: 'NOT AVAILABLE IN SUPPLIED DATA', reason: 'test' }, parserVersion: base.parserVersion, stage: 'review', bytes: 1 }],
-      audit: base.audit, issues: base.issues,
+      audit: base.audit, issues: base.issues, base,
     } as unknown as Review;
   };
 
@@ -133,5 +134,20 @@ describe('workbookInputFrom on the real reader', () => {
     assert.equal(flex.gain.kind, 'missing');
     assert.equal(flex.cmvPct.kind, 'missing');
     assert.equal(input.holdings.filter((h) => !h.included).length, 2);
+  });
+
+  test('a market value that is not a number: the reason the import report gives, from the value\'s status (L21)', () => {
+    // syn-invalid-text: holdings 0 and 1 hold "1.25 Cr" and "12abc" as market values (INVALID SOURCE DATA, KI-147).
+    const review = reviewOf('syn-invalid-text');
+    const input = workbookInputFrom(review, sampleInput('standard').vm);
+    assert.deepEqual(input.holdings.slice(0, 2).map((h) => [h.included, h.exclusion]), [
+      [false, 'Market value not a number (invalid source data, OD-8)'],
+      [false, 'Market value not a number (invalid source data, OD-8)'],
+    ]);
+    const report = buildImportReport(review.sources[0]!, review.base);
+    assert.deepEqual(report.excluded.map((e) => e.reason), ['market value not a number (invalid source data)', 'market value not a number (invalid source data)']);
+    // A blank or "NA" market value keeps its own reason (syn-na-cmv above).
+    assert.deepEqual(workbookInputFrom(reviewOf('syn-na-cmv'), sampleInput('na-cmv').vm).holdings.filter((h) => !h.included).map((h) => h.exclusion),
+      ['No market value (OD-8)', 'No market value (OD-8)']);
   });
 });

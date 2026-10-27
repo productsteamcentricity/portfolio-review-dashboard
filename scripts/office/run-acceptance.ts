@@ -7,7 +7,8 @@
 //   node scripts/office/run-acceptance.ts --check-file <path.xlsx>            evaluator-only check, no Office
 //
 // For each workbook it writes the file, expected.json (every formula cell's value from tests/helpers/formula-eval.ts,
-// the edit case, the frozen panes, filters and sample formats) and a negative control (sheetViews moved after
+// the edit case, the frozen panes, filters and sample formats, and the screen's text of every figure the _manifest
+// places, which Excel's Range.Text must equal: D-039, display rounding agrees with Excel) and a negative control (sheetViews moved after
 // sheetData, which Excel must repair), then runs accept-xlsx.ps1 in Windows PowerShell 5.1 and collects its report.
 // Decks go through accept-pptx.ps1 with their inventory.json. The combined report.json holds synthetic data only.
 // The PowerShell scripts run under the session's execution policy: where it refuses scripts, the run is reported as
@@ -19,8 +20,9 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { writeWorkbook } from '../../app/src/exports/xlsx/writer.ts';
 import { storeZip } from '../../app/src/exports/zip/store-zip.ts';
+import { NUM_FMT_CODES } from '../../app/src/exports/xlsx/styles.ts';
 import { evaluateAll, readWorkbookForEval, withEdit, isError, closeTo, type EvalResult } from '../../tests/helpers/formula-eval.ts';
-import { readXlsx, kid, type ReadWorkbook } from '../../tests/helpers/xlsx-read.ts';
+import { readXlsx, kid, sheetTable, type ReadWorkbook } from '../../tests/helpers/xlsx-read.ts';
 import { unzip } from '../../tests/helpers/unzip.ts';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -37,6 +39,14 @@ export type XlsxCase = {
   formats: Array<SampleCell & { numberFormat: string | null }>;
   unitsText: (SampleCell & { text: string }) | null;
   negative: SampleCell | null;
+  /** Cells whose shown text (Range.Text) Excel must give, for example a money amount above 1,00,000 in Lakh. */
+  texts?: Array<SampleCell & { text: string }>;
+  /**
+   * The screen's text of each view-model figure by registry key (Figure.display.text, without the marker). Every
+   * figure the _manifest places in a cell is compared with the text Excel shows there (D-039: display rounding
+   * agrees with Excel).
+   */
+  figureTexts?: Record<string, string>;
 };
 export type PptxCase = { id: string; bytes: Uint8Array; inventory: unknown };
 
@@ -104,6 +114,24 @@ function parseRef(ref: string): SampleCell {
   return { sheet: ref.slice(0, bang), cell: ref.slice(bang + 1) };
 }
 
+/**
+ * The cells whose text Excel must show: the case's own sample texts, then every figure the _manifest places in a cell
+ * ("figure <key>" to "<sheet>!<cell>") with its view-model text. A figure of the manifest without a text fails.
+ */
+export function expectedTexts(c: XlsxCase, wb: ReadWorkbook = readXlsx(c.bytes)): Array<SampleCell & { key: string | null; text: string }> {
+  const out: Array<SampleCell & { key: string | null; text: string }> = (c.texts ?? []).map((t) => ({ ...t, key: null }));
+  if (!c.figureTexts) return out;
+  const manifest = wb.sheets.find((s) => s.name === '_manifest');
+  if (!manifest) throw new Error(`${c.id}: no _manifest sheet`);
+  for (const [k, v] of sheetTable(manifest)) {
+    if (typeof k !== 'string' || !k.startsWith('figure ')) continue;
+    const key = k.slice('figure '.length);
+    if (!Object.hasOwn(c.figureTexts, key)) throw new Error(`${c.id}: no screen text for the figure ${key}`);
+    out.push({ ...parseRef(String(v)), key, text: c.figureTexts[key]! });
+  }
+  return out;
+}
+
 export function expectedFor(c: XlsxCase): Record<string, unknown> {
   const wb = readXlsx(c.bytes);
   const ev = readWorkbookForEval(c.bytes);
@@ -136,6 +164,7 @@ export function expectedFor(c: XlsxCase): Record<string, unknown> {
     formats: c.formats.map((f) => ({ ...f, font: 'Cambria', size: 9 })),
     unitsText: c.unitsText,
     negative: c.negative ? { ...c.negative, colour: '#931621' } : null,
+    texts: expectedTexts(c, wb),
   };
 }
 
@@ -187,17 +216,17 @@ export function acceptXlsx(c: XlsxCase, outDir: string): Record<string, unknown>
   fs.writeFileSync(file, c.bytes);
   fs.writeFileSync(exp, JSON.stringify(expectedFor(c), null, 1));
   const node = checkWorkbookBytes(c.bytes);
-  const main = runPs(ACCEPT_XLSX, ['-Path', file, '-Expected', exp], path.join(outDir, `${c.id}.report.json`));
+  const main = runPs(ACCEPT_XLSX, ['-Path', file, '-Expected', exp], path.join(outDir, `${c.id}.xlsx.report.json`));
 
   const negFile = path.join(outDir, `${c.id}.negative.xlsx`);
   fs.writeFileSync(negFile, negativeControl(c.bytes));
   const negExp = path.join(outDir, `${c.id}.negative.expected.json`);
-  fs.writeFileSync(negExp, JSON.stringify({ formulas: [], edit: null, freeze: [], filters: [], hidden: [], formats: [], unitsText: null, negative: null }));
-  const neg = runPs(ACCEPT_XLSX, ['-Path', negFile, '-Expected', negExp], path.join(outDir, `${c.id}.negative.report.json`));
+  fs.writeFileSync(negExp, JSON.stringify({ formulas: [], edit: null, freeze: [], filters: [], hidden: [], formats: [], unitsText: null, negative: null, texts: [] }));
+  const neg = runPs(ACCEPT_XLSX, ['-Path', negFile, '-Expected', negExp], path.join(outDir, `${c.id}.negative.xlsx.report.json`));
   const negativeDetected = neg.ran === true && (neg.repaired === true || neg.opened === false);
   return {
     id: c.id, bytes: c.bytes.length, nodeChecks: node, excel: main,
-    negativeControl: { detected: negativeDetected, ran: neg.ran, repaired: neg.repaired, opened: neg.opened, evidence: neg.repairEvidence, notRunReason: neg.notRunReason },
+    negativeControl: { detected: negativeDetected, ran: neg.ran, repaired: neg.repaired, opened: neg.opened, evidence: neg.repairEvidence, notRunReason: neg.notRunReason, excelQuit: neg.excelQuit, excelKilled: neg.excelKilled },
     verdict: main.ran !== true || neg.ran !== true ? 'not run' : main.pass === true && negativeDetected && node.pass ? 'pass' : 'fail',
   };
 }
@@ -209,13 +238,13 @@ export function acceptPptx(c: PptxCase, outDir: string): Record<string, unknown>
   fs.writeFileSync(inv, JSON.stringify(c.inventory, null, 1));
   const png = path.join(outDir, 'png', c.id);
   fs.mkdirSync(png, { recursive: true });
-  const main = runPs(ACCEPT_PPTX, ['-Path', file, '-Inventory', inv, '-PngDir', png], path.join(outDir, `${c.id}.report.json`));
+  const main = runPs(ACCEPT_PPTX, ['-Path', file, '-Inventory', inv, '-PngDir', png], path.join(outDir, `${c.id}.pptx.report.json`));
   const negFile = path.join(outDir, `${c.id}.negative.pptx`);
   fs.writeFileSync(negFile, negativeDeck(c.bytes));
-  const neg = runPs(ACCEPT_PPTX, ['-Path', negFile, '-Inventory', inv, '-PngDir', ''], path.join(outDir, `${c.id}.negative.report.json`));
+  const neg = runPs(ACCEPT_PPTX, ['-Path', negFile, '-Inventory', inv, '-PngDir', ''], path.join(outDir, `${c.id}.negative.pptx.report.json`));
   const negativeDetected = neg.ran === true && neg.pass !== true;
   return {
-    id: c.id, bytes: c.bytes.length, powerpoint: main, negativeControl: { detected: negativeDetected, ran: neg.ran, notRunReason: neg.notRunReason },
+    id: c.id, bytes: c.bytes.length, powerpoint: main, negativeControl: { detected: negativeDetected, ran: neg.ran, notRunReason: neg.notRunReason, quit: neg.quit, powerpointKilled: neg.powerpointKilled, notKilled: neg.notKilled },
     verdict: main.ran !== true || neg.ran !== true ? 'not run' : main.pass === true && negativeDetected ? 'pass' : 'fail',
   };
 }
@@ -232,7 +261,7 @@ async function spikeCases(): Promise<XlsxCase[]> {
     edit: { sheet: H, cell: 'G2', delta: 1 },
     formats: [
       { sheet: H, cell: 'A2', numberFormat: 'General' },
-      { sheet: H, cell: 'F2', numberFormat: '#,##0.00' },
+      { sheet: H, cell: 'F2', numberFormat: NUM_FMT_CODES.money },
       { sheet: 'Portfolio Overview', cell: 'F2', numberFormat: '0.00"%"' },
       { sheet: H, cell: 'I2', numberFormat: 'd mmm yyyy' },
     ],

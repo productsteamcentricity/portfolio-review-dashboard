@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import type { Value } from '../../app/src/model/value.ts';
 import { isLoaded, loadBaseFile } from '../../app/src/ingest/load-base.ts';
 import { computeReview } from '../../app/src/engine/review.ts';
+import { buildOverviewVM } from '../../app/src/views/overview.ts';
 import { STATUS } from '../../app/src/model/status.ts';
 import { loadSheetJS } from '../helpers/sheetjs.ts';
 import { overviewVariants, SYNTHETIC_BOOK } from '../fixtures/make-books.ts';
@@ -63,4 +64,15 @@ test('the money-columns file: row 0 is excluded and listed, the totals leave it 
   // Warnings and Information only: the review reconciles and may be exported.
   assert.equal(r.gate.canExport, true);
   assert.ok(r.issues.some((i) => i.ruleId === 'reconcile.passed' && i.count === 7));
+
+  // The notes (the fix round): two holdings, one market value (row 0, excluded) and one invested value (row 4,
+  // included), each named by the column the file heads; one market value used over a Lakh amount 0.005 Cr away.
+  const vm = buildOverviewVM(r);
+  assert.equal(vm.notes.find((n) => n.id === 'money-invalid')!.text,
+    '2 holdings have amounts in "Current Market Value (Cr.)" or "Invested Value (Cr.)" that are not numbers: they are invalid source data, and no Lakh amounts are used in their place.');
+  assert.equal(vm.notes.find((n) => n.id === 'money-disagree')!.text,
+    '1 holding has a market value in "Current Market Value (Cr.)" that is used although its Lakh amount differs by more than 0.005 Crore.');
+  assert.deepEqual(r.base.moneyFindings.map((f) => [f.kind, f.field, f.column.header]), [
+    ['invalid', 'cmv', 'Current Market Value (Cr.)'], ['disagree', 'cmv', 'Current Market Value (Cr.)'], ['invalid', 'invested', 'Invested Value (Cr.)'],
+  ]);
 });

@@ -23,7 +23,10 @@ import { buildOverviewVM } from '../../app/src/views/overview.ts';
 import { loadSheetJS } from './sheetjs.ts';
 import { loadPptxGenJS } from './pptxgenjs.ts';
 import { slideInventory } from './slide-inventory.ts';
-import { loadLegacyHost, overviewFixtures, overviewVariants, sampleFixtures, syntheticFixtures, type Fixture } from '../fixtures/make-books.ts';
+import { NUM_FMT_CODES } from '../../app/src/exports/xlsx/styles.ts';
+import {
+  buildVariants, loadLegacyHost, overviewFixtures, overviewVariants, sampleFixtures, SYNTHETIC_BOOK, syntheticFixtures, type Fixture,
+} from '../fixtures/make-books.ts';
 
 /** The clock of every integration test: 24 Oct 2026, midnight UTC. */
 export const NODE_NOW = '2026-10-24T00:00:00.000Z';
@@ -127,8 +130,41 @@ export function fixtureById(id: string): Fixture {
 // ---------------------------------------------------------------------------------------------------------------
 // Office acceptance (scripts/office/run-acceptance.ts --full)
 
-/** The fixtures of the Office acceptance: syn-standard, syn-lakh, syn-blank-invested and family-a (D-039). */
-export const ACCEPTANCE_FIXTURES = ['syn-standard', 'syn-lakh', 'syn-blank-invested', 'family-a'] as const;
+/**
+ * The fixtures of the Office acceptance: syn-standard, syn-lakh, syn-blank-invested, syn-negative-gain (the negative
+ * red), family-a (D-039) and big-lakh (money above 1,00,000 L in Indian grouping).
+ */
+export const ACCEPTANCE_FIXTURES = ['syn-standard', 'syn-lakh', 'syn-blank-invested', 'syn-negative-gain', 'family-a', 'big-lakh'] as const;
+
+/** Where the negative red is checked: Portfolio Overview I2 is the Equity row's gain, negative in syn-negative-gain. */
+const NEGATIVE_CELL: Readonly<Record<string, { sheet: string; cell: string }>> = {
+  'syn-negative-gain': { sheet: 'Portfolio Overview', cell: 'I2' },
+};
+
+/**
+ * SYNTHETIC_BOOK with every amount a thousand times larger, in Lakh columns only: the Grand Total is 3,35,300 L
+ * (rupees 33,53,00,00,000 / 1e5), so the money cells pass 1,00,000 and must read in Indian grouping (D-039 point 5).
+ */
+export function bigLakhFixture(): Fixture {
+  const xlsx = loadSheetJS();
+  const book = SYNTHETIC_BOOK.map((h) => ({ ...h, invested: h.invested * 1000, mv: h.mv * 1000 }));
+  const f = buildVariants(xlsx, book, 'big').find((x) => x.id === 'big-lakh');
+  if (!f) throw new Error('no big-lakh variant');
+  return f;
+}
+
+/** The screen's text of every figure of a view-model, by registry key, without the marker. */
+export function figureTexts(vm: OverviewVM): Record<string, string> {
+  const out: Record<string, string> = Object.create(null) as Record<string, string>;
+  const add = (f: { key: string; display: { text: string } }): void => { out[f.key] = f.display.text; };
+  for (const k of vm.kpis) add(k.figure);
+  for (const r of [...vm.allocation.rows, ...vm.liquidity.rows]) [r.invested, r.cmv, r.pct, r.gain, r.absReturn, r.investedCoverage].forEach(add);
+  for (const m of [vm.matrices.client, vm.matrices.distributor]) {
+    for (const c of m.columns) { add(c.cmv); add(c.share); }
+    for (const r of m.rows) { r.cells.forEach(add); add(r.total); }
+  }
+  return out;
+}
 
 /** The workbook and the deck of each acceptance fixture, built through the wiring, with what Office must find. */
 export async function acceptanceFiles(): Promise<{ xlsx: unknown[]; pptx: unknown[] }> {
@@ -137,18 +173,25 @@ export async function acceptanceFiles(): Promise<{ xlsx: unknown[]; pptx: unknow
   const H = 'Holdings (as loaded)';
   const formats = [
     { sheet: H, cell: 'A2', numberFormat: 'General' },
-    { sheet: H, cell: 'X2', numberFormat: '#,##0.00' },
+    { sheet: H, cell: 'X2', numberFormat: NUM_FMT_CODES.money },
     { sheet: H, cell: 'AF2', numberFormat: '0.00"%"' },
-    { sheet: 'Portfolio Overview', cell: 'G2', numberFormat: '#,##0.00' },
+    { sheet: H, cell: 'R2', numberFormat: 'd mmm yyyy' },
+    { sheet: 'Portfolio Overview', cell: 'G2', numberFormat: NUM_FMT_CODES.money },
     { sheet: 'Portfolio Overview', cell: 'H2', numberFormat: '0.00"%"' },
   ];
   const xlsx: unknown[] = [];
   const pptx: unknown[] = [];
   for (const id of ACCEPTANCE_FIXTURES) {
-    const { review, vm } = reviewOf(w, fixtureById(id));
+    const { review, vm } = reviewOf(w, id === 'big-lakh' ? bigLakhFixture() : fixtureById(id));
     await w.exportWorkbook(review, vm);
     await w.exportDeck(review, vm, null as LogoAsset | null);
-    xlsx.push({ id: `wired-${id}`, bytes: w.last.xlsx!.bytes, edit: { sheet: H, cell: 'X2', delta: 1 }, formats, unitsText: id.startsWith('syn-') ? { sheet: H, cell: 'T4', text: '1,50,000.000' } : null, negative: null });
+    // The Grand Total's market value (row 11 of Portfolio Overview on the synthetic book) reads as on screen.
+    const texts = id === 'big-lakh' ? [{ sheet: 'Portfolio Overview', cell: 'G11', text: '3,35,300.00' }] : [];
+    xlsx.push({
+      id: `wired-${id}`, bytes: w.last.xlsx!.bytes, edit: { sheet: H, cell: 'X2', delta: 1 }, formats,
+      unitsText: id.startsWith('syn-') ? { sheet: H, cell: 'T4', text: '1,50,000.000' } : null,
+      negative: NEGATIVE_CELL[id] ?? null, texts, figureTexts: figureTexts(vm),
+    });
     const inv = await slideInventory(w.last.pptx!.bytes, lib.JSZip);
     pptx.push({
       id: `wired-${id}`,

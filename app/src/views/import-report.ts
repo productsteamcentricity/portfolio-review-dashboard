@@ -4,9 +4,10 @@
 import type { SourceFile, SkipReason } from '../model/source.ts';
 import type { AnalystQuestion, XirrUnitChoice } from '../model/validation.ts';
 import type { BaseFileImport } from '../ingest/base-file.ts';
+import type { Holding } from '../model/holding.ts';
 import type { MoneyUnit } from '../engine/units.ts';
 import { STATUS } from '../model/status.ts';
-import { plainText, plural } from './format.ts';
+import { STATUS_PHRASE, plainText, plural } from './format.ts';
 
 export const MATCHING_LINE = 'Instrument matching arrives in M2: until then no holding is matched to a fund, and none is reported as unmatched.';
 
@@ -65,6 +66,23 @@ const CHOICE_LABEL: Readonly<Record<XirrUnitChoice, string>> = {
   fraction: 'Fractions (0.0879 means 8.79%)',
 };
 
+/**
+ * Why a holding is excluded, as the import report words it (OD-8; KI-147): "market value not a number" with the
+ * status "invalid source data" when its market value is text that is not an amount, else "no market value". The
+ * workbook's Exclusion Reason says the same (exports/xlsx/overview-workbook.ts), so the outputs give one reason.
+ */
+export function exclusionReason(h: Holding): { phrase: string; status: string | null } {
+  return h.cmv.kind === 'missing' && h.cmv.status === STATUS.INVALID_SOURCE
+    ? { phrase: 'market value not a number', status: STATUS_PHRASE[STATUS.INVALID_SOURCE] }
+    : { phrase: 'no market value', status: null };
+}
+
+/** The import report's text of the reason ("market value not a number (invalid source data)"). */
+export function exclusionReasonText(h: Holding): string {
+  const r = exclusionReason(h);
+  return r.status === null ? r.phrase : `${r.phrase} (${r.status})`;
+}
+
 function question(q: AnalystQuestion): QuestionVM {
   return {
     id: q.id,
@@ -103,8 +121,7 @@ export function buildImportReport(source: SourceFile, base: BaseFileImport): Imp
     .map((h) => ({
       name: plainText(h.instrumentName),
       rows: h.rows.map((r) => r.row),
-      reason: h.cmv.kind === 'missing' && h.cmv.status === STATUS.INVALID_SOURCE
-        ? 'market value not a number (invalid source data)' : 'no market value',
+      reason: exclusionReasonText(h),
     }));
 
   return {

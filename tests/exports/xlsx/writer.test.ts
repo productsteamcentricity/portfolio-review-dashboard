@@ -65,7 +65,7 @@ test('reserved fills, the house font and the negative dxf', () => {
   assert.ok(st.fonts.every((f) => f.name === 'Cambria' && f.size === 9));
   assert.equal(st.dxfs.length, 1);
   assert.equal(kid(kid(st.dxfs[0]!, 'font')!, 'color')!.attrs.rgb, 'FF931621');
-  assert.equal(st.numFmts.get(164), '#,##0.00');
+  assert.equal(st.numFmts.get(164), '[>=10000000]##\\,##\\,##\\,##0.00;[>=100000]##\\,##\\,##0.00;##,##0.00');
   assert.equal(st.numFmts.get(165), '0.00"%"');
   assert.equal(st.numFmts.get(166), '[>=10000000]##\\,##\\,##\\,##0.000;[>=100000]##\\,##\\,##0.000;##,##0.000');
   assert.equal(st.numFmts.get(167), 'd mmm yyyy');

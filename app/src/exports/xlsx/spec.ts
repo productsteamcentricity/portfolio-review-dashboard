@@ -57,6 +57,11 @@ export type SheetSpec = {
   freeze: { rows: number; cols: number };
   /** An autoFilter over the whole table, with its hidden _xlnm._FilterDatabase name. */
   filter: boolean;
+  /**
+   * How many data rows, from the first, the autoFilter and the conditional formats cover; every row when not set.
+   * Rows below them (the share row of the client and distributor sheets) are not filtered, sorted or coloured.
+   */
+  tableRows?: number;
   hidden?: 'hidden';
   /** Sheet protection without a password (the _manifest sheet). */
   protected?: boolean;
