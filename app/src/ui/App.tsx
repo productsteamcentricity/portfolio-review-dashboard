@@ -40,6 +40,36 @@ function markNavigation(activeId: string): void {
   });
 }
 
+/** The pinned header's height plus a gap, in pixels; 0 when the header is not pinned (narrow screens, D-037). */
+function headerOffset(): number {
+  const h = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h'));
+  return Number.isFinite(h) && h > 0 ? h + 16 : 0;
+}
+
+/**
+ * Keeps --header-h on the root equal to the pinned header's height (0 when it is not pinned), so fragment links
+ * (the skip link) scroll below it (shell.css, scroll-padding-top) and focused headings are placed below it.
+ * Set through the CSSOM, which the page's CSP allows.
+ */
+function useHeaderHeight(): void {
+  useEffect(() => {
+    const header = document.querySelector<HTMLElement>('.app-header');
+    if (!header) return;
+    const update = () => {
+      const pinned = getComputedStyle(header).position === 'sticky';
+      document.documentElement.style.setProperty('--header-h', `${pinned ? header.offsetHeight : 0}px`);
+    };
+    update();
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(update) : null;
+    observer?.observe(header);
+    window.addEventListener('resize', update);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+}
+
 function SlotCard({ slot }: { slot: Slot }) {
   const headingId = `slot-${slot.id}-title`;
   return (
@@ -61,7 +91,13 @@ function SectionPanel({ section, focusRequest }: { section: Section; focusReques
   const headingRef = useRef<HTMLHeadingElement>(null);
   const headingId = `${section.id}-title`;
   useEffect(() => {
-    if (focusRequest > 0) headingRef.current?.focus();
+    const heading = headingRef.current;
+    if (focusRequest === 0 || !heading) return;
+    // Focus without the browser's own scroll, then place the heading just below the pinned header (D-037): the
+    // browser would leave a heading that is already on screen where it is, under the header.
+    heading.focus({ preventScroll: true });
+    const top = heading.getBoundingClientRect().top + window.scrollY - headerOffset();
+    window.scrollTo(0, Math.max(0, top));
   }, [section.id, focusRequest]);
   return (
     <section class="panel" id={section.id} aria-labelledby={headingId}>
@@ -101,6 +137,7 @@ export function App({ build }: { build: BuildInfo | null }) {
   if (!first) throw new Error('sections.json lists no section');
   const [active, setActive] = useState<Section>(() => sectionFromHash(location.hash) ?? first);
   const [focusRequest, setFocusRequest] = useState(0);
+  useHeaderHeight();
 
   useEffect(() => {
     const show = (next: Section) => {

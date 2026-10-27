@@ -403,12 +403,14 @@ that layout from now on.
 **Decision.**
 1. **Layout.** The header holds, in order: the preview banner (D-024, still first and still in view on a wide
    screen), the black masthead with the 4 px gold rule, and the nine section tabs in one row across the top. The
-   section below uses the full page width (up to 90rem). On a narrow screen (52rem or less) nothing is pinned and the
-   tab row scrolls sideways, so the header never covers a focused heading (the 375 px item carried from M1.2's QA).
+   section below uses the full page width (up to 90rem). The tab row never wraps: where the nine tabs do not fit it
+   scrolls sideways, so the header keeps one height (one row from 1280 px). The app measures the pinned header and
+   keeps a focused heading, and the target of the skip link, just below it. On a narrow screen (52rem or less)
+   nothing is pinned (the 375 px item carried from M1.2's QA: a sticky header covered a focused heading).
 2. **The MF Screener link** (D-027) is a navigation item at the right end of the masthead, in its own `<nav>`, so
    the tab row is the sections only. It is still the one remote URL, in one static anchor.
 3. **The reference's look** for the screen from now on: Cambria; tabs on a sand ground with the current tab black
-   with white text; black table headers in small capitals with zebra rows; bordered groups with a sand header;
+   with white text; black table headers in small uppercase letters with zebra rows; bordered groups with a sand header;
    dashed upload slots; status chips; a black footer bar. Colours come from `app/src/config/tokens.json` only.
 4. **The Screener pack's cycle date and status** (D-026) show in the masthead beside the Screener link, since there is
    no sidebar.

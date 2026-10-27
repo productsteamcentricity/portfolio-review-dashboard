@@ -9,8 +9,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   top** in the look of the owner's design reference, and each section uses the full page width. The black masthead
   with the gold rule carries the MF Screener link at its right; the preview banner stays first and in view on a wide
   screen; on a narrow screen nothing is pinned and the tab row scrolls sideways (which also fixes M1.2's QA note of
-  a header covering a focused heading at 375 px). The `/next/` build: 43,522 bytes, SHA-256 `ad6d3a8c…`
-  (deterministic). `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
+  a header covering a focused heading at 375 px). The tab row never wraps (one row from 1280 px; narrower, it scrolls
+  sideways), and the app keeps a focused heading and the skip link's target below the pinned header. The headless
+  browser spike now runs at 1440 x 900 and checks the layout at 1440, 1280, 1024 and 375 px (73 of 73 pass). The
+  `/next/` build: 45,058 bytes, SHA-256 `e6380f25…` (deterministic). `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
 
 ### Added
 - **Milestone M1.3 of the new build (CR-0006): the shared model, the base-file reader, the reference data and the

@@ -12,6 +12,9 @@
 //   3a. keyboard and mouse (real input events): Enter or a click on any section link puts focus on that section's
 //      heading, including the section already on screen and after the skip link (QA defect D1); each section link's
 //      accessible name reads "<n> <title>" (for example "1 Uploads and inputs");
+//   3b. the layout of D-037 at 1440, 1280 and 1024 px: the header pinned, the tabs in one row, a focused heading and
+//      the skip link's target below the header at the end of a long section; at 375 px nothing pinned and no
+//      sideways scroll of the page;
 //   4. the page requests nothing but itself;
 //   5. IndexedDB: a record written by the page is read back after a reload and after a browser restart with the
 //      same profile (the store of the MF Screener data pack, D-026);
@@ -144,6 +147,11 @@ async function openPage(cdp) {
     await loaded;
     await sleep(400);
   };
+  // The window size the page lays out at (headless browsers default to a small one). A mobile size also emulates touch.
+  page.viewport = async (width, height, mobile = false) => {
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile }, sessionId);
+    await sleep(300);
+  };
   page.eval = async (expression) => {
     const r = await cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }, sessionId);
     if (r.exceptionDetails) throw new Error(`evaluate: ${r.exceptionDetails.text} ${r.exceptionDetails.exception?.description ?? ''}`);
@@ -231,6 +239,39 @@ const CENTRE = (selector) => `(() => {
   el.scrollIntoView({ block: 'center' });
   const r = el.getBoundingClientRect();
   return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+})()`;
+
+// The layout (D-037): the header's position and bottom edge, the focused element's top, how many rows the section tabs
+// take, and whether the page scrolls sideways.
+const LAYOUT = `(() => {
+  const header = document.querySelector('.app-header');
+  const f = document.activeElement;
+  const tops = [...document.querySelectorAll('nav a[data-section]')].map((a) => Math.round(a.getBoundingClientRect().top));
+  return {
+    width: innerWidth,
+    header: getComputedStyle(header).position,
+    headerBottom: Math.round(header.getBoundingClientRect().bottom),
+    focused: !f || f === document.body ? 'body' : (f.id || f.tagName),
+    focusedTop: f && f !== document.body ? Math.round(f.getBoundingClientRect().top) : null,
+    headingTop: Math.round(document.querySelector('#app h2')?.getBoundingClientRect().top ?? -1),
+    tabRows: new Set(tops).size,
+    pageScrollsSideways: document.documentElement.scrollWidth > innerWidth,
+    scrollY: Math.round(scrollY),
+  };
+})()`;
+
+// Makes the section on screen long enough to scroll (a test-only spacer inside its panel), then scrolls to the end.
+const LONG_AND_SCROLLED = `(() => {
+  const panel = document.querySelector('#app .panel');
+  if (!panel.querySelector('.spike-spacer')) {
+    const spacer = document.createElement('div');
+    spacer.className = 'spike-spacer';
+    spacer.setAttribute('aria-hidden', 'true');
+    spacer.style.height = '3000px';
+    panel.appendChild(spacer);
+  }
+  scrollTo(0, document.documentElement.scrollHeight);
+  return Math.round(scrollY);
 })()`;
 
 const FETCH_PROBE = (url) => `new Promise((r) => {
@@ -334,6 +375,7 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
       console.log(`\n=== ${mode.name}: ${mode.url} ===`);
       const page = await openPage(browser.cdp);
       received.length = 0;
+      await page.viewport(1440, 900);
       await page.navigate(mode.url);
       const s = await page.eval(STATE);
       expect('CSP is the first element of <head>', s.cspFirst);
@@ -341,7 +383,7 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
       expect('no CSP violation, console error or exception on load',
         s.violations.length === 0 && page.console.length === 0 && page.exceptions.length === 0 && page.log.length === 0,
         { violations: s.violations, console: page.console, exceptions: page.exceptions, log: page.log });
-      expect('nine section links, banner, sticky header', s.sectionLinks === 9 && s.banner && s.headerPosition === 'sticky',
+      expect('nine section links, banner, sticky header (1440 x 900)', s.sectionLinks === 9 && s.banner && s.headerPosition === 'sticky',
         { links: s.sectionLinks, banner: s.banner, header: s.headerPosition });
       expect('MF Screener link opens a new tab without opener or referrer',
         s.screener && s.screener.target === '_blank' && s.screener.rel === 'noopener noreferrer', s.screener);
@@ -396,6 +438,44 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
       const sectionsConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'app', 'src', 'config', 'sections.json'), 'utf8')).sections;
       expect('each section link\'s accessible name reads "<n> <title>", for example "1 Uploads and inputs"',
         JSON.stringify(names) === JSON.stringify(sectionsConfig.map((s) => `${s.n} ${s.title}`)), names);
+      await page.eval(GOTO('uploads'));
+
+      // The layout of D-037 at three laptop widths: the tabs in one row (or scrolling sideways in it), and a heading
+      // focused at the end of a long section, or the target of the skip link, never under the pinned header.
+      for (const [w, h] of [[1440, 900], [1280, 800], [1024, 768]]) {
+        await page.viewport(w, h);
+        await page.eval(GOTO('uploads'));
+        const l0 = await page.eval(LAYOUT);
+        expect(`${w} px: the header is pinned, the tabs take one row and the page does not scroll sideways`,
+          l0.header === 'sticky' && l0.tabRows === 1 && !l0.pageScrollsSideways, l0);
+        await page.eval(LONG_AND_SCROLLED);
+        await page.eval(FOCUS(link('uploads')));
+        await page.press('Enter');
+        const l1 = await page.eval(LAYOUT);
+        expect(`${w} px: after Enter at the end of a long section, its focused heading sits below the header`,
+          l1.focused === 'uploads-title' && l1.focusedTop >= l1.headerBottom, l1);
+        await page.eval(LONG_AND_SCROLLED);
+        await page.eval(FOCUS('a.skip-link'));
+        await page.press('Enter');
+        const l2 = await page.eval(LAYOUT);
+        expect(`${w} px: the skip link brings the section below the header`,
+          l2.focused === 'main' && l2.headingTop >= l2.headerBottom, l2);
+      }
+      await page.viewport(1280, 800);
+      await page.eval(GOTO('uploads'));
+      const one = await page.eval(LAYOUT);
+      expect('1280 px: the nine tabs fit in one row without scrolling (D-037)',
+        one.tabRows === 1 && (await page.eval(`(() => { const o = document.querySelector('.nav-sections'); return o.scrollWidth <= o.clientWidth; })()`)), one);
+      await page.viewport(375, 812, true);
+      await page.eval(GOTO('uploads'));
+      const ph = await page.eval(LAYOUT);
+      expect('375 px: nothing is pinned and the page does not scroll sideways', ph.header === 'static' && !ph.pageScrollsSideways, ph);
+      await page.eval(FOCUS(link('taxation')));
+      await page.press('Enter');
+      const ph2 = await page.eval(LAYOUT);
+      expect('375 px: Enter on a tab shows its section with the heading in view',
+        ph2.focused === 'taxation-title' && ph2.focusedTop >= 0 && ph2.focusedTop < 812, ph2);
+      await page.viewport(1440, 900);
       await page.eval(GOTO('uploads'));
 
       received.length = 0;
