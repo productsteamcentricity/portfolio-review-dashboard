@@ -8,7 +8,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 import {
-  buildNext, writeBuild, cspFor, cspHash, jsonBlock, escapeHtml, validateScreenerUrl, navHtml, tokensCss,
+  buildNext, writeBuild, cspFor, cspHash, jsonBlock, escapeHtml, validateScreenerUrl, navHtml, screenerHtml, tokensCss,
 } from '../../scripts/build.mjs';
 import { checkBuiltPage, parseHtml, readScreenerUrl, parseCsp } from '../../scripts/validation/check-next.mjs';
 import { ROOT, NEEDS_BUILD, failures } from './helpers.mjs';
@@ -55,10 +55,11 @@ describe('build helpers (no toolchain needed)', () => {
     assert.throws(() => validateScreenerUrl('not a url'), /not a URL/);
   });
 
-  test('navHtml escapes section titles and writes the external link in the D-027 form', () => {
-    const html = navHtml([{ n: 1, id: 'a', title: 'A <b>' }],
-      { url: 'https://example.org/', label: 'X', ariaLabel: 'X (new tab)', title: 'T' });
-    assert.ok(html.includes('A &lt;b&gt;'));
+  test('navHtml escapes section titles; screenerHtml writes the external link in the D-027 form', () => {
+    const nav = navHtml([{ n: 1, id: 'a', title: 'A <b>' }]);
+    assert.ok(nav.includes('A &lt;b&gt;'));
+    assert.ok(!nav.includes('nav-external'), 'the section tabs carry no external link (D-037)');
+    const html = screenerHtml({ url: 'https://example.org/', label: 'X', ariaLabel: 'X (new tab)', title: 'T' });
     assert.match(html, /<a class="nav-external" href="https:\/\/example\.org\/" target="_blank" rel="noopener noreferrer"/);
   });
 

@@ -9,8 +9,9 @@
 //      its own <script> ahead of the app, ONLY when a bundled module imports it, after its SHA-256 is verified.
 //   2. The stylesheet is the design tokens (app/src/config/tokens.json, as CSS custom properties) followed by
 //      app/src/ui/shell.css, inlined in one <style>.
-//   3. The navigation (the nine sections of app/src/config/sections.json and the MF Screener link of
-//      app/src/config/links.json, D-027) is written as static HTML, so the one remote URL sits in one static anchor.
+//   3. The navigation is written as static HTML: the nine section tabs of app/src/config/sections.json, and the MF
+//      Screener link of app/src/config/links.json (D-027) at the right of the masthead (D-037), so the one remote URL
+//      sits in one static anchor.
 //   4. Data blocks are non-executable <script type="application/json"> elements with "<" escaped.
 //   5. A Content-Security-Policy meta tag, the first element of <head>, allows exactly the inline scripts and the
 //      style element by their SHA-256 and forbids every connection (connect-src 'none').
@@ -95,11 +96,11 @@ export function validateScreenerUrl(url) {
 }
 
 /**
- * Static navigation: the nine sections (in-page links) and the one external link (D-027). A section link's
- * accessible name is "<n> <title>" ("1 Uploads and inputs"): a space separates the two spans in the text, and an
- * aria-label states the name, because the link is a flex box and some name computations join its items without one.
+ * Static navigation: the nine section tabs (in-page links). A section link's accessible name is "<n> <title>"
+ * ("1 Uploads and inputs"): a space separates the two spans in the text, and an aria-label states the name, because
+ * the link is a flex box and some name computations join its items without one.
  */
-export function navHtml(sections, link) {
+export function navHtml(sections) {
   const items = sections.map((s) => `<li><a href="#${escapeHtml(s.id)}" data-section="${escapeHtml(s.id)}"`
     + ` aria-label="${escapeHtml(`${s.n} ${s.title}`)}">`
     + `<span class="nav-num">${escapeHtml(s.n)}</span> <span class="nav-label">${escapeHtml(s.title)}</span></a></li>`);
@@ -109,6 +110,14 @@ export function navHtml(sections, link) {
     '<ol class="nav-sections" aria-labelledby="nav-heading">',
     ...items,
     '</ol>',
+    '</nav>',
+  ].join('\n');
+}
+
+/** The one external link (D-027): a navigation item at the right of the masthead (D-037). */
+export function screenerHtml(link) {
+  return [
+    '<nav class="app-tools" aria-label="MF Screener">',
     `<a class="nav-external" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer"`
       + ` aria-label="${escapeHtml(link.ariaLabel)}" title="${escapeHtml(link.title)}">${escapeHtml(link.label)}`
       + ' <span aria-hidden="true">&#8599;</span><span class="nav-external-note">Opens in a new tab; sign-in required</span></a>',
@@ -280,7 +289,8 @@ export async function buildNext(options = {}) {
   let html = fs.readFileSync(abs(opt.template), 'utf8').replace(/\r\n/g, '\n');
   html = replaceOnce(html, 'csp', `<meta http-equiv="Content-Security-Policy" content="${csp}">`);
   html = replaceOnce(html, 'style', `<style>${css}</style>`);
-  html = replaceOnce(html, 'nav', navHtml(sections, link));
+  html = replaceOnce(html, 'nav', navHtml(sections));
+  html = replaceOnce(html, 'screener', screenerHtml(link));
   html = replaceOnce(html, 'data', [jsonBlock('build-info', buildInfo), jsonBlock('third-party-licences', licences)].join('\n'));
   html = replaceOnce(html, 'scripts', scripts.map((s) => `<script>${s.text}</script>`).join('\n'));
 

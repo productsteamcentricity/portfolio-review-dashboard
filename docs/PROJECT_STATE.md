@@ -43,6 +43,9 @@
     twice) merged on top of M1.2, the type check over M1.3's code with `"type": "module"`, the re-review's fixes
     (the asset class compared exactly, BF-26) and the records, with D-035 and KI-140 to KI-147. 234 of 234 tests
     pass in IST and UTC; the `/next/` build is unchanged. No application code is on `main` yet.
+  - **Layout (D-037, the owner's request of 24 Oct 2026):** the nine section tabs run across the top in the look of
+    the owner's design reference, the MF Screener link sits in the masthead and each section uses the full width
+    (PR #14; three independent browser QA rounds and the security gate passed on the final commit, spike 99 of 99).
   - **M1.4 is next** (the first vertical slice: the portfolio overview end to end), starting with the rule for a
     Crore cell that is not a number (KI-147, an owner decision).
 - The owner answered the 28 audit decisions: all accepted except OD-11 (keep the monitor uploads, fixed), D-021.
