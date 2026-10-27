@@ -394,6 +394,45 @@ or CI fails. The legacy reading defects the parity work found are KI-140 to KI-1
 KI-146: live-page data fixes for a later legacy batch (D-028). The new reader's money-column fallback is KI-147,
 decided in M1.4. The owner's questions are in `DATA_DICTIONARY.md` §8.
 
+## D-036 — The capital-gains upload accepts the platform's export as it is (23 Oct 2026, lead under D-033; amends D-032)
+**Context.** D-032 (the owner's answer to ND-8) asked for capital-gains statements in a template the app defines, and
+allowed "the format of your choice". On 22 Oct 2026 the owner supplied a real statement: the "Capital Gain Report"
+export of the wealth platform that also produces the base file. Profiled locally (counts and checks only, nothing
+committed), it is one sheet with 29 named columns, one row per purchase lot consumed by a sale, a totals row and a
+text block at its foot. It carries the investor's PAN inside the account name and the folio inside the instrument
+name, marks grandfathered, indexed and merger lots through its acquisition columns, covers the client's whole
+realised history, repeats some lots exactly (its own totals include the repeats) and leaves its tax columns empty.
+**Decision.**
+1. **The export is the format.** The capital-gains slot accepts that export as produced: columns found by header name
+   (any order, aliases, extra columns ignored and listed), the totals row used to reconcile and the footer text never
+   kept. The app's blank template has the same headers (and a Read Me) for statements from other sources; one reader
+   serves both. A file without the required columns is still refused with them named (D-032 unchanged on that point;
+   no per-issuer parsers).
+2. **The PAN never enters the app.** It is removed from every text cell at read time, before any copy is kept;
+   only the count of removals is recorded.
+3. **The app computes indicative tax itself**, per lot, per person and per financial year (1 April to 31 March,
+   from the sale date), from a dated tax-rule table that the financial-domain reviewer approves before any M7 code
+   (given on 27 Oct 2026), with the analyst entering the slab rate, the surcharge rate and the regime per person and year (none has a
+   default; totals are shown "before surcharge" until the surcharge rate is entered). Lot classes (merger,
+   grandfathered, indexed cost shown, standard) come from the statement's acquisition columns, and the rule's cost
+   basis governs; the tax class from the scheme for the year of sale (OD-17; its amendment by the dated table is an
+   owner item of the design), not from the statement's Equity or Debt label alone; the term from OD-2 (strictly after
+   the anniversary). Every figure assumes a resident individual.
+4. **Repeated rows are never dropped silently:** the analyst answers per sale event (one folio, scheme and sale date),
+   with "apply to all" as a shortcut, whether to count them as stated or once; until then the affected years' totals
+   are INSUFFICIENT EVIDENCE.
+The design is [new-build/capital-gains-upload.md](new-build/capital-gains-upload.md); the columns go into
+`DATA_DICTIONARY.md` §5.17 and the parity matrix gains rows E-150 to E-156, U-71 and U-72.
+**Alternatives.** Our own column set, with analysts retyping the export into it (rejected: slow, error-prone, and the
+export already has every field the tax view needs); a parser per registrar (rejected by D-032); trusting the
+statement's Equity or Debt label for tax (rejected: international fund of funds are labelled Equity but taxed as
+non-equity, and hybrids follow OD-17); dropping exact repeats (rejected: the statement is the source of record and
+its totals include them).
+**Consequences.** M7 builds `ingest/capital-gains.ts`, the tax engine and the template download from that design; the
+tax-rule table and the design were approved by the financial-domain reviewer on 27 Oct 2026, as the design's change log records. The design was revised on 27 Oct 2026 after a financial, a completeness and a security
+review, again the same day after the financial and completeness re-reviews, a third time after their approval
+reviews and a fourth time after the second approval reviews (its §10.11). The owner is asked to raise the repeated rows with the platform's support, and to answer the
+design's other owner items (its §15).
 ## D-037 — Section tabs across the top, in the look of the owner's design reference (24 Oct 2026, owner)
 **Context.** M1.2 built the new app's shell with the nine sections listed in a navigation column beside the section
 (17rem wide). Phase 0 had read the brief's design reference, a Claude Artifact upload console, as a workflow reference
