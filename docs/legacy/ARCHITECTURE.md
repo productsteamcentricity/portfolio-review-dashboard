@@ -83,8 +83,9 @@ was not a cause of KI-001.) *(code review)*
 
 ### ENGINE contract (verified)
 `07` attaches `palette, FONT, amcDisplay, amcKey, xirr, normalize, matchInstrument, matchPMS, resolveBench,
-benchmarkFor, bucketDefs, parseBaseRows, computeReview, computeTaxation, taxClassOf, aiaCompute,
-aiaWeights, aiaAmcCap (=20), aiaOvBands ([15,30,50]), fmt`; `08` adds `buildPPTX, buildXLSX`;
+benchmarkFor, bucketDefs, parseBaseRows, assetLabel, computeReview, computeTaxation, taxClassOf, aiaCompute,
+aiaWeights, aiaAmcCap (=20), aiaOvBands ([15,30,50]), fmt` (`assetLabel` since fix batch 4, D-041: an Asset Name as
+its class, used by the IPS in the UI script); `08` adds `buildPPTX, buildXLSX`;
 `09` adds `parsers = { parseEquitySide, parseDebtSide, parseMonitor, parseSIF, parsePMS, parseIRR,
 fmtDate, parseAdditionalDebt, parseSOA }`. Node tooling evaluates these blocks straight out of
 `index.html` (`tools/engine-host.js`), so headless tests run the same code the browser runs.
@@ -124,15 +125,23 @@ text, not position:
 
 | Field | Header rule | Notes |
 |---|---|---|
-| client / name | contains "client" / "instrument" | name is the fuzzy-match key |
-| category / asset / product | contains "category" / "asset"+"name" / "product" | blank asset → Equity, blank product → Mutual Funds; Product is the class used for matching (PMS / AIF / SIF / else MF) |
+| client / name | contains "client" / "instrument" | name is the fuzzy-match key; a row named "Total" or "Grand Total" (any case) is skipped as a total row (KI-142) |
+| category / asset / product | contains "category" / "asset"+"name" / "product" | asset read as its class by `assetLabel` (KI-145: the five allocation classes in any case or spacing, "Fixed Income" and "Debt Funds" as Debt, "Commodities" as Commodity; other labels keep their first written form); blank asset → Equity, blank product → Mutual Funds; Product is the class used for matching (PMS / AIF / SIF / else MF) |
 | folio / distributor / amc / units | "folio" / "distributor" / exactly "amc" / exactly "units" | AMC is the brand anchor |
 | money | "invested" / "market value" / "gain" + unit: "cr" → Cr, "lakh"/"lac" → ÷100, none → ₹ ÷1e7 | the display unit follows the file; rows with no market value are skipped; a blank invested value stays **null**, never 0 (KI-007), and merged folios with any blank are blank |
 | allocation | contains "allocation" | read as a **fraction**; used only in the XLSX export |
 | xirr / bmxirr | contains "xirr" / "bmxirr" | read as **percent numbers** and ÷100 (`:736`) |
-| days, purchase date, liquidity | "holding"+"day", "purchase"+"date", "liquidity" | optional; purchase date is displayed, not used by Taxation |
+| days, purchase date, liquidity | "holding"+"day", "purchase"+"date", "liquidity" | optional; purchase date is displayed, not used by Taxation; a text date that does not exist is blank (KI-144) |
 
-Duplicate rows (same client + instrument + product + distributor) are merged, XIRR CMV-weighted.
+Every number cell (money, units, XIRR, BMXIRR, holding days, allocation) counts only when all of it is a number:
+digits with thousands commas or spaces, a sign, a decimal part, an exponent, and a trailing "%" in XIRR and BMXIRR
+only. Other text is blank, never read up to its first non-digit (KI-143); "NA", "-" and the like are blank as before.
+Duplicate rows (same client + instrument + product + distributor) are merged, XIRR CMV-weighted; units are summed
+only when every folio has them, otherwise blank and marked `unitsGap`, which Taxation leaves unsplit (KI-140); the
+merged holding takes its earliest purchase date, and its holding days are recomputed from it when the folios count
+to one date, else blank (KI-141, D-041). `parseBaseRows` returns `rows.notices` (`{text, warn}`: total rows skipped,
+cells read as blank, impossible dates, merged units or days left blank, Asset Names read as a class), which
+`loadModel` shows on the status line, escaped (fix batch 4, D-041).
 The in-app template (`11_app_ui.js:42`) has 18 headers (no Folio No / Allocation / Holding Days).
 
 ### 5.2 Sidebar uploads (session-only; each "×" restores the embedded block)

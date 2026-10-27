@@ -269,6 +269,32 @@ and `-invested-and-irr-join.js`. Each fix had two financial reviews and known-an
 - **Docs:** decisions OD-29 to OD-36 (answered by the as-built behaviour unless the owner says otherwise);
   KI-101 to KI-123 recorded (found while fixing; none caused by this batch).
 
+### Fixed (fix batch 4: base-file reading, CR-0009)
+`index.html` MD5 `911A04659CB34383E478416B54E9C306` → `558A50F356406B2237AF247179A2186E` (16,836,871 bytes), by the
+patch `tools/patches/2026-10-27-basefile-reading.js` (engine and UI scripts). The reading defects the new build's
+parity work found (M1.3, D-035), fixed on the live page under D-028; the choices are D-041.
+- **KI-140, merged units:** duplicate folios add up units only when every folio has them; otherwise the units are
+  blank, never a partial sum, and Taxation leaves the fund unsplit with its reason instead of matching it on invested
+  value.
+- **KI-141, merged purchase date:** a merged holding shows its earliest purchase date, whatever the row order; its
+  holding days are recomputed from it when the folios count to one date, and are blank otherwise.
+- **KI-142, total rows:** a row named "Total" or "Grand Total" is skipped, not added to the book as a holding.
+- **KI-143, text in number cells:** "12abc" or "1.25 Cr" is blank, never read as 12 or 1.25; the status line names the
+  columns and counts the holdings left out.
+- **KI-144, impossible dates:** "31-02-2024" is blank, no longer 2 Mar 2024.
+- **KI-145, Asset Names:** "EQUITY" and "Equity", "REITs / InvITs" and "REITs/InvITs" are one Asset Allocation row;
+  "Fixed Income" and "Debt Funds" are Debt (OD-7), so such funds are also routed, benchmarked and taxed as debt
+  funds; "Commodities" is Commodity. `ENGINE.assetLabel` is new.
+- **KI-146 (P1), IPS actuals:** each asset class adds up all its allocation rows (it kept only the last); on the
+  synthetic book `family-a-odd-asset-labels` the equity CMV is 4.7545 Cr instead of 0.5427 Cr.
+- **Notices:** each case above shows a plain sentence on the status line after the load summary, escaped.
+- **Census (private, counts only):** 32 real base files with 1,705 holding rows show none of these cases except
+  merged folios bought on different dates (44 groups); CR-0009 has the counts.
+- **Tests:** seven regression files, `KI-140-merged-units.js` to `KI-146-ips-actuals.js` (136 checks; 19 files, 635
+  checks in all), each failing on `main`. The new build's parity ledger retires BF-15, BF-16, BF-18 and BF-20 to BF-26
+  (the live page now agrees with the new reader there; a retired entry matches nothing); 234 of 234 tests pass in IST
+  and UTC. `check-invariants` lists `assetLabel` in the engine surface.
+
 ### Fixed (fix batch 2a: KI-124, OD-32 and OD-34, CR-0007)
 `index.html` MD5 `EF2FF4F1…` → `911A04659CB34383E478416B54E9C306` (16,826,633 bytes), by the patch
 `tools/patches/2026-10-22-legacy-batch-2a.js` (the first build of the batch, `F7123A83…`, was revised after its

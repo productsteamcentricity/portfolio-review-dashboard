@@ -1,11 +1,19 @@
 # Project state
 
-**Last updated:** 23 Oct 2026.
+**Last updated:** 27 Oct 2026.
 - The full audit is done: 67 issues, see [`audits/`](audits/).
 - Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done. Fix batch 2a
   (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is merged (PR #9; `index.html` MD5
   `911A04659CB34383E478416B54E9C306`); its browser acceptance passed on 22 Oct 2026, and the QA found KI-127 and
   KI-128 (both also on main before the batch).
+- **Fix batch 4, base-file reading (CR-0009, D-041), is built and in review** on `fix/legacy-batch-4-basefile` (not
+  yet pushed): KI-140 to KI-146, the reading defects the new build's parity work found, fixed on the live page
+  (merged units and purchase dates, total rows, text in number cells, impossible dates, Asset Name variants, and the
+  P1 IPS actuals), each with a known-answer regression test; `index.html` MD5 `558A50F356406B2237AF247179A2186E`
+  once merged. A private census of the 32 real base files on the laptop found none of these cases except merged
+  folios with different purchase dates (44 groups). Open for the owner: the choices in CR-0009 (holding days of
+  merged folios, total rows skipped, letter case folded); for the new build: align `DATA_DICTIONARY.md` §8 with
+  D-041. Browser acceptance not yet run.
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
   - **Phase 0 is done.** The record is in [`new-build/`](new-build/README.md) (audit, capability inventory,
     architecture, reuse plan, parity matrix, data sources, roadmap, test plan, repository structure, rule bank, deck
