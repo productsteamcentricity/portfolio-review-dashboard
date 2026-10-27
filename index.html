@@ -753,9 +753,13 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
      BEFORE asset: an arbitrage fund is filed as Debt for analytics routing but is
      equity-oriented and taxed as an equity fund, so keying off the asset alone would
      apply Sec. 76 to it and call every rupee short-term.
-     taxClassify(h, R) returns {cls, why}: cls is a TAX_RULES inst, or null with why, the
-     reason shown for a holding left unclassified. R (optional, the reference data) is read
-     only for the ISIN of a share held directly (STOCK_RET). */
+     taxClassify(h, R, refDate) returns {cls, why}: cls is a TAX_RULES inst, or null with why,
+     the reason shown for a holding left unclassified. R (optional, the reference data) is read
+     only for the ISIN of a share held directly (STOCK_RET). refDate (optional; tax batch T5) is
+     the tax reference date (taxRefDate, D-040 a): from 1 Apr 2026 aggressive hybrid, arbitrage
+     and equity savings funds take the reckoner's usual bucket, marked usual:true; before it they
+     are unclassified (TR-7, LD-11). With no date the TY 2026-27 rules apply. An AIF whose
+     category the file does not state is Category I or II, marked catAssumed:true. */
   /* KI-099 / TX-19: the mutual-fund book's product test, one definition for the AMC tab and the tax classes */
   var MF_BOOK_PRODUCT=/mutual\s*funds?\b|index\s*funds?\b|\betfs?\b|fund\s*of\s*funds?|\bfofs?\b/;
   function isMFBookProduct(p){ return MF_BOOK_PRODUCT.test(String(p||"").toLowerCase()); }
@@ -775,16 +779,21 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     p2p:"No tax row is published for peer-to-peer lending.",
     debtPms:"No tax row is published for a debt PMS.",
     blend:"An equity and G-Sec index blend needs its equity share to pick a tax class.",
-    hybrid:"A balanced advantage, dynamic asset allocation, equity savings, multi asset or life cycle fund is taxed by what it holds over the year. Confirm its class with the AMC's year-end tax classification.",
+    hybrid:"A balanced advantage, dynamic asset allocation, multi asset or life cycle fund is taxed by what it holds over the year. Confirm its class with the AMC's year-end tax classification.",
     solution:"A retirement or children's fund is taxed by what it holds over the year, or by the scheme it is merged into. Confirm its class with the AMC.",
     fofCons:"A conservative fund of funds is Specified only if 65% or more of it sits in debt funds, which is not known here.",
     reitFund:"A REIT or InvIT index fund is taxed by what it holds over the year. Confirm its class with the AMC's year-end tax classification.",
     sif:"A hybrid or active asset allocator SIF is taxed by what it holds over the year. Confirm its class with the AMC's year-end tax classification.",
     sifExTop:"An equity ex-top 100 long-short SIF sits close to the 65% equity floor, so its class needs the AMC's year-end tax classification.",
-    sifOther:"This SIF strategy is not one the tax reckoner names, so no class is applied."
+    sifOther:"This SIF strategy is not one the tax reckoner names, so no class is applied.",
+    usualBefore:"An aggressive hybrid, arbitrage or equity savings fund is taxed by what it held over the tax year. The usual bucket per the owner's reckoner applies from 1 Apr 2026; holding periods here run to an earlier date, so the AMC's tax classification for that year is needed."
   };
+  /* T5 (TR-7, LD-11): the reckoner's usual bucket for aggressive hybrid, arbitrage and equity savings funds is
+     the default from tax year 2026-27 (Master Summary #8 to #10, column P; Hybrid Funds & FoFs D19 to D21) */
+  var TAX_USUAL_FROM=Date.UTC(2026,3,1);
   /* TX-03, D-040 (c): a share held directly is foreign-listed only on a positive marker: an
-     ISIN that does not start with IN (the base row's own, or the matched STOCK_RET entry's), or
+     ISIN that does not start with IN (the matched STOCK_RET entry's; a row's own isin is read when it has one,
+     but parseBaseRows does not read the base file's ISIN column, KI-184, open), or
      a product or category label naming foreign, international, US or overseas equity */
   function taxForeignListed(h,p,c,R){
     if (/foreign|international|overseas|(^|[^a-z])u\.?s\.?([^a-z]|$)/.test(p+" "+c)) return true;
@@ -792,14 +801,18 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     if (!isin && R && R.STOCK_RET){ var _sr=R.STOCK_RET[normCo(h.name)]; if(_sr&&_sr.isin) isin=String(_sr.isin).trim().toUpperCase(); }
     return /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(isin) && isin.slice(0,2)!=="IN";
   }
-  function taxClassOf(h,R){ return taxClassify(h,R).cls; }
-  function taxClassify(h,R){
+  function taxClassOf(h,R,refDate){ return taxClassify(h,R,refDate).cls; }
+  function taxClassify(h,R,refDate){
     var a=String(h.asset||"").toLowerCase(),
         p=String(h.product||"").toLowerCase(),
         c=String(h.category||"").toLowerCase(),
         n=String(h.name||"").toLowerCase(),
         cn=c+" "+n;
     var K=function(x){ return {cls:x, why:null}; }, N=function(w){ return {cls:null, why:w}; };
+    /* T5 (TR-7, LD-11): the usual bucket, equity-oriented from 1 Apr 2026 and marked so; no default before. The
+       date is a calendar day (UTC midnight, as taxRefDate gives it); with none, the TY 2026-27 rules apply. */
+    var _rd=(refDate instanceof Date&&!isNaN(refDate))?taxDayNum(refDate):null;
+    var UB=function(x){ return (_rd==null||_rd>=TAX_USUAL_FROM)?{cls:x, why:null, usual:true}:N(TAX_WHY.usualBefore); };
     /* KI-099 / TX-19: "ETF", "Index Funds", "FoFs" are mutual-fund products too. A blank product
        (only in a direct call: parseBaseRows reads a blank one as Mutual Funds) counts as a fund
        for the fund-of-funds, REIT and international tests. */
@@ -827,7 +840,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       if (/\b(etf|bees)s?\s*(fofs?|fund of funds?)\b/.test(n)) return K("Equity ETF FoF (90/90)");
       return K("Fund of Funds (general rule)");
     }
-    if (/arbitrage/.test(c)) return K("Equity Mutual Funds");        /* equity-oriented by construction */
+    if (/arbitrage/.test(c)) return UB("Equity Mutual Funds");       /* T5: the usual bucket, from 1 Apr 2026 (Master Summary #8) */
     if (/p2p|peer/.test(p+c)) return N(TAX_WHY.p2p);                 /* no rule published for P2P lending */
     if (/crypto|virtual digital/.test(c+n)) return K("Crypto");
     if (/sovereign gold bond|\bsgb\b/.test(n)) return K("Sovereign Gold Bonds");
@@ -852,7 +865,10 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       var _cat3=/cat(egory)?\.?\s*-?\s*iii\b/i.test(c+" "+n);
       if(_cat3 && /debt/.test(a)) return K("Debt AIF – Cat III");
       if(_cat3) return K(/long[\s-]?short/i.test(c+" "+n) ? "Equity AIF – Cat III (Long Short)" : "Equity AIF – Cat III (Listed Equity)");
-      return K(/debt/.test(a) ? "Debt AIF – Cat I/II" : "Equity AIF – Cat I/II");
+      /* T5 (CR-0008 question 17): with no category stated ("Listed AIF" in AIF_PERF), Category I or II is assumed, and said */
+      var _r12=K(/debt/.test(a) ? "Debt AIF – Cat I/II" : "Equity AIF – Cat I/II");
+      if(!/cat(egory)?\.?\s*-?\s*(ii?|[12])\b/i.test(c+" "+n)) _r12.catAssumed=true;
+      return _r12;
     }
     if (/unlisted/.test(p+c)) return K(/debt/.test(a) ? "Unlisted Bonds / NCDs" : "Unlisted Equity Shares");
     if (!mfp && /bond|ncd|debenture/.test(p+c)) return K("Listed Bonds / NCDs");
@@ -877,11 +893,16 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
          they merge into (Hybrid Funds & FoFs R27); never equity by default */
       if (/retire|child|bal bhavishya/.test(n) || /solution oriented\s*-?\s*(child|retire)/.test(c)) return N(TAX_WHY.solution);
       /* TX-11: hybrid funds by SEBI category (Hybrid Funds & FoFs R19-R27): a balanced hybrid is
-         always the general rule, an aggressive hybrid equity-oriented, a conservative hybrid
-         Specified; the others depend on the year's holdings */
+         always the general rule, a conservative hybrid Specified; an aggressive hybrid or an equity
+         savings fund is equity-oriented as the usual bucket from 1 Apr 2026 (T5, TR-7, LD-11;
+         Master Summary #9, #10; D20, D21); the others depend on the year's holdings */
       if (/balanced\s*hybrid/.test(cn)) return K("Hybrid MF (general rule)");
-      if (/aggressive\s*hybrid/.test(cn)) return K("Hybrid MF (equity-oriented)");
+      if (/aggressive\s*hybrid/.test(cn)) return UB("Hybrid MF (equity-oriented)");
       if (/conservative\s*hybrid/.test(cn)) return K("Hybrid MF (Specified, Sec. 76)");
+      if (/equity\s*savings/.test(cn)) return UB("Hybrid MF (equity-oriented)");
+      /* T5: an arbitrage fund whose category is blank, by its name, as the hybrid tests read the name (before the
+         debt test: an arbitrage fund is often filed as Debt for analytics routing) */
+      if (/arbitrage/.test(n)) return UB("Equity Mutual Funds");
       if (/hybrid|balanced|asset alloc|equity savings|multi[\s-]?asset|life\s*cycle/.test(c) ||
           /balanced advantage|asset allocation|equity savings|multi[\s-]?asset|life\s*cycle/.test(n)) return N(TAX_WHY.hybrid);
       /* KI-065: a debt fund by asset tag, by SEBI debt category, or by a G-Sec / SDL / gilt name, so a
@@ -1179,7 +1200,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
          LTCG/STCG split must add back to */
       var inv=(h.invCr!=null&&!isNaN(h.invCr))?Number(h.invCr):null;
       var gl=(inv!=null)?(cmv-inv):null;
-      var _tc=taxClassify(h,REF), cls=_tc.cls, rule=cls?byName[cls]:null;
+      var _tc=taxClassify(h,REF,asOn), cls=_tc.cls, rule=cls?byName[cls]:null;   /* T5: one date, so one class per holding in the review */
       var _k=K(h.client,h.name);
       var baseU=(h.units!=null&&!isNaN(h.units))?Number(h.units):null;
       /* A holding with no unit count is priced in rupees (PMS, unlisted AIF).
@@ -1208,7 +1229,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       var rec={client:h.client, name:h.name, product:h.product, category:h.category, asset:h.asset,
                cls:cls, cmv:cmv, gl:gl, baseUnits:amtMode?null:baseU, fifoUnits:amtMode?null:fifoU,
                amtMode:amtMode||undefined, lots:L.length,
-               pxGap:pxGap||undefined, viaSwitchIn:(pxGap&&swIn[_k])||undefined};
+               pxGap:pxGap||undefined, viaSwitchIn:(pxGap&&swIn[_k])||undefined,
+               usualBucket:_tc.usual||undefined, catAssumed:_tc.catAssumed||undefined};   /* T5 */
 
       /* the reason a holding has no class goes with it; a class with no TAX_RULES row is
          reported the same way, never kept as a position with no rule (KI-180) */
@@ -1218,10 +1240,10 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
          an investor-level long- or short-term gain the page can compute, so no lot ageing and no
          reconciliation (its lots are for information only), and never in the harvest */
       if(rule.fundLevel||rule.passThrough){ out.positions.push(taxNotSplit(rec,rule,L,rule.fundLevel?"fundLevel":"passThrough",cmv,gl)); return; }
-      if(h.unitsGap){ rec.reason="Units are blank: a merged folio of this holding has no units in the base file, so they cannot be checked against the transaction history. No split is shown rather than one on a partial unit count.";
+      if(h.unitsGap){ rec.unrec="unitsGap"; rec.reason="Units are blank: a merged folio of this holding has no units in the base file, so they cannot be checked against the transaction history. No split is shown rather than one on a partial unit count.";
                       if(laterK[_k]) rec.reason=taxWithLater(rec.reason,laterK[_k],asOn);   /* TX-17 */
                       out.unreconciled.push(rec); return; }
-      if(!L.length){ rec.reason=pxGap?("No purchase transactions in the IRR history. "+
+      if(!L.length){ rec.unrec="noLots"; rec.reason=pxGap?("No purchase transactions in the IRR history. "+
                                        (swIn[_k]?"The switch-in":"A purchase")+" for this holding carries no price, so units could not be derived from it.")
                                    :(amtMode?"No purchase transactions in the IRR history (this holding has no units, so it is matched on invested value)"
                                            :"No purchase transactions in the IRR history");
@@ -1232,12 +1254,16 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
          an event (a bonus or split), and the position is reported, not guessed. */
       var rel=_drift();
       if(baseU!=null&&rel>0.01){
+        /* T5: the kind of reason, for the heading of the tab's unreconciled table */
+        rec.unrec=amtMode?"value":(fifoU<baseU?"short":"excess");
         rec.reason=pxGap
           ? ("Invested value does not reconcile to the base file. "+
              (swIn[_k]?"The switch-in":"A purchase")+" for this holding carries no price, so it was matched on invested value rather than units, and that does not reconcile either.")
           : (amtMode
-            ? "Invested value does not reconcile to the base file — the transaction history is incomplete for this holding"
-            : "Units do not reconcile to the base file — the transaction history is missing a corporate action (bonus/split) or a purchase");
+            ? "Invested value does not reconcile to the base file: the transaction history is incomplete for this holding."
+            : (fifoU<baseU
+              ? "Units do not reconcile to the base file: the transaction history gives fewer units, so it is missing an event, such as a bonus or split, or a purchase made elsewhere."
+              : "Units do not reconcile to the base file: the transaction history gives more units, so it is missing an event, such as a sale, a transfer out or a consolidation of units."));
         if(laterK[_k]) rec.reason=taxWithLater(rec.reason,laterK[_k],asOn);   /* TX-17 */
         out.unreconciled.push(rec); return;
       }
@@ -1345,7 +1371,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     function summarise(pos, unrec, unmap){
       var t={cmv:0,gl:0,glMissing:0,ltcgCmv:0,stcgCmv:0,unclassCmv:0,ltcgGain:0,stcgGain:0,unclassGain:0,lockedCmv:0,lockedGain:0,lockedN:0,
              fundLevelCmv:0,fundLevelGain:0,fundLevelN:0,
-             notSplit:{fundLevel:{n:0,cmv:0,gl:0},passThrough:{n:0,cmv:0,gl:0},pms:{n:0,cmv:0,gl:0}}};
+             notSplit:{fundLevel:{n:0,cmv:0,gl:0},passThrough:{n:0,cmv:0,gl:0,assumedN:0,assumedCmv:0},pms:{n:0,cmv:0,gl:0}}};
       var clsTot={};
       pos.forEach(function(r){
         t.cmv+=r.cmv;
@@ -1358,7 +1384,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
            A Category III AIF is fund level (CMV + LT + ST + not classified + fund level = total CMV);
            a Category I or II AIF and a PMS stay in the not classified amounts. */
         if(r.notSplit){
-          var ns=t.notSplit[r.notSplit]; if(ns){ ns.n++; ns.cmv+=r.cmv; if(r.gl!=null) ns.gl+=r.gl; }
+          var ns=t.notSplit[r.notSplit]; if(ns){ ns.n++; ns.cmv+=r.cmv; if(r.gl!=null) ns.gl+=r.gl;
+            if(r.catAssumed){ ns.assumedN=(ns.assumedN||0)+1; ns.assumedCmv=(ns.assumedCmv||0)+r.cmv; } }   /* T5 */
           g.notSplit=r.notSplit;
           if(r.fundLevel){ t.fundLevelCmv+=r.cmv; t.fundLevelN++; if(r.gl!=null) t.fundLevelGain+=r.gl; }
           else { t.unclassCmv+=(r.unknownCmv||0); if(r.gl!=null) t.unclassGain+=r.gl; }
@@ -3514,17 +3541,20 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
   function aiaSigTax(h, model){
     var ev = { exitLoad: null };            /* null = no source, rendered as an em dash */
     var T = model.taxation;
-    if (!T || !T.hasData || !T.positions || !T.positions.length)
+    /* T5: a review whose holdings are all unclassified or unreconciled (valued before 1 Apr 2026, a book of aggressive
+       hybrid, arbitrage and equity savings funds is one) has a history: each holding gets its own reason below */
+    if (!T || !T.hasData || !T.positions || !(T.positions.length || (T.unmapped || []).length || (T.unreconciled || []).length))
       return aiaSig("tax", "Tax", "na", ev,
         "No IRR transaction history is loaded, so the long- and short-term split of this holding is not known.");
     /* a merged position sums the lot history of every plan it is held in */
     var names = {}; (h.members || [{ name: h.name }]).forEach(function(m){ names[m.name] = 1; });
-    var acc = { ltCmv: 0, stCmv: 0, ltGain: null, stGain: null, cls: "", n: 0, lockCmv: 0, gf: 0, nsN: 0, ns: "" };
+    var acc = { ltCmv: 0, stCmv: 0, ltGain: null, stGain: null, cls: "", n: 0, lockCmv: 0, gf: 0, nsN: 0, ns: "", usual: false, catAs: false };
     for (var i = 0; i < T.positions.length; i++){
       var p = T.positions[i];
       if (!names[p.name]) continue;
       if (!p.splitPart) acc.n++;   /* TX-02: a holding split at 1 Apr 2023 is one holding */
       if (p.notSplit && !p.splitPart){ acc.nsN++; acc.ns = p.notSplit; }   /* TX-07, TX-10, TX-12 */
+      if (p.usualBucket) acc.usual = true; if (p.catAssumed) acc.catAs = true;   /* T5 */
       acc.gf += (p.gfLots || 0);
       acc.ltCmv += (p.ltCmv || 0); acc.stCmv += (p.stCmv || 0); acc.lockCmv += (p.lockedCmv || 0);
       if (p.ltGain != null) acc.ltGain = (acc.ltGain || 0) + p.ltGain;
@@ -3542,11 +3572,12 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     /* TX-07, TX-10, TX-12 (D-040 d, h): no investor-level split, so the reason and no long- or short-term figures */
     if (acc.nsN && acc.nsN === acc.n){
       ev.cls = acc.cls;
-      return aiaSig("tax", "Tax", "na", ev, ({
+      /* T5 (CR-0008 question 17): an AIF whose category the file does not state */
+      return aiaSig("tax", "Tax", "na", ev, ((acc.catAs && acc.ns === "passThrough") ? "The file does not state this AIF's category, so it is treated as Category I or II; confirm the category against the AIF's statement. " : "") + (({
         fundLevel: "A Category III AIF is taxed inside the fund: the investor receives a post-tax amount that is not taxed again, so there is no investor-level long- or short-term gain (Tax Reckoner TY 2026-27, #25).",
         passThrough: "A Category I or II AIF passes its income through to the investor, with the holding period counted at the AIF's level for each underlying asset, as its annual statement (Form 64C) reports; that statement is not loaded, so the gain is not split into long and short term (Tax Reckoner TY 2026-27, #24).",
         pms: "A PMS holds securities in the investor's own demat account, each taxed as if held directly from its own purchase date (Tax Reckoner TY 2026-27, #23); the IRR sheet holds only the capital put in and taken out, so the gain is not split into long and short term."
-      })[acc.ns] || "This holding is not split into long and short term.");
+      })[acc.ns] || "This holding is not split into long and short term."));
     }
     var pos = acc;
     ev.ltCmv = aiaR2(pos.ltCmv || 0); ev.stCmv = aiaR2(pos.stCmv || 0);
@@ -3566,6 +3597,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     /* TX-18 (KI-177): lots bought before 1 Feb 2018 are on actual cost (no 31 Jan 2018 step-up) */
     if (acc.gf){ ev.pre2018Lots = acc.gf;
       bits.push("lots bought before 1 Feb 2018 are measured on actual cost, without the 31 Jan 2018 grandfathered cost, so the long-term gain and tax may be overstated"); }
+    /* T5 (TR-7, LD-11): an aggressive hybrid, arbitrage or equity savings fund classed by the reckoner's usual bucket */
+    if (acc.usual){ ev.usualBucket = true; bits.push("its tax class is the usual bucket per the owner's reckoner; confirm with the fund house"); }
     /* green when a sale can be funded almost entirely from the long-term
        parcel, amber when it cannot; never red */
     var vd = (ltShare == null) ? "na" : (ltShare >= 75 ? "green" : "amber");
@@ -5633,8 +5666,14 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       /* kept short: the class footnote holds about two lines (KI-109); the tab gives the full reasons and source */
       var _nsb=[];
       if(_ns.pms.n) _nsb.push('PMS (per security)');
-      if(_ns.passThrough.n) _nsb.push('Cat I/II AIFs (per underlying asset)');
-      var _nsFoot=(_nsb.length?(' Not split: '+_nsb.join(', ')+'.'):'')+(_ns.fundLevel.n?' Cat III AIFs: fund level.':'');
+      /* T5 (CR-0008 question 17): an AIF whose category the file does not state is treated as Cat I/II, never asserted.
+         Kept short: the class footnote holds about two lines (KI-109). */
+      var _ptA=_ns.passThrough.assumedN||0;
+      if(_ns.passThrough.n) _nsb.push((_ptA?'AIFs treated as Cat I/II':'Cat I/II AIFs')+' (per underlying asset)');
+      var _nsFoot=(_nsb.length?(' Not split: '+_nsb.join(', ')+'.'):'')+(_ns.fundLevel.n?' Cat III AIFs: fund level.':'')+
+        (_ptA?(' '+(_ptA===1?'1 AIF is':_ptA+' AIFs are')+' treated as Cat I/II because the file states no category: confirm it against the AIF\u2019s statement.'):'');
+      /* T5 (TR-7, LD-11): aggressive hybrid, arbitrage and equity savings funds classed by the usual bucket; worded for the client */
+      var _ubFoot=T.positions.some(function(r){ return r.usualBucket; })?' Aggressive hybrid, arbitrage, equity savings: usual bucket per the tax reckoner; confirm with the fund house.':'';
       var _srcFoot=T.byClass.filter(function(g){ return g.rule&&g.rule.source; }).map(function(g){ return ' '+g.cls+': no tax reckoner row; '+rt(g.rule.st)+' kept, the law being unchanged.'; }).join('');
 
       var s=base("Taxation \u2014 Long Term vs Short Term"+_scopeTag);
@@ -5658,13 +5697,20 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       });
       s.addTable(rows,{x:0.18,y:1.94,w:13.0,colW:[3.10,1.75,1.15,1.15,1.45,1.45,1.45,1.50],rowH:0.30,
         fontFace:F,border:{type:'solid',pt:0.3,color:'D9D9D9'},valign:'middle'});
-      foot(s,'*Holding periods measured to '+asOn+taxDateTag+' from each lot\u2019s own purchase date, FIFO over '+T.txnCount+
-        ' transactions. LTCG + STCG add back to each holding\u2019s Gain/Loss. Rates stated as words depend on the assessee or the fund\u2019s own filing.'+
+      /* T5 (KI-109): the two sentences part T5 adds can take the class footnote past two lines; from a third line on it
+         grows upward from the band's edge instead of running into it, but never over the table above (its rows are 0.30 in,
+         0.40 when a cell wraps); with no room left it starts below the table, as before. A line holds about 260 characters. */
+      var _tb=1.94+0.30+T.byClass.slice(0,14).reduce(function(a,g){ return a+((lta(g.rule).length>24||String(g.cls).length>44)?0.40:0.30); },0);
+      var _footFit=function(sl,txt){ var n=Math.ceil(String(txt).length/260); if(n<=2){ foot(sl,txt); return; }
+        var h=n*0.14, y=Math.max(7.18-h,_tb+0.04);
+        sl.addText(txt,{x:0.18,y:y,w:W-0.4,h:h,fontFace:F,fontSize:8,italic:true,color:"6B6B6B",align:"left",valign:(y>7.18-h+1e-9)?"top":"bottom"}); };
+      _footFit(s,'*Holding periods measured to '+asOn+taxDateTag+' from each lot\u2019s own purchase date, FIFO over '+T.txnCount+
+        ' transactions. LTCG + STCG (and ELSS in lock-in) add back to each split holding\u2019s Gain/Loss. Rates stated as words depend on the assessee or the fund\u2019s own filing.'+
         (preSpec?' Units bought before 1 Apr 2023 have their own class (general rule).':'')+
         (gfN?' Lots bought before 1 Feb 2018 are at actual cost (no 31 Jan 2018 step-up).':'')+
         (T.unreconciled.length?(' '+T.unreconciled.length+' holding(s) could not be reconciled to the base file and are unclassified.'):'')+
         (T.unmapped.length?(' '+T.unmapped.length+' holding(s) have no tax class and are unclassified.'):'')+
-        (t.lockedCmv>1e-12?(' ELSS units still in lock-in ('+U.m(t.lockedCmv)+') are unclassified and not harvested.'):'')+_nsFoot+_srcFoot);
+        (t.lockedCmv>1e-12?(' ELSS units still in lock-in ('+U.m(t.lockedCmv)+') are unclassified and not harvested.'):'')+_nsFoot+_ubFoot+_srcFoot);
 
       /* ---- totals: by product, by asset class, and the grand total for the
          selected scope. Same summarise() output the tab renders, so the deck
@@ -5828,13 +5874,13 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
           sd.addTable(rows,{x:0.18,y:TX_TOP,w:13.0,colW:colW,rowH:TX_ROW,fontFace:F,
             border:{type:'solid',pt:0.3,color:'D9D9D9'},valign:'middle'});
           foot(sd,'*\u201cAmt. available for Rebalancing\u201d is the holding\u2019s CMV apportioned across the lots open at each treatment; \u201cLots\u201d is how many separate purchases remain unsold. '+
-            'Holdings priced in rupees rather than units (PMS, unlisted AIF) show \u2014 in the unit columns. '+
+            'Holdings matched on invested value show no units; PMS and AIF rows read Not split (Fund level for a Cat III AIF). '+
             (T.viaNoPrice?((T.viaSwitchIn?('A switch-in carries no price in the IRR sheet, so '+T.viaSwitchIn+' holding'+(T.viaSwitchIn===1?'':'s')+' acquired that way '+(T.viaSwitchIn===1?'is':'are')):('A purchase with no price means '+T.viaNoPrice+' holding'+(T.viaNoPrice===1?'':'s')+' '+(T.viaNoPrice===1?'is':'are')))+
               ' matched on invested value instead of units; the switch date is the purchase date and sets the holding period. '):'')+
             'Class and grand totals cover the money and lot columns only \u2014 units of different schemes are not additive, '+
             'and a class total covers the whole class even where its holdings continue on another page. '+
             'The grand total is for the whole '+(_sc?'client':'family')+', not this page'+(pages>1?(' (page '+(pg+1)+' of '+pages+')'):'')+'.'+
-            (T.unreconciled.length?(' '+T.unreconciled.length+' holding(s) with no lot history are unclassified and are not listed here.'):'')+
+            (T.unreconciled.length?(' '+T.unreconciled.length+' holding(s) not reconciled to the base file are unclassified and are not listed here.'):'')+
             (t.lockedCmv>1e-12?' ELSS units in lock-in are in neither \u201cAmt. avail.\u201d column.':''));
         }
       })();
@@ -5851,6 +5897,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         var _hl=H.perClient?(H.byClient||[]):[H], _multi=_hl.length>1;
         var _rp=function(r){ return (r*100).toFixed(r*100%1?2:0)+'%'; };
         var _rs=function(v){ return '\u20B9'+Number(v||0).toLocaleString('en-IN'); };
+        /* T5: an amount taken off; one that rounds to zero shows 0, never "-0" */
+        var _negM=function(v){ var s=U.m(v); return (v>0&&/[1-9]/.test(s))?('-'+s):U.m(0); };
         var _pm={}, _po=[];
         _hl.forEach(function(h){ (h.pools||[]).forEach(function(p){
           var k=p.b+'|'+p.cls, q=_pm[k];
@@ -5876,9 +5924,9 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         if(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9) nt.push('Crypto gains and losses are kept out of set-off pending a ruling on their treatment: no loss is set against a crypto gain'+
           (H.noSetOffGain>1e-9?(' ('+U.m(H.noSetOffGain)+', taxed in full)'):'')+', and a crypto loss'+(H.noSetOffLoss>1e-9?(' ('+U.m(H.noSetOffLoss)+')'):'')+' reduces no other gain and is not carried forward.');
         var _lo=[];
-        if(_ns.pms.n) _lo.push(_ns.pms.n+' PMS');
-        if(_ns.passThrough.n) _lo.push(_ns.passThrough.n+' Cat I/II AIF'+(_ns.passThrough.n===1?'':'s'));
-        if(_ns.fundLevel.n) _lo.push(_ns.fundLevel.n+' Cat III AIF'+(_ns.fundLevel.n===1?'':'s'));
+        if(_ns.pms.n) _lo.push(_ns.pms.n+' PMS ('+U.m(_ns.pms.cmv)+')');
+        if(_ns.passThrough.n) _lo.push(_ns.passThrough.n+(_ptA?(' AIF'+(_ns.passThrough.n===1?'':'s')+' treated as Cat I/II'):(' Cat I/II AIF'+(_ns.passThrough.n===1?'':'s')))+' ('+U.m(_ns.passThrough.cmv)+')');
+        if(_ns.fundLevel.n) _lo.push(_ns.fundLevel.n+' Cat III AIF'+(_ns.fundLevel.n===1?'':'s')+' ('+U.m(_ns.fundLevel.cmv)+')');
         if(_lo.length) nt.push('Left out, as not split into long and short term: '+_lo.join(', ')+'.');
         if(T.unnamedN) nt.push(T.unnamedN+' holding(s) with no client name are treated as one person.');
         /* rows from the band left above the note: a pool whose name wraps counts as a taller row */
@@ -5898,7 +5946,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
             cell(p.b==='LT'?'Long term':'Short term',{align:'center'}),
             cell(p.rate!=null?(_rp(p.rate)+(p.s198?'*':'')):(p.label||'\u2014'),{align:'center'}),
             cell(U.m(p.gross),{align:'right'}),
-            cell(used>1e-9?('-'+U.m(used)):'\u2014',{align:'right',color:(used>1e-9?C.green:'000000')}),
+            cell(used>1e-9?_negM(used):'\u2014',{align:'right',color:(used>1e-9?C.green:'000000')}),
             cell(U.m(p.left),{align:'right'}),
             cell(p.rate!=null?U.m(p.left*p.rate):(p.label||'\u2014'),{align:'right'})
           ]);
@@ -5910,8 +5958,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
             cell('Long term',{align:'center',italic:true}),
             cell(_rp(H.exRate||0)+'*',{align:'center',italic:true}),
             cell('',{}), cell('',{}),
-            cell('-'+U.m(H.exAfter),{align:'right',italic:true}),
-            cell('-'+U.m(H.exAfterTax),{align:'right',italic:true})
+            cell(_negM(H.exAfter),{align:'right',italic:true}),
+            cell(_negM(H.exAfterTax),{align:'right',italic:true})
           ]); _yt+=0.30; }
         s2.addTable(r2,{x:0.18,y:_TOP,w:13.0,colW:[3.40,1.50,1.50,1.75,1.85,1.50,1.50],rowH:0.30,
           fontFace:F,border:{type:'solid',pt:0.3,color:'D9D9D9'},valign:'middle'});
@@ -10939,6 +10987,11 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
   function taxNsLong(k){ return k==='fundLevel'?'Fund level: taxed inside the fund, nothing at investor level'
     :(k==='passThrough'?'Not split: passed through per underlying asset (the AIF&rsquo;s annual statement)':'Not split: taxed per security, as if held directly'); }
   function taxNsSub(r){ return (r&&r.notSplit==='pms')?'<span class="taxsub">Gain/Loss on capital contributed: not a capital-gains figure</span>':''; }
+  /* T5: a class taken from the reckoner's usual bucket (TR-7, LD-11), or an AIF whose category the file does not state */
+  function taxT5Sub(r){ return (r&&r.usualBucket)?'<span class="taxsub">usual bucket per the owner&rsquo;s reckoner; confirm with the fund house</span>'
+    :((r&&r.catAssumed)?'<span class="taxsub">category not stated in the file: treated as Category I or II</span>':''); }
+  /* T5: an amount taken off; one that rounds to zero shows 0, never "-0" */
+  function taxNegM(U,v){ var s=U.m(v); return (v>0&&/[1-9]/.test(s))?('-'+s):U.m(0); }
   function taxU(v){ return (v==null||isNaN(v))?'—':Number(v).toLocaleString('en-IN',{maximumFractionDigits:3}); }
   var TAX_MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   function taxD(d){ return (d instanceof Date)?(d.getUTCDate()+'-'+TAX_MON[d.getUTCMonth()]+'-'+d.getUTCFullYear()):'—'; }
@@ -11564,7 +11617,7 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
         /* amtMode unit fields hold rupees — a number under a "units" heading
            would be wrong, so those cells say why instead */
         var uCell=r.amtMode?'—<span class="taxsub">matched on invested value</span>':taxU(r.baseUnits);
-        return '<tr><td>'+taxEsc(r.name)+'<span class="taxsub">'+taxEsc(r.category||r.product)+'</span>'+taxNsSub(r)+'</td>'+
+        return '<tr><td>'+taxEsc(r.name)+'<span class="taxsub">'+taxEsc(r.category||r.product)+'</span>'+taxNsSub(r)+taxT5Sub(r)+'</td>'+
           '<td>'+taxEsc(r.client)+'</td>'+
           '<td class="n">'+uCell+'</td>'+
           '<td class="n">'+taxD(r.oldest)+'</td><td class="n">'+taxD(r.newest)+'</td>'+
@@ -11589,7 +11642,7 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
 
     /* per holding */
     var posRows=T.positions.map(function(r){
-      return '<tr><td>'+taxEsc(r.name)+'<span class="taxsub">'+taxEsc(r.cls)+'</span>'+taxNsSub(r)+'</td>'+
+      return '<tr><td>'+taxEsc(r.name)+'<span class="taxsub">'+taxEsc(r.cls)+'</span>'+taxNsSub(r)+taxT5Sub(r)+'</td>'+
         '<td>'+taxEsc(r.client)+'</td>'+
         '<td class="n">'+(r.amtMode?'\u2014':taxU(r.baseUnits))+'</td>'+
         taxSplitCells(r)+
@@ -11598,9 +11651,18 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
 
     var warn='';
     if(T.unreconciled.length){
+      /* T5: one sentence per kind of reason: blank merged units (KI-140), no purchase still held, fewer or more units
+         than the base file, invested value */
+      var _uk={}; T.unreconciled.forEach(function(r){ var k=r.unrec||'other'; _uk[k]=(_uk[k]||0)+1; });
+      var _uh=function(n,one,many){ return n+' '+(n===1?one:many); }, _us=[];
+      if(_uk.unitsGap) _us.push(_uh(_uk.unitsGap,'holding merges folios of which at least one has no units in the base file, so its units','holdings merge folios of which at least one has no units in the base file, so their units')+' cannot be checked against the transaction history.');
+      if(_uk.noLots) _us.push(_uh(_uk.noLots,'holding has','holdings have')+' no purchase in the IRR sheet that is still held, so there are no lots to split.');
+      if(_uk.short) _us.push('For '+_uh(_uk.short,'holding','holdings')+' the transaction history gives fewer units than the base file, so it is missing an event: a bonus or split, or a purchase made elsewhere.');
+      if(_uk.excess) _us.push('For '+_uh(_uk.excess,'holding','holdings')+' the transaction history gives more units than the base file, so it is missing an event: a sale, a transfer out or a consolidation of units.');
+      if(_uk.value) _us.push('For '+_uh(_uk.value,'holding','holdings')+' matched on invested value, the transaction history does not add up to the base file&rsquo;s invested value.');
       warn+='<div class="taxwarn"><b>'+T.unreconciled.length+' holding'+(T.unreconciled.length===1?'':'s')+' could not be reconciled to the base file and '+
-        (T.unreconciled.length===1?'is':'are')+' left unclassified.</b> FIFO over the transaction history does not reproduce the unit balance, which means the history is missing an event &mdash; '+
-        'a bonus or split, or a purchase made elsewhere. No split is shown rather than one computed on lots known to be incomplete.'+
+        (T.unreconciled.length===1?'is':'are')+' left unclassified.</b> '+_us.join(' ')+(_us.length?' ':'')+
+        'No split is shown rather than one computed on lots that cannot be checked; the reason for each holding is in the table.'+
         '<table class="taxt" style="margin-top:8px;"><thead><tr><th>Holding</th><th class="n">Units (base file)</th><th class="n">Units (FIFO)</th><th class="n">CMV ('+taxEsc(cap)+')</th><th class="n">G/L</th><th>Why</th></tr></thead><tbody>'+
         T.unreconciled.map(function(r){ return '<tr><td>'+taxEsc(r.name)+'<span class="taxsub">'+taxEsc(r.client)+'</span></td>'+
           '<td class="n">'+taxU(r.baseUnits)+'</td><td class="n">'+taxU(r.fifoUnits)+'</td><td class="n">'+U.m(r.cmv)+'</td><td class="n"'+gcol(r.gl)+'>'+gm(r.gl)+'</td>'+
@@ -11687,6 +11749,12 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
     var bucketNote=_ub.length?('<div class="taxnote">'+taxEsc(_ub.join(', '))+': the class is the tax reckoner&rsquo;s usual bucket for the scheme. '+
       'An equity ETF fund of funds is equity-oriented only if 90% or more of it sits in one ETF that holds 90% or more listed Indian equity; a SIF is classed by its strategy. '+
       'The status is tested again every year, so confirm it with the AMC&rsquo;s year-end tax classification.</div>'):'';
+    /* T5 (TR-7, LD-11; reckoner Master Summary #8 to #10, Hybrid Funds & FoFs D19 to D21): aggressive hybrid,
+       arbitrage and equity savings funds classed by the usual bucket, from 1 Apr 2026 */
+    var _ubH=T.positions.filter(function(r){ return r.usualBucket&&!r.splitPart; });
+    var usualNote=_ubH.length?('<div class="taxnote">'+_ubH.length+' holding'+(_ubH.length===1?' is an aggressive hybrid, arbitrage or equity savings fund':'s are aggressive hybrid, arbitrage or equity savings funds')+' ('+
+      taxEsc(_ubH.slice(0,5).map(function(r){ return r.name; }).join('; '))+(_ubH.length>5?' and '+(_ubH.length-5)+' more':'')+'), classed as equity-oriented: usual bucket per the owner&rsquo;s reckoner; confirm with the fund house. '+
+      'Such a fund is equity-oriented only while 65% or more of it is in listed Indian equity over the tax year, hedged arbitrage positions included, so the AMC&rsquo;s year-end tax classification is the check.</div>'):'';
     /* TX-17 (KI-176), D-040 (a): the date holding periods run to, and anything that differs from it */
     var taxFd=function(d){ return (d instanceof Date)?(d.getUTCDate()+' '+TAX_MON[d.getUTCMonth()]+' '+d.getUTCFullYear()):''; };
     var taxSrc=T.asOnSource==='base'?'the base file&rsquo;s valuation date':(T.asOnSource==='portfolio'?'the portfolio date of this review':(T.asOnSource==='irr'?'the IRR sheet&rsquo;s latest date':''));
@@ -11718,8 +11786,14 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
     var _pl=function(n,one,many){ return n+' '+(n===1?one:many); };
     if(_nsT.fundLevel.n) _nsp.push(_pl(_nsT.fundLevel.n,'Category III AIF is','Category III AIFs are')+' taxed inside the fund: the investor receives a post-tax amount that is not taxed again, so there is no investor-level long- or short-term gain (Tax Reckoner TY 2026-27, #25). '+
       'CMV '+U.m(_nsT.fundLevel.cmv)+' and Gain/Loss '+gm(_nsT.fundLevel.gl)+' are shown as fund level, apart from the not classified amounts, and do not enter the investor&rsquo;s set-off.');
-    if(_nsT.passThrough.n) _nsp.push(_pl(_nsT.passThrough.n,'Category I or II AIF is','Category I or II AIFs are')+' pass-through: income keeps its character and is taxed in the investor&rsquo;s hands, with the holding period counted at the AIF&rsquo;s level for each underlying asset, as its annual statement (Form 64C) reports (Tax Reckoner TY 2026-27, #24). '+
-      'That statement is not loaded, so the Gain/Loss ('+gm(_nsT.passThrough.gl)+') is not split, is counted as not classified and is left out of tax harvesting.');
+    /* T5 (CR-0008 question 17): an AIF whose category the file does not state is treated as Category I or II, never asserted */
+    var _ptN=_nsT.passThrough.n, _ptA=_nsT.passThrough.assumedN||0;
+    if(_ptN) _nsp.push((_ptA
+        ? (_pl(_ptN,'AIF is','AIFs are')+' treated as Category I or II (pass-through)'+(_ptA===_ptN?(' because the file does not state '+(_ptN===1?'its':'their')+' category'):(', '+_ptA+' of them because the file does not state the category')))
+        : (_pl(_ptN,'Category I or II AIF is','Category I or II AIFs are')+' pass-through'))+
+      ': income keeps its character and is taxed in the investor&rsquo;s hands, with the holding period counted at the AIF&rsquo;s level for each underlying asset, as its annual statement (Form 64C) reports (Tax Reckoner TY 2026-27, #24). '+
+      'That statement is not loaded, so the Gain/Loss ('+gm(_nsT.passThrough.gl)+') is not split, is counted as not classified and is left out of tax harvesting.'+
+      (_ptA?' Confirm the category against the AIF&rsquo;s statement: a Category III AIF is taxed inside the fund instead.':''));
     if(_nsT.pms.n) _nsp.push(_pl(_nsT.pms.n,'PMS holds','PMS hold')+' securities in the investor&rsquo;s own demat account, each taxed as if held directly, from its own purchase date (Tax Reckoner TY 2026-27, #23). '+
       'The IRR sheet holds only the capital put in and taken out, so a PMS is not split into long and short term. Its Gain/Loss ('+gm(_nsT.pms.gl)+') is on capital contributed, not a capital-gains figure: it includes gains already realised and taxed inside the PMS and retained income, and is net of fees, which the conservative view does not deduct. '+
       'It is counted as not classified and left out of tax harvesting.');
@@ -11739,8 +11813,8 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       var asRows=hl.map(function(h,i){
         var a=h.assume||{};
         return '<tr><td>'+taxEsc(h.client)+'</td>'+
-          '<td class="n"><input class="taxas" data-ci="'+i+'" data-k="slabPct" type="number" min="0" max="30" step="any" value="'+a.slabPct+'" style="width:60px;text-align:right;font-family:Cambria,serif;"> %'+(a.slabDefault?' (default)':'')+'</td>'+
-          '<td class="n">&#8377; <input class="taxas" data-ci="'+i+'" data-k="usedRs" type="number" min="0" max="'+a.exemptRs+'" step="any" value="'+a.usedRs+'" style="width:100px;text-align:right;font-family:Cambria,serif;">'+(a.usedDefault?' (default)':'')+'</td>'+
+          '<td class="n"><input class="taxas" data-ci="'+i+'" data-k="slabPct" type="text" inputmode="decimal" autocomplete="off" value="'+a.slabPct+'" style="width:60px;text-align:right;font-family:Cambria,serif;"> %'+(a.slabDefault?' (default)':'')+'</td>'+
+          '<td class="n">&#8377; <input class="taxas" data-ci="'+i+'" data-k="usedRs" type="text" inputmode="decimal" autocomplete="off" value="'+a.usedRs+'" style="width:100px;text-align:right;font-family:Cambria,serif;">'+(a.usedDefault?' (default)':'')+'</td>'+
           '<td class="n">'+rs(Math.max(0,(a.exemptRs||0)-(a.usedRs||0)))+'</td></tr>';
       }).join('');
       var asHtml='<div class="taxnote"><b>Assumptions for this harvest</b>, set by the analyst for each client; they change only the harvest. '+
@@ -11756,14 +11830,14 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
           return '<tr>'+cc(h)+'<td>'+taxEsc(p.cls)+'<span class="taxsub">'+(p.b==='LT'?'Long term':'Short term')+'</span></td>'+
             '<td class="n">'+(p.rate!=null?rp(p.rate)+(p.s198?'*':''):taxEsc(p.label||'\u2014'))+'</td>'+
             '<td class="n">'+U.m(p.gross)+'</td>'+
-            '<td class="n">'+(used>1e-9?'-'+U.m(used):'\u2014')+'</td>'+
+            '<td class="n">'+(used>1e-9?taxNegM(U,used):'\u2014')+'</td>'+
             '<td class="n">'+U.m(p.left)+'</td>'+
             '<td class="n">'+(p.rate!=null?U.m(p.left*p.rate):taxEsc(p.label||'\u2014'))+'</td></tr>';
         }).join('');
         /* TX-09: the exemption on its own line, so the pool cells add up to the figures above */
         if(h.s198Gains>1e-9) rws+='<tr>'+cc(h)+'<td><i>Less: Sec 198 exemption</i><span class="taxsub">'+rs(h.assume?h.assume.exemptRs:0)+' a year less '+rs(h.assume?h.assume.usedRs:0)+' already used</span></td>'+
           '<td class="n">'+rp(h.exRate)+'*</td><td class="n"></td><td class="n"></td>'+
-          '<td class="n">-'+U.m(h.exAfter)+'</td><td class="n">-'+U.m(h.exAfterTax)+'</td></tr>';
+          '<td class="n">'+taxNegM(U,h.exAfter)+'</td><td class="n">'+taxNegM(U,h.exAfterTax)+'</td></tr>';
         return rws;
       }).join('');
       var unusedNote='';
@@ -11778,7 +11852,7 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       }
       var _lo=[];
       if(_nsT.pms.n) _lo.push(_nsT.pms.n+' PMS ('+U.m(_nsT.pms.cmv)+')');
-      if(_nsT.passThrough.n) _lo.push(_pl(_nsT.passThrough.n,'Category I or II AIF','Category I or II AIFs')+' ('+U.m(_nsT.passThrough.cmv)+')');
+      if(_nsT.passThrough.n) _lo.push(_pl(_nsT.passThrough.n,_ptA?'AIF treated as Category I or II':'Category I or II AIF',_ptA?'AIFs treated as Category I or II':'Category I or II AIFs')+' ('+U.m(_nsT.passThrough.cmv)+')');   /* T5 */
       if(_nsT.fundLevel.n) _lo.push(_pl(_nsT.fundLevel.n,'Category III AIF','Category III AIFs')+' ('+U.m(_nsT.fundLevel.cmv)+')');
       var loNote=_lo.length?('<div class="sub" style="margin-top:8px;">Left out of the harvest, as they have no investor-level long- or short-term split (see the notes above): '+_lo.join(', ')+'.</div>'):'';
       var unnNote=T.unnamedN?('<div class="sub" style="margin-top:6px;">'+_pl(T.unnamedN,'holding has','holdings have')+' no client name; they are treated as one person for the set-off and the exemption.</div>'):'';
@@ -11808,7 +11882,7 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
           '<th class="n">Gain</th><th class="n">Loss set off</th><th class="n">Taxable after</th><th class="n">Tax after</th></tr></thead>'+
           '<tbody>'+poolRows+'</tbody>'+
           '<tfoot><tr><td colspan="'+(multi?3:2)+'">Losses available: '+U.m(H.ltLosses)+' long term, '+U.m(H.stLosses)+' short term</td>'+
-          '<td class="n">'+U.m(H.ltGains+H.stGains)+'</td><td class="n">-'+U.m(H.ltUsed+H.stUsed)+'</td>'+
+          '<td class="n">'+U.m(H.ltGains+H.stGains)+'</td><td class="n">'+taxNegM(U,H.ltUsed+H.stUsed)+'</td>'+
           '<td class="n">'+U.m(H.ltGains+H.stGains-H.ltUsed-H.stUsed-(H.exAfter||0))+'</td><td class="n">'+U.m(H.taxAfter)+'</td></tr></tfoot>'+
           '</table></div>'+
         unusedNote+
@@ -11834,13 +11908,13 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       '<div class="sub">Holding periods measured to '+taxEsc(asOn)+(taxSrc?' ('+taxSrc+')':'')+' from each lot&rsquo;s own purchase date, using FIFO over '+T.txnCount+' transactions in the IRR sheet. '+
         'A lot is long term when held for more than its class&rsquo;s period, that is from the day after the anniversary of its purchase date (a lot bought on 29 Feb reaches its anniversary on 28 Feb). '+
         'Each buy in the IRR sheet opens a lot of |amount| &divide; price units on its own date; each sell consumes the oldest open lots first (FIFO), and the lots left over are the current holding &mdash; &ldquo;Open lots&rdquo; counts them. '+
-        'A lot&rsquo;s gain is its value at the base file&rsquo;s NAV minus its own purchase cost, with costs scaled to the base file&rsquo;s invested value, so LTCG + STCG Gain/Loss adds back to each holding&rsquo;s total Gain/Loss exactly. '+
+        'A lot&rsquo;s gain is its value at the base file&rsquo;s NAV minus its own purchase cost, with costs scaled to the base file&rsquo;s invested value, so for each holding split into long and short term, its LTCG and STCG Gain/Loss (and that of any ELSS units still in lock-in, which is not classified) add back to its total Gain/Loss exactly. '+
         'Rates shown as words (Slab rate, Fund-level, Pass-through) are stated that way in the tax-rules file and depend on the assessee or the fund&rsquo;s own filing.'+
         (_nsp.length?' PMS and AIF holdings are not split by these lots; the notes below say why.':'')+'</div>'+
       scopeStrip+
       kpi+
       swNote+
-      lockNote+bucketNote+
+      lockNote+bucketNote+usualNote+
       dateNote+specNote+gfNote+nsNote+srcNote+
       rollups+
       '<h4 style="margin:14px 0 4px;">By tax class</h4>'+
@@ -11868,9 +11942,11 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       inp.onchange=function(){
         var c=asClients[+inp.getAttribute('data-ci')], k=inp.getAttribute('data-k');
         if(c==null||(k!=='slabPct'&&k!=='usedRs')) return;
-        var v=String(inp.value==null?'':inp.value).trim();
+        /* T5: Indian or international digit grouping ("1,25,000", "125,000", "1 25 000") is read: commas and spaces are
+           dropped. Only a blank or non-numeric entry restores the default. */
+        var v=String(inp.value==null?'':inp.value).replace(/[,\s]/g,'');
         var A=Object.prototype.hasOwnProperty.call(taxAssume.clients,c)?taxAssume.clients[c]:(taxAssume.clients[c]={});
-        if(v===''||!isFinite(Number(v))) delete A[k]; else A[k]=Number(v);
+        if(!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(v)) delete A[k]; else A[k]=Number(v);
         try{ E.taxApplyAssumptions(model.taxation, taxAssume); }catch(e){ console.error(e); }
         renderTaxation();
       };

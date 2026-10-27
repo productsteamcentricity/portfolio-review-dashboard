@@ -101,7 +101,7 @@ const m = book.review(AS_ON);
     const sl = await T.taxSlidesText(m);
     ok(!/null/.test(sl) && /Equity AIF – Cat III \(Long Short\) Fund level Fund-level Fund-level Fund level Fund level/.test(sl), 'slides: the class row, no "null"');
     ok(/Cat III AIFs: fund level\./.test(sl) && /Total Gain\/Loss \(unclassified ₹0\.00 Cr; fund level ₹0\.50 Cr\)/.test(sl) && /Fund level is the Gain\/Loss of Cat III AIFs, taxed inside the fund/.test(sl), 'slides: the class and totals footnotes');
-    ok(/Left out, as not split into long and short term: 1 Cat III AIF\./.test(sl), 'harvest slide: left out');
+    ok(/Left out, as not split into long and short term: 1 Cat III AIF \(₹1\.00 Cr\)\./.test(sl), 'harvest slide: left out, with its CMV (tax batch T5, as the tab)');
     const hAif = m.holdings.find(x => /Long Short/.test(x.name));
     const sig = T.aiaTaxSignal(hAif, m);
     ok(sig && sig.verdict === 'na' && /taxed inside the fund/.test(sig.text) && !/long term and|crystallise/.test(sig.text), 'AI Analyst: the reason, no long- or short-term text (got: ' + (sig && sig.text) + ')');

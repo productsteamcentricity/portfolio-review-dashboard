@@ -71,7 +71,7 @@ ok(cb.harvest.pools.every(p => !/AIF/.test(p.cls)), 'client B\'s harvest has no 
     ok(/Left out of the harvest.*1 Category I or II AIF \(₹1\.20 Cr\)/.test(tx), 'Taxation tab: the harvest says it is left out');
     const sl = await T.taxSlidesText(mm);
     ok(/Equity AIF – Cat I\/II At AIF level, per asset Pass-through Pass-through Not split Not split/.test(sl), 'slides: the class row');
-    ok(/Not split: Cat I\/II AIFs \(per underlying asset\)\./.test(sl) && /Left out, as not split into long and short term: 1 Cat I\/II AIF\./.test(sl), 'slides: the class footnote and the harvest note');
+    ok(/Not split: Cat I\/II AIFs \(per underlying asset\)\./.test(sl) && /Left out, as not split into long and short term: 1 Cat I\/II AIF \(₹1\.20 Cr\)\./.test(sl), 'slides: the class footnote and the harvest note, with the AIF\'s CMV (tax batch T5)');
     const sig = T.aiaTaxSignal(mm.holdings.find(x => /Private Equity/.test(x.name)), mm);
     ok(sig && sig.verdict === 'na' && /passes its income through/.test(sig.text), 'AI Analyst: the reason, verdict n/a');
   } catch (e) { ok(false, 'screen / slides: ' + (e && e.stack || e)); }

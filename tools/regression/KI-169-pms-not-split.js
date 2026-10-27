@@ -108,7 +108,7 @@ ok(sp && sp.notSplit === 'pms' && Math.abs(sp.unknownGain - 0.5065) < 1e-9 && sm
     ok(/PMS and AIF holdings are not split by these lots/.test(tx), 'Taxation tab: the method sentence does not claim lot dates for the PMS');
     const sl = await T.taxSlidesText(m);
     ok(/Equity PMS Per security, more than 12 months 12\.50% 20% Not split Not split/.test(sl), 'slides: the class row');
-    ok(/Not split: PMS \(per security\)\./.test(sl) && /Left out, as not split into long and short term: 1 PMS\./.test(sl), 'slides: the class footnote and the harvest note');
+    ok(/Not split: PMS \(per security\)\./.test(sl) && /Left out, as not split into long and short term: 1 PMS \(₹1\.40 Cr\)\./.test(sl), 'slides: the class footnote and the harvest note, with the PMS\'s CMV (tax batch T5)');
     ok(/Synthetic Capital - Long Term Value Client A — 10-Apr-23 10-Apr-23 Not split Not split Not split Not split Not split Not split 1/.test(sl), 'slides: the holding detail row says Not split');
     const sig = T.aiaTaxSignal(m.holdings.find(x => x.product === 'PMS'), m);
     ok(sig && sig.verdict === 'na' && /taxed as if held directly/.test(sig.text) && !/long term and/.test(sig.text), 'AI Analyst: the reason, no split');
