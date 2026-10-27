@@ -1,7 +1,10 @@
 // Post-processing of the deck PptxGenJS writes (D-039, chart labels; architecture §15), with the JSZip it bundles:
-//   1. pie labels: each slice gets its own data label, the view-model's text ('Equity 59.3%') as rich text, or a
-//      deleted label for a slice under 2.00% (PptxGenJS cannot suppress the label of one data point); the series
-//      outline and the label defaults take the deck's tokens instead of the library's (#F9F9F9, Arial 18 pt);
+//   1. pie labels: each slice gets its own data label, the view-model's text as rich text on two lines, the
+//      category and then its percent ('Equity' / '59.3%'), in a text body that never wraps (PowerPoint caps a pie
+//      label's width and broke a one-line label inside a word, 'Commodi / ty 3.9%'); or a deleted label for a slice
+//      under 2.00% and for the one slice of a one-slice pie (PptxGenJS cannot suppress the label of one data point);
+//      the series outline and the label defaults take the deck's tokens instead of the library's (#F9F9F9, Arial
+//      18 pt), and a one-slice pie has no outline (its 360-degree slice would show a radius at 12 o'clock);
 //   2. structure: one paragraph properties element per paragraph, one paragraph per table cell, unique shape ids
 //      per slide, and no content type for a part that does not exist (PptxGenJS repeats paragraph properties
 //      between runs, splits a cell's runs into paragraphs, numbers tables apart from the other shapes and names a
@@ -22,10 +25,13 @@ export type ChartLabels = {
   sizePt: number;
   /** 'RRGGBB'. */
   labelColour: string;
-  /** Slice outline colour, 'RRGGBB'. */
-  borderColour: string;
-  /** One per slice, in slice order: the label text, or null for no label. */
-  points: Array<{ text: string | null; position: LabelPosition }>;
+  /** Slice outline colour, 'RRGGBB'; null for no outline on the slices or the series (a pie of one slice). */
+  borderColour: string | null;
+  /**
+   * One per slice, in slice order: the lines of its label (the category, then its percent), each written as a run
+   * with a line break between them, or null for no label.
+   */
+  points: Array<{ lines: readonly string[] | null; position: LabelPosition }>;
 };
 
 export type PostprocessSpec = { now: string; charts: readonly ChartLabels[] };
@@ -103,6 +109,12 @@ function resolvePart(dir: string, target: string): string {
 
 const SHOW_FLAGS = '<c:showLegendKey val="0"/><c:showVal val="0"/><c:showCatName val="1"/><c:showSerName val="0"/>'
   + '<c:showPercent val="1"/><c:showBubbleSize val="0"/>';
+/** A label's text body: never wrapped, so each line keeps its words whole (the Office acceptance of 27 Oct 2026). */
+export const LABEL_BODY = '<a:bodyPr wrap="none"/>';
+/** The separator of category and percent is a new line, so a label reset in PowerPoint reads as the slide does. */
+export const LABEL_SEPARATOR = '<c:separator>\n</c:separator>';
+/** No outline, on the slices and the series of a one-slice pie. */
+export const NO_LINE = '<a:ln><a:noFill/></a:ln>';
 
 function runProps(spec: ChartLabels, tag: 'a:rPr' | 'a:defRPr'): string {
   const lang = tag === 'a:rPr' ? ' lang="en-US"' : '';
@@ -112,20 +124,23 @@ function runProps(spec: ChartLabels, tag: 'a:rPr' | 'a:defRPr'): string {
 
 /** The data labels of a pie series: one per slice, then the series defaults. */
 export function pieLabelsXml(spec: ChartLabels): string {
-  const noFill = '<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>';
+  const noFill = `<c:spPr><a:noFill/>${NO_LINE}</c:spPr>`;
   const fmt = '<c:numFmt formatCode="0.0%" sourceLinked="0"/>';
+  const rPr = runProps(spec, 'a:rPr');
   const points = spec.points.map((p, idx) => {
-    if (p.text === null) return `<c:dLbl><c:idx val="${idx}"/><c:delete val="1"/></c:dLbl>`;
-    return `<c:dLbl><c:idx val="${idx}"/><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r>${runProps(spec, 'a:rPr')}`
-      + `<a:t>${xmlEscape(p.text)}</a:t></a:r></a:p></c:rich></c:tx>${fmt}${noFill}`
-      + `<c:dLblPos val="${p.position}"/>${SHOW_FLAGS}<c:separator> </c:separator></c:dLbl>`;
+    if (p.lines === null || p.lines.length === 0) return `<c:dLbl><c:idx val="${idx}"/><c:delete val="1"/></c:dLbl>`;
+    const runs = p.lines.map((line) => `<a:r>${rPr}<a:t>${xmlEscape(line)}</a:t></a:r>`).join(`<a:br>${rPr}</a:br>`);
+    return `<c:dLbl><c:idx val="${idx}"/><c:tx><c:rich>${LABEL_BODY}<a:lstStyle/><a:p>${runs}</a:p></c:rich></c:tx>${fmt}${noFill}`
+      + `<c:dLblPos val="${p.position}"/>${SHOW_FLAGS}${LABEL_SEPARATOR}</c:dLbl>`;
   });
   return `<c:dLbls>${points.join('')}${fmt}${noFill}`
-    + `<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr>${runProps(spec, 'a:defRPr')}</a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>`
-    + `<c:dLblPos val="bestFit"/>${SHOW_FLAGS}<c:separator> </c:separator><c:showLeaderLines val="0"/></c:dLbls>`;
+    + `<c:txPr>${LABEL_BODY}<a:lstStyle/><a:p><a:pPr>${runProps(spec, 'a:defRPr')}</a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>`
+    + `<c:dLblPos val="bestFit"/>${SHOW_FLAGS}${LABEL_SEPARATOR}<c:showLeaderLines val="0"/></c:dLbls>`;
 }
 
-/** Rewrites the labels and the series outline of a one-series pie chart part. */
+const LINE = /<a:ln\b[^>]*?(?:\/>|>[\s\S]*?<\/a:ln>)/g;
+
+/** Rewrites the labels and the outlines of a one-series pie chart part. */
 export function rewritePieLabels(chartXml: string, spec: ChartLabels): string {
   if ((chartXml.match(/<c:ser>/g) ?? []).length !== 1 || !chartXml.includes('<c:pieChart>')) {
     throw new Error(`${spec.objectName}: not a one-series pie chart`);
@@ -137,6 +152,13 @@ export function rewritePieLabels(chartXml: string, spec: ChartLabels): string {
   const labels = chartXml.match(/<c:dLbls>[\s\S]*?<\/c:dLbls>/g) ?? [];
   if (labels.length !== 1) throw new Error(`${spec.objectName}: expected one data label block, found ${labels.length}`);
   let xml = chartXml.replace(labels[0] as string, pieLabelsXml(spec));
+  if (spec.borderColour === null) {
+    // No outline: every line of the series and of its data points (all before the data labels) is no line.
+    const serStart = xml.indexOf('<c:ser>');
+    const lblStart = xml.indexOf('<c:dLbls>', serStart);
+    const head = xml.slice(serStart, lblStart).replace(LINE, NO_LINE);
+    return xml.slice(0, serStart) + head + xml.slice(lblStart);
+  }
   // The series-level outline (under the per-slice ones): the deck's slice outline colour.
   const txEnd = xml.indexOf('</c:tx>', xml.indexOf('<c:ser>'));
   const spStart = xml.indexOf('<c:spPr>', txEnd);

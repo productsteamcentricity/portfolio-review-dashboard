@@ -4,7 +4,9 @@
 // nothing here computes or rounds a value. The table runs over continuation pages, "(n/N)" in the title, with the
 // header and the Grand Total on every page; continuation pages carry neither KPIs nor charts.
 
-import type { AllocationRow, Figure, Kpi, KpiId, OverviewVM, PieChart } from '../../../views/overview-vm.ts';
+import type { AllocationRow, Figure, Kpi, KpiId, OverviewVM, PieChart, PieSlice } from '../../../views/overview-vm.ts';
+import { STATUS } from '../../../model/status.ts';
+import { STATUS_PHRASE } from '../../../views/format.ts';
 import type { PptxBorder, PptxPresentation, PptxSlide, PptxTableCell } from '../pptxgen-types.ts';
 import { CHART } from '../pptxgen-types.ts';
 import { addChrome, CHROME, colour, contrastRatio, FONT, FOOTNOTE_LINES, NO_MARGIN, normaliseColour, typeSize, type Logo } from '../chrome.ts';
@@ -169,20 +171,18 @@ function bodyCells(row: AllocationRow): PptxTableCell[] {
 // ---------------------------------------------------------------------------------------------------------------
 // Footnote
 
-function excludedSentence(count: number): string {
-  return count === 1
-    ? '1 holding without a usable market value is excluded from every total.'
-    : `${count} holdings without a usable market value are excluded from every total.`;
-}
-
-/** The footnote of one page: the as-on date, the notes its figures refer to (in the view-model's order), then the
- * excluded count. What does not fit the footnote's two lines goes to the slide notes. */
+/**
+ * The footnote of one page: the as-on date, then the notes its figures refer to, in the view-model's order, each
+ * sentence once. The slide words nothing of its own: the excluded holdings are the view-model's 'excluded' note,
+ * which the market value and the Grand Total refer to, so screen and slide say the same. What does not fit the
+ * footnote's two lines goes to the slide notes.
+ */
 export function footnoteFor(vm: OverviewVM, figures: readonly Figure[], measure: Measure): { text: string; overflow: string[] } {
   const ids = new Set(figures.flatMap((f) => f.notes));
   const sentences: string[] = [];
-  if (vm.meta.asOnText) sentences.push(`Portfolio as on ${vm.meta.asOnText}.`);
-  for (const note of vm.notes) if (ids.has(note.id)) sentences.push(note.text);
-  if (vm.excluded.count > 0) sentences.push(excludedSentence(vm.excluded.count));
+  const add = (s: string): void => { if (!sentences.includes(s)) sentences.push(s); };
+  if (vm.meta.asOnText) add(`Portfolio as on ${vm.meta.asOnText}.`);
+  for (const note of vm.notes) if (ids.has(note.id)) add(note.text);
   const fits = (text: string): boolean =>
     measure.lines(text, typeSize('footnote'), false, CHROME.footnote.w) <= FOOTNOTE_LINES;
   const all = sentences.join(' ');
@@ -202,14 +202,31 @@ export function labelPosition(sliceColour: string): LabelPosition {
   return contrastRatio(colour('textBody'), normaliseColour(sliceColour)) >= C08_LAYOUT.labelContrast ? 'bestFit' : 'outEnd';
 }
 
+/**
+ * The lines of a slice label on the slide: the view-model's text ('Equity 59.3%') as the category, then its percent
+ * ('Equity', '59.3%'). PowerPoint caps the width of a pie label, so one line broke inside a word ("Commodi / ty
+ * 3.9%"); two lines in a text body that never wraps keep both whole.
+ */
+export function pieLabelLines(slice: Pick<PieSlice, 'category' | 'label'>): string[] | null {
+  const { category, label } = slice;
+  if (label === null) return null;
+  const cut = label.startsWith(`${category} `) ? category.length : label.lastIndexOf(' ');
+  const lines = (cut < 0 ? [label] : [label.slice(0, cut), label.slice(cut + 1)]).filter((l) => l !== '');
+  return lines.length ? lines : null;
+}
+
+/** The text a chart that is not drawn shows: "Chart not drawn: " and its status as the screen's notes word it. */
+export function chartNotDrawnText(chart: Pick<PieChart, 'emptyStatus'>): string {
+  return `Chart not drawn: ${STATUS_PHRASE[chart.emptyStatus ?? STATUS.NOT_AVAILABLE]}.`;
+}
+
 function pieChart(slide: PptxSlide, chart: PieChart, figures: FigureLocation[], page: number): ChartLabels | null {
   const panel = C08_LAYOUT.panels[chart.id];
   chartPanel(slide, panel, { title: chart.title, name: C08_NAMES.panel(chart.id) });
   const box: Box = { x: C08_LAYOUT.pie.x, y: panel.y + C08_LAYOUT.pie.dy, w: C08_LAYOUT.pie.w, h: C08_LAYOUT.pie.h };
   const present = chart.slices.filter((s) => s.pct.shown.kind === 'value');
   if (chart.emptyStatus !== null || present.length === 0) {
-    const why = chart.emptyStatus ?? 'no holdings to show';
-    slide.addText(`Chart not drawn: ${why}.`, {
+    slide.addText(chartNotDrawnText(chart), {
       ...inchBox(box), fontFace: FONT, fontSize: typeSize('body'), color: colour('textBody'), align: 'center',
       valign: 'middle', margin: NO_MARGIN, objectName: C08_NAMES.pieEmpty(chart.id),
     });
@@ -234,16 +251,20 @@ function pieChart(slide: PptxSlide, chart: PieChart, figures: FigureLocation[], 
       altText: C08_LAYOUT.altText[chart.id], objectName: C08_NAMES.pie(chart.id),
     },
   );
-  chart.slices.forEach((s, i) => {
-    if (s.label !== null) figures.push({ key: s.pct.key, page, cell: `pie:${chart.id}:${i}` });
+  // A pie of one slice (a family whose holdings are all open-ended, say) draws no label, since the legend and the
+  // table carry its 100%, and no outline, which would show as a radius at 12 o'clock (D-039 point 6).
+  const one = chart.slices.filter((s) => s.pct.shown.kind === 'value' && s.pct.shown.v > 0).length === 1;
+  const lines = chart.slices.map((s) => (one ? null : pieLabelLines(s)));
+  lines.forEach((l, i) => {
+    if (l !== null) figures.push({ key: (chart.slices[i] as PieSlice).pct.key, page, cell: `pie:${chart.id}:${i}` });
   });
   return {
     objectName: C08_NAMES.pie(chart.id),
     font: FONT,
     sizePt: typeSize('chartLabel'),
     labelColour: colour('textBody'),
-    borderColour: colour('grey75'),
-    points: chart.slices.map((s, i) => ({ text: s.label, position: labelPosition(colours[i] as string) })),
+    borderColour: one ? null : colour('grey75'),
+    points: chart.slices.map((_s, i) => ({ lines: lines[i] as string[] | null, position: labelPosition(colours[i] as string) })),
   };
 }
 
