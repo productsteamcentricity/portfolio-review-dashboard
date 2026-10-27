@@ -2,14 +2,18 @@
 // The store of sections 1 and 2 with a fake wiring (the real reader on the synthetic books, hand-worked Reviews):
 // the stage sequence; a review exists only after Accept; a family switch clears the review, labels, as-on date,
 // answers and acknowledgements but keeps the logo; an acknowledgement recomputes; the export gate; the audit the
-// exports carry.
+// exports carry. M1.4 fix round: an exception of the reader or the engine is "review-failed", never "unreadable"
+// (L15), and a file with no holding is read but cannot be accepted (L14).
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStore, renumberAudit } from '../../../app/src/ui/store.ts';
 import type { AppState } from '../../../app/src/ui/store.ts';
 import type { LogoAsset } from '../../../app/src/ui/wiring.ts';
-import { AS_ON_30_SEP_2026, HIGH_RESULT, fakeWiring, memoryPrefs, sampleBytes } from '../../helpers/sample-review.ts';
+import { AS_ON_30_SEP_2026, HIGH_RESULT, NOW, fakeWiring, memoryPrefs, sampleBytes } from '../../helpers/sample-review.ts';
+import { slotView } from '../../../app/src/ui/upload-slot.ts';
+import { loadBaseFile } from '../../../app/src/ingest/load-base.ts';
+import { loadSheetJS } from '../../helpers/sheetjs.ts';
 
 const LOGO: LogoAsset = {
   id: 'uploaded', label: 'Uploaded logo', widthPx: 1, heightPx: 1,
@@ -58,7 +62,45 @@ describe('stages and accept', () => {
     store.dispatch({ type: 'accept' });
     assert.equal(calls.compute.length, 0);
     store.dispatch({ type: 'file-picked', fileName: 'broken.throws', bytes: new Uint8Array([1]) });
-    assert.deepEqual(store.get().upload.error, { kind: 'unreadable', message: 'reader failed' });
+    // An exception of the reader is the app's failure, not the file's: never "unreadable" (L15).
+    assert.deepEqual(store.get().upload.error, { kind: 'review-failed', message: 'reader failed' });
+    assert.equal(store.get().upload.stage, 'upload');
+    store.dispatch({ type: 'accept' });
+    assert.equal(calls.compute.length, 0);
+  });
+
+  test('an exception of the engine on Accept: "review-failed", no review, and Accept refused until another file', () => {
+    const { wiring, calls } = fakeWiring();
+    const failing = { ...wiring, computeReview: (): never => { throw new Error('engine failed'); } };
+    const store = createStore({ wiring: failing, prefs: memoryPrefs().prefs, logos: [] });
+    store.dispatch({ type: 'file-picked', fileName: 'syn-standard.xlsx', bytes: sampleBytes('standard') });
+    store.dispatch({ type: 'accept' });
+    const s = store.get();
+    assert.deepEqual(s.upload.error, { kind: 'review-failed', message: 'engine failed' });
+    assert.equal(s.upload.stage, 'validate');
+    assert.ok(s.upload.loaded, 'the file read stays on screen with its import report');
+    assert.equal(s.review, null);
+    assert.equal(s.vm, null);
+    assert.equal(calls.load.length, 1);
+    store.dispatch({ type: 'accept' });
+    assert.equal(store.get().review, null, 'Accept stays refused');
+  });
+
+  test('a file with no holding (plain text named .xlsx) is read but refused: Accept does nothing (L14)', () => {
+    const { wiring, calls } = fakeWiring();
+    const xlsx = loadSheetJS();
+    const real = { ...wiring, loadBaseFile: (bytes: Uint8Array, fileName: string) => loadBaseFile(bytes, fileName, xlsx, { now: NOW }) };
+    const store = createStore({ wiring: real, prefs: memoryPrefs().prefs, logos: [] });
+    store.dispatch({ type: 'file-picked', fileName: 'notes.xlsx', bytes: new TextEncoder().encode('This is not a workbook.\n') });
+    const u = store.get().upload;
+    assert.equal(u.stage, 'validate');
+    assert.equal(u.loaded?.base.holdings.length, 0);
+    assert.equal(u.error, null);
+    assert.equal(slotView(u).chip, 'Refused');
+    store.dispatch({ type: 'accept' });
+    assert.equal(store.get().upload.stage, 'validate');
+    assert.equal(store.get().review, null);
+    assert.equal(calls.compute.length, 0, 'the engine never runs for a refused file');
   });
 
   test('an answer re-reads the kept bytes with the answers', () => {

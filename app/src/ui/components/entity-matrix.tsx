@@ -1,21 +1,15 @@
 // The client or distributor allocation matrix: asset classes and products down, clients (or distributors) across,
 // each column with its market value and share. With fewer than two columns the matrix is hidden behind one line
-// (OD-21, KI-092), as the workbook leaves out its sheet.
+// (OD-21, KI-092), as the workbook leaves out its sheet; with no column at all (no included holding) the line says
+// so (L14). The words are ui/matrix-text.ts.
 
 import type { EntityMatrixVM } from '../../views/overview-vm.ts';
 import { FigureCell } from './figure-text.tsx';
+import { hiddenMatrixSentence } from '../matrix-text.ts';
 
 export function EntityMatrix({ matrix, unitHeader }: { matrix: EntityMatrixVM; unitHeader: string }) {
-  const who = matrix.level === 'client' ? 'client' : 'distributor';
   if (!matrix.shown) {
-    const only = matrix.columns[0];
-    return (
-      <p class="lead">
-        {matrix.level === 'client' ? 'Single client' : 'Single distributor'}
-        {only ? `: ${only.label} holds every included holding.` : ': no included holding.'}
-        {` No ${who} matrix is shown, and the workbook has no ${matrix.title} sheet.`}
-      </p>
-    );
+    return <p class="lead">{hiddenMatrixSentence(matrix)}</p>;
   }
   const id = `matrix-${matrix.level}`;
   return (

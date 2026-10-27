@@ -11,6 +11,7 @@ import { PieChart } from '../components/pie-chart.tsx';
 import { EntityMatrix } from '../components/entity-matrix.tsx';
 import { Notes } from '../components/notes.tsx';
 import { Downloads } from '../components/downloads.tsx';
+import { matrixNote } from '../matrix-text.ts';
 
 export const OVERVIEW_EMPTY = 'Nothing to show yet: upload and accept a base file in section 1.';
 
@@ -42,11 +43,11 @@ export function S2Overview({ store, state, chart }: { store: Store; state: AppSt
         </div>
       </Group>
 
-      <Group id="group-clients" title="Client allocation" note={vm.matrices.client.shown ? `${vm.matrices.client.columns.length} clients` : 'Single client'}>
+      <Group id="group-clients" title="Client allocation" note={matrixNote(vm.matrices.client)}>
         <EntityMatrix matrix={vm.matrices.client} unitHeader={vm.meta.unitHeader} />
       </Group>
 
-      <Group id="group-distributors" title="Distributor allocation" note={vm.matrices.distributor.shown ? `${vm.matrices.distributor.columns.length} distributors` : 'Single distributor'}>
+      <Group id="group-distributors" title="Distributor allocation" note={matrixNote(vm.matrices.distributor)}>
         <EntityMatrix matrix={vm.matrices.distributor} unitHeader={vm.meta.unitHeader} />
       </Group>
 

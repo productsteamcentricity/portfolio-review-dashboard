@@ -146,10 +146,12 @@ function SectionPanel({ section, focusRequest, content }: { section: Section; fo
   useEffect(() => {
     const heading = headingRef.current;
     if (focusRequest === 0 || !heading) return;
-    // Focus without the browser's own scroll, then place the heading just below the pinned header (D-037): the
-    // browser would leave a heading that is already on screen where it is, under the header.
+    // Focus without the browser's own scroll, then place the review bar, which sits above the section, just below the
+    // pinned header (D-037; M1.4 fix L1), with the focused heading under it: the browser would leave a heading that is
+    // already on screen where it is, under the header. Without the review bar the heading is placed there.
     heading.focus({ preventScroll: true });
-    const top = heading.getBoundingClientRect().top + window.scrollY - headerOffset();
+    const anchor = document.querySelector<HTMLElement>('.review-bar') ?? heading;
+    const top = anchor.getBoundingClientRect().top + window.scrollY - headerOffset();
     window.scrollTo(0, Math.max(0, top));
   }, [section.id, focusRequest]);
   return (

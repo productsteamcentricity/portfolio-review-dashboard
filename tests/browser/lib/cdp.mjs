@@ -4,9 +4,9 @@
 //
 // Exports: sleep, findBrowser, Cdp, launch, openPage, allowDownloads (Browser.setDownloadBehavior), KEY_MODIFIERS,
 // and the colour helpers parseRgb, luminance and contrast (WCAG 2).
-// A page from openPage has navigate, reload, viewport, eval, addInitScript, press (with modifiers, so Shift+Tab is a
-// real key press), hover, click, axNames, setFiles (DOM.setFileInputFiles) and the requests, console messages,
-// exceptions and log entries it saw.
+// A page from openPage has navigate, reload, viewport, eval, waitFor (polls an expression), addInitScript, press (with
+// modifiers, so Shift+Tab is a real key press), hover, click, axNames, setFiles (DOM.setFileInputFiles), screenshot
+// (Page.captureScreenshot to a PNG file) and the requests, console messages, exceptions and log entries it saw.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -236,6 +236,26 @@ export async function openPage(cdp) {
       names.push(nodes[0]?.name?.value ?? null);
     }
     return names;
+  };
+  // Polls an expression in the page until it returns a truthy value (returned), or until `ms` have passed (returns the
+  // last value, so the caller's check reports what the page showed).
+  page.waitFor = async (expression, ms = 10000, every = 100) => {
+    let v;
+    for (let waited = 0; waited <= ms; waited += every) {
+      v = await page.eval(expression);
+      if (v) return v;
+      await sleep(every);
+    }
+    return v;
+  };
+  // A PNG of the page, or of a rectangle of it in page coordinates ({ x, y, width, height }), written to `file`.
+  page.screenshot = async (file, clip) => {
+    const params = { format: 'png', captureBeyondViewport: Boolean(clip) };
+    if (clip) params.clip = { ...clip, scale: 1 };
+    const { data } = await cdp.send('Page.captureScreenshot', params, sessionId);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, Buffer.from(data, 'base64'));
+    return file;
   };
   // Picks local files in an <input type="file">, as a person choosing them in the file dialog does; the page then
   // receives its change event.

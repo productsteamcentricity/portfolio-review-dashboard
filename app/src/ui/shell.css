@@ -351,11 +351,13 @@ table.arriving tbody tr:nth-child(even) td { background: var(--c-cream); }
   font-size: 0.9rem;
   cursor: pointer;
 }
-.btn:hover { background: var(--c-sand); }
+.btn:not(:disabled):not([aria-disabled="true"]):hover { background: var(--c-sand); }
 .btn-primary { background: var(--c-gold); border-color: var(--c-goldDeep); color: var(--c-ink); font-weight: bold; }
-.btn-primary:hover { background: var(--c-tan); }
+.btn-primary:not(:disabled):not([aria-disabled="true"]):hover { background: var(--c-tan); }
 .btn-small { padding: 0.15rem 0.55rem; font-size: 0.8rem; }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* A button that is not available keeps the focus when it has it (aria-disabled, L13); it looks like a disabled one. */
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+.btn[aria-busy="true"] { cursor: progress; }
 .btn:focus-visible, .file-input:focus-visible, .field input:focus-visible, .choice input:focus-visible,
 .table-scroll:focus-visible {
   outline: 3px solid var(--c-ink);
@@ -428,12 +430,15 @@ table.data tr.row-total > * { border-top: 2px solid var(--c-ink); }
 table.data tr.row-product > th { padding-left: 1.6rem; }
 .marker { font-size: 0.7em; margin-left: 0.1em; color: var(--c-textLabel); }
 .mono { font-family: Consolas, "Courier New", monospace; font-size: 0.85em; }
+/* A full SHA-256 (64 hex digits) wraps inside its cell instead of widening the table (L18). */
+.hash { overflow-wrap: anywhere; word-break: break-all; }
 
 /* Charts: two pies side by side, one under the other on a narrow screen. */
 .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem 1.5rem; }
 .chart { margin: 0; }
 .chart figcaption { margin: 0 0 0.35rem; font-size: 0.9rem; font-weight: bold; color: var(--c-textBody); }
-.chart-box { position: relative; height: 20rem; }
+/* The canvas holds the pie, the same label band above and below it, the legend and its bottom padding (L2). */
+.chart-box { position: relative; height: 23.5rem; }
 .chart-list { margin: 0.35rem 0 0; padding-left: 1.2rem; font-size: 0.9rem; }
 
 .note-list { margin: 0; padding-left: 1.4rem; font-size: 0.9rem; color: var(--c-textFootnote); }
@@ -456,6 +461,6 @@ table.data tr.row-product > th { padding-left: 1.6rem; }
   .ledger { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ledger-value { font-size: 20px; }
   .charts { grid-template-columns: minmax(0, 1fr); }
-  .chart-box { height: 18rem; }
+  .chart-box { height: 22rem; }
   .group-cols { grid-template-columns: minmax(0, 1fr); }
 }

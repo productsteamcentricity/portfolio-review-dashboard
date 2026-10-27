@@ -1,6 +1,7 @@
 // The import report (Validate and Preview stages): what the reader read and from where, the rows it skipped by
 // reason with their row numbers, the holdings excluded and listed (OD-8), the open XIRR question with one-click
-// answers (OD-3), and the state of instrument matching (M2). Renders views/import-report.ts.
+// answers (OD-3), and the state of instrument matching (M2). Renders views/import-report.ts. The file's SHA-256 is
+// shown in full, in monospace, wrapping inside its cell (L18); the source register keeps the short form.
 
 import type { ImportReportVM } from '../../views/import-report.ts';
 import type { XirrUnitChoice } from '../../model/validation.ts';
@@ -22,7 +23,7 @@ export function ImportReport({ report, answers, onAnswer }: {
                 <tr><th scope="row">File</th><td>{report.fileName}</td></tr>
                 <tr><th scope="row">Sheet and header row</th><td>{report.sheet ? `${report.sheet.name}, row ${report.sheet.headerRow}` : 'none found'}</td></tr>
                 <tr><th scope="row">Money columns in</th><td>{report.moneyUnit}</td></tr>
-                <tr><th scope="row">SHA-256</th><td><span class="mono" title={report.sha256}>{report.sha256.slice(0, 16)}</span></td></tr>
+                <tr><th scope="row">SHA-256</th><td><span class="mono hash" id="base-file-sha256">{report.sha256}</span></td></tr>
                 <tr>
                   <th scope="row">Sheets looked at</th>
                   <td>{report.sheetsTried.map((s) => `${s.sheet}: ${s.outcome}${s.headerRow ? ` (row ${s.headerRow})` : ''}`).join('; ')}</td>
@@ -68,7 +69,7 @@ export function ImportReport({ report, answers, onAnswer }: {
 
       {report.questions.length > 0 ? <h4>Questions before the values are used</h4> : null}
       {report.questions.map((q) => (
-        <div class="upload-slot" key={q.id} role="group" aria-label={`Question about ${q.column}`}>
+        <div class="upload-slot question" key={q.id} role="group" aria-label={`Question about ${q.column}`}>
           <p><strong>{q.column}</strong>: {q.prompt}</p>
           <p class="field-help">{q.evidence}</p>
           <div class="actions">

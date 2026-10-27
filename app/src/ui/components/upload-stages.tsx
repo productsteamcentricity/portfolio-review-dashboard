@@ -1,6 +1,7 @@
 // The stage strip of an upload (architecture §13.1; R4): Upload, Validate, Preview, Review as pills joined by arrows.
-// The current stage is tan, the stages done carry a tick, later ones are outlined. Once the file is read and
-// validated, its Preview is shown with it, so the store's 'validate' stage shows Preview as current.
+// The current stage is tan, the stages done carry a tick, later ones are outlined. It shows the stage of
+// ui/upload-slot.ts shownStage, as the source register does (L12): Preview for a file read and waiting for Accept,
+// Validate for a file refused or failed there.
 
 import type { UploadStage } from '../../model/source.ts';
 
@@ -11,10 +12,11 @@ const STAGES: ReadonlyArray<{ id: UploadStage; label: string }> = [
   { id: 'review', label: 'Review' },
 ];
 
-/** The index of the current stage in the strip for the store's stage. */
+/** The index of the current stage in the strip for the stage shown. */
 export function currentStageIndex(stage: UploadStage | null): number {
   if (stage === null || stage === 'upload') return 0;
-  if (stage === 'validate' || stage === 'preview') return 2;
+  if (stage === 'validate') return 1;
+  if (stage === 'preview') return 2;
   return 3;
 }
 

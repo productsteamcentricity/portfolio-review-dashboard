@@ -23,8 +23,11 @@
 //      control at the end of a long section walks back through the header without moving the page; the focus ring
 //      has a contrast of 3:1 or more against the background it is drawn on, on the black current tab, on a sand tab
 //      and on the MF Screener link; and a control in a section that is under the pinned header when it receives
-//      focus with the Tab key is scrolled clear of the header (CONTROLS_UNDER_HEADER: a test-only button here; the
-//      integration adds section 1's own controls);
+//      focus with the Tab key is scrolled clear of the header (CONTROLS_UNDER_HEADER: a test-only button and section
+//      1's own controls);
+//   3d. (M1.4 fix round, L1) after a real click on each of the nine tabs from the end of a long section, at 1440 x 900
+//      and 1366 x 768, the review bar sits at or below the pinned header's bottom and the focused heading is clear of
+//      the header; at 375 px the review bar is 16 px from the top with the focused heading below it;
 //   4. the page requests nothing but itself;
 //   5. IndexedDB: a record written by the page is read back after a reload and after a browser restart with the
 //      same profile (the store of the MF Screener data pack, D-026);
@@ -50,9 +53,10 @@ const DIST = path.join(ROOT, 'app', 'dist', 'index.html');
 const ALL_VENDOR_ENTRY = 'tests/fixtures/next-build/uses-all-vendor.js';
 
 // Controls the "scrolled clear of the pinned header" gate (3c) focuses with the Tab key: a test-only button the gate
-// injects into section 1, and section 1's own base-file input (visible, so tabbable) and as-on date input (M1.4).
-// The Accept button is disabled, so not tabbable, until a file is read; tests/browser/overview.cdp.mjs reaches it.
-const CONTROLS_UNDER_HEADER = ['.spike-control', '#base-file-input', '#as-on-date'];
+// injects into section 1, and section 1's own base-file input, Accept button and as-on date input (M1.4). Since the
+// M1.4 fix round (L13) the Accept button is aria-disabled, not disabled, so it is tabbable before a file is read;
+// tests/browser/overview.cdp.mjs repeats the gate with a file read.
+const CONTROLS_UNDER_HEADER = ['.spike-control', '#base-file-input', '#accept-file', '#as-on-date'];
 
 // ---------------------------------------------------------------------------------------------------------------
 // Page probes (evaluated in the page; the CDP evaluation itself is not subject to the page's CSP)
@@ -284,6 +288,29 @@ const PLACE_UNDER_HEADER = (selector) => `(() => {
   const top = Math.round(el.getBoundingClientRect().top);
   return { found: true, before: before ? (before.dataset.section || before.className || before.tagName) : null, headerBottom, top, under: top < headerBottom };
 })()`;
+// (L1, M1.4 fix round) Where the review bar and the section's heading are against the pinned header, and what has focus.
+const REVIEW_BAR_PLACE = `(() => {
+  const header = document.querySelector('.app-header').getBoundingClientRect();
+  const bar = document.querySelector('.review-bar');
+  const b = bar ? bar.getBoundingClientRect() : null;
+  const h2 = document.querySelector('#app h2');
+  const f = document.activeElement;
+  return {
+    headerBottom: Math.round(header.bottom),
+    barTop: b ? Math.round(b.top) : null,
+    barBottom: b ? Math.round(b.bottom) : null,
+    heading: h2 ? h2.id : null,
+    headingTop: h2 ? Math.round(h2.getBoundingClientRect().top) : null,
+    focused: !f || f === document.body ? 'body' : (f.id || f.tagName),
+    innerHeight,
+    scrollY: Math.round(scrollY),
+  };
+})()`;
+// The centre of a tab in the pinned header, without scrolling anything (a real click lands on it where it is).
+const TAB_CENTRE = (id) => `(() => {
+  const r = document.querySelector('nav a[data-section="${id}"]').getBoundingClientRect();
+  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+})()`;
 const CONTROL_PLACE = (selector) => `(() => {
   const el = document.querySelector(${JSON.stringify(selector)});
   return { focused: document.activeElement === el, top: Math.round(el.getBoundingClientRect().top), headerBottom: Math.round(document.querySelector('.app-header').getBoundingClientRect().bottom) };
@@ -492,6 +519,21 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
           start.focused && JSON.stringify(walk.map((x) => x.focused)) === JSON.stringify(wantOrder) && moved.length === 0,
           { start: start.scrollY, walk: walk.map((x) => `${x.focused}@${x.scrollY}`) });
       }
+      // L1 (M1.4 fix round): a real click on each tab, from the end of a long section, at 1440 x 900 and 1366 x 768: the
+      // review bar sits at or below the pinned header's bottom, and the focused heading under it is clear of the header.
+      for (const [w, h] of [[1440, 900], [1366, 768]]) {
+        await page.viewport(w, h);
+        const placed = [];
+        for (const id of sectionIds) {
+          await page.eval(LONG_AND_SCROLLED);
+          await page.click(await page.eval(TAB_CENTRE(id)));
+          placed.push({ id, ...(await page.eval(REVIEW_BAR_PLACE)) });
+        }
+        const bad = placed.filter((p) => !(p.focused === `${p.id}-title` && p.heading === `${p.id}-title` && p.barTop !== null
+          && p.barTop >= p.headerBottom && p.headingTop >= p.headerBottom));
+        expect(`${w} px: a real click on each of the nine tabs shows the review bar below the pinned header and the focused heading clear of it (L1)`,
+          placed.length === 9 && bad.length === 0, bad.length ? bad : placed.map((p) => `${p.id}: bar ${p.barTop} >= header ${p.headerBottom}, h2 ${p.headingTop}`).join('; '));
+      }
       // A bookmarked section address, opened in a short window: its heading lands below the pinned header.
       for (const w of [1440, 1024]) {
         await page.viewport(w, 400);
@@ -588,9 +630,12 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
       await page.eval(LONG_AND_SCROLLED);
       await page.eval(FOCUS(link('taxation')));
       await page.press('Enter');
-      const ph2 = await page.eval(LAYOUT);
-      expect('375 px: Enter on a tab at the end of a long section puts its heading 16 px from the top, ring in view',
-        ph2.focused === 'taxation-title' && ph2.focusedTop >= 12 && ph2.focusedTop <= 20, ph2);
+      const ph2 = await page.eval(REVIEW_BAR_PLACE);
+      // Nothing is pinned at 375 px: the review bar above the section is placed 16 px from the top (L1), and the
+      // focused heading under it, with its ring, is in view.
+      expect('375 px: Enter on a tab at the end of a long section puts the review bar 16 px from the top and its focused heading below it, in view',
+        ph2.focused === 'taxation-title' && ph2.barTop >= 12 && ph2.barTop <= 20 && ph2.headingTop >= ph2.barBottom
+          && ph2.headingTop + 40 <= ph2.innerHeight, ph2);
       await page.viewport(1440, 900);
       await page.eval(GOTO('uploads'));
 
