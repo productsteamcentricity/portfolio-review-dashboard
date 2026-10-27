@@ -7,7 +7,6 @@
       "title": "Uploads and inputs",
       "summary": "The client's files, the analyst's inputs and the month's reference data that a review starts from. Every upload will pass the Upload, Validate, Preview and Review stages before it feeds the review.",
       "arriving": [
-        { "milestone": "M1.4", "what": "Base file upload with the Upload, Validate, Preview and Review stages, the import report, the editable family label and the disclaimer in use" },
         { "milestone": "M2", "what": "Fund monitor uploads, read by column name, with their data dates" },
         { "milestone": "M3", "what": "Transactions (IRR) file, and the analyst's price file for direct equity" },
         { "milestone": "M4", "what": "PMS and AIF look-through statements and bond holdings, as two clear inputs" },
@@ -31,7 +30,6 @@
       "title": "Portfolio overview",
       "summary": "The family's portfolio at a glance.",
       "arriving": [
-        { "milestone": "M1.4", "what": "Headline figures, asset and product allocation, and client and distributor allocation, with the first slide and workbook sheets" },
         { "milestone": "M4", "what": "AMC concentration" },
         { "milestone": "M7", "what": "IPS compliance" }
       ]

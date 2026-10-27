@@ -99,6 +99,18 @@ h2[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
   flex-wrap: nowrap;
   overflow-x: auto;
   gap: 2px;
+  /* Where the row scrolls sideways its scrollbar is slim, in the tab colours (R9). */
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-grey75) var(--c-sand);
+}
+/* Below 80rem the row may scroll. A few px of padding under the tabs keep a scrollbar laid over the row (on phones)
+   off a focused tab's ring; each tab reaches down over that padding in its own colour, so the tabs still sit on the
+   black rule. */
+@media (max-width: 79.98rem) {
+  .nav-sections { padding-bottom: 5px; }
+  .nav-sections a { box-shadow: 0 5px 0 var(--c-sand); }
+  .nav-sections a:hover { box-shadow: 0 5px 0 var(--c-tan); }
+  .nav-sections a[aria-current="page"] { box-shadow: 0 5px 0 var(--c-ink); }
 }
 .nav-sections a {
   display: flex;
@@ -216,3 +228,234 @@ table.arriving tbody tr:nth-child(even) td { background: var(--c-cream); }
 .app-footer { margin-top: 1.75rem; padding: 0.6rem 1rem; background: var(--c-ink); color: var(--c-tan); font-size: 0.8rem; text-align: center; }
 .app-footer p { margin: 0; }
 .noscript-note { background: var(--c-white); border: 1px solid var(--c-grey85); padding: 1rem; }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   Sections 1 and 2 (M1.4), in the look of the owner's design reference (D-037 point 3; R4). Colours come from
+   tokens.json only; every text colour on its background has a contrast of 4.5:1 or more
+   (tests/unit/ui/contrast.test.ts). textSub is never used for text. */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The review bar: a slim row at the top of the section area, under the tabs (logo, family label, as-on date). */
+.review-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  margin: -0.5rem 0 1rem;
+  padding: 0.35rem 0 0.5rem;
+  border-bottom: 1px solid var(--c-grey85);
+  font-size: 0.9rem;
+  color: var(--c-textBody);
+}
+.review-logo { display: block; height: 28px; width: auto; max-width: 9rem; object-fit: contain; }
+.review-family { font-weight: bold; color: var(--c-ink); }
+.review-item { color: var(--c-textLabel); }
+.review-item strong { color: var(--c-textBody); font-weight: normal; }
+
+/* Groups: a bordered box whose header band is sand, with an uppercase heading and an optional note on the right. */
+.group { margin: 0 0 1.25rem; border: 1px solid var(--c-grey85); border-radius: 4px; background: var(--c-white); }
+.group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--c-sand);
+  border-bottom: 1px solid var(--c-grey85);
+  border-radius: 4px 4px 0 0;
+}
+.group-head h3 {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--c-ink);
+}
+.group-note { font-size: 0.85rem; color: var(--c-textLabel); }
+.group-body { padding: 0.75rem 0.85rem 0.85rem; }
+.group-body > :first-child { margin-top: 0; }
+.group-body > :last-child { margin-bottom: 0; }
+.group h4 { margin: 1rem 0 0.4rem; font-size: 0.95rem; }
+.group-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1rem 1.5rem; }
+
+/* Upload slot: dashed; a loaded file turns the border solid tan, an error solid red. */
+.upload-slot {
+  padding: 0.75rem 0.85rem;
+  border: 1.5px dashed var(--c-grey75);
+  border-radius: 4px;
+  background: var(--c-white);
+}
+.upload-slot.is-loaded { border-style: solid; border-color: var(--c-tan); }
+.upload-slot.is-error { border-style: solid; border-color: var(--c-negative); }
+.upload-slot p { margin: 0.35rem 0; }
+.upload-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.file-input { max-width: 100%; font: inherit; font-size: 0.9rem; }
+
+/* The stage strip: Upload, Validate, Preview, Review as small pills joined by arrows. */
+.stages { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 0.6rem 0; padding: 0; }
+.stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.6rem;
+  border: 1px solid var(--c-grey75);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--c-textLabel);
+  background: var(--c-white);
+}
+.stages > li { display: inline-flex; align-items: center; gap: 0.35rem; }
+.stage-arrow { color: var(--c-textLabel); font-size: 0.8rem; }
+.stage-done { color: var(--c-textBody); border-color: var(--c-tan); }
+.stage-tick { color: var(--c-ok); font-weight: bold; }
+.stage-current { background: var(--c-tan); border-color: var(--c-tan); color: var(--c-ink); font-weight: bold; }
+
+/* Status chips with a dot. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: nowrap;
+  background: var(--c-infoBg);
+  color: var(--c-textBody);
+}
+.chip::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: currentColor; flex: none; }
+.chip-ok { background: var(--c-okBg); color: var(--c-ok); }
+.chip-warn { background: var(--c-warnBg); color: var(--c-warn); }
+.chip-crit { background: var(--c-critBg); color: var(--c-crit); }
+.chip-idle { background: var(--c-infoBg); color: var(--c-textBody); }
+
+/* Buttons: outlined in ink; the primary action gold with a deeper gold border and black bold text; disabled at 45%
+   with the gate's reason beside it. */
+.btn {
+  display: inline-block;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--c-ink);
+  border-radius: 4px;
+  background: var(--c-white);
+  color: var(--c-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.btn:hover { background: var(--c-sand); }
+.btn-primary { background: var(--c-gold); border-color: var(--c-goldDeep); color: var(--c-ink); font-weight: bold; }
+.btn-primary:hover { background: var(--c-tan); }
+.btn-small { padding: 0.15rem 0.55rem; font-size: 0.8rem; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:focus-visible, .file-input:focus-visible, .field input:focus-visible, .choice input:focus-visible,
+.table-scroll:focus-visible {
+  outline: 3px solid var(--c-ink);
+  outline-offset: 2px;
+}
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin: 0.75rem 0 0; }
+.gate-reason { font-size: 0.85rem; color: var(--c-textLabel); }
+.gate-reasons { margin: 0.4rem 0 0; padding-left: 1.2rem; font-size: 0.85rem; color: var(--c-textLabel); }
+
+/* Form fields. */
+.field { display: flex; flex-direction: column; gap: 0.2rem; margin: 0 0 0.75rem; max-width: 26rem; }
+.field label, .field-label { font-size: 0.8rem; font-weight: bold; letter-spacing: 0.04em; text-transform: uppercase; color: var(--c-textLabel); }
+.field input[type="text"], .field input[type="date"] {
+  font: inherit;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--c-grey75);
+  border-radius: 4px;
+  background: var(--c-white);
+  color: var(--c-textBody);
+}
+.field-plain label { font-weight: normal; letter-spacing: 0; text-transform: none; font-size: 0.9rem; color: var(--c-textBody); }
+.field-help { margin: 0; font-size: 0.85rem; color: var(--c-textLabel); }
+.field-error { margin: 0; font-size: 0.85rem; color: var(--c-negative); }
+.choices { list-style: none; margin: 0 0 0.5rem; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
+.choice { display: inline-flex; align-items: center; gap: 0.35rem; }
+.logo-preview { display: block; height: 40px; width: auto; max-width: 12rem; object-fit: contain; margin: 0.25rem 0 0.5rem; }
+
+/* KPI tiles as a ledger: cells divided by 1px grey85 lines; 4 or 5 per row on a wide screen, 2 at 52rem or less. */
+.ledger {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--c-grey85);
+  border-left: 1px solid var(--c-grey85);
+}
+.ledger-cell {
+  padding: 0.6rem 0.85rem 0.7rem;
+  border-right: 1px solid var(--c-grey85);
+  border-bottom: 1px solid var(--c-grey85);
+  background: var(--c-white);
+}
+.ledger-label { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-textLabel); }
+.ledger-value { display: block; margin-top: 0.15rem; font-size: 22px; font-weight: bold; color: var(--c-ink); font-variant-numeric: tabular-nums; }
+.ledger-value.neg { color: var(--c-negative); }
+
+/* Tables: black header row in small uppercase white letters, zebra rows in cream, numbers right-aligned in tabular
+   figures, negatives in red with a hyphen-minus. A wide table scrolls inside its own box, never the page. */
+.table-scroll { max-width: 100%; overflow-x: auto; margin: 0 0 0.75rem; }
+table.data { width: 100%; border-collapse: collapse; font-size: 0.9rem; background: var(--c-white); }
+table.data caption { text-align: left; font-size: 0.85rem; font-weight: bold; padding: 0 0 0.35rem; color: var(--c-textBody); }
+table.data th, table.data td { padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--c-grey85); text-align: left; vertical-align: top; }
+table.data thead th {
+  background: var(--c-ink);
+  color: var(--c-white);
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: none;
+}
+table.data tbody tr:nth-child(even) > * { background: var(--c-cream); }
+table.data .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.data thead th.num { text-align: right; }
+table.data .neg { color: var(--c-negative); }
+table.data tbody th { font-weight: normal; }
+table.data tr.row-asset > *, table.data tr.row-total > * { font-weight: bold; }
+table.data tr.row-total > * { border-top: 2px solid var(--c-ink); }
+table.data tr.row-product > th { padding-left: 1.6rem; }
+.marker { font-size: 0.7em; margin-left: 0.1em; color: var(--c-textLabel); }
+.mono { font-family: Consolas, "Courier New", monospace; font-size: 0.85em; }
+
+/* Charts: two pies side by side, one under the other on a narrow screen. */
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem 1.5rem; }
+.chart { margin: 0; }
+.chart figcaption { margin: 0 0 0.35rem; font-size: 0.9rem; font-weight: bold; color: var(--c-textBody); }
+.chart-box { position: relative; height: 20rem; }
+.chart-list { margin: 0.35rem 0 0; padding-left: 1.2rem; font-size: 0.9rem; }
+
+.note-list { margin: 0; padding-left: 1.4rem; font-size: 0.9rem; color: var(--c-textFootnote); }
+.note-list li { margin: 0.15rem 0; }
+.plain-list { margin: 0.25rem 0 0; padding-left: 1.2rem; }
+.lead { margin: 0 0 0.6rem; }
+.muted { color: var(--c-textLabel); }
+.problem { color: var(--c-negative); }
+
+/* Validation panel: one block per severity. */
+.severity { margin: 0 0 0.75rem; }
+.severity-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.75rem; margin: 0 0 0.35rem; }
+.severity-head h4 { margin: 0; font-size: 0.95rem; }
+.issue-list { list-style: none; margin: 0; padding: 0; }
+.issue { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; padding: 0.35rem 0; border-top: 1px solid var(--c-grey85); }
+.issue-text { flex: 1 1 24rem; }
+.issue-meta { font-size: 0.8rem; color: var(--c-textLabel); }
+
+@media (max-width: 52rem) {
+  .ledger { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ledger-value { font-size: 20px; }
+  .charts { grid-template-columns: minmax(0, 1fr); }
+  .chart-box { height: 18rem; }
+  .group-cols { grid-template-columns: minmax(0, 1fr); }
+}
