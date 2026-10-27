@@ -18,6 +18,27 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   (deterministic). `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
 
 ### Added
+- **The capital-gains upload design for M7 (CR-0006, D-036, amending D-032).** Documents only; no code, `/next/` and
+  `index.html` unchanged. The upload accepts the wealth platform's "Capital Gain Report" export as produced (columns
+  by header name, PAN removed at read time, folio parsed from the instrument name, totals row reconciled, footer text
+  never kept, exactly repeated rows put to the analyst), with a blank template of the same headers for other sources;
+  lots are classed (non-taxable or taxable consolidation, grandfathered, indexed cost shown, standard, other) and indicative tax is computed per person and
+  financial year from the dated tax-rule table v1 (§10, approved by the financial-domain reviewer on 27 Oct 2026), with the slab rate, surcharge rate and regime the analyst enters per person and year.
+  Revised on 27 Oct 2026 after a financial, a completeness and a security review (the design's §10.11: decision ids
+  TR-n, the rule key with the listed flag and sub-type, the category map, the merger date gates, one repeats answer
+  per sale event, the footer and totals rules, set-off and exemption order, the validation ids, the known answers and
+  the tests), and again the same day after the financial and completeness re-reviews (long-term losses set off before
+  short-term losses, successor lots after a taxable merger, the Sectoral and Thematic default flagged, funds of funds
+  never equity-oriented on the statement's Equity label, the valid rule keys, known answers KA-18 and KA-19, and the
+  lead's two defaults put to the owner), a third time after their approval reviews (the old-law NE-LT-1 choice
+  made per lot before set-off, with known answer KA-20; a person-year with lots not computed shown as PARTIAL
+  COVERAGE, known answer KA-21; the analyst's class on a fund of funds; the successor re-base formula; each fixture's
+  analyst inputs recorded), and a fourth time after the second approval reviews (no claim that the per-lot NE-LT-1
+  choice is the lower, with the year's-total figure shown beside it, known answer KA-22; the 90/90 class per year).
+  Approved by the financial-domain reviewer on 27 Oct 2026. Design: `docs/new-build/capital-gains-upload.md`, with its synthetic fixture generator;
+  `docs/DATA_DICTIONARY.md` v0.4 (§3, §5.5, §5.17, §6, §7, §8), PRD 0.5 (R-IN-6, R-TX-3), parity rows E-141, E-150 to
+  E-156, U-71, U-72 and BR-3.1 (385 rows), the test plan's capital-gains fixtures, cases and test rows (§4, §5.6,
+  AC-20), the roadmap's M7 scope and acceptance, D-036.
 - **Milestone M1.3 of the new build (CR-0006): the shared model, the base-file reader, the reference data and the
   parity ledger.** No page uses them yet: the `/next/` shell builds to the same bytes (42,280 bytes, SHA-256
   `e74e8a07…`). `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).

@@ -26,7 +26,10 @@
     D-024 to D-033, and gave Claude full charge of GitHub and the dashboard (D-033). In short: Screener scores and
     ranks never in a public page, the pack uploaded by the owner each cycle and kept in the browser (D-026); missing
     values keep the dash, sentences never use one (D-029); a fund pair overlaps from 35% (D-030); capital-gains
-    statements in our own template (D-032); no branch ruleset (D-033). Data and return conventions are in D-023; the
+    statements as the wealth platform's own export, accepted as produced, with a blank template of the same headers
+    for other sources (D-032 as amended by D-036, 23 Oct 2026; design in
+    [`new-build/capital-gains-upload.md`](new-build/capital-gains-upload.md), revised 27 Oct 2026 after three
+    reviews, two re-reviews, two approval reviews and two second approval reviews, the design and its tax-rule table approved by the financial-domain reviewer on 27 Oct 2026); no branch ruleset (D-033). Data and return conventions are in D-023; the
     Index TRI files are its index data.
   - **Milestone M1.1 is complete once its last branch merges** (next step 4; the root README's two-apps section,
     the one item left over, is written in M1.2's records). Merged in PR #10 (`2a65a62`): the safety tooling
@@ -107,7 +110,14 @@
      "Gold" (BF-19), letter case of Asset Names (BF-26), a market value of 0, and, for M1.4, a Crore cell that is not
      a number beside a Lakh amount (KI-147);
    - count, privately, how often the real base files carry variant asset labels (letter case, spacing, synonyms):
-     it sizes KI-145 and KI-146 on the live page.
+     it sizes KI-145 and KI-146 on the live page;
+   - ask the wealth platform's support whether its capital-gains export repeats lot rows by design (D-036; the
+     sample repeated whole sales, and its own totals include the repeats);
+   - answer the other owner items of the capital-gains design
+     ([`new-build/capital-gains-upload.md`](new-build/capital-gains-upload.md) §15): the dated rule table in place of
+     OD-17's bands and OD-2's single 12-month test; anniversary-day sales; numbering PANs in memory to group persons;
+     for the tax adviser, the FY 2016-17 index and the old-law 10% or 20% choice; and confirming the lead's two
+     defaults (the FY 2024-25 exemption order, and the reckoner's usual bucket from tax year 2026-27).
    ND-1 to ND-10 were answered on 22 Oct 2026 (D-024 to D-033).
    OD-29 to OD-36 were accepted on 21 Oct 2026 (D-022); OD-32 (renamed fund houses) and OD-34 ("AMC not given")
    are built in fix batch 2a (PR #9, merged), with KI-124 (empty Home slide export).

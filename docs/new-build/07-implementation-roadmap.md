@@ -251,10 +251,13 @@ dashboard (D-033); every other question proceeds on its default.
 
 ### M7 Taxation, cost, IPS, Current vs Sample, MF Analysis (brief phases 3 §7 and §9) (L)
 - **Scope.** E-41 to E-43 with OD-2, OD-12, OD-15, OD-16, OD-17, OD-27, N-2 (Q-52); E-141 capital-gains statement
-  upload (section 1) in the app's own capital-gains template (D-032): fix the template's columns from the proposal in
-  `docs/DATA_DICTIONARY.md` §5.17 (the owner's sample format may inform it), generate the blank template with its Read
-  Me for download, and build `ingest/capital-gains.ts` for it alone (by header name; a file without the required
-  columns refused with them named; no per-issuer layouts); realised gains by source and the reconciliation with
+  upload (section 1): the platform's capital-gains export accepted as produced, with a blank template of the same
+  headers and a Read Me for other sources (D-032 as amended by D-036; design in `capital-gains-upload.md`, columns in
+  `docs/DATA_DICTIONARY.md` §5.17): `ingest/capital-gains.ts` (by header name; PAN removed at read; footer, repeated
+  rows and reconciliation; a file without the required columns refused with them named; no per-issuer layouts),
+  lot classes, the dated tax-rule table v1 (approved by the financial-domain reviewer on 27 Oct 2026) with
+  its category map, and indicative tax per person and financial year with the analyst's rates and regime per person
+  and year (E-150 to E-156, U-71, U-72); realised gains by source and the reconciliation with
   IRR-derived gains; E-144 tax rules
   as a versioned owner table with effective dates and a generated tax-rules summary for compliance sign-off (Q-82);
   lots grouped by assessee (architecture §6.8, Q-79); E-60 cost chain with OD-9 and one shared Regular/Direct switch
@@ -265,14 +268,19 @@ dashboard (D-033); every other question proceeds on its default.
   E-63 MF Analysis with one risk resolver (KI-053), the age gate (E-12) and the rationale modal, whose verdicts feed
   the rebalancing rationale drafts through the model instead of `window.__MFA_DATA` (U-30 to U-35). Components C-12,
   C-18, C-19, C-25, C-26, C-34 to C-38. Sheets Tax and Transactions, Cost.
-- **Acceptance.** `AC-18` incomplete tax and transaction data (including a statement in the template that disagrees
-  with the IRR-derived gains, a file not in the template refused with the missing columns named, and no statement at
-  all); `unit/ingest/capital-gains.test.ts` (the blank template downloaded by the app, filled with the synthetic
-  `cg-statement` rows, loads without loss; the financial year from the sale date at the 31 March and 1 April
-  boundary; rupees to Crore); tax reconciliation (long + short + unclassified = CMV); a unit-priced holding with a
+- **Acceptance.** Before any code: the financial-domain reviewer approves the tax-rule table v1 of
+  `capital-gains-upload.md` §10, recorded in its change log (given 27 Oct 2026). `AC-18` incomplete tax and transaction data (including a
+  statement, the platform export or the blank template, that disagrees with the IRR-derived gains, a file without the
+  required columns refused with them named, and no statement at all); `unit/ingest/capital-gains.test.ts` (the blank
+  template downloaded by the app, filled with the synthetic `cg-statement` rows, loads without loss; the financial year
+  from the sale date at the 31 March and 1 April boundary; rupees to Crore for display; the expected validation
+  results by id, every id of the design's §11 exercised); `unit/tax/rules.test.ts`, `unit/tax/lots.test.ts` and
+  `unit/tax/rollup.test.ts` (the known answers KA-1 to KA-22 of `cg-known-answers.json`); `unit/views/cg-import.test.ts`
+  and `unit/views/tax-view.test.ts`; `exports/xlsx/cg-template.test.ts`; `exports/xlsx/tax-transactions.test.ts` (no
+  PAN-shaped string in the workbook; the deck's PAN check is gated in M9 by AC-20); tax reconciliation (long + short + unclassified = CMV); a unit-priced holding with a
   merge gap in units is never reconciled by amount (the gap is told from a product without units by
   `Holding.mergeGaps`, never by reason text; `docs/DATA_DICTIONARY.md` §8, parity entry BF-18); harvesting set-off known
-  answers; exemption already used computed from the statement; IPS known answer per row; weighted cost known answer;
+  answers; exemption already used computed from the statement per person; IPS known answer per row; weighted cost known answer;
   `unit/views/cost-controls.test.ts` (distributor filter re-bases, override at 350 bps round-trips, reset, per
   review); `unit/views/cvs-controls.test.ts` (Reset to Actual, Re-seed from plan, edited cells marked and kept across
   a recompute); `unit/views/mfa-rationale.test.ts` (the modal's paragraphs and verdict equal the engine's, which the
@@ -421,7 +429,7 @@ owner except the switch-over sign-off; only data not yet supplied holds anything
 | M1.3 model, base-file ingest, data extraction, fixtures | M12 real data: the Screener backfill (month-end holdings from 31 Mar 2026); the index data is the Index TRI files already supplied |
 | M2 matcher, classification, header-driven parsers (aliases need approval per OD-5 before they ship) | Client use of any `/next/` output: only after switch-over (D-024) |
 | Engine parts of M3, M4, M5 (thresholds approved, D-030; other defaults from the open questions), including the D-023 return methods | M15 sign-off |
-| M7 capital-gains template and its parser (D-032) | |
+| M7 capital-gains reader for the platform export and the blank template (D-032, D-036; tax-rule table approved first) | |
 | M10 pack parser, validation and the browser store on synthetic packs (the contract is written; D-026) | |
 | M11 classification, fingerprinting, idempotency and publication of approved files (D-023, D-026) | |
 | M12 history, FoF and drawdown engines on synthetic data | |
