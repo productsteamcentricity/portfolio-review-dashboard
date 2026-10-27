@@ -72,8 +72,10 @@ test('Holdings freezes column A too; the overview rows carry the house fills', (
   assert.equal(fillOf(`G${product}`), null, 'product rows plain');
 });
 
-/** Money in Indian grouping, the conditional pattern of units (D-039 point 5). */
-const MONEY = '[>=10000000]##\\,##\\,##\\,##0.00;[>=100000]##\\,##\\,##0.00;##,##0.00';
+/** Money in Indian grouping, the conditions at the rounding edge (D-039 point 5; fix round 2, N8). */
+const MONEY = '[>=9999999.995]##\\,##\\,##\\,##0.00;[>=99999.995]##\\,##\\,##0.00;##,##0.00';
+/** Percent with grouped thousands (N9). */
+const PCT = '#,##0.00"%"';
 
 test('number formats: money, percent, units with Indian grouping, dates', () => {
   const st = standard.styles!;
@@ -83,12 +85,12 @@ test('number formats: money, percent, units with Indian grouping, dates', () => 
   };
   assert.equal(fmt('Holdings (as loaded)', 'X2'), MONEY);
   assert.equal(fmt('Holdings (as loaded)', 'V2'), MONEY);
-  assert.equal(fmt('Holdings (as loaded)', 'AF2'), '0.00"%"');
-  assert.equal(fmt('Holdings (as loaded)', 'T2'), '[>=10000000]##\\,##\\,##\\,##0.000;[>=100000]##\\,##\\,##0.000;##,##0.000');
+  assert.equal(fmt('Holdings (as loaded)', 'AF2'), PCT);
+  assert.equal(fmt('Holdings (as loaded)', 'T2'), '[>=9999999.9995]##\\,##\\,##\\,##0.000;[>=99999.9995]##\\,##\\,##0.000;##,##0.000');
   assert.equal(fmt('Holdings (as loaded)', 'R2'), 'd mmm yyyy');
   assert.equal(fmt('Portfolio Overview', 'G2'), MONEY);
-  assert.equal(fmt('Portfolio Overview', 'H2'), '0.00"%"');
-  assert.equal(fmt('Portfolio Overview', 'K2'), '0.00"%"');
+  assert.equal(fmt('Portfolio Overview', 'H2'), PCT);
+  assert.equal(fmt('Portfolio Overview', 'K2'), PCT);
 });
 
 test('_manifest: hidden, protected without a password, the schema and build stamps, one row per formula', () => {

@@ -528,10 +528,10 @@ export function officeSampleCases(): Array<{ id: string; bytes: Uint8Array; edit
   const formats = [
     { sheet: Hs, cell: 'A2', numberFormat: 'General' },
     { sheet: Hs, cell: 'X2', numberFormat: NUM_FMT_CODES.money },
-    { sheet: Hs, cell: 'AF2', numberFormat: '0.00"%"' },
+    { sheet: Hs, cell: 'AF2', numberFormat: NUM_FMT_CODES.pct },
     { sheet: Hs, cell: 'R2', numberFormat: 'd mmm yyyy' },
     { sheet: 'Portfolio Overview', cell: 'G2', numberFormat: NUM_FMT_CODES.money },
-    { sheet: 'Portfolio Overview', cell: 'H2', numberFormat: '0.00"%"' },
+    { sheet: 'Portfolio Overview', cell: 'H2', numberFormat: NUM_FMT_CODES.pct },
   ];
   const cases: Array<[SampleName, { sheet: string; cell: string } | null]> = [
     ['standard', null], ['lakh', null], ['blank-invested', null], ['zero-cmv', { sheet: Hs, cell: 'Z6' }], ['all-classes', null],

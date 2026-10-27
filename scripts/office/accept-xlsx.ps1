@@ -6,19 +6,27 @@ Written by scripts/office/run-acceptance.ts, which also writes the expected valu
 and the text each view-model figure must show (its display, without the marker).
 The script opens the workbook read-only in a new, invisible Excel; detects a repair; recalculates fully; compares
 every expected formula cell with Excel's value at 1e-9 relative; compares the text Excel shows (Range.Text) with the
-screen's text for every figure of the _manifest and every sample text cell; checks frozen panes, filters, the hidden
-sheet, names, fonts, number formats and the red of a negative cell; edits one input and compares the recalculated
+screen's text for every figure of the _manifest and every sample text cell; checks frozen panes, each filter's range
+as Excel holds it after the open (AutoFilter.Range.Address(False, False)) against the file's, the hidden sheet,
+names, fonts, number formats and the red of a negative cell; edits one input and compares the recalculated
 dependents; then closes without saving and quits only the Excel it started.
 Quitting: every COM object of the checks lives inside the function Invoke-WorkbookChecks, so none is reachable once it
-returns; the workbook is closed and released, the garbage collector runs twice, then Excel is asked to quit and given
-15 seconds. Only then, as a last resort, is that one Excel process stopped (excelKilled in the report).
+returns; the workbook is closed and released and the garbage collector runs twice. Excel is then asked to quit only
+when it holds no workbook and shows no window; otherwise the workbook or window is not the script's, and that Excel is
+handed back as it was, never quit or stopped ("notKilled"). After Quit the script waits up to 75 seconds (after a
+refused open Excel can take about 60 seconds to exit). Only then, as a last resort, is that one Excel process stopped
+(excelKilled in the report), and only when it is still the process the script started (its ProcessName and the
+StartTime recorded at launch), held 0 workbooks at Quit and shows no window. The watchdog, a separate process for a
+hang, makes the same process checks and never stops an Excel that shows a window. Every Stop-Process of the script
+goes through Stop-OwnProcess, which makes those checks.
 The report is JSON (synthetic data only). Exit code 0 when every check passed, 1 when one failed, 2 when not run.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$Path,
   [Parameter(Mandatory = $true)][string]$Expected,
   [Parameter(Mandatory = $true)][string]$Report,
-  [int]$TimeoutSeconds = 180
+  [int]$TimeoutSeconds = 180,
+  [int]$QuitWaitSeconds = 75
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,7 +39,8 @@ function Add-Check([string]$name, [bool]$ok, $detail) {
 $result = [ordered]@{
   tool = 'accept-xlsx.ps1'; file = $Path; ran = $false; pass = $false; excel = $null; opened = $false
   repaired = $false; repairEvidence = @(); checks = $checks; notRunReason = $null
-  excelQuit = $false; excelKilled = $false; quitSeconds = $null
+  excelQuit = $false; excelKilled = $false; quitSeconds = $null; workbooksAtQuit = $null; notKilled = $null
+  watchdogFired = $false
 }
 function Write-Report {
   $result.pass = $result.ran -and (@($checks | Where-Object { -not $_.ok }).Count -eq 0)
@@ -50,6 +59,25 @@ $exp = Get-Content -LiteralPath $Expected -Raw -Encoding UTF8 | ConvertFrom-Json
 Add-Type -Namespace AcceptXlsx -Name Native -MemberDefinition @'
 [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(System.IntPtr hWnd, out int processId);
 '@
+
+# The process with this id, only while it is still the one recorded at launch (same ProcessName and StartTime);
+# $null when it has exited or the id now names another process.
+function Get-OwnProcess([int]$id, [string]$name, [long]$startTicks) {
+  $p = Get-Process -Id $id -ErrorAction SilentlyContinue
+  if ($p -eq $null) { return $null }
+  try {
+    if ($p.ProcessName -ne $name -or $p.StartTime.ToFileTimeUtc() -ne $startTicks) { return $null }
+  } catch { return $null }
+  return $p
+}
+# Every Stop-Process of the script: only the process recorded at launch, and (Excel) only while it shows no window.
+function Stop-OwnProcess([int]$id, [string]$name, [long]$startTicks, [switch]$WindowAllowed) {
+  $p = Get-OwnProcess $id $name $startTicks
+  if ($p -eq $null) { return $false }
+  if (-not $WindowAllowed -and $p.MainWindowHandle -ne [System.IntPtr]::Zero) { return $false }
+  Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
+  return $true
+}
 
 $errorNames = @{
   -2146826281 = '#DIV/0!'; -2146826246 = '#N/A'; -2146826259 = '#NAME?'; -2146826288 = '#NULL!'
@@ -181,15 +209,19 @@ function Invoke-WorkbookChecks($xl) {
     }
     Add-Check 'frozen panes on every visible sheet' $freezeOk @($freezeOut)
 
-    # Filters.
+    # Filters: on every data sheet, over the range the file declares. Excel extends a filter to a row that touches
+    # it when it opens a file, so the range is read as Excel holds it (the share row stays out: D-039 point 5, N7).
     $filterOut = New-Object System.Collections.ArrayList
     $filterOk = $true
-    foreach ($name in $exp.filters) {
-      $ws = $wb.Worksheets.Item([string]$name)
-      if (-not $ws.AutoFilterMode) { $filterOk = $false }
-      [void]$filterOut.Add("$($name): AutoFilterMode $($ws.AutoFilterMode)")
+    foreach ($fl in @($exp.filters)) {
+      $ws = $wb.Worksheets.Item([string]$fl.sheet)
+      $mode = [bool]$ws.AutoFilterMode
+      $address = ''
+      if ($mode) { $address = [string]$ws.AutoFilter.Range.Address($false, $false) }
+      if (-not $mode -or $address -ne [string]$fl.ref) { $filterOk = $false }
+      [void]$filterOut.Add("$($fl.sheet): AutoFilterMode $mode, range $address, file $($fl.ref)")
     }
-    Add-Check 'AutoFilterMode on every data sheet' $filterOk @($filterOut)
+    Add-Check 'AutoFilterMode on every data sheet, over the range the file declares' $filterOk @($filterOut)
 
     # Hidden and protected sheets.
     foreach ($name in $exp.hidden) {
@@ -256,7 +288,7 @@ function Invoke-Collect {
   for ($k = 0; $k -lt 2; $k++) { [GC]::Collect(); [GC]::WaitForPendingFinalizers() }
 }
 
-$xl = $null; $excelPid = $null; $watchdog = $null
+$xl = $null; $excelPid = $null; $excelStart = $null; $watchdog = $null; $watchdogStart = $null
 try {
   try {
     $xl = New-Object -ComObject Excel.Application
@@ -268,11 +300,18 @@ try {
   $result.excel = "$($xl.Version) build $($xl.Build)"
   [int]$procId = 0
   [void][AcceptXlsx.Native]::GetWindowThreadProcessId([System.IntPtr]$xl.Hwnd, [ref]$procId)
-  $excelPid = $procId
-  # Watchdog: a separate process that stops only this Excel if the script hangs.
-  $watchdog = Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -PassThru -ArgumentList @(
-    '-NoProfile', '-NonInteractive', '-Command',
-    "Start-Sleep -Seconds $TimeoutSeconds; Stop-Process -Id $excelPid -Force -ErrorAction SilentlyContinue")
+  # The Excel this script started, by its id, name and start time (a new instance: COM never hands out a person's).
+  $own = Get-Process -Id $procId -ErrorAction SilentlyContinue
+  if ($procId -ne 0 -and $own -ne $null -and $own.ProcessName -eq 'EXCEL') {
+    $excelPid = $procId
+    $excelStart = $own.StartTime.ToFileTimeUtc()
+    # Watchdog for a hang: a separate process that stops only this Excel (same id, name and start time) and never
+    # while it shows a window.
+    $watchdog = Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -PassThru -ArgumentList @(
+      '-NoProfile', '-NonInteractive', '-Command',
+      "Start-Sleep -Seconds $TimeoutSeconds; `$p = Get-Process -Id $excelPid -ErrorAction SilentlyContinue; if (`$p -and `$p.ProcessName -eq 'EXCEL' -and `$p.StartTime.ToFileTimeUtc() -eq $excelStart -and `$p.MainWindowHandle -eq 0) { Stop-Process -Id $excelPid -Force -ErrorAction SilentlyContinue }")
+    try { $watchdogStart = $watchdog.StartTime.ToFileTimeUtc() } catch { $watchdogStart = $null }
+  }
   $xl.Visible = $false
   $xl.DisplayAlerts = $false
   $xl.ScreenUpdating = $false
@@ -284,27 +323,54 @@ try {
 } catch {
   Add-Check 'script completed' $false $_.Exception.Message
 } finally {
-  # Every COM object of the checks is out of scope: collect twice, then quit and release Excel, and collect again.
+  # Every COM object of the checks is out of scope: collect twice. Quit only an Excel that holds no workbook (the
+  # script's is closed) and shows no window; a workbook or a window then is someone else's, and that Excel is handed
+  # back as it was: alerts, screen updating and events on, under the person's control, never quit or stopped.
   Invoke-Collect
+  # A watchdog that has exited already fired: it stopped the hung Excel, so there is nothing left to quit.
+  if ($watchdog -ne $null -and $watchdog.HasExited) { $result.watchdogFired = $true }
+  $leftAlone = $false
   if ($xl -ne $null) {
-    try { $xl.Quit() } catch { }
-    [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($xl)
+    if (-not $result.watchdogFired) {
+      $books = -1; $visible = $true
+      try { $books = [int]$xl.Workbooks.Count } catch { }
+      try { $visible = [bool]$xl.Visible } catch { }
+      $result.workbooksAtQuit = $books
+      if ($books -eq 0 -and -not $visible) {
+        try { $xl.Quit() } catch { }
+      } else {
+        try { $xl.DisplayAlerts = $true; $xl.ScreenUpdating = $true; $xl.EnableEvents = $true; $xl.UserControl = $true } catch { }
+        $result.notKilled = "Excel holds $books workbook(s) (visible $visible) that are not the script's: not quit, not killed"
+        $leftAlone = $true
+      }
+    }
+    try { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($xl) } catch { }
     $xl = $null
   }
   Invoke-Collect
-  if ($excelPid) {
+  # The watchdog is stopped before the wait, so the wait alone decides.
+  if ($watchdog -ne $null -and -not $result.watchdogFired -and $watchdogStart -ne $null) {
+    [void](Stop-OwnProcess $watchdog.Id 'powershell' $watchdogStart -WindowAllowed)
+  }
+  if ($excelPid -and -not $leftAlone) {
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    while ((Get-Process -Id $excelPid -ErrorAction SilentlyContinue) -and $sw.Elapsed.TotalSeconds -lt 15) { Start-Sleep -Milliseconds 200 }
-    if (Get-Process -Id $excelPid -ErrorAction SilentlyContinue) {
-      # Last resort: this Excel was started by the script, holds only the script's workbook, and did not quit.
-      Stop-Process -Id $excelPid -Force -ErrorAction SilentlyContinue
+    while ((Get-OwnProcess $excelPid 'EXCEL' $excelStart) -and $sw.Elapsed.TotalSeconds -lt $QuitWaitSeconds) { Start-Sleep -Milliseconds 200 }
+    $p = Get-OwnProcess $excelPid 'EXCEL' $excelStart
+    if ($p -eq $null) {
+      if ($result.watchdogFired) { $result.excelKilled = $true }
+      else {
+        $result.excelQuit = $true
+        $result.quitSeconds = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
+      }
+    } elseif ($result.workbooksAtQuit -ne 0) {
+      $result.notKilled = "Excel held $($result.workbooksAtQuit) workbook(s) at Quit: not killed"
+    } elseif (Stop-OwnProcess $excelPid 'EXCEL' $excelStart) {
+      # Last resort: the script's own invisible Excel, with no workbook, did not exit in $QuitWaitSeconds s.
       $result.excelKilled = $true
     } else {
-      $result.excelQuit = $true
-      $result.quitSeconds = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
+      $result.notKilled = 'Excel shows a window that is not the script''s: not killed'
     }
   }
-  if ($watchdog -ne $null) { Stop-Process -Id $watchdog.Id -Force -ErrorAction SilentlyContinue }
 }
 Write-Report
 if ($result.pass) { exit 0 } else { exit 1 }

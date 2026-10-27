@@ -165,7 +165,8 @@ test('an edited CMV recalculates its dependents to the hand recomputation', () =
   near(at({ asset: 'Equity' }, 'I'), 2.987 - 1.65, 'Equity gain');
   near(at({ asset: 'Grand Total' }, 'J'), ((4.353 - 2.85) / 2.85) * 100, 'absolute return');
   near(at({ asset: 'Debt' }, 'G'), 0.896, 'Debt unchanged');
+  // The share row is the last; the Grand Total sits two rows above it, past the blank row (N7).
   const share = sheetTable(sheetByName(b.wb, 'Client Allocation')).length;
   near(after.get(`Client Allocation!D${share}`), (2.973 / 4.353) * 100, 'client A share');
-  near(after.get(`Client Allocation!F${share - 1}`), 4.353, 'client grand total');
+  near(after.get(`Client Allocation!F${share - 2}`), 4.353, 'client grand total');
 });

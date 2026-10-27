@@ -7,10 +7,13 @@
 //   node scripts/office/run-acceptance.ts --check-file <path.xlsx>            evaluator-only check, no Office
 //
 // For each workbook it writes the file, expected.json (every formula cell's value from tests/helpers/formula-eval.ts,
-// the edit case, the frozen panes, filters and sample formats, and the screen's text of every figure the _manifest
-// places, which Excel's Range.Text must equal: D-039, display rounding agrees with Excel) and a negative control (sheetViews moved after
-// sheetData, which Excel must repair), then runs accept-xlsx.ps1 in Windows PowerShell 5.1 and collects its report.
-// Decks go through accept-pptx.ps1 with their inventory.json. The combined report.json holds synthetic data only.
+// the edit case, the frozen panes, each sheet's autoFilter range as the file declares it (Excel's own range must
+// equal it: N7, a filter Excel grows over the share row fails), the sample formats, and the screen's text of every
+// figure the _manifest places, which Excel's Range.Text must equal: D-039, display rounding agrees with Excel) and a
+// negative control (sheetViews moved after sheetData, which Excel must repair), then runs accept-xlsx.ps1 in Windows
+// PowerShell 5.1 and collects its report. Decks go through accept-pptx.ps1 with their inventory.json. The combined
+// report.json holds synthetic data only. Each result line names whether Office quit or had to be stopped
+// (excelKilled, negativeControl.excelKilled; powerpointKilled for decks: N15).
 // The PowerShell scripts run under the session's execution policy: where it refuses scripts, the run is reported as
 // not run, never as passed. Exit code 0 when every check passed.
 
@@ -132,6 +135,18 @@ export function expectedTexts(c: XlsxCase, wb: ReadWorkbook = readXlsx(c.bytes))
   return out;
 }
 
+/**
+ * Each visible sheet's autoFilter range as the file declares it ("A1:G11"). accept-xlsx.ps1 compares it with Excel's
+ * AutoFilter.Range.Address(False, False) after the open, so a filter Excel extends (over the share row of the client
+ * and distributor sheets, N7) fails.
+ */
+export function autoFilterRanges(wb: ReadWorkbook): Array<{ sheet: string; ref: string }> {
+  return wb.sheets.flatMap((s) => {
+    const f = kid(s.root, 'autoFilter');
+    return f && s.state === 'visible' ? [{ sheet: s.name, ref: f.attrs.ref ?? '' }] : [];
+  });
+}
+
 export function expectedFor(c: XlsxCase): Record<string, unknown> {
   const wb = readXlsx(c.bytes);
   const ev = readWorkbookForEval(c.bytes);
@@ -159,7 +174,7 @@ export function expectedFor(c: XlsxCase): Record<string, unknown> {
     formulas,
     edit,
     freeze,
-    filters: wb.sheets.filter((s) => kid(s.root, 'autoFilter') && s.state === 'visible').map((s) => s.name),
+    filters: autoFilterRanges(wb),
     hidden: wb.sheets.filter((s) => s.state !== 'visible').map((s) => s.name),
     formats: c.formats.map((f) => ({ ...f, font: 'Cambria', size: 9 })),
     unitsText: c.unitsText,
@@ -200,8 +215,9 @@ type PsReport = { pass?: boolean; ran?: boolean; repaired?: boolean; opened?: bo
 function runPs(script: string, args: string[], reportPath: string): PsReport {
   if (process.platform !== 'win32') return { ran: false, pass: false, notRunReason: 'not Windows' };
   fs.rmSync(reportPath, { force: true });
+  // Up to 180 s of checks under the script's watchdog, then up to 75 s for Office to quit: 480 s leaves room.
   const r = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script, ...args, '-Report', reportPath],
-    { encoding: 'utf8', timeout: 300_000, windowsHide: true });
+    { encoding: 'utf8', timeout: 480_000, windowsHide: true });
   if (!fs.existsSync(reportPath)) {
     const out = `${r.stdout ?? ''}${r.stderr ?? ''}`;
     const policy = /running scripts is disabled|cannot be loaded|execution polic/i.test(out);
@@ -226,9 +242,25 @@ export function acceptXlsx(c: XlsxCase, outDir: string): Record<string, unknown>
   const negativeDetected = neg.ran === true && (neg.repaired === true || neg.opened === false);
   return {
     id: c.id, bytes: c.bytes.length, nodeChecks: node, excel: main,
-    negativeControl: { detected: negativeDetected, ran: neg.ran, repaired: neg.repaired, opened: neg.opened, evidence: neg.repairEvidence, notRunReason: neg.notRunReason, excelQuit: neg.excelQuit, excelKilled: neg.excelKilled },
+    negativeControl: { detected: negativeDetected, ran: neg.ran, repaired: neg.repaired, opened: neg.opened, evidence: neg.repairEvidence, notRunReason: neg.notRunReason, excelQuit: neg.excelQuit, excelKilled: neg.excelKilled, quitSeconds: neg.quitSeconds, notKilled: neg.notKilled },
     verdict: main.ran !== true || neg.ran !== true ? 'not run' : main.pass === true && negativeDetected && node.pass ? 'pass' : 'fail',
   };
+}
+
+/**
+ * The console line of one result: the verdict, the case, and whether Office quit by itself or was stopped as a last
+ * resort, for the main file and for its negative control (N15: "negativeControl.excelKilled=false").
+ */
+export function summaryLine(r: Record<string, unknown>): string {
+  const head = `${String(r.verdict).toUpperCase().padEnd(8)} ${String(r.id)}`;
+  const neg = (r.negativeControl ?? {}) as Record<string, unknown>;
+  const flag = (v: unknown): string => (v === true ? 'true' : v === false ? 'false' : 'not run');
+  if (r.excel !== undefined) {
+    const main = r.excel as Record<string, unknown>;
+    return `${head}  excelKilled=${flag(main.excelKilled)} negativeControl.excelKilled=${flag(neg.excelKilled)}`;
+  }
+  const main = (r.powerpoint ?? {}) as Record<string, unknown>;
+  return `${head}  powerpointKilled=${flag(main.powerpointKilled)} negativeControl.powerpointKilled=${flag(neg.powerpointKilled)}`;
 }
 
 export function acceptPptx(c: PptxCase, outDir: string): Record<string, unknown> {
@@ -262,7 +294,7 @@ async function spikeCases(): Promise<XlsxCase[]> {
     formats: [
       { sheet: H, cell: 'A2', numberFormat: 'General' },
       { sheet: H, cell: 'F2', numberFormat: NUM_FMT_CODES.money },
-      { sheet: 'Portfolio Overview', cell: 'F2', numberFormat: '0.00"%"' },
+      { sheet: 'Portfolio Overview', cell: 'F2', numberFormat: NUM_FMT_CODES.pct },
       { sheet: H, cell: 'I2', numberFormat: 'd mmm yyyy' },
     ],
     unitsText: { sheet: H, cell: 'E4', text: '1,50,000.000' },
@@ -315,7 +347,11 @@ async function main(): Promise<number> {
   const verdict = verdicts.every((v) => v === 'pass') ? 'pass' : verdicts.some((v) => v === 'fail') ? 'fail' : 'not run';
   const report = { mode, verdict, node: process.version, results };
   fs.writeFileSync(path.join(outDir, `report-${mode}.json`), JSON.stringify(report, null, 1));
-  for (const r of results) console.log(`${String(r.verdict).toUpperCase().padEnd(8)} ${r.id}`);
+  for (const r of results) console.log(summaryLine(r));
+  const killed = (pick: (r: Record<string, unknown>) => unknown): number => results.filter((r) => pick(r) === true).length;
+  const books = results.filter((r) => r.excel !== undefined);
+  console.log(`Excel stopped as a last resort: ${killed((r) => (r.excel as Record<string, unknown> | undefined)?.excelKilled)} of ${books.length} workbooks, `
+    + `${killed((r) => (r.excel !== undefined ? (r.negativeControl as Record<string, unknown>).excelKilled : undefined))} of ${books.length} negative controls`);
   console.log(`${mode}: ${verdict}; report ${path.relative(REPO, path.join(outDir, `report-${mode}.json`))}`);
   return verdict === 'pass' ? 0 : 1;
 }

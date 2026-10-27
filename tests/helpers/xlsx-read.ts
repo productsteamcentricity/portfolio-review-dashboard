@@ -309,3 +309,17 @@ export function sheetByName(wb: ReadWorkbook, name: string): ReadSheet {
   if (!s) throw new Error(`xlsx-read: no sheet ${name}; sheets are ${wb.sheets.map((x) => x.name).join(', ')}`);
   return s;
 }
+
+/** The built-in number formats a workbook may use without declaring them (ECMA-376 Part 1, 18.8.30), as far as read. */
+const BUILTIN_NUM_FMTS: ReadonlyMap<number, string> = new Map([[0, 'General'], [1, '0'], [2, '0.00'], [3, '#,##0'], [4, '#,##0.00'], [49, '@']]);
+
+/** The number format code of a cell ("General" for a cell without a style); an unknown format id is an error. */
+export function numberFormatAt(wb: ReadWorkbook, sheet: string, ref: string): string {
+  const cell = sheetByName(wb, sheet).cells.get(ref);
+  if (!cell || !wb.styles) return 'General';
+  const xf = wb.styles.xfs[cell.s];
+  if (!xf) throw new Error(`xlsx-read: ${sheet}!${ref} has the unknown style ${cell.s}`);
+  const code = wb.styles.numFmts.get(xf.numFmtId) ?? BUILTIN_NUM_FMTS.get(xf.numFmtId);
+  if (code === undefined) throw new Error(`xlsx-read: ${sheet}!${ref} has the unknown number format ${xf.numFmtId}`);
+  return code;
+}

@@ -521,6 +521,43 @@ export function overviewFixtures(xlsx: SheetJS = loadSheetJS(), host?: LegacyHos
   return out;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// The Office acceptance variants (M1.4 fix round 2: N9 and N13). Kept apart from overviewVariants, so the
+// aggregation parity suite and its ledger do not take them in; tests/helpers/node-wiring.ts serves them by id.
+
+/** The six-classes variant: the asset of each holding and its market value and invested value in Lakh. */
+export const SIX_CLASSES: ReadonlyArray<{ asset: string; mvLakh: number; investedLakh: number }> = [
+  { asset: 'Equity', mvLakh: 15, investedLakh: 12 },
+  { asset: 'Debt', mvLakh: 15, investedLakh: 14 },
+  { asset: 'Hybrid', mvLakh: 10, investedLakh: 8 },
+  { asset: 'Commodity', mvLakh: 5, investedLakh: 4 },
+  { asset: 'REITs/InvITs', mvLakh: 10, investedLakh: 9 },
+  { asset: '', mvLakh: 45, investedLakh: 40 },
+];
+
+/**
+ * The Office acceptance variants of a book of six or more holdings (`prefix` "syn" for SYNTHETIC_BOOK):
+ *  - six-classes (N13): the six holdings in the six classes of the asset order (the last with a blank Asset Name, so
+ *    Unknown, OD-7) at 15, 15, 10, 5, 10 and 45 Lakh: the pie's REITs/InvITs slice runs from 45% to 55% of the circle
+ *    from 12 o'clock, so it is centred on 6 o'clock, and the legend has six entries (two rows on slide C-08);
+ *  - big-return (N9): holding 4, the book's only Commodity holding, invested 1,00,000 rupees (0.01 Cr) at a market
+ *    value of 20,00,000 (0.2 Cr), so Commodity's absolute return is (0.2 - 0.01) / 0.01 x 100 = 1,900.00%.
+ */
+export function officeVariants(xlsx: SheetJS, book: readonly BookRow[], prefix: string): Fixture[] {
+  if (book.length < SIX_CLASSES.length) throw new Error('a book needs at least six holdings for the Office variants');
+  const out: Fixture[] = [];
+  const add = (id: string, description: string, b: readonly BookRow[]): void => {
+    const t = b.reduce((s, h) => s + h.mv, 0);
+    const rows: CellSpec[][] = [headerFor(STANDARD), ...b.map((h, i) => holdingRow(h, STANDARD, t, i))];
+    out.push({ id: `${prefix}-${id}`, description, bytes: toWorkbook(xlsx, [{ name: 'Base File', rows }]) });
+  };
+  add('six-classes', 'one holding in each of the six classes at 15, 15, 10, 5, 10 and 45 Lakh (REITs/InvITs centred on 6 o\'clock; the last Asset Name blank, so Unknown)',
+    book.slice(0, SIX_CLASSES.length).map((h, i) => ({ ...h, asset: SIX_CLASSES[i]!.asset, mv: SIX_CLASSES[i]!.mvLakh * 1e5, invested: SIX_CLASSES[i]!.investedLakh * 1e5 })));
+  add('big-return', 'holding 4 (the only Commodity holding) invested 1,00,000 rupees at a market value of 20,00,000: an absolute return of 1,900.00%',
+    book.map((h, i) => (i === 4 ? { ...h, invested: 100000, mv: 2000000 } : h)));
+  return out;
+}
+
 if (import.meta.main) {
   const outDir = path.resolve(process.argv[2] ?? path.join(REPO, 'test-data', 'new-build'));
   fs.mkdirSync(outDir, { recursive: true });

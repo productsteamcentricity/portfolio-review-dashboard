@@ -12,7 +12,9 @@ script therefore never quits or stops an instance that holds a presentation or a
 reports "not killed" with the reason instead. When PowerPoint is already open with a presentation or a window, the
 script does not open its deck in that instance at all and reports "not run" (exit 2). Every COM object of the checks lives inside the function
 Invoke-DeckChecks; after it returns the garbage collector runs twice before Quit, and the process is stopped only as a
-last resort, when it has no window. Exit code 0 when every check passed, 1 when one failed, 2 when not run.
+last resort, when it has no window and is still the process the script started (its ProcessName and the StartTime
+recorded at launch). Every Stop-Process of the script, the watchdog's included, makes those checks (Stop-OwnProcess).
+Exit code 0 when every check passed, 1 when one failed, 2 when not run.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$Path,
@@ -31,7 +33,7 @@ function Add-Check([string]$name, [bool]$ok, $detail) {
 }
 $result = [ordered]@{
   tool = 'accept-pptx.ps1'; file = $Path; ran = $false; pass = $false; powerpoint = $null; opened = $false
-  wasRunning = $false; quit = $false; powerpointKilled = $false; notKilled = $null; quitSeconds = $null
+  wasRunning = $false; quit = $false; powerpointKilled = $false; notKilled = $null; quitSeconds = $null; watchdogFired = $false
   checks = $checks; pngs = @(); notRunReason = $null
 }
 function Write-Report {
@@ -49,6 +51,25 @@ Add-Type -Namespace AcceptPptx -Name Native -MemberDefinition @'
 
 function Invoke-Collect {
   for ($k = 0; $k -lt 2; $k++) { [GC]::Collect(); [GC]::WaitForPendingFinalizers() }
+}
+
+# The process with this id, only while it is still the one recorded at launch (same ProcessName and StartTime);
+# $null when it has exited or the id now names another process.
+function Get-OwnProcess([int]$id, [string]$name, [long]$startTicks) {
+  $p = Get-Process -Id $id -ErrorAction SilentlyContinue
+  if ($p -eq $null) { return $null }
+  try {
+    if ($p.ProcessName -ne $name -or $p.StartTime.ToFileTimeUtc() -ne $startTicks) { return $null }
+  } catch { return $null }
+  return $p
+}
+# Every Stop-Process of the script: only the process recorded at launch, and (PowerPoint) only while it shows no window.
+function Stop-OwnProcess([int]$id, [string]$name, [long]$startTicks, [switch]$WindowAllowed) {
+  $p = Get-OwnProcess $id $name $startTicks
+  if ($p -eq $null) { return $false }
+  if (-not $WindowAllowed -and $p.MainWindowHandle -ne [System.IntPtr]::Zero) { return $false }
+  Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
+  return $true
 }
 
 # Opens the deck without a window, runs every check and closes it. Every COM object it touches is a local of this
@@ -108,7 +129,7 @@ function Invoke-DeckChecks($pp) {
 }
 
 $result.wasRunning = (@(Get-Process -Name POWERPNT -ErrorAction SilentlyContinue).Count -gt 0)
-$pp = $null; $pptPid = $null; $watchdog = $null; $prevAlerts = $null
+$pp = $null; $pptPid = $null; $pptStart = $null; $watchdog = $null; $watchdogStart = $null; $prevAlerts = $null
 try {
   try {
     $pp = New-Object -ComObject PowerPoint.Application
@@ -136,11 +157,17 @@ try {
     [int]$procId = 0
     try { [void][AcceptPptx.Native]::GetWindowThreadProcessId([System.IntPtr]$pp.HWND, [ref]$procId) } catch { }
     if ($procId -eq 0) { $procId = @(Get-Process -Name POWERPNT -ErrorAction SilentlyContinue | Sort-Object StartTime -Descending)[0].Id }
-    $pptPid = $procId
-    # Watchdog: stops only this PowerPoint if the script hangs, and never while it shows a window (a person's deck).
-    $watchdog = Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -PassThru -ArgumentList @(
-      '-NoProfile', '-NonInteractive', '-Command',
-      "Start-Sleep -Seconds $TimeoutSeconds; `$p = Get-Process -Id $pptPid -ErrorAction SilentlyContinue; if (`$p -and `$p.MainWindowHandle -eq 0) { Stop-Process -Id $pptPid -Force -ErrorAction SilentlyContinue }")
+    $own = Get-Process -Id $procId -ErrorAction SilentlyContinue
+    if ($procId -ne 0 -and $own -ne $null -and $own.ProcessName -eq 'POWERPNT') {
+      $pptPid = $procId
+      $pptStart = $own.StartTime.ToFileTimeUtc()
+      # Watchdog: stops only this PowerPoint (same id, name and start time) if the script hangs, and never while it
+      # shows a window (a person's deck).
+      $watchdog = Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -PassThru -ArgumentList @(
+        '-NoProfile', '-NonInteractive', '-Command',
+        "Start-Sleep -Seconds $TimeoutSeconds; `$p = Get-Process -Id $pptPid -ErrorAction SilentlyContinue; if (`$p -and `$p.ProcessName -eq 'POWERPNT' -and `$p.StartTime.ToFileTimeUtc() -eq $pptStart -and `$p.MainWindowHandle -eq 0) { Stop-Process -Id $pptPid -Force -ErrorAction SilentlyContinue }")
+      try { $watchdogStart = $watchdog.StartTime.ToFileTimeUtc() } catch { $watchdogStart = $null }
+    }
   }
 
   Invoke-DeckChecks $pp
@@ -165,24 +192,31 @@ try {
     $pp = $null
   }
   Invoke-Collect
+  # The watchdog is stopped before the wait, so the wait alone decides; one that has exited already fired.
+  if ($watchdog -ne $null) {
+    if ($watchdog.HasExited) { $result.watchdogFired = $true }
+    elseif ($watchdogStart -ne $null) { [void](Stop-OwnProcess $watchdog.Id 'powershell' $watchdogStart -WindowAllowed) }
+  }
   if ($pptPid -and -not $result.wasRunning -and $result.notKilled -eq $null) {
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    while ((Get-Process -Id $pptPid -ErrorAction SilentlyContinue) -and $sw.Elapsed.TotalSeconds -lt 15) { Start-Sleep -Milliseconds 200 }
-    $p = Get-Process -Id $pptPid -ErrorAction SilentlyContinue
+    while ((Get-OwnProcess $pptPid 'POWERPNT' $pptStart) -and $sw.Elapsed.TotalSeconds -lt 15) { Start-Sleep -Milliseconds 200 }
+    $p = Get-OwnProcess $pptPid 'POWERPNT' $pptStart
     if ($p) {
       if ($p.MainWindowHandle -ne 0) {
         # A window appeared after Quit (a deck opened meanwhile): it is not the script's, so the process stays.
         $result.notKilled = 'PowerPoint shows a window that is not the script''s: not killed'
-      } else {
-        # Last resort: no window and no presentation of anyone else, and it did not quit.
-        Stop-Process -Id $pptPid -Force -ErrorAction SilentlyContinue
+      } elseif (Stop-OwnProcess $pptPid 'POWERPNT' $pptStart) {
+        # Last resort: the script's own PowerPoint, with no window and no presentation of anyone else, did not quit.
         $result.powerpointKilled = $true
+      } else {
+        $result.notKilled = 'PowerPoint changed before the last resort: not killed'
       }
+    } elseif ($result.watchdogFired) {
+      $result.powerpointKilled = $true
     } else {
       $result.quitSeconds = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
     }
   }
-  if ($watchdog -ne $null) { Stop-Process -Id $watchdog.Id -Force -ErrorAction SilentlyContinue }
 }
 Write-Report
 if ($result.pass) { exit 0 } else { exit 1 }

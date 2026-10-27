@@ -110,6 +110,9 @@ function sheetXml(s: SheetSpec, index: number, styles: StyleTable, formulas: Map
     return stringCell(ref, c.header, style);
   }).join('')}</row>`);
   s.rows.forEach((row, ri) => {
+    // A row with no cell at all is a blank row: nothing is written for it, not even a styled empty cell, so Excel
+    // sees an empty row (the gap that keeps the share row out of the autoFilter; entity-allocation.ts).
+    if (row.length === 0) return;
     const r = excelRow(ri);
     const rowStyle = s.rowStyles?.[ri];
     const cells = s.columns.map((col, ci) => {
