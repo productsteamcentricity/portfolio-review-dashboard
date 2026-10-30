@@ -1,3 +1,6 @@
+> **Historical snapshot of 23 Oct 2026, superseded as the entry point on 28 Oct 2026 by [docs/handover/README.md](handover/README.md).**
+> Still refreshed each month for `monthly-prd-check`. Do not treat it as proof of the current repository, branch or integration state; start from that index instead.
+
 # Handover — start here
 
 For a developer (or a Claude Code session) taking over the Centricity Portfolio Review Dashboard
