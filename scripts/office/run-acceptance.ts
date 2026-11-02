@@ -9,17 +9,29 @@
 // For each workbook it writes the file, expected.json (every formula cell's value from tests/helpers/formula-eval.ts,
 // the edit case, the frozen panes, each sheet's autoFilter range as the file declares it (Excel's own range must
 // equal it: N7, a filter Excel grows over the share row fails), the sample formats, and the screen's text of every
-// figure the _manifest places, which Excel's Range.Text must equal: D-039, display rounding agrees with Excel) and a
-// negative control (sheetViews moved after sheetData, which Excel must repair), then runs accept-xlsx.ps1 in Windows
-// PowerShell 5.1 and collects its report. Decks go through accept-pptx.ps1 with their inventory.json. The combined
-// report.json holds synthetic data only. Each result line names whether Office quit or had to be stopped
-// (excelKilled, negativeControl.excelKilled; powerpointKilled for decks: N15).
-// The PowerShell scripts run under the session's execution policy: where it refuses scripts, the run is reported as
-// not run, never as passed. Exit code 0 when every check passed.
+// figure the _manifest places, which Excel's Range.Text must equal: D-039, display rounding agrees with Excel), then
+// runs accept-xlsx.ps1 in Windows PowerShell 5.1 and collects its report. Decks go through accept-pptx.ps1 with their
+// inventory.json. The combined report.json holds synthetic data only.
+//
+// THE OWNER'S RULE (standing rule of 2 Nov 2026; docs/TESTING.md section 6.1; the scripts' headers): the scripts
+// attach only to an Excel or PowerPoint the owner already runs (task list first, then GetActiveObject), open only
+// their own synthetic file read-only without a window (Excel: only that workbook's window is hidden), change no
+// application option, recalculate only their own workbook, close only the file they opened, and never quit, start,
+// stop or kill Office. So:
+//  - a case whose Office is not running (or cannot be attached to) is NOT RUN, never passed; the run then prints the
+//    absolute paths of the synthetic files for the owner to open by hand;
+//  - the damaged-file negative controls (sheetViews moved after sheetData; a deck without slide 1) would raise a
+//    repair prompt on the owner's screen, so they are written but never run: each is reported NOT RUN with its path;
+//  - a script that does not answer within PS_TIMEOUT_MS is abandoned: the run stops waiting, reports TIMEOUT with the
+//    path of the file left open for the owner to close, and leaves every process running (no kill, of Office or of
+//    the PowerShell process).
+// The overall verdict is PASS only when every case ran and passed; FAIL when a case failed or timed out; NOT RUN
+// otherwise. The PowerShell scripts run under the session's execution policy: where it refuses scripts, the run is
+// NOT RUN. Exit code 0 PASS, 1 FAIL, 2 NOT RUN (64 for a usage error).
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { writeWorkbook } from '../../app/src/exports/xlsx/writer.ts';
 import { storeZip } from '../../app/src/exports/zip/store-zip.ts';
@@ -210,74 +222,112 @@ export function negativeDeck(bytes: Uint8Array): Uint8Array {
 // ---------------------------------------------------------------------------------------------------------------
 // PowerShell
 
-type PsReport = { pass?: boolean; ran?: boolean; repaired?: boolean; opened?: boolean; notRunReason?: string | null; [k: string]: unknown };
+export type Verdict = 'pass' | 'fail' | 'not run' | 'timeout';
+type PsReport = {
+  verdict?: Verdict; pass?: boolean; ran?: boolean; repaired?: boolean; opened?: boolean; closed?: boolean;
+  notRunReason?: string | null; leftOpenForOwner?: string | null; [k: string]: unknown;
+};
 
-function runPs(script: string, args: string[], reportPath: string): PsReport {
-  if (process.platform !== 'win32') return { ran: false, pass: false, notRunReason: 'not Windows' };
+/**
+ * How long the run waits for one script: the script's own deadline is 180 s between checks, so 300 s leaves room.
+ * After it the run stops waiting (TIMEOUT) and kills nothing.
+ */
+export const PS_TIMEOUT_MS = 300_000;
+
+/** Why the damaged-file controls are never run (the owner's rule of 2 Nov 2026). */
+export const NEGATIVE_NOT_RUN = 'the damaged-file control would raise a repair prompt on the owner\'s screen, so it never runs against an attached Office (owner\'s rule, 2 Nov 2026); the owner may open it by hand';
+
+/**
+ * Runs one script and reads its report. The script's output goes to a log file next to the report. The child is
+ * detached, so that a run abandoned at PS_TIMEOUT_MS leaves it running (Node never kills it, and its exit does not
+ * end it): the result is then TIMEOUT, with the file left open for the owner.
+ */
+async function runPs(script: string, args: string[], reportPath: string, file: string): Promise<PsReport> {
+  if (process.platform !== 'win32') return { verdict: 'not run', ran: false, pass: false, notRunReason: 'not Windows' };
   fs.rmSync(reportPath, { force: true });
-  // Up to 180 s of checks under the script's watchdog, then up to 75 s for Office to quit: 480 s leaves room.
-  const r = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script, ...args, '-Report', reportPath],
-    { encoding: 'utf8', timeout: 480_000, windowsHide: true });
+  const logPath = reportPath.replace(/\.json$/, '.log');
+  const fd = fs.openSync(logPath, 'w');
+  const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script, ...args, '-Report', reportPath],
+    { stdio: ['ignore', fd, fd], windowsHide: true, detached: true });
+  fs.closeSync(fd);
+  const status = await new Promise<number | null | 'timeout'>((resolve) => {
+    const timer = setTimeout(() => { child.unref(); resolve('timeout'); }, PS_TIMEOUT_MS);
+    child.on('exit', (code) => { clearTimeout(timer); resolve(code); });
+    child.on('error', () => { clearTimeout(timer); resolve(null); });
+  });
+  if (status === 'timeout') {
+    return {
+      verdict: 'timeout', ran: true, pass: false, closed: false, leftOpenForOwner: file, abandonedPid: child.pid ?? null,
+      notRunReason: `no answer within ${PS_TIMEOUT_MS / 1000} s: the run stopped waiting and killed nothing; the owner closes ${file}`,
+    };
+  }
   if (!fs.existsSync(reportPath)) {
-    const out = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+    const out = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
     const policy = /running scripts is disabled|cannot be loaded|execution polic/i.test(out);
-    return { ran: false, pass: false, notRunReason: policy ? 'the execution policy refuses scripts in this session' : `no report (exit ${r.status}): ${out.slice(0, 400)}` };
+    return { verdict: 'not run', ran: false, pass: false, notRunReason: policy ? 'the execution policy refuses scripts in this session' : `no report (exit ${status}): ${out.slice(0, 400)}` };
   }
   return JSON.parse(fs.readFileSync(reportPath, 'utf8').replace(/^\uFEFF/, '')) as PsReport;
 }
 
-export function acceptXlsx(c: XlsxCase, outDir: string): Record<string, unknown> {
+/** One case's verdict: the Node checks first, then the script's own verdict (NOT RUN is never a pass). */
+export function caseVerdict(main: PsReport, nodePass = true): Verdict {
+  if (!nodePass) return 'fail';
+  if (main.verdict === 'timeout') return 'timeout';
+  if (main.ran !== true) return 'not run';
+  return main.pass === true && main.verdict !== 'fail' ? 'pass' : 'fail';
+}
+
+/** The run's verdict: PASS only when every case ran and passed; FAIL when one failed or timed out; else NOT RUN. */
+export function overallVerdict(verdicts: readonly string[]): 'pass' | 'fail' | 'not run' {
+  if (verdicts.some((v) => v === 'fail' || v === 'timeout')) return 'fail';
+  if (verdicts.length > 0 && verdicts.every((v) => v === 'pass')) return 'pass';
+  return 'not run';
+}
+
+export async function acceptXlsx(c: XlsxCase, outDir: string): Promise<Record<string, unknown>> {
   const file = path.join(outDir, `${c.id}.xlsx`);
   const exp = path.join(outDir, `${c.id}.expected.json`);
   fs.writeFileSync(file, c.bytes);
   fs.writeFileSync(exp, JSON.stringify(expectedFor(c), null, 1));
   const node = checkWorkbookBytes(c.bytes);
-  const main = runPs(ACCEPT_XLSX, ['-Path', file, '-Expected', exp], path.join(outDir, `${c.id}.xlsx.report.json`));
-
+  const main = await runPs(ACCEPT_XLSX, ['-Path', file, '-Expected', exp], path.join(outDir, `${c.id}.xlsx.report.json`), file);
+  // The negative control is written for the owner, never run against an attached Excel.
   const negFile = path.join(outDir, `${c.id}.negative.xlsx`);
   fs.writeFileSync(negFile, negativeControl(c.bytes));
-  const negExp = path.join(outDir, `${c.id}.negative.expected.json`);
-  fs.writeFileSync(negExp, JSON.stringify({ formulas: [], edit: null, freeze: [], filters: [], hidden: [], formats: [], unitsText: null, negative: null, texts: [] }));
-  const neg = runPs(ACCEPT_XLSX, ['-Path', negFile, '-Expected', negExp], path.join(outDir, `${c.id}.negative.xlsx.report.json`));
-  const negativeDetected = neg.ran === true && (neg.repaired === true || neg.opened === false);
   return {
-    id: c.id, bytes: c.bytes.length, nodeChecks: node, excel: main,
-    negativeControl: { detected: negativeDetected, ran: neg.ran, repaired: neg.repaired, opened: neg.opened, evidence: neg.repairEvidence, notRunReason: neg.notRunReason, excelQuit: neg.excelQuit, excelKilled: neg.excelKilled, quitSeconds: neg.quitSeconds, notKilled: neg.notKilled },
-    verdict: main.ran !== true || neg.ran !== true ? 'not run' : main.pass === true && negativeDetected && node.pass ? 'pass' : 'fail',
+    id: c.id, file, bytes: c.bytes.length, nodeChecks: node, excel: main,
+    negativeControl: { verdict: 'not run', file: negFile, reason: NEGATIVE_NOT_RUN },
+    verdict: caseVerdict(main, node.pass),
   };
 }
 
 /**
- * The console line of one result: the verdict, the case, and whether Office quit by itself or was stopped as a last
- * resort, for the main file and for its negative control (N15: "negativeControl.excelKilled=false").
+ * The console line of one result: the verdict, the case, whether the script closed its own file, and the file left
+ * open for the owner after a TIMEOUT. The negative control is always "not run" (the owner's rule).
  */
 export function summaryLine(r: Record<string, unknown>): string {
   const head = `${String(r.verdict).toUpperCase().padEnd(8)} ${String(r.id)}`;
-  const neg = (r.negativeControl ?? {}) as Record<string, unknown>;
+  const main = ((r.excel ?? r.powerpoint) ?? {}) as Record<string, unknown>;
   const flag = (v: unknown): string => (v === true ? 'true' : v === false ? 'false' : 'not run');
-  if (r.excel !== undefined) {
-    const main = r.excel as Record<string, unknown>;
-    return `${head}  excelKilled=${flag(main.excelKilled)} negativeControl.excelKilled=${flag(neg.excelKilled)}`;
-  }
-  const main = (r.powerpoint ?? {}) as Record<string, unknown>;
-  return `${head}  powerpointKilled=${flag(main.powerpointKilled)} negativeControl.powerpointKilled=${flag(neg.powerpointKilled)}`;
+  const left = typeof main.leftOpenForOwner === 'string' ? `  left open for the owner: ${main.leftOpenForOwner}` : '';
+  return `${head}  closed=${flag(main.closed)} negativeControl=not run${left}`;
 }
 
-export function acceptPptx(c: PptxCase, outDir: string): Record<string, unknown> {
+export async function acceptPptx(c: PptxCase, outDir: string): Promise<Record<string, unknown>> {
   const file = path.join(outDir, `${c.id}.pptx`);
   const inv = path.join(outDir, `${c.id}.inventory.json`);
   fs.writeFileSync(file, c.bytes);
   fs.writeFileSync(inv, JSON.stringify(c.inventory, null, 1));
   const png = path.join(outDir, 'png', c.id);
   fs.mkdirSync(png, { recursive: true });
-  const main = runPs(ACCEPT_PPTX, ['-Path', file, '-Inventory', inv, '-PngDir', png], path.join(outDir, `${c.id}.pptx.report.json`));
+  const main = await runPs(ACCEPT_PPTX, ['-Path', file, '-Inventory', inv, '-PngDir', png], path.join(outDir, `${c.id}.pptx.report.json`), file);
+  // The negative control is written for the owner, never run against an attached PowerPoint.
   const negFile = path.join(outDir, `${c.id}.negative.pptx`);
   fs.writeFileSync(negFile, negativeDeck(c.bytes));
-  const neg = runPs(ACCEPT_PPTX, ['-Path', negFile, '-Inventory', inv, '-PngDir', ''], path.join(outDir, `${c.id}.negative.pptx.report.json`));
-  const negativeDetected = neg.ran === true && neg.pass !== true;
   return {
-    id: c.id, bytes: c.bytes.length, powerpoint: main, negativeControl: { detected: negativeDetected, ran: neg.ran, notRunReason: neg.notRunReason, quit: neg.quit, powerpointKilled: neg.powerpointKilled, notKilled: neg.notKilled },
-    verdict: main.ran !== true || neg.ran !== true ? 'not run' : main.pass === true && negativeDetected ? 'pass' : 'fail',
+    id: c.id, file, bytes: c.bytes.length, powerpoint: main,
+    negativeControl: { verdict: 'not run', file: negFile, reason: NEGATIVE_NOT_RUN },
+    verdict: caseVerdict(main),
   };
 }
 
@@ -340,20 +390,27 @@ async function main(): Promise<number> {
   else if (args.includes('--full')) { mode = 'full'; ({ xlsx, pptx } = await fullCases()); }
   else {
     console.error('usage: node scripts/office/run-acceptance.ts --spike | --samples | --full [--out dir] | --check-file <xlsx>');
-    return 2;
+    return 64;
   }
-  const results = [...xlsx.map((c) => acceptXlsx(c, outDir)), ...pptx.map((c) => acceptPptx(c, outDir))];
-  const verdicts = results.map((r) => r.verdict);
-  const verdict = verdicts.every((v) => v === 'pass') ? 'pass' : verdicts.some((v) => v === 'fail') ? 'fail' : 'not run';
+  // One case after another: each script attaches to the owner's Office, so two never share it at once.
+  const results: Array<Record<string, unknown>> = [];
+  for (const c of xlsx) results.push(await acceptXlsx(c, outDir));
+  for (const c of pptx) results.push(await acceptPptx(c, outDir));
+  const verdict = overallVerdict(results.map((r) => String(r.verdict)));
   const report = { mode, verdict, node: process.version, results };
   fs.writeFileSync(path.join(outDir, `report-${mode}.json`), JSON.stringify(report, null, 1));
   for (const r of results) console.log(summaryLine(r));
-  const killed = (pick: (r: Record<string, unknown>) => unknown): number => results.filter((r) => pick(r) === true).length;
-  const books = results.filter((r) => r.excel !== undefined);
-  console.log(`Excel stopped as a last resort: ${killed((r) => (r.excel as Record<string, unknown> | undefined)?.excelKilled)} of ${books.length} workbooks, `
-    + `${killed((r) => (r.excel !== undefined ? (r.negativeControl as Record<string, unknown>).excelKilled : undefined))} of ${books.length} negative controls`);
-  console.log(`${mode}: ${verdict}; report ${path.relative(REPO, path.join(outDir, `report-${mode}.json`))}`);
-  return verdict === 'pass' ? 0 : 1;
+  const notRun = results.filter((r) => r.verdict === 'not run');
+  if (notRun.length > 0) {
+    console.log(`NOT RUN (${notRun.length} of ${results.length}): Office was not running, or could not be attached to; it is never started. Files for the owner to open by hand:`);
+    for (const r of notRun) console.log(`  ${String(r.file)}`);
+  }
+  const timedOut = results.filter((r) => r.verdict === 'timeout');
+  for (const r of timedOut) console.log(`TIMEOUT ${String(r.id)}: the run stopped waiting and killed nothing; the owner closes ${String(r.file)}`);
+  console.log('Negative controls NOT RUN (never against an attached Office; the owner may open them by hand and expect a repair prompt):');
+  for (const r of results) console.log(`  ${String((r.negativeControl as Record<string, unknown>).file)}`);
+  console.log(`${mode}: ${verdict.toUpperCase()}; report ${path.relative(REPO, path.join(outDir, `report-${mode}.json`))}`);
+  return verdict === 'pass' ? 0 : verdict === 'fail' ? 1 : 2;
 }
 
 if (import.meta.main) {

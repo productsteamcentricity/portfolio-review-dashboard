@@ -40,7 +40,7 @@ The new application (M1.2; detail in `new-build/toolchain.md`), after `npm ci`:
 | `node tests/browser/next-spike.mjs` | in headless Edge or Chrome, from disk and served: the CSP lets the page run and blocks a wrong hash and a `fetch`; no request but the page; navigation, including Enter and clicks on the section links with real input events (focus always lands on the section's heading, also for the section on screen and after the skip link) and the links' accessible names; IndexedDB kept across reload and restart; and the layout of D-037 at 1440 x 900 (the default), 1366, 1280, 1024 and 375 px: the header pinned on wide screens and static on narrow ones, the nine tabs in one row (one row without scrolling from 1280 px), a focused heading and the skip link's target below the header at the end of a long section, focus moving through the header without moving the page, a section address opened directly (1440 x 400, 1024 x 400) below the header, the current tab and every tab reached with the Tab key fully inside the row, a visible ring on the black current tab, a focused heading 16 px from the top at 375 px (99 checks); from M1.4 (R8) a real Shift+Tab walk at 1440, 1366, 1280 and 1024 px, focus-ring contrast of 3:1 or more on the current tab, a sand tab and the MF Screener link, controls under the pinned header (a test-only button, section 1's file and date inputs) scrolled clear when Tab focuses them, and the four-library page from disk and served (CSP, console, native Promise and includes, Blob downloads byte for byte, no request): 141 checks; from the M1.4 fix round (D-039 point 15) a real click on each of the nine tabs from the end of a long section at 1440 x 900 and 1366 x 768 leaves the review bar at or below the pinned header with the focused heading clear of it, at 375 px the review bar 16 px from the top with the heading below it, and section 1's Accept button in the pinned-header gate: 149 checks. The CDP driver is `tests/browser/lib/cdp.mjs` (`press(key, { shift })`, `setFiles`, `allowDownloads`, `contrast`); run Edge or Chrome with `--browser` | local, before merging a change to the build, the CSP, the layout or a download |
 | `node tests/browser/overview.cdp.mjs` (M1.4 fix round) | sections 1 and 2 in headless Edge or Chrome, served and from disk (`--served`, `--file` or `--url`; `--port`, default 8112; `--browser`; `--out`; `--json`), on synthetic files written from `tests/fixtures/make-books.ts` to a temp folder, with real keys and clicks: Accept under the pinned-header gate once a file is read (1440 and 1024 px), the review bar after a tab click, focus after a pick, Accept, Remove, both downloads, the XIRR answers and Acknowledge, a file with no holding and the refusals (21 MB, damaged), Preview in the stage strip and the register before Accept and Review after it, the full SHA-256 equal to Node's, the KPIs, tables, matrices and notes of syn-standard, the pies' drawn labels at 1440 and 375 px (a band above and below, the legend below the band, every label inside the canvas, no overlap, none on a one-slice pie), both downloads (names, bytes, Blob only, focus kept; the workbook through `checkWorkbookBytes`), a single entity and the logo kept after a reload. Screenshots and downloads go to `app/dist/qa/overview/<mode>/` (git-ignored) | local, after a change to sections 1 or 2 |
 | `tests/integration/*.test.ts` (in `node --test`, M1.4) | the page's wiring built in Node (`tests/helpers/node-wiring.ts`): the overview end to end against the hand-worked `OVERVIEW_ANSWERS` (screen, C-08 text, every workbook formula evaluated), one figure one text on screen, slide and sheet joined by `Figure.key` (`cross-output`), labels in every output and never in the audit, and the family switch (`labels`); with `gate` and `reconcile` from the engine | CI (`next`, IST and UTC) |
-| `npm run accept:office` (M1.4) | `scripts/office/run-acceptance.ts --full`: the wired workbook and deck of syn-standard, syn-lakh, syn-blank-invested, syn-negative-gain (the negative red at Portfolio Overview!I2), family-a and a Lakh book above 1,00,000 L (from the M1.4 fix round, with Excel's `Range.Text` of every `_manifest` figure compared with the screen's text, the date format at Holdings (as loaded)!R2, and Office quit cleanly, never a PowerPoint that holds someone else's presentation) opened in Excel and PowerPoint through COM (Windows PowerShell 5.1, `-NoProfile -NonInteractive -File`): no repair, a negative control detected, full recalculation without an error value and equal to the evaluator, panes, filters, formats, the units text in Indian grouping, the negative colour, slide and shape counts, PNGs. `--spike` (R1), `--samples` and `--check-file <path.xlsx>` (evaluator only, no Office) also exist. Reports and copies stay in `app/dist/office/` (git-ignored). A run the execution policy blocks is reported as not run, never passed. Helpers: `tests/helpers/unzip.ts`, `xlsx-read.ts`, `formula-eval.ts` | local, before pushing a change to an exporter |
+| `npm run accept:office` (M1.4) | `scripts/office/run-acceptance.ts --full`, under the owner's rule of 2 Nov 2026 ([section 6.1](#61-office-acceptance-under-the-owners-rule-2-nov-2026)): attached to the Excel and PowerPoint already running, never started, quit or stopped. The wired workbooks of syn-standard, syn-lakh, syn-blank-invested, syn-negative-gain (the negative red at Portfolio Overview!I2), family-a, a Lakh book above 1,00,000 L, syn-six-classes and syn-big-return (an absolute return of 1,900.00%), and their decks with syn-pie6-reits and syn-pie6-hybrid (a C-08 slice at 6 o'clock above the two-row legend; look at their PNGs): no repair, the workbook's own sheets recalculated without an error value and equal to the evaluator, Excel's `Range.Text` of every `_manifest` figure equal to the screen's text, panes, each sheet's filter range as Excel holds it equal to the file's, formats (the date format at Holdings (as loaded)!R2), the units text in Indian grouping, the negative colour, slide and shape counts, PNGs. The damaged-file negative controls are written and reported NOT RUN. `--spike` (R1), `--samples` and `--check-file <path.xlsx>` (evaluator only, no Office) also exist. Reports and copies stay in `app/dist/office/` (git-ignored). A case whose Office is not running, or that the execution policy blocks, is NOT RUN, never passed. Helpers: `tests/helpers/unzip.ts`, `xlsx-read.ts`, `formula-eval.ts`, `excel-text.ts` | local, before pushing a change to an exporter |
 
 The synthetic book (`tools/make-sample-base.js`) has two invented clients, 13 holdings across MF
 equity/debt/hybrid, PMS, AIF, SIF, direct equity and one unknown fund. Every holding is priced off a NAV
@@ -147,3 +147,43 @@ In PowerShell set the zone with `$env:TZ = 'UTC'` before `node --test`.
 Fixtures are generated at test time by `tests/fixtures/make-books.ts` and never committed. The SheetJS used by the
 tests is the copy embedded in `index.html`, run in a sandbox (`tests/helpers/sheetjs.ts`), until SheetJS is vendored
 in `app/vendor/` (M1.2 built the mechanism and vendored no library).
+
+### 6.1 Office acceptance under the owner's rule (2 Nov 2026)
+
+The owner's standing rule of 2 Nov 2026 (K1): the owner's own Excel and PowerPoint may be open on the PC where the
+checks run, with the owner's work in them, so no check starts, quits, stops or reconfigures Office.
+`scripts/office/accept-xlsx.ps1` and `accept-pptx.ps1` (each states the rule in its header) and
+`scripts/office/run-acceptance.ts`, which runs them for `npm run accept:office`, follow it:
+
+1. **Attach only.** The task list first (`Get-Process EXCEL` or `POWERPNT`), then
+   `[Runtime.InteropServices.Marshal]::GetActiveObject(...)`. A new instance is never created and Office is never
+   started.
+2. **NOT RUN, never a pass.** With no running instance, when attaching fails, or while Office stays busy, the case is
+   NOT RUN (script exit code 2), and the run prints the absolute paths of the synthetic files for the owner to open by
+   hand.
+3. **Read only, without a window.** PowerPoint opens the deck with `Presentations.Open(path, -1, 0, 0)` (read-only,
+   not untitled, no window). Excel opens the workbook with `Workbooks.Open(path, 0, True)`; a shared Excel has no true
+   "no window", so the script remembers the owner's active workbook and window, reads its own frozen panes, hides only
+   its own workbook's window, and after closing its file re-activates the owner's workbook and window only when they
+   still exist. It creates and closes nothing else.
+4. **No application option changes.** Alerts, visibility, macro security, calculation mode, screen updating and events
+   stay as the owner set them. Only the script's own workbook is recalculated, sheet by sheet.
+5. **Close only your file.** Each script closes only the file it opened (Excel without saving; the deck marked saved),
+   in a finally block, and releases its COM references. It never quits Office, never stops or kills a process and runs
+   no watchdog.
+6. **On a hang, abandon.** Each script stops at its own deadline between checks (180 s; verdict TIMEOUT, exit code 3)
+   and still closes its file. If a call into Office never returns, the run stops waiting after 300 s, reports TIMEOUT
+   with the path of the file left open, kills nothing, and the owner closes that file.
+7. **No negative control against the owner's Office.** The damaged files (a workbook Excel must repair, a deck without
+   slide 1) would raise a repair prompt on the owner's screen, so they are written next to the reports and reported
+   NOT RUN with their paths; the owner may open them by hand.
+8. **The verdict.** PASS only when every case ran and passed; FAIL when one failed or timed out; NOT RUN otherwise
+   (exit codes 0, 1 and 2). At a gate, the Office acceptance passes or is NOT RUN with these paths, never reported as
+   passed (contract v2, K1c).
+
+`tests/exports/xlsx/office-scripts.test.ts` (in `node --test`) reads both scripts and the runner: none of the
+forbidden calls or options appears anywhere in them, the task list comes before the attach, the only window hidden is
+the script's own workbook's, the file is closed in a finally block, the negative controls are never run, and the
+verdict rules hold. `tests/unit/exports/xlsx-number-formats.test.ts` checks the workbook's number formats against
+Excel's own texts without Office. The scripts are checked with the PowerShell parser before a push and run only by
+hand, never in CI.

@@ -4,29 +4,42 @@ Windows PowerShell 5.1:
   powershell.exe -NoProfile -NonInteractive -File scripts\office\accept-xlsx.ps1 -Path <xlsx> -Expected <json> -Report <json>
 Written by scripts/office/run-acceptance.ts, which also writes the expected values (from tests/helpers/formula-eval.ts)
 and the text each view-model figure must show (its display, without the marker).
-The script opens the workbook read-only in a new, invisible Excel; detects a repair; recalculates fully; compares
-every expected formula cell with Excel's value at 1e-9 relative; compares the text Excel shows (Range.Text) with the
-screen's text for every figure of the _manifest and every sample text cell; checks frozen panes, each filter's range
-as Excel holds it after the open (AutoFilter.Range.Address(False, False)) against the file's, the hidden sheet,
-names, fonts, number formats and the red of a negative cell; edits one input and compares the recalculated
-dependents; then closes without saving and quits only the Excel it started.
-Quitting: every COM object of the checks lives inside the function Invoke-WorkbookChecks, so none is reachable once it
-returns; the workbook is closed and released and the garbage collector runs twice. Excel is then asked to quit only
-when it holds no workbook and shows no window; otherwise the workbook or window is not the script's, and that Excel is
-handed back as it was, never quit or stopped ("notKilled"). After Quit the script waits up to 75 seconds (after a
-refused open Excel can take about 60 seconds to exit). Only then, as a last resort, is that one Excel process stopped
-(excelKilled in the report), and only when it is still the process the script started (its ProcessName and the
-StartTime recorded at launch), held 0 workbooks at Quit and shows no window. The watchdog, a separate process for a
-hang, makes the same process checks and never stops an Excel that shows a window. Every Stop-Process of the script
-goes through Stop-OwnProcess, which makes those checks.
-The report is JSON (synthetic data only). Exit code 0 when every check passed, 1 when one failed, 2 when not run.
+
+THE OWNER'S RULE (standing rule of 2 Nov 2026; docs/TESTING.md section 6.1). The owner's own Excel may be open on
+this PC with the owner's work in it, so the script:
+  1. attaches only. It first looks for a running EXCEL process (the task list); with none, or when attaching through
+     GetActiveObject fails, the verdict is NOT RUN (exit code 2), and the script prints the absolute path of the
+     synthetic file for the owner to open by hand. It never starts Excel and never creates a second instance.
+  2. opens only its own synthetic file, read-only (UpdateLinks 0, ReadOnly true, not added to the recent list).
+     Excel has no true "no window" in a shared instance: the file opens in a window of the owner's Excel. Before the
+     open the script remembers the owner's active workbook and window. It reads the frozen panes of its own sheets
+     (which needs its window shown), then hides only its own workbook's window (Windows.Item(1) of its workbook, a
+     property of that file). After closing its file it re-activates the owner's workbook and window, only when they
+     still exist; it never creates, closes or changes anything else.
+  3. changes no application option: no alert, visibility, macro security, calculation mode, screen updating or event
+     setting is read for change or written. It recalculates only its own workbook, sheet by sheet (Worksheet.Calculate),
+     never the application, which would recalculate the owner's books.
+  4. closes only the file it opened, without saving, in a finally block, and releases its COM references. It never
+     asks Excel to quit and never stops, kills or watches over any process.
+  5. on a hang: the script stops at its own deadline between checks (verdict TIMEOUT, exit code 3) and still closes
+     its file. If a call into Excel never returns, run-acceptance.ts stops waiting, reports TIMEOUT with the path of
+     the file left open, and leaves every process running; the owner closes that file in Excel.
+  6. the damaged-file negative control is never run against the attached Excel (it would raise the repair prompt on
+     the owner's screen): run-acceptance.ts writes it and reports it NOT RUN with its path.
+
+Checks: detects a repair; recalculates its own sheets; compares every expected formula cell with Excel's value at 1e-9
+relative; compares the text Excel shows (Range.Text) with the screen's text for every figure of the _manifest and every
+sample text cell; checks frozen panes, each filter's range as Excel holds it after the open
+(AutoFilter.Range.Address(False, False)) against the file's, the hidden sheet, names, fonts, number formats and the red
+of a negative cell; edits one input in memory and compares the recalculated dependents.
+The report is JSON (synthetic data only). Exit code 0 when every check passed, 1 when one failed, 2 when not run,
+3 on the deadline (TIMEOUT).
 #>
 param(
   [Parameter(Mandatory = $true)][string]$Path,
   [Parameter(Mandatory = $true)][string]$Expected,
   [Parameter(Mandatory = $true)][string]$Report,
-  [int]$TimeoutSeconds = 180,
-  [int]$QuitWaitSeconds = 75
+  [int]$TimeoutSeconds = 180
 )
 
 $ErrorActionPreference = 'Stop'
@@ -36,47 +49,42 @@ $checks = New-Object System.Collections.ArrayList
 function Add-Check([string]$name, [bool]$ok, $detail) {
   [void]$checks.Add([ordered]@{ name = $name; ok = $ok; detail = $detail })
 }
+$full = [System.IO.Path]::GetFullPath($Path)
 $result = [ordered]@{
-  tool = 'accept-xlsx.ps1'; file = $Path; ran = $false; pass = $false; excel = $null; opened = $false
-  repaired = $false; repairEvidence = @(); checks = $checks; notRunReason = $null
-  excelQuit = $false; excelKilled = $false; quitSeconds = $null; workbooksAtQuit = $null; notKilled = $null
-  watchdogFired = $false
+  tool = 'accept-xlsx.ps1'; file = $full; verdict = 'not run'; ran = $false; pass = $false; excel = $null
+  officeRunning = $false; attached = $false; opened = $false; repaired = $false; repairEvidence = @(); checks = $checks
+  notRunReason = $null; timedOut = $false; closed = $false; leftOpenForOwner = $null; ownerWindowRestored = $null
 }
 function Write-Report {
-  $result.pass = $result.ran -and (@($checks | Where-Object { -not $_.ok }).Count -eq 0)
+  $result.pass = $result.ran -and -not $result.timedOut -and (@($checks | Where-Object { -not $_.ok }).Count -eq 0)
+  if ($result.timedOut) { $result.verdict = 'timeout' }
+  elseif (-not $result.ran) { $result.verdict = 'not run' }
+  elseif ($result.pass) { $result.verdict = 'pass' }
+  else { $result.verdict = 'fail' }
   $json = $result | ConvertTo-Json -Depth 8
   $json | Out-File -FilePath $Report -Encoding utf8
 }
+function Exit-NotRun([string]$reason) {
+  $result.notRunReason = $reason
+  Write-Report
+  Write-Output "NOT RUN: $reason"
+  Write-Output "Open by hand: $full"
+  exit 2
+}
 
 # D-018: Excel refuses a full path of 218 characters or more.
-$full = [System.IO.Path]::GetFullPath($Path)
-if ($full.Length -ge 218) {
-  $result.notRunReason = "path of $($full.Length) characters (218 or more)"
-  Write-Report; exit 2
-}
+if ($full.Length -ge 218) { Exit-NotRun "path of $($full.Length) characters (218 or more)" }
 $exp = Get-Content -LiteralPath $Expected -Raw -Encoding UTF8 | ConvertFrom-Json
 
-Add-Type -Namespace AcceptXlsx -Name Native -MemberDefinition @'
-[DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(System.IntPtr hWnd, out int processId);
-'@
-
-# The process with this id, only while it is still the one recorded at launch (same ProcessName and StartTime);
-# $null when it has exited or the id now names another process.
-function Get-OwnProcess([int]$id, [string]$name, [long]$startTicks) {
-  $p = Get-Process -Id $id -ErrorAction SilentlyContinue
-  if ($p -eq $null) { return $null }
-  try {
-    if ($p.ProcessName -ne $name -or $p.StartTime.ToFileTimeUtc() -ne $startTicks) { return $null }
-  } catch { return $null }
-  return $p
+$deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+function Test-Deadline([string]$step) {
+  if ([DateTime]::UtcNow -gt $deadline) { throw "TIMEOUT before $step" }
 }
-# Every Stop-Process of the script: only the process recorded at launch, and (Excel) only while it shows no window.
-function Stop-OwnProcess([int]$id, [string]$name, [long]$startTicks, [switch]$WindowAllowed) {
-  $p = Get-OwnProcess $id $name $startTicks
-  if ($p -eq $null) { return $false }
-  if (-not $WindowAllowed -and $p.MainWindowHandle -ne [System.IntPtr]::Zero) { return $false }
-  Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
-  return $true
+# Excel refuses calls while a cell is being edited or a dialog is open (RPC_E_CALL_REJECTED, RPC_E_SERVERCALL_RETRYLATER).
+function Test-Busy($err) {
+  $text = [string]$err
+  try { $text += ' ' + ('0x{0:X8}' -f $err.Exception.HResult) } catch { }
+  return ($text -match '0x80010001|0x8001010A|rejected|retry later')
 }
 
 $errorNames = @{
@@ -93,38 +101,69 @@ function Test-Close([double]$a, [double]$b) {
 function Test-Property($o, [string]$name) {
   return ($o -ne $null) -and ($o.PSObject.Properties.Name -contains $name) -and ($o.$name -ne $null)
 }
-# The screen shows no sign on a value that rounds to zero ("0.00"); Excel shows "-0.00". Only that sign is ignored.
+# The screen shows no sign on a value that rounds to zero ("0.00"); an Excel build may show "-0.00". Only that sign is
+# ignored.
 function Get-ShownText([string]$t) {
   if ($t -match '^-[0.,]+%?$' -and ($t -replace '[^1-9]', '') -eq '') { return $t.Substring(1) }
   return $t
+}
+# Recalculates the script's own workbook only, sheet by sheet (three passes cover the chains between its sheets).
+function Invoke-OwnCalculate($wb) {
+  for ($pass = 0; $pass -lt 3; $pass++) {
+    foreach ($ws in $wb.Worksheets) { [void]$ws.Calculate() }
+  }
 }
 
 $tempDir = [System.IO.Path]::GetTempPath()
 $before = @{}
 Get-ChildItem -LiteralPath $tempDir -Filter 'error*.xml' -ErrorAction SilentlyContinue | ForEach-Object { $before[$_.FullName] = $_.LastWriteTimeUtc }
 
+# The owner's active workbook and window before the open, by name, so they are re-activated only if they still exist.
+$owner = @{ book = $null; window = $null }
+function Save-OwnerWindow($xl) {
+  try { $ab = $xl.ActiveWorkbook; if ($ab -ne $null) { $owner.book = [string]$ab.FullName } } catch { }
+  try { $aw = $xl.ActiveWindow; if ($aw -ne $null) { $owner.window = [string]$aw.Caption } } catch { }
+}
+function Restore-OwnerWindow($xl) {
+  if (-not $owner.book) { return 'nothing to restore' }
+  $book = $null
+  foreach ($b in $xl.Workbooks) { if ([string]$b.FullName -eq $owner.book) { $book = $b; break } }
+  if ($book -eq $null) { return 'the owner''s workbook is no longer open: nothing activated' }
+  foreach ($w in $book.Windows) {
+    if ([string]$w.Caption -eq $owner.window) { [void]$w.Activate(); return 'restored' }
+  }
+  return 'the owner''s window is no longer open: nothing activated'
+}
+
 # Opens the workbook, runs every check and closes it again. Every COM object it touches is a local of this function,
-# so none survives it (the cause of Excel staying alive after Quit).
+# and the workbook is closed (without saving) and released in its finally block.
 function Invoke-WorkbookChecks($xl) {
   $wb = $null
   try {
     $openError = $null
-    try {
-      $wb = $xl.Workbooks.Open($full, 0, $true)
-    } catch {
-      $openError = $_.Exception.Message
+    Save-OwnerWindow $xl
+    for ($try = 0; $try -lt 5 -and $wb -eq $null; $try++) {
+      try {
+        # Filename, UpdateLinks 0, ReadOnly true; AddToMru stays at its default (false).
+        $wb = $xl.Workbooks.Open($full, 0, $true)
+        $openError = $null
+      } catch {
+        $openError = $_
+        if (-not (Test-Busy $_)) { break }
+        Start-Sleep -Seconds 2
+      }
     }
+    if ($wb -eq $null -and $openError -ne $null -and (Test-Busy $openError)) { throw $openError }
+    $result.ran = $true
     Start-Sleep -Milliseconds 300
     $newLogs = @(Get-ChildItem -LiteralPath $tempDir -Filter 'error*.xml' -ErrorAction SilentlyContinue |
       Where-Object { -not $before.ContainsKey($_.FullName) -or $before[$_.FullName] -ne $_.LastWriteTimeUtc })
     $evidence = New-Object System.Collections.ArrayList
-    if ($openError) { [void]$evidence.Add("open failed: $openError") }
+    if ($openError) { [void]$evidence.Add("open failed: $($openError.Exception.Message)") }
     foreach ($log in $newLogs) {
       $text = Get-Content -LiteralPath $log.FullName -Raw -ErrorAction SilentlyContinue
       if ($text -and $text -match [Regex]::Escape([System.IO.Path]::GetFileName($full))) {
         [void]$evidence.Add("repair log $($log.Name)")
-      } elseif ($text) {
-        [void]$evidence.Add("repair log $($log.Name) (other file)")
       }
     }
     if ($wb -ne $null) {
@@ -138,14 +177,30 @@ function Invoke-WorkbookChecks($xl) {
     Add-Check 'opens without repair' (-not $result.repaired) ($evidence -join '; ')
     if ($wb -eq $null) { throw 'the workbook did not open' }
 
-    # Full recalculation.
-    $xl.Calculation = -4105 # xlCalculationAutomatic
-    $xl.CalculateFullRebuild()
-    $sw = [Diagnostics.Stopwatch]::StartNew()
-    while ($xl.CalculationState -ne 0 -and $sw.Elapsed.TotalSeconds -lt 60) { Start-Sleep -Milliseconds 100 }
-    Add-Check 'calculation finished' ($xl.CalculationState -eq 0) "state $($xl.CalculationState)"
+    # Frozen panes on every visible sheet: a property of the workbook's own window, read while it is still shown
+    # (a sheet of a hidden window cannot be activated). Then only that window is hidden.
+    Test-Deadline 'frozen panes'
+    $freezeOut = New-Object System.Collections.ArrayList
+    $freezeOk = $true
+    $win = $wb.Windows.Item(1)
+    foreach ($fz in $exp.freeze) {
+      $ws = $wb.Worksheets.Item([string]$fz.sheet)
+      if ($ws.Visible -ne -1) { continue }
+      [void]$ws.Activate()
+      $ok = ($win.FreezePanes -eq $true) -and ($win.SplitRow -eq [int]$fz.rows) -and ($win.SplitColumn -eq [int]$fz.cols)
+      if (-not $ok) { $freezeOk = $false }
+      [void]$freezeOut.Add("$($fz.sheet): FreezePanes $($win.FreezePanes), SplitRow $($win.SplitRow), SplitColumn $($win.SplitColumn)")
+    }
+    [void]$wb.Worksheets.Item(1).Activate()
+    $win.Visible = $false
+    Add-Check 'frozen panes on every visible sheet' $freezeOk @($freezeOut)
+
+    # Recalculation of this workbook only.
+    Test-Deadline 'recalculation'
+    Invoke-OwnCalculate $wb
 
     # Error values anywhere, by UsedRange.Value2 and by SpecialCells.
+    Test-Deadline 'error values'
     $errorCells = New-Object System.Collections.ArrayList
     $special = 0
     foreach ($ws in $wb.Worksheets) {
@@ -167,9 +222,10 @@ function Invoke-WorkbookChecks($xl) {
         try { $special += $ws.Cells.SpecialCells($type, 16).Count } catch { }
       }
     }
-    Add-Check 'no error value after a full rebuild' (($errorCells.Count -eq 0) -and ($special -eq 0)) (@($errorCells) + @("SpecialCells errors: $special"))
+    Add-Check 'no error value after the recalculation' (($errorCells.Count -eq 0) -and ($special -eq 0)) (@($errorCells) + @("SpecialCells errors: $special"))
 
     # Formula values against the evaluator.
+    Test-Deadline 'formula values'
     $mismatch = New-Object System.Collections.ArrayList
     $compared = 0
     foreach ($f in $exp.formulas) {
@@ -184,6 +240,7 @@ function Invoke-WorkbookChecks($xl) {
     Add-Check "formula values equal the evaluator ($compared cells)" ($mismatch.Count -eq 0) @($mismatch | Select-Object -First 20)
 
     # The text Excel shows against the screen's text (D-039: display rounding agrees with Excel).
+    Test-Deadline 'cell texts'
     if (Test-Property $exp 'texts') {
       $textBad = New-Object System.Collections.ArrayList
       $textCount = 0
@@ -195,22 +252,9 @@ function Invoke-WorkbookChecks($xl) {
       Add-Check "cell text equals the screen's text ($textCount cells)" ($textBad.Count -eq 0) @($textBad | Select-Object -First 20)
     }
 
-    # Frozen panes on every visible sheet.
-    $freezeOut = New-Object System.Collections.ArrayList
-    $freezeOk = $true
-    foreach ($fz in $exp.freeze) {
-      $ws = $wb.Worksheets.Item([string]$fz.sheet)
-      if ($ws.Visible -ne -1) { continue }
-      [void]$ws.Activate()
-      $win = $wb.Windows.Item(1)
-      $ok = ($win.FreezePanes -eq $true) -and ($win.SplitRow -eq [int]$fz.rows) -and ($win.SplitColumn -eq [int]$fz.cols)
-      if (-not $ok) { $freezeOk = $false }
-      [void]$freezeOut.Add("$($fz.sheet): FreezePanes $($win.FreezePanes), SplitRow $($win.SplitRow), SplitColumn $($win.SplitColumn)")
-    }
-    Add-Check 'frozen panes on every visible sheet' $freezeOk @($freezeOut)
-
     # Filters: on every data sheet, over the range the file declares. Excel extends a filter to a row that touches
     # it when it opens a file, so the range is read as Excel holds it (the share row stays out: D-039 point 5, N7).
+    Test-Deadline 'filters'
     $filterOut = New-Object System.Collections.ArrayList
     $filterOk = $true
     foreach ($fl in @($exp.filters)) {
@@ -235,6 +279,7 @@ function Invoke-WorkbookChecks($xl) {
     Add-Check "names without #REF! ($($wb.Names.Count) names)" ($badNames.Count -eq 0) @($badNames)
 
     # Fonts and number formats on sample cells.
+    Test-Deadline 'formats'
     $fmtOut = New-Object System.Collections.ArrayList
     $fmtOk = $true
     foreach ($s in $exp.formats) {
@@ -258,13 +303,13 @@ function Invoke-WorkbookChecks($xl) {
       Add-Check 'negative cell shown in red' ($hex -eq [string]$exp.negative.colour) "colour $hex, value $($r.Value2)"
     }
 
-    # The edit check: one input changed, its dependents recalculated.
+    # The edit check: one input changed in memory (the file is read-only and is closed without saving), this
+    # workbook's sheets recalculated, its dependents compared.
     if ($exp.edit -ne $null) {
+      Test-Deadline 'the edit check'
       $ws = $wb.Worksheets.Item([string]$exp.edit.sheet)
       $ws.Range([string]$exp.edit.cell).Value2 = [double]$exp.edit.value
-      $xl.Calculate()
-      $sw = [Diagnostics.Stopwatch]::StartNew()
-      while ($xl.CalculationState -ne 0 -and $sw.Elapsed.TotalSeconds -lt 60) { Start-Sleep -Milliseconds 100 }
+      Invoke-OwnCalculate $wb
       $editBad = New-Object System.Collections.ArrayList
       foreach ($d in $exp.edit.dependents) {
         $v = $wb.Worksheets.Item([string]$d.sheet).Range([string]$d.cell).Value2
@@ -275,11 +320,18 @@ function Invoke-WorkbookChecks($xl) {
       Add-Check "edit of $($exp.edit.sheet)!$($exp.edit.cell) recalculates $(@($exp.edit.dependents).Count) dependents" ($editBad.Count -eq 0) @($editBad)
     }
   } finally {
-    # Closed without saving (the workbook was opened read-only and edited only in memory).
+    # Only the file this script opened is closed, without saving; then the owner's workbook and window come back.
     if ($wb -ne $null) {
-      try { $wb.Close($false) } catch { }
-      [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($wb)
+      try {
+        $wb.Close($false)
+        $result.closed = $true
+      } catch {
+        $result.leftOpenForOwner = $full
+        Write-Output "Could not close the synthetic file; the owner closes it in Excel: $full"
+      }
+      try { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($wb) } catch { }
       $wb = $null
+      try { $result.ownerWindowRestored = Restore-OwnerWindow $xl } catch { $result.ownerWindowRestored = "not restored: $($_.Exception.Message)" }
     }
   }
 }
@@ -288,89 +340,43 @@ function Invoke-Collect {
   for ($k = 0; $k -lt 2; $k++) { [GC]::Collect(); [GC]::WaitForPendingFinalizers() }
 }
 
-$xl = $null; $excelPid = $null; $excelStart = $null; $watchdog = $null; $watchdogStart = $null
+# 1. The task list first: no running Excel, no run. Excel is never started.
+$running = @(Get-Process -Name EXCEL -ErrorAction SilentlyContinue)
+$result.officeRunning = ($running.Count -gt 0)
+if (-not $result.officeRunning) { Exit-NotRun 'Excel is not running; the script attaches only and never starts it' }
+
+$xl = $null
 try {
   try {
-    $xl = New-Object -ComObject Excel.Application
+    $xl = [Runtime.InteropServices.Marshal]::GetActiveObject('Excel.Application')
   } catch {
-    $result.notRunReason = "Excel could not be started through COM: $($_.Exception.Message)"
-    Write-Report; exit 2
+    Exit-NotRun "could not attach to the running Excel: $($_.Exception.Message)"
   }
-  $result.ran = $true
-  $result.excel = "$($xl.Version) build $($xl.Build)"
-  [int]$procId = 0
-  [void][AcceptXlsx.Native]::GetWindowThreadProcessId([System.IntPtr]$xl.Hwnd, [ref]$procId)
-  # The Excel this script started, by its id, name and start time (a new instance: COM never hands out a person's).
-  $own = Get-Process -Id $procId -ErrorAction SilentlyContinue
-  if ($procId -ne 0 -and $own -ne $null -and $own.ProcessName -eq 'EXCEL') {
-    $excelPid = $procId
-    $excelStart = $own.StartTime.ToFileTimeUtc()
-    # Watchdog for a hang: a separate process that stops only this Excel (same id, name and start time) and never
-    # while it shows a window.
-    $watchdog = Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -PassThru -ArgumentList @(
-      '-NoProfile', '-NonInteractive', '-Command',
-      "Start-Sleep -Seconds $TimeoutSeconds; `$p = Get-Process -Id $excelPid -ErrorAction SilentlyContinue; if (`$p -and `$p.ProcessName -eq 'EXCEL' -and `$p.StartTime.ToFileTimeUtc() -eq $excelStart -and `$p.MainWindowHandle -eq 0) { Stop-Process -Id $excelPid -Force -ErrorAction SilentlyContinue }")
-    try { $watchdogStart = $watchdog.StartTime.ToFileTimeUtc() } catch { $watchdogStart = $null }
-  }
-  $xl.Visible = $false
-  $xl.DisplayAlerts = $false
-  $xl.ScreenUpdating = $false
-  $xl.EnableEvents = $false
-  $xl.AskToUpdateLinks = $false
-  $xl.AutomationSecurity = 3 # msoAutomationSecurityForceDisable
-
+  $result.attached = $true
+  try { $result.excel = "$($xl.Version) build $($xl.Build)" } catch { }
   Invoke-WorkbookChecks $xl
 } catch {
-  Add-Check 'script completed' $false $_.Exception.Message
+  $message = [string]$_.Exception.Message
+  if ($message -match '^TIMEOUT') {
+    $result.timedOut = $true
+    Add-Check 'checks finished within the deadline' $false "$message ($TimeoutSeconds s)"
+  } elseif (Test-Busy $_) {
+    $result.ran = $false
+    $result.notRunReason = "Excel was busy (a cell being edited or a dialog open): $message"
+  } else {
+    Add-Check 'script completed' $false $message
+  }
 } finally {
-  # Every COM object of the checks is out of scope: collect twice. Quit only an Excel that holds no workbook (the
-  # script's is closed) and shows no window; a workbook or a window then is someone else's, and that Excel is handed
-  # back as it was: alerts, screen updating and events on, under the person's control, never quit or stopped.
-  Invoke-Collect
-  # A watchdog that has exited already fired: it stopped the hung Excel, so there is nothing left to quit.
-  if ($watchdog -ne $null -and $watchdog.HasExited) { $result.watchdogFired = $true }
-  $leftAlone = $false
+  # Only the script's own references are released; the owner's Excel keeps running as it was.
   if ($xl -ne $null) {
-    if (-not $result.watchdogFired) {
-      $books = -1; $visible = $true
-      try { $books = [int]$xl.Workbooks.Count } catch { }
-      try { $visible = [bool]$xl.Visible } catch { }
-      $result.workbooksAtQuit = $books
-      if ($books -eq 0 -and -not $visible) {
-        try { $xl.Quit() } catch { }
-      } else {
-        try { $xl.DisplayAlerts = $true; $xl.ScreenUpdating = $true; $xl.EnableEvents = $true; $xl.UserControl = $true } catch { }
-        $result.notKilled = "Excel holds $books workbook(s) (visible $visible) that are not the script's: not quit, not killed"
-        $leftAlone = $true
-      }
-    }
     try { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($xl) } catch { }
     $xl = $null
   }
   Invoke-Collect
-  # The watchdog is stopped before the wait, so the wait alone decides.
-  if ($watchdog -ne $null -and -not $result.watchdogFired -and $watchdogStart -ne $null) {
-    [void](Stop-OwnProcess $watchdog.Id 'powershell' $watchdogStart -WindowAllowed)
-  }
-  if ($excelPid -and -not $leftAlone) {
-    $sw = [Diagnostics.Stopwatch]::StartNew()
-    while ((Get-OwnProcess $excelPid 'EXCEL' $excelStart) -and $sw.Elapsed.TotalSeconds -lt $QuitWaitSeconds) { Start-Sleep -Milliseconds 200 }
-    $p = Get-OwnProcess $excelPid 'EXCEL' $excelStart
-    if ($p -eq $null) {
-      if ($result.watchdogFired) { $result.excelKilled = $true }
-      else {
-        $result.excelQuit = $true
-        $result.quitSeconds = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
-      }
-    } elseif ($result.workbooksAtQuit -ne 0) {
-      $result.notKilled = "Excel held $($result.workbooksAtQuit) workbook(s) at Quit: not killed"
-    } elseif (Stop-OwnProcess $excelPid 'EXCEL' $excelStart) {
-      # Last resort: the script's own invisible Excel, with no workbook, did not exit in $QuitWaitSeconds s.
-      $result.excelKilled = $true
-    } else {
-      $result.notKilled = 'Excel shows a window that is not the script''s: not killed'
-    }
-  }
 }
 Write-Report
-if ($result.pass) { exit 0 } else { exit 1 }
+if ($result.verdict -eq 'not run') { Write-Output "NOT RUN: $($result.notRunReason)"; Write-Output "Open by hand: $full" }
+if ($result.verdict -eq 'pass') { exit 0 }
+if ($result.verdict -eq 'not run') { exit 2 }
+if ($result.verdict -eq 'timeout') { exit 3 }
+exit 1

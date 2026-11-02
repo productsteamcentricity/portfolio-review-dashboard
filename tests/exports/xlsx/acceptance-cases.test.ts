@@ -174,16 +174,16 @@ describe('the Office acceptance cases (L4, L8, L24; N7, N9, N13)', async () => {
   });
 });
 
-describe('the run\'s summary line names every stop of Office (N15)', () => {
-  test('a workbook: excelKilled and negativeControl.excelKilled', () => {
-    assert.equal(summaryLine({ id: 'wired-syn-standard', verdict: 'pass', excel: { excelKilled: false }, negativeControl: { excelKilled: true } }),
-      'PASS     wired-syn-standard  excelKilled=false negativeControl.excelKilled=true');
-    assert.equal(summaryLine({ id: 'x', verdict: 'not run', excel: { ran: false }, negativeControl: {} }),
-      'NOT RUN  x  excelKilled=not run negativeControl.excelKilled=not run');
+describe('the run\'s summary line under the owner\'s rule (K1: nothing is quit or stopped; negative controls not run)', () => {
+  test('a workbook: whether the script closed its own file; the negative control not run', () => {
+    assert.equal(summaryLine({ id: 'wired-syn-standard', verdict: 'pass', excel: { closed: true }, negativeControl: { verdict: 'not run' } }),
+      'PASS     wired-syn-standard  closed=true negativeControl=not run');
+    assert.equal(summaryLine({ id: 'x', verdict: 'not run', excel: { ran: false }, negativeControl: { verdict: 'not run' } }),
+      'NOT RUN  x  closed=not run negativeControl=not run');
   });
 
-  test('a deck: powerpointKilled and negativeControl.powerpointKilled', () => {
-    assert.equal(summaryLine({ id: 'wired-family-a', verdict: 'fail', powerpoint: { powerpointKilled: false }, negativeControl: { powerpointKilled: false } }),
-      'FAIL     wired-family-a  powerpointKilled=false negativeControl.powerpointKilled=false');
+  test('a deck: the same line', () => {
+    assert.equal(summaryLine({ id: 'wired-family-a', verdict: 'fail', powerpoint: { closed: true }, negativeControl: { verdict: 'not run' } }),
+      'FAIL     wired-family-a  closed=true negativeControl=not run');
   });
 });

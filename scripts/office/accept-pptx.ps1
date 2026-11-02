@@ -3,18 +3,28 @@ Office acceptance of one deck in PowerPoint through COM (local only, never in CI
 Windows PowerShell 5.1:
   powershell.exe -NoProfile -NonInteractive -File scripts\office\accept-pptx.ps1 -Path <pptx> -Inventory <json> -PngDir <dir> -Report <json>
 Written by scripts/office/run-acceptance.ts. The inventory JSON is { "slides": [ { "shapes": n, "charts": n, "tables": n } ] },
-from the Node side's own reading of the deck. The script records whether PowerPoint was already running, opens the deck
-read-only without a window, detects a repair or a refusal, compares the slide count and each slide's shape, chart and
-table counts with the inventory, exports each slide as a 1920 x 1080 PNG for visual review (when -PngDir is given),
-closes the deck without saving and quits PowerPoint only when this script started it.
-PowerPoint runs as a single instance, so a deck a person opens during the run opens in the script's instance. The
-script therefore never quits or stops an instance that holds a presentation or a window that is not its own: it
-reports "not killed" with the reason instead. When PowerPoint is already open with a presentation or a window, the
-script does not open its deck in that instance at all and reports "not run" (exit 2). Every COM object of the checks lives inside the function
-Invoke-DeckChecks; after it returns the garbage collector runs twice before Quit, and the process is stopped only as a
-last resort, when it has no window and is still the process the script started (its ProcessName and the StartTime
-recorded at launch). Every Stop-Process of the script, the watchdog's included, makes those checks (Stop-OwnProcess).
-Exit code 0 when every check passed, 1 when one failed, 2 when not run.
+from the Node side's own reading of the deck.
+
+THE OWNER'S RULE (standing rule of 2 Nov 2026; docs/TESTING.md section 6.1). The owner's own PowerPoint may be open on
+this PC with the owner's work in it, so the script:
+  1. attaches only. It first looks for a running POWERPNT process (the task list); with none, or when attaching
+     through GetActiveObject fails, the verdict is NOT RUN (exit code 2), and the script prints the absolute path of
+     the synthetic deck for the owner to open by hand. It never starts PowerPoint.
+  2. opens only its own synthetic deck, read-only and without a window (Presentations.Open with ReadOnly -1,
+     Untitled 0, WithWindow 0), so nothing appears on the owner's screen and the owner's active window stays active.
+  3. changes no application option: no alert, visibility or other application setting is written.
+  4. closes only the deck it opened (marked saved, so PowerPoint asks nothing), in a finally block, and releases its
+     COM references. It never asks PowerPoint to quit and never stops, kills or watches over any process.
+  5. on a hang: the script stops at its own deadline between slides (verdict TIMEOUT, exit code 3) and still closes
+     its deck. If a call into PowerPoint never returns, run-acceptance.ts stops waiting, reports TIMEOUT with the path
+     of the deck left open, and leaves every process running; the owner closes that deck (opened without a window,
+     it closes when the owner next closes PowerPoint).
+  6. the damaged-deck negative control is never run against the attached PowerPoint (it could raise a repair prompt
+     on the owner's screen): run-acceptance.ts writes it and reports it NOT RUN with its path.
+
+Checks: detects a repair or a refusal; compares the slide count and each slide's shape, chart and table counts with
+the inventory; exports each slide as a 1920 x 1080 PNG for visual review (when -PngDir is given).
+Exit code 0 when every check passed, 1 when one failed, 2 when not run, 3 on the deadline (TIMEOUT).
 #>
 param(
   [Parameter(Mandatory = $true)][string]$Path,
@@ -31,60 +41,65 @@ $checks = New-Object System.Collections.ArrayList
 function Add-Check([string]$name, [bool]$ok, $detail) {
   [void]$checks.Add([ordered]@{ name = $name; ok = $ok; detail = $detail })
 }
+$full = [System.IO.Path]::GetFullPath($Path)
 $result = [ordered]@{
-  tool = 'accept-pptx.ps1'; file = $Path; ran = $false; pass = $false; powerpoint = $null; opened = $false
-  wasRunning = $false; quit = $false; powerpointKilled = $false; notKilled = $null; quitSeconds = $null; watchdogFired = $false
-  checks = $checks; pngs = @(); notRunReason = $null
+  tool = 'accept-pptx.ps1'; file = $full; verdict = 'not run'; ran = $false; pass = $false; powerpoint = $null
+  officeRunning = $false; attached = $false; opened = $false; checks = $checks; pngs = @(); notRunReason = $null
+  timedOut = $false; closed = $false; leftOpenForOwner = $null
 }
 function Write-Report {
-  $result.pass = $result.ran -and $result.opened -and (@($checks | Where-Object { -not $_.ok }).Count -eq 0)
+  $result.pass = $result.ran -and $result.opened -and -not $result.timedOut -and (@($checks | Where-Object { -not $_.ok }).Count -eq 0)
+  if ($result.timedOut) { $result.verdict = 'timeout' }
+  elseif (-not $result.ran) { $result.verdict = 'not run' }
+  elseif ($result.pass) { $result.verdict = 'pass' }
+  else { $result.verdict = 'fail' }
   $result | ConvertTo-Json -Depth 8 | Out-File -FilePath $Report -Encoding utf8
 }
+function Exit-NotRun([string]$reason) {
+  $result.notRunReason = $reason
+  Write-Report
+  Write-Output "NOT RUN: $reason"
+  Write-Output "Open by hand: $full"
+  exit 2
+}
 
-$full = [System.IO.Path]::GetFullPath($Path)
-if ($full.Length -ge 218) { $result.notRunReason = "path of $($full.Length) characters (218 or more)"; Write-Report; exit 2 }
+if ($full.Length -ge 218) { Exit-NotRun "path of $($full.Length) characters (218 or more)" }
 $inv = Get-Content -LiteralPath $Inventory -Raw -Encoding UTF8 | ConvertFrom-Json
 
-Add-Type -Namespace AcceptPptx -Name Native -MemberDefinition @'
-[DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(System.IntPtr hWnd, out int processId);
-'@
-
+$deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+function Test-Deadline([string]$step) {
+  if ([DateTime]::UtcNow -gt $deadline) { throw "TIMEOUT before $step" }
+}
+# PowerPoint refuses calls while a dialog is open (RPC_E_CALL_REJECTED, RPC_E_SERVERCALL_RETRYLATER).
+function Test-Busy($err) {
+  $text = [string]$err
+  try { $text += ' ' + ('0x{0:X8}' -f $err.Exception.HResult) } catch { }
+  return ($text -match '0x80010001|0x8001010A|rejected|retry later')
+}
 function Invoke-Collect {
   for ($k = 0; $k -lt 2; $k++) { [GC]::Collect(); [GC]::WaitForPendingFinalizers() }
 }
 
-# The process with this id, only while it is still the one recorded at launch (same ProcessName and StartTime);
-# $null when it has exited or the id now names another process.
-function Get-OwnProcess([int]$id, [string]$name, [long]$startTicks) {
-  $p = Get-Process -Id $id -ErrorAction SilentlyContinue
-  if ($p -eq $null) { return $null }
-  try {
-    if ($p.ProcessName -ne $name -or $p.StartTime.ToFileTimeUtc() -ne $startTicks) { return $null }
-  } catch { return $null }
-  return $p
-}
-# Every Stop-Process of the script: only the process recorded at launch, and (PowerPoint) only while it shows no window.
-function Stop-OwnProcess([int]$id, [string]$name, [long]$startTicks, [switch]$WindowAllowed) {
-  $p = Get-OwnProcess $id $name $startTicks
-  if ($p -eq $null) { return $false }
-  if (-not $WindowAllowed -and $p.MainWindowHandle -ne [System.IntPtr]::Zero) { return $false }
-  Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
-  return $true
-}
-
 # Opens the deck without a window, runs every check and closes it. Every COM object it touches is a local of this
-# function, so none survives it.
+# function, and the deck is closed and released in its finally block.
 function Invoke-DeckChecks($pp) {
   $deck = $null
   try {
     $openError = $null
-    try {
-      $deck = $pp.Presentations.Open($full, -1, 0, 0) # ReadOnly, not Untitled, no window
-    } catch {
-      $openError = $_.Exception.Message
+    for ($try = 0; $try -lt 5 -and $deck -eq $null; $try++) {
+      try {
+        $deck = $pp.Presentations.Open($full, -1, 0, 0) # ReadOnly, not Untitled, no window
+        $openError = $null
+      } catch {
+        $openError = $_
+        if (-not (Test-Busy $_)) { break }
+        Start-Sleep -Seconds 2
+      }
     }
+    if ($deck -eq $null -and $openError -ne $null -and (Test-Busy $openError)) { throw $openError }
+    $result.ran = $true
     if ($deck -eq $null) {
-      Add-Check 'opens without repair' $false "open failed: $openError"
+      Add-Check 'opens without repair' $false "open failed: $($openError.Exception.Message)"
       throw 'the deck did not open'
     }
     $result.opened = $true
@@ -96,6 +111,7 @@ function Invoke-DeckChecks($pp) {
     $bad = New-Object System.Collections.ArrayList
     $pngs = New-Object System.Collections.ArrayList
     for ($i = 1; $i -le $deck.Slides.Count; $i++) {
+      Test-Deadline "slide $i"
       $slide = $deck.Slides.Item($i)
       $charts = 0; $tables = 0
       foreach ($s in $slide.Shapes) {
@@ -118,105 +134,59 @@ function Invoke-DeckChecks($pp) {
     $result.pngs = @($pngs)
     if ($PngDir -ne '') { Add-Check 'one PNG per slide' ($pngs.Count -eq $deck.Slides.Count) "$($pngs.Count) PNGs" }
   } finally {
-    # Closed without saving (opened read-only).
+    # Only the deck this script opened is closed (opened read-only; marked saved, so nothing is asked).
     if ($deck -ne $null) {
-      try { $deck.Saved = -1 } catch { }
-      try { $deck.Close() } catch { }
-      [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($deck)
+      try {
+        $deck.Saved = -1
+        $deck.Close()
+        $result.closed = $true
+      } catch {
+        $result.leftOpenForOwner = $full
+        Write-Output "Could not close the synthetic deck; the owner closes it in PowerPoint: $full"
+      }
+      try { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($deck) } catch { }
       $deck = $null
     }
   }
 }
 
-$result.wasRunning = (@(Get-Process -Name POWERPNT -ErrorAction SilentlyContinue).Count -gt 0)
-$pp = $null; $pptPid = $null; $pptStart = $null; $watchdog = $null; $watchdogStart = $null; $prevAlerts = $null
+# 1. The task list first: no running PowerPoint, no run. PowerPoint is never started.
+$running = @(Get-Process -Name POWERPNT -ErrorAction SilentlyContinue)
+$result.officeRunning = ($running.Count -gt 0)
+if (-not $result.officeRunning) { Exit-NotRun 'PowerPoint is not running; the script attaches only and never starts it' }
+
+$pp = $null
 try {
   try {
-    $pp = New-Object -ComObject PowerPoint.Application
+    $pp = [Runtime.InteropServices.Marshal]::GetActiveObject('PowerPoint.Application')
   } catch {
-    $result.notRunReason = "PowerPoint could not be started through COM: $($_.Exception.Message)"
-    Write-Report; exit 2
+    Exit-NotRun "could not attach to the running PowerPoint: $($_.Exception.Message)"
   }
-  $result.powerpoint = "$($pp.Version) build $($pp.Build)"
-  if ($result.wasRunning) {
-    # The running instance is a person's: if it holds a presentation or a window, the check would share it (its
-    # alerts setting, a repair dialog of the negative control), so the deck is not opened and the run is "not run".
-    $open = -1; $wins = -1
-    try { $open = [int]$pp.Presentations.Count } catch { }
-    try { $wins = [int]$pp.Windows.Count } catch { }
-    if ($open -ne 0 -or $wins -ne 0) {
-      $result.notRunReason = "PowerPoint is already open with $open presentation(s) and $wins window(s) that are not the script's; not run, so that instance is left alone"
-      $result.notKilled = 'PowerPoint was running before the script: not quit, not killed'
-      Write-Report; exit 2
-    }
-    $prevAlerts = $pp.DisplayAlerts
-  }
-  $result.ran = $true
-  $pp.DisplayAlerts = 1 # ppAlertsNone
-  if (-not $result.wasRunning) {
-    [int]$procId = 0
-    try { [void][AcceptPptx.Native]::GetWindowThreadProcessId([System.IntPtr]$pp.HWND, [ref]$procId) } catch { }
-    if ($procId -eq 0) { $procId = @(Get-Process -Name POWERPNT -ErrorAction SilentlyContinue | Sort-Object StartTime -Descending)[0].Id }
-    $own = Get-Process -Id $procId -ErrorAction SilentlyContinue
-    if ($procId -ne 0 -and $own -ne $null -and $own.ProcessName -eq 'POWERPNT') {
-      $pptPid = $procId
-      $pptStart = $own.StartTime.ToFileTimeUtc()
-      # Watchdog: stops only this PowerPoint (same id, name and start time) if the script hangs, and never while it
-      # shows a window (a person's deck).
-      $watchdog = Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -PassThru -ArgumentList @(
-        '-NoProfile', '-NonInteractive', '-Command',
-        "Start-Sleep -Seconds $TimeoutSeconds; `$p = Get-Process -Id $pptPid -ErrorAction SilentlyContinue; if (`$p -and `$p.ProcessName -eq 'POWERPNT' -and `$p.StartTime.ToFileTimeUtc() -eq $pptStart -and `$p.MainWindowHandle -eq 0) { Stop-Process -Id $pptPid -Force -ErrorAction SilentlyContinue }")
-      try { $watchdogStart = $watchdog.StartTime.ToFileTimeUtc() } catch { $watchdogStart = $null }
-    }
-  }
-
+  $result.attached = $true
+  try { $result.powerpoint = "$($pp.Version) build $($pp.Build)" } catch { }
   Invoke-DeckChecks $pp
 } catch {
-  if ($result.opened) { Add-Check 'script completed' $false $_.Exception.Message }
+  $message = [string]$_.Exception.Message
+  if ($message -match '^TIMEOUT') {
+    $result.timedOut = $true
+    Add-Check 'checks finished within the deadline' $false "$message ($TimeoutSeconds s)"
+  } elseif (Test-Busy $_) {
+    $result.ran = $false
+    $result.notRunReason = "PowerPoint was busy (a dialog open): $message"
+  } elseif ($result.opened) {
+    Add-Check 'script completed' $false $message
+  }
 } finally {
-  Invoke-Collect
+  # Only the script's own references are released; the owner's PowerPoint keeps running as it was.
   if ($pp -ne $null) {
-    if ($result.wasRunning -and $prevAlerts -ne $null) { try { $pp.DisplayAlerts = $prevAlerts } catch { } }
-    if (-not $result.wasRunning) {
-      # Quit only an instance that holds nothing but the script's own (now closed) deck.
-      $others = 0; $windows = 0
-      try { $others = [int]$pp.Presentations.Count } catch { $others = -1 }
-      try { $windows = [int]$pp.Windows.Count } catch { $windows = -1 }
-      if ($others -eq 0 -and $windows -eq 0) {
-        try { $pp.Quit(); $result.quit = $true } catch { }
-      } else {
-        $result.notKilled = "PowerPoint holds $others other presentation(s) and $windows window(s): not quit, not killed"
-      }
-    }
-    [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($pp)
+    try { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($pp) } catch { }
     $pp = $null
   }
   Invoke-Collect
-  # The watchdog is stopped before the wait, so the wait alone decides; one that has exited already fired.
-  if ($watchdog -ne $null) {
-    if ($watchdog.HasExited) { $result.watchdogFired = $true }
-    elseif ($watchdogStart -ne $null) { [void](Stop-OwnProcess $watchdog.Id 'powershell' $watchdogStart -WindowAllowed) }
-  }
-  if ($pptPid -and -not $result.wasRunning -and $result.notKilled -eq $null) {
-    $sw = [Diagnostics.Stopwatch]::StartNew()
-    while ((Get-OwnProcess $pptPid 'POWERPNT' $pptStart) -and $sw.Elapsed.TotalSeconds -lt 15) { Start-Sleep -Milliseconds 200 }
-    $p = Get-OwnProcess $pptPid 'POWERPNT' $pptStart
-    if ($p) {
-      if ($p.MainWindowHandle -ne 0) {
-        # A window appeared after Quit (a deck opened meanwhile): it is not the script's, so the process stays.
-        $result.notKilled = 'PowerPoint shows a window that is not the script''s: not killed'
-      } elseif (Stop-OwnProcess $pptPid 'POWERPNT' $pptStart) {
-        # Last resort: the script's own PowerPoint, with no window and no presentation of anyone else, did not quit.
-        $result.powerpointKilled = $true
-      } else {
-        $result.notKilled = 'PowerPoint changed before the last resort: not killed'
-      }
-    } elseif ($result.watchdogFired) {
-      $result.powerpointKilled = $true
-    } else {
-      $result.quitSeconds = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
-    }
-  }
 }
 Write-Report
-if ($result.pass) { exit 0 } else { exit 1 }
+if ($result.verdict -eq 'not run') { Write-Output "NOT RUN: $($result.notRunReason)"; Write-Output "Open by hand: $full" }
+if ($result.verdict -eq 'pass') { exit 0 }
+if ($result.verdict -eq 'not run') { exit 2 }
+if ($result.verdict -eq 'timeout') { exit 3 }
+exit 1
