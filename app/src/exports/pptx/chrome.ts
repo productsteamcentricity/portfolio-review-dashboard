@@ -21,7 +21,7 @@ export function colour(name: ColourToken): string {
 /** A colour given as '#RRGGBB' or 'RRGGBB' (a view-model's category colour) as PptxGenJS takes it. */
 export function normaliseColour(c: string): string {
   if (!/^#?[0-9A-Fa-f]{6}$/.test(c)) throw new RangeError(`not an RGB colour: ${c}`);
-  return c.replace(/^#/, '').toUpperCase();
+  return (c.startsWith('#') ? c.slice(1) : c).toUpperCase();
 }
 
 function luminance(rgb: string): number {

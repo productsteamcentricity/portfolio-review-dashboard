@@ -26,8 +26,9 @@
 //      focus with the Tab key is scrolled clear of the header (CONTROLS_UNDER_HEADER: a test-only button and section
 //      1's own controls);
 //   3d. (M1.4 fix round, L1) after a real click on each of the nine tabs from the end of a long section, at 1440 x 900
-//      and 1366 x 768, the review bar sits at or below the pinned header's bottom and the focused heading is clear of
-//      the header; at 375 px the review bar is 16 px from the top with the focused heading below it;
+//      and 1366 x 768, the review bar sits just below the pinned header's bottom (8 to 20 px, the measured gap, N12)
+//      and the focused heading is clear of the header; at 375 px the review bar is 16 px from the top with the focused
+//      heading below it;
 //   4. the page requests nothing but itself;
 //   5. IndexedDB: a record written by the page is read back after a reload and after a browser restart with the
 //      same profile (the store of the MF Screener data pack, D-026);
@@ -306,6 +307,12 @@ const REVIEW_BAR_PLACE = `(() => {
     scrollY: Math.round(scrollY),
   };
 })()`;
+/**
+ * "Just below the pinned header" (D-037 point 1, D-039 point 15; N12, M1.4 fix round 2), pinned as measured: the
+ * review bar's top is 8 to 20 px below the header's bottom (12 px at 1440 and 1366 px when the page is at its top).
+ */
+const BAR_GAP = Object.freeze({ min: 8, max: 20 });
+const barJustBelow = (p) => p.barTop !== null && p.barTop - p.headerBottom >= BAR_GAP.min && p.barTop - p.headerBottom <= BAR_GAP.max;
 // The centre of a tab in the pinned header, without scrolling anything (a real click lands on it where it is).
 const TAB_CENTRE = (id) => `(() => {
   const r = document.querySelector('nav a[data-section="${id}"]').getBoundingClientRect();
@@ -520,7 +527,9 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
           { start: start.scrollY, walk: walk.map((x) => `${x.focused}@${x.scrollY}`) });
       }
       // L1 (M1.4 fix round): a real click on each tab, from the end of a long section, at 1440 x 900 and 1366 x 768: the
-      // review bar sits at or below the pinned header's bottom, and the focused heading under it is clear of the header.
+      // review bar sits just below the pinned header's bottom, and the focused heading under it is clear of the header.
+      // "Just below" is pinned as measured (N12, fix round 2): a gap of BAR_GAP.min to BAR_GAP.max px (12 px when the
+      // page is at its top, where scrollTo clamps; headerOffset() asks for 16 px).
       for (const [w, h] of [[1440, 900], [1366, 768]]) {
         await page.viewport(w, h);
         const placed = [];
@@ -530,9 +539,9 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
           placed.push({ id, ...(await page.eval(REVIEW_BAR_PLACE)) });
         }
         const bad = placed.filter((p) => !(p.focused === `${p.id}-title` && p.heading === `${p.id}-title` && p.barTop !== null
-          && p.barTop >= p.headerBottom && p.headingTop >= p.headerBottom));
-        expect(`${w} px: a real click on each of the nine tabs shows the review bar below the pinned header and the focused heading clear of it (L1)`,
-          placed.length === 9 && bad.length === 0, bad.length ? bad : placed.map((p) => `${p.id}: bar ${p.barTop} >= header ${p.headerBottom}, h2 ${p.headingTop}`).join('; '));
+          && barJustBelow(p) && p.headingTop >= p.headerBottom));
+        expect(`${w} px: a real click on each of the nine tabs shows the review bar ${BAR_GAP.min} to ${BAR_GAP.max} px below the pinned header and the focused heading clear of it (L1, N12)`,
+          placed.length === 9 && bad.length === 0, bad.length ? bad : placed.map((p) => `${p.id}: bar ${p.barTop} - header ${p.headerBottom} = ${p.barTop - p.headerBottom} px, h2 ${p.headingTop}`).join('; '));
       }
       // A bookmarked section address, opened in a short window: its heading lands below the pinned header.
       for (const w of [1440, 1024]) {

@@ -2,8 +2,9 @@
 // not part of CI. Zero dependencies: Node 24's built-in WebSocket speaks the protocol to a headless Edge or Chrome
 // started with a fresh temporary profile. Nothing leaves this machine.
 //
-// Exports: sleep, findBrowser, Cdp, launch, openPage, allowDownloads (Browser.setDownloadBehavior), KEY_MODIFIERS,
-// and the colour helpers parseRgb, luminance and contrast (WCAG 2).
+// Exports: sleep, findBrowser, Cdp, launch (which polls readDevToolsActivePort, retrying EBUSY, EPERM and ENOENT until
+// its 30 s limit), openPage, allowDownloads (Browser.setDownloadBehavior), KEY_MODIFIERS, and the colour helpers
+// parseRgb, luminance and contrast (WCAG 2).
 // A page from openPage has navigate, reload, viewport, eval, waitFor (polls an expression), addInitScript, press (with
 // modifiers, so Shift+Tab is a real key press), hover, click, axNames, setFiles (DOM.setFileInputFiles), screenshot
 // (Page.captureScreenshot to a PNG file) and the requests, console messages, exceptions and log entries it saw.
@@ -83,6 +84,26 @@ export class Cdp {
   }
 }
 
+/** Errors of reading DevToolsActivePort that mean "not ready yet": the browser is still writing it, or not yet. */
+export const PORT_FILE_RETRY = Object.freeze(['EBUSY', 'EPERM', 'ENOENT']);
+
+/**
+ * The browser's DevTools WebSocket address from <profile>/DevToolsActivePort ("<port>\n<path>"), or null while the
+ * file is missing, half written, or held by the browser (on Windows a read can fail with EBUSY or EPERM while Edge
+ * writes it: N12, M1.4 fix round 2). Any other error is thrown. `read` is fs.readFileSync, injectable for the test.
+ */
+export function readDevToolsActivePort(portFile, read = fs.readFileSync) {
+  let text;
+  try {
+    text = read(portFile, 'utf8');
+  } catch (e) {
+    if (e && PORT_FILE_RETRY.includes(e.code)) return null;
+    throw e;
+  }
+  const [port, p] = String(text).split(/\r?\n/);
+  return port && p && /^\d+$/.test(port.trim()) ? `ws://127.0.0.1:${port.trim()}${p.trim()}` : null;
+}
+
 export async function launch(exe, profile) {
   const args = ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run',
     '--no-default-browser-check', '--disable-extensions', '--disable-background-networking', '--disable-sync',
@@ -94,12 +115,10 @@ export async function launch(exe, profile) {
   const proc = spawn(exe, args, { stdio: 'ignore', windowsHide: true, detached: false });
   proc.on('error', () => { /* reported by the timeout below */ });
   let wsUrl = null;
+  // Polled until the 30 s limit: a missing, half-written or busy file is read again on the next round.
   for (let waited = 0; waited < 30000 && !wsUrl; waited += 200) {
     await sleep(200);
-    if (fs.existsSync(portFile)) {
-      const [port, p] = fs.readFileSync(portFile, 'utf8').split(/\r?\n/);
-      if (port && p) wsUrl = `ws://127.0.0.1:${port.trim()}${p.trim()}`;
-    }
+    wsUrl = readDevToolsActivePort(portFile);
   }
   if (!wsUrl) throw new Error('the browser did not open its debugging port within 30 s');
   const ws = new WebSocket(wsUrl);

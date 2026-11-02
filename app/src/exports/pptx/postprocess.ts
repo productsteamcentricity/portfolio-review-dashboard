@@ -12,7 +12,9 @@
 //   3. determinism: docProps/core.xml created and modified, and every zip entry, at the export's clock; chart parts
 //      and their workbooks numbered from 1 (PptxGenJS counts charts across every deck of the page); the embedded
 //      chart workbooks zipped again the same way; so two builds of the same view-model and clock are byte-identical.
-// The parts are edited as text, using only the namespace prefixes the library already declares.
+// The parts are edited as text, using only the namespace prefixes the library already declares. Every replacement is
+// a function, never a replacement string: String.prototype.replace expands $&, $', $` and $$ in a string, and a label
+// read from the file may hold them (M1.4 fix round 2, N14).
 
 import type { JSZipInstance, JSZipObject, JSZipStatic } from './pptxgen-types.ts';
 
@@ -42,11 +44,13 @@ export type PostprocessSpec = { now: string; charts: readonly ChartLabels[] };
  * repair the file). PptxGenJS escapes the markup characters itself.
  */
 export function xmlSafe(s: string): string {
-  return s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
+  return s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, () => '');
 }
 
+const XML_ESCAPES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
+
 export function xmlEscape(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  return s.replace(/[&<>"']/g, (c) => XML_ESCAPES[c] as string);
 }
 
 const PPR = /<a:pPr\b[^>]*?(?:\/>|>[\s\S]*?<\/a:pPr>)/g;
@@ -57,7 +61,7 @@ export function oneParagraphProperties(xml: string): string {
   return xml.replace(/<a:p>([\s\S]*?)<\/a:p>/g, (_all, inner: string) => {
     const lead = PPR_LEAD.exec(inner);
     const head = lead ? lead[0] : '';
-    return `<a:p>${head}${inner.slice(head.length).replace(PPR, '')}</a:p>`;
+    return `<a:p>${head}${inner.slice(head.length).replace(PPR, () => '')}</a:p>`;
   });
 }
 
@@ -151,12 +155,15 @@ export function rewritePieLabels(chartXml: string, spec: ChartLabels): string {
   }
   const labels = chartXml.match(/<c:dLbls>[\s\S]*?<\/c:dLbls>/g) ?? [];
   if (labels.length !== 1) throw new Error(`${spec.objectName}: expected one data label block, found ${labels.length}`);
-  let xml = chartXml.replace(labels[0] as string, pieLabelsXml(spec));
+  // A function, not the block as a replacement string: a label holding $& or $' would otherwise splice the old block
+  // or the rest of the part into the new one (N14).
+  const block = pieLabelsXml(spec);
+  let xml = chartXml.replace(labels[0] as string, () => block);
   if (spec.borderColour === null) {
     // No outline: every line of the series and of its data points (all before the data labels) is no line.
     const serStart = xml.indexOf('<c:ser>');
     const lblStart = xml.indexOf('<c:dLbls>', serStart);
-    const head = xml.slice(serStart, lblStart).replace(LINE, NO_LINE);
+    const head = xml.slice(serStart, lblStart).replace(LINE, () => NO_LINE);
     return xml.slice(0, serStart) + head + xml.slice(lblStart);
   }
   // The series-level outline (under the per-slice ones): the deck's slice outline colour.
@@ -165,7 +172,8 @@ export function rewritePieLabels(chartXml: string, spec: ChartLabels): string {
   const spEnd = xml.indexOf('</c:spPr>', spStart);
   const firstPoint = xml.indexOf('<c:dPt>', txEnd);
   if (txEnd > 0 && spStart > 0 && spEnd > spStart && (firstPoint < 0 || spStart < firstPoint)) {
-    const sp = xml.slice(spStart, spEnd).replace(/(<a:ln\b[^>]*>\s*<a:solidFill>\s*<a:srgbClr val=")[0-9A-Fa-f]{6}/, `$1${spec.borderColour}`);
+    const border = spec.borderColour;
+    const sp = xml.slice(spStart, spEnd).replace(/(<a:ln\b[^>]*>\s*<a:solidFill>\s*<a:srgbClr val=")[0-9A-Fa-f]{6}/, (_all, open: string) => `${open}${border}`);
     xml = xml.slice(0, spStart) + sp + xml.slice(spEnd);
   }
   return xml;
@@ -175,14 +183,19 @@ export function rewritePieLabels(chartXml: string, spec: ChartLabels): string {
 export function w3cdtf(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) throw new RangeError(`not a date: ${iso}`);
-  return d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  return d.toISOString().replace(/\.\d{3}Z$/, () => 'Z');
 }
 
 export function setCoreDates(coreXml: string, iso: string): string {
   const when = w3cdtf(iso);
   return coreXml
-    .replace(/(<dcterms:created\b[^>]*>)[^<]*(<\/dcterms:created>)/, `$1${when}$2`)
-    .replace(/(<dcterms:modified\b[^>]*>)[^<]*(<\/dcterms:modified>)/, `$1${when}$2`);
+    .replace(/(<dcterms:created\b[^>]*>)[^<]*(<\/dcterms:created>)/, (_all, open: string, close: string) => `${open}${when}${close}`)
+    .replace(/(<dcterms:modified\b[^>]*>)[^<]*(<\/dcterms:modified>)/, (_all, open: string, close: string) => `${open}${when}${close}`);
+}
+
+/** The relationship part of a part: ppt/charts/chart1.xml has ppt/charts/_rels/chart1.xml.rels. */
+export function relsPartOf(part: string): string {
+  return part.replace(/([^/]+)$/, (_all, base: string) => `_rels/${base}.rels`);
 }
 
 const num = (part: string): number => Number(/(\d+)\.[a-z]+$/.exec(part)?.[1] ?? NaN);
@@ -198,7 +211,7 @@ export function chartRenames(names: readonly string[], chartRels: ReadonlyMap<st
   charts.forEach((part, i) => {
     const k = i + 1;
     renames.set(part, `ppt/charts/chart${k}.xml`);
-    const rels = part.replace(/([^/]+)$/, '_rels/$1.rels');
+    const rels = relsPartOf(part);
     if (names.includes(rels)) renames.set(rels, `ppt/charts/_rels/chart${k}.xml.rels`);
     const workbook = chartRels.get(part);
     if (workbook && /^ppt\/embeddings\/[^/]+\.xlsx$/.test(workbook)) renames.set(workbook, `ppt/embeddings/Microsoft_Excel_Worksheet${k}.xlsx`);
@@ -214,7 +227,7 @@ export function renameReferences(partName: string, xml: string, renames: Readonl
   if (partName === '[Content_Types].xml') {
     return xml.replace(/(\bPartName=")\/([^"]+)"/g, (all, head: string, p: string) => (renames.has(p) ? `${head}/${renames.get(p)}"` : all));
   }
-  const source = partName.replace(/_rels\/([^/]*)\.rels$/, '$1');
+  const source = partName.replace(/_rels\/([^/]*)\.rels$/, (_all, base: string) => base);
   const dir = source.includes('/') ? source.slice(0, source.lastIndexOf('/')) : '';
   return xml.replace(/(\bTarget=")([^"]+)"/g, (all, head: string, target: string) => {
     if (/^[a-z]+:/i.test(target)) return all;
@@ -289,7 +302,7 @@ export async function postprocessDeck(bytes: Uint8Array, spec: PostprocessSpec, 
   const chartWorkbooks = new Map<string, string>();
   for (const name of names) {
     if (!/^ppt\/charts\/chart\d+\.xml$/.test(name)) continue;
-    const rels = zip.file(name.replace(/([^/]+)$/, '_rels/$1.rels'));
+    const rels = zip.file(relsPartOf(name));
     if (!rels) continue;
     const target = /\bTarget="([^"]+\.xlsx)"/.exec(await rels.async('string'));
     if (target) chartWorkbooks.set(name, resolvePart('ppt/charts', target[1] as string));

@@ -16,15 +16,16 @@
 //   2. section 1 before a file: the stage strip at Upload, "No file", Accept not available with its reason, the
 //      disclaimer's status, the MF Screener slot (M10), an empty source register;
 //   3. refusals as sentences [L15]: a 21 MB file and a damaged workbook; a file with no holding is refused, Accept
-//      does nothing [L14]; after every pick the focus is on the new file input, never the body [L13];
+//      does nothing [L14]; after every pick the focus is on the new file input, never the body [L13]; the review bar
+//      reads "Base file refused" and never names a refused file [N12];
 //   4. syn-standard read: Preview in the strip and in the source register [L12], the full 64-hex SHA-256 [L18], the
-//      M2 matching line, section 2 still empty; the Accept button, under the pinned header when Tab gives it focus,
-//      is scrolled clear of the header at 1440 and 1024 px [L26];
+//      M2 matching line, the file named in the review bar [N12], section 2 still empty; the Accept button, under the
+//      pinned header when Tab gives it focus, is scrolled clear of the header at 1440 and 1024 px [L26];
 //   5. Accept with the keyboard and no as-on date: the focus stays on Accept [L13], Accepted, Review in the strip and
 //      the register [L12], the Blocking as-on result, the downloads not available with the reason, and a click on one
 //      starts nothing;
 //   6. a real click on tab 1 and tab 2 from the end of the long sections, at 1440 x 900 and 1366 x 768: the review
-//      bar below the pinned header, the focused heading clear of it [L1];
+//      bar just below the pinned header (8 to 20 px, the measured gap), the focused heading clear of it [L1, N12];
 //   7. the as-on date, the family label and a built-in logo: section 2's figures, tables, matrices and notes; the pies
 //      [L2] at 1440 and 375 px (colours, labels, the band above and below the pie, the legend below the band, every
 //      label inside the canvas, clear of the legend and of each other; no label on the one-slice liquidity pie), with
@@ -32,9 +33,16 @@
 //   8. the two downloads (real clicks): the file names, the bytes saved, no request but blob or data URLs, the focus
 //      kept on each button [L13]; the workbook passes the evaluator-only check (scripts/office/run-acceptance.ts);
 //   9. Remove: the focus on the new file input [L13]; the XIRR questions answered with real clicks: the focus moves
-//      to the next question, then to the import report heading [L13]; an acknowledged High result: the focus moves on;
+//      to the next question, then to the import report heading [L13]; an acknowledged High result: the focus moves on
+//      (syn-total-like; where the reader skips its "Grand Total" row, N1, there is no High result and the book reads
+//      as syn-standard, never doubled);
 //  10. syn-all-classes (six slices, Commodity unlabelled, Unknown last in #D9D9D9) and syn-single-entity (the single
-//      client and distributor lines) [L2, L14]; a reload keeps the logo and no review data.
+//      client and distributor lines) [L2, L14];
+//  11. [N12] syn-blank-entities: the matrix notes count named columns and put the rest in words ("2 clients, and 2
+//      holdings with no client"); syn-case-variants: the client and distributor headers as the file spells them,
+//      each distinct on screen (innerText, after the stylesheet's text-transform); a copy of syn-standard with "NA"
+//      in every market value: the liquidity table is the sentence "No liquidity line to show: ..."; then a reload
+//      keeps the logo and no review data.
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -164,8 +172,23 @@ const OVERVIEW = `(() => {
     bar: document.querySelector('.review-bar')?.textContent.replace(/\\s+/g, ' ').trim() ?? null,
     logo: document.querySelector('.review-bar img')?.getAttribute('alt') ?? null,
     empty: document.querySelector('#app .empty-lead')?.textContent ?? null,
+    // (N12) the entity headers as rendered (innerText follows text-transform), the group notes, the liquidity block.
+    clientHeads: [...document.querySelectorAll('#matrix-client thead th.entity')].map((t) => t.innerText.trim()),
+    distributorHeads: [...document.querySelectorAll('#matrix-distributor thead th.entity')].map((t) => t.innerText.trim()),
+    clientNote: document.querySelector('#group-clients .group-note')?.textContent.trim() ?? null,
+    distributorNote: document.querySelector('#group-distributors .group-note')?.textContent.trim() ?? null,
+    liquidityTable: Boolean(document.getElementById('liquidity-table')),
+    liquidityEmpty: document.getElementById('liquidity-empty')?.textContent.trim() ?? null,
   };
 })()`;
+// (N12) The review bar's base-file words.
+const BAR_FILE = `document.querySelector('.review-bar .review-file')?.textContent.replace(/\\s+/g, ' ').trim() ?? null`;
+/**
+ * "Just below the pinned header" (D-037 point 1, D-039 point 15; N12), pinned as measured: the review bar's top is 8 to
+ * 20 px below the header's bottom (12 px at 1440 and 1366 px when the page is at its top).
+ */
+const BAR_GAP = Object.freeze({ min: 8, max: 20 });
+const barJustBelow = (p) => p.barTop !== null && p.barTop - p.headerBottom >= BAR_GAP.min && p.barTop - p.headerBottom <= BAR_GAP.max;
 
 // (L2) Every pie of section 2 as Chart.js drew it: the dataset, the chart area, the legend, and the frame of every
 // label datalabels drew (its HitBox after drawing, in canvas pixels).
@@ -229,10 +252,10 @@ const sortedTexts = (labels) => labels.map((l) => l.text).sort();
 
 async function writeFixtures(dir) {
   const { syntheticFixtures, overviewFixtures } = await import(pathToFileURL(path.join(ROOT, 'tests', 'fixtures', 'make-books.ts')).href);
-  const { loadSheetJS } = await import(pathToFileURL(path.join(ROOT, 'tests', 'helpers', 'sheetjs.ts')).href);
+  const { loadSheetJS, writeXlsx } = await import(pathToFileURL(path.join(ROOT, 'tests', 'helpers', 'sheetjs.ts')).href);
   const xlsx = loadSheetJS();
   fs.mkdirSync(dir, { recursive: true });
-  const want =['syn-standard', 'syn-ambiguous-xirr', 'syn-all-classes', 'syn-single-entity', 'syn-total-like'];
+  const want = ['syn-standard', 'syn-ambiguous-xirr', 'syn-all-classes', 'syn-single-entity', 'syn-total-like', 'syn-blank-entities', 'syn-case-variants'];
   const all = [...syntheticFixtures(xlsx), ...overviewFixtures(xlsx)];
   const files = {};
   for (const id of want) {
@@ -241,6 +264,21 @@ async function writeFixtures(dir) {
     files[id] = path.join(dir, `${id}.xlsx`);
     fs.writeFileSync(files[id], f.bytes);
   }
+  // (N12) syn-standard with "NA" in every market value cell ("Current Market Value (Cr.)" and "Market Value (₹)"):
+  // a file read whose every holding is excluded.
+  const wb = xlsx.read(fs.readFileSync(files['syn-standard']), { type: 'buffer' });
+  const ws = wb.Sheets['Base File'];
+  const range = xlsx.utils.decode_range(ws['!ref']);
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const head = ws[xlsx.utils.encode_cell({ r: 0, c })];
+    if (!head || !/^(?:Current )?Market Value/i.test(String(head.v))) continue;
+    for (let r = 1; r <= range.e.r; r++) {
+      const addr = xlsx.utils.encode_cell({ r, c });
+      if (ws[addr]) ws[addr] = { v: 'NA', t: 's' };
+    }
+  }
+  files['syn-all-na'] = path.join(dir, 'syn-all-na.xlsx');
+  fs.writeFileSync(files['syn-all-na'], writeXlsx(xlsx, wb));
   files.notes = path.join(dir, 'notes.xlsx');
   fs.writeFileSync(files.notes, 'This is not a workbook.\n');
   files.huge = path.join(dir, 'huge.xlsx');
@@ -369,6 +407,14 @@ async function runMode({ browser, mode, files, opt, expect }) {
   await page.click(await page.eval(CENTRE('#accept-file')));
   const notesAfter = await page.eval(SLOT);
   expect('a click on Accept for a refused file does nothing (L14)', notesAfter.chip === 'Refused' && notesAfter.stage === 'Validate', notesAfter);
+  // (N12) The review bar never names a refused file: the three refusals above each leave "Base file refused".
+  const refusedBars = [];
+  for (const f of [files.huge, files.broken, files.notes]) {
+    await pick(f);
+    refusedBars.push({ file: path.basename(f), bar: await page.eval(BAR_FILE) });
+  }
+  expect('after each refusal the review bar reads "Base file refused" and never the refused file\'s name (N12)',
+    refusedBars.every((b) => b.bar === 'Base file refused' && !b.bar.includes(b.file)), refusedBars);
 
   // 4. syn-standard read, before Accept
   const std = await pick(files['syn-standard']);
@@ -376,6 +422,8 @@ async function runMode({ browser, mode, files, opt, expect }) {
   expect('syn-standard read: "Read, waiting for Accept", Preview in the strip and in the source register (L12), focus on the input (L13)',
     std.chip === 'Read, waiting for Accept' && std.stage === 'Preview' && JSON.stringify(std.register) === '["Preview"]'
       && !std.acceptUnavailable && std.focused === 'base-file-input', std);
+  const stdBar = await page.eval(BAR_FILE);
+  expect('a file read and not refused is named in the review bar: "Base file syn-standard.xlsx" (N12)', stdBar === 'Base file syn-standard.xlsx', stdBar);
   const report = await page.eval(`(() => {
     const el = document.getElementById('base-file-sha256');
     const cell = el ? el.closest('td') : null;
@@ -428,9 +476,9 @@ async function runMode({ browser, mode, files, opt, expect }) {
       await sleep(200);
       placed.push({ id, ...(await page.eval(REVIEW_BAR_PLACE)) });
     }
-    const bad = placed.filter((p) => !(p.focused === `${p.id}-title` && p.barTop !== null && p.barTop >= p.headerBottom && p.headingTop >= p.headerBottom));
-    expect(`${w} px, a review on screen: a real click on tab 1 and tab 2 shows the review bar below the pinned header, the focused heading clear of it (L1)`,
-      bad.length === 0, bad.length ? bad : placed.map((p) => `${p.id}: bar ${p.barTop} >= header ${p.headerBottom}, h2 ${p.headingTop}`).join('; '));
+    const bad = placed.filter((p) => !(p.focused === `${p.id}-title` && barJustBelow(p) && p.headingTop >= p.headerBottom));
+    expect(`${w} px, a review on screen: a real click on tab 1 and tab 2 shows the review bar ${BAR_GAP.min} to ${BAR_GAP.max} px below the pinned header, the focused heading clear of it (L1, N12)`,
+      bad.length === 0, bad.length ? bad : placed.map((p) => `${p.id}: bar ${p.barTop} - header ${p.headerBottom} = ${p.barTop - p.headerBottom} px, h2 ${p.headingTop}`).join('; '));
   }
   await page.viewport(1440, 900);
 
@@ -533,13 +581,21 @@ async function runMode({ browser, mode, files, opt, expect }) {
   await pick(files['syn-total-like']);
   await accept();
   const ackButton = await page.eval(`Boolean(document.querySelector('#group-validation .issue button'))`);
-  expect('syn-total-like: a High result with Acknowledge', ackButton, ackButton);
   if (ackButton) {
+    expect('syn-total-like: a High result with Acknowledge', ackButton, ackButton);
     await page.click(await page.eval(CENTRE('#group-validation .issue button')));
     await sleep(500);
     const fa = await page.eval(FOCUSED);
     const left = await page.eval(`document.querySelectorAll('#group-validation .issue button').length`);
     expect('after Acknowledge the focus moves to the validation heading, not the body', left === 0 && fa === 'group-validation-heading', { fa, left });
+  } else {
+    // A reader that skips a "Grand Total" row (M1.4 fix round 2, N1; D-041 point 3) raises no High result here: the
+    // book then reads as syn-standard, never doubled.
+    await tab('overview');
+    const tl = await page.eval(OVERVIEW);
+    await tab('uploads');
+    expect('syn-total-like: no High result, so the "Grand Total" row was skipped (N1): the KPIs are syn-standard\'s 2.85 and 3.35, never doubled',
+      tl.kpis[0] === '2.85' && tl.kpis[1] === '3.35', tl.kpis);
   }
 
   // 10. syn-all-classes and syn-single-entity [L2, L14]; a reload
@@ -565,6 +621,31 @@ async function runMode({ browser, mode, files, opt, expect }) {
   expect('syn-single-entity: the single client and single distributor lines replace the matrices',
     /Single client: Sample Client A holds every included holding\./.test(single.clients ?? '')
       && /Single distributor: Centricity holds every included holding\./.test(single.distributors ?? ''), { clients: single.clients, distributors: single.distributors });
+
+  // 11. (N12) The matrix notes count named columns (syn-blank-entities), the headers keep the file's letter case
+  // (syn-case-variants), and an empty liquidity table is a sentence (every market value "NA").
+  const show = async (file) => {
+    await tab('uploads');
+    await pick(file);
+    await accept();
+    await tab('overview');
+    await sleep(400);
+    return page.eval(OVERVIEW);
+  };
+  const blank = await show(files['syn-blank-entities']);
+  expect('syn-blank-entities: "2 clients, and 2 holdings with no client" and "2 distributors, and 1 holding with no distributor", as the Clients KPI (2) (N12)',
+    blank.clientNote === '2 clients, and 2 holdings with no client' && blank.distributorNote === '2 distributors, and 1 holding with no distributor'
+      && blank.kpis[5] === '2', { clientNote: blank.clientNote, distributorNote: blank.distributorNote, clientsKpi: blank.kpis[5] });
+  const cases = await show(files['syn-case-variants']);
+  const distinct = (xs) => xs.length > 0 && new Set(xs).size === xs.length;
+  expect('syn-case-variants: the client and distributor headers show the labels as the file spells them, each distinct on screen (N12)',
+    distinct(cases.clientHeads) && cases.clientHeads.includes('Sample Client A') && cases.clientHeads.includes('SAMPLE CLIENT A')
+      && distinct(cases.distributorHeads) && cases.distributorHeads.includes('Centricity') && cases.distributorHeads.includes('CENTRICITY'),
+    { clients: cases.clientHeads, distributors: cases.distributorHeads });
+  const allNa = await show(files['syn-all-na']);
+  expect('every market value "NA": no liquidity table, the sentence "No liquidity line to show: not available in supplied data." (N12)',
+    !allNa.liquidityTable && allNa.liquidityEmpty === 'No liquidity line to show: not available in supplied data.',
+    { table: allNa.liquidityTable, sentence: allNa.liquidityEmpty });
 
   await page.reload();
   await page.waitFor(READY);

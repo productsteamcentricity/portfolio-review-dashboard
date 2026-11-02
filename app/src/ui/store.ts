@@ -18,7 +18,7 @@ import { buildOverviewVM } from '../views/overview.ts';
 import { DEFAULT_FAMILY_LABEL, checkLabel } from '../views/labels.ts';
 import { imageSize } from '../views/logo.ts';
 import { formatDay } from '../engine/dates.ts';
-import { canAccept } from './upload-slot.ts';
+import { barFileName, canAccept } from './upload-slot.ts';
 
 export type AppState = {
   /**
@@ -104,13 +104,17 @@ export function renumberAudit(entries: readonly AuditEntry[]): AuditEntry[] {
   return entries.map((e, i) => ({ ...e, id: `audit:${i + 1}` }));
 }
 
-/** What the review bar at the top of the section area shows (KI-020: it follows the logo choice at once). */
+/**
+ * What the review bar at the top of the section area shows (KI-020: it follows the logo choice at once). The file
+ * name is that of a file read and not refused (N12: a refused file is never named; ui/upload-slot.ts barFileStatus
+ * gives the words instead).
+ */
 export function reviewBar(state: AppState): { logo: LogoAsset | null; familyLabel: string; asOnText: string | null; fileName: string | null } {
   return {
     logo: state.logo,
     familyLabel: state.vm ? state.vm.meta.familyLabel : state.labels.family,
     asOnText: state.asOn === null ? null : formatDay(state.asOn),
-    fileName: state.upload.fileName,
+    fileName: barFileName(state.upload),
   };
 }
 

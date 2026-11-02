@@ -5,7 +5,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import type { PieChart as PieVM } from '../../views/overview-vm.ts';
 import type { ChartLib } from '../chart-lib.ts';
-import { STATUS_PHRASE } from '../../views/format.ts';
+import { emptyPieSentence } from '../overview-text.ts';
 
 export function pieDescription(pie: PieVM): string {
   if (pie.slices.length === 0) return `${pie.title}: no slice to show.`;
@@ -24,7 +24,7 @@ export function PieChart({ pie, lib }: { pie: PieVM; lib: ChartLib | null }) {
     <figure class="chart" aria-labelledby={captionId}>
       <figcaption id={captionId}>{pie.title}</figcaption>
       {pie.slices.length === 0 ? (
-        <p class="muted">No slice to show: {STATUS_PHRASE[pie.emptyStatus ?? 'NOT AVAILABLE IN SUPPLIED DATA']}.</p>
+        <p class="muted">{emptyPieSentence(pie)}</p>
       ) : lib ? (
         <div class="chart-box">
           <canvas ref={canvas} role="img" aria-label={pieDescription(pie)} />

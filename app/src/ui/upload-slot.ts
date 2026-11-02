@@ -99,6 +99,21 @@ export function baseFileRefusal(loaded: LoadedBaseFile): string | null {
   return null;
 }
 
+/**
+ * The base file the review bar names (N12): the file's name only when it was read and not refused or failed; a
+ * refused file is never named in the bar, since no review comes from it. Null otherwise.
+ */
+export function barFileName(u: UploadState): string | null {
+  return u.loaded !== null && u.error === null && baseFileRefusal(u.loaded) === null ? u.fileName : null;
+}
+
+/** The review bar's words when it names no file (N12); null when it names one (barFileName). */
+export function barFileStatus(u: UploadState): 'No base file loaded' | 'Base file refused' | 'Base file not reviewed' | null {
+  if (u.error !== null) return u.error.kind === 'review-failed' ? 'Base file not reviewed' : 'Base file refused';
+  if (u.loaded === null) return 'No base file loaded';
+  return baseFileRefusal(u.loaded) !== null ? 'Base file refused' : null;
+}
+
 /** True when the file on screen may be accepted: read, not refused, not failed and not yet accepted. */
 export function canAccept(u: UploadState): boolean {
   return u.loaded !== null && u.error === null && u.stage !== 'review' && baseFileRefusal(u.loaded) === null;

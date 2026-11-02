@@ -111,6 +111,11 @@ export type PptxChartOptions = {
   dataLabelFontSize?: number;
   dataLabelFontBold?: boolean;
   dataLabelPosition?: 'bestFit' | 'outEnd' | 'inEnd' | 'ctr';
+  /**
+   * A manual layout of the plot area's inner box, as fractions of the chart (0 to 1): PptxGenJS writes it as
+   * c:plotArea/c:layout/c:manualLayout with layoutTarget inner and edge modes.
+   */
+  layout?: { x: number; y: number; w: number; h: number };
   altText?: string;
   objectName?: string;
 };
