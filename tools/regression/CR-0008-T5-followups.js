@@ -25,6 +25,7 @@
    7. The harvest assumption inputs were number fields: "1,25,000" read as empty and
       restored the default without a word. They are text fields that accept Indian and
       international digit grouping; only a blank or non-numeric entry restores the default.
+   9. ENGINE.taxDefaults, the harvest defaults the engine exports, is frozen (ARC-01, C3 of its contract review).
    Synthetic data only.
    ========================================================================== */
 'use strict';
@@ -73,6 +74,10 @@ ok(kind('Synthetic Short History Fund-Reg(G)').reason === 'Units do not reconcil
    kind('Synthetic Unlisted Co Pvt Ltd').reason === 'Invested value does not reconcile to the base file: the transaction history is incomplete for this holding.',
   'the unit and value reasons say which way they differ, with no dash');
 ok(UX.unreconciled.every(x => !/[–—]/.test(x.reason)), 'no reason holds an en or em dash');
+/* ---------------- 9. the exported harvest defaults are frozen ---------------- */
+console.log('--- 9. ENGINE.taxDefaults is frozen ---');
+ok(Object.isFrozen(E.taxDefaults) && E.taxDefaults.slabPct === 30 && E.taxDefaults.slabMaxPct === 30 && E.taxDefaults.usedRs === 0 && E.taxDefaults.exemptRs === 125000,
+  'ENGINE.taxDefaults is frozen and holds slabPct 30, slabMaxPct 30, usedRs 0 and exemptRs 125000');
 (async () => {
   try {
     const tx = T.text(T.renderTaxTab(UB.review(AS_ON)));

@@ -48,6 +48,8 @@
       default without a word.
    8. A comment only: the foreign-share marker reads the ISIN of the matched STOCK_RET entry; the base
       file's own ISIN column is not read by parseBaseRows (KI-184, open, not fixed here; D-040 c corrected).
+   9. The harvest defaults the engine exports (ENGINE.taxDefaults, part T3) are frozen: only taxAssumeFor reads
+      them, and an exported key cannot be taken back later (ARC-01, C3 of its review of the contract).
 
      node tools/patches/2026-10-27-tax-5-followups.js
    ========================================================================== */
@@ -430,5 +432,13 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
     to: "        if(_ns.pms.n) _lo.push(_ns.pms.n+' PMS ('+U.m(_ns.pms.cmv)+')');\n" +
         "        if(_ns.passThrough.n) _lo.push(_ns.passThrough.n+(_ptA?(' AIF'+(_ns.passThrough.n===1?'':'s')+' treated as Cat I/II'):(' Cat I/II AIF'+(_ns.passThrough.n===1?'':'s')))+' ('+U.m(_ns.passThrough.cmv)+')');\n" +
         "        if(_ns.fundLevel.n) _lo.push(_ns.fundLevel.n+' Cat III AIF'+(_ns.fundLevel.n===1?'':'s')+' ('+U.m(_ns.fundLevel.cmv)+')');\n"
+  },
+
+  /* ======================= engine (07): the exported harvest defaults ======================= */
+  {
+    label: 'engine: the harvest defaults the engine exports are frozen (T5, ARC-01 C3)',
+    from: '  var TAX_HARVEST_DEFAULTS={slabPct:30, slabMaxPct:30, usedRs:0, exemptRs:TAX_S198_EXEMPT_RS};\n',
+    to: '  /* T5 (ARC-01 C3): exported as ENGINE.taxDefaults and read only by taxAssumeFor, so it is frozen */\n' +
+        '  var TAX_HARVEST_DEFAULTS=Object.freeze({slabPct:30, slabMaxPct:30, usedRs:0, exemptRs:TAX_S198_EXEMPT_RS});\n'
   }
 ]);

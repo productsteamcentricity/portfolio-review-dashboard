@@ -1022,7 +1022,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
        in full before and after, and its own loss reduces no other gain and is not carried forward.
      ========================================================================= */
   var TAX_S198_EXEMPT_RS=125000;
-  var TAX_HARVEST_DEFAULTS={slabPct:30, slabMaxPct:30, usedRs:0, exemptRs:TAX_S198_EXEMPT_RS};
+  /* T5 (ARC-01 C3): exported as ENGINE.taxDefaults and read only by taxAssumeFor, so it is frozen */
+  var TAX_HARVEST_DEFAULTS=Object.freeze({slabPct:30, slabMaxPct:30, usedRs:0, exemptRs:TAX_S198_EXEMPT_RS});
   /* the analyst's assumptions for one client: A.clients[client] = {slabPct, usedRs}; missing or blank = default */
   function taxAssumeFor(A, client){
     var cl=(A&&A.clients)||null, a=(cl&&Object.prototype.hasOwnProperty.call(cl,client)&&cl[client])||{};

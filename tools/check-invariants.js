@@ -44,9 +44,10 @@ const MARKERS = [                                   /* the same markers tools/en
 const APP_BLOCKS = ['engine', 'exporters', 'parsers', 'app_ui', 'boot'];
 const NETWORK = [/\bfetch\s*\(/, /XMLHttpRequest/, /\bWebSocket\b/, /\bEventSource\b/, /sendBeacon/, /\bimport\s*\(/,
   /https?:\/\//, /navigator\.serviceWorker/, /\bnew\s+Worker\s*\(/];
-const ENGINE_KEYS = ['palette', 'FONT', 'amcDisplay', 'normalize', 'matchInstrument', 'matchPMS', 'resolveBench',
-  'benchmarkFor', 'bucketDefs', 'parseBaseRows', 'assetLabel', 'computeReview', 'computeTaxation', 'taxClassOf', 'aiaCompute',
-  'aiaWeights', 'aiaAmcCap', 'aiaOvBands', 'fmt', 'buildPPTX', 'buildXLSX', 'parsers'];
+const ENGINE_KEYS = ['palette', 'FONT', 'amcDisplay', 'amcKey', 'normalize', 'matchInstrument', 'matchPMS', 'resolveBench',
+  'benchmarkFor', 'bucketDefs', 'parseBaseRows', 'assetLabel', 'computeReview', 'computeTaxation', 'taxClassOf', 'taxClassify',
+  'taxApplyAssumptions', 'taxAssumeFor', 'taxDefaults', 'xirr', 'aiaCompute', 'aiaWeights', 'aiaAmcCap', 'aiaOvBands', 'fmt',
+  'buildPPTX', 'buildXLSX', 'parsers'];
 const PARSER_KEYS = ['parseEquitySide', 'parseDebtSide', 'parseMonitor', 'parseSIF', 'parsePMS', 'parseIRR', 'fmtDate',
   'parseAdditionalDebt', 'parseSOA'];
 const REF_KEYS = ['FUND_RANKS', 'FUND_RANKS_META', 'FUND_MGR', 'FUND_MGR_META', 'TAX_RULES', 'DATA_DATES',
