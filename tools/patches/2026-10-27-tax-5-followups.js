@@ -50,6 +50,9 @@
       file's own ISIN column is not read by parseBaseRows (KI-184, open, not fixed here; D-040 c corrected).
    9. The harvest defaults the engine exports (ENGINE.taxDefaults, part T3) are frozen: only taxAssumeFor reads
       them, and an exported key cannot be taken back later (ARC-01, C3 of its review of the contract).
+  11. A date-time written with an explicit zone in the IRR sheet ("2023-04-01T20:00:00Z", "...+05:30") is read as the day
+      it states, the same in every zone; part T2 read the machine-local day of the instant, which is another day in some
+      zones (parsers script, irrParseDate; ARC-01, C2 of its review of the contract; KI-186).
 
      node tools/patches/2026-10-27-tax-5-followups.js
    ========================================================================== */
@@ -440,5 +443,18 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
     from: '  var TAX_HARVEST_DEFAULTS={slabPct:30, slabMaxPct:30, usedRs:0, exemptRs:TAX_S198_EXEMPT_RS};\n',
     to: '  /* T5 (ARC-01 C3): exported as ENGINE.taxDefaults and read only by taxAssumeFor, so it is frozen */\n' +
         '  var TAX_HARVEST_DEFAULTS=Object.freeze({slabPct:30, slabMaxPct:30, usedRs:0, exemptRs:TAX_S198_EXEMPT_RS});\n'
+  },
+
+  /* ======================= parsers (09): a date-time with an explicit zone ======================= */
+  {
+    label: 'parsers: a date-time that names its own zone is read as the day it states (T5 item 11, ARC-01 C2, KI-186)',
+    from: '    var d=new Date(s); return isNaN(d)?null:new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));\n',
+    to: '    /* T5 item 11 (ARC-01 C2, KI-186): a date-time that names its own zone ("2023-04-01T20:00:00Z", "...+05:30") carries its day in the text;\n' +
+        '       read that day, so it is the same in every zone (part T2 read the machine-local day of the instant). Only text Date accepts is read at\n' +
+        '       all: an impossible month, hour or offset ("2023-13-01T00:00:00Z", "...T25:00:00Z", "...+25:00") is dropped, as before */\n' +
+        '    var d=new Date(s); if(isNaN(d)) return null;\n' +
+        '    m=/^(\\d{4})-(\\d{2})-(\\d{2})[T ]\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?\\s*(?:Z|[+-]\\d{2}:?\\d{2})$/i.exec(s);\n' +
+        '    if(m) return new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));\n' +
+        '    return new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));\n'
   }
 ]);

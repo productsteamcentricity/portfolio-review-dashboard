@@ -6903,7 +6903,13 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     if(m) return new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));
     /* TX-02: Date reads free text as local midnight (18:30 the day before in UTC, on an IST machine);
        take its local calendar day at UTC midnight, as the branches above return */
-    var d=new Date(s); return isNaN(d)?null:new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+    /* T5 item 11 (ARC-01 C2, KI-186): a date-time that names its own zone ("2023-04-01T20:00:00Z", "...+05:30") carries its day in the text;
+       read that day, so it is the same in every zone (part T2 read the machine-local day of the instant). Only text Date accepts is read at
+       all: an impossible month, hour or offset ("2023-13-01T00:00:00Z", "...T25:00:00Z", "...+25:00") is dropped, as before */
+    var d=new Date(s); if(isNaN(d)) return null;
+    m=/^(\d{4})-(\d{2})-(\d{2})[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?\s*(?:Z|[+-]\d{2}:?\d{2})$/i.exec(s);
+    if(m) return new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));
+    return new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
   }
   function parseIRR(sheetNames, getAOA){
     function hmap(row){ var m={}; (row||[]).forEach(function(c,i){ if(c==null) return;
