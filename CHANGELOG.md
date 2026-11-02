@@ -41,12 +41,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     `test-ai-analyst` 24/24. The final head's results go into the pull request.
   - The five-reviewer review of the committed head (two financial-domain reviewers, a security and release reviewer, a
     documentation auditor and a test-quality auditor; 62 findings, 2 Nov 2026) is answered in CR-0008, "The gate reviews
-    of the committed head". No code changed: `index.html` stays `391E722FFDC585D8D614CA7029FB8EA1`. The records were
+    of the committed head". The page is unchanged: `index.html` stays `391E722FFDC585D8D614CA7029FB8EA1`. The records were
     corrected (D-040, D-043, KNOWN_ISSUES, TESTING, PROJECT_STATE, legacy ARCHITECTURE, and `CLAUDE.md`, whose
-    `smoke-review` count is now 36); 35 checks were added to `CR-0008-T5-followups.js` (130 in all) and
-    `CR-0008-T5-item10-listed-aif.js` (90), `KI-182-crypto-no-set-off.js` no longer pins the stale data text and
-    `KI-185-engine-keys.js` cleans up after itself and plants every kind of extra export; there is one new question for
-    the owner, CR-0008 question 24 (a fund that the loose name matcher only links to a Listed AIF entry).
+    `smoke-review` count is now 36); 30 checks were added to `CR-0008-T5-followups.js` (130 in all) and 5 to
+    `CR-0008-T5-item10-listed-aif.js` (90 in all), `KI-182-crypto-no-set-off.js` no longer pins the stale data text and
+    `KI-185-engine-keys.js` cleans up after itself and plants a number, a string, a function and an object; there is one
+    new question for the owner, CR-0008 question 24 (a fund that the loose name matcher only links to a Listed AIF
+    entry), and two for the tax adviser, questions 25 and 26.
 - **Tax batch rebased on fix batch 4 (CR-0008): the branch merged `main` (PR #14 to #16) and its page was rebuilt**
   from main's page (fix batch 4) with the four tax patches in file-name order: `index.html` MD5
   `12B5E5727FCA01EF2EA162C59913F01D` → `0713C6BEEFCB35D778730AB9BEF3E430`. Parts T1, T3 and T4 apply unchanged. Part T2

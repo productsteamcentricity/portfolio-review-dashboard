@@ -26,8 +26,9 @@
   client, the Rs 1.25 lakh Sec 198 exemption with the analyst's "already used" input, the set-off order with the
   analyst's slab rate, AIF Category III at fund level, AIF Category I and II and PMS not split, the carry-forward
   wording and the crypto source: KI-166 to KI-169, KI-171, KI-175, KI-181, KI-182, with KI-130) and part T4 (the
-  financial re-review of T3: crypto kept out of set-off until the owner rules, CR-0008 question 18; two figures in the
-  records corrected) are committed on `fix/legacy-batch-3-tax-p3-r2`, on top of T2 (`index.html` MD5 `61FC0FB2…`).
+  financial re-review of T3: crypto kept out of set-off until the owner rules, CR-0008 question 18 (answered 2 Nov 2026:
+  keep no set-off, D-043); two figures in the records corrected) are committed on `fix/legacy-batch-3-tax-p3-r2`, on top
+  of T2 (`index.html` MD5 `61FC0FB2…`).
   The branch then merged `main` with fix batch 4 (PR #16) and its page was rebuilt from main's page with the four
   tax patches, two anchors of part T2 revised where the batches meet (CR-0008, "Rebased on fix batch 4"; `index.html` MD5
   `0713C6BE…`). Part T5 (2 Nov 2026: the follow-ups to T1 to T4, the owner's answers to questions 17 and 18, and the
@@ -39,9 +40,10 @@
   are fixed and KI-177 in part; KI-177's step-up waits for the owner's rulings. The five-reviewer review of the
   committed head (62 findings, 2 Nov 2026) is answered in CR-0008: the corrections are in the records and the tests
   only, the page is unchanged (`391E722F…`), the regression suite is 47 files and 1,619 checks, and a new owner
-  question (24) is open. The final head's check results go into the pull request. The batch merges as one pull request
-  after the gate reviews and the browser acceptance (with `family-isolation.js`'s assumption-reset check); the slide
-  geometry for a table of 13 or more classes in PowerPoint has not been run.
+  question (24) is open, with two for the tax adviser (25 and 26). The final head's check results go into the pull
+  request. The batch merges as one pull request after the gate reviews and the browser acceptance (with
+  `family-isolation.js`'s assumption-reset check); the slide geometry for a table of 13 or more classes in PowerPoint
+  has not been run.
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
   - **Phase 0 is done.** The record is in [`new-build/`](new-build/README.md) (audit, capability inventory,
     architecture, reuse plan, parity matrix, data sources, roadmap, test plan, repository structure, rule bank, deck
@@ -137,7 +139,10 @@
      answered on 2 Nov 2026, D-043, and questions 21 (the AI Analyst keeps following the class, PD-50) and 22 (the
      fund's own AIF category wins, PD-47) the same day; from part T5 two are open: whether real IRR exports name a
      zone in their dates (question 23), and whether the Listed AIF ruling also covers a fund that the loose name
-     matcher only links to a Listed AIF entry (question 24)); OD-28 is answered by the reckoner (Sec. 76, old 50AA);
+     matcher only links to a Listed AIF entry (question 24), and two are for the tax adviser: whether the Income-tax Act
+     2025 keeps the rule that a loss on virtual digital assets cannot be set off or carried forward (question 25), and
+     whether the Category III AIF sentence should carry the reckoner's clause on determinate trusts (question 26));
+     OD-28 is answered by the reckoner (Sec. 76, old 50AA);
    - answer M1.3's questions in [`DATA_DICTIONARY.md`](DATA_DICTIONARY.md) §8: unrecognised Asset Names such as
      "Gold" (BF-19), letter case of Asset Names (BF-26), a market value of 0, and, for M1.4, a Crore cell that is not
      a number beside a Lakh amount (KI-147);

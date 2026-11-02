@@ -568,7 +568,7 @@ above, for the owner to confirm or change:
 - **Crypto is kept out of set-off** (part T4, after the financial re-review of part T3 found that part T3 left crypto
   gains in the short-term pools, ranked at 30%, so a loss went to them first): the page takes the safe behaviour, as the
   owner has ruled on CR-0008 question 18 (answered 2 Nov 2026: keep no set-off, D-043); whether the Income-tax Act 2025
-  allows set-off stays a question for the tax adviser (OD-28). The Crypto row carries `noSetOff` and its
+  allows set-off stays a question for the tax adviser (question 25). The Crypto row carries `noSetOff` and its
   basis (the reckoner is silent; Sec 115BBH of the 1961 Act allowed no set-off either way and no carry-forward). No
   loss is set against a crypto gain, which is taxed in full before and after; a crypto loss reduces no other gain, is
   never shown as carried forward and is not offered as a holding to sell; a crypto gain and a crypto loss of one client
@@ -588,9 +588,9 @@ independent review, 2 Nov 2026), within the decisions above, for the owner to co
   while 65% or more of the fund is in listed Indian equity on average over the tax year, so the AMC's year-end
   classification stays the check. A mutual fund whose name says arbitrage is read as an arbitrage fund when no earlier
   test claims it (for example a fund-of-funds name, a global category, a gold asset, a non-fund product, or a balanced,
-  aggressive or conservative hybrid or equity savings category does), so a fund with a blank category, or filed as Debt
-  or Liquid, is one. Part T1 had classed aggressive hybrid and arbitrage always and left equity savings unclassified
-  always.
+  aggressive or conservative hybrid or equity savings category or name does), so a fund with a blank category, or filed
+  as Debt or Liquid, is one. Part T1 had classed aggressive hybrid and arbitrage always and left equity savings
+  unclassified always.
   The new build's design states the same rule (TR-7, LD-11; [`new-build/capital-gains-upload.md`
   §10.5](new-build/capital-gains-upload.md#105-tax-class-by-fund-type)); its label says "the owner's reckoner", which
   the live page does not use because its AI Analyst slide goes to the client (below).
@@ -610,11 +610,16 @@ independent review, 2 Nov 2026), within the decisions above, for the owner to co
   weight or trim differs for 15 funds and the action for 2 with long-term lots, and for 4 and 4 with short-term lots; one
   equity savings fund is an Exit of 1.00 Cr on 31 Mar 2026 (tax not assessed) and a Partial of 0.16 Cr on 31 Jul 2026
   (tax green). The financial-domain reviewer's own scan at the gate review (2 Nov 2026), built like ARC-01's (each of the
-  98 usual-bucket funds held once at 8.33% in a 12-fund synthetic book, only the as-on date, 31 Mar against 31 Jul 2026,
-  changing), found the same pattern and the same kinds of fund: with long-term lots the composite moves 0.00 to +6.75
-  points, the target weight or trim differs for 13 funds and the action for 1; with short-term lots it moves -10.94 to
-  +2.01 points, the target weight or trim differs for 4 funds and the action for 4. The counts depend on the companion
-  funds. The reviewer could not reproduce the stress-book figures above, the Exit-to-Partial example or the 9 of 264
+  98 usual-bucket funds, filed under its real asset class, Hybrid or Debt for an arbitrage fund, held once at 8.33% in a
+  12-fund synthetic book with 11 Flexi Cap companions, only the as-on date, 31 Mar against 31 Jul 2026, changing),
+  found the same pattern and the same kinds of fund: with long-term lots the composite moves 0.00 to +6.75 points, the
+  target weight or trim differs for 13 funds and the action for 1; with short-term lots it moves -10.94 to +2.01 points,
+  the target weight or trim differs for 4 funds and the action for 4. The counts depend on how the other signals place a
+  composite relative to the 70 and 50 band edges: reviewer C's own scan (a third financial-domain reviewer, 3 Nov 2026),
+  with the single asset-class tag of the target fund changed to Equity, gave the same composite extremes as ARC-01's
+  (0.00 to +6.75 and -10.94 to +1.32 points) but a target weight or trim that differs for 15 funds and an action for 12
+  with long-term lots (1 and 1 with short-term lots); the pattern, which is what the owner decided on, holds in both.
+  The first reviewer could not reproduce the stress-book figures above, the Exit-to-Partial example or the 9 of 264
   against 21 of 504 count; they stay ARC-01's. Before 1 Apr 2026 part T5 takes away a class that the live page gives an
   arbitrage fund in every review (main) and that parts T1 to T4 give an arbitrage and an aggressive hybrid fund, so for
   a review valued earlier the tax signal of those funds goes from assessed to not assessed. Any fund that has a class
@@ -767,9 +772,10 @@ on 2 Nov 2026 through the lead.
       is loose, so a sibling series it maps to the entry is not told the entry's category. "AIF (CAT III) - Listed
       Equity" is Category III, as stated;
    3. else "Listed AIF" (the holding's category, or the matched entry's, through any match, unless the holding's own
-      category says unlisted; only that exact label counts, in any letter case, so "Listed AIFs" or "AIF (Listed)" do
-      not): Category III, fund level, marked as treated by this answer, with the note. Whether the answer also covers a
-      fund that the loose name matcher only links to such an entry is CR-0008 question 24;
+      category says unlisted; only the whole label Listed AIF counts, in any letter case and with any blanks around or
+      between the words, so "Listed AIFs" or "AIF (Listed)" do not): Category III, fund level, marked as treated by this
+      answer, with the note. Whether the answer also covers a fund that the loose name matcher only links to such an
+      entry is CR-0008 question 24;
    4. else nothing states a category: Category I or II, pass-through, marked as assumed, with a note (part T5 item 4).
    A fund whose own words say Category I or II while the performance data calls it a Listed AIF is therefore Category I
    or II, as stated, with no note. The words that count are cat or category followed by III, II, I, three, two, one, 3,

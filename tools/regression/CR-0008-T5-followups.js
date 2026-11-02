@@ -360,10 +360,11 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
        0.125 or 0.115 in at 8, 7 or 6.5 pt, about 260, 300 and 320 characters a line), ends at 7.18 in, and takes the largest size that leaves 0.04 in below the estimate; 6.5 pt
        is the last size whether it leaves that or not, and a footnote of two lines or less keeps the fixed box at 6.92 in. Each book below has a footnote whose length the
        other line lengths (260 against 300, 300 against 280 or 320, 320 against 340) would count in another number of lines.
-       These pins are COARSE change detectors, not a measure of a deck (gate review of 2 Nov 2026, TQ-02): a step between the sizes is caught, a few percent is not. The characters a line
-       can drift by about 4 percent (8 pt at 250 or 270, 7 pt at 310, 6.5 pt at 310 or 330), the clearance below the table by 0.01 in, and the 24 and 44 character thresholds of
-       a wrapping row by one character, with every check below still passing. A net that fine would need books whose footnote is 501 to 540 characters at each size and class
-       labels of exactly 24, 25, 44 and 45 characters; none is built. No deck is rendered either: whether a footnote touches its table is not known (KI-210). */
+       These pins are COARSE change detectors, not a measure of a deck (gate review of 2 Nov 2026, TQ-02, and its second round of 3 Nov 2026): a step between the sizes is caught, a few percent is not.
+       The characters a line can drift by about 4 percent (8 pt at 250 or 270, 7 pt at 310, 6.5 pt at 310 or 330), the clearance below the table by 0.01 in, the header row of the table estimate by
+       0.01 in (0.30 against 0.31 in) and the 24 and 44 character thresholds of a wrapping row by one character, with every check below still passing. The text anchor (valign) of the footnote box
+       can turn from bottom to top as well: the checks read the box's top, bottom, size and length, never its anchor. A net that fine would need books whose footnote is 501 to 540 characters
+       at each size and class labels of exactly 24, 25, 44 and 45 characters; none is built. No deck is rendered either: whether a footnote touches its table is not known (KI-210). */
     const ltaLabel = r => !r ? '-' : r.fundLevel ? 'Fund level' : r.passThrough ? 'At AIF level, per asset' : r.alwaysShort ? 'Always short term' : r.anyPeriod ? 'Any period' :
       (r.perSecurity ? 'Per security, more' : 'More') + ' than ' + r.months + ' months' + (r.listedEtfMonths ? ' (' + r.listedEtfMonths + ' if listed ETF)' : '') + (r.lockMonths ? ' (' + (r.lockMonths % 12 ? r.lockMonths + '-mo' : r.lockMonths / 12 + '-yr') + ' lock-in)' : '');
     const wraps = g => ltaLabel(g.rule).length > 24 || String(g.cls).length > 44;

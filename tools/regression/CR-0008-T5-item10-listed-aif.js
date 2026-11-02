@@ -97,7 +97,7 @@ ok(['Bobcat 1', 'Tomcat 2', 'Scat Three', 'Bobcat III', '9Cat I', 'Wildcat II', 
    ['Fund-Cat I', 'Fund (Cat II)', 'Fund/Cat 1', 'Fund CAT_III'].every(n => cls({ category: '', name: n }).catAssumed !== true),
   'the word boundary before "cat": "Bobcat 1", "Tomcat 2", "Scat Three", "9Cat I" are not categories (assumed); "Fund-Cat I", "(Cat II)", "/Cat 1", "Fund CAT_III" are');
 ok(stated12(cls({ category: 'Category II/III' })) && cls({ category: 'AIF-III' }).catAssumed === true && cls({ category: 'AIF-III' }).cls === EQ12,
-  'data points for the financial reviewer, pinned as they are built: "Category II/III" is read as Category II (the first number), as stated; "AIF-III" is read as nothing: Category I or II, assumed');
+  'data points for the financial reviewer, pinned as they are built: "Category II/III" is read as Category II (the first number), as stated; "AIF-III" is read as nothing: Category I or II, assumed (KI-171)');
 
 console.log('--- 1a2. the entry counts as a statement about the same fund only (delta review D1-F1, D1-F3, D1-F5) ---');
 const FX = Object.assign({}, REF.AIF_PERF, { 'Synthetic Alpha Strategy Fund': { category: 'Category II' }, 'Synthetic Beta Strategy Fund': { category: 'Cat 1' }, 'Synthetic Gamma Strategy Fund': { category: 'Category IV' },
@@ -135,7 +135,7 @@ ok(mx('Synthetic Alpha Sibling Fund 2', 'Synthetic Alpha Strategy Fund').catAssu
 const sib = mx(CK + ' Series 7', CK);
 ok(sib.catAssumed === true && sib.cls === EQ12, 'a sibling series of the Category III entry (its name and "Series 7") is not unmarked Category III: assumed, with the note');
 ok(mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund').catRuled === true && mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund').cls === CAT3,
-  'a sibling the matcher maps to a Listed AIF entry is still Category III by the answer of 2 Nov 2026, marked, with the note');
+  'a sibling the matcher maps to a Listed AIF entry is still Category III by the answer of 2 Nov 2026, marked, with the note (as built, CR-0008 question 24, KI-171)');
 /* AS BUILT (gate review of 2 Nov 2026, TQ-01; CR-0008 question 24, KI-171): the entry's label is read like the holding's own, the whole label only. An entry that says "Listed AIFs" or
    "Listed AIF - Series 2" is not the label, and an entry that says "Unlisted AIF" is not a Listed AIF (a missing start anchor would rule it Category III): for the fund of
    that name and for a sibling, Category I or II, assumed, with the note. Today's data holds none of these labels; the data guard in section 1b fails if a refresh brings one. */
@@ -147,7 +147,7 @@ ok(notLabel(lab('Synthetic Unlisted Label Fund')) && notLabel(lab('Synthetic Unl
 /* the Long Short row is read from an entry only for the fund of the same name, also when the holding's own category is the label (the sibling above has a blank category and never reaches this line) */
 const lsSib = mx('Synthetic Delta Sibling Fund 2', 'Synthetic Delta Strategy Fund', { category: 'Listed AIF' });
 ok(lsSib.cls === CAT3 && lsSib.catRuled === true && !lsSib.catAssumed,
-  'own category "Listed AIF" and a sibling the matcher maps to the Long Short entry: the Listed Equity row, ruled (as built; the entry\'s Long Short wording picks the row only for the fund of the same name)');
+  'own category "Listed AIF" and a sibling the matcher maps to the Long Short entry: the Listed Equity row, ruled (as built, CR-0008 question 24, KI-171; the entry\'s Long Short wording picks the row only for the fund of the same name)');
 ok(stated12(mx('Synthetic Growth Fund', 'Synthetic Listed Strategy Fund', { category: 'Category II' })) && stated3(mx('Synthetic Growth Fund', 'Synthetic Delta Strategy Fund', { category: 'Category III' })) && stated12(mx(CK, CK, { category: 'Category II' })),
   'the fund\'s own Category II or III beats any entry, even the Category III entry of the same name');
 ok(mx('Synthetic Listed Strategy Fund', 'Synthetic Listed Strategy Fund', { category: 'Unlisted AIF' }).catAssumed === true && !mx('Synthetic Listed Strategy Fund', 'Synthetic Listed Strategy Fund', { category: 'Unlisted AIF' }).catRuled,
