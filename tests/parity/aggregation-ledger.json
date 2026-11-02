@@ -9,7 +9,9 @@
     "Both sides are projected into one shape before comparing (tests/parity/aggregation-compare.ts): Crore amounts, percentages as percent numbers, labels as strings, a missing value as null. Rows are matched by label and their order is compared on its own. The new matrices' not-given columns are paired with the legacy column labelled with the dash.",
     "Diff kinds: total, asset-row, product-row, row-order, liquidity, matrix-col, matrix-cell, column-label. Keys name the row: the asset class; the class and product; the liquidity label; the level and column; the level, row and column of a cell.",
     "An entry's key is an exact key, a list of keys, or a regular expression written between slashes. Classes follow 08-regression-test-plan.md section 5.4: correction (a known defect fixed, KI or OD named), improvement (a requirement changes the output), regression (a defect of the new code; must be empty for a merge).",
-    "The hostile variant is not run through the legacy engine: an Asset Name such as constructor or __proto__ reaches the legacy aMap (a plain object) and makes computeReview throw or write to Object.prototype."
+    "Retired entries (as in the base-file ledger): when a legacy fix makes the live page give the new app's figures, the entry stays for the record with a retired reason naming the decision, and its former legacy pattern in legacyBefore. A retired entry matches nothing, so the difference coming back fails the test, and it need not be used. Fix batch 4 (D-041, CR-0009, index.html MD5 12B5E5727FCA01EF2EA162C59913F01D) retired AG-01, AG-02, AG-05, AG-06 and AG-08 (M1.4 fix round 2).",
+    "Total rows and merged purchase dates (D-041 points 2 and 3, KNOWN_ISSUES KI-148): the new reader skips a row named Total or Grand Total and dates a merged holding by its earliest folio, as the live page does, so the total-like, total-rows and merged-dates files give no difference here.",
+    "The hostile variant is not run through the legacy engine: an Asset Name such as constructor or __proto__ reaches the legacy aMap (a plain object) and makes computeReview throw or write to Object.prototype (the live page's defect; KI-151 is the new app's guard, pinned by tests/regression/ki-151-prototype-labels.test.ts)."
   ],
   "entries": [
     {
@@ -19,7 +21,9 @@
       "key": "/^(?!(client|distributor) rows$)/",
       "fixtures": ["syn-invalid-text", "family-a-invalid-text"],
       "legacy": "*",
+      "legacyBefore": "*",
       "new": "*",
+      "retired": "Fix batch 4 (D-041 point 4, CR-0009, KI-143): the live page now reads a market value of \"1.25 Cr\" or \"12abc\" as blank and leaves the holding out, so neither side counts it and no difference is left.",
       "class": "correction",
       "reference": "KI-143; BF-21; OD-8",
       "description": "Two market values written as text that is not a number (\"1.25 Cr\", \"12abc\") are INVALID SOURCE DATA, so those holdings are excluded from every total and listed (BF-21). The legacy parseFloat read 1.25 and 12 Crore off the front of the text and counted both, which inflated the total market value, every percentage, the Equity and Mutual Funds rows, the client and distributor columns and their order."
@@ -30,7 +34,9 @@
       "field": ["invested", "gain", "withoutInvested"],
       "fixtures": ["syn-invalid-text", "family-a-invalid-text"],
       "legacy": "*",
+      "legacyBefore": "*",
       "new": "*",
+      "retired": "Fix batch 4 (D-041 point 4, CR-0009, KI-143): the live page now reads an invested value of \"1.25 Cr\" as blank and leaves the two holdings without a market value out, so the invested value, gain and count without an invested value agree.",
       "class": "correction",
       "reference": "BF-22; BF-21; KI-007",
       "description": "The invested value written as \"1.25 Cr\" is INVALID SOURCE DATA and stays missing (BF-22), so that holding counts as one without an invested value and its class shows no invested value; and the two holdings excluded for an invalid market value (AG-01) take their invested values out of the totals. The legacy read 1.25 Crore off the text and summed the excluded holdings' invested values too. Gain follows as CMV minus invested over the holdings that have one."
@@ -49,12 +55,12 @@
       "id": "AG-04",
       "kind": "*",
       "key": "/^((client|distributor): )?(Equity|Unknown)( |$)/",
-      "fixtures": ["syn-all-classes", "family-a-all-classes", "syn-total-like", "family-a-total-like"],
+      "fixtures": ["syn-all-classes", "family-a-all-classes"],
       "legacy": "*",
       "new": "*",
       "class": "correction",
       "reference": "OD-7; BF-14",
-      "description": "A holding with a blank Asset Name is Unknown, a class row of its own placed last, never Equity (BF-14). The legacy counted it in Equity, so its Equity row, product rows and matrix cells held it; in the total-like files that is the whole Grand Total row read as a holding (KI-142, a High result in the new app)."
+      "description": "A holding with a blank Asset Name is Unknown, a class row of its own placed last, never Equity (BF-14). The legacy counted it in Equity, so its Equity row, product rows and matrix cells held it. The total-like files no longer show it: both readers skip their Grand Total row (D-041 point 3, KI-148)."
     },
     {
       "id": "AG-05",
@@ -62,7 +68,9 @@
       "key": "/^((client|distributor): )?(Fixed Income|Debt)( |$)/",
       "fixtures": ["syn-odd-asset-labels", "family-a-odd-asset-labels"],
       "legacy": "*",
+      "legacyBefore": "*",
       "new": "*",
+      "retired": "Fix batch 4 (D-041 point 6, CR-0009, KI-145): the live page now reads Fixed Income and Debt Funds as Debt too, so the Debt rows agree and no difference is left.",
       "class": "correction",
       "reference": "OD-7; BF-15; BF-16",
       "description": "\"Fixed Income\" and \"Debt Funds\" count as Debt (BF-15, BF-16), so the Debt row holds them. The legacy kept each label as an allocation row of its own."
@@ -73,7 +81,9 @@
       "key": "/^((client|distributor): )?REITs ?\\/ ?InvITs/",
       "fixtures": ["syn-odd-asset-labels", "family-a-odd-asset-labels"],
       "legacy": "*",
+      "legacyBefore": "*",
       "new": "*",
+      "retired": "Fix batch 4 (D-041 point 6, CR-0009, KI-145): the live page now reads the spaced form as REITs/InvITs too, so the rows agree and no difference is left.",
       "class": "correction",
       "reference": "OD-7; BF-20",
       "description": "The spaced form \"REITs / InvITs\" reads as the class REITs/InvITs (BF-20), so it joins that row. The legacy made it a second row beside REITs/InvITs."
@@ -95,7 +105,9 @@
       "key": "/^((client|distributor): )?EQUITY( |$)/",
       "fixtures": ["syn-odd-asset-labels", "family-a-odd-asset-labels"],
       "legacy": "*",
+      "legacyBefore": "*",
       "new": null,
+      "retired": "Fix batch 4 (D-041 point 6, CR-0009, KI-145): the live page now reads \"  EQUITY  \" as Equity too (the owner may still reverse BF-26 for both), so it has no EQUITY row and no difference is left.",
       "class": "correction",
       "reference": "OD-7 (letter case, beyond OD-7, pending the owner); BF-26; KI-145",
       "description": "\"  EQUITY  \" reads as Equity (BF-26, pending the owner's confirmation), so its holding is in the Equity row. The legacy kept \"EQUITY\" as an allocation row of its own beside Equity (KI-145)."
@@ -108,8 +120,8 @@
       "legacy": "*",
       "new": "*",
       "class": "correction",
-      "reference": "OD-7; BF-14; BF-26",
-      "description": "The Equity row, its products and its matrix cells lose the holding with a blank Asset Name, which is Unknown (BF-14), and gain the one labelled \"  EQUITY  \" (BF-26, pending the owner). The legacy counted the blank one in Equity and kept \"EQUITY\" apart."
+      "reference": "OD-7; BF-14",
+      "description": "The Equity row, its products and its matrix cells lose the holding with a blank Asset Name, which is Unknown (BF-14). The legacy counts the blank one in Equity. Since fix batch 4 (D-041 point 6) both read \"  EQUITY  \" as Equity (BF-26, pending the owner), so that holding no longer differs."
     },
     {
       "id": "AG-10",
@@ -152,8 +164,8 @@
       "legacy": "*",
       "new": "*",
       "class": "correction",
-      "reference": "KI-147 (the owner's answer of 24 Oct 2026); KI-143; BF-21",
-      "description": "The holding whose Crore market value is \"12abc\" has an invalid market value and is excluded and listed; its Lakh value is not used in its place (KI-147, the owner's answer of 24 Oct 2026: no fallback). The legacy parseFloat read 12 Crore off the text, which inflated the total, every percentage, the Equity rows and the columns of its client and distributor, and changed the order of the Equity products and of the distributor columns. The placeholder, blank and disagreeing rows of the file read the same in both."
+      "reference": "KI-147 (the owner's answer of 24 Oct 2026); D-041",
+      "description": "The holding whose Crore market value is \"12abc\" has an invalid market value and is excluded and listed; its Lakh value is not used in its place (KI-147, the owner's answer of 24 Oct 2026: no fallback). The live page differs by design since fix batch 4 (D-041 point 4): it reads the text as blank and takes the Lakh value instead (62.5 Lakh, 0.625 Crore on the synthetic book), so its total is larger by that amount (3.457 against 2.832 Crore), as are every percentage, the Equity rows and the columns of that holding's client and distributor, and the order of the Equity products and of the client columns differs. Before fix batch 4 the legacy read 12 Crore off the text. The placeholder, blank and disagreeing rows of the file read the same in both."
     },
     {
       "id": "AG-14",
@@ -163,8 +175,8 @@
       "legacy": "*",
       "new": "*",
       "class": "correction",
-      "reference": "KI-147; BF-22; KI-007",
-      "description": "The holding whose Crore invested value is \"12abc\" has an invalid invested value and counts as one without an invested value; its Lakh value is not used in its place (KI-147). The holding excluded for its market value (AG-13) takes its invested value out of the totals. The legacy read 12 Crore of invested value off the text and summed both."
+      "reference": "KI-147 (the owner's answer of 24 Oct 2026); D-041; KI-007",
+      "description": "The holding whose Crore invested value is \"12abc\" has an invalid invested value and counts as one without an invested value; its Lakh value is not used in its place (KI-147). The holding excluded for its market value (AG-13) takes its invested value out of the totals. The live page differs by design since fix batch 4 (D-041 point 4): it takes the Lakh values of both holdings (0.1 and 0.5 Crore on the synthetic book), so its invested total is 2.85 against 2.25 Crore and it counts no holding without an invested value. Before fix batch 4 it read 12 Crore of invested value off the text."
     }
   ]
 }

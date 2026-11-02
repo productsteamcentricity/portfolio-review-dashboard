@@ -22,9 +22,16 @@
 //     24 Oct 2026); a blank or placeholder cell passes to the next column with a notice; a later column whose amount
 //     differs from the one used by more than 0.005 Cr is warned; for the file's own gain or loss, which no figure
 //     uses (OD-18), both notices are Information only (D-039);
-//   - clients and distributors are keyed on the label as spelt, as the legacy keys them; labels that differ only in
-//     letter case stay separate, with the Warning base-file.entity-case-variant (D-039; the owner's question beside
-//     BF-26).
+//   - clients and distributors are keyed on the label as spelt, as the legacy keys them; labels that key a holding's
+//     client or distributor and differ only in letter case stay separate, with the Warning
+//     base-file.entity-case-variant (D-039; the owner's question beside BF-26); a joint-holder label that differs from
+//     a client only in letter case is not linked to it, with an Information notice;
+//   - total rows (D-041 point 3, KI-142, KI-148): a row whose Instrument Name is "Total" or "Grand Total" (any letter
+//     case, spaces collapsed) is skipped, as the live page skips it, with the Warning base-file.total-row-skipped; a
+//     fund whose name only begins with "Total" is still a holding;
+//   - merged folios' purchase date and holding days (D-041 point 2, KI-148): the earliest purchase date, whatever
+//     the row order; holding days recomputed from it when the folios count to one date, else blank with a notice;
+//   - a negative market value is read as written (the legacy figures) and warned (D-039).
 // Column aliases, the money-unit precedence (Cr., then Lakh, then rupees) and the merge key (client, instrument,
 // product, distributor) are the legacy ones. Pure function: no globals, no network, no clock unless injected.
 
@@ -195,22 +202,30 @@ function mapColumns(headerTexts: string[]): Columns {
 }
 
 const TOTAL_RE = /^(grand\s*|sub\s*-?\s*)?totals?\b/i;
+/**
+ * An Instrument Name that marks a total row of the book (D-041 point 3, the live page's rule `^(grand ?)?total$`):
+ * "Total" or "Grand Total" in any letter case, on the text with its spaces collapsed and trimmed.
+ */
+export const TOTAL_ROW_NAME_RE = /^(grand ?)?total$/i;
 const MONEY_FIELDS: readonly BaseField[] = ['invCr', 'cmvCr', 'glCr', 'invLk', 'mvLk', 'glLk', 'invR', 'mvR', 'glR'];
 
-type RowClass = { kind: 'holding' } | { kind: 'skip'; reason: SkipReason; hasMoney: boolean };
+/** A skipped row; `named` marks a total row named "Total" or "Grand Total" in the Instrument Name column. */
+type RowClass = { kind: 'holding' } | { kind: 'skip'; reason: SkipReason; hasMoney: boolean; named: boolean };
 
 function classifyRow(row: Cell[], cols: Columns, headerTexts: string[]): RowClass {
   const texts = row.map((c) => cellText(c));
-  if (texts.every((t) => t === '')) return { kind: 'skip', reason: 'blank-row', hasMoney: false };
+  if (texts.every((t) => t === '')) return { kind: 'skip', reason: 'blank-row', hasMoney: false, named: false };
   const name = cols.name === undefined ? '' : (texts[cols.name] ?? '');
   const hasMoney = MONEY_FIELDS.some((f) => cols[f] !== undefined && readNumber(row[cols[f]!]).kind === 'number');
   if (name === '') {
     const total = row.some((c) => c !== null && c !== undefined && c.t === 's' && TOTAL_RE.test(cellText(c)));
-    return { kind: 'skip', reason: total ? 'total-row' : 'no-instrument-name', hasMoney };
+    return { kind: 'skip', reason: total ? 'total-row' : 'no-instrument-name', hasMoney, named: false };
   }
   const sameAsHeader = (f: BaseField): boolean =>
     cols[f] === undefined || (texts[cols[f]!] ?? '').toLowerCase() === headerTexts[cols[f]!];
-  if (sameAsHeader('name') && sameAsHeader('client')) return { kind: 'skip', reason: 'repeated-header', hasMoney: false };
+  if (sameAsHeader('name') && sameAsHeader('client')) return { kind: 'skip', reason: 'repeated-header', hasMoney: false, named: false };
+  // A total row of the book is never a holding: it would double every total (KI-142, D-041 point 3).
+  if (TOTAL_ROW_NAME_RE.test(name)) return { kind: 'skip', reason: 'total-row', hasMoney, named: true };
   return { kind: 'holding' };
 }
 
@@ -221,7 +236,7 @@ type SheetScan = {
   headerLabels: string[];
   cols: Columns;
   holdingRows: number[];
-  skipped: Array<{ r: number; reason: SkipReason; hasMoney: boolean }>;
+  skipped: Array<{ r: number; reason: SkipReason; hasMoney: boolean; named: boolean }>;
 };
 
 function scanSheet(sheet: Sheet, headerIndex: number): SheetScan {
@@ -234,7 +249,7 @@ function scanSheet(sheet: Sheet, headerIndex: number): SheetScan {
   for (let r = headerIndex + 1; r < sheet.rows.length; r++) {
     const k = classifyRow(sheet.rows[r] ?? [], cols, headerTexts);
     if (k.kind === 'holding') holdingRows.push(r);
-    else skipped.push({ r, reason: k.reason, hasMoney: k.hasMoney });
+    else skipped.push({ r, reason: k.reason, hasMoney: k.hasMoney, named: k.named });
   }
   return { sheet, headerIndex, headerTexts, headerLabels, cols, holdingRows, skipped };
 }
@@ -524,6 +539,58 @@ function mergedXirr(members: RowRecord[], pick: (m: RowRecord) => Value<number>,
   const coverage = total > 0 ? c / total : 1;
   const extra = coverage < 1 - 1e-12 && coverage >= 0 ? { coverage } : undefined;
   return present(w / c, 'pct', { ...prov, method: `market-value-weighted over ${members.length} merged folios` }, extra);
+}
+
+/** The merged holding days within a day of each other count to one date (D-041 point 2, the live page's tolerance). */
+export const MERGED_DAYS_TOLERANCE = 1;
+
+/**
+ * The purchase date and holding days of merged folios (D-041 point 2, KI-141 on the live page, KI-148 here): the
+ * earliest purchase date of the folios, whatever the row order (the first such folio on a tie). A folio's purchase
+ * date plus its holding days is the date the file counts to. When every folio with holding days has a purchase date
+ * and they count to one date (within a day), the holding days are the earliest folio's own figure, or, when it has
+ * none, the days from its purchase date to the date the first such folio counts to. When no folio has a purchase
+ * date, folios that all carry the same holding days keep that figure. Otherwise the holding days are blank, never one
+ * folio's figure (`blank` true: the reader says so in a notice). No folio with holding days: blank, without a notice.
+ */
+function mergedDateAndDays(members: RowRecord[], prov: Provenance):
+  { purchaseDate: Value<DayNumber>; holdingDays: Value<number>; blank: boolean } {
+  const n = members.length;
+  let earliest: { m: RowRecord; day: DayNumber } | null = null;
+  for (const m of members) {
+    if (m.purchaseDate.kind === 'value' && (earliest === null || m.purchaseDate.v < earliest.day)) earliest = { m, day: m.purchaseDate.v };
+  }
+  const purchaseDate: Value<DayNumber> = earliest === null ? members[0]!.purchaseDate
+    : present(earliest.day, 'date', { ...prov, method: `the earliest purchase date of ${n} merged folios (D-041)` });
+  const withDays = members.filter((m) => m.holdingDays.kind === 'value');
+  const daysOf = (m: RowRecord): number => (m.holdingDays.kind === 'value' ? m.holdingDays.v : Number.NaN);
+  const blankDays = (why: string): Value<number> => missing(STATUS.INSUFFICIENT_EVIDENCE, `${why} (D-041)`, prov);
+  if (withDays.length === 0) {
+    const first = members[0]!.holdingDays;
+    const why = first.kind === 'missing' ? first.reason : 'blank';
+    return { purchaseDate, holdingDays: missing(first.kind === 'missing' ? first.status : STATUS.NOT_AVAILABLE, `no merged folio has holding days: ${why}`, prov), blank: false };
+  }
+  if (earliest === null) {
+    const same = withDays.length === n && withDays.every((m) => daysOf(m) === daysOf(withDays[0]!));
+    if (same) {
+      return { purchaseDate, holdingDays: present(daysOf(withDays[0]!), 'days', { ...prov, method: `the same holding days on ${n} merged folios without a purchase date (D-041)` }), blank: false };
+    }
+    return { purchaseDate, holdingDays: blankDays('the merged folios have no purchase date and different holding days'), blank: true };
+  }
+  const counts = withDays.filter((m) => m.purchaseDate.kind === 'value')
+    .map((m) => (m.purchaseDate.kind === 'value' ? m.purchaseDate.v : 0) + daysOf(m));
+  if (counts.length === withDays.length && Math.max(...counts) - Math.min(...counts) <= MERGED_DAYS_TOLERANCE) {
+    const own = earliest.m.holdingDays;
+    const days = own.kind === 'value' ? own.v : counts[0]! - earliest.day;
+    return {
+      purchaseDate,
+      holdingDays: present(days, 'days', { ...prov, method: own.kind === 'value'
+        ? `the holding days of the earliest of ${n} merged folios, which count to one date (D-041)`
+        : `recomputed from the earliest purchase date of ${n} merged folios to the date they count to (D-041)` }),
+      blank: false,
+    };
+  }
+  return { purchaseDate, holdingDays: blankDays('the holding days of the merged folios do not count to one date'), blank: true };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -880,11 +947,15 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
     if (!g) { g = { key, members: [] }; groups.set(key, g); groupOrder.push(g); }
     g.members.push(rec);
   }
+  /** Merged holdings whose folios' holding days do not count to one date (D-041 point 2): their days are blank. */
+  const daysBlank: HoldingId[] = [];
   const holdingFrom = (members: RowRecord[], id: HoldingId, inclusion: Holding['inclusion']): Holding => {
     const first = members[0]!;
     const ids = rowIds.get(first.r)!;
     const merged = members.length > 1;
     const mProv = prov('base-file');
+    const dates = merged ? mergedDateAndDays(members, mProv) : { purchaseDate: first.purchaseDate, holdingDays: first.holdingDays, blank: false };
+    if (dates.blank) daysBlank.push(id);
     const cmv = merged ? sumAll(members, (m) => m.cmv, 'cr', 'market value', 'E-02', mProv).value : first.cmv;
     const total = cmv.kind === 'value' ? cmv.v : 0;
     // KI-007 and KI-113: a total is summed only when every folio has it; a merge gap is recorded by name.
@@ -924,14 +995,14 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       liquidity: first.liquidity,
       folios: folioNumbers,
       folioIds,
-      purchaseDate: first.purchaseDate,
+      purchaseDate: dates.purchaseDate,
       units,
       invested,
       cmv,
       fileGain,
       xirr: merged ? mergedXirr(members, (m) => m.xirr, total, mProv) : first.xirr,
       bmXirr: merged ? mergedXirr(members, (m) => m.bmXirr, total, mProv) : first.bmXirr,
-      holdingDays: first.holdingDays,
+      holdingDays: dates.holdingDays,
       mergeGaps,
       inclusion,
     };
@@ -987,10 +1058,14 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       { count: defaulted.length, resolution: 'auto-resolved', status: 'resolved' });
   }
   // Labels that differ only in letter case are separate clients (or distributors), as in the legacy page; whether to
-  // fold letter case is the owner's question (DATA_DICTIONARY section 8, beside BF-26).
+  // fold letter case is the owner's question (DATA_DICTIONARY section 8, beside BF-26). Only the labels that key a
+  // holding's client or distributor count here: a label read only from the joint-holder columns changes no matrix
+  // column and no count, and is reported below instead.
+  const keyedClients = new Set<string>(holdings.map((h) => h.clientId).filter((x): x is ClientId => x !== null));
+  const keyedDistributors = new Set<string>(holdings.map((h) => h.distributorId).filter((x): x is DistributorId => x !== null));
   const caseLevels = [
-    { level: 'client', title: 'Client', labels: [...clients.values()].map((c) => ({ id: c.id as string, label: c.label })), of: (h: Holding) => h.clientId as string | null },
-    { level: 'distributor', title: 'Distributor', labels: [...distributors.values()].map((d) => ({ id: d.id as string, label: d.label })), of: (h: Holding) => h.distributorId as string | null },
+    { level: 'client', title: 'Client', labels: [...clients.values()].filter((c) => keyedClients.has(c.id)).map((c) => ({ id: c.id as string, label: c.label })), of: (h: Holding) => h.clientId as string | null },
+    { level: 'distributor', title: 'Distributor', labels: [...distributors.values()].filter((d) => keyedDistributors.has(d.id)).map((d) => ({ id: d.id as string, label: d.label })), of: (h: Holding) => h.distributorId as string | null },
   ] as const;
   for (const c of caseLevels) {
     const byFolded = new Map<string, Array<{ id: string; label: string }>>();
@@ -1008,6 +1083,36 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       holdingIds.length > 0 ? { kind: 'holdings', holdingIds } : { kind: 'sheet', sourceId, sheet: sheetName },
       `${c.title} labels that differ only in letter case are read as separate ${c.level}s, as in the legacy page: ${sets}.`,
       { decision: 'D-039', count: groups.length });
+  }
+  // A joint-holder label that differs from a client only in letter case is a person of its own, not linked to that
+  // client in the ownership (D-039; the owner's letter-case question covers the holder columns too).
+  const keyedByFolded = new Map<string, string[]>();
+  for (const c of clients.values()) {
+    if (!keyedClients.has(c.id)) continue;
+    const k = normaliseLabel(c.label);
+    const g = keyedByFolded.get(k);
+    if (g) g.push(c.label); else keyedByFolded.set(k, [c.label]);
+  }
+  for (const c of clients.values()) {
+    if (keyedClients.has(c.id)) continue;
+    const like = keyedByFolded.get(normaliseLabel(c.label));
+    if (!like) continue;
+    const folioIds = new Set<string>([...ownership.values()]
+      .filter((o) => o.jointHolders.kind === 'value' && o.jointHolders.v.some((j) => j.clientId === c.id)).map((o) => o.folioId));
+    const holdingIds = holdings.filter((h) => h.folioIds.some((f) => folioIds.has(f))).map((h) => h.id);
+    issues.add('base-file.holder-case-variant', 'Information',
+      holdingIds.length > 0 ? { kind: 'holdings', holdingIds } : { kind: 'sheet', sourceId, sheet: sheetName },
+      `The joint holder "${c.label}" is not linked to ${like.map((l) => `"${l}"`).join(' or ')}: the letter case differs.`,
+      { decision: 'D-039', count: 1, resolution: 'auto-resolved', status: 'resolved' });
+  }
+  // A negative market value is read as written, as the legacy reads it, so every figure matches the live page; the
+  // allocation leaves out the liquidity lines and pie slices whose market value is 0 or less, and the overview says
+  // so (D-039).
+  const negative = includedHoldings.filter((h) => h.cmv.kind === 'value' && h.cmv.v < 0);
+  if (negative.length) {
+    issues.add('base-file.negative-market-value', 'Warning', { kind: 'holdings', holdingIds: negative.map((h) => h.id) },
+      `${plural(negative.length, 'holding has', 'holdings have')} a negative market value, read as written and counted in every total: ${quoteList(negative.map((h) => h.instrumentName))}.`,
+      { decision: 'D-039', count: negative.length });
   }
   const blankClient = holdings.filter((h) => h.clientLabel === null);
   if (blankClient.length) {
@@ -1032,6 +1137,12 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
         `${plural(partial.length, 'merged holding has', 'merged holdings have')} a folio without an invested value, gain or units: that total is left blank rather than partial.`,
         { decision: 'KI-113', count: partial.length, resolution: 'auto-resolved', status: 'resolved' });
     }
+  }
+  if (daysBlank.length) {
+    // The live page's sentence (D-041 point 2): the merged holding days are blank, never one folio's figure.
+    issues.add('base-file.merge-days-blank', 'Information', { kind: 'holdings', holdingIds: [...daysBlank] },
+      `${plural(daysBlank.length, 'merged holding has folios', 'merged holdings have folios')} whose holding days do not count to one date: the holding days are left blank.`,
+      { decision: 'D-041', count: daysBlank.length, resolution: 'auto-resolved', status: 'resolved' });
   }
   const moneyFindings = moneyNotices(records, holdingOfRow, issues);
   if (invalid.size) {
@@ -1065,10 +1176,20 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
     'total-row': ['total row was', 'total rows were'],
     'no-instrument-name': ['row without an Instrument Name was', 'rows without an Instrument Name were'],
   };
+  // Total rows named "Total" or "Grand Total" in the Instrument Name column (D-041 point 3): one Warning with the rows,
+  // in the live page's words. They are skipped rows of reason total-row; the notice below counts the others.
+  const namedTotals = scan.skipped.filter((s) => s.named).map((s) => s.r);
+  if (namedTotals.length) {
+    const n = namedTotals.length;
+    issues.add('base-file.total-row-skipped', 'Warning', { kind: 'rows', sourceId, rows: namedTotals.map(at) },
+      `${plural(n, 'row', 'rows')} named "Total" or "Grand Total" in the Instrument Name column ${n === 1
+        ? 'was skipped as a total row, not read as a holding' : 'were skipped as total rows, not read as holdings'} (${rowsText(namedTotals.map((r) => r + 1))}).`,
+      { decision: 'KI-142', count: n });
+  }
   for (const reason of Object.keys(skipCounts) as SkipReason[]) {
-    const n = skipCounts[reason];
+    const rows = skipped.filter((s, i) => s.reason === reason && !scan.skipped[i]!.named);
+    const n = rows.length;
     if (!n) continue;
-    const rows = skipped.filter((s) => s.reason === reason);
     const withMoney = rows.filter((s) => s.hasMoney).length;
     const lost = reason === 'no-instrument-name' && withMoney > 0;
     issues.add(`base-file.skipped-${reason}`, lost ? 'Warning' : 'Information',

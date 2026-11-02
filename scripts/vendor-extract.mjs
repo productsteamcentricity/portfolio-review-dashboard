@@ -38,7 +38,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, '..');
 export const VENDOR_DIR = 'app/vendor';
 export const LOGOS_FILE = 'app/src/config/brand-logos.json';
-export const LEGACY_MD5 = '911A04659CB34383E478416B54E9C306'; // index.html when the libraries were vendored (M1.4)
+// The record of index.html when the libraries were vendored (M1.4), cited in each MANIFEST "source" line. The live
+// page changes with legacy fixes (12B5E5727FCA01EF2EA162C59913F01D after D-041); the guard is --check (each library
+// block equal to its vendored file), never this MD5.
+export const LEGACY_MD5 = '911A04659CB34383E478416B54E9C306';
 
 const MANIFEST_COMMENT = 'Vendored runtime libraries (architecture A2, D-038), written by scripts/vendor-extract.mjs from the blocks of the legacy index.html, byte for byte; never edit by hand. Each entry is { name, version, file, sha256 (hex, of the file), global (the name the library defines on window), license, licenseFile, source, aliases (other globals the file defines, each importable as vendor:<alias>), allow }. "allow" pins what the library text holds that the page rules refuse elsewhere: the inline sequences, the network-API names and the scheme URLs with exact counts, and the URLs of its licence text; scripts/validation/check-next.mjs applies it only inside the script whose SHA-256 is the library\'s. A module uses a library with `import X from \'vendor:<name>\'`; scripts/build.mjs inlines it, after checking its SHA-256, only then.';
 

@@ -13,7 +13,7 @@ import type {
 import { STATUS } from '../model/status.ts';
 import { formatDay } from '../engine/dates.ts';
 import { categoryColour, liquidityColours } from './colours.ts';
-import { buildNotes, moneyFindingsAffecting, statusNoteId, zeroTotal } from './notes.ts';
+import { buildNotes, liquidityLinesLeftOut, moneyFindingsAffecting, pieLeftOut, statusNoteId, zeroTotal } from './notes.ts';
 import { displayCount, displayMoney, displayPct, displayRounded, plainText, scaleMoney, unitHeader } from './format.ts';
 
 export const PREVIEW_MARKER = 'Preview build, not for client use';
@@ -68,14 +68,14 @@ function countValue(review: Review, n: number, method: string): Value<number> {
  * text shown (plainText).
  */
 function lineRow(ctx: Ctx, kind: AllocationRow['kind'], asset: AssetKey | null, product: string | null, liquidity: string | null,
-  label: string, line: AllocationLine, prefix: string, extra: readonly string[]): AllocationRow {
+  label: string, line: AllocationLine, prefix: string, extra: readonly string[], pctExtra: readonly string[] = []): AllocationRow {
   const f = (field: string, x: Value<number>, k: FigureKind, role: FigureRole, more: readonly string[] = extra) =>
     figure(ctx, `${prefix}.${field}`, x, k, role, more);
   return {
     kind, asset, product, liquidity, label,
     invested: f('invested', line.invested, 'money', 'invested'),
     cmv: f('cmv', line.cmv, 'money', 'cmv'),
-    pct: f('pct', line.pct, 'pct', 'pct'),
+    pct: f('pct', line.pct, 'pct', 'pct', [...extra, ...pctExtra]),
     gain: f('gain', line.gain, 'money', 'gain'),
     absReturn: f('absReturnPct', line.absReturnPct, 'pct', 'absReturn'),
     investedCoverage: f('investedCoveragePct', line.investedCoveragePct, 'pct', 'coverage'),
@@ -152,11 +152,16 @@ export function buildOverviewVM(review: Review): OverviewVM {
     { id: 'clients', label: 'Clients', figure: figure(ctx, 'counts.clients', countValue(review, t.counts.clients, 'engine: count of clients holding included holdings'), 'count', 'count') },
   ];
 
+  // The notes of what the pies and the liquidity table leave out for a market value of 0 or less (M1.4 fix round 2):
+  // carried by the shares the pies draw, so the slide's footnote has them beside the pies.
+  const pieOut = pieLeftOut(review).length > 0 ? ['pie-left-out'] : [];
+  const liqOut = liquidityLinesLeftOut(review).length > 0 ? ['liquidity-left-out'] : [];
+
   const rows: AllocationRow[] = [];
   const assetPct = new Map<AssetKey, Figure>();
   for (const block of review.assets.assets) {
     const extra = block.asset === 'Unknown' ? ['unknown'] : [];
-    const row = lineRow(ctx, 'asset', block.asset, null, null, block.asset, block.line, `alloc.asset.${block.asset}`, extra);
+    const row = lineRow(ctx, 'asset', block.asset, null, null, block.asset, block.line, `alloc.asset.${block.asset}`, extra, pieOut);
     rows.push(row);
     assetPct.set(block.asset, row.pct);
     for (const p of block.products) {
@@ -167,7 +172,7 @@ export function buildOverviewVM(review: Review): OverviewVM {
   rows.push(lineRow(ctx, 'total', null, null, null, 'Grand Total', review.assets.total, 'alloc.total', excludedNote));
 
   const liquidityRows: AllocationRow[] = review.liquidity.lines.map((line) =>
-    lineRow(ctx, 'liquidity', null, null, line.label, plainText(line.label), line, `alloc.liquidity.${line.label}`, []));
+    lineRow(ctx, 'liquidity', null, null, line.label, plainText(line.label), line, `alloc.liquidity.${line.label}`, [], liqOut));
 
   const assetSlices = review.assets.assets.map((b) => pieSlice(b.asset, categoryColour(b.asset), assetPct.get(b.asset) as Figure));
   // Colours by the engine's label (the key), so two labels that print alike keep their own colours.

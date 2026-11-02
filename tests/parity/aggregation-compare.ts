@@ -207,6 +207,10 @@ export type AggLedgerEntry = {
   class: 'correction' | 'improvement' | 'regression';
   reference: string;
   description: string;
+  /** Why the entry no longer applies: the live page now gives the new app's figures (a legacy fix). It matches nothing. */
+  retired?: string;
+  /** The legacy pattern before the fix that retired the entry. */
+  legacyBefore?: unknown;
 };
 export type AggLedger = { schema: string; area: string; legacy: string; new: string; entries: AggLedgerEntry[] };
 
@@ -222,8 +226,9 @@ function fits(p: unknown, v: unknown): boolean {
   return v === p;
 }
 
+/** The active (not retired) entries a difference matches; a retired entry matches nothing (as the base-file ledger). */
 export function aggEntriesFor(d: AggDiff, ledger: AggLedger): AggLedgerEntry[] {
-  return ledger.entries.filter((e) => (e.kind === '*' || e.kind === d.kind)
+  return ledger.entries.filter((e) => !e.retired && (e.kind === '*' || e.kind === d.kind)
     && oneOf(e.field, d.field)
     && oneOf(e.key, d.key)
     && (e.fixtures === '*' || e.fixtures.includes(d.fixture))
