@@ -94,7 +94,7 @@ Two stale local branches and the new docs branch track `origin/main` instead of 
 
 ## Branches
 
-There are 83 local branches on 2 Nov (late afternoon): 41 named and 42 `worktree-wf_*` (80 and 38 on 28 Oct; the two new ones are `docs/registers-1` and `fix/legacy-batch-3-tax-cr-0008`, EX-01's PR branch) [VERIFIED: `git for-each-ref` and reflog dates, 2 Nov]. The "behind" counts below were taken against 6443826 on 28 Oct; `origin/main` has gained the 2 commits of PR #17 since, so each is 7 higher after PRs #17 and #18 (7 / n on 2 Nov, re-checked for the rows of active work).
+There are 83 local branches on 2 Nov (late afternoon): 41 named and 42 `worktree-wf_*` (80 and 38 on 28 Oct; the three new ones are `docs/registers-1`, `docs/registers-2` and `fix/legacy-batch-3-tax-cr-0008`, EX-01's PR branch) [VERIFIED: `git for-each-ref` and reflog dates, 2 Nov]. The "behind" counts below were taken against 6443826 on 28 Oct; `origin/main` has gained 7 commits since (PR #17: 2, PR #18: 5), so each "behind" count is now 7 (re-checked on 2 Nov for the rows of active work).
 
 | Group | Branch @ head | Upstream | Behind / ahead of origin/main | On a remote? | Holds | Action |
 |---|---|---|---|---|---|---|

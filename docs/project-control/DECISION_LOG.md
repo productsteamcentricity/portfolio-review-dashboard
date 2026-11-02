@@ -196,7 +196,7 @@ of `CLAUDE.md`: `tasklist` first; attach only to a running instance (`GetActiveO
 synthetic files, read-only, with no window; close only the file you opened; never `Quit`; never `Stop-Process` or `taskkill` an
 Office process; change no global option; use a timeout and abandon, never kill; NOT RUN with the file path for the owner when Office
 is not running or the check is risky. NB-01 must rewrite the Office scripts of M1.4 to it (ARC-01's K1; the 07a6460 and be7f395
-versions break it) and run no `npm run accept:office` from any head until then; EX-01 applies it to its slide checks. A script that
+versions break it) and run no `npm run accept:office` or `accept:office:spike` from any head until then; EX-01 applies it to its slide checks. A script that
 started an Office instance is not allowed to Quit it either; whether that may ever be allowed is the owner's decision, not MOD-02's.
 TA-26 covers the existing tooling and docs (the Step 3 snippet of `docs/MONTHLY_REFRESH.md` ends with `Quit()`).
 
@@ -315,7 +315,7 @@ blocks.
 data lists as "Listed AIF", 11 today, are Category III) with a neutral caution kept on them, like "category assumed; check the AIF's
 statement" (the exact wording is for EX-01 to propose, the financial-domain-reviewer to approve and the owner to see). It is a
 behaviour change in TA-03 (T5 item 10: the class name and the note change on the tab and slides), so the merge waits for that change
-to pass the gates. EX-01 records it as D-043 (amends D-040 point (d)). Relayed to EX-01 and ARC-01 on 2 Nov; to NB-01 (M7) through
+to pass the gates. EX-01 is to record it as D-043 (amends D-040 point (d)); not in git yet. Relayed to EX-01 and ARC-01 on 2 Nov; to NB-01 (M7) through
 its relay list. The text below is the question as asked on 2 Nov.
 
 - **Problem.** The performance data lists 11 funds as "Listed AIF" but does not say their category. Category III is
@@ -340,7 +340,7 @@ its relay list. The text below is the question as asked on 2 Nov.
 #### PD-03. Can crypto gains and losses be set off? (CR-0008 question 18)
 
 **ANSWERED 2 Nov 2026.** The owner wrote: "keep no set-off". Option A: nothing changes in code; the answer confirms part T4 and is
-recorded in D-043 with PD-02. Whether the new Act allows set-off stays a question for the tax adviser (PD-43, OD-28). The text below
+to be recorded in D-043 with PD-02 (not in git yet). Whether the new Act allows set-off stays a question for the tax adviser (PD-43, OD-28). The text below
 is the question as asked on 2 Nov.
 
 - **Problem.** Under the old law, a crypto loss could not reduce any gain, and other losses could not reduce a
@@ -889,3 +889,4 @@ These are Claude's recommendations. None is a decision until the named approver 
 | 30 Oct 2026 | MOD-01 (fixer pass) | Index range D-001 to D-042; R-4 defers to README section 5.2 (ARC-01 informed of the merge and the Pages check; MOD-02 shows the evidence for "publish"); R-7 (ARC-01's scratch worktrees) recorded; PD-01 (c) says the base file's ISIN column is not read (KI-184) |
 | 2 Nov 2026 | MOD-02 | Lead rulings R-8 to R-11 (TA-03 PR branch, six ENGINE keys, re-run rule confirmed by ARC-01, D-043 and KI-186); PD-02 and PD-03 marked answered with the owner's words |
 | 2 Nov 2026 | MOD-02 | R-12 (Office rule), R-13 (TB-08); PD-47 to PD-49 queued; PD-02 impact line corrected; "planned, not in git yet" tags |
+| 2 Nov 2026 | MOD-02 | Rule 10 of CLAUDE.md sharpened after the security review (synthetic defined, Excel window, NOT RUN is never a pass); residual "planned, not in git yet" tags; TA-26 priority |

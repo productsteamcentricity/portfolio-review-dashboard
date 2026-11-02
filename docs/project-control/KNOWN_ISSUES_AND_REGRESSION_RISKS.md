@@ -243,5 +243,5 @@ Each line was read on `main` 6443826 on 28 Oct [VERIFIED by file and line].
 |---|---|---|
 | 28 Oct 2026 | MOD-01 | First version, for the MOD-01 to MOD-02 handover |
 | 30 Oct 2026 | MOD-01 (fixer pass) | KI-183 is filed by TA-05 (probe location given); KI-184 line numbers corrected; RR-10 says merge, never rebase; the new-build risks B-01 to B-05 registered as RR-25 to RR-29 |
-| 2 Nov 2026 | MOD-02 | KI-185 (FIXED in TA-03, six names) and KI-186 (P3) added; RR-09 and RR-12 updated for the CI run and the six ENGINE keys |
+| 2 Nov 2026 | MOD-02 | KI-185 (to be FIXED in TA-03, six names) and KI-186 (P3) added; RR-09 and RR-12 updated for the CI run and the six ENGINE keys |
 | 2 Nov 2026 | MOD-02 | RR-30 (Office automation) and the release-check note added; RR-09 evidence dated; KI-185 wording "planned"; RR-12 updated |

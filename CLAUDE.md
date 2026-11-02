@@ -50,11 +50,14 @@ and the monthly data owner.
 10. **Office automation never touches the owner's open work** (owner's rule, 2 Nov 2026). PowerPoint and Excel are
    usually open on the owner's PC, and COM attaches to a running instance. Before any Office check run `tasklist`
    for `POWERPNT.EXE` and `EXCEL.EXE`. Attach only to a running instance (`GetActiveObject`, never
-   `New-Object -ComObject`); open only synthetic files, read-only, with no window; close only the presentation or
-   workbook you opened; never call `Quit`; never `Stop-Process` or `taskkill` an Office process; change no global
-   option (`DisplayAlerts`, `Visible`, `AutomationSecurity`, `Calculation`, `ScreenUpdating`, `EnableEvents`); use a
-   timeout, and on a timeout abandon the file, never kill. If Office is not running, or the check is risky, report
-   NOT RUN and give the owner the path of the synthetic file to open themselves. This binds every chat, agent and
+   `New-Object -ComObject`). Open only synthetic files: generated in this session by the repository's own tools, in
+   macro-free formats, never an inbox, vendor or downloaded file. Open them read-only with no window (Excel cannot
+   open a workbook without one: hide only that workbook's window); close only the presentation or workbook you
+   opened; never call `Quit`; never `Stop-Process` or `taskkill` an Office process; change no global option
+   (`Application.DisplayAlerts`, `.Visible`, `.AutomationSecurity`, `.Calculation`, `.ScreenUpdating`, `.EnableEvents`);
+   use a timeout, and on a timeout abandon the file, never kill. If Office is not running, or the check is risky,
+   report NOT RUN and give the owner the path of the synthetic file to open themselves. NOT RUN is never a pass: the
+   check stays open until the owner has opened the file and said what they saw. This binds every chat, agent and
    script. The Step 3 snippet of `docs/MONTHLY_REFRESH.md` ends with `Quit()` and must not be run as written (TA-26).
 
 ## Conventions the code actually uses (verified at baseline, see docs/legacy/ARCHITECTURE.md)
