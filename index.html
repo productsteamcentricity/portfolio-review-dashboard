@@ -872,16 +872,21 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
          own category or the data's, is Category III too (the answer of 2 Nov 2026) and is marked catRuled. With nothing at all,
          Category I or II is assumed and marked catAssumed. */
       var _ct=c+" "+n+" "+p, _lab="", _ruled=false,
-          _cat3=/\bcat(egory)?[\s.:()\-\u2010-\u2015\u2212]*(iii|three|3)\b/.test(_ct),
-          _st12=!_cat3&&/\bcat(egory)?[\s.:()\-\u2010-\u2015\u2212]*(ii|two|i|one|2|1)\b/.test(_ct);
+          _cat3=/\bcat(egory)?[\s.:()\[\]{}\/_#,\-\u2010-\u2015\u2212]*(iii|three|3)\b/.test(_ct),
+          _st12=!_cat3&&/\bcat(egory)?[\s.:()\[\]{}\/_#,\-\u2010-\u2015\u2212]*(ii|two|i|one|2|1)\b/.test(_ct);
       if(!_cat3&&!_st12){
         _lab=(h.perfSrc==="AIF"&&R&&R.AIF_PERF&&R.AIF_PERF[h.perfKey])?String(R.AIF_PERF[h.perfKey].category||"").toLowerCase():"";
-        if(/\bcat(egory)?[\s.:()\-\u2010-\u2015\u2212]*(iii|three|3)\b/.test(_lab)) _cat3=true;
-        else if(/\bcat(egory)?[\s.:()\-\u2010-\u2015\u2212]*(ii|two|i|one|2|1)\b/.test(_lab)) _st12=true;
-        else if(/^\s*listed\s*aif\s*$/.test(c)||/^\s*listed\s*aif\s*$/.test(_lab)) _ruled=true;
+        /* the loose name matcher can map a sibling series, or another fund of the house, to an entry: the entry's Category I, II or III is read as
+           a statement about this fund only when the two names are the same once normalised (the matcher's exact branch); a "Listed AIF" label
+           from a looser match still gives Category III, with the note that asks for the statement. An own category that says unlisted blocks it. */
+        var _same=!!_lab&&normalize(h.name).join(" ")===normalize(h.perfKey).join(" ");
+        if(_same&&/\bcat(egory)?[\s.:()\[\]{}\/_#,\-\u2010-\u2015\u2212]*(iii|three|3)\b/.test(_lab)) _cat3=true;
+        else if(_same&&/\bcat(egory)?[\s.:()\[\]{}\/_#,\-\u2010-\u2015\u2212]*(ii|two|i|one|2|1)\b/.test(_lab)) _st12=true;
+        else if(/^\s*listed\s*aif\s*$/.test(c)||(!/unlisted/.test(c)&&/^\s*listed\s*aif\s*$/.test(_lab))) _ruled=true;
       }
       if(_cat3||_ruled){
-        var _r3=K(/debt/.test(a) ? "Debt AIF – Cat III" : (/long[\s-]?short/.test(_ct+" "+_lab) ? "Equity AIF – Cat III (Long Short)" : "Equity AIF – Cat III (Listed Equity)"));
+        /* the row is picked from the category and the name, as before; the entry's own wording picks it only for a category the entry stated */
+        var _r3=K(/debt/.test(a) ? "Debt AIF – Cat III" : (/long[\s-]?short/.test(c+" "+n+(_same?" "+_lab:"")) ? "Equity AIF – Cat III (Long Short)" : "Equity AIF – Cat III (Listed Equity)"));
         if(_ruled) _r3.catRuled=true;
         return _r3;
       }
@@ -919,8 +924,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       if (/aggressive\s*hybrid/.test(cn)) return UB("Hybrid MF (equity-oriented)");
       if (/conservative\s*hybrid/.test(cn)) return K("Hybrid MF (Specified, Sec. 76)");
       if (/equity\s*savings/.test(cn)) return UB("Hybrid MF (equity-oriented)");
-      /* T5: an arbitrage fund whose category is blank, by its name, as the hybrid tests read the name (before the
-         debt test: an arbitrage fund is often filed as Debt for analytics routing) */
+      /* T5: an arbitrage fund by its name, as the hybrid tests read the name, before the debt test (an arbitrage fund is
+         often filed as Debt for analytics routing); a hybrid, global, gold or fund-of-funds fund, or a non-fund product, is claimed earlier */
       if (/arbitrage/.test(n)) return UB("Equity Mutual Funds");
       if (/hybrid|balanced|asset alloc|equity savings|multi[\s-]?asset|life\s*cycle/.test(c) ||
           /balanced advantage|asset allocation|equity savings|multi[\s-]?asset|life\s*cycle/.test(n)) return N(TAX_WHY.hybrid);
@@ -1204,7 +1209,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       if(!(px>0)){
         out.noPrice++;
         if(isBuy){ noPxBuy[k]=true; if(/switch[- ]?in/i.test(t.ttype||"")) swIn[k]=true; }
-        else noPxSell[k]=true;   /* T5 (review R5-F1): a sale that reached the rupee ledger only */
+        else if(amt>1e-9) noPxSell[k]=true;   /* T5 (review R5-F1): a sale with an amount that reached the rupee ledger only */
         return;
       }
       var u=Math.abs(t.a)/px;
@@ -1286,7 +1291,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
             : (fifoU<baseU
               ? "Units do not reconcile to the base file: the transaction history gives fewer units, so it is missing an event, such as a bonus or split, or a purchase made elsewhere."
               : (noPxSell[_k]
-                ? "Units do not reconcile to the base file: the transaction history gives more units, and a sale or transfer out in it carries no price, so the units it sold could not be counted."
+                ? "Units do not reconcile to the base file: the transaction history gives more units, and a sale, switch out or transfer out in it carries no price, so the units it sold could not be counted."
                 : "Units do not reconcile to the base file: the transaction history gives more units, so it is missing an event, such as a sale, a transfer out or a consolidation of units.")));
         if(laterK[_k]) rec.reason=taxWithLater(rec.reason,laterK[_k],asOn);   /* TX-17 */
         out.unreconciled.push(rec); return;
@@ -3599,7 +3604,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     if (acc.nsN && acc.nsN === acc.n){
       ev.cls = acc.cls;
       /* T5 (CR-0008 question 17): an AIF whose category the file does not state, or that is called a Listed AIF */
-      return aiaSig("tax", "Tax", "na", ev, ((acc.catAs && acc.ns === "passThrough") ? "The file does not state this AIF's category, so it is treated as Category I or II; confirm the category against the AIF's statement. "
+      return aiaSig("tax", "Tax", "na", ev, ((acc.catAs && acc.ns === "passThrough") ? "The file does not state Category I, II or III for this AIF, so it is treated as Category I or II; confirm the category against the AIF's statement. "
         : ((acc.catRu && acc.ns === "fundLevel") ? "This AIF is called a Listed AIF, so it is treated as Category III; confirm the category against the AIF's statement. " : "")) + (({
         fundLevel: "A Category III AIF is taxed inside the fund: the investor receives a post-tax amount that is not taxed again, so there is no investor-level long- or short-term gain (Tax Reckoner TY 2026-27, #25).",
         passThrough: "A Category I or II AIF passes its income through to the investor, with the holding period counted at the AIF's level for each underlying asset, as its annual statement (Form 64C) reports; that statement is not loaded, so the gain is not split into long and short term (Tax Reckoner TY 2026-27, #24).",
@@ -5694,11 +5699,11 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       var _nsb=[];
       if(_ns.pms.n) _nsb.push('PMS (per security)');
       /* T5 items 4 and 10 (CR-0008 question 17): an AIF whose category the file does not state is treated as Cat I/II and a Listed AIF as
-         Cat III, never asserted. Kept short: the class footnote holds about two lines (KI-109). */
+         Cat III, never asserted. Kept short, since the class footnote grows (_footFit below) once it runs past two lines (KI-109). */
       var _ptA=_ns.passThrough.assumedN||0, _rA=_ns.fundLevel.ruledN||0, _aifs=function(n){ return n===1?'1 AIF is':n+' AIFs are'; };
       if(_ns.passThrough.n) _nsb.push((_ptA===_ns.passThrough.n?'AIFs treated as Cat I/II':'Cat I/II AIFs')+' (per underlying asset)');
       var _nsFoot=(_nsb.length?(' Not split: '+_nsb.join(', ')+'.'):'')+(_ns.fundLevel.n>_rA?' Cat III AIFs: fund level.':'')+
-        (_ptA?(' '+_aifs(_ptA)+' treated as Cat I/II because the file states no category: confirm it against the AIF\u2019s statement.'):'')+
+        (_ptA?(' '+_aifs(_ptA)+' treated as Cat I/II because the file states no Category I, II or III: confirm it against the AIF\u2019s statement.'):'')+
         (_rA?(' '+_aifs(_rA)+' treated as Cat III (fund level) because '+(_rA===1?'it is called a Listed AIF':'they are called Listed AIFs')+': confirm against the AIF\u2019s statement.'):'');
       /* T5 (TR-7, LD-11): aggressive hybrid, arbitrage and equity savings funds classed by the usual bucket; worded for the client */
       var _ubFoot=T.positions.some(function(r){ return r.usualBucket; })?' Aggressive hybrid, arbitrage, equity savings: usual bucket per the tax reckoner; confirm with the fund house.':'';
@@ -5727,9 +5732,11 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         fontFace:F,border:{type:'solid',pt:0.3,color:'D9D9D9'},valign:'middle'});
       /* T5 (KI-109): the sentences part T5 adds can take the class footnote past two lines; from a third line on it grows upward
          from the band's edge (7.18 in) instead of running into it. The table above it (rows of 0.30 in, 0.40 when a cell wraps)
-         sets the room; when 8 pt does not fit in it, as for 13 or more classes, the footnote drops to 7 pt and, if it must, to
+         sets the room; when 8 pt does not fit in it (with several wrapped rows, from about 13 classes), the footnote drops to 7 pt and, if it must, to
          6.5 pt, and it always ends at the band's edge, never on the band (review R6-1, R7-F2). At 8 pt a line holds about 260
-         characters and is 0.14 in high; at 7 pt about 300 and 0.125 in; at 6.5 pt about 320 and 0.115 in. */
+         characters and is 0.14 in high; at 7 pt about 300 and 0.125 in; at 6.5 pt about 320 and 0.115 in. The estimate of the table's height is on
+         the safe side (the real table is often shorter), and 6.5 pt is the last step: in a rare book with every optional sentence the first
+         line can start up to 0.04 in above that estimate, a hairline on the table's border (delta review D4-F1, D4-F2). */
       var _tb=1.94+0.30+T.byClass.slice(0,14).reduce(function(a,g){ return a+((lta(g.rule).length>24||String(g.cls).length>44)?0.40:0.30); },0);
       var _footFit=function(sl,txt){ var len=String(txt).length, n=Math.ceil(len/260); if(n<=2){ foot(sl,txt); return; }
         var room=7.18-(_tb+0.04), fs=8, lh=0.14;
@@ -5741,8 +5748,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         ' transactions. LTCG + STCG (and ELSS in lock-in) add back to each split holding\u2019s Gain/Loss. Rates stated as words depend on the assessee or the fund\u2019s own filing.'+
         (preSpec?' Units bought before 1 Apr 2023 have their own class (general rule).':'')+
         (gfN?' Lots bought before 1 Feb 2018 are at actual cost (no 31 Jan 2018 step-up).':'')+
-        (T.unreconciled.length?(' '+T.unreconciled.length+' holding(s) could not be reconciled to the base file and are unclassified.'):'')+
-        (T.unmapped.length?(' '+T.unmapped.length+' holding(s) have no tax class and are unclassified.'):'')+
+        (T.unreconciled.length?(' '+T.unreconciled.length+(T.unreconciled.length===1?' holding could not be reconciled to the base file and is unclassified.':' holdings could not be reconciled to the base file and are unclassified.')):'')+
+        (T.unmapped.length?(' '+T.unmapped.length+(T.unmapped.length===1?' holding has no tax class and is unclassified.':' holdings have no tax class and are unclassified.')):'')+
         (t.lockedCmv>1e-12?(' ELSS units still in lock-in ('+U.m(t.lockedCmv)+') are unclassified and not harvested.'):'')+_nsFoot+_ubFoot+_srcFoot);
 
       /* ---- totals: by product, by asset class, and the grand total for the
@@ -5907,7 +5914,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
           sd.addTable(rows,{x:0.18,y:TX_TOP,w:13.0,colW:colW,rowH:TX_ROW,fontFace:F,
             border:{type:'solid',pt:0.3,color:'D9D9D9'},valign:'middle'});
           foot(sd,'*\u201cAmt. available for Rebalancing\u201d is the holding\u2019s CMV apportioned across the lots open at each treatment; \u201cLots\u201d is how many separate purchases remain unsold. '+
-            /* kept to the length of the sentence it replaces: the footnote holds two lines (about 520 characters, KI-109) */
+            /* about the length of the sentence it replaces; the footnote box is 0.26 in high and the whole footnote, with every optional sentence, runs
+               to about 840 characters, so it may need a third line (pre-existing, KI-109) */
             'Holdings matched on invested value show no units; PMS and AIF rows read Not split or Fund level. '+
             (T.viaNoPrice?((T.viaSwitchIn?('A switch-in carries no price in the IRR sheet, so '+T.viaSwitchIn+' holding'+(T.viaSwitchIn===1?'':'s')+' acquired that way '+(T.viaSwitchIn===1?'is':'are')):('A purchase with no price means '+T.viaNoPrice+' holding'+(T.viaNoPrice===1?'':'s')+' '+(T.viaNoPrice===1?'is':'are')))+
               ' matched on invested value instead of units; the switch date is the purchase date and sets the holding period. '):'')+
@@ -5966,7 +5974,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         _lop(_ns.fundLevel.n-_rA,'Cat III AIF','Cat III AIFs',_ns.fundLevel.cmv-(_ns.fundLevel.ruledCmv||0));
         _lop(_rA,'AIF treated as Cat III','AIFs treated as Cat III',_ns.fundLevel.ruledCmv||0);
         if(_lo.length) nt.push('Left out, as not split into long and short term: '+_lo.join(', ')+'.');
-        if(T.unnamedN) nt.push(T.unnamedN+' holding(s) with no client name are treated as one person.');
+        if(T.unnamedN) nt.push(T.unnamedN+(T.unnamedN===1?' holding with no client name is treated as one person.':' holdings with no client name are treated as one person.'));
         /* rows from the band left above the note: a pool whose name wraps counts as a taller row */
         var _TOP=1.94, _BOT=6.86, _CH=215;
         var _rh=function(p){ return String(p.cls).length>46?0.45:0.30; };
@@ -11704,7 +11712,7 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       if(_uk.noLots) _us.push(_uh(_uk.noLots,'holding has','holdings have')+' no purchase in the IRR sheet that is still held, so there are no lots to split.');
       if(_uk.short) _us.push('For '+_uh(_uk.short,'holding','holdings')+' the transaction history gives fewer units than the base file, so it is missing an event: a bonus or split, or a purchase made elsewhere.');
       if(_uk.excess) _us.push('For '+_uh(_uk.excess,'holding','holdings')+' the transaction history gives more units than the base file, so it is missing an event: a sale, a transfer out or a consolidation of units.');
-      if(_uk.noPxSell) _us.push('For '+_uh(_uk.noPxSell,'holding','holdings')+' the transaction history gives more units than the base file, and a sale or transfer out in it carries no price, so the units it sold could not be counted.');
+      if(_uk.noPxSell) _us.push('For '+_uh(_uk.noPxSell,'holding','holdings')+' the transaction history gives more units than the base file, and a sale, switch out or transfer out in it carries no price, so the units it sold could not be counted.');
       if(_uk.value) _us.push('For '+_uh(_uk.value,'holding','holdings')+' matched on invested value, the transaction history does not add up to the base file&rsquo;s invested value.');
       if(_uk.other) _us.push('For '+_uh(_uk.other,'holding','holdings')+' the transaction history does not reconcile to the base file.');   /* a record with no kind is still explained */
       warn+='<div class="taxwarn"><b>'+T.unreconciled.length+' holding'+(T.unreconciled.length===1?'':'s')+' could not be reconciled to the base file and '+
@@ -11840,7 +11848,7 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
     /* T5 (CR-0008 question 17): an AIF whose category the file does not state is treated as Category I or II, never asserted */
     var _ptN=_nsT.passThrough.n, _ptA=_nsT.passThrough.assumedN||0;
     if(_ptN) _nsp.push((_ptA
-        ? (_pl(_ptN,'AIF is','AIFs are')+' treated as Category I or II (pass-through)'+(_ptA===_ptN?(' because the file does not state '+(_ptN===1?'its':'their')+' category'):(', '+_ptA+' of them because the file does not state the category'))+'. Pass-through means that income')
+        ? (_pl(_ptN,'AIF is','AIFs are')+' treated as Category I or II (pass-through)'+(_ptA===_ptN?' because the file does not state Category I, II or III':(', '+_ptA+' of them because the file does not state Category I, II or III'))+'. Pass-through means that income')
         : (_pl(_ptN,'Category I or II AIF is','Category I or II AIFs are')+' pass-through: income'))+
       ' keeps its character and is taxed in the investor&rsquo;s hands, with the holding period counted at the AIF&rsquo;s level for each underlying asset, as its annual statement (Form 64C) reports (Tax Reckoner TY 2026-27, #24). '+
       'That statement is not loaded, so the Gain/Loss ('+gm(_nsT.passThrough.gl)+') is not split, is counted as not classified and is left out of tax harvesting.'+
@@ -11998,10 +12006,10 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
         var c=asClients[+inp.getAttribute('data-ci')], k=inp.getAttribute('data-k');
         if(c==null||(k!=='slabPct'&&k!=='usedRs')) return;
         /* T5: Indian or international digit grouping ("1,25,000", "125,000", "1 25 000") is read: commas and spaces are
-           dropped, and so are a leading rupee sign, Rs, Rs. or INR and a trailing "/-" (an amount pasted from a sheet or a statement;
-           the number field this replaced read those in a Chromium browser), and a trailing "%" in the slab-rate field. An exponent
+           dropped, and so are a leading rupee sign, Rs, Rs. or INR (with or without the dot) and a trailing "/-", "/=", INR or Rs (an amount pasted from a sheet or a statement),
+           and a trailing "%" in the slab-rate field. An exponent
            ("1.25e5") is read too. Only a blank or non-numeric entry restores the default. */
-        var v=String(inp.value==null?'':inp.value).replace(/[,\s]/g,'').replace(/^(?:\u20B9|rs\.?|inr)/i,'').replace(/\/-$/,'');
+        var v=String(inp.value==null?'':inp.value).replace(/[,\s]/g,'').replace(/^(?:\u20B9|rs\.?|inr\.?)/i,'').replace(/\/[-=]$/,'').replace(/(?:inr|rs\.?)$/i,'');
         if(k==='slabPct') v=v.replace(/%$/,'');
         var A=Object.prototype.hasOwnProperty.call(taxAssume.clients,c)?taxAssume.clients[c]:(taxAssume.clients[c]={});
         if(!/^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(v)) delete A[k]; else A[k]=Number(v);

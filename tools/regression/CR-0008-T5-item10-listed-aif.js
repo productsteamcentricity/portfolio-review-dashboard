@@ -31,7 +31,9 @@ const CAT3 = 'Equity AIF – Cat III (Listed Equity)', CAT3LS = 'Equity AIF – 
 const EQ12 = 'Equity AIF – Cat I/II', DB12 = 'Debt AIF – Cat I/II';
 const keys = Object.keys(REF.AIF_PERF);
 const listedKeys = keys.filter(k => REF.AIF_PERF[k].category === 'Listed AIF');
-const cat3Keys = keys.filter(k => /cat iii/i.test(REF.AIF_PERF[k].category));
+/* the engine's own pattern for a stated Category III (taxClassify), so a vendor spelling it reads is counted here too */
+const CAT_III = /\bcat(egory)?[\s.:()\[\]{}\-\u2010-\u2015\u2212]*(iii|three|3)\b/i;
+const cat3Keys = keys.filter(k => CAT_III.test(REF.AIF_PERF[k].category));
 const LK = listedKeys[0], CK = cat3Keys[0];
 
 /* ---------------- 1. the classifier ---------------- */
@@ -56,10 +58,40 @@ ok(stated3(cls({ category: 'Listed AIF', name: 'Synthetic Opportunities Fund Cat
 ok(['Category III', 'CAT-III', 'Cat. III', 'Category 3', 'Category Three', 'Category (III)', 'Category – III', 'AIF (CAT III) - Listed Equity'].every(c => stated3(cls({ category: c }))),
   'Category III in any of its spellings (dot, dash, en dash, bracket, 3, three) is stated');
 ok(['Category I', 'Category 1', 'Cat One', 'CAT II', 'Cat-II', 'Category 2', 'Category Two', 'Category I & II'].every(c => stated12(cls({ category: c }))), 'Category I or II in any of its spellings is stated');
+ok(['Category [III]', 'Category {III}', 'Cat [3]', 'AIF [Category III]'].every(c => stated3(cls({ category: c }))) && ['Category [II]', 'Category {I}', 'Cat [2]', 'AIF [Category II]'].every(c => stated12(cls({ category: c }))),
+  'Category III, II or I inside square or curly brackets is stated, like round brackets (delta review D5-F2, D5-F3)');
+ok(cls({ category: 'Category No. III' }).catAssumed === true && cls({ category: 'Category No. III' }).cls === EQ12,
+  '"Category No. III" is not read (a boundary, pinned): Category I or II, assumed, with the note that asks for the statement');
+ok(['Category/III', 'Category_III', 'Category #III', 'Category, III', 'Cat-[III]'].every(c => stated3(cls({ category: c }))) && ['Category/II', 'Category_I', 'Category #2', 'Category, I'].every(c => stated12(cls({ category: c }))),
+  'a slash, an underscore, a hash or a comma between "category" and the number is read (delta review D1-F2)');
+ok(['Category IV', 'Category 12', 'Category 1a', 'Category 3A', 'Category IIIB', 'Wildcat II Fund', 'Concat I Fund'].every(c => cls({ category: '', name: c }).catAssumed === true),
+  'a number that only starts like one (IV, 12, 1a, 3A, IIIB) or a word that only ends in "cat" is not a category: nothing stated, assumed (delta review D1-F5)');
 ok(cls({ category: 'Category I and Category III' }).cls === CAT3, 'when both are written, Category III is tested first, as before');
 ok(cls({ category: '', name: 'Synthetic Wildcat III Fund' }).cls === EQ12 && cls({ category: '', name: 'Synthetic Wildcat III Fund' }).catAssumed === true,
   'a word that only ends in "cat" ("Wildcat III") is not a category: nothing stated, Category I or II, assumed');
 ok(cls({ category: 'Category III - Long Short' }).cls === CAT3LS && cls({ asset: 'Debt', category: 'Category III' }).cls === DCAT3, 'Category III: the Long Short row and the debt row are kept (KI-166)');
+ok(cls({ category: 'Category: III', name: 'Synthetic Wildcat III Fund', product: 'AIF - Cat III Long Short' }).cls === CAT3,
+  'the Category III row is picked from the category and the name, as before: a product that says Long Short does not pick the Long Short row (delta review D6-3)');
+
+console.log('--- 1a2. the entry counts as a statement about the same fund only (delta review D1-F1, D1-F3, D1-F5) ---');
+const FX = Object.assign({}, REF.AIF_PERF, { 'Synthetic Alpha Strategy Fund': { category: 'Category II' }, 'Synthetic Beta Strategy Fund': { category: 'Cat 1' }, 'Synthetic Gamma Strategy Fund': { category: 'Category IV' },
+  'Synthetic Delta Strategy Fund': { category: 'AIF (CAT III) - Long Short' }, 'Synthetic Listed Strategy Fund': { category: 'Listed AIF' } });
+const REFX = Object.assign({}, REF, { AIF_PERF: FX });
+const mx = (name, key, h) => E.taxClassify(Object.assign({ product: 'AIF', asset: 'Equity', category: '', name, perfSrc: 'AIF', perfKey: key }, h), REFX);
+ok(stated12(mx('Synthetic Alpha Strategy Fund', 'Synthetic Alpha Strategy Fund')) && stated12(mx('Synthetic Beta Strategy Fund', 'Synthetic Beta Strategy Fund')) && mx('Synthetic Gamma Strategy Fund', 'Synthetic Gamma Strategy Fund').catAssumed === true,
+  'an entry that says Category II or Cat 1 is a statement for the same fund (Category I or II, no mark); one that says Category IV is read as nothing: assumed');
+ok(mx('Synthetic Delta Strategy Fund', 'Synthetic Delta Strategy Fund').cls === CAT3LS && !mx('Synthetic Delta Strategy Fund', 'Synthetic Delta Strategy Fund').catRuled, 'an entry that says Category III Long Short gives the Long Short row, as stated');
+ok(stated3(mx(CK.toUpperCase(), CK)) && stated3(mx(CK + ' ', CK)), 'the same name in another letter case or with a trailing space is the same fund: the Category III entry is a statement');
+ok(mx('Synthetic Alpha Sibling Fund 2', 'Synthetic Alpha Strategy Fund').catAssumed === true && mx('Synthetic Alpha Sibling Fund 2', 'Synthetic Alpha Strategy Fund').cls === EQ12,
+  'a sibling the loose matcher maps to an entry that says Category II is not told it is Category II: assumed, with the note');
+const sib = mx(CK + ' Series 7', CK);
+ok(sib.catAssumed === true && sib.cls === EQ12, 'a sibling series of the Category III entry (its name and "Series 7") is not unmarked Category III: assumed, with the note');
+ok(mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund').catRuled === true && mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund').cls === CAT3,
+  'a sibling the matcher maps to a Listed AIF entry is still Category III by the answer of 2 Nov 2026, marked, with the note');
+ok(stated12(mx('Synthetic Growth Fund', 'Synthetic Listed Strategy Fund', { category: 'Category II' })) && stated3(mx('Synthetic Growth Fund', 'Synthetic Delta Strategy Fund', { category: 'Category III' })) && stated12(mx(CK, CK, { category: 'Category II' })),
+  'the fund\'s own Category II or III beats any entry, even the Category III entry of the same name');
+ok(mx('Synthetic Listed Strategy Fund', 'Synthetic Listed Strategy Fund', { category: 'Unlisted AIF' }).catAssumed === true && !mx('Synthetic Listed Strategy Fund', 'Synthetic Listed Strategy Fund', { category: 'Unlisted AIF' }).catRuled,
+  'an own category that says Unlisted AIF is not overruled by the entry\'s Listed AIF label: assumed, with the note');
 
 console.log('--- 1b. the entry the holding matched ---');
 const lh = matched(LK), ch = matched(CK);
@@ -117,11 +149,11 @@ ok(T.near(r(TX.totals.unclassCmv), r(mw.taxation.totals.unclassCmv)) && T.near(r
       'the Category III note says 2 of the 3 are treated as Category III because they are called Listed AIFs, and to confirm the category');
     ok(/Left out of the harvest.*: 1 Category I or II AIF \(₹1\.20 Cr\), 1 AIF treated as Category I or II \(₹0\.40 Cr\), 1 Category III AIF \(₹1\.00 Cr\), 2 AIFs treated as Category III \(₹0\.85 Cr\)\./.test(tx),
       'left out of the harvest: the Listed AIFs are named apart ("2 AIFs treated as Category III"), not as Category III AIFs');
-    ok(!/\b(ruled|ruling|owner)\b/i.test(tx.replace(/[^.]*usual bucket[^.]*\./gi, '')), 'no sentence of the tab says the owner ruled');
+    ok(!/\b(ruled|ruling|owner)\b/i.test(tx), 'no sentence of the tab says the owner ruled');
 
     console.log('--- 2b. the slides ---');
     const sl = await T.taxSlidesText(m);
-    ok(/Not split: Cat I\/II AIFs \(per underlying asset\)\. Cat III AIFs: fund level\. 1 AIF is treated as Cat I\/II because the file states no category: confirm it against the AIF’s statement\. 2 AIFs are treated as Cat III \(fund level\) because they are called Listed AIFs: confirm against the AIF’s statement\./.test(sl),
+    ok(/Not split: Cat I\/II AIFs \(per underlying asset\)\. Cat III AIFs: fund level\. 1 AIF is treated as Cat I\/II because the file states no Category I, II or III: confirm it against the AIF’s statement\. 2 AIFs are treated as Cat III \(fund level\) because they are called Listed AIFs: confirm against the AIF’s statement\./.test(sl),
       'class slide footnote: the Cat I/II sentence, then "2 AIFs are treated as Cat III (fund level) because they are called Listed AIFs: confirm against the AIF’s statement"');
     ok(/Left out, as not split into long and short term: 1 Cat I\/II AIF \(₹1\.20 Cr\), 1 AIF treated as Cat I\/II \(₹0\.40 Cr\), 1 Cat III AIF \(₹1\.00 Cr\), 2 AIFs treated as Cat III \(₹0\.85 Cr\)\./.test(sl),
       'harvest slide: left out names the Listed AIFs apart ("2 AIFs treated as Cat III (₹0.85 Cr)")');
@@ -132,7 +164,7 @@ ok(T.near(r(TX.totals.unclassCmv), r(mw.taxation.totals.unclassCmv)) && T.near(r
     const sLo = sig('Synthetic Listed Opportunities Fund'), sLs = sig('Synthetic Long Short Fund'), sC2 = sig('Synthetic Private Equity Fund II'), sUn = sig('Synthetic Unstated Category Fund');
     ok(sLo.verdict === 'na' && /^This AIF is called a Listed AIF, so it is treated as Category III; confirm the category against the AIF's statement\. A Category III AIF is taxed inside the fund/.test(sLo.text),
       'a Listed AIF says so, and asks for the statement (got: ' + sLo.text.slice(0, 150) + ')');
-    ok(/^A Category III AIF is taxed inside the fund/.test(sLs.text) && /^A Category I or II AIF passes its income through/.test(sC2.text) && /^The file does not state this AIF's category, so it is treated as Category I or II/.test(sUn.text),
+    ok(/^A Category III AIF is taxed inside the fund/.test(sLs.text) && /^A Category I or II AIF passes its income through/.test(sC2.text) && /^The file does not state Category I, II or III for this AIF, so it is treated as Category I or II/.test(sUn.text),
       'a stated Category III, a stated Category II and an unstated category read as before');
     ok(![sLo, sLs, sC2, sUn].some(x => /\b(ruled|ruling|owner)\b/i.test(x.text)), 'no AI Analyst sentence says the owner ruled');
 

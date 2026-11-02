@@ -216,7 +216,7 @@ ok(v1.taxation.asOnSource === 'base' && ymd(v1.taxation.asOn) === '2026-04-01' &
     const tx31 = R(T.text(T.renderTaxTab(r31))), sl31 = await T.taxSlidesText(r31);
     ok(/4 holdings are not placed in a tax class/.test(tx31) && (tx31.split("so the AMC's tax classification for that year is needed").length - 1) === 3 && tx31.indexOf(U1) < 0,
       'Taxation tab, 31 Mar 2026: four holdings with no class, three giving the reason for before 1 Apr 2026; no usual-bucket label');
-    ok(/4 holding\(s\) have no tax class and are unclassified\./.test(sl31) && !/usual bucket/.test(sl31), 'class slide, 31 Mar 2026: the four are counted as unclassified, no usual-bucket sentence');
+    ok(/4 holdings have no tax class and are unclassified\./.test(sl31) && !/usual bucket/.test(sl31), 'class slide, 31 Mar 2026: the four are counted as unclassified, no usual-bucket sentence');
     const s31 = T.aiaTaxSignal(r31.holdings.find(x => x.name === 'X Aggressive Hybrid Fund-Reg(G)'), r31);
     ok(s31.verdict === 'na' && /^No tax class is applied to this holding/.test(s31.text) && /applies from 1 Apr 2026/.test(s31.text), 'AI Analyst, 31 Mar 2026: no class, with the reason');
   } catch (e) { ok(false, 'screen / slides: ' + (e && e.stack || e)); }

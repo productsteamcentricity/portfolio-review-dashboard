@@ -22,9 +22,11 @@
       every holding's Gain/Loss.
    6. The harvest slide's "Left out" line gave counts only; it gives the CMV too, as the
       tab does.
-   7. The harvest assumption inputs were number fields: "1,25,000" read as empty and
-      restored the default without a word. They are text fields that accept Indian and
+   7. The harvest assumption inputs were number fields; an entry of "1,25,000" was reported to restore the
+      default without a word (the cause is UNKNOWN). They are text fields that accept Indian and
       international digit grouping; only a blank or non-numeric entry restores the default.
+   8. A comment only (KI-184): the foreign-share marker reads the ISIN of the matched reference entry; a parsed
+      base row carries no isin.
    9. ENGINE.taxDefaults, the harvest defaults the engine exports, is frozen (ARC-01, C3 of its contract review).
    Synthetic data only.
    ========================================================================== */
@@ -110,19 +112,32 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
       'AI Analyst, a review of unreconciled holdings only: the holding is said to be unreconciled, not that no IRR history is loaded');
     /* a sale or transfer out that carries no price never reaches the unit ledger (review R5-F1): 1,000 units bought, 500 switched out for Rs 52,500, the
        base file holds 500. With a price the sale is counted and the holding reconciles; without one the history gives 1,000 units and the reason says why */
-    const part = price => {
+    const part = (price, amt) => {
       const nm = 'Synthetic Part Switched Fund-Reg(G)', b = new T.Book().add(eq('Client A', nm, 500, 100, 110, '2024-01-10'));
       b.trade({ name: nm, date: '2024-02-10', units: 500, price: 100 });
-      b.tx.push({ client: 'Client A', instrument: nm, ttype: 'Switch Out', rtype: '', d: T.D('2024-09-10'), a: 52500, price });
+      b.tx.push({ client: 'Client A', instrument: nm, ttype: 'Switch Out', rtype: '', d: T.D('2024-09-10'), a: amt == null ? 52500 : amt, price });
       return b;
     };
     const pPriced = part(105).tax(AS_ON), pFree = part(null).tax(AS_ON), pf = pFree.unreconciled[0] || {};
     ok(pPriced.unreconciled.length === 0 && pPriced.positions.length === 1, 'a switch-out with a price is counted: the holding reconciles (500 units left, as the base file)');
     ok(pFree.unreconciled.length === 1 && pf.unrec === 'noPxSell' && T.near(pf.fifoUnits, 1000, 1e-9) && pf.baseUnits === 500 &&
-       pf.reason === 'Units do not reconcile to the base file: the transaction history gives more units, and a sale or transfer out in it carries no price, so the units it sold could not be counted.',
+       pf.reason === 'Units do not reconcile to the base file: the transaction history gives more units, and a sale, switch out or transfer out in it carries no price, so the units it sold could not be counted.',
       'the same switch-out with no price: unreconciled, its own kind, and the reason names the unpriced sale (not "a sale is missing")');
+    /* a priceless sale that states no amount is not what is missing (delta review D3-F1): the holding is unreconciled with the general reason */
+    const pZero = part(null, 0).tax(AS_ON), pz = pZero.unreconciled[0] || {};
+    ok(pZero.unreconciled.length === 1 && pz.unrec === 'excess' && /is missing an event, such as a sale, a transfer out or a consolidation of units\.$/.test(pz.reason) && !/carries no price/.test(pz.reason),
+      'a switch-out with no price and no amount: unreconciled as excess units, the reason does not blame the unpriced row');
+    /* what makes a sale unpriced, and which reason wins (delta review D3-F6): a price that is zero, negative or not a number counts as none; fewer units than the
+       base file say "fewer" whatever the sale; an unpriced sale dated after the valuation date is left out with the later trades and is not blamed */
+    ok([0, -5, 'abc', NaN].every(p => { const q = part(p).tax(AS_ON).unreconciled[0] || {}; return q.unrec === 'noPxSell'; }), 'a sale priced 0, -5, "abc" or NaN counts as unpriced: the same reason');
+    const shortSale = (() => { const nm = 'Synthetic Short Sold Fund-Reg(G)', b = new T.Book().add(eq('Client A', nm, 1000, 100, 120, '2024-01-10')); b.tx.find(t => t.instrument === nm).a = -500 * 100;
+      b.tx.push({ client: 'Client A', instrument: nm, ttype: 'Switch Out', rtype: '', d: T.D('2024-09-10'), a: 100, price: null }); return b.tax(AS_ON).unreconciled[0] || {}; })();
+    ok(shortSale.unrec === 'short', 'fewer units than the base file say "fewer", even with an unpriced sale in the history');
+    const lateSale = (() => { const nm = 'Synthetic Part Switched Fund-Reg(G)', b = new T.Book().add(eq('Client A', nm, 500, 100, 110, '2024-01-10')); b.trade({ name: nm, date: '2024-02-10', units: 500, price: 100 });
+      b.tx.push({ client: 'Client A', instrument: nm, ttype: 'Switch Out', rtype: '', d: T.D('2026-10-05'), a: 52500, price: null }); return b.tax(AS_ON).unreconciled[0] || {}; })();
+    ok(lateSale.unrec === 'excess', 'an unpriced sale dated after the valuation date is left out with the later trades and is not blamed');
     const txPart = T.text(T.renderTaxTab(part(null).review(AS_ON)));
-    ok(txPart.indexOf('For 1 holding the transaction history gives more units than the base file, and a sale or transfer out in it carries no price, so the units it sold could not be counted.') >= 0 &&
+    ok(txPart.indexOf('For 1 holding the transaction history gives more units than the base file, and a sale, switch out or transfer out in it carries no price, so the units it sold could not be counted.') >= 0 &&
        !/is missing an event: a sale/.test(txPart), 'Taxation tab: the heading has that sentence, and does not say a sale is missing');
     /* a record that carries no kind (no code path makes one today) is still counted in the heading and explained by a sentence (review R7-F8) */
     const mNone = part(null).review(AS_ON); mNone.taxation.unreconciled.forEach(x => { x.unrec = undefined; });
@@ -183,29 +198,29 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
     ok(la && la.notSplit === 'passThrough' && la.catAssumed === true && c2 && c2.notSplit === 'passThrough' && !c2.catAssumed && ns.n === 2 && ns.assumedN === 1 &&
        T.near(r(ns.cmv), 18000000) && T.near(r(ns.assumedCmv), 6000000), 'the record and the totals: 2 pass-through AIFs (Rs 1.80 Cr), 1 of them assumed (Rs 0.60 Cr)');
     const tx2 = R8377(T.text(T.renderTaxTab(m)));
-    ok(tx2.indexOf('2 AIFs are treated as Category I or II (pass-through), 1 of them because the file does not state the category. Pass-through means that income keeps its character') >= 0 &&
+    ok(tx2.indexOf('2 AIFs are treated as Category I or II (pass-through), 1 of them because the file does not state Category I, II or III. Pass-through means that income keeps its character') >= 0 &&
        tx2.indexOf('Confirm the category against the AIF’s statement: a Category III AIF is taxed inside the fund instead.') >= 0 && !/2 Category I or II AIFs are pass-through/.test(tx2),
       'Taxation tab: the note says they are treated as Category I or II, why, and to confirm it against the AIF\'s statement');
     ok(/Synthetic Unstated Category Fund AIF Category I, II or III not stated in the file: treated as Category I or II/.test(tx2), 'Taxation tab: the holding row says its category is not stated');
     ok(/Left out of the harvest.*: 1 PMS \(₹1\.40 Cr\), 1 Category I or II AIF \(₹1\.20 Cr\), 1 AIF treated as Category I or II \(₹0\.60 Cr\), 1 Category III AIF \(₹1\.00 Cr\)\./.test(tx2),
       'Taxation tab: left out of the harvest, the AIF whose category is assumed named apart from the one whose category is stated');
     const sl = await T.taxSlidesText(m);
-    ok(/Not split: PMS \(per security\), Cat I\/II AIFs \(per underlying asset\)\. Cat III AIFs: fund level\. 1 AIF is treated as Cat I\/II because the file states no category: confirm it against the AIF’s statement\./.test(sl),
+    ok(/Not split: PMS \(per security\), Cat I\/II AIFs \(per underlying asset\)\. Cat III AIFs: fund level\. 1 AIF is treated as Cat I\/II because the file states no Category I, II or III: confirm it against the AIF’s statement\./.test(sl),
       'class slide: the footnote says the AIF is treated as Cat I/II because its category is not stated');
     console.log('--- 6. the harvest slide\'s "Left out" line gives the CMV ---');
     ok(/Left out, as not split into long and short term: 1 PMS \(₹1\.40 Cr\), 1 Cat I\/II AIF \(₹1\.20 Cr\), 1 AIF treated as Cat I\/II \(₹0\.60 Cr\), 1 Cat III AIF \(₹1\.00 Cr\)\./.test(sl),
       'harvest slide: 1 PMS (₹1.40 Cr), 1 Cat I/II AIF (₹1.20 Cr), 1 AIF treated as Cat I/II (₹0.60 Cr), 1 Cat III AIF (₹1.00 Cr), as the tab');
     const sig = n => T.aiaTaxSignal(m.holdings.find(x => x.name === n), m);
     const sLa = sig('Synthetic Unstated Category Fund'), sC2 = sig('Synthetic Private Equity Fund II');
-    ok(sLa.verdict === 'na' && /^The file does not state this AIF's category, so it is treated as Category I or II; confirm the category against the AIF's statement\. A Category I or II AIF passes its income through/.test(sLa.text),
+    ok(sLa.verdict === 'na' && /^The file does not state Category I, II or III for this AIF, so it is treated as Category I or II; confirm the category against the AIF's statement\. A Category I or II AIF passes its income through/.test(sLa.text),
       'AI Analyst: an AIF whose category is not stated says so (got: ' + sLa.text.slice(0, 120) + ')');
     ok(sC2.verdict === 'na' && /^A Category I or II AIF passes its income through/.test(sC2.text), 'AI Analyst: a stated Category II AIF reads as before');
     const one1 = new T.Book().add(aif('Synthetic Unstated Category Fund', '', 5000000, 6000000)).add(eq('Client A', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 300, '2024-01-10')).review(AS_ON);
     const tx3 = R8377(T.text(T.renderTaxTab(one1))), sl3 = await T.taxSlidesText(one1);
-    ok(tx3.indexOf('1 AIF is treated as Category I or II (pass-through) because the file does not state its category. Pass-through means that income keeps its character') >= 0 &&
+    ok(tx3.indexOf('1 AIF is treated as Category I or II (pass-through) because the file does not state Category I, II or III. Pass-through means that income keeps its character') >= 0 &&
        /Left out of the harvest.*: 1 AIF treated as Category I or II \(₹0\.60 Cr\)\./.test(tx3) && !/Category I or II AIF is pass-through/.test(tx3), 'Taxation tab, one such AIF: the note and the left-out list');
     ok(/Left out, as not split into long and short term: 1 AIF treated as Cat I\/II \(₹0\.60 Cr\)\./.test(sl3) &&
-       /Not split: AIFs treated as Cat I\/II \(per underlying asset\)\. 1 AIF is treated as Cat I\/II because the file states no category: confirm it against the AIF’s statement\./.test(sl3), 'slides, one such AIF');
+       /Not split: AIFs treated as Cat I\/II \(per underlying asset\)\. 1 AIF is treated as Cat I\/II because the file states no Category I, II or III: confirm it against the AIF’s statement\./.test(sl3), 'slides, one such AIF');
 
     console.log('--- 5. wording that part T3 left stale ---');
     const fl = TX.positions.find(p => p.name === 'Synthetic Flexi Cap Fund-Reg(G)'), el = TX.positions.find(p => p.name === 'Synthetic Tax Saver Fund-Reg(G)');
@@ -255,7 +270,7 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
     const fb = await footBox(big.review(AS_ON, { asOnDate: '30 Sep 2026' })), fs = await footBox(new T.Book().add(eq('Client A', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 150, '2024-01-15')).review(AS_ON));
     ok(fb && fb.len > 520 && fb.bottom <= 7.18 + 1e-6 && fb.top < 6.92 && fs && fs.len < 520 && Math.abs(fs.top - 6.92) < 1e-3,
       'class slide: a footnote past two lines (' + (fb && fb.len) + ' characters) ends at 7.18 in, above the band (top ' + (fb && fb.top.toFixed(2)) + ' in); a short one keeps its place at 6.92 in');
-    /* a wide class table (review R6-1, R7-F2): 19 distinct tax classes, the tall (wrapping) rows among the 14 shown, leave no room for a four-line
+    /* a wide class table (review R6-1, R7-F2): 20 distinct tax classes, the tall (wrapping) rows among the 14 shown, leave no room for a four-line
        footnote at 8 pt. It drops to 7 pt, or 6.5, and still ends at the band's edge (7.18 in) rather than on the band (its top is at 7.23 in). */
     const hh = (name, product, asset, category, nav, lots) => ({ client: 'Client A', name, product, asset, category, nav, lots });
     const wide = new T.Book()
@@ -282,6 +297,20 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
     ok(wm.taxation.byClass.length >= 17 && wb && wb.len > 600 && wb.bottom <= 7.18 + 1e-6 && wb.pt < 8 && wb.top > 6.4,
       'class slide, ' + wm.taxation.byClass.length + ' tax classes: a ' + (wb && wb.len) + '-character footnote drops to ' + (wb && wb.pt) + ' pt and ends at ' + (wb && wb.bottom.toFixed(2)) + ' in, above the band (top at 7.23 in); it starts at ' + (wb && wb.top.toFixed(2)) + ' in');
     ok(fb && fb.pt === 8, 'class slide: a nine-class book keeps the footnote at 8 pt');
+    /* every optional sentence at once (delta review D4-F1, D4-F2): pre-2018 lots, a later trade, a balanced advantage fund with no class and a Listed AIF on top of the
+       wide book. The footnote is 6.5 pt, the last size, and ends at the band's edge. Its first line starts at 6.72 in, 0.04 in above the page's own estimate of the
+       table's bottom (6.76 in), which is on the safe side (the real table ends higher): a known hairline, not a defect this test hides. */
+    wide.add(hh('Synthetic Value Fund-Reg(G)', 'Mutual Funds', 'Equity', 'Value Fund', 700, [['2017-06-10', 100, 500]]))
+      .add(hh('Synthetic Balanced Advantage Fund-Reg(G)', 'Mutual Funds', 'Hybrid', 'Balanced Advantage', 1070, [['2025-03-20', 5000, 1000]]))
+      .add({ client: 'Client A', name: 'Synthetic Listed Opportunities Fund', product: 'AIF', asset: 'Equity', category: 'Listed AIF', noUnits: true, nav: 43000000, lots: [['2024-03-15', 1, 40000000]] });
+    wide.trade({ name: 'Synthetic Flexi Cap Fund-Reg(G)', date: '2026-10-05', units: 10, price: 290 });
+    const wb2 = await footBox(wide.review(AS_ON, { asOnDate: '30 Sep 2026' }));
+    ok(wb2 && wb2.len > 950 && wb2.pt === 6.5 && wb2.bottom <= 7.18 + 1e-6 && wb2.top >= 6.7 && wb2.top < 6.76,
+      'class slide, every optional sentence: a ' + (wb2 && wb2.len) + '-character footnote is set at ' + (wb2 && wb2.pt) + ' pt, starts at ' + (wb2 && wb2.top.toFixed(2)) + ' in and ends at ' + (wb2 && wb2.bottom.toFixed(2)) + ' in');
+    const slN1 = await T.taxSlidesText(new T.Book().add(eq(' ', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 400, '2024-01-15')).add(eq('Client A', 'Synthetic Value Fund-Reg(G)', 1000, 100, 150, '2024-01-15')).review(AS_ON));
+    const slN2 = await T.taxSlidesText(new T.Book().add(eq(' ', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 400, '2024-01-15')).add(eq(' ', 'Synthetic Focused Fund-Reg(G)', 1000, 400, 100, '2024-01-15')).add(eq('Client A', 'Synthetic Value Fund-Reg(G)', 1000, 100, 150, '2024-01-15')).review(AS_ON));
+    ok(/ 1 holding with no client name is treated as one person\./.test(slN1) && / 2 holdings with no client name are treated as one person\./.test(slN2) && !/holding\(s\)/.test(slN1 + slN2),
+      'harvest slide: the holdings with no client name agree in number (delta review D3-F5)');
     /* the holding-detail slide's footnote keeps its fixed two-line box (6.92 in, 0.26 in high; KI-109: about 260 characters a line), so the
        two sentences T5 changes must not lengthen it: 505 characters for a plain book and 580 with an unreconciled holding before T5 */
     const dA = await footBox(new T.Book().add(eq('Client A', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 150, '2024-01-15')).review(AS_ON), '“Amt. available for Rebalancing”');
@@ -303,16 +332,16 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
       ok(aTax() === 18750 && famTax() === 18750 && L.assume().clients['Client A'].usedRs === 125000 && L.input(0, 'usedRs').value === '125000',
         '"' + v + '" (' + what + ') is Rs 1,25,000 used: A Rs 18,750 (12.5% of 1,50,000), family Rs 18,750');
     });
-    /* an amount pasted from a sheet or a statement carries a currency mark; the number field this replaced read these in a Chromium browser (review R4-1) */
-    [['₹1,25,000.00', 'a rupee sign'], ['Rs. 1,25,000/-', 'Rs. and "/-"'], ['INR 125000', 'INR'], ['rs125000', 'Rs in lower case'], ['1.25e5', 'an exponent']].forEach(([v, what]) => {
+    /* an amount pasted from a sheet or a statement carries a currency mark (review R4-1) */
+    [['₹1,25,000.00', 'a rupee sign'], ['Rs. 1,25,000/-', 'Rs. and "/-"'], ['INR 125000', 'INR'], ['rs125000', 'Rs in lower case'], ['1.25e5', 'an exponent'], ['1.25E5', 'an upper-case exponent'], ['+125000', 'a plus sign'], ['INR. 1,25,000', 'INR with a dot'], ['Rs.1,25,000/=', 'Rs. and "/="'], ['1,25,000 INR', 'a trailing INR'], ['1,25,000 Rs', 'a trailing Rs'], ['rs. 125000', 'Rs. in lower case']].forEach(([v, what]) => {
       L.set(0, 'usedRs', '');
       L.set(0, 'usedRs', v);
       ok(aTax() === 18750 && famTax() === 18750 && L.assume().clients['Client A'].usedRs === 125000 && L.input(0, 'usedRs').value === '125000',
         '"' + v + '" (' + what + ') is Rs 1,25,000 used: A Rs 18,750, family Rs 18,750');
     });
     L.set(0, 'usedRs', '1.25 lakh');
-    ok(aTax() === 3125 && !('usedRs' in L.assume().clients['Client A']), '"1.25 lakh" (a word) is not read: the default is restored, as the number field did');
-    /* a percent sign: in the slab-rate field only (the number field of a Chromium browser dropped it); in the rupee field it means nothing */
+    ok(aTax() === 3125 && !('usedRs' in L.assume().clients['Client A']), '"1.25 lakh" (a word) is not read: the default is restored');
+    /* a percent sign: in the slab-rate field only; in the rupee field it means nothing */
     L.set(1, 'slabPct', '10%');
     ok(live.taxation.clients.find(c => c.client === 'Client B').harvest.assume.slabPct === 10 && L.input(1, 'slabPct').value === '10', 'the slab-rate field takes "10%" as 10');
     L.set(0, 'usedRs', '12%');
@@ -325,6 +354,22 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
     ok(aTax() === 3125 && !('usedRs' in L.assume().clients['Client A']), 'a blank entry restores the default: A Rs 3,125');
     L.set(1, 'slabPct', ' 1 0 ');
     ok(live.taxation.clients.find(c => c.client === 'Client B').harvest.assume.slabPct === 10 && L.input(1, 'slabPct').value === '10', 'the slab rate takes the same reading (" 1 0 " is 10%)');
+
+    /* the class slide's counts of holdings with no reconciliation or no class agree in number, as the holding-detail slide does (delta review D5-F6) */
+    console.log('--- class slide: the counts of unclassified holdings agree in number ---');
+    const BA = n => ({ client: 'Client A', name: 'Synthetic Balanced Advantage Fund ' + n + '-Reg(G)', product: 'Mutual Funds', asset: 'Hybrid', category: 'Balanced Advantage', nav: 110, lots: [['2025-06-01', 1000, 100]] });
+    const shortBook = n => { const b = new T.Book().add(eq('Client A', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 300, '2024-01-10'));
+      for (let i = 1; i <= n; i++) b.add(eq('Client A', 'Synthetic Short History Fund ' + i + '-Reg(G)', 1000, 100, 120, '2024-03-10'));
+      b.tx.filter(t => /Short History/.test(t.instrument)).forEach(t => { t.a = -500 * 100; }); return b; };   /* 500 units bought, 1,000 held */
+    const slU1 = await T.taxSlidesText(shortBook(1).review(AS_ON)), slU2 = await T.taxSlidesText(shortBook(2).review(AS_ON));
+    ok(/ 1 holding could not be reconciled to the base file and is unclassified\./.test(slU1) && !/holding\(s\)/.test(slU1), 'class slide, one unreconciled holding: "1 holding could not be reconciled to the base file and is unclassified."');
+    ok(/ 2 holdings could not be reconciled to the base file and are unclassified\./.test(slU2) && !/holding\(s\)/.test(slU2), 'class slide, two: "2 holdings could not be reconciled to the base file and are unclassified."');
+    ok(/ 1 unreconciled holding is unclassified and not listed here\./.test(slU1) && / 2 unreconciled holdings are unclassified and not listed here\./.test(slU2),
+      'holding-detail slide: the unreconciled count agrees in number (1 holding is, 2 holdings are)');
+    const slM1 = await T.taxSlidesText(new T.Book().add(eq('Client A', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 300, '2024-01-10')).add(BA(1)).review(AS_ON));
+    const slM2 = await T.taxSlidesText(new T.Book().add(eq('Client A', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 300, '2024-01-10')).add(BA(1)).add(BA(2)).review(AS_ON));
+    ok(/ 1 holding has no tax class and is unclassified\./.test(slM1) && !/holding\(s\)/.test(slM1), 'class slide, one holding with no tax class: "1 holding has no tax class and is unclassified."');
+    ok(/ 2 holdings have no tax class and are unclassified\./.test(slM2) && !/holding\(s\)/.test(slM2), 'class slide, two: "2 holdings have no tax class and are unclassified."');
   } catch (e) { ok(false, 'screen / slides: ' + (e && e.stack || e)); }
   done();
 })();
