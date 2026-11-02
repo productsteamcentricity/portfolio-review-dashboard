@@ -18,7 +18,12 @@
      4. else nothing is stated anywhere: Category I or II, marked catAssumed (item 4).
    So a holding whose own words say Category II while the matched entry says "Listed AIF" is Category II, as stated.
    No figure of the harvest moves: a pass-through AIF and a fund-level AIF are both left out of it; the Listed AIF
-   leaves "not classified" and enters "fund level". Synthetic data only.
+   leaves "not classified" and enters "fund level".
+   The label is read as written, and its boundaries are pinned AS BUILT (gate review of 2 Nov 2026, TQ-01; CR-0008
+   question 24, KI-171): only the whole label counts (an own category or an entry that says "Listed AIFs" or "Listed
+   AIF - Series 2" does not, and "Unlisted AIF" never does), and the label of an entry that the loose name matcher gave
+   to another fund still gives Category III. No ruling covers these edges; a later decision changes those checks.
+   Synthetic data only.
    ========================================================================== */
 'use strict';
 const T = require('./lib/tax-harness.js');
@@ -48,6 +53,10 @@ ok(cls({ category: 'Listed AIF' }).cls === CAT3 && cls({ category: 'Listed AIF' 
 ok(cls({ asset: 'Debt', category: 'Listed AIF' }).cls === DCAT3 && cls({ asset: 'Debt', category: 'Listed AIF' }).catRuled === true, 'a debt AIF called a Listed AIF: the Category III debt row, marked');
 ok(['LISTED AIF', '  listed aif ', 'Listed  AIF'].every(c => cls({ category: c }).cls === CAT3 && cls({ category: c }).catRuled === true), 'case and spacing do not matter');
 ok(cls({ category: 'Unlisted AIF' }).cls === EQ12 && cls({ category: 'Unlisted AIF' }).catAssumed === true && !cls({ category: 'Unlisted AIF' }).catRuled, '"Unlisted AIF" is not a Listed AIF: Category I or II, assumed');
+/* AS BUILT (gate review of 2 Nov 2026, TQ-01; CR-0008 question 24, KI-171): only the whole label counts. A category that has more words after it, or a plural, is not the label: Category I or II,
+   assumed, with the note. If a later decision reads such a category as a Listed AIF too, these checks change with the reader. */
+ok(['Listed AIFs', 'Listed AIF - Series 2'].every(c => cls({ category: c }).cls === EQ12 && cls({ category: c }).catAssumed === true && !cls({ category: c }).catRuled),
+  'an own category "Listed AIFs" or "Listed AIF - Series 2" is not the label "Listed AIF" (as built, CR-0008 question 24, KI-171): Category I or II, assumed, not ruled');
 ok(cls({ category: '' }).cls === EQ12 && cls({ category: '' }).catAssumed === true && !cls({ category: '' }).catRuled, 'a blank category and no entry: Category I or II, assumed (item 4 stands)');
 
 console.log('--- 1a. the AIF\'s own words win over the ruling ---');
@@ -92,7 +101,8 @@ ok(stated12(cls({ category: 'Category II/III' })) && cls({ category: 'AIF-III' }
 
 console.log('--- 1a2. the entry counts as a statement about the same fund only (delta review D1-F1, D1-F3, D1-F5) ---');
 const FX = Object.assign({}, REF.AIF_PERF, { 'Synthetic Alpha Strategy Fund': { category: 'Category II' }, 'Synthetic Beta Strategy Fund': { category: 'Cat 1' }, 'Synthetic Gamma Strategy Fund': { category: 'Category IV' },
-  'Synthetic Delta Strategy Fund': { category: 'AIF (CAT III) - Long Short' }, 'Synthetic Listed Strategy Fund': { category: 'Listed AIF' } });
+  'Synthetic Delta Strategy Fund': { category: 'AIF (CAT III) - Long Short' }, 'Synthetic Listed Strategy Fund': { category: 'Listed AIF' },
+  'Synthetic Plural Label Fund': { category: 'Listed AIFs' }, 'Synthetic Series Label Fund': { category: 'Listed AIF - Series 2' }, 'Synthetic Unlisted Label Fund': { category: 'Unlisted AIF' } });
 const REFX = Object.assign({}, REF, { AIF_PERF: FX });
 const mx = (name, key, h) => E.taxClassify(Object.assign({ product: 'AIF', asset: 'Equity', category: '', name, perfSrc: 'AIF', perfKey: key }, h), REFX);
 ok(stated12(mx('Synthetic Alpha Strategy Fund', 'Synthetic Alpha Strategy Fund')) && stated12(mx('Synthetic Beta Strategy Fund', 'Synthetic Beta Strategy Fund')) && mx('Synthetic Gamma Strategy Fund', 'Synthetic Gamma Strategy Fund').catAssumed === true,
@@ -126,6 +136,18 @@ const sib = mx(CK + ' Series 7', CK);
 ok(sib.catAssumed === true && sib.cls === EQ12, 'a sibling series of the Category III entry (its name and "Series 7") is not unmarked Category III: assumed, with the note');
 ok(mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund').catRuled === true && mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund').cls === CAT3,
   'a sibling the matcher maps to a Listed AIF entry is still Category III by the answer of 2 Nov 2026, marked, with the note');
+/* AS BUILT (gate review of 2 Nov 2026, TQ-01; CR-0008 question 24, KI-171): the entry's label is read like the holding's own, the whole label only. An entry that says "Listed AIFs" or
+   "Listed AIF - Series 2" is not the label, and an entry that says "Unlisted AIF" is not a Listed AIF (a missing start anchor would rule it Category III): for the fund of
+   that name and for a sibling, Category I or II, assumed, with the note. Today's data holds none of these labels; the data guard in section 1b fails if a refresh brings one. */
+const lab = (k, sib) => mx(sib ? k + ' 2' : k, k), notLabel = x => x.cls === EQ12 && x.catAssumed === true && !x.catRuled;
+ok(['Synthetic Plural Label Fund', 'Synthetic Series Label Fund'].every(k => notLabel(lab(k)) && notLabel(lab(k, true))),
+  'an entry labelled "Listed AIFs" or "Listed AIF - Series 2" is not the label "Listed AIF" (as built, CR-0008 question 24, KI-171): Category I or II, assumed, not ruled, for the fund of that name and for a sibling');
+ok(notLabel(lab('Synthetic Unlisted Label Fund')) && notLabel(lab('Synthetic Unlisted Label Fund', true)),
+  'an entry labelled "Unlisted AIF" is not a Listed AIF: Category I or II, assumed, not ruled, for the fund of that name and for a sibling');
+/* the Long Short row is read from an entry only for the fund of the same name, also when the holding's own category is the label (the sibling above has a blank category and never reaches this line) */
+const lsSib = mx('Synthetic Delta Sibling Fund 2', 'Synthetic Delta Strategy Fund', { category: 'Listed AIF' });
+ok(lsSib.cls === CAT3 && lsSib.catRuled === true && !lsSib.catAssumed,
+  'own category "Listed AIF" and a sibling the matcher maps to the Long Short entry: the Listed Equity row, ruled (as built; the entry\'s Long Short wording picks the row only for the fund of the same name)');
 ok(stated12(mx('Synthetic Growth Fund', 'Synthetic Listed Strategy Fund', { category: 'Category II' })) && stated3(mx('Synthetic Growth Fund', 'Synthetic Delta Strategy Fund', { category: 'Category III' })) && stated12(mx(CK, CK, { category: 'Category II' })),
   'the fund\'s own Category II or III beats any entry, even the Category III entry of the same name');
 ok(mx('Synthetic Listed Strategy Fund', 'Synthetic Listed Strategy Fund', { category: 'Unlisted AIF' }).catAssumed === true && !mx('Synthetic Listed Strategy Fund', 'Synthetic Listed Strategy Fund', { category: 'Unlisted AIF' }).catRuled,
@@ -213,6 +235,11 @@ ok(T.near(r(TX.totals.unclassCmv), r(mw.taxation.totals.unclassCmv)) && T.near(r
        /Left out of the harvest.*: 1 AIF treated as Category III \(₹0\.60 Cr\)\./.test(tx1), 'Taxation tab, one Listed AIF: "It is treated as Category III because it is called a Listed AIF…", and the left-out list');
     ok(/Gain\/Loss\. Rates stated as words depend on the assessee or the fund’s own filing\. 1 AIF is treated as Cat III \(fund level\) because it is called a Listed AIF: confirm against the AIF’s statement\./.test(sl1) && !/Cat III AIFs: fund level/.test(sl1) &&
        /Left out, as not split into long and short term: 1 AIF treated as Cat III \(₹0\.60 Cr\)\./.test(sl1), 'slides, one Listed AIF: the sentence, with no separate "Cat III AIFs: fund level"');
+    /* two Listed AIFs and no other fund-level AIF (gate review of 2 Nov 2026, TQ-03): every fund-level AIF is ruled, so the note says "They are", not "It is" or "2 of them are" */
+    const two = new T.Book().add(aif('Synthetic Listed Opportunities Fund', 'Listed AIF', 5000000, 6000000)).add(aif('Synthetic Listed Credit Fund', 'Listed AIF', 2000000, 2500000, 'Debt')).add(flexi).review(AS_ON);
+    const tx2 = R8377(T.text(T.renderTaxTab(two)));
+    ok(tx2.indexOf('2 Category III AIFs are taxed inside the fund') >= 0 && tx2.indexOf(' They are treated as Category III because they are called Listed AIFs in the file or the performance data. Confirm the category against the AIF’s statement.') >= 0 &&
+       !/It is treated as Category III|of them (is|are) treated as Category III/.test(tx2), 'Taxation tab, two Listed AIFs and no other fund-level AIF: "They are treated as Category III because they are called Listed AIFs …"');
     const viaData = new T.Book().add(aif(LK, '', 5000000, 6000000)).add(aif(CK, '', 5000000, 7000000)).add(aif('Synthetic Reviewed Fund', 'Category II', 5000000, 6000000)).add(flexi).review(AS_ON);
     const vp = n => viaData.taxation.positions.find(p => p.name === n);
     ok(vp(LK) && vp(LK).cls === CAT3 && vp(LK).catRuled === true && vp(CK) && vp(CK).cls === CAT3 && !vp(CK).catRuled && !vp(CK).catAssumed && vp('Synthetic Reviewed Fund').notSplit === 'passThrough',

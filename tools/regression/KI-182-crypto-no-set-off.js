@@ -60,8 +60,12 @@ const addB = (b, k) => b.add(hold(CRY, 'Client B', 'Synthetic Ether Holding', 10
 console.log('--- TAX_RULES: the Crypto row ---');
 const row = REF.TAX_RULES.find(x => x.inst === 'Crypto');
 ok(row && row.noSetOff === true && row.anyPeriod === true && row.st.rate === 0.3 && row.lt.rate === 0.3, 'Crypto: noSetOff, 30% for any holding period (unchanged)');
-ok(row && /^No set-off either way until the owner rules \(CR-0008, question 18\): the Tax Reckoner TY 2026-27 is silent on virtual digital assets, and Sec 115BBH of the 1961 Act/.test(row.noSetOffSource || ''),
-  'the row cites the basis of noSetOff: the owner\'s open question, the reckoner silent, Sec 115BBH of the 1961 Act');
+/* The row's noSetOffSource is data only: no code block of the page names it. Its first words still say "until the owner rules", from before the owner's answer of
+   2 Nov 2026 (keep no set-off, D-043); the page and data/refdata are not changed here (gate review of 2 Nov 2026, TQ-06). Only what is still true is asserted: the row carries
+   a source that names the reckoner's silence and Sec 115BBH, so a correction of the first words does not break this check. */
+const nsSrc = (row && row.noSetOffSource) || '';
+ok(row && row.noSetOff === true && typeof row.noSetOffSource === 'string' && nsSrc.trim().length > 0 && /reckoner/i.test(nsSrc) && /silent/i.test(nsSrc) && /Sec 115BBH/.test(nsSrc),
+  'the row cites the basis of noSetOff: a non-empty source that names the reckoner\'s silence on virtual digital assets and Sec 115BBH of the 1961 Act (the owner kept no set-off on 2 Nov 2026, D-043)');
 ok(REF.TAX_RULES.filter(x => x.noSetOff).map(x => x.inst).join() === 'Crypto', 'no other row is kept out of set-off');
 
 console.log('--- (i) a crypto gain, an equity short-term loss and an equity long-term gain ---');

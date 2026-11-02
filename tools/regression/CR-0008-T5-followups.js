@@ -12,11 +12,14 @@
    3. The Taxation tab's unreconciled table said for every holding that the history "is
       missing an event", with a dash. It now says why by reason: merged folios with blank
       units (fix batch 4, KI-140), no purchase still held, fewer or more units than the base
-      file, invested value; the unit and value reasons lose their dash.
+      file, a sale or transfer out that carries no price, invested value; the unit and value
+      reasons lose their dash.
    4. An AIF whose category is stated nowhere (blank, or naming no Category) is treated as
-      Category I or II, pass-through (part T3); the tab, the slides and the AI Analyst say so,
-      and to confirm the category against the AIF's statement, never asserting it. (A fund
-      called a "Listed AIF" is Category III since item 10: CR-0008-T5-item10-listed-aif.js.)
+      Category I or II, pass-through (part T3); the tab and the slides say so, and to confirm
+      the category against the AIF's statement, never asserting it. The AI Analyst's tax
+      function says it too, but no page or slide shows its AIF sentences (KI-207), so the
+      checks below read the function, not an output. (A fund called a "Listed AIF" is
+      Category III since item 10: CR-0008-T5-item10-listed-aif.js.)
    5. Stale wording of part T3: the holding-detail slide said PMS and unlisted AIF show a
       dash in the unit columns; the tab and the class slide said LTCG + STCG add back to
       every holding's Gain/Loss.
@@ -28,6 +31,13 @@
    8. A comment only (KI-184): the foreign-share marker reads the ISIN of the matched reference entry; a parsed
       base row carries no isin.
    9. ENGINE.taxDefaults, the harvest defaults the engine exports, is frozen (ARC-01, C3 of its contract review).
+   Added after the gate review of 2 Nov 2026 (tests only; the page is unchanged):
+   10. SEC F-03: the names a file brings (clients, funds, AIFs, categories, products) are escaped on the
+       Taxation tab; a book named with angle brackets and an ampersand renders no raw tag.
+   11. TQ-03: the plural arms of the tab heading (two holdings of each unreconciled kind), and the
+       usual-bucket note at exactly five funds ("and 0 more" is never printed).
+   12. TQ-04: harvest input forms: a trailing "Rs." with its dot, and "-5" and ".5" in the slab-rate
+       field (pinned as built); autocomplete is off on both inputs.
    Synthetic data only.
    ========================================================================== */
 'use strict';
@@ -64,6 +74,29 @@ const unrec = () => {
   b.tx.find(t => t.instrument === 'Synthetic Unlisted Co Pvt Ltd').a = -500000;                /* Rs 5 lakh in the IRR sheet, Rs 10 lakh invested */
   return b;
 };
+/* n holdings of each of the six kinds (gate review of 2 Nov 2026, TQ-03: the plural arms of the tab heading); the number is in each name */
+const unrecN = n => {
+  const b = new T.Book(), nm = (s, i) => 'Synthetic ' + s + ' Fund ' + i + '-Reg(G)';
+  for (let i = 1; i <= n; i++) {
+    b.add(eq('Client A', nm('Merged', i), 1000, 100, 150, '2024-01-10'));
+    const m0 = b.rows.pop(), ma = m0.slice(), mc = m0.slice();                                   /* merged folios, one with 600 units and one without (KI-140) */
+    [8, 9, 10].forEach(k => { ma[k] = m0[k] * 0.6; mc[k] = m0[k] * 0.4; }); ma[7] = 600; mc[7] = null; b.rows.push(ma, mc);
+    b.add(eq('Client A', nm('No History', i), 1000, 100, 120, '2024-02-10'));
+    b.tx = b.tx.filter(t => t.instrument !== nm('No History', i));                              /* no purchase in the IRR sheet */
+    b.add(eq('Client A', nm('Short History', i), 1000, 100, 120, '2024-03-10'));
+    b.tx.find(t => t.instrument === nm('Short History', i)).a = -500 * 100;                     /* 500 units bought, 1,000 held */
+    b.add(eq('Client A', nm('Excess History', i), 1000, 100, 120, '2024-04-10'));
+    b.trade({ name: nm('Excess History', i), date: '2024-05-10', units: 500, price: 100 });     /* 1,500 bought, 1,000 held */
+    const u = 'Synthetic Unlisted Co ' + i + ' Pvt Ltd';
+    b.add({ client: 'Client A', name: u, product: 'Unlisted Shares', asset: 'Equity', category: 'Unlisted Equity', noUnits: true, nav: 1500000, lots: [['2024-01-10', 1, 1000000]] });
+    b.tx.find(t => t.instrument === u).a = -500000;                                             /* Rs 5 lakh in the IRR sheet, Rs 10 lakh invested */
+    const p = nm('Part Switched', i);                                                           /* 1,000 bought, 500 switched out with no price, 500 held */
+    b.add(eq('Client A', p, 500, 100, 110, '2024-01-10'));
+    b.trade({ name: p, date: '2024-02-10', units: 500, price: 100 });
+    b.tx.push({ client: 'Client A', instrument: p, ttype: 'Switch Out', rtype: '', d: T.D('2024-09-10'), a: 52500, price: null });
+  }
+  return b;
+};
 const UB = unrec(), UX = UB.tax(AS_ON), kind = n => (UX.unreconciled.find(x => x.name === n) || {});
 ok(UX.unreconciled.length === 5 && UX.positions.length === 0, 'five holdings, all unreconciled');
 ok(kind('Synthetic Merged Flexi Cap Fund-Reg(G)').unrec === 'unitsGap' && kind('Synthetic No History Fund-Reg(G)').unrec === 'noLots' &&
@@ -98,6 +131,23 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
       'For 1 holding matched on invested value, the transaction history does not add up to the base file’s invested value. ' +
       'No split is shown rather than one computed on lots that cannot be checked; the reason for each holding is in the table.', 'Taxation tab: the heading has one sentence per reason (got: ' + head + ')');
     ok(!/&mdash;|[–—]/.test(head), 'Taxation tab: no dash in the heading');
+    /* the plural of every sentence (gate review of 2 Nov 2026, TQ-03): two holdings of each of the six kinds. The singular was pinned above; the plural arms of the
+       six sentences (their number, verb and pronoun) were pinned by no check. The last sentence is for a record that carries no kind. */
+    const U2 = unrecN(2), U2X = U2.tax(AS_ON);
+    ok(U2X.unreconciled.length === 12 && U2X.positions.length === 0 && ['unitsGap', 'noLots', 'short', 'excess', 'noPxSell', 'value'].every(k => U2X.unreconciled.filter(x => x.unrec === k).length === 2),
+      'a book of two holdings of each of the six kinds: twelve unreconciled holdings, two of each kind, none classified');
+    const head2 = between(T.text(T.renderTaxTab(U2.review(AS_ON))), '12 holdings could not be reconciled', 'is in the table.');
+    ok(head2 === '12 holdings could not be reconciled to the base file and are left unclassified. ' +
+      '2 holdings merge folios of which at least one has no units in the base file, so their units cannot be checked against the transaction history. ' +
+      '2 holdings have no purchase in the IRR sheet that is still held, so there are no lots to split. ' +
+      'For 2 holdings the transaction history gives fewer units than the base file, so it is missing an event: a bonus or split, or a purchase made elsewhere. ' +
+      'For 2 holdings the transaction history gives more units than the base file, so it is missing an event: a sale, a transfer out or a consolidation of units. ' +
+      'For 2 holdings the transaction history gives more units than the base file, and a sale, switch out or transfer out in it carries no price, so the units it sold could not be counted. ' +
+      'For 2 holdings matched on invested value, the transaction history does not add up to the base file’s invested value. ' +
+      'No split is shown rather than one computed on lots that cannot be checked; the reason for each holding is in the table.', 'Taxation tab, two holdings of each kind: the heading has the plural of every sentence (got: ' + head2 + ')');
+    const mNone2 = U2.review(AS_ON); mNone2.taxation.unreconciled.forEach(x => { x.unrec = undefined; });
+    ok(T.text(T.renderTaxTab(mNone2)).indexOf('12 holdings could not be reconciled to the base file and are left unclassified. For 12 holdings the transaction history does not reconcile to the base file. No split is shown') >= 0,
+      'Taxation tab, twelve records that carry no kind: "For 12 holdings the transaction history does not reconcile to the base file."');
     /* the merged holding alone: the heading no longer says the history is missing an event */
     const one = new T.Book().add(eq('Client A', 'Synthetic Merged Flexi Cap Fund-Reg(G)', 1000, 100, 150, '2024-01-10')).add(eq('Client A', 'Synthetic Large Cap Fund-Reg(G)', 100, 100, 130, '2024-01-10'));
     const o0 = one.rows.shift(), oa = o0.slice(), oc = o0.slice();
@@ -309,7 +359,11 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
        more than 24 characters or whose name has more than 44 (a row it counts as wrapping; the same rule is written out here). The footnote box is as high as its lines (0.14,
        0.125 or 0.115 in at 8, 7 or 6.5 pt, about 260, 300 and 320 characters a line), ends at 7.18 in, and takes the largest size that leaves 0.04 in below the estimate; 6.5 pt
        is the last size whether it leaves that or not, and a footnote of two lines or less keeps the fixed box at 6.92 in. Each book below has a footnote whose length the
-       other line lengths (260 against 300, 300 against 280 or 320, 320 against 340) would count in another number of lines. */
+       other line lengths (260 against 300, 300 against 280 or 320, 320 against 340) would count in another number of lines.
+       These pins are COARSE change detectors, not a measure of a deck (gate review of 2 Nov 2026, TQ-02): a step between the sizes is caught, a few percent is not. The characters a line
+       can drift by about 4 percent (8 pt at 250 or 270, 7 pt at 310, 6.5 pt at 310 or 330), the clearance below the table by 0.01 in, and the 24 and 44 character thresholds of
+       a wrapping row by one character, with every check below still passing. A net that fine would need books whose footnote is 501 to 540 characters at each size and class
+       labels of exactly 24, 25, 44 and 45 characters; none is built. No deck is rendered either: whether a footnote touches its table is not known (KI-210). */
     const ltaLabel = r => !r ? '-' : r.fundLevel ? 'Fund level' : r.passThrough ? 'At AIF level, per asset' : r.alwaysShort ? 'Always short term' : r.anyPeriod ? 'Any period' :
       (r.perSecurity ? 'Per security, more' : 'More') + ' than ' + r.months + ' months' + (r.listedEtfMonths ? ' (' + r.listedEtfMonths + ' if listed ETF)' : '') + (r.lockMonths ? ' (' + (r.lockMonths % 12 ? r.lockMonths + '-mo' : r.lockMonths / 12 + '-yr') + ' lock-in)' : '');
     const wraps = g => ltaLabel(g.rule).length > 24 || String(g.cls).length > 44;
@@ -382,7 +436,7 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
         '"' + v + '" (' + what + ') is Rs 1,25,000 used: A Rs 18,750 (12.5% of 1,50,000), family Rs 18,750');
     });
     /* an amount pasted from a sheet or a statement carries a currency mark (review R4-1) */
-    [['₹1,25,000.00', 'a rupee sign'], ['Rs. 1,25,000/-', 'Rs. and "/-"'], ['INR 125000', 'INR'], ['rs125000', 'Rs in lower case'], ['1.25e5', 'an exponent'], ['1.25E5', 'an upper-case exponent'], ['+125000', 'a plus sign'], ['INR. 1,25,000', 'INR with a dot'], ['Rs.1,25,000/=', 'Rs. and "/="'], ['1,25,000 INR', 'a trailing INR'], ['1,25,000 Rs', 'a trailing Rs'], ['rs. 125000', 'Rs. in lower case']].forEach(([v, what]) => {
+    [['₹1,25,000.00', 'a rupee sign'], ['Rs. 1,25,000/-', 'Rs. and "/-"'], ['INR 125000', 'INR'], ['rs125000', 'Rs in lower case'], ['1.25e5', 'an exponent'], ['1.25E5', 'an upper-case exponent'], ['+125000', 'a plus sign'], ['INR. 1,25,000', 'INR with a dot'], ['Rs.1,25,000/=', 'Rs. and "/="'], ['1,25,000 INR', 'a trailing INR'], ['1,25,000 Rs', 'a trailing Rs'], ['1,25,000 Rs.', 'a trailing Rs with its dot (gate review of 2 Nov 2026, TQ-04)'], ['rs. 125000', 'Rs. in lower case']].forEach(([v, what]) => {
       L.set(0, 'usedRs', '');
       L.set(0, 'usedRs', v);
       ok(aTax() === 18750 && famTax() === 18750 && L.assume().clients['Client A'].usedRs === 125000 && L.input(0, 'usedRs').value === '125000',
@@ -403,6 +457,19 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
     ok(aTax() === 3125 && !('usedRs' in L.assume().clients['Client A']), 'a blank entry restores the default: A Rs 3,125');
     L.set(1, 'slabPct', ' 1 0 ');
     ok(live.taxation.clients.find(c => c.client === 'Client B').harvest.assume.slabPct === 10 && L.input(1, 'slabPct').value === '10', 'the slab rate takes the same reading (" 1 0 " is 10%)');
+    /* a minus sign and a leading dot (gate review of 2 Nov 2026, TQ-04), pinned AS BUILT. No ruling says what a negative entry should do: it is read, and the engine clamps the slab rate to
+       0 to 30%, so "-5" is 0% (the field shows 0 and "(default)" is not shown); it does not restore the default 30%. A later decision on what the fields accept (KI-208 is the
+       related open item) will change the "-5" check. The comma mis-reads of KI-208 ("1.25,000" is read as 1.25) are a known defect and are deliberately not pinned. */
+    const slabB = () => live.taxation.clients.find(c => c.client === 'Client B').harvest.assume;
+    L.set(1, 'slabPct', '-5');
+    ok(slabB().slabPct === 0 && slabB().slabDefault === false && L.input(1, 'slabPct').value === '0',
+      '"-5" in the slab-rate field is read and clamped to 0%, not the default 30% (as built; no ruling on a negative entry)');
+    L.set(1, 'slabPct', '.5');
+    ok(slabB().slabPct === 0.5 && slabB().slabDefault === false && L.input(1, 'slabPct').value === '0.5', '".5" (a leading dot) in the slab-rate field is 0.5%');
+    /* the inputs ask the browser not to offer earlier entries: both fields of every client */
+    const taxIn = L.html().match(/<input class="taxas"[^>]*>/g) || [];
+    ok(taxIn.length === 4 && taxIn.every(x => / autocomplete="off"/.test(x)) && taxIn.filter(x => /data-k="slabPct"/.test(x)).length === 2 && taxIn.filter(x => /data-k="usedRs"/.test(x)).length === 2,
+      'autocomplete is off on all four harvest inputs (the slab rate and the exemption used, for two clients)');
 
     /* the class slide's counts of holdings with no reconciliation or no class agree in number, as the holding-detail slide does (delta review D5-F6) */
     console.log('--- class slide: the counts of unclassified holdings agree in number ---');
@@ -419,6 +486,67 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
     const slM2 = await T.taxSlidesText(new T.Book().add(eq('Client A', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 300, '2024-01-10')).add(BA(1)).add(BA(2)).review(AS_ON));
     ok(/ 1 holding has no tax class and is unclassified\./.test(slM1) && !/holding\(s\)/.test(slM1), 'class slide, one holding with no tax class: "1 holding has no tax class and is unclassified."');
     ok(/ 2 holdings have no tax class and are unclassified\./.test(slM2) && !/holding\(s\)/.test(slM2), 'class slide, two: "2 holdings have no tax class and are unclassified."');
+
+    /* the usual-bucket note names five funds and then "and N more" (gate review of 2 Nov 2026, TQ-03). KI-170 pins six funds; at exactly five every fund is named and
+       "and 0 more" is never printed */
+    console.log('--- the usual-bucket note at exactly five funds ---');
+    const UBF = (n, category, asset) => ({ client: 'Client A', name: 'Synthetic Usual Bucket Fund ' + n + '-Reg(G)', product: 'Mutual Funds', asset, category, nav: 110, lots: [['2025-10-01', 1000, 100]] });
+    const fiveUB = new T.Book().add(UBF(1, 'Aggressive Hybrid Fund', 'Hybrid')).add(UBF(2, 'Arbitrage Fund', 'Debt')).add(UBF(3, 'Equity Savings', 'Hybrid'))
+      .add(UBF(4, 'Aggressive Hybrid Fund', 'Hybrid')).add(UBF(5, 'Equity Savings', 'Hybrid'));
+    const ubNote = b => between(T.text(T.renderTaxTab(b.review(AS_ON, { asOnDate: '30 Sep 2026' }))), ' holdings are aggressive hybrid, arbitrage or equity savings funds (', '), classed as equity-oriented');
+    const ub5 = ubNote(fiveUB), ub6 = ubNote(fiveUB.add(UBF(6, 'Arbitrage Fund', 'Debt'))), ubNames = k => [1, 2, 3, 4, 5].slice(0, k).map(i => 'Synthetic Usual Bucket Fund ' + i + '-Reg(G)').join('; ');
+    ok(ub5 === ' holdings are aggressive hybrid, arbitrage or equity savings funds (' + ubNames(5) + '), classed as equity-oriented' && !/more/.test(ub5),
+      'Taxation tab, exactly five usual-bucket funds: all five are named, and there is no "and 0 more" (got: ' + ub5 + ')');
+    ok(ub6 === ' holdings are aggressive hybrid, arbitrage or equity savings funds (' + ubNames(5) + ' and 1 more), classed as equity-oriented',
+      'Taxation tab, six usual-bucket funds: five named, then "and 1 more" (the step from five to six)');
+
+    /* ---------------- 10. the names a file brings are escaped (gate review of 2 Nov 2026, SEC F-03) ---------------- */
+    console.log('--- 10. markup in a client, fund, AIF, category or product name is escaped on the tab ---');
+    /* The tab writes names into notes, tables, rows and the scope strip as HTML, through taxEsc. No check read the HTML: taking taxEsc off the usual-bucket note, or making it
+       the identity, passed every regression file (SEC mutants M5 and M6). Two clients, their funds, two AIFs, a category, a product and an asset are named with angle brackets
+       and an ampersand. No raw tag may reach the page, and each name must reach it escaped, in each place that writes one. The names hold no quote: taxEsc does not escape
+       one, and the scope strip's data-sc attribute is a known gap of the KI-008 class (the same on main), which this check does not cover. */
+    const XA = '<img src=x onerror=1>', XB = 'A&B <script>', eA = '&lt;img src=x onerror=1&gt;', eB = 'A&amp;B &lt;script&gt;';
+    const nameA = s => 'Synthetic ' + XA + ' ' + s, nameB = s => 'Synthetic ' + XB + ' ' + s, escA = s => 'Synthetic ' + eA + ' ' + s, escB = s => 'Synthetic ' + eB + ' ' + s;
+    const xb = new T.Book()
+      .add(eq(XA, nameA('Flexi Cap Fund-Reg(G)'), 1000, 100, 150, '2024-01-15'))                                                       /* a long-term gain, and a trade after the valuation date (below) */
+      .add(Object.assign(eq(XA, nameA('Old Fund-Reg(G)'), 1000, 100, 150, '2017-06-10'), { category: 'Flexi Cap Fund ' + XB }))      /* lots bought before 1 Feb 2018; a category with markup */
+      .add(eq(XB, nameB('Loss Fund-Reg(G)'), 1000, 100, 60, '2026-05-10'))                                                            /* a short-term loss: a holding to sell */
+      .add({ client: XB, name: nameB('Aggressive Hybrid Fund-Reg(G)'), product: 'Mutual Funds', asset: 'Hybrid', category: 'Aggressive Hybrid Fund', nav: 110, lots: [['2025-10-01', 1000, 100]] })   /* the usual bucket */
+      .add(Object.assign(aif(nameA('Listed AIF'), 'Listed AIF', 5000000, 6000000), { client: XA }))                                   /* an AIF called a Listed AIF */
+      .add(Object.assign(aif(nameB('Unstated AIF'), '', 5000000, 6000000), { client: XB }))                                           /* an AIF whose category is not stated */
+      .add(eq(XB, nameB('Short History Fund-Reg(G)'), 1000, 100, 120, '2024-03-10'))                                                   /* unreconciled: 500 units bought, 1,000 held */
+      .add({ client: XA, name: nameA('Balanced Advantage Fund-Reg(G)'), product: 'Mutual Funds', asset: 'Hybrid', category: 'Balanced Advantage ' + XB, nav: 110, lots: [['2025-06-01', 1000, 100]] })   /* no tax class */
+      .add({ client: XB, name: 'Synthetic Structured Note', product: 'Structured ' + XA, asset: 'Others ' + XB, category: 'Others', nav: 1200, lots: [['2025-06-01', 1000, 1000]] });   /* no tax class; a product and an asset */
+    xb.tx.find(t => t.instrument === nameB('Short History Fund-Reg(G)')).a = -500 * 100;
+    xb.trade({ client: XA, name: nameA('Flexi Cap Fund-Reg(G)'), date: '2026-10-05', units: 10, price: 290 });
+    const xm = xb.review(AS_ON, { asOnDate: '30 Sep 2026' }), xr = T.renderTaxTab(xm), xs = T.renderTaxTab(xm, XB), cnt = (s, f) => s.split(f).length - 1;
+    ok(xm.taxation.unreconciled.length === 1 && xm.taxation.unmapped.length === 2 && xm.taxation.later.n === 1 && xm.taxation.positions.some(p => p.usualBucket) && xm.taxation.positions.filter(p => p.catRuled || p.catAssumed).length === 2,
+      'the hostile book reaches every place: one unreconciled holding, two with no class, one later trade, a usual-bucket fund, two AIFs with a note');
+    ok((xr + xs).indexOf('<img src=x') < 0 && (xr + xs).indexOf('<script>') < 0 && (xr + xs).indexOf('A&B') < 0 && cnt(xr, 'onerror=1') > 10 && cnt(xr, 'onerror=1') === cnt(xr, eA) && cnt(xs, 'onerror=1') === cnt(xs, eA),
+      'Taxation tab, names with markup: no raw <img src=x or <script> from the data and no raw "A&B" anywhere, and every occurrence of the payload is the escaped one (' + cnt(xr, eA) + ' times)');
+    ok(T.text(xr).indexOf(XA) >= 0 && T.text(xr).indexOf(XB) >= 0, 'Taxation tab: the names still show as typed (the escaped text reads back as the original)');
+    const strip = between(xr, '<div class="taxscope">', '</div>');
+    [
+      ['the scope strip, client A', strip.indexOf('data-sc="' + eA + '"') >= 0 && strip.indexOf('>' + eA + ' &middot; ') >= 0],
+      ['the scope strip, client B', strip.indexOf('data-sc="' + eB + '"') >= 0 && strip.indexOf('>' + eB + ' &middot; ') >= 0],
+      ['the usual-bucket note', xr.indexOf('(' + escB('Aggressive Hybrid Fund-Reg(G)') + '), classed as equity-oriented') >= 0],
+      ['the note of lots bought before 1 Feb 2018', xr.indexOf('(' + escA('Old Fund-Reg(G)') + '). Lots bought before 1 Feb 2018') >= 0],
+      ['the note of a later trade', xr.indexOf('left out of the lots (' + escA('Flexi Cap Fund-Reg(G)') + '), so each holding') >= 0],
+      ['the unreconciled table, holding and client', xr.indexOf('<td>' + escB('Short History Fund-Reg(G)') + '<span class="taxsub">' + eB + '</span></td>') >= 0],
+      ['the unmapped table, holding, client and category', xr.indexOf('<td>' + escA('Balanced Advantage Fund-Reg(G)') + '<span class="taxsub">' + eA + '</span></td><td>Mutual Funds</td><td>Balanced Advantage ' + eB + '</td>') >= 0],
+      ['the unmapped table, product', xr.indexOf('<td>Structured ' + eA + '</td><td>Others</td>') >= 0],
+      ['the roll-up by product', xr.indexOf('<td>Structured ' + eA + '<span class="taxsub">1 holding') >= 0],
+      ['the roll-up by asset class', xr.indexOf('<td>Others ' + eB + '<span class="taxsub">1 holding') >= 0],
+      ['the class detail, holding, category and client', xr.indexOf('<td>' + escA('Old Fund-Reg(G)') + '<span class="taxsub">Flexi Cap Fund ' + eB + '</span></td><td>' + eA + '</td>') >= 0],
+      ['By Holding, an AIF and its client', xr.indexOf('<td>' + escA('Listed AIF') + '<span class="taxsub">') >= 0 && xr.indexOf('called a Listed AIF: treated as Category III</span></td><td>' + eA + '</td>') >= 0],
+      ['By Holding, the usual-bucket fund and its client', xr.indexOf('<td>' + escB('Aggressive Hybrid Fund-Reg(G)') + '<span class="taxsub">Hybrid MF (equity-oriented)</span>') >= 0],
+      ['the assumptions of each client', xr.indexOf('<tr><td>' + eA + '</td><td class="n"><input class="taxas"') >= 0 && xr.indexOf('<tr><td>' + eB + '</td><td class="n"><input class="taxas"') >= 0],
+      ['the harvest pools of a client', xr.indexOf('<tr><td>' + eA + '</td><td>Equity Mutual Funds<span class="taxsub">') >= 0],
+      ['the holdings at a loss, holding and client', xr.indexOf('<td>' + escB('Loss Fund-Reg(G)') + '<span class="taxsub">' + eB + ' &middot; Equity Mutual Funds</span>') >= 0],
+      ['the losses that cannot be set off, by client', xr.indexOf('cannot be set off this year: ' + eB) >= 0],
+      ['the grand total of a client scope', xs.indexOf('Grand total &mdash; ' + eB + '</th>') >= 0]
+    ].forEach(([where, found]) => ok(found, 'Taxation tab, ' + where + ': the name is written escaped'));
   } catch (e) { ok(false, 'screen / slides: ' + (e && e.stack || e)); }
   done();
 })();

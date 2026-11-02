@@ -2,8 +2,9 @@
    tax-harness.js — known-answer helpers for the taxation regression tests
    (KI-160 to KI-182, the tax review of 24 Oct 2026, CR-0008).
 
-   Shared by tools/regression/KI-16x/17x/18x-*.js (this folder is not scanned by
-   run-regression.js, which only runs the files directly in tools/regression/).
+   Shared by tools/regression/KI-16x/17x/18x-*.js and the CR-0008-T5-*.js files (this
+   folder is not scanned by run-regression.js, which only runs the files directly in
+   tools/regression/).
 
    A `Book` is a synthetic base file plus its IRR purchase history. Every lot is
    whole units at a stated price, so a lot's cost is units x price and its value

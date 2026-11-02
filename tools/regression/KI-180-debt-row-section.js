@@ -17,10 +17,14 @@
      - every class taxClassOf returns, over the reference universes and a set of
        synthetic holdings that reaches every branch, is a TAX_RULES row;
      - with the row removed, a debt fund is unclassified with a reason naming the class;
-     - the synthetic sample book (tools/make-sample-base.js) gives the same taxation as
-       before this change (the review's figures on main 517becf): CMV 8.7443, long term
-       5.547273, short term 2.400027, not classified 0.797, LTCG 2.047273, STCG 0.350027,
-       not classified gain 0.147, tax before 0.267175 Cr; only the label changed.
+     - the synthetic sample book (tools/make-sample-base.js) gives the taxation asserted at the
+       end of this file, the figures of tax batch T5: CMV 8.7443, long term 3.639173, short
+       term 2.400027, not classified 2.0535, LTCG 1.389173, STCG 0.350027, not classified gain
+       0.6535, tax before 0.181787 Cr. This fix changed only the label: the review's figures
+       on main 517becf were long term 5.547273, not classified 0.797, LTCG 2.047273, not
+       classified gain 0.147, tax before 0.267175 Cr, and the rest the same; tax batch T3
+       (PMS and Category I/II AIF not split, the Sec 198 exemption) and T5 (item 10, a Listed
+       AIF is fund level) moved the figures that differ, as the comment at the check says.
    Synthetic data only.
    ========================================================================== */
 'use strict';
