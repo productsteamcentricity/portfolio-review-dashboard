@@ -6,7 +6,8 @@ Register of defects and limitations. KI-001 to KI-046 were recorded at the hando
 of the new build (CR-0006), [filed on 22 Oct 2026](#filed-from-the-new-build-audit-22-oct-2026). KI-140 to KI-147
 come from milestone M1.3 of the new build, [filed on 23 Oct 2026](#found-by-milestone-m13-23-oct-2026); KI-148 from
 the financial review of fix batch 4 (27 Oct 2026), filed with them. KI-150 and KI-151 come from milestone M1.4, [filed on 27 Oct
-2026](#found-by-milestone-m14-27-oct-2026), which also lists the legacy issues the new app fixes.
+2026](#found-by-milestone-m14-27-oct-2026), which also lists the legacy issues the new app fixes. KI-190 to KI-192 come
+from M1.4's round-3 reviews, [filed on 2 Nov 2026](#found-by-the-m14-round-3-reviews-2-nov-2026), for a follow-up.
 
 That audit re-tested most of the earlier entries:
 - KI-006 and KI-007 are now reproduced at runtime.
@@ -391,11 +392,11 @@ differences. Each legacy entry was re-checked on `index.html` MD5 `911A0465…` 
 code (line numbers of that build's `.blocks/`) and, where marked **Reproduced**, by running the shipped code
 headless on synthetic data. KI-140 to KI-145 are base-file reading defects of the legacy page and KI-146 their IPS
 consequence; under D-028 they are live-page data fixes for a later legacy batch (D-035). KI-147 is a defect of the
-new reader, for M1.4. "none" in the Ledger column means the new reader does not differ there, so no entry shows
-it. Priorities are proposed. KI-140 to KI-146 were fixed on the live page in fix batch 4 (27 Oct 2026, CR-0009,
-D-041); the ledger entries they name are retired (the live page now agrees with the new reader there). KI-147 is
-open. KI-148 (found by the financial review of fix batch 4) records the two differences that batch opens and no
-fixture exercises yet, for M1.4.
+new reader. "none" in the Ledger column means the new reader does not differ there, so no entry shows it.
+Priorities are proposed. KI-140 to KI-146 were fixed on the live page in fix batch 4 (27 Oct 2026, CR-0009, D-041);
+the ledger entries they name are retired (the live page now agrees with the new reader there). KI-148 (found by the
+financial review of fix batch 4) records the two differences that batch opened and no fixture then exercised.
+KI-147 and KI-148 were fixed in the new app by M1.4 (D-039 points 1, 16 and 17; their rows below).
 
 | KI | Ledger | P | Kind | Status | Issue |
 |---|---|---|---|---|---|
@@ -431,3 +432,16 @@ points 1, 16 and 17).
 (`ki-091-chart-label-precision`), KI-092 (`ki-092-single-entity-hidden`), KI-093 (`ki-093-allocation-from-cmv`),
 KI-094 (`ki-094-unrounded-with-formats`), KI-147 (`ki-147-money-columns`) and, in the second fix round, KI-148
 (`ki-148-total-rows`, `ki-148-merged-dates`).
+
+### Found by the M1.4 round-3 reviews (2 Nov 2026)
+
+The browser QA and the financial-domain review of M1.4's round 3 (head `5a4d4c0`) found three defects of the new
+app, each OPEN and for a follow-up, not M1.4 (the lead's decision of 2 Nov 2026): M1.4 is reviewed and approved as
+it stands, and each fix changes figures that the owner or the lead must decide first. Each row names the test that
+lands with its fix. Priorities are proposed.
+
+| KI | Ledger | P | Kind | Status | Issue |
+|---|---|---|---|---|---|
+| KI-190 | none (both builds read the same) | P2 | data | OPEN (for a follow-up, not M1.4; a lead decision and the owner's word first) | **Badly grouped text reads as an amount.** `readNumber` (`app/src/ingest/cells.ts:34`) strips every comma and space before it tests the text, so a separator in any position is accepted: "0,60" reads as 60 and "12,34" as 1234, in every money column and in units, holding days, XIRR and BMXIRR. The live page reads the same way since fix batch 4 (D-041 point 4), so the parity ledgers show no difference. Proposed rule, for both builds once the lead decides and the owner agrees: a separator is accepted only in Indian ("1,00,000.50") or Western ("100,000.50") grouping positions, else the cell is INVALID SOURCE DATA (BR-2.5), as other text that is not a number. Test with the fix: `tests/regression/ki-190-comma-grouping.test.ts` ("0,60" and "12,34" invalid; "1,00,000.50" and "100,000.50" read as 100000.5). |
+| KI-191 | none (both builds read the same) | P3 | data | OPEN (for a follow-up, not M1.4) | **"Grand-Total" is read as a holding with no result.** `TOTAL_RE` (`app/src/ingest/base-file.ts:204`, `/^(grand\s*\|sub\s*-?\s*)?totals?\b/i`) allows a hyphen after "sub" but not after "grand", so an Instrument Name "Grand-Total" is neither skipped (`TOTAL_ROW_NAME_RE`, the live page's rule, takes "Total" and "Grand Total" only) nor reported with the Warning `base-file.total-like-name`, which the review raises to the High result `review.total-like-holding` (KI-142): it is read as an ordinary holding, its market value counts in every total, and nothing asks the analyst to check it. The live page reads it as a holding too. Fix: `/^(grand\s*-?\s*\|sub\s*-?\s*)?totals?\b/i`, so the name gets the Warning and the High result to acknowledge. Test with the fix: a "Grand-Total" case in `tests/unit/ingest/base-file.test.ts` (the Warning names it, the review holds the High result; "Grand Total" is still skipped). |
+| KI-192 | none | P3 | calculation | OPEN (for a follow-up, not M1.4) | **With a negative total market value the pies are still drawn.** `pie` (`app/src/views/overview.ts:93-99`) keeps every slice whose share is above zero; with a total CMV below zero a class with a negative market value has a share above zero and a class with a positive one a share below zero, so the asset pie can show a class at 125.0% and leave a positive class out, and `pieLeftOut` (`app/src/views/notes.ts`) adds no note while the total is not above zero. Screen and slide C-08 both draw it. Fix: when the total CMV is 0 or less the pies have no slices and their status is NOT_APPLICABLE ("Chart not drawn: not applicable."), as for a total of exactly 0 today. Test with the fix: a negative-total case in `tests/unit/views/overview.test.ts` (no slices, NOT_APPLICABLE, and the same on the slide). |

@@ -714,7 +714,9 @@ gain or loss (point 1(e)) and the Read Me wording (point 7). The second fix roun
     The Office acceptance compares Excel's
     `Range.Text` of every `_manifest` figure with the screen's text. At half-way values the text differs from the
     legacy page, which rounds the binary value (0.145 shows 0.14 there): a classified difference outside the parity
-    ledgers, recorded in `DATA_DICTIONARY.md` §8 (second fix round, K2).
+    ledgers, recorded in `DATA_DICTIONARY.md` §8 (second fix round, K2). Accepted by the owner for the new app on
+    2 Nov 2026 (PD-48): 35.675% shows 35.68% in the new app, 35.67% on the live page. Family-a's Mutual Funds product
+    row under Hybrid shows the same 35.68%.
 14. **Section 1, the base-file slot (fix round).** A reader refusal is a sentence built from its `LoadError` kind,
     never the reader's text: "Refused: the file is 21.0 MB; the limit is 20 MB." ("just over 20 MB" where one
     decimal cannot show the excess); "Refused: the workbook has 41 sheets; the limit is 40."; 'Refused: the sheet

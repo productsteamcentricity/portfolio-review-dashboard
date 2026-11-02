@@ -21,8 +21,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **Milestone M1.4 of the new build (CR-0006): the portfolio overview.** Section 1 reads a base file through its
   Upload, Validate, Preview and Review stages, and section 2 shows the headline figures, the allocations and the pies;
   the overview deck (slide C-08) and the overview workbook download from it. Every number on screen, slide and sheet
-  is a figure of one view-model (D-038, D-039). The `/next/` build, after the second fix round: 2,002,299
-  bytes, SHA-256 `064f8484…` (deterministic, build id `8088217924dedef9`), with the four vendored libraries inlined.
+  is a figure of one view-model (D-038, D-039). The `/next/` build, after round 3: 2,003,039 bytes, SHA-256
+  `b5756412…` (deterministic, build id `2418a5b671cd7622`), with the four vendored libraries inlined.
   M1.4 leaves `index.html` unchanged (MD5 `12B5E5727FCA01EF2EA162C59913F01D`, main after PR #16); the libraries were vendored
   from `911A04659CB34383E478416B54E9C306`.
   - Platform (D-038). Chart.js 4.4.0, chartjs-plugin-datalabels 2.2.0, SheetJS CE 0.18.5 and PptxGenJS 3.12.0 are
@@ -140,9 +140,29 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
       "not attempted: Office did not answer"), and the Excel edit check runs only in manual calculation (in automatic
       calculation, Excel's default, it is reported "not checked in Excel", never as a pass). The run builds 8
       workbooks and 10 decks (the six-class decks syn-pie6-reits and syn-pie6-hybrid, and the cases syn-six-classes
-      and syn-big-return). It has not been run under the new rule.
+      and syn-big-return). On 2 Nov 2026 the run was NOT RUN for all 18 cases (Office was not running, and the
+      session's execution policy refuses scripts; the runner never overrides it).
     - Tests: 1,012 of 1,012 under IST and under UTC with node_modules, 948 of 948 without (the four "(needs npm
       ci)" suites skipped); the spike 149 of 149 and overview.cdp 124 of 124.
+  - **Round 3, 2 Nov 2026** (CR-0006; QA passed and the financial-domain reviewer approved `5a4d4c0`, naming D-039
+    point 13; the owner accepted the half-way rounding for the new app, PD-48):
+    - The Office runner (the security gate's F-1). On Windows, Node keeps the processes it spawns in a job object
+      that ends them when Node exits, so a script abandoned at a TIMEOUT was ended with the run and could leave its
+      synthetic workbook open, hidden, in the owner's Excel. `run-acceptance.ts` now spawns, not detached, only a
+      PowerShell wrapper passed as `-EncodedCommand`, which starts the script with `Start-Process` (hidden, its
+      output and errors redirected to two logs), waits for it and passes its exit code through. The script is
+      outside Node's job, so it runs on to its own deadline and closes its file; nothing kills anything. No
+      execution policy argument: a refusal is NOT RUN with its reason, read from both logs. Proven with a sleep
+      child outside the suite and outside Office (abandoned after 2 s, it outlived Node and wrote its marker file).
+    - Section 1 (QA's D1). A file the browser cannot read (gone from the disk) is refused ("Refused: the file
+      could not be read as an Excel workbook.", the review bar "Base file refused") and clears the previous
+      review, as a new pick does; it used to leave the old review on screen with an unhandled error. The logo
+      picker says "The logo file could not be read: choose it again."
+    - Records: KI-190 (badly grouped text reads as an amount), KI-191 ("Grand-Total" read as a holding with no
+      result) and KI-192 (pies drawn with a negative total market value) are filed for a follow-up; D-039 point
+      13 records the owner's acceptance (PD-48).
+    - Tests: 1,017 of 1,017 under IST and under UTC with node_modules, 953 of 953 without (the four "(needs npm
+      ci)" suites skipped); the spike 149 of 149 and overview.cdp 128 of 128.
 - **The capital-gains upload design for M7 (CR-0006, D-036, amending D-032).** Documents only; no code, `/next/` and
   `index.html` unchanged. The upload accepts the wealth platform's "Capital Gain Report" export as produced (columns
   by header name, PAN removed at read time, folio parsed from the instrument name, totals row reconciled, footer text

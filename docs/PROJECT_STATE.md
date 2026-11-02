@@ -62,9 +62,15 @@
     while Excel is in manual calculation). On the integrated head the suite passes 1,012 of 1,012 tests under IST and
     under UTC (948 of 948 without node_modules, the "(needs npm ci)" suites skipped); the spike 149 of 149;
     overview.cdp 124 of 124.
-    M1.4 is integrated on `feat/m1-4-overview` (2 Nov 2026), waiting for round 3 (QA, the financial review on the
-    final head naming D-039 point 13, the Office acceptance under the owner's rule, security, ARC-01 at Gate B), then
-    the pull request. **M2 is next** (instrument matching).
+    **Round 3 is under way** (2 Nov 2026): QA passed `5a4d4c0`, and the financial-domain reviewer approved it,
+    naming D-039 point 13 (the owner accepted the half-way rounding for the new app, PD-48). Fixed after it on the
+    branch: the security gate's F-1 (the Office runner starts each script through a PowerShell wrapper, so the run's
+    exit never ends a script that still holds a file open) and QA's D1 (a file the browser cannot read is refused
+    and clears the previous review). KI-190 to KI-192 are filed for a follow-up. The Office acceptance was NOT RUN
+    for all 18 cases on 2 Nov 2026 (Office was not running, and the session's execution policy refuses scripts; the
+    runner never overrides it): the owner to choose between accepting NOT RUN, opening Office and allowing scripts
+    for one run, or opening some of the files by hand. Then the security re-review, ARC-01 at Gate B and the pull
+    request. **M2 is next** (instrument matching).
 - The owner answered the 28 audit decisions: all accepted except OD-11 (keep the monitor uploads, fixed), D-021.
 - The previous owner's second export is expected this week (CR-0004).
 - The October 2026 data refresh is due when the files arrive, around 13–17 Nov 2026.
@@ -125,10 +131,11 @@
    OD-29 to OD-36 were accepted on 21 Oct 2026 (D-022); OD-32 (renamed fund houses) and OD-34 ("AMC not given")
    are built in fix batch 2a (PR #9, merged), with KI-124 (empty Home slide export).
 4. **Claude: M1.4** (`feat/m1-4-overview`): the browser QA, the financial, Office and security reviews, the lead's
-   fix round (27 Oct 2026) and its second fix round (integrated on `feat/m1-4-overview`, 2 Nov 2026) are done. Left:
-   round 3 on the final head (qa-engineer, financial-domain-reviewer naming D-039 point 13, the Office acceptance
-   under the owner's rule of 2 Nov 2026, which reports NOT RUN with the file paths when Office is not running,
-   security, ARC-01 at Gate B); then CI, the release-check report, the pull request (body drafted:
+   fix round (27 Oct 2026) and its second fix round (integrated on `feat/m1-4-overview`, 2 Nov 2026) are done; in
+   round 3, QA passed and the financial-domain reviewer approved `5a4d4c0` (D-039 point 13 by name), and F-1 and D1
+   are fixed after it. Left: the owner's choice for the Office acceptance (NOT RUN for all 18 cases on 2 Nov 2026:
+   accept NOT RUN, allow scripts for one run with Office open, or open some files by hand), the security re-review,
+   ARC-01 at Gate B; then CI, the release-check report, the pull request (body drafted:
    the SheetJS CE 0.18.5 risk carried, CVE-2023-30533 and CVE-2024-22363, Q-12, TB-26; the corrections that change
    client numbers; KI-148 done; the rollback; what stays open), the merge after MOD-02's go and ARC-01's GO, and
    the Pages check (`/` byte-identical to `index.html`, `/next/` the overview). Recorded as built (D-039): labels of
