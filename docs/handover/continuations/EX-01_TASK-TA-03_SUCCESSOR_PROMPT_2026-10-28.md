@@ -279,8 +279,9 @@ change to a patch script (tax figures for clients are high-risk). Docs-only edit
   2 Objective and acceptance: the live page's Taxation tab, tax slides and AI Analyst tax signal follow the TY 2026-27
     reckoner per D-040; acceptance as in step F11 below and the TA-03 card.
   3 Behaviour to preserve: every non-tax figure (the 19 regression files of main still pass; smoke; AI Analyst);
-    blocks 00 to 06, 09, 10 and 12 unchanged; per-family isolation; no network; T5 leaves TAX_RULES and data/refdata
-    unchanged.
+    scripts 00 to 03, 05, 06, 10 and 12 and the HTML shell byte-identical to main (EX-01 measured it on 2 Nov; the batch
+    changes script 04 (REFDATA: the TAX_RULES key only), 07, 08, 09 (T2) and 11, and T5 alone changes only 07, 08 and 11);
+    per-family isolation; no network; T5 leaves TAX_RULES and data/refdata unchanged.
   4 Intended changes: T1 to T4 as in CR-0008; T5 items 1 to 7 of the patch header; a comment for KI-184.
   5 Files: as listed under "Files TA-03 owns" in section E; index.html blocks 07, 08, 11 by marker.
   6 Shared interfaces and consumers: ENGINE keys; REFDATA.TAX_RULES; data/refdata (NB-01's parity tests,
@@ -564,5 +565,6 @@ Status: IMPLEMENTED, NOT FULLY VERIFIED.
 
 | Date (IST) | By | Change |
 |---|---|---|
+| 2 Nov 2026 | MOD-02 | F2 item 3 corrected on EX-01's measurement: the batch changes scripts 04 (TAX_RULES key), 07, 08, 09 and 11, not only 07, 08 and 11 |
 | 28 Oct 2026 | MOD-01 | First version, for EX-01 taking over TA-03 at `0f1c5d3` |
 | 30 Oct 2026 | MOD-01 (fixer pass) | Validation findings applied: the owner starts EX-01 in the same project folder as the other chats; the rollback in F2 item 11 prefers a forward fix (release-check fails a plain revert); the launch entry uses the session file's node path; Gates A to C on the same final head (F8) |

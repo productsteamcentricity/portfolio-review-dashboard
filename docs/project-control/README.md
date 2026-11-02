@@ -338,7 +338,7 @@ path. MOD-02 never edits registers inside another chat's worktree.
   [REPOSITORY_AND_ENVIRONMENT_STATE.md](REPOSITORY_AND_ENVIRONMENT_STATE.md) before relying on any SHA here.
 - It is public. Session ids, private paths beyond `C:\dev\private`, client data and anything about credentials are in
   the private supplement only.
-- Until the handover branch merges, these files exist only on `handover/mod-01-to-mod-02-20261028`.
+- The handover branch merged on 30 Oct 2026 (PR #17); these files are on `main`. Rows changed since 28 Oct carry their own date, and each register's change log lists them.
 
 ## 11. Change log of this file
 
@@ -346,3 +346,4 @@ path. MOD-02 never edits registers inside another chat's worktree.
 |---|---|---|
 | 28 Oct 2026 | MOD-01 | First version for the handover to MOD-02 |
 | 30 Oct 2026 | MOD-01 (fixer pass) | Gate C entry: Gates A to C on the same final head, re-run after any later commit; section 5.2 is the only full RACI table; the MOD-01 retirement condition kept as lead ruling R-1 |
+| 2 Nov 2026 | MOD-02 | Section 10: the handover package is on main (PR #17) |

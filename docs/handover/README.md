@@ -24,6 +24,12 @@ Anything that must not be public is in the private supplement on the owner's lap
 | Facts it rests on | the registers in [`docs/project-control/`](../project-control/README.md), written the same day |
 | Where the anchors were last checked | 28 Oct 2026, 13:07 IST: `main` `6443826`; live page MD5 `12B5E5727FCA01EF2EA162C59913F01D` (16,837,249 bytes); `/next/` 46,905 bytes; TA-03 continuation branch `0f1c5d3` (pushed); NB-01's `feat/m1-4-overview` `07a6460` (local only) [VERIFIED: `git rev-parse`, `git ls-remote origin`, `curl`] |
 
+**Statements of the 28 Oct documents that were superseded afterwards** (the documents stay as written, rule 1 of section 5; the
+registers carry the current values): TA-03 has had a CI run (run 41412086208 on 2 Nov, WIP head only); the batch changes blocks
+04 (the TAX_RULES key), 07, 08, 09 and 11 of `index.html`, not only 07, 08 and 11; TA-03 is EX-01's, with the PR branch
+`fix/legacy-batch-3-tax-cr-0008`; the handover package is on main (PR #17, 4a1a747); the owner answered PD-02 and PD-03 on
+2 Nov 2026.
+
 When two records disagree, git wins over every document. Then the authoritative record wins for its subject (section
 2). Record the disagreement as a defect and fix it in the next docs change.
 
@@ -116,3 +122,4 @@ during step 0. See the master handover, section 15.
 | Date (IST) | By | Change |
 |---|---|---|
 | 28 Oct 2026 | MOD-01 | First index, for the MOD-01 to MOD-02 handover. `docs/HANDOVER.md` (23 Oct) marked historical |
+| 2 Nov 2026 | MOD-02 | Section 1: a list of statements of the 28 Oct documents that were superseded |
