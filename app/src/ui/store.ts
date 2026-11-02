@@ -40,6 +40,7 @@ export type AppState = {
 
 export type Action =
   | { type: 'file-picked'; fileName: string; bytes: Uint8Array }
+  | { type: 'file-unreadable'; fileName: string; size: number }
   | { type: 'answer'; field: 'xirr' | 'bmXirr'; choice: XirrUnitChoice }
   | { type: 'accept' }
   | { type: 'remove' }
@@ -174,6 +175,19 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
         fresh.upload = { stage: 'upload', fileName: a.fileName, size: a.bytes.length, loaded: null, error: null };
         set(fresh);
         set(load(fresh, a.bytes, a.fileName));
+        return;
+      }
+      case 'file-unreadable': {
+        // D1 (round 3): the browser could not read the picked file (gone from the disk, or unreadable). It replaces
+        // the family as a pick does, and the slot shows the refusal; the input remounts and takes the focus.
+        session += 1;
+        kept = null;
+        const fresh = initialState(state.logo, state.inputKey + 1);
+        fresh.upload = {
+          stage: 'upload', fileName: a.fileName, size: a.size, loaded: null,
+          error: { kind: 'unreadable', message: 'the browser could not read the file' },
+        };
+        set(fresh);
         return;
       }
       case 'answer': {

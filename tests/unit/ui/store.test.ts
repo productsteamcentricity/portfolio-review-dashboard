@@ -3,15 +3,16 @@
 // the stage sequence; a review exists only after Accept; a family switch clears the review, labels, as-on date,
 // answers and acknowledgements but keeps the logo; an acknowledgement recomputes; the export gate; the audit the
 // exports carry. M1.4 fix round: an exception of the reader or the engine is "review-failed", never "unreadable"
-// (L15), and a file with no holding is read but cannot be accepted (L14).
+// (L15), and a file with no holding is read but cannot be accepted (L14). Round 3 (D1): a file the browser cannot
+// read (gone from the disk) is refused like a new pick and leaves no review of the previous family on screen.
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore, renumberAudit } from '../../../app/src/ui/store.ts';
+import { createStore, renumberAudit, reviewBar } from '../../../app/src/ui/store.ts';
 import type { AppState } from '../../../app/src/ui/store.ts';
 import type { LogoAsset } from '../../../app/src/ui/wiring.ts';
 import { AS_ON_30_SEP_2026, HIGH_RESULT, NOW, fakeWiring, memoryPrefs, sampleBytes } from '../../helpers/sample-review.ts';
-import { slotView } from '../../../app/src/ui/upload-slot.ts';
+import { barFileStatus, slotView } from '../../../app/src/ui/upload-slot.ts';
 import { loadBaseFile } from '../../../app/src/ingest/load-base.ts';
 import { loadSheetJS } from '../../helpers/sheetjs.ts';
 
@@ -199,6 +200,44 @@ describe('the family switch (KI-001, W-9)', () => {
     assert.equal(s.upload.fileName, 'one-standard.xlsx');
     assert.equal(raw.get('prd.next.v1.logo'), LOGO.dataUri, 'the logo choice is kept in the browser');
     assert.ok(!JSON.stringify(s.upload.loaded?.base.clients ?? []).includes('Sample Client B'), 'the new family only');
+  });
+
+  test('D1: a file the browser cannot read, picked after an accepted file, is refused and clears the review; the logo stays', async () => {
+    const { store, calls } = setup();
+    store.dispatch({ type: 'logo', logo: LOGO });
+    pick(store);
+    store.dispatch({ type: 'as-on', day: AS_ON_30_SEP_2026 });
+    store.dispatch({ type: 'family-label', label: 'Family A' });
+    store.dispatch({ type: 'accept' });
+    assert.ok(store.get().vm, 'an accepted review on screen');
+    const key = store.get().inputKey;
+    const loads = calls.load.length;
+    store.dispatch({ type: 'file-unreadable', fileName: 'gone-from-disk.xlsx', size: 2048 });
+    const s = store.get();
+    assert.deepEqual(s.upload, {
+      stage: 'upload', fileName: 'gone-from-disk.xlsx', size: 2048, loaded: null,
+      error: { kind: 'unreadable', message: 'the browser could not read the file' },
+    });
+    const slot = slotView(s.upload);
+    assert.equal(slot.chip, 'Refused');
+    assert.equal(slot.problem, 'Refused: the file could not be read as an Excel workbook.');
+    assert.equal(slot.canAccept, false);
+    assert.equal(slot.stage, 'upload');
+    assert.equal(barFileStatus(s.upload), 'Base file refused');
+    assert.equal(reviewBar(s).fileName, null, 'the refused file is never named in the review bar');
+    assert.equal(s.review, null);
+    assert.equal(s.vm, null);
+    assert.equal(s.asOn, null);
+    assert.deepEqual(s.labels, { family: 'Family', clients: {} });
+    assert.equal(s.inputKey, key + 1, 'the input remounts, and the focus moves to it');
+    assert.equal(s.logo, LOGO);
+    assert.equal(calls.load.length, loads, 'nothing is read');
+    // The previous family's bytes are gone too: an answer re-reads nothing, Accept builds nothing, no export runs.
+    store.dispatch({ type: 'answer', field: 'xirr', choice: 'percent' });
+    store.dispatch({ type: 'accept' });
+    assert.equal(calls.load.length, loads);
+    assert.equal(store.get().review, null);
+    await assert.rejects(store.exportDeck(), /no accepted review/);
   });
 });
 

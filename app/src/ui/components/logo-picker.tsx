@@ -17,7 +17,14 @@ export function LogoPicker({ logos, current, onPick }: {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    let bytes: Uint8Array;
+    try {
+      bytes = new Uint8Array(await file.arrayBuffer());
+    } catch {
+      // D1: a logo file gone from the disk or unreadable; the logo in use stays.
+      setError('The logo file could not be read: choose it again.');
+      return;
+    }
     const r = logoFromBytes(bytes, file.type, UPLOADED_LOGO_ID, 'Uploaded logo');
     if ('error' in r) { setError(r.error); return; }
     setError(null);

@@ -35,7 +35,8 @@
 //   9. Remove: the focus on the new file input [L13]; the XIRR questions answered with real clicks: the focus moves
 //      to the next question, then to the import report heading [L13]; an acknowledged High result: the focus moves on
 //      (syn-total-rows: its fund named "Total Return ..." is High; its "Total" and "GRAND TOTAL" rows are skipped, N1,
-//      so the KPIs read as syn-standard's, never doubled);
+//      so the KPIs read as syn-standard's, never doubled); then [D1, round 3] a file gone from the disk is picked:
+//      no exception, the refusal sentence, the review bar "Base file refused", and that review's KPIs are gone;
 //  10. syn-all-classes (six slices, Commodity unlabelled, Unknown last in #D9D9D9) and syn-single-entity (the single
 //      client and distributor lines) [L2, L14];
 //  11. [N12] syn-blank-entities: the matrix notes count named columns and put the rest in words ("2 clients, and 2
@@ -596,6 +597,24 @@ async function runMode({ browser, mode, files, opt, expect }) {
   await tab('uploads');
   expect('syn-total-rows: the "Total" and "GRAND TOTAL" rows were skipped (N1): the KPIs are syn-standard\'s 2.85 and 3.35, never doubled',
     tl.kpis[0] === '2.85' && tl.kpis[1] === '3.35', tl.kpis);
+
+  // (D1, round 3) A file the browser cannot read, picked after that accepted file: a path that is not on the disk,
+  // set with DOM.setFileInputFiles. No exception; the refusal sentence; the previous review is gone.
+  const goneFile = path.join(path.dirname(files.notes), 'gone-from-disk.xlsx');
+  fs.rmSync(goneFile, { force: true });
+  const exceptionsBefore = page.exceptions.length;
+  const gone = await pick(goneFile);
+  const goneBar = await page.eval(BAR_FILE);
+  await tab('overview');
+  const goneOv = await page.eval(OVERVIEW);
+  await tab('uploads');
+  expect('(D1) a file gone from the disk, picked after an accepted file: no exception, "Refused: the file could not be read as an Excel workbook.", Accept not available, the focus on the new input, the review bar "Base file refused"',
+    page.exceptions.length === exceptionsBefore && gone.chip === 'Refused' && /is-error/.test(gone.cls)
+      && gone.status.includes('Refused: the file could not be read as an Excel workbook.') && gone.acceptUnavailable
+      && gone.focused === 'base-file-input' && goneBar === 'Base file refused',
+    { gone, bar: goneBar, exceptions: page.exceptions.slice(exceptionsBefore) });
+  expect('(D1) the previous review is gone: no KPI, section 2 shows "Nothing to show yet"',
+    goneOv.kpis.length === 0 && /^Nothing to show yet/.test(goneOv.empty ?? ''), { kpis: goneOv.kpis, empty: goneOv.empty });
 
   // 10. syn-all-classes and syn-single-entity [L2, L14]; a reload
   await pick(files['syn-all-classes']);

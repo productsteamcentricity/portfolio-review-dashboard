@@ -41,7 +41,14 @@ function UploadSlot({ state, store }: { state: AppState; store: Store }) {
   const onPick = async (el: HTMLInputElement) => {
     const file = el.files?.[0];
     if (!file) return;
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    let bytes: Uint8Array;
+    try {
+      bytes = new Uint8Array(await file.arrayBuffer());
+    } catch {
+      // D1: a file gone from the disk or unreadable is refused, and the previous review does not stay on screen.
+      store.dispatch({ type: 'file-unreadable', fileName: file.name, size: file.size });
+      return;
+    }
     store.dispatch({ type: 'file-picked', fileName: file.name, bytes });
   };
   return (
