@@ -160,7 +160,9 @@ describe('K1: attach only, never start, quit or kill Office, no application opti
     const runs = [...RUN.matchAll(/await runPs\(([^)]*)\)/g)].map((m) => m[1]!);
     assert.equal(runs.length, 2, 'one run per script');
     for (const r of runs) assert.ok(!/neg/i.test(r), `a negative control is never run: ${r}`);
-    assert.match(RUN, /detached: true/);
+    // Not detached: a detached PowerShell lost its output and report on Windows (2 Nov 2026); the abandon on timeout
+    // is the unref below, and Node never kills the child.
+    assert.match(RUN, /detached: false/);
     assert.match(RUN, /child\.unref\(\); resolve\('timeout'\)/);
     assert.ok(PS_TIMEOUT_MS >= 180_000 + 60_000, `the run waits longer than the script's own deadline: ${PS_TIMEOUT_MS}`);
   });

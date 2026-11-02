@@ -273,9 +273,11 @@ export async function runInTurn<C>(cases: readonly C[], run: (c: C, attempt: boo
 }
 
 /**
- * Runs one script and reads its report. The script's output goes to a log file next to the report. The child is
- * detached, so that a run abandoned at PS_TIMEOUT_MS leaves it running (Node never kills it, and its exit does not
- * end it): the result is then TIMEOUT, with the file left open for the owner.
+ * Runs one script and reads its report. The script's output goes to a log file next to the report. A run abandoned at
+ * PS_TIMEOUT_MS leaves the child running: Node never kills it, unrefs it, and on Windows the child outlives Node's
+ * exit; the result is then TIMEOUT, with the file left open for the owner. The child is not detached: a detached
+ * PowerShell on Windows lost its output and its report (it exited 0 with an empty log, 2 Nov 2026), so a refusal by
+ * the execution policy read as "no report" instead of its reason.
  */
 async function runPs(script: string, args: string[], reportPath: string, file: string): Promise<PsReport> {
   if (process.platform !== 'win32') return { verdict: 'not run', ran: false, pass: false, notRunReason: 'not Windows' };
@@ -283,7 +285,7 @@ async function runPs(script: string, args: string[], reportPath: string, file: s
   const logPath = reportPath.replace(/\.json$/, '.log');
   const fd = fs.openSync(logPath, 'w');
   const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script, ...args, '-Report', reportPath],
-    { stdio: ['ignore', fd, fd], windowsHide: true, detached: true });
+    { stdio: ['ignore', fd, fd], windowsHide: true, detached: false });
   fs.closeSync(fd);
   const status = await new Promise<number | null | 'timeout'>((resolve) => {
     const timer = setTimeout(() => { child.unref(); resolve('timeout'); }, PS_TIMEOUT_MS);
