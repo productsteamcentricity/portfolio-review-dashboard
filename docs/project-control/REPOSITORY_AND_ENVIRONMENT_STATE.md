@@ -100,7 +100,7 @@ There are 82 local branches on 2 Nov: 40 named and 42 `worktree-wf_*` (80 and 38
 |---|---|---|---|---|---|---|
 | Main | `main` @ 4a1a747 | origin/main | 0 / 0 | yes | the live state | none |
 | Handover | `handover/mod-01-to-mod-02-20261028` @ 5f551cc | its own origin branch | 1 / 0 | yes | the handover package, merged as PR #17 | none; kept until housekeeping (TC-18) |
-| **Pushed, unmerged** | `docs/registers-1` @ 227f65a | its own origin branch | 0 / 2 | yes | PR #18: MOD-02's register update | MOD-02 (TC-02) |
+| **Pushed, unmerged** | `docs/registers-1` (the PR #18 head) | its own origin branch | 0 / (the PR's commits) | yes | PR #18: MOD-02's register update | MOD-02 (TC-02) |
 | **Pushed, unmerged** | `continuation/ex-01-task-ta-03-20261027` @ 0f1c5d3 | its own origin branch | 2 / 5 | yes | TA-03: T1 c459f8d, T2 92c7c83, T3+T4 5581d90, rebase merge 97a7d69, T5 WIP 0f1c5d3 | frozen as the checkpoint (R-8); EX-01 continues on `fix/legacy-batch-3-tax-cr-0008` |
 | **Local only** | `fix/legacy-batch-3-tax-cr-0008` @ 0f1c5d3 | none (a plain push is refused) | 2 / 5 | **no** | EX-01's PR branch (R-8): the same commit as the checkpoint until its first new commit | EX-01 pushes it with `-u` after the Gate A checks and the security GO |
 | **Local only, unique work** | `feat/m1-4-overview` @ 07a6460 | origin/main (hazard) | 2 / 23 | **no** | M1.4 units U1..U5, fix round FA/FB/FC/FD, integration, docs, merge of PR #16 | **preserve first** (TB-08) |
@@ -122,7 +122,7 @@ in each, 28 Oct].
 |---|---|---|---|---|
 | main checkout | `main` @ 4a1a747 | shared | none | in sync with origin/main; not a work area |
 | `.claude/worktrees/handover` | `handover/mod-01-to-mod-02-20261028` @ 5f551cc | MOD-01 → MOD-02 | none (merged, PR #17) | idle; kept until housekeeping (TC-18) |
-| `.claude/worktrees/mod-02-docs` | `docs/registers-1` @ 227f65a | MOD-02 | none (pushed) | ACTIVE (TC-02, PR #18) |
+| `.claude/worktrees/mod-02-docs` | `docs/registers-1` (the PR #18 head) | MOD-02 | none (pushed) | ACTIVE (TC-02, PR #18) |
 | `.claude/worktrees/wf_c9c8da96-497-10` | `fix/legacy-batch-3-tax-cr-0008` @ 0f1c5d3 (checked out since 2 Nov; the continuation branch stays on origin) | EX-01 | none yet (no commit after 0f1c5d3) | ACTIVE (TA-03) |
 | `.claude/worktrees/wf_c9c8da96-497-1` | `fix/legacy-batch-3-tax` @ c459f8d | MOD-01 | none | stale |
 | `.claude/worktrees/wf_c9c8da96-497-2` | `fix/legacy-batch-4-basefile` @ 7869676 | MOD-01 | none (merged) | stale |

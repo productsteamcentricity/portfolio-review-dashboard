@@ -317,7 +317,7 @@ work, the overlap is shown. [The overlaps are INFERRED from the item texts.]
 | Id | Improvement | Why | Origin | Status | Target task | Who approves |
 |---|---|---|---|---|---|---|
 | IMP-C01 | Protect `main` with required CI checks and no force-push | Today a mistaken force-push would rewrite public history unnoticed; AC-22 does not exist | Claude (handover investigation) | NOT STARTED (proposal) | none yet | Owner (it changes D-033) |
-| IMP-C02 | Run CI on the TA-03 continuation branch now with `gh workflow run "Dashboard checks" --ref continuation/ex-01-task-ta-03-20261027`, or a draft PR | The branch has never run in CI; `ci.yml` accepts `workflow_dispatch` [VERIFIED ci.yml line 10] | Claude (critique) | NOT STARTED | TA-03 | MOD-02 |
+| IMP-C02 | Run CI on the TA-03 continuation branch now with `gh workflow run "Dashboard checks" --ref continuation/ex-01-task-ta-03-20261027`, or a draft PR | The branch had never run in CI; `ci.yml` accepts `workflow_dispatch` [VERIFIED ci.yml line 10] | Claude (critique) | DONE 2 Nov (EX-01 dispatched run 41412086208 on the WIP head: success) | TA-03 | MOD-02 |
 | IMP-C03 | Regenerate the lockfile metadata (engines ">=24" in `package-lock.json` against ">=24.2" in `package.json`) | Keeps the toolchain record exact | Claude | NOT STARTED | TC-18 (next toolchain PR) | MOD-02 |
 | IMP-C04 | Add `@types/node` so `scripts/*.ts` and `tests/**/*.ts` are type-checked | Only `app/src` is type-checked today (toolchain.md §2) | Claude (NB-01) | NOT STARTED (needs a recorded decision) | TB-25 | MOD-02 under D-033 |
 | IMP-C05 | Upgrade SheetJS CE 0.18.5 (CVE-2023-30533, CVE-2024-22363) in the new app | Known vulnerabilities carried into M1.4 | Claude (NB-01, Q-12) | EXISTING DEFECT; upgrade NOT STARTED | TB-26 | MOD-02 (a D entry) |
@@ -348,3 +348,4 @@ work, the overlap is shown. [The overlaps are INFERRED from the item texts.]
 |---|---|---|
 | 28 Oct 2026 | MOD-01 | First version, for the MOD-01 to MOD-02 handover |
 | 30 Oct 2026 | MOD-01 (fixer pass) | REQ-055 worded as "a credential the owner holds" with no link to a pending decision; IMP-C09 ports 8133 to 8135 are Workstream A (EX-01); IMP-C21 worktree count; IMP-C25 status word |
+| 2 Nov 2026 | MOD-02 | IMP-C02 done (CI run on the TA-03 WIP head) |

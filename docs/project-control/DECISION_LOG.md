@@ -107,9 +107,9 @@ SUPERSEDED.
 **R-3. Merge order is a readiness rule, not a fixed order.** Whichever change passes Gates A to D first merges
 first. The second to merge takes main, keeps DECISIONS in number order, and keeps both sides' rows in CHANGELOG,
 PROJECT_STATE, KNOWN_ISSUES and TESTING. TA-05 waits for TA-03 to merge (both patch the same engine block) and for
-NB-01's exact KI-147 AG ids. TA-03 also needs the owner's answers to CR-0008 questions 17 and 18 (PD-02, PD-03)
-before it merges, unless the owner accepts the safe defaults now built (a neutral AIF note; crypto kept out of
-set-off).
+NB-01's exact KI-147 AG ids. The owner answered CR-0008 questions 17 and 18 (PD-02, PD-03) on 2 Nov 2026: crypto stays out
+of set-off, and the "Listed AIF" funds are Category III with a safe note. The second is a behaviour change in TA-03 (T5 item 10)
+that has to pass the gates before the merge.
 
 **R-4. Who does what.** A short version. The detailed and authoritative table is
 [README.md section 5.2](README.md#52-who-decides-and-who-does-raci); if the two differ, README wins.
@@ -160,11 +160,11 @@ refused) and puts every later commit there, pushing with `git push -u origin <br
 rewrite, no second worktree, nothing deleted, never new work on both names. The PR comes from the `fix/` branch, so
 release-check does not warn. Other PRs are decided when they are opened.
 
-**R-9. ENGINE_KEYS and KI-185, 2 Nov 2026.** MOD-02 adopts REC-06 and, on ARC-01's change C1, does not waive the I-09 same-PR
-rule: the TA-03 PR adds the four new ENGINE keys (`taxClassify`, `taxApplyAssumptions`, `taxAssumeFor`, `taxDefaults`) to
-ENGINE_KEYS in `tools/check-invariants.js`, and that file is listed in the change-impact contract (item 5). EX-01 files KI-184
-and KI-185 with TA-03; KI-185 covers what stays open: ENGINE_KEYS omits `amcKey` and `xirr` on main, and the list is kept by hand
-(fix under TA-22). KI-183 stays reserved for TA-05; a gap in the numbering is normal.
+**R-9. ENGINE_KEYS and KI-185, 2 Nov 2026.** MOD-02 adopts REC-06 and, on ARC-01's change C1 and EX-01's recommendation, does not
+waive the I-09 same-PR rule: the TA-03 PR adds all six names to ENGINE_KEYS in `tools/check-invariants.js` (the four new keys
+`taxClassify`, `taxApplyAssumptions`, `taxAssumeFor`, `taxDefaults`, plus `amcKey` and `xirr`, which main lacks; 22 + 6 = 28), and
+that file is listed in the change-impact contract (item 5). TA-22 moves into TA-03 and closes with it. EX-01 files KI-184 and
+KI-185 with TA-03, KI-185 as FIXED there. KI-183 stays reserved for TA-05; a gap in the numbering is normal.
 
 **R-10. Re-run rule when `main` moves after the gates (CONFIRMED by ARC-01 on 2 Nov 2026, with additions).** If `origin/main`
 gains commits after a branch has passed Gates A to C, the branch merges `origin/main` (a merge, never a rebase) and:
@@ -182,6 +182,15 @@ gains commits after a branch has passed Gates A to C, the branch merges `origin/
    checks plus ARC-01's review of the resolution are enough when 1 holds; re-running the full Gate C list is also safe.
 Any non-docs change in `main` means the full Gate C list again.
 
+**R-11. D-043, KI-186 and the owner's answers, 2 Nov 2026.** D-043 (EX-01's range, written on the TA-03 branch) records the
+owner's answers to CR-0008 Q17 and Q18 and amends D-040 point (d). KI-186 (P3, EX-01's range) records the IRR explicit-zone
+date strings: the tax batch's T2 reads a date-time with an explicit zone as the machine-local calendar day of the instant, where
+main read the UTC date, so late-evening Z times read as the next day in IST and midnight Z times as the previous day west of
+UTC; zone-less forms are fixed in every zone; real IRR exports with such strings are [UNKNOWN] (sample files have none). EX-01
+decides in its T5 review addendum, with the financial-domain-reviewer, between a minimal fix (read the date as written) and no
+code change. The new build's M3 IRR reader reads a free-text date as written, the same date in every zone, and states its own rule
+for strings with an explicit zone.
+
 ## 2. Pending owner decisions
 
 These are questions only the owner can answer, because they change what clients see or how a financial rule
@@ -196,7 +205,7 @@ that builds it (EX-01 or NB-01).
 
 | Order | PD | Why first |
 |---|---|---|
-| 1 | PD-02, PD-03 | The tax batch (TA-03) cannot merge without them, or without "accept the safe defaults" |
+| done | PD-02, PD-03 | Answered by the owner on 2 Nov 2026 (see PD-02 and PD-03 below); they no longer block the TA-03 merge |
 | 2 | PD-09 | Fix batch 5 (TA-05, D-042) and the M1.4 PR wording depend on it |
 | 3 | PD-08 | The new build's merged-folio rule (KI-148) aligns to it |
 | 4 | PD-20, PD-21 | The October risk-ratio step needs them before mid-November |
@@ -209,8 +218,8 @@ that builds it (EX-01 or NB-01).
 | PD | Short question | Recommendation | Blocks |
 |---|---|---|---|
 | PD-01 | Accept the live tax defaults D-040 (a) to (h)? | Accept as built | TA-03 sign-off |
-| PD-02 | Are the "Listed AIF" funds Category III? (Q17) | Keep the neutral note until the AIF documents confirm | TA-03 merge |
-| PD-03 | Can crypto gains or losses be set off? (Q18) | Keep "no set-off" until the tax adviser answers | TA-03 merge |
+| PD-02 | Are the "Listed AIF" funds Category III? (Q17) | **ANSWERED 2 Nov 2026:** yes, Category III, and keep a safe note | none (the Q17 change is part of TA-03) |
+| PD-03 | Can crypto gains or losses be set off? (Q18) | **ANSWERED 2 Nov 2026:** keep "no set-off" | none |
 | PD-04 | The other CR-0008 questions (Q2 to Q11, Q13 to Q16, Q19, Q20) | Accept the built defaults; send Q2, Q3, Q13 to Q15 to the tax adviser | none |
 | PD-05 | Grandfathering rule for lots bought before 1 Feb 2018 (Q12) | Ask the tax adviser; until then disclose only | TA-07 |
 | PD-06 | A fund holding one equity ETF: assume 90/90 on the live page? | Live: keep the default with a note; new build: analyst choice | consistency |
@@ -280,10 +289,17 @@ blocks.
 - **Impact.** Every figure on the Taxation tab, the tax slides and the AI Analyst's tax signal.
 - **Can it be undone?** Yes. Each default lives in one place and a later batch can change it.
 - **Recommendation.** A, because the defaults are conservative and already reviewed.
-- **Blocks.** The sign-off of TA-03 (the merge itself waits only on PD-02 and PD-03).
+- **Blocks.** The sign-off of TA-03 (the merge itself no longer waits on PD-02 and PD-03, answered on 2 Nov 2026).
 - **Evidence.** [VERIFIED] D-040 and CR-0008 on the continuation branch (0f1c5d3).
 
 #### PD-02. Are the "Listed AIF" funds Category III? (CR-0008 question 17)
+
+**ANSWERED 2 Nov 2026.** The owner wrote: "Yes and still put a safe note". MOD-02 reads this as option A (the funds the performance
+data lists as "Listed AIF", 11 today, are Category III) with a neutral caution kept on them, like "category assumed; check the AIF's
+statement" (the exact wording is for EX-01 to propose, the financial-domain-reviewer to approve and the owner to see). It is a
+behaviour change in TA-03 (T5 item 10: the class name and the note change on the tab and slides), so the merge waits for that change
+to pass the gates. EX-01 records it as D-043 (amends D-040 point (d)). Relayed to EX-01 and ARC-01 on 2 Nov; to NB-01 (M7) through
+its relay list. The text below is the question as asked on 2 Nov.
 
 - **Problem.** The performance data lists 11 funds as "Listed AIF" but does not say their category. Category III is
   taxed inside the fund, so the investor pays nothing extra on exit. Categories I and II "pass through": the
@@ -300,9 +316,13 @@ blocks.
 - **Can it be undone?** Yes, by a small wording patch.
 - **Recommendation.** C now, then confirm from the AIF documents. If you reply "accept the safe defaults for
   questions 17 and 18", TA-03 can merge once it passes its checks.
-- **Blocks.** The TA-03 merge (CR-0008 line 554 puts questions 17 and 18 before the merge).
+- **Blocks.** Answered on 2 Nov 2026; the TA-03 merge waits for the Q17 change (T5 item 10) to pass the gates.
 
 #### PD-03. Can crypto gains and losses be set off? (CR-0008 question 18)
+
+**ANSWERED 2 Nov 2026.** The owner wrote: "keep no set-off". Option A: nothing changes in code; the answer confirms part T4 and is
+recorded in D-043 with PD-02. Whether the new Act allows set-off stays a question for the tax adviser (PD-43, OD-28). The text below
+is the question as asked on 2 Nov.
 
 - **Problem.** Under the old law, a crypto loss could not reduce any gain, and other losses could not reduce a
   crypto gain. The page keeps that rule (part T4): no set-off either way, and a crypto loss is never suggested as a
@@ -315,7 +335,7 @@ blocks.
 - **Impact.** Only clients holding crypto or other virtual digital assets.
 - **Can it be undone?** Yes.
 - **Recommendation.** A until the tax adviser answers.
-- **Blocks.** The TA-03 merge, unless you accept the safe defaults (see PD-02).
+- **Blocks.** Nothing now: answered on 2 Nov 2026.
 
 #### PD-04. The other CR-0008 questions, each with a built default
 
@@ -795,7 +815,7 @@ These are Claude's recommendations. None is a decision until the named approver 
 | Id | Recommendation | Why | Task |
 |---|---|---|---|
 | REC-01 | Preserve NB-01's local-only work first: run the m14 worktree's own scanner read-only (`node scripts/validation/prepush-scan.mjs --base origin/main --head 07a6460`), then `git push -u origin <branch>` for `feat/m1-4-overview` and the three fixer branches, each from its own worktree with `PRD_PRIVACY_DENYLIST` exported; no PR. If the scan blocks, never bypass it: make and verify a `git bundle`, report, and ask the owner for an approved off-machine place for it. | 26 commits exist only on this laptop; a bundle on the same disk is not a backup | TB-08 |
-| REC-02 | Get CI evidence for TA-03 now: `gh workflow run "Dashboard checks" --ref continuation/ex-01-task-ta-03-20261027`, or a draft PR, while PD-02 and PD-03 are open | The branch has never run in CI | TA-03 |
+| REC-02 | Get CI evidence for TA-03 now: `gh workflow run "Dashboard checks" --ref continuation/ex-01-task-ta-03-20261027`, or a draft PR, while PD-02 and PD-03 are open | The branch had never run in CI (done 2 Nov: run 41412086208 on the WIP head) | TA-03 |
 | REC-03 | Open the TA-03 PR from a `fix/` branch created at the final TA-03 commit (no history rewrite), keeping the continuation branch until merge; or accept release-check's warning [INFERRED preference] | release-check warns on `continuation/` | TC-23 |
 | REC-04 | Write D-042 to mirror D-039 point 1 for invested value, market value and gain, with blank and placeholder cells per the answer to PD-09 | The two builds should apply one rule | TA-05 |
 | REC-05 | In the T5 docs, correct D-040 point (c) (the foreign-share marker reads the matched stock entry's ISIN, not the base file's ISIN column, KI-184) and add the cross-reference to capital-gains-upload.md §10 (TR-7, LD-11) | The T5 patch header says "D-040 c corrected"; the cross-reference was agreed with NB-01 | TA-03 |
@@ -818,3 +838,4 @@ These are Claude's recommendations. None is a decision until the named approver 
 |---|---|---|
 | 28 Oct 2026 | MOD-01 | First version, for the MOD-01 to MOD-02 handover |
 | 30 Oct 2026 | MOD-01 (fixer pass) | Index range D-001 to D-042; R-4 defers to README section 5.2 (ARC-01 informed of the merge and the Pages check; MOD-02 shows the evidence for "publish"); R-7 (ARC-01's scratch worktrees) recorded; PD-01 (c) says the base file's ISIN column is not read (KI-184) |
+| 2 Nov 2026 | MOD-02 | Lead rulings R-8 to R-11 (TA-03 PR branch, six ENGINE keys, re-run rule confirmed by ARC-01, D-043 and KI-186); PD-02 and PD-03 marked answered with the owner's words |
