@@ -605,14 +605,20 @@ independent review, 2 Nov 2026), within the decisions above, for the owner to co
   usual-bucket funds, each held once at 8.33% in a 12-fund synthetic book with only the as-on date changing, the target
   weight or trim differs for 15 funds and the action for 2 with long-term lots, and for 4 and 4 with short-term lots; one
   equity savings fund is an Exit of 1.00 Cr on 31 Mar 2026 (tax not assessed) and a Partial of 0.16 Cr on 31 Jul 2026
-  (tax green). The same weight moves ordinary funds when their lots change (ARC-01 counts 9 of 264 cases that "flip",
+  (tax green). Before 1 Apr 2026 part T5 takes away a class that the live page gives an arbitrage fund in every review
+  (main) and that parts T1 to T4 give an arbitrage and an aggressive hybrid fund, so for a review valued earlier the tax
+  signal of those funds goes from assessed to not assessed. A fund that has a class and an IRR history but no reference
+  data is assessed on three of the eight signals (weight, tax, impact), scores 100 of 100 and can be named a Top-Up
+  destination; main does this for an arbitrage fund, part T1 widens it to aggressive hybrid and part T5 to equity savings
+  (KI-212). The same weight moves ordinary funds when their lots change (ARC-01 counts 9 of 264 cases that "flip",
   against 21 of 504 for usual-bucket funds), so this is the design of the signal, not a defect of part T5. An amber
   verdict (mostly short-term lots) lowers the composite, so the AI Analyst trims more when lots are short term, which
   is the costly direction to sell. Until stage S8 a code comment above `aiaSigTax` called tax "never a reason to act";
   it now says what the weight does. Built: the signal uses the class, as it does for every other fund. The alternative,
   "not assessed until the analyst confirms the class", is one line in `aiaSigTax` (the page has no control to confirm a
-  class, so "until confirmed" is more than one line) and takes the arbitrage score away from the live page; it awaits
-  the owner's answer to PD-50 (CR-0008 question 21).
+  class, so "until confirmed" is more than one line) and takes the arbitrage score away from the live page. The owner
+  answered on 2 Nov 2026 (PD-50, CR-0008 question 21): "Keep and disclose." The signal stays as built, this paragraph is
+  the disclosure, and the alternative stays a one-line change.
 - **An AIF's category is read once** (D-043): the fund's own words, then the performance data's category for the fund
   it matched (when the holding's name is the entry's own name once normalised: the page's name matcher is loose, and a
   sibling series is not told its category by it), then "Listed AIF" (Category III, with a note), else Category I or II
@@ -751,10 +757,13 @@ on 2 Nov 2026 through the lead.
    or II, as stated, with no note. The words that count are cat or category followed by III, II, I, three, two, one, 3,
    2 or 1, with spaces, dots, brackets (round, square or curly), slashes, underscores, hashes, commas or dashes between.
    "AIF-II" and "Category No. III" are not read ("AIF-II" because a series number such as "Fund III" would then be taken
-   for a category); such a fund falls to step 4 and its note asks for confirmation. [The owner has not yet confirmed
-   step 1 in plain words; the lead asked on 2 Nov 2026. This line is updated when they answer.]
+   for a category); such a fund falls to step 4 and its note asks for confirmation. The owner confirmed this order in
+   plain words on 2 Nov 2026 (PD-47): "The fund's own statement wins and second order win is my ruling." Read as the
+   moderator read it: the file's own words first; then the category of the matched performance entry; then the Listed AIF
+   ruling (Category III, with the mark); then nothing stated, Category I or II assumed.
 3. **Question 18: keep "no set-off".** Crypto gains and losses stay out of set-off and a crypto loss is not carried
-   forward, as in part T4 (D-040 (g)). No code changes.
+   forward, as in part T4 (D-040 (g)). No figure changes; the two sentences that said "pending" a ruling (the tab's
+   harvest card, the harvest slide) now state the rule (stage S9 of part T5, KI-182).
 **Measured effect (question 17, the standard synthetic sample book).** No tax, LTCG, STCG, estimated tax, saving,
 harvest or total CMV moves. The Listed AIF's CMV and Gain/Loss move out of "not classified" into a "Fund level" amount:
 the not-classified CMV 2.7051 Cr becomes 2.0535 Cr, the not-classified gain 0.8051 Cr becomes 0.6535 Cr, and Fund
@@ -762,10 +771,10 @@ level shows a new 0.6516 Cr (gain 0.1516 Cr). The Left-out lists name the AIFs b
 **Alternatives.** Keep Category I or II for a Listed AIF (the default of part T3; the answer replaces it). Treat every
 Listed AIF as Category III with no note (rejected: the owner asked for a safe note, and the performance data states no
 category). Let the label override a category the fund states itself (not taken: step 1 is the conservative reading and
-keeps a stated Category I or II as pass-through; it awaits the owner's plain-words confirmation).
+keeps a stated Category I or II as pass-through; the owner confirmed on 2 Nov 2026 that the fund's own statement wins).
 **Consequences.** Amends D-040 (d); D-040 (g) and question 18 are unchanged. The tests that asserted the old reading
 move with it: `KI-171-aif-cat-i-ii.js` (the sample book's Listed AIF is Category III, fund level) and
 `KI-180-debt-row-section.js` (every TAX_RULES row is still reached, with an equity Category II case added; the sample
 book's totals as above). A new `CR-0008-T5-item10-listed-aif.js` pins the four steps, the debt and long-short rows and
-every surface. The new build ports the same four steps when it ports AIF treatment (M7). D-042 is reserved for fix
-batch 5.
+every surface; `KI-182-crypto-no-set-off.js` follows the new wording of the crypto sentences. The new build ports the
+same four steps when it ports AIF treatment (M7). D-042 is reserved for fix batch 5.

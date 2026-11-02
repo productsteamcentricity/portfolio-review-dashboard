@@ -32,10 +32,10 @@
   tax patches, two anchors of part T2 revised where the batches meet (CR-0008, "Rebased on fix batch 4"; `index.html` MD5
   `0713C6BE…`). Part T5 (2 Nov 2026: the follow-ups to T1 to T4, the owner's answers to questions 17 and 18, and the
   corrections from an independent review; D-043) is committed on `fix/legacy-batch-3-tax-cr-0008`, the branch that
-  carries the whole batch (`index.html` MD5 `91D6530F…`): the usual bucket of aggressive hybrid, arbitrage and equity
+  carries the whole batch (`index.html` MD5 `391E722F…`): the usual bucket of aggressive hybrid, arbitrage and equity
   savings funds applies only from 1 Apr 2026 (KI-170), a Listed AIF is Category III with a safe note (question 17), crypto
   stays out of set-off (question 18), an IRR date with an explicit zone is the day written (KI-186), the harvest inputs
-  read digit grouping and currency marks, and KI-184 to KI-186 and KI-200 to KI-206 are filed. 22 of the 23 findings
+  read digit grouping and currency marks, and KI-184 to KI-186 and KI-200 to KI-212 are filed. 22 of the 23 findings
   are fixed and KI-177 in part; KI-177's step-up waits for the owner's rulings. The batch merges as one pull request
   after the gate reviews and the browser acceptance (with `family-isolation.js`'s assumption-reset check); the slide
   geometry for a table of 13 or more classes in PowerPoint has not been run.

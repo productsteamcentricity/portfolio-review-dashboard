@@ -7,7 +7,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ### Fixed (fix batch 3: tax rules per the TY2026-27 reckoner, CR-0008)
 - **Tax batch, part T5 (CR-0008, D-040, D-043): the follow-ups to parts T1 to T4, the owner's answers to questions 17
   and 18, and the corrections from two reviews.** `index.html` MD5 `0713C6BEEFCB35D778730AB9BEF3E430` →
-  `91D6530F428A7668F2CE7E43B0E57F7D` (16,898,566 → 16,917,282 bytes; patch `tools/patches/2026-10-27-tax-5-followups.js`).
+  `391E722FFDC585D8D614CA7029FB8EA1` (16,898,566 → 16,917,379 bytes; patch `tools/patches/2026-10-27-tax-5-followups.js`).
   On branch `fix/legacy-batch-3-tax-cr-0008`, which carries the whole batch; the batch merges as one change.
   - Aggressive hybrid, arbitrage and equity savings funds take the reckoner's usual bucket only when the review is valued
     on or after 1 Apr 2026, labelled "usual bucket per the tax reckoner; confirm with the fund house"; before that date
@@ -31,9 +31,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - `ENGINE.taxDefaults` is frozen and `check-invariants` lists all 28 engine names and checks them both ways (KI-185). KI-184 is filed (the base
     file's ISIN column is not read; D-040 point (c) corrected). The independent review (8 reviewers, 51 findings) and
     the delta review of its corrections (6 reviewers) and ARC-01's pre-review of the stages are answered in CR-0008; KI-200 to KI-206 are the first review's
-    open findings.
+    open findings and KI-207 to KI-212 the delta review's and ARC-01's.
+  - The owner answered on 2 Nov 2026: the fund's own statement wins when an AIF's category is read (PD-47, D-043) and the AI
+    Analyst keeps following the class, with the effects disclosed (PD-50, D-040). The two sentences that said crypto is kept out
+    of set-off "pending" a ruling now state the rule (KI-182; no figure moves).
   - 4 new regression files (`CR-0008-T5-followups.js`, `CR-0008-T5-item10-listed-aif.js`,
-    `CR-0008-T5-item11-irr-zone-dates.js`, `KI-185-engine-keys.js`); `KI-170`, `KI-171` and `KI-180` changed. 47 files, 1,582 checks, pass in
+    `CR-0008-T5-item11-irr-zone-dates.js`, `KI-185-engine-keys.js`); `KI-170`, `KI-171`, `KI-180` and `KI-182` changed. 47 files, 1,584 checks, pass in
     IST and UTC; `node --test` 234/234; `smoke-review` 36/36; `test-ai-analyst` 24/24.
 - **Tax batch rebased on fix batch 4 (CR-0008): the branch merged `main` (PR #14 to #16) and its page was rebuilt**
   from main's page (fix batch 4) with the four tax patches in file-name order: `index.html` MD5
