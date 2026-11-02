@@ -11,31 +11,34 @@
       #8 to #10, rows 16 to 18, column P; Hybrid Funds & FoFs D19 to D21) only when the tax
       reference date (taxRefDate, D-040 a) is on or after 1 Apr 2026: aggressive hybrid and
       equity savings take "Hybrid MF (equity-oriented)", arbitrage "Equity Mutual Funds", each
-      marked usualBucket and labelled "usual bucket per the owner's reckoner; confirm with the
+      marked usualBucket and labelled "usual bucket per the tax reckoner; confirm with the
       fund house". Before 1 Apr 2026 they are unclassified, with a reason saying the AMC's
       classification for that year is needed. Part T1 classed aggressive hybrid and arbitrage
-      always and left equity savings unclassified always. A mutual fund named as an arbitrage
-      fund whose category is blank is read by its name too, as the hybrid tests already read the
-      name (part T1 read arbitrage from the category only, so such a fund filed as Debt was
-      Specified). Balanced advantage, dynamic asset
+      always and left equity savings unclassified always. A mutual fund whose name says
+      arbitrage is read as an arbitrage fund whatever its category, as the hybrid tests already
+      read the name (part T1 read arbitrage from the category only, so such a fund filed as Debt
+      was Specified). Balanced advantage, dynamic asset
       allocation, multi asset, life cycle, retirement and children's funds stay unclassified in
       both periods. taxClassify(h, R, refDate) and taxClassOf(h, R, refDate) take the date as a
       third, optional argument; computeTaxation passes its asOn, so every reader of
       model.taxation (the tab, the slides, the AI Analyst tax signal) sees one class per holding.
-      A call without a date applies the TY 2026-27 rules, as before.
+      A call without a date applies the TY 2026-27 rules, the usual bucket included (equity savings
+      funds, never classed before, are now).
    2. The Sec 198 exemption line shows "-Rs 0.00" no more: an amount that rounds to zero shows
       0 without a minus sign (tab and harvest slide); so do the "Loss set off" cells of the
       pool table (a pool's, and the tab's total when no loss is set off).
    3. The unreconciled table's heading on the Taxation tab says why, by reason: merged folios
       with blank units (fix batch 4, KI-140), no purchase still held, fewer or more units than
-      the base file, invested value. Each record carries the reason's kind (unrec). The two
+      the base file (more units with a sale or transfer out that carries no price is its own
+      reason), invested value. Each record carries the reason's kind (unrec). The two
       unit and value reasons lose their dash and say which way the units differ; the
       holding-detail slide no longer says such holdings have "no lot history".
    4. An AIF whose category is stated nowhere (no Category I, II or III in its category, name or
       product, nor in the performance entry it matched, and not called a Listed AIF) is still
-      Category I or II, pass-through (part T3), marked catAssumed: the tab, the slides and the AI
-      Analyst say it is treated as Category I or II because the file does not state the category,
-      and to confirm it against the AIF's statement.
+      Category I or II, pass-through (part T3), marked catAssumed: the tab, the class slide (in full),
+      the harvest slide (in its "Left out" line) and the AI Analyst say it is treated as Category I or II
+      because the file does not state the category, and to confirm it against the AIF's statement.
+      The holding-detail and totals slides carry no such mark.
    5. Wording part T3 left stale: the holding-detail slide no longer says PMS and unlisted AIF
       show a dash in the unit columns, and the tab and the class slide no longer say LTCG +
       STCG add back to every holding's Gain/Loss.
@@ -43,32 +46,61 @@
       grows upward from its third line instead of running into the black band (KI-109).
    6. The harvest slide's "Left out" line gives the count and the CMV, as the tab does.
    7. The harvest assumption inputs are text fields that accept Indian and international digit
-      grouping ("1,25,000", "125,000", "1 25 000"); only a blank or non-numeric entry restores
-      the default. A number field gave an empty value for "1,25,000", which restored the
-      default without a word.
+      grouping ("1,25,000", "125,000", "1 25 000"), a leading rupee sign, Rs, Rs. or INR, a trailing
+      "/-" (and "%" in the slab-rate field) and an exponent; only a blank or non-numeric entry restores
+      the default. A number field reads such entries differently in different browsers (a Chromium
+      browser takes them); an entry of "1,25,000" that restored the default without a word was
+      reported, and the cause is UNKNOWN. A text field reads the same everywhere.
    8. A comment only: the foreign-share marker reads the ISIN of the matched STOCK_RET entry; the base
       file's own ISIN column is not read by parseBaseRows (KI-184, open, not fixed here; D-040 c corrected).
    9. The harvest defaults the engine exports (ENGINE.taxDefaults, part T3) are frozen: only taxAssumeFor reads
       them, and an exported key cannot be taken back later (ARC-01, C3 of its review of the contract).
   10. An AIF called a "Listed AIF" (by the file's category, or by the category of the AIF_PERF entry the
       holding matched; 11 of the 12 funds of AIF_PERF) is Category III, fund level, marked catRuled
-      (CR-0008 question 17, answered 2 Nov 2026; D-043): the tab, the slides and the AI Analyst say it is
-      treated as Category III because it is called a Listed AIF, and to confirm the category against the
-      AIF's statement. What an AIF's own words state wins: Category I, II or III in its category, name or
+      (CR-0008 question 17, answered 2 Nov 2026; D-043): the tab, the class slide, the harvest slide (in its
+      "Left out" line) and the AI Analyst say it is treated as Category III because it is called a Listed
+      AIF, and to confirm the category against the AIF's statement. What an AIF's own words state wins: Category I, II or III in its category, name or
       product is read as stated; when its own words state none, so is the category of the performance
       entry it matched ("AIF (CAT III) - Listed Equity" is Category III). The category is read once, in
       taxClassify, so items 4 and 10 cannot disagree.
   11. A date-time written with an explicit zone in the IRR sheet ("2023-04-01T20:00:00Z", "...+05:30") is read as the day
       it states, the same in every zone; part T2 read the machine-local day of the instant, which is another day in some
-      zones (parsers script, irrParseDate; ARC-01, C2 of its review of the contract; KI-186).
+      zones (parsers script, irrParseDate; ARC-01, C2 of its review of the contract; KI-186). Only ISO-like
+      date-times are read as written; text such as an RFC 2822 string ("Sat, 01 Apr 2023 20:00:00 GMT") still
+      goes through Date and stays the machine-local day of the instant (KI-186).
+
+   Corrections from the independent review of this part (8 reviewers, 3 skeptics on each MEDIUM; the ids are
+   the reviewers' own and are traced in CR-0008 and in the review addendum):
+      R2-F1, R3-F1   one reader for an AIF's category, in taxClassify (items 4 and 10)
+      R2-F2          the usual-bucket note names a scheme held by several clients once
+      R2-F4          the 65% test is said to be an average over the tax year; the unstated-AIF row label says
+                     "Category I, II or III not stated in the file"
+      R1-F4, R3-F2, R8-F6   the header says what the code does (arbitrage by name; which slides carry the AIF
+                     sentence; a call with no date includes the usual bucket)
+      R3-F3          the pass-through note: "Pass-through means that income ..."
+      R3-F6          assumedCmv and ruledCmv give the CMV of the AIFs named apart in the "Left out" lines
+      R4-1, R4-2     the harvest inputs read a leading rupee sign, Rs, Rs. or INR, a trailing "/-" and an exponent
+      R5-F1          a sale or transfer out that carries no price has its own unreconciled reason (noPxSell)
+      R5-F2          the AI Analyst comment says an unreconciled holding gets the general sentence
+      R5-F4, R7-F1, R8-F3   holding-detail footnote: shorter sentences, "1 unreconciled holding is ..."
+      R6-1, R7-F2    the class footnote drops to 7 pt, then 6.5 pt, and always ends at the band's edge (7.18 in)
+      R7-F8          a record with no unreconciled kind still gets a sentence in the tab heading
+      R8-F2          "the tax reckoner" everywhere, never "the owner's reckoner" (the AI Analyst slide is in the
+                     client deck)
+      tests only (no edit here): R6-2 wide table; R7-F3 Crore zero-minus; R7-F4 AI Analyst, unreconciled only;
+                     R7-F6 null-safe pos(); R7-F7 counts read from the data; R7-F8 "and N more"; R8-F5 a parsed
+                     base row carries no isin (KI-184)
+      not changed, with the reason in the review addendum: R1-F1 R1-F2 R1-F5 R2-F3 R3-F5 R4-3 R4-4 R4-5 R5-F3
+                     R5-F5 R5-F6 R6-3 R7-F5 R7-F9 (docs or known issues KI-200 to KI-206); R8-F1 (PD-50)
 
      node tools/patches/2026-10-27-tax-5-followups.js
    ========================================================================== */
 'use strict';
 const { applyPatch } = require('../patch-lib.js');
 
-const USUAL = "usual bucket per the owner's reckoner; confirm with the fund house";
-const USUAL_HTML = 'usual bucket per the owner&rsquo;s reckoner; confirm with the fund house';
+/* the wording is for the client too (the AI Analyst slide is in the client deck): "the tax reckoner", never "the owner's" */
+const USUAL = "usual bucket per the tax reckoner; confirm with the fund house";
+const USUAL_HTML = 'usual bucket per the tax reckoner; confirm with the fund house';
 
 applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, inputs; CR-0008, D-040)', [
 
@@ -98,7 +130,7 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
     label: 'engine: the reason before 1 Apr 2026, and the date the usual bucket applies from (T5)',
     from: '    sifOther:"This SIF strategy is not one the tax reckoner names, so no class is applied."\n  };\n',
     to: '    sifOther:"This SIF strategy is not one the tax reckoner names, so no class is applied.",\n' +
-        '    usualBefore:"An aggressive hybrid, arbitrage or equity savings fund is taxed by what it held over the tax year. The usual bucket per the owner\'s reckoner applies from 1 Apr 2026; holding periods here run to an earlier date, so the AMC\'s tax classification for that year is needed."\n' +
+        '    usualBefore:"An aggressive hybrid, arbitrage or equity savings fund is taxed by what it held over the tax year. The usual bucket per the tax reckoner applies from 1 Apr 2026; holding periods here run to an earlier date, so the AMC\'s tax classification for that year is needed."\n' +
         '  };\n' +
         '  /* T5 (TR-7, LD-11): the reckoner\'s usual bucket for aggressive hybrid, arbitrage and equity savings funds is\n' +
         '     the default from tax year 2026-27 (Master Summary #8 to #10, column P; Hybrid Funds & FoFs D19 to D21) */\n' +
@@ -217,8 +249,9 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
           '          : (amtMode\n' +
           '            ? "Invested value does not reconcile to the base file — the transaction history is incomplete for this holding"\n' +
           '            : "Units do not reconcile to the base file — the transaction history is missing a corporate action (bonus/split) or a purchase");\n',
-    to: '        /* T5: the kind of reason, for the heading of the tab\'s unreconciled table */\n' +
-        '        rec.unrec=amtMode?"value":(fifoU<baseU?"short":"excess");\n' +
+    to: '        /* T5: the kind of reason, for the heading of the tab\'s unreconciled table. When the history gives more units and a sale or\n' +
+        '           transfer out in it carries no price, that sale never reached the unit ledger: the reason says so (review R5-F1) */\n' +
+        '        rec.unrec=amtMode?"value":(fifoU<baseU?"short":(noPxSell[_k]?"noPxSell":"excess"));\n' +
         '        rec.reason=pxGap\n' +
         '          ? ("Invested value does not reconcile to the base file. "+\n' +
         '             (swIn[_k]?"The switch-in":"A purchase")+" for this holding carries no price, so it was matched on invested value rather than units, and that does not reconcile either.")\n' +
@@ -226,7 +259,20 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
         '            ? "Invested value does not reconcile to the base file: the transaction history is incomplete for this holding."\n' +
         '            : (fifoU<baseU\n' +
         '              ? "Units do not reconcile to the base file: the transaction history gives fewer units, so it is missing an event, such as a bonus or split, or a purchase made elsewhere."\n' +
-        '              : "Units do not reconcile to the base file: the transaction history gives more units, so it is missing an event, such as a sale, a transfer out or a consolidation of units."));\n'
+        '              : (noPxSell[_k]\n' +
+        '                ? "Units do not reconcile to the base file: the transaction history gives more units, and a sale or transfer out in it carries no price, so the units it sold could not be counted."\n' +
+        '                : "Units do not reconcile to the base file: the transaction history gives more units, so it is missing an event, such as a sale, a transfer out or a consolidation of units.")));\n'
+  },
+  {
+    label: 'engine: a holding with a sale or transfer out that carries no price is noted (T5, review R5-F1)',
+    from: '    var noPxBuy={}, swIn={};\n',
+    to: '    var noPxBuy={}, swIn={}, noPxSell={};   /* T5 (review R5-F1): holdings with a sale or transfer out that carried no price */\n'
+  },
+  {
+    label: 'engine: a sale or transfer out with no price is recorded when it skips the unit ledger (T5, review R5-F1)',
+    from: '        if(isBuy){ noPxBuy[k]=true; if(/switch[- ]?in/i.test(t.ttype||"")) swIn[k]=true; }\n',
+    to: '        if(isBuy){ noPxBuy[k]=true; if(/switch[- ]?in/i.test(t.ttype||"")) swIn[k]=true; }\n' +
+        '        else noPxSell[k]=true;   /* T5 (review R5-F1): a sale that reached the rupee ledger only */\n'
   },
   {
     label: 'engine: the summariser counts the AIFs whose category is assumed or ruled (T5)',
@@ -241,12 +287,13 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
         '            if(r.catRuled){ ns.ruledN=(ns.ruledN||0)+1; ns.ruledCmv=(ns.ruledCmv||0)+r.cmv; } }   /* T5 */\n'
   },
   {
-    label: 'AI Analyst: a review whose holdings are all unclassified still gives each its reason (T5)',
+    label: 'AI Analyst: a review whose holdings are all unclassified or unreconciled still gets a sentence for each (T5)',
     from: '    if (!T || !T.hasData || !T.positions || !T.positions.length)\n' +
           '      return aiaSig("tax", "Tax", "na", ev,\n' +
           '        "No IRR transaction history is loaded, so the long- and short-term split of this holding is not known.");\n',
     to: '    /* T5: a review whose holdings are all unclassified or unreconciled (valued before 1 Apr 2026, a book of aggressive\n' +
-        '       hybrid, arbitrage and equity savings funds is one) has a history: each holding gets its own reason below */\n' +
+        '       hybrid, arbitrage and equity savings funds is one) has a history: an unclassified holding gets its own reason below,\n' +
+        '       an unreconciled one the general sentence */\n' +
         '    if (!T || !T.hasData || !T.positions || !(T.positions.length || (T.unmapped || []).length || (T.unreconciled || []).length))\n' +
         '      return aiaSig("tax", "Tax", "na", ev,\n' +
         '        "No IRR transaction history is loaded, so the long- and short-term split of this holding is not known.");\n'
@@ -289,7 +336,7 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
     to: '  function taxNsSub(r){ return (r&&r.notSplit===\'pms\')?\'<span class="taxsub">Gain/Loss on capital contributed: not a capital-gains figure</span>\':\'\'; }\n' +
         '  /* T5: a class taken from the reckoner\'s usual bucket (TR-7, LD-11), an AIF whose category the file does not state, or one called a Listed AIF */\n' +
         '  function taxT5Sub(r){ return (r&&r.usualBucket)?\'<span class="taxsub">' + USUAL_HTML + '</span>\'\n' +
-        '    :((r&&r.catAssumed)?\'<span class="taxsub">category not stated in the file: treated as Category I or II</span>\'\n' +
+        '    :((r&&r.catAssumed)?\'<span class="taxsub">Category I, II or III not stated in the file: treated as Category I or II</span>\'\n' +
         '    :((r&&r.catRuled)?\'<span class="taxsub">called a Listed AIF: treated as Category III</span>\':\'\')); }\n' +
         '  /* T5: an amount taken off; one that rounds to zero shows 0, never "-0" */\n' +
         '  function taxNegM(U,v){ var s=U.m(v); return (v>0&&/[1-9]/.test(s))?(\'-\'+s):U.m(0); }\n'
@@ -310,14 +357,16 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
           "        (T.unreconciled.length===1?'is':'are')+' left unclassified.</b> FIFO over the transaction history does not reproduce the unit balance, which means the history is missing an event &mdash; '+\n" +
           "        'a bonus or split, or a purchase made elsewhere. No split is shown rather than one computed on lots known to be incomplete.'+\n",
     to: "      /* T5: one sentence per kind of reason: blank merged units (KI-140), no purchase still held, fewer or more units\n" +
-        "         than the base file, invested value */\n" +
+        "         than the base file (more, with a sale that carries no price, has its own), invested value */\n" +
         "      var _uk={}; T.unreconciled.forEach(function(r){ var k=r.unrec||'other'; _uk[k]=(_uk[k]||0)+1; });\n" +
         "      var _uh=function(n,one,many){ return n+' '+(n===1?one:many); }, _us=[];\n" +
         "      if(_uk.unitsGap) _us.push(_uh(_uk.unitsGap,'holding merges folios of which at least one has no units in the base file, so its units','holdings merge folios of which at least one has no units in the base file, so their units')+' cannot be checked against the transaction history.');\n" +
         "      if(_uk.noLots) _us.push(_uh(_uk.noLots,'holding has','holdings have')+' no purchase in the IRR sheet that is still held, so there are no lots to split.');\n" +
         "      if(_uk.short) _us.push('For '+_uh(_uk.short,'holding','holdings')+' the transaction history gives fewer units than the base file, so it is missing an event: a bonus or split, or a purchase made elsewhere.');\n" +
         "      if(_uk.excess) _us.push('For '+_uh(_uk.excess,'holding','holdings')+' the transaction history gives more units than the base file, so it is missing an event: a sale, a transfer out or a consolidation of units.');\n" +
+        "      if(_uk.noPxSell) _us.push('For '+_uh(_uk.noPxSell,'holding','holdings')+' the transaction history gives more units than the base file, and a sale or transfer out in it carries no price, so the units it sold could not be counted.');\n" +
         "      if(_uk.value) _us.push('For '+_uh(_uk.value,'holding','holdings')+' matched on invested value, the transaction history does not add up to the base file&rsquo;s invested value.');\n" +
+        "      if(_uk.other) _us.push('For '+_uh(_uk.other,'holding','holdings')+' the transaction history does not reconcile to the base file.');   /* a record with no kind is still explained */\n" +
         "      warn+='<div class=\"taxwarn\"><b>'+T.unreconciled.length+' holding'+(T.unreconciled.length===1?'':'s')+' could not be reconciled to the base file and '+\n" +
         "        (T.unreconciled.length===1?'is':'are')+' left unclassified.</b> '+_us.join(' ')+(_us.length?' ':'')+\n" +
         "        'No split is shown rather than one computed on lots that cannot be checked; the reason for each holding is in the table.'+\n"
@@ -328,10 +377,11 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
     to: "      'The status is tested again every year, so confirm it with the AMC&rsquo;s year-end tax classification.</div>'):'';\n" +
         "    /* T5 (TR-7, LD-11; reckoner Master Summary #8 to #10, Hybrid Funds & FoFs D19 to D21): aggressive hybrid,\n" +
         "       arbitrage and equity savings funds classed by the usual bucket, from 1 Apr 2026 */\n" +
-        "    var _ubH=T.positions.filter(function(r){ return r.usualBucket&&!r.splitPart; });\n" +
+        "    var _ubH=T.positions.filter(function(r){ return r.usualBucket&&!r.splitPart; }), _ubN=[];\n" +
+        "    _ubH.forEach(function(r){ if(_ubN.indexOf(r.name)<0) _ubN.push(r.name); });   /* a scheme held by several clients is named once */\n" +
         "    var usualNote=_ubH.length?('<div class=\"taxnote\">'+_ubH.length+' holding'+(_ubH.length===1?' is an aggressive hybrid, arbitrage or equity savings fund':'s are aggressive hybrid, arbitrage or equity savings funds')+' ('+\n" +
-        "      taxEsc(_ubH.slice(0,5).map(function(r){ return r.name; }).join('; '))+(_ubH.length>5?' and '+(_ubH.length-5)+' more':'')+'), classed as equity-oriented: " + USUAL_HTML + ". '+\n" +
-        "      'Such a fund is equity-oriented only while 65% or more of it is in listed Indian equity over the tax year, hedged arbitrage positions included, so the AMC&rsquo;s year-end tax classification is the check.</div>'):'';\n"
+        "      taxEsc(_ubN.slice(0,5).join('; '))+(_ubN.length>5?' and '+(_ubN.length-5)+' more':'')+'), classed as equity-oriented: " + USUAL_HTML + ". '+\n" +
+        "      'Such a fund is equity-oriented only while 65% or more of it is in listed Indian equity on average over the tax year, hedged arbitrage positions included, so the AMC&rsquo;s year-end tax classification is the check.</div>'):'';\n"
   },
   {
     label: 'Taxation tab: the usual-bucket note is rendered with the other class notes (T5)',
@@ -345,9 +395,9 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
     to: "    /* T5 (CR-0008 question 17): an AIF whose category the file does not state is treated as Category I or II, never asserted */\n" +
         "    var _ptN=_nsT.passThrough.n, _ptA=_nsT.passThrough.assumedN||0;\n" +
         "    if(_ptN) _nsp.push((_ptA\n" +
-        "        ? (_pl(_ptN,'AIF is','AIFs are')+' treated as Category I or II (pass-through)'+(_ptA===_ptN?(' because the file does not state '+(_ptN===1?'its':'their')+' category'):(', '+_ptA+' of them because the file does not state the category')))\n" +
-        "        : (_pl(_ptN,'Category I or II AIF is','Category I or II AIFs are')+' pass-through'))+\n" +
-        "      ': income keeps its character and is taxed in the investor&rsquo;s hands, with the holding period counted at the AIF&rsquo;s level for each underlying asset, as its annual statement (Form 64C) reports (Tax Reckoner TY 2026-27, #24). '+\n" +
+        "        ? (_pl(_ptN,'AIF is','AIFs are')+' treated as Category I or II (pass-through)'+(_ptA===_ptN?(' because the file does not state '+(_ptN===1?'its':'their')+' category'):(', '+_ptA+' of them because the file does not state the category'))+'. Pass-through means that income')\n" +
+        "        : (_pl(_ptN,'Category I or II AIF is','Category I or II AIFs are')+' pass-through: income'))+\n" +
+        "      ' keeps its character and is taxed in the investor&rsquo;s hands, with the holding period counted at the AIF&rsquo;s level for each underlying asset, as its annual statement (Form 64C) reports (Tax Reckoner TY 2026-27, #24). '+\n" +
         "      'That statement is not loaded, so the Gain/Loss ('+gm(_nsT.passThrough.gl)+') is not split, is counted as not classified and is left out of tax harvesting.'+\n" +
         "      (_ptA?' Confirm the category against the AIF&rsquo;s statement: a Category III AIF is taxed inside the fund instead.':''));\n"
   },
@@ -406,10 +456,13 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
           "        var A=Object.prototype.hasOwnProperty.call(taxAssume.clients,c)?taxAssume.clients[c]:(taxAssume.clients[c]={});\n" +
           "        if(v===''||!isFinite(Number(v))) delete A[k]; else A[k]=Number(v);\n",
     to: "        /* T5: Indian or international digit grouping (\"1,25,000\", \"125,000\", \"1 25 000\") is read: commas and spaces are\n" +
-        "           dropped. Only a blank or non-numeric entry restores the default. */\n" +
-        "        var v=String(inp.value==null?'':inp.value).replace(/[,\\s]/g,'');\n" +
+        "           dropped, and so are a leading rupee sign, Rs, Rs. or INR and a trailing \"/-\" (an amount pasted from a sheet or a statement;\n" +
+        "           the number field this replaced read those in a Chromium browser), and a trailing \"%\" in the slab-rate field. An exponent\n" +
+        "           (\"1.25e5\") is read too. Only a blank or non-numeric entry restores the default. */\n" +
+        "        var v=String(inp.value==null?'':inp.value).replace(/[,\\s]/g,'').replace(/^(?:\\u20B9|rs\\.?|inr)/i,'').replace(/\\/-$/,'');\n" +
+        "        if(k==='slabPct') v=v.replace(/%$/,'');\n" +
         "        var A=Object.prototype.hasOwnProperty.call(taxAssume.clients,c)?taxAssume.clients[c]:(taxAssume.clients[c]={});\n" +
-        "        if(!/^[+-]?(\\d+\\.?\\d*|\\.\\d+)$/.test(v)) delete A[k]; else A[k]=Number(v);\n"
+        "        if(!/^[+-]?(\\d+\\.?\\d*|\\.\\d+)(e[+-]?\\d+)?$/i.test(v)) delete A[k]; else A[k]=Number(v);\n"
   },
 
   /* ======================= exporters (08): the tax slides ======================= */
@@ -435,13 +488,18 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
   {
     label: 'class slide: a footnote of three lines or more grows upward, above the black band (T5, KI-109)',
     from: "      foot(s,'*Holding periods measured to '+asOn+taxDateTag+' from each lot\\u2019s own purchase date, FIFO over '+T.txnCount+\n",
-    to: "      /* T5 (KI-109): the two sentences part T5 adds can take the class footnote past two lines; from a third line on it\n" +
-        "         grows upward from the band's edge instead of running into it, but never over the table above (its rows are 0.30 in,\n" +
-        "         0.40 when a cell wraps); with no room left it starts below the table, as before. A line holds about 260 characters. */\n" +
+    to: "      /* T5 (KI-109): the sentences part T5 adds can take the class footnote past two lines; from a third line on it grows upward\n" +
+        "         from the band's edge (7.18 in) instead of running into it. The table above it (rows of 0.30 in, 0.40 when a cell wraps)\n" +
+        "         sets the room; when 8 pt does not fit in it, as for 13 or more classes, the footnote drops to 7 pt and, if it must, to\n" +
+        "         6.5 pt, and it always ends at the band's edge, never on the band (review R6-1, R7-F2). At 8 pt a line holds about 260\n" +
+        "         characters and is 0.14 in high; at 7 pt about 300 and 0.125 in; at 6.5 pt about 320 and 0.115 in. */\n" +
         "      var _tb=1.94+0.30+T.byClass.slice(0,14).reduce(function(a,g){ return a+((lta(g.rule).length>24||String(g.cls).length>44)?0.40:0.30); },0);\n" +
-        "      var _footFit=function(sl,txt){ var n=Math.ceil(String(txt).length/260); if(n<=2){ foot(sl,txt); return; }\n" +
-        "        var h=n*0.14, y=Math.max(7.18-h,_tb+0.04);\n" +
-        "        sl.addText(txt,{x:0.18,y:y,w:W-0.4,h:h,fontFace:F,fontSize:8,italic:true,color:\"6B6B6B\",align:\"left\",valign:(y>7.18-h+1e-9)?\"top\":\"bottom\"}); };\n" +
+        "      var _footFit=function(sl,txt){ var len=String(txt).length, n=Math.ceil(len/260); if(n<=2){ foot(sl,txt); return; }\n" +
+        "        var room=7.18-(_tb+0.04), fs=8, lh=0.14;\n" +
+        "        if(n*lh>room){ fs=7; lh=0.125; n=Math.ceil(len/300); }\n" +
+        "        if(n*lh>room){ fs=6.5; lh=0.115; n=Math.ceil(len/320); }\n" +
+        "        var h=n*lh;\n" +
+        "        sl.addText(txt,{x:0.18,y:7.18-h,w:W-0.4,h:h,fontFace:F,fontSize:fs,italic:true,color:\"6B6B6B\",align:\"left\",valign:\"bottom\"}); };\n" +
         "      _footFit(s,'*Holding periods measured to '+asOn+taxDateTag+' from each lot\\u2019s own purchase date, FIFO over '+T.txnCount+\n"
   },
   {
@@ -452,12 +510,13 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
   {
     label: 'holding-detail slide: what PMS and AIF rows show, truthfully and without a dash (T5)',
     from: "            'Holdings priced in rupees rather than units (PMS, unlisted AIF) show \\u2014 in the unit columns. '+\n",
-    to: "            'Holdings matched on invested value show no units; PMS and AIF rows read Not split (Fund level for a Cat III AIF). '+\n"
+    to: "            /* kept to the length of the sentence it replaces: the footnote holds two lines (about 520 characters, KI-109) */\n" +
+        "            'Holdings matched on invested value show no units; PMS and AIF rows read Not split or Fund level. '+\n"
   },
   {
     label: 'holding-detail slide: an unreconciled holding is not said to have no lot history (T5)',
     from: "            (T.unreconciled.length?(' '+T.unreconciled.length+' holding(s) with no lot history are unclassified and are not listed here.'):'')+\n",
-    to: "            (T.unreconciled.length?(' '+T.unreconciled.length+' holding(s) not reconciled to the base file are unclassified and are not listed here.'):'')+\n"
+    to: "            (T.unreconciled.length?(' '+T.unreconciled.length+(T.unreconciled.length===1?' unreconciled holding is unclassified and not listed here.':' unreconciled holdings are unclassified and not listed here.')):'')+\n"
   },
   {
     label: 'harvest slide: a helper for an amount taken off (T5)',

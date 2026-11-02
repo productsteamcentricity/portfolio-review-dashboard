@@ -23,7 +23,7 @@
    aggressive hybrid, arbitrage and equity savings funds take the reckoner's usual bucket,
    equity-oriented (Master Summary rows 16 to 18, column P; Hybrid Funds & FoFs D19 to
    D21), only when the tax reference date (D-040 a) is on or after 1 Apr 2026, marked
-   "usual bucket per the owner's reckoner; confirm with the fund house". Before 1 Apr
+   "usual bucket per the tax reckoner; confirm with the fund house". Before 1 Apr
    2026 they are unclassified, the reason saying the AMC's classification for that year
    is needed. A direct call without a date applies the TY 2026-27 rules. An arbitrage
    fund with a blank category is read by its name. The other hybrids, retirement and
@@ -39,10 +39,10 @@ const { ok, done } = T.checker();
 const { E, REF } = T.host();
 const EQ = 'Hybrid MF (equity-oriented)', GEN = 'Hybrid MF (general rule)', SPEC = 'Hybrid MF (Specified, Sec. 76)', EQMF = 'Equity Mutual Funds';
 const MAR31 = T.D('2026-03-31'), APR1 = T.D('2026-04-01');
-const USUAL = "usual bucket per the owner's reckoner; confirm with the fund house";
+const USUAL = "usual bucket per the tax reckoner; confirm with the fund house";
 const tcx = (name, category, asset, date) => E.taxClassify({ asset: asset || 'Hybrid', product: 'Mutual Funds', category, name }, REF, date);
 const tc = (name, category, asset, date) => tcx(name, category, asset, date).cls;
-const BEFORE = r => r.cls === null && !r.usual && /usual bucket per the owner's reckoner applies from 1 Apr 2026/.test(r.why) && /AMC's tax classification for that year is needed/.test(r.why);
+const BEFORE = r => r.cls === null && !r.usual && /usual bucket per the tax reckoner applies from 1 Apr 2026/.test(r.why) && /AMC's tax classification for that year is needed/.test(r.why);
 
 console.log('--- the rows ---');
 const row = i => REF.TAX_RULES.find(r => r.inst === i);
@@ -137,7 +137,7 @@ const usualBook = () => new T.Book()
   .add({ name: 'X Balanced Advantage Fund-Reg(G)', product: 'Mutual Funds', asset: 'Hybrid', category: 'Balanced Advantage', nav: 110, lots: [['2025-06-01', 1000, 100]] });
 const ub = usualBook();
 const on1 = ub.tax('2026-04-01', null, ub.exemptionUsed()), on1x = ub.tax('2026-04-01'), on31 = ub.tax('2026-03-31', null, ub.exemptionUsed());
-const pos = (X, n) => X.positions.find(p => p.name === n);
+const pos = (X, n) => X.positions.find(p => p.name === n) || {};   /* null-safe: a page that leaves the fund unclassified fails the check, it does not abort the file */
 ok(pos(on1, 'X Aggressive Hybrid Fund-Reg(G)').cls === EQ && T.near(T.RS(pos(on1, 'X Aggressive Hybrid Fund-Reg(G)').ltGain), 10000) &&
    pos(on1, 'X Arbitrage Fund-Reg(G)').cls === EQMF && T.near(T.RS(pos(on1, 'X Arbitrage Fund-Reg(G)').stGain), 10000) &&
    pos(on1, 'X Equity Savings Fund-Reg(G)').cls === EQ && T.near(T.RS(pos(on1, 'X Equity Savings Fund-Reg(G)').stGain), 10000) &&
@@ -176,6 +176,39 @@ ok(v1.taxation.asOnSource === 'base' && ymd(v1.taxation.asOn) === '2026-04-01' &
     const sA = sig('X Aggressive Hybrid Fund-Reg(G)'), sB = sig('X Arbitrage Fund-Reg(G)');
     ok(sA.evidence.cls === EQ && sA.evidence.usualBucket === true && sA.text.indexOf('its tax class is the ' + USUAL) >= 0 && sB.evidence.cls === EQMF,
       'AI Analyst, 1 Apr 2026: the same classes as the tab, labelled usual bucket (got: ' + sA.text + ')');
+    /* the AI Analyst slide is in the client deck: no sentence about the usual bucket says "owner" (tax batch T5 review, R8-F2) */
+    ok(!/owner/i.test(tx1) && !/owner/i.test(sl1) && ['X Aggressive Hybrid Fund-Reg(G)', 'X Arbitrage Fund-Reg(G)', 'X Equity Savings Fund-Reg(G)'].every(n => !/owner/i.test(sig(n).text)),
+      'no sentence of the tab, the slides or the AI Analyst says "owner" (the AI Analyst slide is in the client deck)');
+    ok(tx1.indexOf('equity-oriented only while 65% or more of it is in listed Indian equity on average over the tax year, hedged arbitrage positions included') >= 0,
+      'Taxation tab: the 65% test is said to be an average over the tax year (the reckoner\'s annual average of the monthly averages)');
+    /* a scheme held by two clients is named once in the note (tax batch T5 review, R2-F2) */
+    const two = usualBook(); two.rows.push(two.rows[0].slice()); two.rows[two.rows.length - 1][0] = 'Client B'; two.tx.push(Object.assign({}, two.tx[0], { client: 'Client B' }));
+    const txTwo = R(T.text(T.renderTaxTab(two.review('2026-04-01', { asOnDate: '1 Apr 2026' }))));
+    ok(txTwo.indexOf('4 holdings are aggressive hybrid, arbitrage or equity savings funds (X Aggressive Hybrid Fund-Reg(G); X Arbitrage Fund-Reg(G); X Equity Savings Fund-Reg(G)), classed as equity-oriented') >= 0,
+      'Taxation tab, the aggressive hybrid fund held by two clients: 4 holdings, the three schemes named once each');
+    /* the same two-client book, scoped to Client B on the tab and on the slides (tax batch T5 review, R2-F6 and the critic): the note and the sentence follow the client */
+    const modelTwo = two.review('2026-04-01', { asOnDate: '1 Apr 2026' });
+    const txB = R(T.text(T.renderTaxTab(modelTwo, 'Client B')));
+    global.window.__taxScope = 'Client B';
+    const slB = await T.taxSlidesText(modelTwo);
+    delete global.window.__taxScope;
+    ok(txB.indexOf('1 holding is an aggressive hybrid, arbitrage or equity savings fund (X Aggressive Hybrid Fund-Reg(G)), classed as equity-oriented') >= 0 && txB.indexOf('X Arbitrage Fund-Reg(G)') < 0 &&
+       /Aggressive hybrid, arbitrage, equity savings: usual bucket per the tax reckoner; confirm with the fund house\./.test(slB) && slB.indexOf('X Arbitrage Fund-Reg(G)') < 0,
+      'Client B alone: the tab note names its one holding and the slides carry the sentence, without the other client\'s funds');
+    /* the exported workbook (its AI Analyst sheet) says "the tax reckoner" too, and no cell says "owner" (the critic of the T5 review) */
+    const bkW = usualBook(), mW = bkW.review('2026-04-01', { asOnDate: '1 Apr 2026' }), HW = T.host();
+    global.window.__AIA_DATA = HW.E.aiaCompute(mW, bkW.ref('2026-04-01'), {});
+    const wbW = HW.E.buildXLSX(mW, HW.XLSX), cellsW = [];
+    wbW.SheetNames.forEach(n => { const ws = wbW.Sheets[n]; Object.keys(ws).forEach(a => { if (a[0] !== '!' && ws[a] && typeof ws[a].v === 'string') cellsW.push(ws[a].v); }); });
+    delete global.window.__AIA_DATA;
+    ok(wbW.SheetNames.indexOf('AI Analyst') >= 0 && cellsW.some(v => v.indexOf(USUAL) >= 0) && !cellsW.some(v => /owner/i.test(v)),
+      'the exported workbook: its AI Analyst sheet carries the usual-bucket sentence with "the tax reckoner", and no cell says "owner"');
+    /* six usual-bucket funds: five are named, then "and 1 more" (tax batch T5 review, R7-F8) */
+    const six = usualBook();
+    ['Y Aggressive Hybrid Fund-Reg(G)', 'Y Arbitrage Fund-Reg(G)', 'Y Equity Savings Fund-Reg(G)'].forEach((n, i) => six.add({ name: n, product: 'Mutual Funds', asset: i === 1 ? 'Debt' : 'Hybrid', category: ['Aggressive Hybrid Fund', 'Arbitrage Fund', 'Equity Savings'][i], nav: 110, lots: [['2025-10-01', 1000, 100]] }));
+    const txSix = R(T.text(T.renderTaxTab(six.review('2026-04-01', { asOnDate: '1 Apr 2026' }))));
+    ok(txSix.indexOf('6 holdings are aggressive hybrid, arbitrage or equity savings funds (X Aggressive Hybrid Fund-Reg(G); X Arbitrage Fund-Reg(G); X Equity Savings Fund-Reg(G); Y Aggressive Hybrid Fund-Reg(G); Y Arbitrage Fund-Reg(G) and 1 more), classed as equity-oriented') >= 0,
+      'Taxation tab, six usual-bucket funds: five are named, then "and 1 more"');
     ['X Aggressive Hybrid Fund-Reg(G)', 'X Arbitrage Fund-Reg(G)', 'X Equity Savings Fund-Reg(G)'].forEach(n => {
       const p = r1.taxation.positions.find(x => x.name === n), s = sig(n);
       ok(p && s.evidence.cls === p.cls && sl1.indexOf(p.cls) >= 0 && tx1.indexOf(p.cls) >= 0, n + ': one class in the review (' + (p && p.cls) + ') on the tab, the slides and the AI Analyst');
