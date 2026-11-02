@@ -169,9 +169,10 @@ checks run, with the owner's work in them, so no check starts, quits, stops or r
    hand.
 3. **Read only, without a window.** PowerPoint opens the deck with `Presentations.Open(path, -1, 0, 0)` (read-only,
    not untitled, no window). Excel opens the workbook with `Workbooks.Open(path, 0, True)`; a shared Excel has no true
-   "no window", so the script remembers the owner's active workbook and window, reads its own frozen panes, hides only
-   its own workbook's window, and after closing its file re-activates the owner's workbook and window only when they
-   still exist. It creates and closes nothing else.
+   "no window", so the script remembers the owner's active workbook and window, hides its own workbook's window right
+   after the open (frozen panes need a shown window, so they are checked in the file by the writer's tests, not in
+   Excel), and after closing its file re-activates the owner's workbook and window only when they still exist. It
+   creates and closes nothing else.
 4. **No application option changes.** Alerts, visibility, macro security, calculation mode, screen updating and events
    stay as the owner set them. Only the script's own workbook is recalculated, sheet by sheet.
 5. **Close only your file.** Each script closes only the file it opened (Excel without saving; the deck marked saved),

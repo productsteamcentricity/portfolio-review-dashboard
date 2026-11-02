@@ -12,10 +12,11 @@ this PC with the owner's work in it, so the script:
      synthetic file for the owner to open by hand. It never starts Excel and never creates a second instance.
   2. opens only its own synthetic file, read-only (UpdateLinks 0, ReadOnly true, not added to the recent list).
      Excel has no true "no window" in a shared instance: the file opens in a window of the owner's Excel. Before the
-     open the script remembers the owner's active workbook and window. It reads the frozen panes of its own sheets
-     (which needs its window shown), then hides only its own workbook's window (Windows.Item(1) of its workbook, a
-     property of that file). After closing its file it re-activates the owner's workbook and window, only when they
-     still exist; it never creates, closes or changes anything else.
+     open the script remembers the owner's active workbook and window. Right after the open it hides only its own
+     workbook's window (Windows.Item(1) of its workbook, a property of that file), so frozen panes, which need a shown
+     window, are not checked in Excel (the writer's tests check them in the file). After closing its file it
+     re-activates the owner's workbook and window, only when they still exist; it never creates, closes or changes
+     anything else.
   3. changes no application option: no alert, visibility, macro security, calculation mode, screen updating or event
      setting is read for change or written. It recalculates only its own workbook, sheet by sheet (Worksheet.Calculate),
      never the application, which would recalculate the owner's books.
@@ -29,7 +30,7 @@ this PC with the owner's work in it, so the script:
 
 Checks: detects a repair; recalculates its own sheets; compares every expected formula cell with Excel's value at 1e-9
 relative; compares the text Excel shows (Range.Text) with the screen's text for every figure of the _manifest and every
-sample text cell; checks frozen panes, each filter's range as Excel holds it after the open
+sample text cell; checks each filter's range as Excel holds it after the open
 (AutoFilter.Range.Address(False, False)) against the file's, the hidden sheet, names, fonts, number formats and the red
 of a negative cell; edits one input in memory and compares the recalculated dependents.
 The report is JSON (synthetic data only). Exit code 0 when every check passed, 1 when one failed, 2 when not run,
@@ -177,23 +178,12 @@ function Invoke-WorkbookChecks($xl) {
     Add-Check 'opens without repair' (-not $result.repaired) ($evidence -join '; ')
     if ($wb -eq $null) { throw 'the workbook did not open' }
 
-    # Frozen panes on every visible sheet: a property of the workbook's own window, read while it is still shown
-    # (a sheet of a hidden window cannot be activated). Then only that window is hidden.
-    Test-Deadline 'frozen panes'
-    $freezeOut = New-Object System.Collections.ArrayList
-    $freezeOk = $true
+    # Only this workbook's own window is hidden, at once, so nothing of it stays on the owner's screen. Frozen panes
+    # are a property of a shown window (a sheet of a hidden window cannot be activated), so they are not checked in
+    # Excel; the writer's tests check them in the file (tests/exports/xlsx/writer.test.ts).
     $win = $wb.Windows.Item(1)
-    foreach ($fz in $exp.freeze) {
-      $ws = $wb.Worksheets.Item([string]$fz.sheet)
-      if ($ws.Visible -ne -1) { continue }
-      [void]$ws.Activate()
-      $ok = ($win.FreezePanes -eq $true) -and ($win.SplitRow -eq [int]$fz.rows) -and ($win.SplitColumn -eq [int]$fz.cols)
-      if (-not $ok) { $freezeOk = $false }
-      [void]$freezeOut.Add("$($fz.sheet): FreezePanes $($win.FreezePanes), SplitRow $($win.SplitRow), SplitColumn $($win.SplitColumn)")
-    }
-    [void]$wb.Worksheets.Item(1).Activate()
     $win.Visible = $false
-    Add-Check 'frozen panes on every visible sheet' $freezeOk @($freezeOut)
+    $result.notCheckedInExcel = @('frozen panes: they need the window shown; checked in the file by tests/exports/xlsx/writer.test.ts')
 
     # Recalculation of this workbook only.
     Test-Deadline 'recalculation'

@@ -7,7 +7,8 @@
 //   node scripts/office/run-acceptance.ts --check-file <path.xlsx>            evaluator-only check, no Office
 //
 // For each workbook it writes the file, expected.json (every formula cell's value from tests/helpers/formula-eval.ts,
-// the edit case, the frozen panes, each sheet's autoFilter range as the file declares it (Excel's own range must
+// the edit case, the frozen panes (written for the record; Excel does not check them, since its window stays hidden),
+// each sheet's autoFilter range as the file declares it (Excel's own range must
 // equal it: N7, a filter Excel grows over the share row fails), the sample formats, and the screen's text of every
 // figure the _manifest places, which Excel's Range.Text must equal: D-039, display rounding agrees with Excel), then
 // runs accept-xlsx.ps1 in Windows PowerShell 5.1 and collects its report. Decks go through accept-pptx.ps1 with their
