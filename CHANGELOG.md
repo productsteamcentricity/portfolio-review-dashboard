@@ -19,7 +19,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     (question 17, D-043); an AIF whose category the file does not state stays Category I or II with a note; a fund's own
     stated category wins; the category the performance data gives is a statement about the fund only when the names
     are the same (the name matcher is loose); the category is read once, in `taxClassify`. Question 18: crypto stays
-    out of set-off, no code.
+    out of set-off, with no change to the rule or to any figure (two sentences were reworded, below).
     On the sample book no tax, LTCG, STCG, estimated tax, saving, harvest or total CMV moves; the not-classified CMV and
     gain move into a Fund level amount (2.7051 to 2.0535 Cr, new 0.6516 Cr).
   - An IRR date written with an explicit zone ("2023-04-01T20:00:00Z") is read as the day written in every time zone
@@ -36,8 +36,17 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     Analyst keeps following the class, with the effects disclosed (PD-50, D-040). The two sentences that said crypto is kept out
     of set-off "pending" a ruling now state the rule (KI-182; no figure moves).
   - 4 new regression files (`CR-0008-T5-followups.js`, `CR-0008-T5-item10-listed-aif.js`,
-    `CR-0008-T5-item11-irr-zone-dates.js`, `KI-185-engine-keys.js`); `KI-170`, `KI-171`, `KI-180` and `KI-182` changed. 47 files, 1,584 checks, pass in
-    IST and UTC; `node --test` 234/234; `smoke-review` 36/36; `test-ai-analyst` 24/24.
+    `CR-0008-T5-item11-irr-zone-dates.js`, `KI-185-engine-keys.js`); `KI-166` and `KI-169` (one assertion each), `KI-170`, `KI-171`, `KI-180` and
+    `KI-182` changed. 47 files, 1,619 checks, pass in IST and UTC; `node --test` 234/234; `smoke-review` 36/36;
+    `test-ai-analyst` 24/24. The final head's results go into the pull request.
+  - The five-reviewer review of the committed head (two financial-domain reviewers, a security and release reviewer, a
+    documentation auditor and a test-quality auditor; 62 findings, 2 Nov 2026) is answered in CR-0008, "The gate reviews
+    of the committed head". No code changed: `index.html` stays `391E722FFDC585D8D614CA7029FB8EA1`. The records were
+    corrected (D-040, D-043, KNOWN_ISSUES, TESTING, PROJECT_STATE, legacy ARCHITECTURE, and `CLAUDE.md`, whose
+    `smoke-review` count is now 36); 35 checks were added to `CR-0008-T5-followups.js` (130 in all) and
+    `CR-0008-T5-item10-listed-aif.js` (90), `KI-182-crypto-no-set-off.js` no longer pins the stale data text and
+    `KI-185-engine-keys.js` cleans up after itself and plants every kind of extra export; there is one new question for
+    the owner, CR-0008 question 24 (a fund that the loose name matcher only links to a Listed AIF entry).
 - **Tax batch rebased on fix batch 4 (CR-0008): the branch merged `main` (PR #14 to #16) and its page was rebuilt**
   from main's page (fix batch 4) with the four tax patches in file-name order: `index.html` MD5
   `12B5E5727FCA01EF2EA162C59913F01D` → `0713C6BEEFCB35D778730AB9BEF3E430`. Parts T1, T3 and T4 apply unchanged. Part T2

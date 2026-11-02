@@ -13,9 +13,10 @@
   harvest, AIF and PMS treatment, the wording), T4 (crypto kept out of set-off) and T5 (the follow-ups) are committed on
   `fix/legacy-batch-3-tax-cr-0008`. 22 of the 23 findings are fixed and KI-177 in part; KI-177's step-up (TX-18 step 2)
   waits for the owner's rulings. The owner answered questions 17 and 18 on 2 Nov 2026 (D-043; built in part T5) and,
-  the same day, questions 21 and 22 ("Keep and disclose"; "The fund's own statement wins", PD-50 and PD-47). The
-  batch waits for the pull request's checks, the gate reviews and the browser acceptance. Under D-028 these are
-  calculation and data fixes for the live page.
+  the same day, questions 21 and 22 ("Keep and disclose"; "The fund's own statement wins", PD-50 and PD-47). Question
+  24, on a fund that the loose name matcher only links to a Listed AIF, is new and open (the gate review of the
+  committed head, below). The batch waits for the pull request's checks, the gate reviews and the browser acceptance.
+  Under D-028 these are calculation and data fixes for the live page.
 
 ## Request
 Make the Taxation tab, the tax slides and the AI Analyst tax signal follow the reckoner. The review found 23
@@ -519,9 +520,9 @@ applied after the T4 patch; it changes the engine, the exporters, the UI and the
      date (D-040 a) is on or after 1 Apr 2026, each labelled "usual bucket per the tax reckoner; confirm with the fund
      house" on the tab, the class slide and the AI Analyst. Before that date they are unclassified, with a reason that asks
      for the AMC's classification for that year. A mutual fund whose name says arbitrage is read as an arbitrage fund
-     when no earlier test claims it (a fund-of-funds name, a global category, a gold asset, a non-fund product, or a
-     balanced, aggressive or conservative hybrid or equity savings category does), so a fund with a blank category, or
-     filed as Debt or Liquid, is one. `taxClassify(h, R, refDate)` and `taxClassOf(h, R, refDate)` take the date as a
+     when no earlier test claims it (for example a fund-of-funds name, a global category, a gold asset, a non-fund
+     product, or a balanced, aggressive or conservative hybrid or equity savings category does), so a fund with a blank
+     category, or filed as Debt or Liquid, is one. `taxClassify(h, R, refDate)` and `taxClassOf(h, R, refDate)` take the date as a
      third, optional argument; `computeTaxation` passes its own, so every reader of `model.taxation` sees one class per
      holding.
   2. **No "-Rs 0.00".** An amount that rounds to zero shows 0 without a minus sign (the Sec 198 exemption line, the pool
@@ -606,27 +607,33 @@ handover names is accounted for here.
   "Apply plan to Portfolio Rebalancing", the Rebalancing tab and its exports (measured on a synthetic stress book: one
   fund's release 0.37 to 0.54 Cr, its target weight 6 to 3; ARC-01's scan of 98 usual-bucket funds with only the as-on
   date changing: target weight or trim differs for 15 funds and the action for 2 with long-term lots, 4 and 4 with
-  short-term lots; the figures are in D-040). An amber verdict (mostly short-term lots) lowers the composite, so the AI
-  Analyst trims more when lots are short term, the costly direction to sell. The same weight moves ordinary funds when
+  short-term lots; the figures are in D-040, with the financial-domain reviewer's own scan at the gate review). An amber
+  verdict (mostly short-term lots) scores 50 of 100: it lowers a composite that is above 50 without it and raises one
+  below 50, and it always scores below a green verdict, so the AI Analyst trims more when lots are short term than when
+  they are long term, the costly direction to sell. The same weight moves ordinary funds when
   their lots change: it is the design of the signal, not a defect of part T5. Built: the signal uses the class, as it
   does for every other fund. The alternative, "not assessed until the analyst confirms the class", is one line in
   `aiaSigTax` (not one line if "until confirmed" is meant: the page has no control to confirm a class) and takes the
   arbitrage score away from the live page. **The owner answered on 2 Nov 2026 (PD-50, question 21): "Keep and
   disclose."** The signal stays as built and this text, D-040 and KI-170 are the disclosure. Also disclosed (ARC-01):
   before 1 Apr 2026 part T5 takes away a class that `main` gives an arbitrage fund, and parts T1 to T4 an arbitrage and
-  an aggressive hybrid fund, so those funds go from assessed to not assessed in a review valued earlier; and a fund with a
-  class and an IRR history but no reference data is assessed on three of eight signals, scores 100 and can be named a
-  Top-Up destination (KI-212). The code comment above `aiaSigTax` said tax was "never a reason to act"; stage S8
+  an aggressive hybrid fund, so those funds go from assessed to not assessed in a review valued earlier; and any fund with a
+  class and an IRR history but no reference data (an ordinary fund too, as on `main`) is assessed on three of eight
+  signals, can score 100 and can be named a Top-Up destination, which for these three kinds the review date switches
+  on and off (KI-212). The code comment above `aiaSigTax` said tax was "never a reason to act"; stage S8
   corrects it to say what the weight does.
 - **An AIF's category is read once** (D-043): the fund's own words, then the performance data's category for the fund it
   matched (when the holding's name is the entry's own once normalised), then "Listed AIF" (Category III, with a note),
   else Category I or II assumed, with a note. The words that count are cat or category followed by III, II, I, three,
-  two, one, 3, 2 or 1, with spaces, dots, brackets (round, square or curly), slashes, underscores, hashes, commas or
-  dashes between; "AIF-II" is not read, because a series number such as "Fund III" would then be taken for a category,
-  and neither is "Category No. III". Two readings the financial reviewer should know (ARC-01's data points, pinned in the
-  tests as built): "Category II/III" reads as Category II, as stated (the first number), and "AIF-III" reads as nothing:
-  Category I or II assumed, with the note. A stated Category III or Listed AIF carries no mark on the holding-detail and
-  totals slides.
+  two, one, 3, 2 or 1, with spaces, dots, colons, brackets (round, square or curly), slashes, underscores, hashes, commas
+  or dashes (the Unicode dashes and the minus sign too) between; "AIF-II" is not read, because a series number such as
+  "Fund III" would then be taken for a category, and neither is "Category No. III". Two readings the financial reviewer
+  should know (ARC-01's data points, pinned in the tests as built): "Category II/III" reads as Category II, as stated
+  (the first number), and "AIF-III" reads as nothing: Category I or II assumed, with the note. The gate review found
+  two more: a cell that names two categories is read as one stated category ("Category I/II/III" reads Category I/II,
+  "Category II (formerly Category III)" reads Category III; not pinned), and only the exact label "Listed AIF" counts
+  ("Listed AIFs" or "AIF (Listed)" read Category I or II, assumed; "Listed AIFs" is pinned as built, KI-171, question
+  24). A stated Category III or Listed AIF carries no mark on the holding-detail and totals slides.
 - **IRR dates with an explicit zone** are the day written (item 11). Whether real exports hold such strings is
   **UNKNOWN**.
 - **Client-facing wording** says "the tax reckoner". The new build's design (LD-11) words the label "the owner's
@@ -683,26 +690,32 @@ handover names is accounted for here.
   `taxAssumeFor`, `taxDefaults`, `xirr`), and the check runs both ways: an export that the list does not name fails too
   (KI-185; stage S8).
 - Tests (new): `tools/regression/CR-0008-T5-followups.js` (items 1 to 9 and the corrections; the class footnote at 8,
-  7 and 6.5 pt, each in a book of its own, with its lines, its bottom anchor and its clearance from the table),
+  7 and 6.5 pt, each in a book of its own, with its lines, its bottom anchor and its clearance from the table; from the
+  gate review, the plural of each unreconciled reason, exactly five usual-bucket funds, more forms of the harvest input,
+  and the escaping of client, fund, AIF, category, product and asset names written as markup),
   `CR-0008-T5-item10-listed-aif.js` (the four steps, the debt and long-short rows, every surface; every separator of the
-  reader's pattern in the fund's own words and in the performance entry's text), `CR-0008-T5-item11-irr-zone-dates.js`
-  (34 ISO-like forms in eight zones, 9 forms pinned as machine-local, 9 refused strings, and a known answer from the text
+  reader's pattern in the fund's own words and in the performance entry's text; from the gate review, the boundaries of
+  the Listed AIF label, pinned as built), `CR-0008-T5-item11-irr-zone-dates.js`
+  (34 date forms in eight zones, 9 forms pinned as machine-local, 9 refused strings, and a known answer from the text
   through `parseIRR` into the XIRR and the tax lots), `KI-185-engine-keys.js` (the real check run against the page and
-  against three planted pages); changed: `KI-170-hybrid-funds.js`, `KI-171-aif-cat-i-ii.js`, `KI-180-debt-row-section.js`,
-  `KI-182-crypto-no-set-off.js` (the two sentences);
-  `tools/regression/lib/tax-harness.js` (the tab and slide helpers the new files use).
+  against pages with an extra export of any type planted); changed: `KI-166-aif-cat-iii.js` and
+  `KI-169-pms-not-split.js` (one assertion each: the harvest slide's "Left out" line with its CMV, item 6),
+  `KI-170-hybrid-funds.js`, `KI-171-aif-cat-i-ii.js`, `KI-180-debt-row-section.js`, `KI-182-crypto-no-set-off.js` (the
+  two sentences). `tools/regression/lib/tax-harness.js` is used by the new files as it was in parts T1 to T4 (the gate
+  review corrected its header comment only).
 - Docs: D-040 (point (c) and (d), the usual-bucket text, the part T5 paragraph, PD-50), D-043, KNOWN_ISSUES (KI-184 to
   KI-186, KI-200 to KI-212; KI-022, KI-109, KI-166, KI-170, KI-171, KI-182), this record, the change-request index,
-  CHANGELOG, PROJECT_STATE, legacy ARCHITECTURE, TESTING.
+  CHANGELOG, PROJECT_STATE, legacy ARCHITECTURE, TESTING, and `CLAUDE.md` (the `smoke-review` count, line 99: 35 to 36).
 
 ## Verification (part T5)
 The figures below are those of the final page (`391E722F…`) in scratch copies of the branch; the full set is run again
-on the committed head, and the head's results are in the pull request.
+on the committed head, and its results go into the pull request.
 - `check-invariants --expect-md5 391E722FFDC585D8D614CA7029FB8EA1`: all invariants hold, 1 known warning (KI-027).
-  `smoke-review` 36/36 (IST and UTC). `test-ai-analyst` 24/24. `run-regression`: 47 files, 1,584 checks, all pass in IST
-  and with `TZ=UTC`. `node --test` 234/234 in IST and in UTC (run from a short path: from a long folder name `esbuild`
-  cannot start and 45 build tests are cancelled, which is the machine, not the code). `node scripts/data-extract.ts
-  --check` passes. `docs-links` and `traceability` pass; the privacy scan with the private deny-list reports no
+  `smoke-review` 36/36 (IST and UTC). `test-ai-analyst` 24/24. `run-regression`: 47 files, 1,619 checks (1,584 before
+  the 35 added after the gate review, below), all pass in IST and with `TZ=UTC`. `node --test` 234/234 in IST and in UTC
+  (run from a short path: `esbuild` was seen once, on the author's machine, failing to start from a long folder name
+  and cancelling 45 build tests, which is the machine, not the code; a 230-character path through a junction did not
+  reproduce it). `node scripts/data-extract.ts --check` passes. `docs-links` and `traceability` pass; the privacy scan with the private deny-list reports no
   blocking line.
 - **Fail before** (the final test files against the page they were written for): `CR-0008-T5-item10-listed-aif.js` (85
   checks) run against the page before item 10 (`441735DD…`) fails 60; `CR-0008-T5-item11-irr-zone-dates.js` (50 checks)
@@ -715,7 +728,8 @@ on the committed head, and the head's results are in the pull request.
   less". The other checks added at stage S8 pin behaviour the stage before already had: all four S8 test files pass on
   the page of stage S7 (100, 85, 50 and 5 checks), and the mutants below are what fail them. `KI-182-crypto-no-set-off.js`
   of stage S9 (32 checks) run against the page of stage S8 fails 4: the two crypto sentences and the two "no longer pending"
-  checks.
+  checks. The counts in this paragraph are those of the files at stage S9; the gate review of 2 Nov 2026 added 30 checks
+  to `CR-0008-T5-followups.js` and 5 to `CR-0008-T5-item10-listed-aif.js` (below).
 - **Mutants** (stage S8): 146 small edits of the page or of `check-invariants.js`, each run against the test files
   meant to notice it: the clauses of the IRR date pattern (18), the four copies of the AIF reader's pattern, with each of
   its separators, the word boundary, the quantifier and the number words (92), the class footnote's fit (31) and the
@@ -724,7 +738,23 @@ on the committed head, and the head's results are in the pull request.
   date-time, so no input tells the pattern with and without them apart; they stay as a guard for other engines. 16 of the
   146 survived the first version of the S8 checks (the entry branches of the AIF reader, the 8 and 7 pt branches of the
   footnote, the clearance margin) and are killed by checks added afterwards. The list and the runner are scratch
-  files, not part of the repository.
+  files, not part of the repository: the mutation result is EX-01's own and cannot be repeated from the repository.
+- **After the gate review** (2 Nov 2026; tests and records only, the page is unchanged): `CR-0008-T5-followups.js`
+  has 130 checks (it had 100) and `CR-0008-T5-item10-listed-aif.js` 90 (it had 85); `KI-185-engine-keys.js` (5) and
+  `KI-182-crypto-no-set-off.js` (32) keep their counts with stronger checks, and the headers of `KI-180`, `KI-171`
+  and `lib/tax-harness.js` were corrected (comments only). Each new or changed check was shown to fail on small edits of
+  a scratch copy of the page, which passed the files before the additions: the hostile-names check fails when
+  `taxEsc` is taken off the usual-bucket note or made the identity (SEC's mutants M5 and M6), the plural arms of the
+  unreconciled heading, the exactly-five-funds arm and the harvest-input forms fail on edits of those arms, the
+  boundaries of the Listed AIF label fail on edits that drop an anchor of the label pattern, and the planted function
+  and object exports fail an edit of the engine-surface check that ignores them. The `KI-182` check no longer fails on
+  a corrected data text. These mutants are scratch files too, so this result is EX-01's own as well. `run-regression`:
+  47 files and 1,619 checks in IST and with `TZ=UTC`; the changed files pass in `UTC`, `America/New_York`,
+  `Pacific/Auckland` and more zones, except `KI-180` in some zones that observe daylight saving time (KI-209, unchanged
+  by this round).
+  Not run by the author of this round: a run on Linux (GitHub Actions). Both scanners (privacy and pre-push) with the
+  private deny-list are run again on the final head, which the security reviewer's GO needs for every new commit, and
+  their results go into the pull request.
 - **Rebuild:** the T4 page plus the final patch gives `391E722F…`; each stage of the commits rebuilt from the T4 page
   gives the MD5 above, and every patch run a second time reports no change.
 - Known answers from units x price, worked in the tests: the usual bucket on and either side of 1 Apr 2026; a book of
@@ -742,7 +772,8 @@ Eight reviewers read the part, one for each slice (R1 classification, R2 the mar
 inputs, R5 unreconciled holdings, R6 slides, R7 tests and fail-before evidence, R8 what the part must preserve and
 KI-184). Each medium finding went to three skeptics who tried to refute it (does it reproduce, is it intended, is it
 reachable); a finding died when two or three refuted it. A completeness critic read the result. 51 findings: 10 medium
-and 41 low. "Skeptics" is how many of the three refuted the finding.
+and 41 low (the table lists 52 ids and 11 medium, because R7-F1 and R8-F3, one finding raised by two reviewers, are
+counted once in these totals). "Skeptics" is how many of the three refuted the finding.
 
 | ID | Sev. | Skeptics | Finding | What became of it |
 |---|---|---|---|---|
@@ -805,18 +836,18 @@ are the sixth commit of the part (`9375366F…`; ARC-01's pre-review added a sev
 | D1-F1 | medium | 1 of 3 | The performance entry's category was applied to any holding the loose name matcher maps to it: a sibling series of the Category III entry became Category III with no mark and no note (43 of 46 variants matched; 6 of 21 other funds of the same houses too) | Fixed: the entry is a statement only when the holding's name is the entry's own once normalised; a sibling is assumed, with the note. A "Listed AIF" label through a looser match still gives Category III, with the note. Tested with fixture entries and sibling names |
 | D1-F2 | low | | Fifteen spellings of a stated category are not read | Square and curly brackets, a slash, an underscore, a hash and a comma are read. Not read, pinned: "Category No. III", full-width and Roman-numeral characters, zero-width characters |
 | D1-F3 | low | | An own category of "Unlisted AIF" with a name that matches a Listed AIF entry was ruled Category III | Fixed: an own category that says unlisted blocks the entry's label |
-| D1-F4 | low | | The AI Analyst's AIF sentences are never displayed (AIFs are listed under "Not assessed", whose row prints only a general reason) | Said so in the patch header, in this record and in the acceptance items; no change to the page. To be filed |
+| D1-F4 | low | | The AI Analyst's AIF sentences are never displayed (AIFs are listed under "Not assessed", whose row prints only a general reason) | Said so in the patch header, in this record and in the acceptance items; no change to the page. Filed as KI-207 |
 | D1-F5 | low | | Five real mutants survive all five tests | Checks added: "Wildcat II" and "Concat I", Category IV, 12, 1a, 3A and IIIB, entries that say Category II, Cat 1, Category IV or Long Short, an own Category II against a Category III entry, sibling series |
 | D2-F1 | low | | "Zone-less text is the day written in every zone" is false for the ISO year and year-month ("2023", "2023-04"), which Date parses as UTC midnight | KI-186 and the test header say so; no code change (a year or a month is not a day) |
 | D2-F2 | low | | Zone texts outside the pattern stay machine-local: hour-only offsets ("+00"), zone words ("UTC"), "yyyy-mm-ddZ" | Named in KI-186 and pinned in the test; no code change (zone words and RFC text need the owner's call on which day a Z or GMT time means) |
-| D2-F3 | low | | A Z time is its UTC day, so an Indian local midnight written in UTC ("2026-03-31T18:30:00.000Z") reads one day early, as on `main` and in the new build's reader, unlike part T2 on an Indian machine | Kept (R-11, "read as written"); disclosed in KI-186 and question 23 |
+| D2-F3 | low | | A Z time is its UTC day, so an Indian local midnight written in UTC ("2026-03-31T18:30:00.000Z") reads one day early, as on `main` (the new build's M3 reader is planned to read free text as written and to state its own rule for strings with an explicit zone, R-11), unlike part T2 on an Indian machine | Kept ("read as written", as `main` does); disclosed in KI-186 and question 23 |
 | D2-F4 | low | | The item 11 test lets 12 of 26 mutants survive | Six more forms (lower-case t and z, blanks before the zone, a no-break space, long fractions, no seconds), two more zones (Pacific/Kiritimati, America/St_Johns), nine pinned residues |
-| D2-F5 | low | | Same function, wrong days that are not zone problems and pre-exist: a month-first date reads as day-first, "2023-02-30" rolls, a bare number is a year | KI-186 says they are not part of this fix (KI-075) |
-| D2-F6 | low | | Older regression files are zone-fragile in DST zones, on every page | TESTING says which and why (local-midnight dates); no change |
+| D2-F5 | low | | Same function, wrong days that are not zone problems and pre-exist: a month-first date reads as day-first, "2023-02-30" rolls, a bare number is a year | KI-186 says they are not part of this fix (KI-075, KI-211) |
+| D2-F6 | low | | Older regression files are zone-fragile in DST zones, on every page | TESTING says which and why (local-midnight dates), and KI-209 files it; no change |
 | D3-F1 | low | | The "sale carries no price" sentence blames a priceless sale that sold nothing | Fixed: only a sale that states an amount counts; the sentence names a switch out. Tested |
 | D3-F2, D5-F5 | low | | "The number field read those in a Chromium browser" is only partly true | The sentence is removed from the header, the page comment and the tests; the cause of the reported entry stays UNKNOWN |
 | D3-F3 | low | | "INR. 1,25,000" was read as 0.125 (the default was restored before) | Fixed: INR may have a dot. Tested |
-| D3-F4 | low | | Amounts a person can read ("1.25 lakh", "$100", full-width digits) still restore the default with no message | A trailing "/=", INR and Rs are read now; a hint beside a rejected entry is not built. To be filed |
+| D3-F4 | low | | Amounts a person can read ("1.25 lakh", "$100", full-width digits) still restore the default with no message | A trailing "/=", INR and Rs are read now; a hint beside a rejected entry is not built. Filed as KI-208 |
 | D3-F5, D4-F3, D5-F6 | low | | "holding(s)" on the class slide and the harvest slide | Fixed: singular and plural. Tested |
 | D3-F6 | low | | 8 of 42 mutants survive the follow-ups tests | Checks added: a price of 0, minus 5, "abc" or NaN is no price; fewer units say "fewer" whatever the sale; a sale dated after the valuation date is not blamed; "1.25E5" and "+125000"; 1, 2 unreconciled holdings on the holding-detail slide |
 | D4-F1 | low | | When even 6.5 pt does not fit, the class footnote can start above the page's own estimate of the table's bottom (55 of 4,792 simulated decks, by up to 0.033 in; a hairline on the border, not on text) | Not changed. A sixth size (6 pt) was built and taken out: because the page's estimate of the table counts every flagged row as wrapped (D4-F2), it set the footnote at 6 pt where 6.5 pt was right in the common 14-class book. The two findings are one known issue (KI-210). The test pins the 6.5 pt size and the band's edge. **Corrected at stage S8:** the simulation's 0.033 in is not the worst case. With 14 classes shown, 4 rows the page counts as wrapping and every optional sentence (1,053 characters), the 6.5 pt first line starts 0.12 in above the estimate (more with more wrapped rows); ARC-01 found the same 0.12 in by the code's own estimate, and 0.012 in at most by font metrics. Nobody has rendered such a deck, so whether it touches the table is **UNKNOWN** (slide geometry for 13 or more classes is NOT RUN). The earlier comment in the code and in the test said 0.04 in; both now say what is known |
@@ -831,15 +862,16 @@ are the sixth commit of the part (`9375366F…`; ARC-01's pre-review added a sev
 | D5-F4 | low | | The delta tests depend on the content of AIF_PERF, and the KI-171 test types a vendor fund name | The sample book's Listed AIF is found by what it is; the Category III census uses the engine's own pattern; the rest is a data guard that fails when a refresh brings an AIF the page cannot read, on purpose |
 
 ## ARC-01's pre-review of the stages, and stage S8 (part T5)
-ARC-01 read the stage files S1 to S7 and the docs commit on 2 Nov 2026, before Gate B (read-only; no Office program,
-browser or renderer; synthetic data only). It accepted item 9, items 10 and 11 as built (with conditions), confirmed the
+ARC-01 read the stage files S1 to S7 on 2 Nov 2026, before Gate B (for the docs commit it checked the file list and
+simulated the merge; it reviews the text at Gate B). Its review was read-only, with no Office program, browser or
+renderer and synthetic data only. It accepted item 9, items 10 and 11 as built (with conditions), confirmed the
 S7 narrowing of the matched entry's category (one condition in `taxClassify`), found a hunk-to-row map for every changed
 line of the part, no need to split the part by group, and no blocker for continuing. The figures it gives are its own and
 EX-01 did not repeat them, except where the table says so. Stage S8 (the seventh commit) answers its requests:
 
 | # | ARC-01 asked | Stage S8 |
 |---|---|---|
-| 1 | A known-answer end-to-end test for item 11, as the I-04 change rule asks for known-answer XIRR tests | `CR-0008-T5-item11-irr-zone-dates.js` runs date texts through the shipped `parseIRR` into the review's XIRR and into the tax lots, in eight zones. Rs 1,00,000 paid on "2024-03-30T20:00:00Z" and Rs 1,10,000 back on "2025-03-31T00:30:00+05:30" are 366 days apart: 1.1^(365/366) - 1 = 9.9714% (10.0000% at 365 days, which is what `Date` gives in every zone). Two funds bought for Rs 1,00,000 on "2025-03-31T20:00:00Z" (31 Mar 2025) and "2025-04-01T00:30:00+05:30" (1 Apr 2025), worth Rs 3,00,000 on 1 Apr 2026: the first is long term (366 days; a gain of Rs 2,00,000 taxed at 12.5%, the exemption used: Rs 25,000), the second exactly 12 months, short term (Rs 2,00,000 at 20%: Rs 40,000); together Rs 65,000. Read through `Date` the two lots always fall on one day and the tax is Rs 50,000 or Rs 80,000. |
+| 1 | A known-answer end-to-end test for item 11, as the I-04 change rule asks for known-answer XIRR tests | `CR-0008-T5-item11-irr-zone-dates.js` runs date texts through the shipped `parseIRR` into the review's XIRR and into the tax lots, in eight zones. Rs 1,00,000 paid on "2024-03-30T20:00:00Z" and Rs 1,10,000 back on "2025-03-31T00:30:00+05:30" are 366 days apart: 1.1^(365/366) - 1 = 9.9714% (10.0000% at 365 days, which is what `Date` gives in every zone). Two funds bought for Rs 1,00,000 on "2025-03-31T20:00:00Z" (31 Mar 2025) and "2025-04-01T00:30:00+05:30" (1 Apr 2025), worth Rs 3,00,000 on 1 Apr 2026: the first is long term (366 days; a gain of Rs 2,00,000 taxed at 12.5% = Rs 25,000, the Rs 1.25 lakh exemption already used), the second exactly 12 months, short term (Rs 2,00,000 at 20%: Rs 40,000); together Rs 65,000. Read through `Date` the two lots always fall on one day and the tax is Rs 50,000 or Rs 80,000. |
 | 2 | Tests for what its mutants kept alive at S6: the 7 pt step; three clauses of the item 11 pattern; the word boundary of the Category I/II reader; the colon and the minus sign among the separators; the entry-label branches; Long Short read from the entry; a sibling series; the footnote's bottom anchor, clearance from the table and plural sentence | Item 11: ten more forms that only one clause of the pattern takes (two blanks or a tab before the offset, a one-digit fraction, an offset without the colon, a negative one, -12:00, +14:00, -00:00, and the end-of-day 24:00, which is pinned as built: "2023-04-01T24:00:00Z" reads 1 Apr, the day written, though its instant is 2 Apr 00:00 UTC; added to the residues of KI-186). Item 10: every character of the separator class (21), in the fund's own words and in the performance entry's text, singly and twice in a row; the word boundary ("Bobcat 1", "Tomcat 2", "Scat Three", "9Cat I") in both; the number words in the entry; texts that are not read ("Category*III", "Category X II"); a sibling of the Long Short entry; "Category II/III" (read as Category II) and "AIF-III" (read as nothing) pinned as built. Footnote: the 8, 7 and 6.5 pt sizes, each in a book of its own whose footnote length tells the line lengths (260, 300, 320) apart, with the number of lines, the bottom at 7.18 in exactly and 0.04 in of clearance from the page's estimate of the table (not at 6.5 pt, KI-210); the plural sentence for two AIFs treated as Cat I/II, on the tab and the slides |
 | 3 | The disposition table and the patch header must list the two 17:36 changes | The header does; the table has two rows: item 11 reads only text that `Date` accepts (the row marked own), and the "%" stripped in the slab-rate field (in R4-1) |
 | 4 | PD-50: the comment above `aiaSigTax` calls tax "never a reason to act", but the class flips action labels and the Exit count; fix the comment or the behaviour, and write the disclosure | The behaviour is unchanged (the choice is the owner's, question 21). The comment says what the weight does. D-040, this record (the PD-50 bullet, R8-F1, question 21) and KI-170 list what moves, with ARC-01's figures attributed |
@@ -865,10 +897,134 @@ and the commit is separate so that it can be left out. The TAX_RULES row still c
 ("until the owner rules"); no page shows it, and it is data, left for the next data refresh.
 
 Answered since: question 21 (PD-50, the owner: "Keep and disclose") and question 22 (PD-47, the owner: "The fund's own
-statement wins and second order win is my ruling"). Open for the owner and the tax adviser: the named approval of the
-financial-domain reviewer for item 11 (a Z time is its UTC day) and for the S7 narrowing (may another series of a Category
-III fund be taken as Category III?); the AIF rows (an AIF or PMS whose category says arbitrage is classed as an equity fund
-and scored, as on `main`); question 23.
+statement wins and second order win is my ruling"). Open for the owner and the tax adviser: the AIF rows (an AIF or PMS
+whose category says arbitrage is classed as an equity fund and scored, as on `main`); questions 23 and 24. The named
+approvals of the financial-domain reviewers for item 11 (a Z time is its UTC day) and for the S7 narrowing (may another
+series of a Category III fund be taken as Category III?) were given at the gate review, in the next section.
+
+## The gate reviews of the committed head (part T5)
+Five reviewers read the committed head of part T5 on 2 Nov 2026 (page `391E722F…`), each alone and in its own export of
+the head: two financial-domain reviewers (FDR-A, who approves, and FDR-B, who argues the other side), a security and
+release reviewer (SEC), a documentation auditor (DOC, ids DA-nn) and a test-quality auditor (TEST, ids TQ-nn). They were
+read-only, with no Office program, browser or renderer and synthetic data only (the owner's reckoner was read in place,
+with nothing copied). Each medium finding went to two skeptics who tried to refute it (does it reproduce, is it
+intended, is it reachable); a finding died when both refuted it. 62 findings: FDR-A 9, FDR-B 8, SEC 12, DOC 20 and
+TEST 13, of which 6 are medium, 36 low and 20 info. Twelve skeptics read the six medium findings. DA-01 to DA-04 stand:
+none of the eight skeptics refuted them, though those of DA-01 and DA-03 would rate those two lower. DA-05 and FDR-B
+F-01 were refuted by both of their skeptics. In the table, "Skeptics" is how many of the two refuted the finding, and
+it is blank where no skeptic ran.
+
+| Reviewer | Verdict | Findings | Named approval or condition |
+|---|---|---|---|
+| FDR-A | approve | 9: 7 low, 2 info | Item 11 for interface I-04 (text below). The S7 narrowing as built: a sibling series of a Category III fund must not inherit a stated Category I, II or III |
+| FDR-B | changes needed | 8: 1 medium, 3 low, 4 info | Item 11 as built and the S7 narrowing approved. Approval of step 3 of the AIF reader (the Listed AIF label through a looser name match) withheld until the owner answers question 24 or the rule is restricted |
+| SEC | GO to push | 12: 4 low, 8 info | Valid for the exact head it read only; every new commit needs both scanners again with the private deny-list |
+| DOC | changes needed | 20: 5 medium, 13 low, 2 info | None requested. DA-01 to DA-04 are fixed; DA-05 is for MOD-02 |
+| TEST | approve | 13: 9 low, 4 info | None requested. It covers the quality of the tests, not a release |
+
+**The named approvals.** FDR-A, for interface I-04, in its own words (the commit id left out): "Reviewer A
+(financial-domain-reviewer) approves,
+for interface I-04 (the IRR / transactions workbook: parseIRR into the IRR tree, Fund IRR and the Taxation lots),
+irrParseDate (09_parsers.js:353-372) at the head reviewed (index.html MD5 391E722F…) as built in tax batch T5 item 11,
+which reads the day written in the text in every time zone, so that a Z time is its UTC day (an Indian local midnight
+written in UTC, "2023-03-31T18:30:00.000Z", reads 31 Mar, as main reads it), text with an offset such as
+"2023-04-01T00:30:00+05:30" now reads 1 Apr in every time zone where main read 31 Mar, text without a zone stays the
+day written as part T2 made it, and the forms that stay machine-zone dependent (RFC 2822 text, JavaScript Date text,
+hour-only offsets, zone words, a bare Z after a date, the ISO year and year-month) are the ones listed in KI-186 and are
+accepted as open residues, the Indian calendar day of the instant having been considered and not chosen, and whether
+real IRR exports make that choice matter being UNKNOWN until a real export's TRXN_DATE cells are seen." FDR-A also found
+acceptable the default for a sibling series (a Category III fund's sibling reads Category I or II, assumed), the dating of
+the usual bucket by the valuation date, the strings that count as a stated AIF category, the wording of the two crypto
+sentences, and the PD-50 disclosure as the record-level disclosure the owner chose (four quoted figures could not be
+reproduced). FDR-B: (1) item 11, a Z time is its UTC day, approved as built (zone-invariant, equal to `main`,
+reversible; the owner still answers question 23; an Indian local midnight written in UTC dates a lot a day early, so
+the next real IRR export should be checked); (2) the S7 narrowing approved; (3) step 3 of the AIF reader withheld, as
+above; (4) KI-200 (an AIF or PMS whose category says arbitrage is classed as an equity fund): no objection to leaving it
+open for this merge, to be fixed in the next batch. Not covered by FDR-B: slide rendering, real browsers, real client
+books. SEC: GO to push the branch as reviewed. It is a reviewer verdict, not a merge approval and not the owner's
+consent; ARC-01's Gate B, the financial review, the browser acceptance and CI remain separate. With the private deny-list
+applied, the privacy scan and the pre-push scan reported no blocking line on the head SEC read, and the scanners must be
+run again for every commit after it.
+
+**The commits after the reviewed head** change docs and tests only (`docs/`, `CHANGELOG.md`, `CLAUDE.md` and
+`tools/regression/`). The page and the patch are unchanged: `index.html` is `391E722FFDC585D8D614CA7029FB8EA1`. SEC's GO
+does not carry over to those commits: both scanners are run again with the private deny-list on the final head, and the
+final head's results go into the pull request.
+
+| ID | Sev. | Skeptics | Finding | What became of it |
+|---|---|---|---|---|
+| FDR-A F1 | low | | A category cell that names two categories is read as one stated category, with no confirm note: "Category II/III" reads Category II, "Category I/II/III" reads Category I/II, "Category II (formerly Category III)" reads Category III | KI-171. No tax figure moves. "Category II/III" is pinned as built; the other two strings are not pinned. A fix would treat a cell with two different category numbers as not stated (assumed, with the note) |
+| FDR-A F2 | low | | The Listed AIF label travels through the loose name matcher, an explicit category does not (4 of 10 synthetic sibling names reached a Listed entry and were taken as Category III) | Question 24, with FDR-B F-01. Said in KI-166 and KI-171. No code change |
+| FDR-A F3 | low | | The Category III sentence leaves out the reckoner's own caveat: the fund-level view is the conservative one, a determinate trust may be taxed at the beneficiaries' rates, check each fund's tax position | KI-166. One clause for the tax adviser to word; the page string is unchanged |
+| FDR-A F4 | low | | KI-212 and the PD-50 paragraph present "assessed on three of eight signals" as specific to the usual-bucket kinds; it holds for any classed fund with no reference data | Fixed in docs: KI-212 and D-040 say any classed fund. Parts T1 and T5 added kinds with a class (aggressive hybrid, equity savings), and for these three the review date switches it on and off. Repeated on the head |
+| FDR-A F5 | low | | D-040 still says an arbitrage name is read as arbitrage "whatever its category" | Fixed in docs (the same as DA-03) |
+| FDR-A F6 | low | | Project-control and handover records are stale on item 11: the block list, the I-04 change rule, the KI-186 status | For MOD-02 (not edited here). The facts are in the patch header, this record, KI-186 and the named approval above |
+| FDR-A F7 | low | | The tab's crypto sentence cites "the owner" as the authority, which a client may read as the portfolio's owner; the Crypto row's data text still says "until the owner rules" | KI-182. "As the product owner has ruled", or no provenance, is a one-word change for MOD-02 to decide; the data text waits for the next TAX_RULES refresh |
+| FDR-A F8 | info | | KI-206 confirmed: the client slides give no reason for usual-bucket funds unclassified before 1 Apr 2026 | KI-206 stays open, with the confirmation |
+| FDR-A F9 | info | | Equity savings carries the same label as the other two usual-bucket kinds, though the reckoner singles it out (the 65% test, SEBI's 2026 defensive mode); four PD-50 figures could not be reproduced | No change: the label and the note are adequate, and a sentence for equity savings alone is optional. The figures stay ARC-01's; the reviewer's own scan is in D-040 and KI-170 |
+| FDR-B F-01 | medium | 2 of 2 | The Listed AIF label is taken from any performance entry the loose name matcher maps the holding to: a different fund of the same house (real estate, venture capital, private credit, blank category) becomes Category III, and the sentence says it "is called a Listed AIF". Reproduced: only the class and the wording differ from the parent build, no tax figure moves | Dead as a defect and as a merge condition (both skeptics). It is the recorded design: D-043 point 2 says "through any match", a test pins it, and the matcher is old (the performance sheet already shows the entry's returns for the holding). The proposed fix, the same normalised name only, would turn a genuine Listed AIF written "Name AIF" or "Name (AIF)" into Category I or II, assumed (11 of the 11 entries in the data). Put to the owner as question 24; reviewer B withholds approval of step 3 until it is answered or the rule is restricted |
+| FDR-B F-02 | low | | A date cell or Excel serial with a time of 12:00 or later reads as the next day; a Valuation Date given as text with a time, or as d-Mon-yy, reads as no date. Not changed by T5: the same code is on `main` | KI-211, with KI-075. No change |
+| FDR-B F-03 | low | | Only the exact label "Listed AIF" counts: "Listed AIFs", "Listed AIF - Equity", "AIF - Listed" and "AIF (Listed)" read Category I or II, assumed | KI-171. "Listed AIFs" and "Listed AIF - Series 2" are pinned as built in the item 10 test (question 24) |
+| FDR-B F-04 | low | | The harvest inputs drop every comma, so "1.25,000" reads Rs 1.25 and "1,25.000" reads Rs 125; a trailing "INR." is not read | KI-208. Not pinned by a test: a known defect, not a behaviour to freeze |
+| FDR-B F-05 | info | | R1-F1 reproduced: a 70:30 equity and G-Sec index fund filed under Equity Savings is classed as the usual bucket | No change. The independent review's three skeptics refuted R1-F1 (the category-first order is old), and the class carries the usual-bucket label |
+| FDR-B F-06 | info | | The 75% long-term threshold of the AI Analyst is pinned by no test; the item 10 data guard fails a monthly refresh by design; the PD-50 disclosure is in documents only | The data guard is named in TESTING. No pin of the 75% threshold. Whether documents are enough as the disclosure is the owner's; PD-50 stands |
+| FDR-B F-07 | info | | Project-control records say T5 alone changes only blocks 07, 08 and 11 | For MOD-02 (the same as DA-05) |
+| FDR-B F-08 | info | | The path of the reckoner file in the reviewers' brief was one folder off | For MOD-02 (the brief). Nothing in the repository |
+| SEC F-01 | low | | CLAUDE.md says `smoke-review` has 35 checks; it has 36 | Fixed: CLAUDE.md line 99 says 36 (the same as DA-04) |
+| SEC F-02 | low | | KI-200 to KI-212 are outside EX-01's allocated range and inside NB-01's open range, with no recorded allocation | For MOD-02: record them as TA-03's, or renumber before the merge. UNCERTAIN whether an allocation was made outside the repository |
+| SEC F-03 | low | | No test pins the escaping of names from the files in the Taxation tab: removing `taxEsc` from the usual-bucket note, or making it the identity, passes every test | Test added: section 10 of `CR-0008-T5-followups.js` renders the tab for a book whose client, fund, AIF, category, product and asset names are written as markup and requires them escaped in every place that writes a name; both edits now fail it |
+| SEC F-04 | low | | The harvest-input number pattern backtracks quadratically (a long run of digits followed by a letter freezes the tab for seconds) | KI-208, with the linear form. The pattern is not changed; the entry is self-inflicted |
+| SEC F-05 | info | | Pre-existing: a client label with a double quote breaks out of an attribute in the Taxation scope strip (the same on `main`) | No change; KI-008 stays open |
+| SEC F-06 | info | | Project-control and handover records are stale against the head | For MOD-02 (the same as DA-05 and DA-06) |
+| SEC F-07 | info | | The Crypto row in TAX_RULES still carries the pre-ruling wording (disclosed) | KI-182. No screen shows it; left for the next data refresh |
+| SEC F-08 | info | | History hygiene: one commit has a "WIP:" subject, one message says five commits where seven follow, and 12 versions of the 16 MB page would enter the public history | No change. History is not rewritten (CLAUDE.md rule 8). For MOD-02 when the merge method is chosen |
+| SEC F-09 | info | | `window.__taxAssume` (added in part T3) holds the client-keyed harvest assumptions of the current family | No change. `family-isolation.js`, with its assumption-reset check, is run in the browser acceptance |
+| SEC F-10 | info | | An IRR date-time in UTC written by an Indian system reads as the previous day (documented residue) | No change; KI-186 and question 23 |
+| SEC F-11 | info | | A merge publishes the page at the public Pages URL; a branch push does not | A reminder for the lead when the merge is approved |
+| SEC F-12 | info | | No private-folder mention in the range; 22 tracked files already on `main` name the private folder | No change; the repository's rule allows it |
+| DA-01 | medium | 0 of 2 | Stale "pending" statements about crypto set-off after stage S9: question 18 of this record, the KI-182 row, the D-040 crypto bullet, the legacy ARCHITECTURE Taxation row | Fixed in docs. Question 18 gives the S9 state; KI-182 loses "No code changed" and the "still pending" sentences; D-040 and ARCHITECTURE point to the owner's answer (D-043). The skeptics would rate it low |
+| DA-02 | medium | 0 of 2 | PROJECT_STATE still asks the owner for questions 21 and 22, answered on 2 Nov 2026 | Fixed: PROJECT_STATE lists 21 and 22 as answered; 23 and the new 24 are open |
+| DA-03 | medium | 0 of 2 | D-040 says an arbitrage name is read as arbitrage "whatever its category" | Fixed: D-040 has this record's sentence (when no earlier test claims it). Both skeptics found the list of earlier tests incomplete, so "for example" is added in both places. They would rate it low |
+| DA-04 | medium | 0 of 2 | CLAUDE.md still says `smoke-review` has 35 checks; the accepted contract requires 36 in this change | Fixed: CLAUDE.md line 99, nothing else in the file. CLAUDE.md is in the docs list of "Changes (part T5)" and in CHANGELOG |
+| DA-05 | medium | 2 of 2 | Project control says T5 alone changes only blocks 07, 08 and 11, leaves interface I-04 as alias-only and lists 22 engine names | Dead as a defect of the change (both skeptics). The registers are dated snapshots of the first build, true at the commit they name, and MOD-02's files; the block list is right here and in the patch header (07, 08, 09 and 11). Reported to MOD-02 with the facts (I-04 at `09_parsers.js:353` and `:373`, 28 names at `check-invariants.js:48-51`) |
+| DA-06 | low | | Project-control state rows still describe the first build (head, page, gate state, open questions, unfiled known issues) | For MOD-02 |
+| DA-07 | low | | TESTING per-group check counts are stale (T1 333 against 398, T4 30 against 32, OD-34 39 against 48) | Fixed in TESTING; the groups add up to the 1,619 checks |
+| DA-08 | low | | The time-zone matrix of TESTING is incomplete | Fixed after running the four files in eight zones |
+| DA-09 | low | | The delta-review table says "To be filed" for D1-F4 and D3-F4 and names no known issue for D2-F5 and D2-F6 | Fixed: KI-207, KI-208, KI-211 and KI-209 |
+| DA-10 | low | | KI-109 says the reworded footnote is "no longer than before" and then gives 510 against 505 characters | Fixed: 10 characters shorter with an unreconciled holding, 5 longer for a plain book, within two lines |
+| DA-11 | low | | The known-issue ranges stop at KI-206; KI-209 calls `Pacific/Kiritimati` a zone CI uses | Fixed in the KNOWN_ISSUES header, D-040 Consequences and KI-209 |
+| DA-12 | low | | This record says ARC-01 read the docs commit, which it had not reviewed, and that the head's results are in a pull request | Fixed: the wording of both sentences |
+| DA-13 | low | | The legacy ARCHITECTURE AI Analyst row gives a stale range and a stale cite for `aiaSigTax` | Fixed: `07_engine.js:2601-3722` and `:3099` |
+| DA-14 | low | | The lists of changed test files omit KI-166 and KI-169 and list `lib/tax-harness.js` as changed by T5 | Fixed in this record, CHANGELOG and TESTING |
+| DA-15 | low | | The separators the AIF category reader accepts are listed without the colon and the Unicode dashes | Fixed in this record and in D-043 |
+| DA-16 | low | | The new build's IRR reader is described as built and as agreeing with item 11 | Fixed in KI-186, D-040 and this record: it is planned (R-11), not built |
+| DA-17 | low | | PD-47 and PD-50 are cited but not defined in the decision log; D-043 and this record do not cite PD-02 and PD-03 | Fixed here: D-043 and the answers to questions 17 and 18 cite PD-02 and PD-03. PD-47 and PD-50 are for MOD-02 to define |
+| DA-18 | low | | The KI-180 test header gives the figures of tax batch T1 while the test asserts those of T5 | Fixed in the test header (comment only) |
+| DA-19 | info | | Wording nits: "34 ISO-like forms", the Rs 25,000 sentence, the time-zone sentence of TESTING, the review totals | Fixed in the wording, and the counting convention of the totals is stated above |
+| DA-20 | info | | Two verification claims cannot be repeated from the repository or did not reproduce: the 146 mutants, and `esbuild` failing from a long folder name | Fixed in wording: the mutation result is said to be EX-01's own and not repeatable from the repository, and the `esbuild` sentence says what was seen. DOC labelled it UNCERTAIN |
+| TQ-01 | low | | The boundaries of the Listed AIF label are not pinned (an own category "Listed AIFs" or "Listed AIF - Series 2", an entry labelled "Unlisted AIF", the Long Short row read through a sibling) | Tests added to the item 10 file, pinned as built (question 24, KI-171); each fails when an anchor of the label pattern is dropped |
+| TQ-02 | low | | The class-footnote geometry tests pin the estimate only coarsely (13 mutants survive: about 4 percent of the lines estimate, a few hundredths of an inch of clearance, one character of the row thresholds) | No new geometry test. The header of that block of the follow-ups test says the pins are coarse change detectors and that the geometry is not rendered (KI-210) |
+| TQ-03 | low | | The plural and boundary arms never run: the plurals of the unreconciled heading, "They are treated as Category III", exactly five usual-bucket funds | Tests added to the follow-ups and item 10 files |
+| TQ-04 | low | | Some forms of the harvest input are untested: "1,25,000 Rs.", a minus sign, a leading dot, autocomplete | Tests added. "-5" in the slab-rate field is pinned as built (read and held to 0%, KI-208); the comma mis-reads are not pinned |
+| TQ-05 | low | | KI-185: a temp folder leaks when the copy fails, `tools/package.json` is not copied, the planted exports are numbers | Test changed: the folder is made and removed inside the `try`, `tools/package.json` is copied (the work folder sits under a package of type module, so a missing copy fails everywhere), and a number, a string, a function and an object are planted |
+| TQ-06 | low | | KI-182 pins data text that D-043 made false | Test changed: it asserts only what is still true (the Crypto row is no-set-off, with a source that names the reckoner, its silence and Sec 115BBH). The data text can now be corrected without a test change |
+| TQ-07 | low | | Stale statements in test headers and comments | Fixed, comments only: KI-180, KI-171, the follow-ups header (a sixth unreconciled reason; the AI Analyst's AIF sentences are never displayed) and `lib/tax-harness.js` |
+| TQ-08 | low | | TESTING and KI-209 overstate the CI zones and list the zone failures incompletely | Fixed (the same as DA-08 and DA-11): CI runs the regression files in `Asia/Kolkata` only |
+| TQ-09 | low | | The runner passes a test file that runs no checks or never finishes | Not done: `tools/run-regression.js` is not touched. For MOD-02, with a proposed known issue |
+| TQ-10 | info | | Known-open and as-built behaviour is pinned on purpose | No change; the labels stay |
+| TQ-11 | info | | About 64 s of the 10-minute CI job on the project laptop; Linux is inferred | No change |
+| TQ-12 | info | | Project-control records still describe ENGINE_KEYS as incomplete | For MOD-02 |
+| TQ-13 | info | | Environment assumptions of the tests: a Node with full ICU, and an ENGINE_KEYS check that sees only the blocks the host loads | No change |
+
+Not changed, on purpose: the page and the patch (every finding that asks for a change of the page is a known issue, a
+question to the owner or a pin of what is built); `tools/run-regression.js` (TQ-09); a pin of the 75% threshold (FDR-B
+F-06); the comma reading and the number pattern of the harvest inputs (KI-208); the Category III caveat clause and the
+crypto provenance word (FDR-A F3, F7), page strings that ARC-01 and the reviewers approved at stages S8 and S9 and that
+another stage would reopen. For MOD-02, whose files are not edited here: the registers that describe the first build
+(DA-05, DA-06 and their duplicates), the definitions of PD-47 and PD-50 and the impact line of PD-02 (the
+not-classified CMV and gain move into a Fund level amount), the allocation of KI-200 to KI-212 (SEC F-02), two known
+issues to file (a dash in the AI Analyst's "Assessed on only N of 8 signals" reason, D-029, the same on `main`; the
+runner that passes a file with no checks, TQ-09), and question 24 with reviewer B's withheld approval.
 
 ## Questions for the owner and the tax adviser
 1. Confirm the D-040 defaults (a) to (h).
@@ -904,16 +1060,18 @@ and scored, as on `main`); question 23.
     are reached last, so the result is the lowest tax; the reckoner is silent on the order.
 16. Does any part of the Rs 1.25 lakh exemption apply to an AIF Category I or II's listed-equity gains (Master Summary
     J35)? Built: no, the page cannot see that part.
-17. Are the "Listed AIF" funds in AIF_PERF Category III? **Answered 2 Nov 2026: yes, and put a safe note** (the owner:
-    "Yes and still put a safe note"; D-043). Built in part T5: Category III, fund level, with a note on every surface
-    that asks the analyst to confirm the category against the AIF's statement. No tax, LTCG, STCG, estimated tax,
+17. Are the "Listed AIF" funds in AIF_PERF Category III? **Answered 2 Nov 2026 (PD-02): yes, and put a safe note** (the
+    owner: "Yes and still put a safe note"; D-043). Built in part T5: Category III, fund level, with a note on every
+    surface that asks the analyst to confirm the category against the AIF's statement. No tax, LTCG, STCG, estimated tax,
     saving, harvest or total CMV moves on the sample book; the not-classified CMV and gain move into a Fund level
-    amount. (Parts T3 and T4 had kept them Category I or II, pass-through.)
+    amount. (Parts T3 and T4 had kept them Category I or II, pass-through.) Whether the answer also covers a fund that
+    the loose name matcher only links to a Listed AIF entry is question 24.
 18. Crypto: may a loss be set against a crypto gain, and may a crypto loss offset other gains (the 1961 Act's Sec
-    115BBH barred both)? **Answered 2 Nov 2026: keep "no set-off"** (D-043). Built in part T4 and unchanged: no
+    115BBH barred both)? **Answered 2 Nov 2026 (PD-03): keep "no set-off"** (D-043). Built in part T4 and unchanged: no
     set-off either way; a crypto gain is taxed in full, a crypto loss is not carried forward and is not offered as a
     harvest candidate. Whether the Income-tax Act 2025 allows set-off stays a question for the tax adviser (OD-28). The
-    harvest card and slide still say "pending" (KI-182).
+    harvest card and the harvest slide state the rule since stage S9 (KI-182): "as the owner has ruled and the reckoner
+    is silent on them" (tab) and "as the tax reckoner is silent on them (confirm with the tax adviser)" (slide).
 19. For reviews valued before 1 Apr 2026, should the carry-forward sentence say "assessment years" (1961 Act)? Built:
     "tax years" always.
 20. AI Analyst: is "n/a" right for a fund-level or not-split holding (built), or should a Category III AIF score green
@@ -938,6 +1096,20 @@ and scored, as on `main`); question 23.
     where part T2 on an Indian machine read 1 Apr and 2 Apr; for an offset ("2023-04-01T00:30:00+05:30") it reads 1 Apr in
     every zone where `main` read 31 Mar. The alternative the reviewer may weigh is the Indian calendar day of the instant (a
     fixed zone, also the same in every zone); which one fits depends on how the IRR source writes its dates, which is UNKNOWN.
+24. (Part T5; found by the gate review, 2 Nov 2026) A fund that the page links to a Listed AIF only by name. The page
+    links a holding to the performance data by its name, loosely, and the same link picks the holding's returns. If the
+    linked entry is labelled "Listed AIF", the holding is taken as Category III (fund level, with the note), although its
+    own category says nothing or something else, for example "Real Estate". You answered question 17 "Yes and still put
+    a safe note". One reviewer asks whether that answer covers a fund that is only linked by the loose name match and is
+    not named the same. Built as asked: the looser link counts. If it does not, only an exact-name link (or the
+    holding's own "Listed AIF" label) would count, and every other linked fund would read Category I or II, assumed,
+    with the note; the price is that spellings such as "Name AIF" or "Name (AIF)" of a genuine Listed AIF would read
+    Category I or II too (11 of the 11 entries in the data). No tax figure moves either way (both are out of the
+    harvest); the sentence on the tab and on the class slide differs. Evidence: of 32 plausible same-house names with a
+    blank category, 11 link to a Listed entry: 8 of 10 series or variants of an entry, and 3 of 22 different
+    strategies (all through the word "Opportunities"). The financial-domain reviewer B withheld approval of this step
+    of the AIF reader until the owner answers or the rule is restricted; both skeptics refuted the finding as a defect,
+    since it is the recorded design (D-043).
 
 ## Status
 Part T1 was committed on `fix/legacy-batch-3-tax`, part T2 on `fix/legacy-batch-3-tax-p2`, parts T3 and T4 on
@@ -945,8 +1117,11 @@ Part T1 was committed on `fix/legacy-batch-3-tax`, part T2 on `fix/legacy-batch-
 `fix/legacy-batch-3-tax-cr-0008`, the branch that carries the whole batch (`index.html` MD5 `391E722F…`). The financial
 re-review of part T3 is answered by part T4; the independent review of part T5 is answered by the corrections in
 part T5 and by KI-200 to KI-206 (the delta review's and ARC-01's open items are KI-207 to KI-212). The owner answered
-questions 17 and 18 (D-043) and, on 2 Nov 2026, questions 21 and 22 (PD-50, PD-47). Next: the pull request's checks, the
-financial-domain and security-release reviews, the browser acceptance (docs/TESTING.md, with `family-isolation.js`
-and its assumption-reset check) and the slide geometry for a table of 13 or more classes in PowerPoint (not run yet),
-then the merge of the batch as one change. Open for the owner: question 23, and the tax adviser's questions above.
-KI-177's step-up waits for question 12.
+questions 17 and 18 (D-043) and, on 2 Nov 2026, questions 21 and 22 (PD-50, PD-47). The gate reviews of the committed
+head (five reviewers, 62 findings) are answered above: the records and the tests were corrected, the page is unchanged
+(`391E722F…`), and the regression suite is 47 files and 1,619 checks; the final head's results go into the pull request.
+Next: the pull request's checks, the financial-domain and security-release reviews, the browser acceptance
+(docs/TESTING.md, with `family-isolation.js` and its assumption-reset check) and the slide geometry for a table of 13
+or more classes in PowerPoint (not run yet), then the merge of the batch as one change. Open for the owner: questions
+23 and 24, and the tax adviser's questions above; reviewer B's approval of step 3 of the AIF reader waits for question
+24. KI-177's step-up waits for question 12.

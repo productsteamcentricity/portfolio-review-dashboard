@@ -566,8 +566,9 @@ above, for the owner to confirm or change:
 - **Holdings with no client name** are one group, treated as one person for the set-off and the exemption, and counted
   on the tab and the slide.
 - **Crypto is kept out of set-off** (part T4, after the financial re-review of part T3 found that part T3 left crypto
-  gains in the short-term pools, ranked at 30%, so a loss went to them first): until the owner answers CR-0008
-  question 18 from an approved source, the page takes the safe behaviour. The Crypto row carries `noSetOff` and its
+  gains in the short-term pools, ranked at 30%, so a loss went to them first): the page takes the safe behaviour, as the
+  owner has ruled on CR-0008 question 18 (answered 2 Nov 2026: keep no set-off, D-043); whether the Income-tax Act 2025
+  allows set-off stays a question for the tax adviser (OD-28). The Crypto row carries `noSetOff` and its
   basis (the reckoner is silent; Sec 115BBH of the 1961 Act allowed no set-off either way and no carry-forward). No
   loss is set against a crypto gain, which is taxed in full before and after; a crypto loss reduces no other gain, is
   never shown as carried forward and is not offered as a holding to sell; a crypto gain and a crypto loss of one client
@@ -585,8 +586,11 @@ independent review, 2 Nov 2026), within the decisions above, for the owner to co
   Analyst, but only when the tax reference date (a) is on or after 1 Apr 2026. Before it they are unclassified, with a
   reason saying the AMC's classification for that year is needed. The reckoner calls the bucket equity-oriented only
   while 65% or more of the fund is in listed Indian equity on average over the tax year, so the AMC's year-end
-  classification stays the check. A fund whose name says arbitrage is read as an arbitrage fund whatever its
-  category. Part T1 had classed aggressive hybrid and arbitrage always and left equity savings unclassified always.
+  classification stays the check. A mutual fund whose name says arbitrage is read as an arbitrage fund when no earlier
+  test claims it (for example a fund-of-funds name, a global category, a gold asset, a non-fund product, or a balanced,
+  aggressive or conservative hybrid or equity savings category does), so a fund with a blank category, or filed as Debt
+  or Liquid, is one. Part T1 had classed aggressive hybrid and arbitrage always and left equity savings unclassified
+  always.
   The new build's design states the same rule (TR-7, LD-11; [`new-build/capital-gains-upload.md`
   §10.5](new-build/capital-gains-upload.md#105-tax-class-by-fund-type)); its label says "the owner's reckoner", which
   the live page does not use because its AI Analyst slide goes to the client (below).
@@ -605,15 +609,25 @@ independent review, 2 Nov 2026), within the decisions above, for the owner to co
   usual-bucket funds, each held once at 8.33% in a 12-fund synthetic book with only the as-on date changing, the target
   weight or trim differs for 15 funds and the action for 2 with long-term lots, and for 4 and 4 with short-term lots; one
   equity savings fund is an Exit of 1.00 Cr on 31 Mar 2026 (tax not assessed) and a Partial of 0.16 Cr on 31 Jul 2026
-  (tax green). Before 1 Apr 2026 part T5 takes away a class that the live page gives an arbitrage fund in every review
-  (main) and that parts T1 to T4 give an arbitrage and an aggressive hybrid fund, so for a review valued earlier the tax
-  signal of those funds goes from assessed to not assessed. A fund that has a class and an IRR history but no reference
-  data is assessed on three of the eight signals (weight, tax, impact), scores 100 of 100 and can be named a Top-Up
-  destination; main does this for an arbitrage fund, part T1 widens it to aggressive hybrid and part T5 to equity savings
-  (KI-212). The same weight moves ordinary funds when their lots change (ARC-01 counts 9 of 264 cases that "flip",
+  (tax green). The financial-domain reviewer's own scan at the gate review (2 Nov 2026), built like ARC-01's (each of the
+  98 usual-bucket funds held once at 8.33% in a 12-fund synthetic book, only the as-on date, 31 Mar against 31 Jul 2026,
+  changing), found the same pattern and the same kinds of fund: with long-term lots the composite moves 0.00 to +6.75
+  points, the target weight or trim differs for 13 funds and the action for 1; with short-term lots it moves -10.94 to
+  +2.01 points, the target weight or trim differs for 4 funds and the action for 4. The counts depend on the companion
+  funds. The reviewer could not reproduce the stress-book figures above, the Exit-to-Partial example or the 9 of 264
+  against 21 of 504 count; they stay ARC-01's. Before 1 Apr 2026 part T5 takes away a class that the live page gives an
+  arbitrage fund in every review (main) and that parts T1 to T4 give an arbitrage and an aggressive hybrid fund, so for
+  a review valued earlier the tax signal of those funds goes from assessed to not assessed. Any fund that has a class
+  and an IRR history but no reference data is assessed on three of the eight signals (weight, tax, impact), can score
+  100 of 100 and can be named a Top-Up destination: this is not specific to the three usual-bucket kinds (an ordinary
+  fund the page has no data on does the same on main, as the reviewer found). Parts T1 and T5 add kinds that now have
+  a class, aggressive hybrid (T1) and equity savings (T5), and for the three kinds the review date switches it on and
+  off (KI-212). The same weight moves ordinary funds when their lots change (ARC-01 counts 9 of 264 cases that "flip",
   against 21 of 504 for usual-bucket funds), so this is the design of the signal, not a defect of part T5. An amber
-  verdict (mostly short-term lots) lowers the composite, so the AI Analyst trims more when lots are short term, which
-  is the costly direction to sell. Until stage S8 a code comment above `aiaSigTax` called tax "never a reason to act";
+  verdict (mostly short-term lots) scores 50 of 100, so it lowers a composite that is above 50 without it and raises
+  one that is below 50 (the +2.01 above is a fund whose other signals average 25.64), and it always scores below a green
+  verdict; the AI Analyst therefore trims more when lots are short term than when they are long term, which is the
+  costly direction to sell. Until stage S8 a code comment above `aiaSigTax` called tax "never a reason to act";
   it now says what the weight does. Built: the signal uses the class, as it does for every other fund. The alternative,
   "not assessed until the analyst confirms the class", is one line in `aiaSigTax` (the page has no control to confirm a
   class, so "until confirmed" is more than one line) and takes the arbitrage score away from the live page. The owner
@@ -627,7 +641,8 @@ independent review, 2 Nov 2026), within the decisions above, for the owner to co
   "2023-04-01T00:00:00+05:30") is read as the day written, the same in every time zone (part T2 read the machine-local
   day of the instant, which is another day in some zones; main read the UTC date). Only text that the browser's Date
   accepts is read at all, so an impossible date-time is still dropped. Other zone-named text, such as an RFC 2822
-  string, stays the machine-local day (KI-186). The new build's IRR reader reads free text as written (R-11). A Z time
+  string, stays the machine-local day (KI-186). The new build's IRR reader (M3) is not built; it is planned to read free
+  text as written and to state its own rule for strings with an explicit zone (R-11). A Z time
   that is an Indian local midnight written in UTC ("2026-03-31T18:30:00.000Z") reads as 31 Mar, as it did on `main`
   (part T2 read 1 Apr on an Indian machine); which day a Z time means is the owner's call if a real export shows one.
 - **The harvest inputs** are text fields. Indian or international digit grouping, a leading rupee sign, Rs, Rs. or
@@ -648,8 +663,9 @@ KI-170, KI-172 to KI-174 and KI-178 to KI-180; part T2 (`fix/legacy-batch-3-tax-
 step 1 of KI-177; part T3 (`fix/legacy-batch-3-tax-p3-r2`) is KI-166 to KI-169, KI-171, KI-175, KI-181 and KI-182, with
 KI-130; part T4 (the same branch) keeps crypto out of set-off after the re-review (KI-182, KI-175). Part T5
 (`fix/legacy-batch-3-tax-cr-0008`, the branch that merges the whole batch) carries the follow-ups above, the owner's
-answers to questions 17 and 18 (D-043), KI-184 to KI-186 and the known issues its independent review filed
-(KI-200 to KI-206). The owner's and tax adviser's questions are listed in CR-0008. The new build ports each rule with
+answers to questions 17 and 18 (D-043), KI-184 to KI-186 and the known issues its reviews filed (KI-200 to KI-206 from
+the independent review; KI-207 to KI-212 from the delta review and ARC-01's pre-review). The owner's and tax adviser's
+questions are listed in CR-0008. The new build ports each rule with
 the same known answer (D-028).
 
 ## D-041 — Live-page base-file reading fixes (27 Oct 2026, lead under D-033)
@@ -733,7 +749,7 @@ fixture exercises yet; the ledger notes list them and KI-148 tracks them for M1.
 wording on merged purchase dates and holding days is stale once this merges. The owner's questions BF-19 and BF-26
 stay open for both, with question 1 above.
 
-## D-043 — The owner's answers on the AIF category and on crypto set-off (2 Nov 2026, relayed by the lead; CR-0008)
+## D-043 — The owner's answers on the AIF category and on crypto set-off (2 Nov 2026, relayed by the lead; PD-02, PD-03; CR-0008)
 **Context.** CR-0008 left two questions to the owner. Question 17: the performance data labels 11 of the 12 AIFs it
 holds "Listed AIF", which states no SEBI category, and the live page (part T3) treated an AIF whose category it could
 not read as Category I or II (pass-through). Question 18: whether crypto gains and losses can be set off under the Act
@@ -751,16 +767,19 @@ on 2 Nov 2026 through the lead.
       is loose, so a sibling series it maps to the entry is not told the entry's category. "AIF (CAT III) - Listed
       Equity" is Category III, as stated;
    3. else "Listed AIF" (the holding's category, or the matched entry's, through any match, unless the holding's own
-      category says unlisted): Category III, fund level, marked as treated by this answer, with the note;
+      category says unlisted; only that exact label counts, in any letter case, so "Listed AIFs" or "AIF (Listed)" do
+      not): Category III, fund level, marked as treated by this answer, with the note. Whether the answer also covers a
+      fund that the loose name matcher only links to such an entry is CR-0008 question 24;
    4. else nothing states a category: Category I or II, pass-through, marked as assumed, with a note (part T5 item 4).
    A fund whose own words say Category I or II while the performance data calls it a Listed AIF is therefore Category I
    or II, as stated, with no note. The words that count are cat or category followed by III, II, I, three, two, one, 3,
-   2 or 1, with spaces, dots, brackets (round, square or curly), slashes, underscores, hashes, commas or dashes between.
-   "AIF-II" and "Category No. III" are not read ("AIF-II" because a series number such as "Fund III" would then be taken
-   for a category); such a fund falls to step 4 and its note asks for confirmation. The owner confirmed this order in
-   plain words on 2 Nov 2026 (PD-47): "The fund's own statement wins and second order win is my ruling." Read as the
-   moderator read it: the file's own words first; then the category of the matched performance entry; then the Listed AIF
-   ruling (Category III, with the mark); then nothing stated, Category I or II assumed.
+   2 or 1, with spaces, dots, colons, brackets (round, square or curly), slashes, underscores, hashes, commas or dashes
+   (the Unicode dashes and the minus sign too) between. "AIF-II" and "Category No. III" are not read ("AIF-II" because
+   a series number such as "Fund III" would then be taken for a category); such a fund falls to step 4 and its note
+   asks for confirmation. The owner confirmed this order in plain words on 2 Nov 2026 (PD-47): "The fund's own
+   statement wins and second order win is my ruling." Read as the moderator read it: the file's own words first; then
+   the category of the matched performance entry; then the Listed AIF ruling (Category III, with the mark); then
+   nothing stated, Category I or II assumed.
 3. **Question 18: keep "no set-off".** Crypto gains and losses stay out of set-off and a crypto loss is not carried
    forward, as in part T4 (D-040 (g)). No figure changes; the two sentences that said "pending" a ruling (the tab's
    harvest card, the harvest slide) now state the rule (stage S9 of part T5, KI-182).

@@ -1,6 +1,6 @@
 # Project state
 
-**Last updated:** 2 Nov 2026.
+**Last updated:** 3 Nov 2026.
 - The full audit is done: 67 issues, see [`audits/`](audits/).
 - Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done. Fix batch 2a
   (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is merged (PR #9; `index.html` MD5
@@ -36,7 +36,10 @@
   savings funds applies only from 1 Apr 2026 (KI-170), a Listed AIF is Category III with a safe note (question 17), crypto
   stays out of set-off (question 18), an IRR date with an explicit zone is the day written (KI-186), the harvest inputs
   read digit grouping and currency marks, and KI-184 to KI-186 and KI-200 to KI-212 are filed. 22 of the 23 findings
-  are fixed and KI-177 in part; KI-177's step-up waits for the owner's rulings. The batch merges as one pull request
+  are fixed and KI-177 in part; KI-177's step-up waits for the owner's rulings. The five-reviewer review of the
+  committed head (62 findings, 2 Nov 2026) is answered in CR-0008: the corrections are in the records and the tests
+  only, the page is unchanged (`391E722F…`), the regression suite is 47 files and 1,619 checks, and a new owner
+  question (24) is open. The final head's check results go into the pull request. The batch merges as one pull request
   after the gate reviews and the browser acceptance (with `family-isolation.js`'s assumption-reset check); the slide
   geometry for a table of 13 or more classes in PowerPoint has not been run.
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
@@ -131,10 +134,10 @@
      Valuation Date column of real base files, how the IRR sheet records a scheme merger, and the rulings the 31 Jan
      2018 grandfathering needs; from part T3: whether a base-file client is one assessee, the default slab rate and
      exemption already used; questions 17 ("Listed AIF" is Category III) and 18 (crypto stays out of set-off) were
-     answered on 2 Nov 2026, D-043; from part T5: whether the usual bucket may move the AI Analyst (question 21),
-     the plain-words confirmation that a fund's own stated AIF category wins over the Listed AIF ruling (question 22)
-     and whether real IRR exports name a zone in their dates (question 23)); OD-28 is answered by the reckoner
-     (Sec. 76, old 50AA);
+     answered on 2 Nov 2026, D-043, and questions 21 (the AI Analyst keeps following the class, PD-50) and 22 (the
+     fund's own AIF category wins, PD-47) the same day; from part T5 two are open: whether real IRR exports name a
+     zone in their dates (question 23), and whether the Listed AIF ruling also covers a fund that the loose name
+     matcher only links to a Listed AIF entry (question 24)); OD-28 is answered by the reckoner (Sec. 76, old 50AA);
    - answer M1.3's questions in [`DATA_DICTIONARY.md`](DATA_DICTIONARY.md) §8: unrecognised Asset Names such as
      "Gold" (BF-19), letter case of Asset Names (BF-26), a market value of 0, and, for M1.4, a Crore cell that is not
      a number beside a Lakh amount (KI-147);
