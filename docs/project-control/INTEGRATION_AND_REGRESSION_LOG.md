@@ -132,9 +132,9 @@ detail of each change is in [ACTIVE_CHANGE_REGISTER.md](ACTIVE_CHANGE_REGISTER.m
     run on 28 Oct found: invariants hold (1 warning), smoke 36/36 in IST and UTC, AI Analyst pass, 44/44 files
     (1,385 checks) in IST and UTC, `data-extract --check` matches, and the T5 patch reproduces `5F1C2FC5` from
     `0713C6BE`. [VERIFIED by the workstream A investigator, outside the repository]
-  - **No CI run has ever happened on this branch.** CI runs on PRs and pushes to `main`, or when dispatched. Get one
-    early: `gh workflow run "Dashboard checks" --ref continuation/ex-01-task-ta-03-20261027`, or a draft PR.
-    [VERIFIED: `gh run list` empty for the branch]
+  - **No CI run had happened on this branch until 2 Nov.** EX-01 then dispatched "Dashboard checks" on the WIP head 0f1c5d3:
+    run 41412086208, success in both jobs ("checks" and "next"). It covers the WIP head only; the final head needs its own run
+    (CI runs on PRs and pushes to `main`, or when dispatched). [VERIFIED: `gh run view`, 2 Nov]
   - **No browser QA of the combined page.** Commit `5581d90` records browser QA passed and gate GO, but for the
     pre-rebase page `61FC0FB2` only; CR-0008 on the branch says combined-page browser acceptance is not verified.
     [VERIFIED]
@@ -205,6 +205,7 @@ detail of each change is in [ACTIVE_CHANGE_REGISTER.md](ACTIVE_CHANGE_REGISTER.m
 | 27 Oct | two implementer agents started in the TA-03 worktree during T5 | the T5 patch cannot be trusted as reviewed | treat it as unreviewed; full review in TA-03 | open (TA-03) [VERIFIED] |
 | 28 Oct | the documented rebuild rule ("check out `index.html`, then every patch in file-name order") was replayed in scratch | 4 of 9 patches refuse on today's page; the file is not damaged | use "parent page MD5 plus this branch's new patches"; TA-23 rewords the rule | open (TA-23) [VERIFIED] |
 | 2 Nov | MOD-02 validated the handover with the read-only block of `REPOSITORY_AND_ENVIRONMENT_STATE.md` | every anchor matched except expected drift: `main` is `4a1a747` (PR #17, docs only) not `6443826`; `origin/main...feat/m1-4-overview` is 2 / 23 not 0 / 23; the handover branch now has its own upstream, so the upstream hazard lists 3 branches plus `main` (`feat/m1-4-overview`, `fix/legacy-batch-3-tax`, `fix/legacy-batch-4-basefile`); the remote handover branch exists at `5f551cc`; Dashboard checks on `4a1a747` succeeded (run 41022932782) | registers corrected in `docs/registers-1`; live MD5 `12B5E572…` and `/next/` 46,905 B re-verified | closed [VERIFIED: commands run 2 Nov] |
+| 2 Nov | The EX-01 successor prompt said that blocks 00 to 06, 09, 10 and 12 of `index.html` stay unchanged for the whole TA-03 batch | wrong: against main the batch also changes script 04 (the TAX_RULES key of REFDATA) and script 09 (parsers, T2); only T5 alone is limited to 07, 08 and 11 | corrected in the prompt and in `ACTIVE_CHANGE_REGISTER.md` section 1, on the strength of EX-01's script-by-script comparison (not yet re-run by MOD-02) | closed [VERIFIED by EX-01; INFERRED by MOD-02] |
 
 No regression has reached the live page so far: every published page passed its gates and the current one equals
 `main`. [VERIFIED for the current page; INFERRED for earlier pages from the records]
@@ -264,6 +265,7 @@ regression 44 files, 1,385 checks; CI run <id> green".
 
 | Date (IST) | By | Change |
 |---|---|---|
+| 2 Nov 2026 | MOD-02 | TA-03 CI evidence (run 41412086208), the wrong "blocks unchanged" statement (section 6) |
 | 2 Nov 2026 | MOD-02 | Handover validated: baseline now `4a1a747` (docs only), baseline history and section 6 updated |
 | 28 Oct 2026 | MOD-01 | First version: baseline, PR #1 to #16, MD5 lineage, `/next/` deployments, pending integrations, incidents, recovery procedure, empty gate table |
 | 30 Oct 2026 | MOD-01 (fixer pass) | Validation findings applied: the baseline rule points to the gate records (section 8); the first page went live on 15 Oct; TA-03's "Usual buckets" docs item; the recovery procedure prefers a forward fix, because release-check fails a plain revert of a patch merge |

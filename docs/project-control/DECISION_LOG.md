@@ -153,6 +153,24 @@ the owner's word" ([FILE_OWNERSHIP_AND_CHANGE_CONTROL.md](FILE_OWNERSHIP_AND_CHA
 rules 5 and 9). [Recorded on 30 Oct from MOD-01's guardian handover of 28 Oct, section 9, which cites it as a lead
 decision; MOD-02 confirms or withdraws it when it records R-1 to R-7]
 
+**R-8. PR branch for TA-03 (TC-23), 2 Nov 2026.** MOD-02 adopts REC-03. EX-01 keeps `continuation/ex-01-task-ta-03-20261027`
+untouched on origin at 0f1c5d3 as the handover checkpoint. Before its first new commit it creates
+`fix/legacy-batch-3-tax-cr-0008` in the same worktree (`git switch -c`; the new branch has no upstream, so a plain push is
+refused) and puts every later commit there, pushing with `git push -u origin <branch>` and the deny-list exported. No history
+rewrite, no second worktree, nothing deleted, never new work on both names. The PR comes from the `fix/` branch, so
+release-check does not warn. Other PRs are decided when they are opened.
+
+**R-9. KI-185 filed with TA-03, 2 Nov 2026.** MOD-02 adopts REC-06. EX-01 files KI-184 and KI-185 (the ENGINE_KEYS gap in
+`tools/check-invariants.js`: `amcKey` and `xirr` on main, plus `taxClassify`, `taxApplyAssumptions`, `taxAssumeFor` and
+`taxDefaults` from the batch; fix under TA-22) with TA-03. KI-183 stays reserved for TA-05; a gap in the numbering is normal.
+
+**R-10. Re-run rule when `main` moves after the gates (PROPOSED 2 Nov 2026; ARC-01 to confirm at Gate B).** If `origin/main`
+gains only `docs/` files after a branch has passed its gates, the branch merges `origin/main` (a merge, never a rebase) and
+re-runs docs-links, traceability, the privacy scan with the deny-list, the pre-push scan on the new head and release-check;
+`check-invariants --expect-md5` must still hold and CI must be green on the PR head. A non-docs change in `main`, or a docs
+conflict in a file the branch also changed (DECISIONS, KNOWN_ISSUES, PROJECT_STATE, TESTING, CHANGELOG), means the full Gate C
+list again.
+
 ## 2. Pending owner decisions
 
 These are questions only the owner can answer, because they change what clients see or how a financial rule

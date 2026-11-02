@@ -32,8 +32,8 @@ They are in the private supplement `C:\dev\private\handover\PRIVATE_SUPPLEMENT_2
 | `MOD-01 \| Project-Wide \| Coordinating Moderator; Workstream A lead until handover \| RETIRED` | "Portfolio Review Dashboard architecture" | 14 Oct 2026 | **4** [VERIFIED: transcript metadata scan, 28 Oct] |
 | `NB-01 \| Workstream B (new build, CR-0006) \| New-build implementation \| WAITING` | "Build the new Portfolio Review dashboard" | 22 Oct 2026, 21:47 IST | **1** [VERIFIED: transcript metadata scan, 28 Oct] |
 | `MOD-02 \| Project-Wide \| Master Project Moderator \| ACTIVE` | owner asked to rename the chat to the chat line itself (2 Nov) | 2 Nov 2026 (successor prompt dated 28 Oct) | 0 [UNKNOWN: not scanned] |
-| `EX-01 \| Workstream A (existing dashboard) \| Existing-dashboard implementation \| QUEUED` | not created yet; recommended title is the chat line itself | not yet | none |
-| `ARC-01 \| Project-Wide \| Codebase Integrity & Integration Guardian \| QUEUED` | not created yet; recommended title is the chat line itself | not yet | none |
+| `EX-01 \| Workstream A (existing dashboard) \| Existing-dashboard implementation \| ACTIVE` | "EX-01 \| Workstream A (existing dashboard) \| Existing-dashboard implementation \| ACTIVE" | 2 Nov 2026, 08:00 UTC [VERIFIED: session metadata] | 0 [UNKNOWN: not scanned] |
+| `ARC-01 \| Project-Wide \| Codebase Integrity & Integration Guardian \| QUEUED` | "ARC-01 \| Project-Wide \| Codebase Integrity & Integration Guardian \| ACTIVE" (chat created and running; this register moves it to ACTIVE when it confirms its baseline) | 2 Nov 2026, 07:58 UTC [VERIFIED: session metadata] | 0 [UNKNOWN: not scanned] |
 
 When a chat is created, the owner gives it the title above with its live status, and MOD-02 updates this table.
 
@@ -58,8 +58,15 @@ Validated by MOD-02 on **2 Nov 2026**, with the read-only block "Verify before y
   `origin/main...feat/m1-4-overview` is 2 / 23; the handover branch now has its own upstream, so the upstream hazard lists
   `feat/m1-4-overview`, `fix/legacy-batch-3-tax`, `fix/legacy-batch-4-basefile` and `main`; Dashboard checks on `4a1a747` succeeded
   (run 41022932782). No Pages run for a docs-only merge.
-- **Not yet done:** the full read of the registers against git (SHA by SHA), the deny-list is unset in this shell, NB-01 not yet contacted,
-  EX-01 and ARC-01 not yet created.
+- **Later on 2 Nov:** EX-01 (created 08:00 UTC) confirmed 0f1c5d3, a clean worktree and the T5 scope in its start report. MOD-02 checked
+  the claims against git: HEAD 0f1c5d3, parent 97a7d69, local equal to origin, clean, `index.html` MD5 5f1c2fc5, `main` 4a1a747 with
+  2 / 5, and the CI run 41412086208 (dispatched by EX-01 on the WIP head) succeeded in both jobs [VERIFIED]. EX-01 is ACTIVE and TA-03
+  ownership passed to it. ARC-01 (created 07:58 UTC) is running but has not confirmed its baseline yet: it stays QUEUED here until it does.
+  NB-01: MOD-02's resume message was delivered before 08:02 UTC and NB-01's turn started, then ended after three tool calls with no
+  report; the session was archived afterwards. MOD-02 did not archive it and both auto-archive settings are off, so the archive came
+  from the owner or the sidebar; NB-01 cannot be messaged until it is unarchived [VERIFIED: list_sessions, list_events, get_settings].
+- **Not yet done:** the full read of the registers against git (SHA by SHA); the deny-list is unset in this shell (it is exported
+  per command).
 - **MOD-01** is RETIRED: its outstanding work, file ownership and handover are in this package; its context is treated as unreliable.
   TA-03 ownership sits with MOD-02 until EX-01 confirms it.
 
@@ -123,14 +130,14 @@ The full procedure is in the owner's 27 Oct handover prompt (sections 14 to 21),
 |---|---|
 | Unique id and exact name | NB-01, "Build the new Portfolio Review dashboard" |
 | Responsibility and workstream | Workstream B: the new build (CR-0006) from M1.4 onward, and the capital-gains design (D-036). MOD-01 suggested the chat as a background task and the owner started it on 22 Oct; it took code ownership on 23 Oct [VERIFIED: requirements investigation] |
-| Status | **WAITING** (idle at a safe point). It stopped its round-2 fix workflow on 27 Oct and wrote a state report at 20:59 to 21:01 IST (received by MOD-01 about 21:05 IST) [VERIFIED: NB-01 state report; transcript timestamps]. Last assistant turn 27 Oct 21:35 UTC (28 Oct 03:05 IST); a system stop-hook entry follows at 28 Oct 00:58 UTC; nothing later [VERIFIED: timestamp-only transcript scan]. A cross-session message MOD-01 sent on 28 Oct has no reply [UNKNOWN: whether NB-01 has seen it]. NB-01 **continues as NB-01 under MOD-02**; it is replaced only if MOD-02 judges its context unreliable |
+| Status | **WAITING** (idle at a safe point; on 2 Nov its session was found archived after MOD-02's resume message started one turn that ended with no report; it must be unarchived before it can be messaged). It stopped its round-2 fix workflow on 27 Oct and wrote a state report at 20:59 to 21:01 IST (received by MOD-01 about 21:05 IST) [VERIFIED: NB-01 state report; transcript timestamps]. Last assistant turn 27 Oct 21:35 UTC (28 Oct 03:05 IST); a system stop-hook entry follows at 28 Oct 00:58 UTC; nothing later [VERIFIED: timestamp-only transcript scan]. A cross-session message MOD-01 sent on 28 Oct has no reply [UNKNOWN: whether NB-01 has seen it]. NB-01 **continues as NB-01 under MOD-02**; it is replaced only if MOD-02 judges its context unreliable |
 | Assigned tasks | TB-06 (M1.4), TB-07 (round-2 fixes G1, G2, G3), KI-148 inside TB-06/TB-07, TB-08 (preserve its local-only work, on MOD-02's instruction), TB-09..TB-23 (milestones M2..M16), TB-24..TB-28, TB-27 jointly with EX-01 |
 | Working directories and branches | `.claude/worktrees/m14`: `feat/m1-4-overview` at 07a6460, **local only**, 23 commits ahead of origin/main, clean [VERIFIED: `git rev-list --count`, `git ls-remote`, 28 Oct]. `.claude/worktrees/wf_bdc6c774-599-1`, `-2`, `-3`: `worktree-wf_bdc6c774-599-1/-2/-3` at 4610684 (G1), be7f395 (G2), 202f8f6 (G3), **local only**, one unique commit each, clean [VERIFIED]. Stale (history only in the local feat/m1-4-overview): `wf_ca03729e-33b-2..6`, `wf_c3548c88-811-1..4`. Stale (merged): `cg-spec` (PR #15), `tabs` (PR #14) |
 | Reserved files and shared components | `app/**`, `scripts/build.mjs`, `scripts/serve.mjs`, `scripts/data-extract.ts` (the extractor), `scripts/vendor-extract.mjs`, `scripts/lib/`, `scripts/office/` (branch), `tests/next`, `tests/unit`, `tests/parity` code, `docs/new-build/*`, `docs/ARCHITECTURE.md`, `docs/DATA_DICTIONARY.md`, `docs/PRD.md`, CR-0006. Shared hotspots it edits under MOD-02's rules: see [FILE_OWNERSHIP_AND_CHANGE_CONTROL.md](FILE_OWNERSHIP_AND_CHANGE_CONTROL.md) |
 | Dependencies | If TA-03 merges first, NB-01 merges main into feat/m1-4-overview and resolves the four conflict hunks. TA-05 needs NB-01's final KI-147 ledger ids (AG-13, AG-14 on G1). Owner answers PD-08, PD-09, PD-11..PD-16, PD-27 |
 | Last known commit and deliverable | Branch head 07a6460 (27 Oct 19:22 IST, merge of PR #16 into feat/m1-4-overview); newest NB-01 commit be7f395 (27 Oct 20:57 IST) [VERIFIED: `git log`]. Last merged deliverables: PR #15 (fb7f59c, capital-gains design) and PR #14 (c9ec1cc, tabs across the top) |
 | Pending owner decisions | PD-08 (merged-folio holding days), PD-09 (KI-147 placeholders), PD-11 (BF-19), PD-12 (BF-26), PD-13 (L7 letter case), PD-14 (market value 0), PD-15 (blank Product Name), PD-16 (capital-gains design section 15), PD-27 (blueprint approvals) |
-| Current blocker | Paused by the owner's stop order; resumes when MOD-02 instructs. Its M1.4 work exists only on this laptop (TB-08) |
+| Current blocker | Paused by the owner's stop order; resumes when MOD-02 instructs. Session archived (2 Nov): waiting for the owner to unarchive it. Its M1.4 work exists only on this laptop (TB-08) |
 | Current handover document | NB-01 state report of 27 Oct (private, in the private handover folder), [NEW_BUILD_HANDOVER_2026-10-28_v1.md](../handover/NEW_BUILD_HANDOVER_2026-10-28_v1.md) and [NB-01_RESUME_NOTE_2026-10-28.md](../handover/continuations/NB-01_RESUME_NOTE_2026-10-28.md) |
 | Successor | None planned |
 | Retirement reason | Not applicable |
@@ -153,13 +160,13 @@ The full procedure is in the owner's 27 Oct handover prompt (sections 14 to 21),
 | Current handover document | [MASTER_HANDOVER_2026-10-28_v1.md](../handover/MASTER_HANDOVER_2026-10-28_v1.md) and the standing instructions [MODERATOR_BOOTSTRAP_PROMPT.md](../handover/MODERATOR_BOOTSTRAP_PROMPT.md); the private supplement |
 | Predecessor | MOD-01 |
 
-### EX-01 (QUEUED)
+### EX-01 (ACTIVE)
 
 | Field | Value |
 |---|---|
-| Unique id and name | EX-01. Recommended title: `EX-01 \| Workstream A (existing dashboard) \| Existing-dashboard implementation \| ACTIVE` once started |
+| Unique id and name | EX-01, `EX-01 \| Workstream A (existing dashboard) \| Existing-dashboard implementation \| ACTIVE`, created 2 Nov 2026 08:00 UTC |
 | Responsibility and workstream | First dedicated Workstream A implementation chat. Builds in its own worktree and branch, opens the PR, and performs the D-020 merge only after MOD-02's go, green CI and ARC-01's Gate B GO; then verifies Pages |
-| Status | QUEUED. MOD-02 launches it (TC-03) |
+| Status | **ACTIVE** since 2 Nov 2026: its start report confirmed the worktree, 0f1c5d3 and the T5 scope; MOD-02 checked them against git (TC-03 done) |
 | Assigned tasks | **TA-03, taken over from MOD-01** (finish T5, verify, PR, merge). Then TA-05, TA-06, TA-22 and later TA tasks as MOD-02 assigns (TA-10 with the refresh-operator agent) |
 | Working directory and branch | `.claude/worktrees/wf_c9c8da96-497-10`, branch `continuation/ex-01-task-ta-03-20261027` at 0f1c5d3, parent 97a7d69 [VERIFIED: `git rev-parse 0f1c5d3^1`, 28 Oct] |
 | Reserved files and shared components | `index.html` (only through `tools/patches/`), `tools/patches/*`, `tools/regression/*`, `tools/*.js`, `tools/browser-checks/*`, `docs/legacy/*`, CR-0008. Regenerates `data/refdata` in the same change whenever REFDATA changes (D-035) |
@@ -168,17 +175,17 @@ The full procedure is in the owner's 27 Oct handover prompt (sections 14 to 21),
 | Dependencies | MOD-02's launch; owner answers PD-02, PD-03 before the TA-03 merge (or the owner accepts the safe defaults now built); PD-09 before TA-05 |
 | Last known commit and deliverable | Inherits 0f1c5d3 |
 | Pending owner decisions | PD-01..PD-07 (tax), PD-08, PD-09, PD-10, PD-42 (fix batch 4 choices), PD-43 (tax adviser for OD-28), PD-44 (tax defaults settled while building; blocks the TA-03 sign-off) |
-| Current blocker | Not started |
+| Current blocker | Waits for ARC-01's review of its change-impact contract and MOD-02's "continue" before it touches the T5 patch; PD-02 and PD-03 before the TA-03 merge. Read-only review, docs-only edits and CI runs are allowed meanwhile |
 | Current handover document | [EXISTING_DASHBOARD_HANDOVER_2026-10-28_v1.md](../handover/EXISTING_DASHBOARD_HANDOVER_2026-10-28_v1.md), [EX-01_TASK-TA-03_SUCCESSOR_PROMPT_2026-10-28.md](../handover/continuations/EX-01_TASK-TA-03_SUCCESSOR_PROMPT_2026-10-28.md) and the TA-03 card in [TASK_REGISTER.md](TASK_REGISTER.md#ta-03-tax-batch-cr-0008-d-040) |
 | Predecessor | MOD-01 (for TA-03) |
 
-### ARC-01 (QUEUED)
+### ARC-01 (QUEUED: chat created 2 Nov 07:58 UTC, baseline not yet confirmed)
 
 | Field | Value |
 |---|---|
 | Unique id and name | ARC-01. Recommended title: `ARC-01 \| Project-Wide \| Codebase Integrity & Integration Guardian \| ACTIVE` once started |
 | Responsibility and workstream | Project-Wide independent technical control (REQ-074). Gate B review of every material diff: cross-module effects, ownership conflicts, interface compatibility, test coverage, residual risk. Reviews material change-impact contracts before implementation. May **BLOCK** (NO-GO); escalation goes to MOD-02, then to the owner. Does not implement features or make product decisions |
-| Status | QUEUED. MOD-02 launches it (TC-04) |
+| Status | QUEUED until it confirms its baseline to MOD-02 (TC-04). The chat exists and is running; MOD-02 asked it on 2 Nov for its baseline and for a review of EX-01's change-impact contract |
 | Assigned tasks | TC-04 (baseline: interface table, merge-tree result, ownership map). Gate B for every change. TA-23 with EX-01, TB-24 with NB-01, TC-17 (agent definitions) if MOD-02 assigns |
 | Working directory and branch | None of its own. Read-only use of the repository through `git -C <worktree>` and `git show <ref>:<path>`; detached scratch worktrees `.claude/worktrees/arc-01-<task>-<short-sha>` for review only, removed without `--force`, MOD-02 told on create and remove (lead ruling R-7 in [DECISION_LOG.md](DECISION_LOG.md) section 1.3). A docs branch only if MOD-02 assigns a docs task |
 | Reserved files and shared components | None. Co-maintains the interface contracts and file-ownership register with MOD-02 |

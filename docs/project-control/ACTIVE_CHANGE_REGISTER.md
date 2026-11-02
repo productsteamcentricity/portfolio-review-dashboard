@@ -57,19 +57,20 @@ G1, G2 and G3 share no file with TA-03 [VERIFIED].
 | Field | Value |
 |---|---|
 | Task id | TA-03 (requirements REQ-066, REQ-029; CR-0008; decision D-040; defects KI-160..KI-182, KI-099, KI-130; OD-2, OD-12, OD-28) |
-| Responsible chat | MOD-01 until handover, then **EX-01** |
+| Responsible chat | MOD-01 until handover, then **EX-01** (took the worktree on 2 Nov 2026; MOD-02 checked its report against git) |
 | Workstream | A |
 | Worktree | `.claude/worktrees/wf_c9c8da96-497-10` |
 | Source branch and baseline | main at **6443826** (PR #16), page MD5 12B5E5727FCA01EF2EA162C59913F01D |
-| Task branch | `continuation/ex-01-task-ta-03-20261027` (pushed, upstream is its own origin branch). Contains `fix/legacy-batch-3-tax`, `-p2` and `-p3-r2` (local only, nothing unique) |
+| Task branch | `continuation/ex-01-task-ta-03-20261027` (pushed, upstream is its own origin branch; stays untouched as the handover checkpoint). PR branch: `fix/legacy-batch-3-tax-cr-0008`, created by EX-01 in the same worktree before its first new commit (R-8, 2 Nov). Contains `fix/legacy-batch-3-tax`, `-p2` and `-p3-r2` (local only, nothing unique) |
 | Files and modules being modified | `index.html` (engine 07, exporters 08, UI 11) through `tools/patches/2026-10-27-tax-1..5*.js` (5 patch scripts); 26 files under `tools/regression/`; `tools/browser-checks/family-isolation.js`; `tools/smoke-review.js`; `data/refdata/TAX_RULES.json` and `VINTAGE.json` (regenerated, D-035); `docs/DECISIONS.md`, `docs/KNOWN_ISSUES.md`, `docs/PROJECT_STATE.md`, `docs/TESTING.md`, `CHANGELOG.md`, `docs/legacy/ARCHITECTURE.md`, `docs/audits/2026-10-19-decisions.md`, CR-0008 and the change-requests index [VERIFIED: `git diff --name-only origin/main...` on 28 Oct] |
+| Blocks of `index.html` changed | Against main: script 04 (REFDATA, the TAX_RULES key only; 25 to 34 rows), 07, 08, 09 (parsers, T2) and 11. Scripts 00 to 03, 05, 06, 10, 12 and the HTML shell are byte-identical. ENGINE keys 24 to 28, additive. T5 alone changes only 07, 08 and 11 [reported by EX-01 from a script-by-script comparison on 2 Nov; MOD-02 has not re-run it] |
 | Shared interfaces affected | ENGINE API (adds `taxClassify`, `taxApplyAssumptions`, `taxAssumeFor`, `taxDefaults`; `taxClassify`/`taxClassOf` take an optional date); REFDATA.TAX_RULES (25 → 34 rows, new flags); `data/refdata` (read by NB-01's parity tests and `data-extract --check`); `resetFamilyState()` (new per-family harvest assumption, D-015); the Taxation tab, slides and AI Analyst tax signal. The new build's tax-rule table (TR-1..TR-21) must stay agreed by hand |
 | Dependencies and overlapping tasks | Docs conflict with TB-06 (4 hunks above). TA-05 must follow it (same engine block). TA-10 must start from main after whichever merges first |
 | Current status | IN PROGRESS. T1..T4: IMPLEMENTED, NOT FULLY VERIFIED. T5: IN PROGRESS, unreviewed (two implementer agents may have run in this worktree) |
 | Latest commit | **0f1c5d3** (27 Oct 20:59 IST), WIP checkpoint; parent 97a7d69; page MD5 5F1C2FC56EDA2682822DBF0DB5B44CA3 (16,908,418 B) |
-| Review and integration status | Gate A: partial (WIP message only). Gate B: not started. Gate C: run-regression 44 files only on 0f1c5d3; the full list passed on 97a7d69 including prepush; no browser QA of the combined page; no CI run ever. Gate D: no PR. Gate E: owner Q17/Q18 open |
+| Review and integration status | Gate A: partial (WIP message only). Gate B: not started. Gate C: run-regression 44 files only on 0f1c5d3; the full list passed on 97a7d69 including prepush; no browser QA of the combined page; CI run 41412086208 (by hand, 2 Nov) succeeded on the WIP head 0f1c5d3. EX-01's change-impact contract of 2 Nov was sent to ARC-01 for review; EX-01 touches no patch file until ARC-01 has reviewed it and MOD-02 sends "continue". Gate D: no PR. Gate E: owner Q17/Q18 open |
 | Outstanding blockers | PD-02 (Q17) and PD-03 (Q18) before merge, unless the owner accepts the safe defaults now built. T5 review and docs |
-| Ownership released | **No.** MOD-01 makes no further changes; ownership passes to EX-01 when EX-01 confirms it has taken the worktree |
+| Ownership released | **Yes, to EX-01 on 2 Nov 2026** (its start report; MOD-02 checked it against git). MOD-01 is retired |
 
 ## 2. TB-06: M1.4 integration branch
 
