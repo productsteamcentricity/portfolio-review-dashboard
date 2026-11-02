@@ -716,15 +716,18 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
   figure rounded half up on the 15-significant-digit decimal, as Excel shows a cell; the live page rounds the binary
   double. A half-way value can therefore differ from the live page in the last digit: family-a's Hybrid absolute
   return (0.5427 - 0.4) / 0.4 x 100 shows 35.67% on the live page and 35.68% in the new app. This is a classified
-  difference outside the parity ledgers, which compare unrounded figures; the owner is asked one plain sentence about
-  it, and it does not block the build.
+  difference outside the parity ledgers, which compare unrounded figures. The owner accepted it for the new app on
+  2 Nov 2026 (PD-48: 35.675% shows 35.68% in the new app, 35.67% on the live page).
 - **A Crore cell that is not a number beside a Lakh or rupee amount: decided (D-039 point 1).** Text that is not an
   amount in the column the reader would use is INVALID SOURCE DATA and no later column is read in its place (the
   owner's answer of 24 Oct 2026, "no fallback"). For the market value, the holding is then excluded and listed
   (OD-8). For the invested value, the holding stays included and is not listed: its invested value is invalid source
   data, and the invested coverage says so. For the file's own gain or loss, the result is Information only (OD-18).
-  A blank or placeholder Crore cell takes the next column with a notice, and amounts more than 0.005 Cr apart are
-  warned (the lead's decisions). §5.3 and §5.8 state the rule;
+  A blank or placeholder Crore cell takes the next column with a notice (the lead's decision; the owner confirmed on
+  2 Nov 2026, PD-09, that "NA", "N/A", "-" and "nil" count as an empty cell, then Lakh, then rupees, and that any
+  other text makes the value invalid; the reader's other placeholders, such as "n.a.", "none" or "--", are read the
+  same way as built, pending the owner's word on them), and amounts more than 0.005 Cr apart are warned (the lead's
+  decision). §5.3 and §5.8 state the rule;
   KNOWN_ISSUES KI-147 is fixed in the new app.
 - **Units of merged folios and the tax base (M1.3; BF-17 (KI-113) and BF-18 (KI-113 extended to units) accepted by the lead, D-035).** Base-file units are
   the base the legacy tax split reconciles each holding against (07_engine.js:393-405); when a holding has no units,

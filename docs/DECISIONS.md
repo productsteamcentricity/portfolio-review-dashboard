@@ -540,10 +540,14 @@ gain or loss (point 1(e)) and the Read Me wording (point 7). The second fix roun
    excluded and listed (OD-8), with the Warning `base-file.money-invalid`, scoped to the holdings, naming the column
    and the rows. An invalid invested value leaves the holding included without one (counted in
    `totals.counts.invalidInvested`);
-   (b) the lead's decision: a blank Crore cell is not text, so the reader takes the Lakh, then the rupee column, with
-   the Information notice `base-file.money-column-used` naming the column used and the column passed over;
-   (c) the lead's decision: a placeholder in the Crore cell ("NA", "N/A", "-", "nil" and the rest of the reader's
-   placeholders) counts as blank, and `base-file.money-column-used` names the placeholder;
+   (b) the lead's decision, confirmed by the owner on 2 Nov 2026 (PD-09): a blank Crore cell is not text, so the
+   reader takes the Lakh, then the rupee column, with the Information notice `base-file.money-column-used` naming the
+   column used and the column passed over;
+   (c) the lead's decision, confirmed by the owner on 2 Nov 2026 (PD-09) for "NA", "N/A", "-" and "nil": a
+   placeholder in the Crore cell counts as blank (then Lakh, then rupees), and `base-file.money-column-used` names the
+   placeholder; any other text makes the value invalid. The reader's other placeholders ("n.a.", "n.a", "none", "not
+   available", "--" and a lone en or em dash character) are read the same way as built, pending the owner's word on
+   them;
    (d) the lead's decision: when the amount used and a later column's amount for the same field are both numbers and
    differ by more than 0.005 Cr (plus 1e-9), the Warning `base-file.money-disagree` names both columns, and the amount
    used is kept.
