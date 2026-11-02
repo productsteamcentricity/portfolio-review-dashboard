@@ -135,9 +135,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
       running, open only their own synthetic file read-only without a window, change no application option, close
       only that file and never quit, stop or kill Office; with no instance running the result is NOT RUN with the
       paths of the files for the owner to open, never a pass, and the damaged-file negative controls are never run
-      against the owner's Office. The run builds 8 workbooks and 10 decks (the six-class decks syn-pie6-reits and
-      syn-pie6-hybrid, and the cases syn-six-classes and syn-big-return). It has not been run under the new rule.
-    - Tests: 1,004 of 1,004 under IST and under UTC with node_modules, 940 of 940 without (the four "(needs npm
+      against the owner's Office. Excel hides its own workbook window at once after the open, so frozen panes are
+      checked in the file only. After the first TIMEOUT of an application no later case of it is started (NOT RUN,
+      "not attempted: Office did not answer"), and the Excel edit check runs only in manual calculation (in automatic
+      calculation, Excel's default, it is reported "not checked in Excel", never as a pass). The run builds 8
+      workbooks and 10 decks (the six-class decks syn-pie6-reits and syn-pie6-hybrid, and the cases syn-six-classes
+      and syn-big-return). It has not been run under the new rule.
+    - Tests: 1,012 of 1,012 under IST and under UTC with node_modules, 948 of 948 without (the four "(needs npm
       ci)" suites skipped); the spike 149 of 149 and overview.cdp 124 of 124.
 - **The capital-gains upload design for M7 (CR-0006, D-036, amending D-032).** Documents only; no code, `/next/` and
   `index.html` unchanged. The upload accepts the wealth platform's "Capital Gain Report" export as produced (columns
