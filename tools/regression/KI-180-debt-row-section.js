@@ -49,7 +49,7 @@ Object.keys(REF.SIF_PERF).forEach(k => note({ product: 'SIF', asset: 'Equity', c
 Object.keys(REF.PMS_PERF).forEach(k => note({ product: 'PMS', asset: 'Equity', category: REF.PMS_PERF[k].category, name: k }));
 Object.keys(REF.STOCK_INFO).forEach(k => note({ product: 'Direct Equity', asset: 'Equity', category: REF.STOCK_INFO[k][0], name: k }));
 [['Debt', 'AIF', 'AIF (CAT III) - Long Short', 'X Fund'], ['Debt', 'AIF', 'Category III', 'X Debt Fund'], ['Equity', 'AIF', 'Category III', 'X Long Short Fund'],
- ['Equity', 'AIF', 'Category III', 'X Fund'], ['Debt', 'AIF', 'Category II', 'X Credit Fund'], ['Equity', 'Unlisted Shares', '', 'X Pvt Ltd'],
+ ['Equity', 'AIF', 'Category III', 'X Fund'], ['Debt', 'AIF', 'Category II', 'X Credit Fund'], ['Equity', 'AIF', 'Category II', 'X Equity Fund'], ['Equity', 'Unlisted Shares', '', 'X Pvt Ltd'],
  ['Debt', 'Bonds', 'Unlisted', 'X 10% NCD'], ['Debt', 'Bonds', 'Corporate Bond', 'X 9% NCD'], ['Debt', 'Bonds', 'G-Sec', '7.18% GOI 2033'],
  ['Debt', 'Bonds', '', 'X Market Linked Debenture'], ['Commodity', 'Bonds', '', 'Sovereign Gold Bond 2028'], ['Others', 'Crypto', 'Crypto', 'Bitcoin'],
  ['Equity', 'Shares', 'US Equity', 'X Inc'], ['Equity', 'SIF', 'Long-Short Fund', 'X Debt Long-Short Fund'], ['Equity', 'Mutual Funds', 'Index', 'X Nasdaq 100 ETF'],
@@ -83,8 +83,10 @@ const t = m.taxation.totals, r6 = v => Math.round(v * 1e6) / 1e6;
 const got = [t.cmv, t.ltcgCmv, t.stcgCmv, t.unclassCmv, t.ltcgGain, t.stcgGain, t.unclassGain, m.taxation.harvest.taxBefore].map(r6);
 /* tax batch T3 moves the PMS (1.2565 Cr, gain 0.5065, KI-169) and the Category I/II AIF (0.6516 Cr, gain 0.1516, KI-171) from
    long term to not classified, and applies each client's Rs 1.25 lakh exemption (KI-168): tax before 0.267175 - 0.0633125
-   (PMS at 12.5%) - 0.01895 (AIF at 12.5%) - 2 x 0.0015625 (12.5% of 0.0125 Cr per client) = 0.181787 Cr */
-ok(JSON.stringify(got) === JSON.stringify([8.7443, 3.639173, 2.400027, 2.7051, 1.389173, 0.350027, 0.8051, 0.181787]), 'totals and tax before as tax batch T3 gives them (' + got.join(', ') + ')');
+   (PMS at 12.5%) - 0.01895 (AIF at 12.5%) - 2 x 0.0015625 (12.5% of 0.0125 Cr per client) = 0.181787 Cr.
+   Tax batch T5 (item 10, CR-0008 question 17) treats that AIF, a "Listed AIF", as Category III: fund level, so its 0.6516 Cr and
+   gain 0.1516 are no longer counted as not classified (2.7051 - 0.6516 = 2.0535; 0.8051 - 0.1516 = 0.6535); no other figure moves. */
+ok(JSON.stringify(got) === JSON.stringify([8.7443, 3.639173, 2.400027, 2.0535, 1.389173, 0.350027, 0.6535, 0.181787]), 'totals and tax before as tax batch T3 gives them, the Listed AIF now fund level (' + got.join(', ') + ')');
 const debts = m.taxation.positions.filter(p => /^Debt Mutual Funds/.test(p.cls));
 ok(debts.length === 2 && debts.every(p => p.cls === DEBT) && r6(debts.reduce((s, p) => s + p.stCmv, 0)) === 1.7937, 'its two debt funds carry the new label (short-term CMV 1.7937 Cr)');
 (async () => {

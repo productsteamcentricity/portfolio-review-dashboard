@@ -16,8 +16,11 @@
    15 Mar 2024 and 15 Mar 2026, valued Rs 1.20 Cr: no long- or short-term split (was Rs 10
    lakh long term at 12.5%, Rs 1,25,000 of tax, and Rs 10 lakh short term); its Rs 20 lakh
    gain is not classified; tax before 0. A Category I/II AIF at a loss is not a harvest
-   candidate. The synthetic sample book's Alchemy Leaders of Tomorrow ("Listed AIF") moves
-   Rs 0.1516 Cr from long term to not classified and leaves client B's harvest. Synthetic data only.
+   candidate. The synthetic sample book's Alchemy Leaders of Tomorrow ("Listed AIF") moved
+   Rs 0.1516 Cr from long term to not classified and left client B's harvest (tax batch T3);
+   tax batch T5 (item 10, CR-0008 question 17) treats a Listed AIF as Category III, fund
+   level (KI-166), so that Rs 0.1516 Cr is fund level and no longer counted as not classified.
+   Synthetic data only.
    ========================================================================== */
 'use strict';
 const T = require('./lib/tax-harness.js');
@@ -57,7 +60,8 @@ const iw = H.XLSX.read(fx.irrBuf, { type: 'buffer', cellDates: true });
 const m = E.computeReview(base, Object.assign({}, REF, { IRR: E.parsers.parseIRR(iw.SheetNames, n => aoa(iw, n)) }), { familyName: 'Sample Family', asOnDate: '30 Sep 2026' });
 const al = m.taxation.positions.find(p => /Alchemy/.test(p.name));
 const cb = m.taxation.clients.find(c => c.client === al.client);
-ok(al && al.cls === EQ12 && al.notSplit === 'passThrough' && Math.abs(al.unknownGain - 0.1516) < 1e-9, 'Alchemy Leaders of Tomorrow: pass-through, Rs 0.1516 Cr not classified (was long term)');
+ok(al && al.cls === 'Equity AIF – Cat III (Listed Equity)' && al.notSplit === 'fundLevel' && al.catRuled === true && al.unknownGain === null && Math.abs(al.gl - 0.1516) < 1e-9,
+  'Alchemy Leaders of Tomorrow ("Listed AIF"): Category III, fund level, Rs 0.1516 Cr not counted as unclassified (was pass-through, not classified; tax batch T5 item 10)');
 ok(cb.harvest.pools.every(p => !/AIF/.test(p.cls)), 'client B\'s harvest has no AIF pool (was Rs 0.01895 Cr of tax at 12.5%)');
 
 (async () => {

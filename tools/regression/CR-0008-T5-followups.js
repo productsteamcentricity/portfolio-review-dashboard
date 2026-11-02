@@ -13,10 +13,10 @@
       missing an event", with a dash. It now says why by reason: merged folios with blank
       units (fix batch 4, KI-140), no purchase still held, fewer or more units than the base
       file, invested value; the unit and value reasons lose their dash.
-   4. An AIF whose category the file does not state ("Listed AIF", 11 funds of AIF_PERF) is
-      treated as Category I or II, pass-through (part T3); the tab, the slides and the AI
-      Analyst say so, and to confirm the category against the AIF's statement, never
-      asserting it (CR-0008 question 17 stays open).
+   4. An AIF whose category is stated nowhere (blank, or naming no Category) is treated as
+      Category I or II, pass-through (part T3); the tab, the slides and the AI Analyst say so,
+      and to confirm the category against the AIF's statement, never asserting it. (A fund
+      called a "Listed AIF" is Category III since item 10: CR-0008-T5-item10-listed-aif.js.)
    5. Stale wording of part T3: the holding-detail slide said PMS and unlisted AIF show a
       dash in the unit columns; the tab and the class slide said LTCG + STCG add back to
       every holding's Gain/Loss.
@@ -121,45 +121,46 @@ ok(Object.isFrozen(E.taxDefaults) && E.taxDefaults.slabPct === 30 && E.taxDefaul
       'harvest slide: nothing exempt shows ₹0.00 L, no minus');
 
     /* ---------------- 4, 5, 6. AIF category not stated; stale wording; left out with CMV ---------------- */
-    console.log('--- 4. an AIF whose category the file does not state ---');
+    console.log('--- 4. an AIF whose category is stated nowhere ---');
     const aifRow = (c, n) => E.taxClassify({ product: 'AIF', asset: 'Equity', category: c, name: n || 'Synthetic Opportunities Fund' }, REF);
-    ok(aifRow('Listed AIF').cls === 'Equity AIF – Cat I/II' && aifRow('Listed AIF').catAssumed === true && aifRow('').catAssumed === true,
-      '"Listed AIF" or a blank category: Category I or II, marked as assumed');
+    ok(aifRow('').cls === 'Equity AIF – Cat I/II' && aifRow('').catAssumed === true && aifRow('Alternative Investment Fund').catAssumed === true && !aifRow('').catRuled,
+      'a blank category, or one that names no Category: Category I or II, marked as assumed');
     ok(['Category I', 'Category II', 'CAT II', 'Cat-II', 'Category 2', 'Cat. I'].every(c => aifRow(c).cls === 'Equity AIF – Cat I/II' && !aifRow(c).catAssumed) &&
        !aifRow('', 'Synthetic Growth Fund - Category II').catAssumed, 'a stated Category I or II (in the category or the name, in any of its spellings) is not marked');
     ok(aifRow('AIF (CAT III) - Listed Equity').cls === 'Equity AIF – Cat III (Listed Equity)' && !aifRow('AIF (CAT III) - Listed Equity').catAssumed, 'a Category III AIF is not marked');
     const ap = Object.keys(REF.AIF_PERF).map(k => E.taxClassify({ product: 'AIF', asset: 'Equity', category: REF.AIF_PERF[k].category, name: k }, REF));
-    ok(ap.filter(x => x.catAssumed && x.cls === 'Equity AIF – Cat I/II').length === 11 && ap.filter(x => /Cat III/.test(x.cls || '')).length === 1, 'AIF_PERF: the 11 "Listed AIF" funds are assumed Category I or II; the one Category III fund is not');
+    ok(ap.length === 12 && ap.every(x => !x.catAssumed && /Cat III/.test(x.cls || '')), 'AIF_PERF: none of the 12 funds is assumed Category I or II (11 are called "Listed AIF", item 10; one is Category III)');
     const aif = (name, category, cost, cmv) => ({ client: 'Client A', name, product: 'AIF', asset: 'Equity', category, noUnits: true, nav: cmv, lots: [['2024-03-15', 1, cost]] });
     const fam = new T.Book()
-      .add(aif('Synthetic Listed Opportunities Fund', 'Listed AIF', 5000000, 6000000))
+      .add(aif('Synthetic Unstated Category Fund', '', 5000000, 6000000))
       .add(aif('Synthetic Private Equity Fund II', 'Category II', 10000000, 12000000))
       .add(aif('Synthetic Long Short Fund', 'AIF (CAT III) - Long Short', 5000000, 10000000))
       .add({ client: 'Client A', name: 'Synthetic Capital - Long Term Value', product: 'PMS', asset: 'Equity', category: 'Multi Cap', noUnits: true, nav: 14000000, lots: [['2023-04-10', 1, 10000000]] })
       .add(eq('Client A', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 300, '2024-01-10'))
       .add({ client: 'Client A', name: 'Synthetic Tax Saver Fund-Reg(G)', product: 'Mutual Funds', asset: 'Equity', category: 'ELSS', nav: 150, lots: [['2022-09-01', 100, 100], ['2025-01-10', 100, 100]] });
     const m = fam.review(AS_ON), TX = m.taxation, ns = TX.totals.notSplit.passThrough;
-    const la = TX.positions.find(p => p.name === 'Synthetic Listed Opportunities Fund'), c2 = TX.positions.find(p => p.name === 'Synthetic Private Equity Fund II');
+    const la = TX.positions.find(p => p.name === 'Synthetic Unstated Category Fund'), c2 = TX.positions.find(p => p.name === 'Synthetic Private Equity Fund II');
     ok(la && la.notSplit === 'passThrough' && la.catAssumed === true && c2 && c2.notSplit === 'passThrough' && !c2.catAssumed && ns.n === 2 && ns.assumedN === 1 &&
        T.near(r(ns.cmv), 18000000) && T.near(r(ns.assumedCmv), 6000000), 'the record and the totals: 2 pass-through AIFs (Rs 1.80 Cr), 1 of them assumed (Rs 0.60 Cr)');
     const tx2 = R8377(T.text(T.renderTaxTab(m)));
     ok(tx2.indexOf('2 AIFs are treated as Category I or II (pass-through), 1 of them because the file does not state the category: income keeps its character') >= 0 &&
        tx2.indexOf('Confirm the category against the AIF’s statement: a Category III AIF is taxed inside the fund instead.') >= 0 && !/2 Category I or II AIFs are pass-through/.test(tx2),
       'Taxation tab: the note says they are treated as Category I or II, why, and to confirm it against the AIF\'s statement');
-    ok(/Synthetic Listed Opportunities Fund Listed AIF category not stated in the file: treated as Category I or II/.test(tx2), 'Taxation tab: the holding row says its category is not stated');
-    ok(/Left out of the harvest.*: 1 PMS \(₹1\.40 Cr\), 2 AIFs treated as Category I or II \(₹1\.80 Cr\), 1 Category III AIF \(₹1\.00 Cr\)\./.test(tx2), 'Taxation tab: left out of the harvest, without asserting the category');
+    ok(/Synthetic Unstated Category Fund AIF category not stated in the file: treated as Category I or II/.test(tx2), 'Taxation tab: the holding row says its category is not stated');
+    ok(/Left out of the harvest.*: 1 PMS \(₹1\.40 Cr\), 1 Category I or II AIF \(₹1\.20 Cr\), 1 AIF treated as Category I or II \(₹0\.60 Cr\), 1 Category III AIF \(₹1\.00 Cr\)\./.test(tx2),
+      'Taxation tab: left out of the harvest, the AIF whose category is assumed named apart from the one whose category is stated');
     const sl = await T.taxSlidesText(m);
-    ok(/Not split: PMS \(per security\), AIFs treated as Cat I\/II \(per underlying asset\)\. Cat III AIFs: fund level\. 1 AIF is treated as Cat I\/II because the file states no category: confirm it against the AIF’s statement\./.test(sl),
+    ok(/Not split: PMS \(per security\), Cat I\/II AIFs \(per underlying asset\)\. Cat III AIFs: fund level\. 1 AIF is treated as Cat I\/II because the file states no category: confirm it against the AIF’s statement\./.test(sl),
       'class slide: the footnote says the AIF is treated as Cat I/II because its category is not stated');
     console.log('--- 6. the harvest slide\'s "Left out" line gives the CMV ---');
-    ok(/Left out, as not split into long and short term: 1 PMS \(₹1\.40 Cr\), 2 AIFs treated as Cat I\/II \(₹1\.80 Cr\), 1 Cat III AIF \(₹1\.00 Cr\)\./.test(sl),
-      'harvest slide: 1 PMS (₹1.40 Cr), 2 AIFs treated as Cat I/II (₹1.80 Cr), 1 Cat III AIF (₹1.00 Cr), as the tab');
+    ok(/Left out, as not split into long and short term: 1 PMS \(₹1\.40 Cr\), 1 Cat I\/II AIF \(₹1\.20 Cr\), 1 AIF treated as Cat I\/II \(₹0\.60 Cr\), 1 Cat III AIF \(₹1\.00 Cr\)\./.test(sl),
+      'harvest slide: 1 PMS (₹1.40 Cr), 1 Cat I/II AIF (₹1.20 Cr), 1 AIF treated as Cat I/II (₹0.60 Cr), 1 Cat III AIF (₹1.00 Cr), as the tab');
     const sig = n => T.aiaTaxSignal(m.holdings.find(x => x.name === n), m);
-    const sLa = sig('Synthetic Listed Opportunities Fund'), sC2 = sig('Synthetic Private Equity Fund II');
+    const sLa = sig('Synthetic Unstated Category Fund'), sC2 = sig('Synthetic Private Equity Fund II');
     ok(sLa.verdict === 'na' && /^The file does not state this AIF's category, so it is treated as Category I or II; confirm the category against the AIF's statement\. A Category I or II AIF passes its income through/.test(sLa.text),
       'AI Analyst: an AIF whose category is not stated says so (got: ' + sLa.text.slice(0, 120) + ')');
     ok(sC2.verdict === 'na' && /^A Category I or II AIF passes its income through/.test(sC2.text), 'AI Analyst: a stated Category II AIF reads as before');
-    const one1 = new T.Book().add(aif('Synthetic Listed Opportunities Fund', 'Listed AIF', 5000000, 6000000)).add(eq('Client A', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 300, '2024-01-10')).review(AS_ON);
+    const one1 = new T.Book().add(aif('Synthetic Unstated Category Fund', '', 5000000, 6000000)).add(eq('Client A', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 300, '2024-01-10')).review(AS_ON);
     const tx3 = R8377(T.text(T.renderTaxTab(one1))), sl3 = await T.taxSlidesText(one1);
     ok(tx3.indexOf('1 AIF is treated as Category I or II (pass-through) because the file does not state its category: income keeps its character') >= 0 &&
        /Left out of the harvest.*: 1 AIF treated as Category I or II \(₹0\.60 Cr\)\./.test(tx3) && !/Category I or II AIF is pass-through/.test(tx3), 'Taxation tab, one such AIF: the note and the left-out list');
@@ -181,7 +182,7 @@ ok(Object.isFrozen(E.taxDefaults) && E.taxDefaults.slabPct === 30 && E.taxDefaul
     const slOne = await T.taxSlidesText(one.review(AS_ON));
     ok(/1 holding\(s\) not reconciled to the base file are unclassified and are not listed here\./.test(slOne) && !/with no lot history/.test(slOne),
       'holding-detail slide: a merged holding with blank units is not said to have "no lot history"');
-    ok(/Synthetic Listed Opportunities Fund Client A — 15-Mar-24 15-Mar-24 Not split Not split Not split Not split Not split Not split 1/.test(sl) &&
+    ok(/Synthetic Unstated Category Fund Client A — 15-Mar-24 15-Mar-24 Not split Not split Not split Not split Not split Not split 1/.test(sl) &&
        /Synthetic Long Short Fund Client A — 15-Mar-24 15-Mar-24 Fund level Fund level Fund level Fund level Fund level Fund level 1/.test(sl),
       'holding-detail slide: the rows match it (no unit count; Not split, Fund level)');
 
@@ -205,7 +206,7 @@ ok(Object.isFrozen(E.taxDefaults) && E.taxDefaults.slabPct === 30 && E.taxDefaul
       .add({ client: 'Client A', name: 'Synthetic Aggressive Hybrid Fund-Reg(G)', product: 'Mutual Funds', asset: 'Hybrid', category: 'Aggressive Hybrid Fund', nav: 110, lots: [['2025-03-20', 1000, 100]] })
       .add({ client: 'Client A', name: 'Synthetic Balanced Advantage Fund-Reg(G)', product: 'Mutual Funds', asset: 'Hybrid', category: 'Balanced Advantage', nav: 110, lots: [['2025-06-01', 1000, 100]] })
       .add({ client: 'Client A', name: 'Synthetic Corporate Bond Fund-Reg(G)', product: 'Mutual Funds', asset: 'Debt', category: 'Corporate Bond Fund', nav: 130, lots: [['2022-05-01', 1000, 100], ['2024-05-01', 1000, 100]] })
-      .add(aif('Synthetic Listed Opportunities Fund', 'Listed AIF', 5000000, 6000000)).add(aif('Synthetic Long Short Fund', 'AIF (CAT III) - Long Short', 5000000, 10000000))
+      .add(aif('Synthetic Unstated Category Fund', '', 5000000, 6000000)).add(aif('Synthetic Long Short Fund', 'AIF (CAT III) - Long Short', 5000000, 10000000))
       .add({ client: 'Client A', name: 'Synthetic Capital - Long Term Value', product: 'PMS', asset: 'Equity', category: 'Multi Cap', noUnits: true, nav: 14000000, lots: [['2023-04-10', 1, 10000000]] })
       .add({ client: 'Client A', name: 'Synthetic Crypto Basket', product: 'Crypto', asset: 'Others', category: 'Crypto', nav: 80, lots: [['2026-05-10', 1000, 100]] })
       .add(Object.assign({ client: 'Client A', name: 'Synthetic Short History Fund-Reg(G)', nav: 120, lots: [['2024-03-10', 1000, 100]] }, EQF));

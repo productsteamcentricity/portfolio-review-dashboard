@@ -31,11 +31,11 @@
       the base file, invested value. Each record carries the reason's kind (unrec). The two
       unit and value reasons lose their dash and say which way the units differ; the
       holding-detail slide no longer says such holdings have "no lot history".
-   4. An AIF whose category the file does not state (the 11 "Listed AIF" funds of AIF_PERF)
-      is still Category I or II, pass-through (part T3), marked catAssumed: the tab, the slides
-      and the AI Analyst say it is treated as Category I or II because the file does not state
-      the category, and to confirm it against the AIF's statement (CR-0008 question 17 stays
-      open).
+   4. An AIF whose category is stated nowhere (no Category I, II or III in its category, name or
+      product, nor in the performance entry it matched, and not called a Listed AIF) is still
+      Category I or II, pass-through (part T3), marked catAssumed: the tab, the slides and the AI
+      Analyst say it is treated as Category I or II because the file does not state the category,
+      and to confirm it against the AIF's statement.
    5. Wording part T3 left stale: the holding-detail slide no longer says PMS and unlisted AIF
       show a dash in the unit columns, and the tab and the class slide no longer say LTCG +
       STCG add back to every holding's Gain/Loss.
@@ -50,6 +50,14 @@
       file's own ISIN column is not read by parseBaseRows (KI-184, open, not fixed here; D-040 c corrected).
    9. The harvest defaults the engine exports (ENGINE.taxDefaults, part T3) are frozen: only taxAssumeFor reads
       them, and an exported key cannot be taken back later (ARC-01, C3 of its review of the contract).
+  10. An AIF called a "Listed AIF" (by the file's category, or by the category of the AIF_PERF entry the
+      holding matched; 11 of the 12 funds of AIF_PERF) is Category III, fund level, marked catRuled
+      (CR-0008 question 17, answered 2 Nov 2026; D-043): the tab, the slides and the AI Analyst say it is
+      treated as Category III because it is called a Listed AIF, and to confirm the category against the
+      AIF's statement. What an AIF's own words state wins: Category I, II or III in its category, name or
+      product is read as stated; when its own words state none, so is the category of the performance
+      entry it matched ("AIF (CAT III) - Listed Equity" is Category III). The category is read once, in
+      taxClassify, so items 4 and 10 cannot disagree.
   11. A date-time written with an explicit zone in the IRR sheet ("2023-04-01T20:00:00Z", "...+05:30") is read as the day
       it states, the same in every zone; part T2 read the machine-local day of the instant, which is another day in some
       zones (parsers script, irrParseDate; ARC-01, C2 of its review of the contract; KI-186).
@@ -72,11 +80,14 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
           '     only for the ISIN of a share held directly (STOCK_RET). */\n',
     to: '     taxClassify(h, R, refDate) returns {cls, why}: cls is a TAX_RULES inst, or null with why,\n' +
         '     the reason shown for a holding left unclassified. R (optional, the reference data) is read\n' +
-        '     only for the ISIN of a share held directly (STOCK_RET). refDate (optional; tax batch T5) is\n' +
+        '     for the ISIN of a share held directly (STOCK_RET) and for the category of the AIF_PERF entry an\n' +
+        '     AIF matched. refDate (optional; tax batch T5) is\n' +
         '     the tax reference date (taxRefDate, D-040 a): from 1 Apr 2026 aggressive hybrid, arbitrage\n' +
         '     and equity savings funds take the reckoner\'s usual bucket, marked usual:true; before it they\n' +
-        '     are unclassified (TR-7, LD-11). With no date the TY 2026-27 rules apply. An AIF whose\n' +
-        '     category the file does not state is Category I or II, marked catAssumed:true. */\n'
+        '     are unclassified (TR-7, LD-11). With no date the TY 2026-27 rules apply. An AIF\'s category is\n' +
+        '     read once (T5 items 4 and 10): what its own words state wins, then the category of the entry it\n' +
+        '     matched; a "Listed AIF" is Category III, marked catRuled:true; none at all is Category I or II,\n' +
+        '     marked catAssumed:true. */\n'
   },
   {
     label: 'engine: the hybrid reason no longer names equity savings (T5)',
@@ -128,11 +139,33 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
         '     but parseBaseRows does not read the base file\'s ISIN column, KI-184, open), or\n'
   },
   {
-    label: 'engine: an AIF whose category is not stated is Category I or II, marked catAssumed (T5)',
-    from: '      return K(/debt/.test(a) ? "Debt AIF – Cat I/II" : "Equity AIF – Cat I/II");\n',
-    to: '      /* T5 (CR-0008 question 17): with no category stated ("Listed AIF" in AIF_PERF), Category I or II is assumed, and said */\n' +
+    label: 'engine: an AIF\'s category is read once; a Listed AIF is Category III, none at all is Category I or II, each marked (T5 items 4 and 10)',
+    from: '      var _cat3=/cat(egory)?\\.?\\s*-?\\s*iii\\b/i.test(c+" "+n);\n' +
+          '      if(_cat3 && /debt/.test(a)) return K("Debt AIF – Cat III");\n' +
+          '      if(_cat3) return K(/long[\\s-]?short/i.test(c+" "+n) ? "Equity AIF – Cat III (Long Short)" : "Equity AIF – Cat III (Listed Equity)");\n' +
+          '      return K(/debt/.test(a) ? "Debt AIF – Cat I/II" : "Equity AIF – Cat I/II");\n',
+    to: '      /* T5 items 4 and 10 (CR-0008 question 17). What an AIF\'s own words state is read once, from its category, name and product:\n' +
+        '         cat or category at a word start, any run of spaces, dots, colons, brackets and dashes, then III, II, I, three, two, one,\n' +
+        '         3, 2 or 1; Category III is tested first. When its own words state none, what the performance data says of the fund the\n' +
+        '         holding matched counts as a statement ("AIF (CAT III) - Listed Equity" is Category III). "Listed AIF", the holding\'s\n' +
+        '         own category or the data\'s, is Category III too (the answer of 2 Nov 2026) and is marked catRuled. With nothing at all,\n' +
+        '         Category I or II is assumed and marked catAssumed. */\n' +
+        '      var _ct=c+" "+n+" "+p, _lab="", _ruled=false,\n' +
+        '          _cat3=/\\bcat(egory)?[\\s.:()\\-\\u2010-\\u2015\\u2212]*(iii|three|3)\\b/.test(_ct),\n' +
+        '          _st12=!_cat3&&/\\bcat(egory)?[\\s.:()\\-\\u2010-\\u2015\\u2212]*(ii|two|i|one|2|1)\\b/.test(_ct);\n' +
+        '      if(!_cat3&&!_st12){\n' +
+        '        _lab=(h.perfSrc==="AIF"&&R&&R.AIF_PERF&&R.AIF_PERF[h.perfKey])?String(R.AIF_PERF[h.perfKey].category||"").toLowerCase():"";\n' +
+        '        if(/\\bcat(egory)?[\\s.:()\\-\\u2010-\\u2015\\u2212]*(iii|three|3)\\b/.test(_lab)) _cat3=true;\n' +
+        '        else if(/\\bcat(egory)?[\\s.:()\\-\\u2010-\\u2015\\u2212]*(ii|two|i|one|2|1)\\b/.test(_lab)) _st12=true;\n' +
+        '        else if(/^\\s*listed\\s*aif\\s*$/.test(c)||/^\\s*listed\\s*aif\\s*$/.test(_lab)) _ruled=true;\n' +
+        '      }\n' +
+        '      if(_cat3||_ruled){\n' +
+        '        var _r3=K(/debt/.test(a) ? "Debt AIF – Cat III" : (/long[\\s-]?short/.test(_ct+" "+_lab) ? "Equity AIF – Cat III (Long Short)" : "Equity AIF – Cat III (Listed Equity)"));\n' +
+        '        if(_ruled) _r3.catRuled=true;\n' +
+        '        return _r3;\n' +
+        '      }\n' +
         '      var _r12=K(/debt/.test(a) ? "Debt AIF – Cat I/II" : "Equity AIF – Cat I/II");\n' +
-        '      if(!/cat(egory)?\\.?\\s*-?\\s*(ii?|[12])\\b/i.test(c+" "+n)) _r12.catAssumed=true;\n' +
+        '      if(!_st12) _r12.catAssumed=true;\n' +
         '      return _r12;\n'
   },
   {
@@ -161,10 +194,10 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
     to: '      var _tc=taxClassify(h,REF,asOn), cls=_tc.cls, rule=cls?byName[cls]:null;   /* T5: one date, so one class per holding in the review */\n'
   },
   {
-    label: 'engine: the record carries the usual-bucket and assumed-category marks (T5)',
+    label: 'engine: the record carries the usual-bucket, assumed-category and ruled-category marks (T5)',
     from: '               pxGap:pxGap||undefined, viaSwitchIn:(pxGap&&swIn[_k])||undefined};\n',
     to: '               pxGap:pxGap||undefined, viaSwitchIn:(pxGap&&swIn[_k])||undefined,\n' +
-        '               usualBucket:_tc.usual||undefined, catAssumed:_tc.catAssumed||undefined};   /* T5 */\n'
+        '               usualBucket:_tc.usual||undefined, catAssumed:_tc.catAssumed||undefined, catRuled:_tc.catRuled||undefined};   /* T5 */\n'
   },
   {
     label: 'engine: an unreconciled holding carries its reason\'s kind: blank merged units (T5)',
@@ -196,15 +229,16 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
         '              : "Units do not reconcile to the base file: the transaction history gives more units, so it is missing an event, such as a sale, a transfer out or a consolidation of units."));\n'
   },
   {
-    label: 'engine: the summariser counts the AIFs whose category is assumed (T5)',
+    label: 'engine: the summariser counts the AIFs whose category is assumed or ruled (T5)',
     from: '             notSplit:{fundLevel:{n:0,cmv:0,gl:0},passThrough:{n:0,cmv:0,gl:0},pms:{n:0,cmv:0,gl:0}}};\n',
-    to: '             notSplit:{fundLevel:{n:0,cmv:0,gl:0},passThrough:{n:0,cmv:0,gl:0,assumedN:0,assumedCmv:0},pms:{n:0,cmv:0,gl:0}}};\n'
+    to: '             notSplit:{fundLevel:{n:0,cmv:0,gl:0,ruledN:0,ruledCmv:0},passThrough:{n:0,cmv:0,gl:0,assumedN:0,assumedCmv:0},pms:{n:0,cmv:0,gl:0}}};\n'
   },
   {
-    label: 'engine: the summariser counts the AIFs whose category is assumed, per holding (T5)',
+    label: 'engine: the summariser counts the AIFs whose category is assumed or ruled, per holding (T5)',
     from: '          var ns=t.notSplit[r.notSplit]; if(ns){ ns.n++; ns.cmv+=r.cmv; if(r.gl!=null) ns.gl+=r.gl; }\n',
     to: '          var ns=t.notSplit[r.notSplit]; if(ns){ ns.n++; ns.cmv+=r.cmv; if(r.gl!=null) ns.gl+=r.gl;\n' +
-        '            if(r.catAssumed){ ns.assumedN=(ns.assumedN||0)+1; ns.assumedCmv=(ns.assumedCmv||0)+r.cmv; } }   /* T5 */\n'
+        '            if(r.catAssumed){ ns.assumedN=(ns.assumedN||0)+1; ns.assumedCmv=(ns.assumedCmv||0)+r.cmv; }\n' +
+        '            if(r.catRuled){ ns.ruledN=(ns.ruledN||0)+1; ns.ruledCmv=(ns.ruledCmv||0)+r.cmv; } }   /* T5 */\n'
   },
   {
     label: 'AI Analyst: a review whose holdings are all unclassified still gives each its reason (T5)',
@@ -218,21 +252,22 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
         '        "No IRR transaction history is loaded, so the long- and short-term split of this holding is not known.");\n'
   },
   {
-    label: 'AI Analyst: the tax signal collects the two marks (T5)',
+    label: 'AI Analyst: the tax signal collects the marks (T5)',
     from: '    var acc = { ltCmv: 0, stCmv: 0, ltGain: null, stGain: null, cls: "", n: 0, lockCmv: 0, gf: 0, nsN: 0, ns: "" };\n',
-    to: '    var acc = { ltCmv: 0, stCmv: 0, ltGain: null, stGain: null, cls: "", n: 0, lockCmv: 0, gf: 0, nsN: 0, ns: "", usual: false, catAs: false };\n'
+    to: '    var acc = { ltCmv: 0, stCmv: 0, ltGain: null, stGain: null, cls: "", n: 0, lockCmv: 0, gf: 0, nsN: 0, ns: "", usual: false, catAs: false, catRu: false };\n'
   },
   {
-    label: 'AI Analyst: the tax signal reads the two marks from the records (T5)',
+    label: 'AI Analyst: the tax signal reads the marks from the records (T5)',
     from: '      if (p.notSplit && !p.splitPart){ acc.nsN++; acc.ns = p.notSplit; }   /* TX-07, TX-10, TX-12 */\n',
     to: '      if (p.notSplit && !p.splitPart){ acc.nsN++; acc.ns = p.notSplit; }   /* TX-07, TX-10, TX-12 */\n' +
-        '      if (p.usualBucket) acc.usual = true; if (p.catAssumed) acc.catAs = true;   /* T5 */\n'
+        '      if (p.usualBucket) acc.usual = true; if (p.catAssumed) acc.catAs = true; if (p.catRuled) acc.catRu = true;   /* T5 */\n'
   },
   {
-    label: 'AI Analyst: an AIF whose category is assumed says so and asks for the statement (T5)',
+    label: 'AI Analyst: an AIF whose category is assumed or ruled says so and asks for the statement (T5)',
     from: '      return aiaSig("tax", "Tax", "na", ev, ({\n',
-    to: '      /* T5 (CR-0008 question 17): an AIF whose category the file does not state */\n' +
-        '      return aiaSig("tax", "Tax", "na", ev, ((acc.catAs && acc.ns === "passThrough") ? "The file does not state this AIF\'s category, so it is treated as Category I or II; confirm the category against the AIF\'s statement. " : "") + (({\n'
+    to: '      /* T5 (CR-0008 question 17): an AIF whose category the file does not state, or that is called a Listed AIF */\n' +
+        '      return aiaSig("tax", "Tax", "na", ev, ((acc.catAs && acc.ns === "passThrough") ? "The file does not state this AIF\'s category, so it is treated as Category I or II; confirm the category against the AIF\'s statement. "\n' +
+        '        : ((acc.catRu && acc.ns === "fundLevel") ? "This AIF is called a Listed AIF, so it is treated as Category III; confirm the category against the AIF\'s statement. " : "")) + (({\n'
   },
   {
     label: 'AI Analyst: the not-split reasons close the added bracket (T5)',
@@ -249,12 +284,13 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
 
   /* ======================= UI (11): the Taxation tab ======================= */
   {
-    label: 'Taxation tab: helpers for the two marks and for an amount taken off (T5)',
+    label: 'Taxation tab: helpers for the marks and for an amount taken off (T5)',
     from: '  function taxNsSub(r){ return (r&&r.notSplit===\'pms\')?\'<span class="taxsub">Gain/Loss on capital contributed: not a capital-gains figure</span>\':\'\'; }\n',
     to: '  function taxNsSub(r){ return (r&&r.notSplit===\'pms\')?\'<span class="taxsub">Gain/Loss on capital contributed: not a capital-gains figure</span>\':\'\'; }\n' +
-        '  /* T5: a class taken from the reckoner\'s usual bucket (TR-7, LD-11), or an AIF whose category the file does not state */\n' +
+        '  /* T5: a class taken from the reckoner\'s usual bucket (TR-7, LD-11), an AIF whose category the file does not state, or one called a Listed AIF */\n' +
         '  function taxT5Sub(r){ return (r&&r.usualBucket)?\'<span class="taxsub">' + USUAL_HTML + '</span>\'\n' +
-        '    :((r&&r.catAssumed)?\'<span class="taxsub">category not stated in the file: treated as Category I or II</span>\':\'\'); }\n' +
+        '    :((r&&r.catAssumed)?\'<span class="taxsub">category not stated in the file: treated as Category I or II</span>\'\n' +
+        '    :((r&&r.catRuled)?\'<span class="taxsub">called a Listed AIF: treated as Category III</span>\':\'\')); }\n' +
         '  /* T5: an amount taken off; one that rounds to zero shows 0, never "-0" */\n' +
         '  function taxNegM(U,v){ var s=U.m(v); return (v>0&&/[1-9]/.test(s))?(\'-\'+s):U.m(0); }\n'
   },
@@ -316,6 +352,14 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
         "      (_ptA?' Confirm the category against the AIF&rsquo;s statement: a Category III AIF is taxed inside the fund instead.':''));\n"
   },
   {
+    label: 'Taxation tab: the Category III note says which AIFs are treated as Category III because they are called Listed AIFs (T5 item 10)',
+    from: "      'CMV '+U.m(_nsT.fundLevel.cmv)+' and Gain/Loss '+gm(_nsT.fundLevel.gl)+' are shown as fund level, apart from the not classified amounts, and do not enter the investor&rsquo;s set-off.');\n",
+    to: "      'CMV '+U.m(_nsT.fundLevel.cmv)+' and Gain/Loss '+gm(_nsT.fundLevel.gl)+' are shown as fund level, apart from the not classified amounts, and do not enter the investor&rsquo;s set-off.'+\n" +
+        "      /* T5 item 10 (CR-0008 question 17): an AIF called a Listed AIF is treated as Category III; the page says so and asks for the statement */\n" +
+        "      (_nsT.fundLevel.ruledN?(' '+(_nsT.fundLevel.ruledN===_nsT.fundLevel.n?(_nsT.fundLevel.n===1?'It is':'They are'):(_nsT.fundLevel.ruledN+' of them '+(_nsT.fundLevel.ruledN===1?'is':'are')))+\n" +
+        "        ' treated as Category III because '+(_nsT.fundLevel.ruledN===1?'it is called a Listed AIF':'they are called Listed AIFs')+' in the file or the performance data. Confirm the category against the AIF&rsquo;s statement.'):''));\n"
+  },
+  {
     label: 'Taxation tab: the slab-rate input is a text field that takes digit grouping (T5)',
     from: '<input class="taxas" data-ci="\'+i+\'" data-k="slabPct" type="number" min="0" max="30" step="any" value="\'+a.slabPct+\'"',
     to: '<input class="taxas" data-ci="\'+i+\'" data-k="slabPct" type="text" inputmode="decimal" autocomplete="off" value="\'+a.slabPct+\'"'
@@ -341,9 +385,15 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
     to: "          '<td class=\"n\">'+U.m(H.ltGains+H.stGains)+'</td><td class=\"n\">'+taxNegM(U,H.ltUsed+H.stUsed)+'</td>'+\n"
   },
   {
-    label: 'Taxation tab: the harvest left-out list does not assert an assumed category (T5)',
-    from: "      if(_nsT.passThrough.n) _lo.push(_pl(_nsT.passThrough.n,'Category I or II AIF','Category I or II AIFs')+' ('+U.m(_nsT.passThrough.cmv)+')');\n",
-    to: "      if(_nsT.passThrough.n) _lo.push(_pl(_nsT.passThrough.n,_ptA?'AIF treated as Category I or II':'Category I or II AIF',_ptA?'AIFs treated as Category I or II':'Category I or II AIFs')+' ('+U.m(_nsT.passThrough.cmv)+')');   /* T5 */\n"
+    label: 'Taxation tab: the harvest left-out list names the AIFs whose category is assumed or ruled apart from those whose category is stated (T5 items 4 and 10)',
+    from: "      if(_nsT.passThrough.n) _lo.push(_pl(_nsT.passThrough.n,'Category I or II AIF','Category I or II AIFs')+' ('+U.m(_nsT.passThrough.cmv)+')');\n" +
+          "      if(_nsT.fundLevel.n) _lo.push(_pl(_nsT.fundLevel.n,'Category III AIF','Category III AIFs')+' ('+U.m(_nsT.fundLevel.cmv)+')');\n",
+    to: "      /* T5 items 4 and 10 (CR-0008 question 17): an AIF whose category is assumed (Cat I/II) or ruled (Listed AIF, Cat III) is never listed as one whose category the file states */\n" +
+        "      var _lop=function(n,one,many,cmv){ if(n>0) _lo.push(_pl(n,one,many)+' ('+U.m(cmv)+')'); }, _fR=_nsT.fundLevel.ruledN||0;\n" +
+        "      _lop(_ptN-_ptA,'Category I or II AIF','Category I or II AIFs',_nsT.passThrough.cmv-(_nsT.passThrough.assumedCmv||0));\n" +
+        "      _lop(_ptA,'AIF treated as Category I or II','AIFs treated as Category I or II',_nsT.passThrough.assumedCmv||0);\n" +
+        "      _lop(_nsT.fundLevel.n-_fR,'Category III AIF','Category III AIFs',_nsT.fundLevel.cmv-(_nsT.fundLevel.ruledCmv||0));\n" +
+        "      _lop(_fR,'AIF treated as Category III','AIFs treated as Category III',_nsT.fundLevel.ruledCmv||0);\n"
   },
   {
     label: 'Taxation tab: LTCG + STCG add back only for a holding that is split (T5)',
@@ -367,12 +417,13 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
     label: 'class slide: the AIFs whose category is assumed, and the usual-bucket classes, in the footnote (T5)',
     from: "      if(_ns.passThrough.n) _nsb.push('Cat I/II AIFs (per underlying asset)');\n" +
           "      var _nsFoot=(_nsb.length?(' Not split: '+_nsb.join(', ')+'.'):'')+(_ns.fundLevel.n?' Cat III AIFs: fund level.':'');\n",
-    to: "      /* T5 (CR-0008 question 17): an AIF whose category the file does not state is treated as Cat I/II, never asserted.\n" +
-        "         Kept short: the class footnote holds about two lines (KI-109). */\n" +
-        "      var _ptA=_ns.passThrough.assumedN||0;\n" +
-        "      if(_ns.passThrough.n) _nsb.push((_ptA?'AIFs treated as Cat I/II':'Cat I/II AIFs')+' (per underlying asset)');\n" +
-        "      var _nsFoot=(_nsb.length?(' Not split: '+_nsb.join(', ')+'.'):'')+(_ns.fundLevel.n?' Cat III AIFs: fund level.':'')+\n" +
-        "        (_ptA?(' '+(_ptA===1?'1 AIF is':_ptA+' AIFs are')+' treated as Cat I/II because the file states no category: confirm it against the AIF\\u2019s statement.'):'');\n" +
+    to: "      /* T5 items 4 and 10 (CR-0008 question 17): an AIF whose category the file does not state is treated as Cat I/II and a Listed AIF as\n" +
+        "         Cat III, never asserted. Kept short: the class footnote holds about two lines (KI-109). */\n" +
+        "      var _ptA=_ns.passThrough.assumedN||0, _rA=_ns.fundLevel.ruledN||0, _aifs=function(n){ return n===1?'1 AIF is':n+' AIFs are'; };\n" +
+        "      if(_ns.passThrough.n) _nsb.push((_ptA===_ns.passThrough.n?'AIFs treated as Cat I/II':'Cat I/II AIFs')+' (per underlying asset)');\n" +
+        "      var _nsFoot=(_nsb.length?(' Not split: '+_nsb.join(', ')+'.'):'')+(_ns.fundLevel.n>_rA?' Cat III AIFs: fund level.':'')+\n" +
+        "        (_ptA?(' '+_aifs(_ptA)+' treated as Cat I/II because the file states no category: confirm it against the AIF\\u2019s statement.'):'')+\n" +
+        "        (_rA?(' '+_aifs(_rA)+' treated as Cat III (fund level) because '+(_rA===1?'it is called a Listed AIF':'they are called Listed AIFs')+': confirm against the AIF\\u2019s statement.'):'');\n" +
         "      /* T5 (TR-7, LD-11): aggressive hybrid, arbitrage and equity savings funds classed by the usual bucket; worded for the client */\n" +
         "      var _ubFoot=T.positions.some(function(r){ return r.usualBucket; })?' Aggressive hybrid, arbitrage, equity savings: usual bucket per the tax reckoner; confirm with the fund house.':'';\n"
   },
@@ -433,8 +484,12 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, wording, 
           "        if(_ns.passThrough.n) _lo.push(_ns.passThrough.n+' Cat I/II AIF'+(_ns.passThrough.n===1?'':'s'));\n" +
           "        if(_ns.fundLevel.n) _lo.push(_ns.fundLevel.n+' Cat III AIF'+(_ns.fundLevel.n===1?'':'s'));\n",
     to: "        if(_ns.pms.n) _lo.push(_ns.pms.n+' PMS ('+U.m(_ns.pms.cmv)+')');\n" +
-        "        if(_ns.passThrough.n) _lo.push(_ns.passThrough.n+(_ptA?(' AIF'+(_ns.passThrough.n===1?'':'s')+' treated as Cat I/II'):(' Cat I/II AIF'+(_ns.passThrough.n===1?'':'s')))+' ('+U.m(_ns.passThrough.cmv)+')');\n" +
-        "        if(_ns.fundLevel.n) _lo.push(_ns.fundLevel.n+' Cat III AIF'+(_ns.fundLevel.n===1?'':'s')+' ('+U.m(_ns.fundLevel.cmv)+')');\n"
+        "        /* T5 items 4 and 10: an AIF whose category is assumed or ruled is named apart from one whose category the file states */\n" +
+        "        var _lop=function(n,one,many,cmv){ if(n>0) _lo.push(n+' '+(n===1?one:many)+' ('+U.m(cmv)+')'); };\n" +
+        "        _lop(_ns.passThrough.n-_ptA,'Cat I/II AIF','Cat I/II AIFs',_ns.passThrough.cmv-(_ns.passThrough.assumedCmv||0));\n" +
+        "        _lop(_ptA,'AIF treated as Cat I/II','AIFs treated as Cat I/II',_ns.passThrough.assumedCmv||0);\n" +
+        "        _lop(_ns.fundLevel.n-_rA,'Cat III AIF','Cat III AIFs',_ns.fundLevel.cmv-(_ns.fundLevel.ruledCmv||0));\n" +
+        "        _lop(_rA,'AIF treated as Cat III','AIFs treated as Cat III',_ns.fundLevel.ruledCmv||0);\n"
   },
 
   /* ======================= engine (07): the exported harvest defaults ======================= */

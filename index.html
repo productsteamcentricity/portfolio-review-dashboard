@@ -755,11 +755,14 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
      apply Sec. 76 to it and call every rupee short-term.
      taxClassify(h, R, refDate) returns {cls, why}: cls is a TAX_RULES inst, or null with why,
      the reason shown for a holding left unclassified. R (optional, the reference data) is read
-     only for the ISIN of a share held directly (STOCK_RET). refDate (optional; tax batch T5) is
+     for the ISIN of a share held directly (STOCK_RET) and for the category of the AIF_PERF entry an
+     AIF matched. refDate (optional; tax batch T5) is
      the tax reference date (taxRefDate, D-040 a): from 1 Apr 2026 aggressive hybrid, arbitrage
      and equity savings funds take the reckoner's usual bucket, marked usual:true; before it they
-     are unclassified (TR-7, LD-11). With no date the TY 2026-27 rules apply. An AIF whose
-     category the file does not state is Category I or II, marked catAssumed:true. */
+     are unclassified (TR-7, LD-11). With no date the TY 2026-27 rules apply. An AIF's category is
+     read once (T5 items 4 and 10): what its own words state wins, then the category of the entry it
+     matched; a "Listed AIF" is Category III, marked catRuled:true; none at all is Category I or II,
+     marked catAssumed:true. */
   /* KI-099 / TX-19: the mutual-fund book's product test, one definition for the AMC tab and the tax classes */
   var MF_BOOK_PRODUCT=/mutual\s*funds?\b|index\s*funds?\b|\betfs?\b|fund\s*of\s*funds?|\bfofs?\b/;
   function isMFBookProduct(p){ return MF_BOOK_PRODUCT.test(String(p||"").toLowerCase()); }
@@ -862,12 +865,28 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     if (/aif/.test(p)){
       /* Category III has its own rows; the word boundary keeps CATEGORY I and
          CATEGORY II (both present in real holding names) from matching */
-      var _cat3=/cat(egory)?\.?\s*-?\s*iii\b/i.test(c+" "+n);
-      if(_cat3 && /debt/.test(a)) return K("Debt AIF – Cat III");
-      if(_cat3) return K(/long[\s-]?short/i.test(c+" "+n) ? "Equity AIF – Cat III (Long Short)" : "Equity AIF – Cat III (Listed Equity)");
-      /* T5 (CR-0008 question 17): with no category stated ("Listed AIF" in AIF_PERF), Category I or II is assumed, and said */
+      /* T5 items 4 and 10 (CR-0008 question 17). What an AIF's own words state is read once, from its category, name and product:
+         cat or category at a word start, any run of spaces, dots, colons, brackets and dashes, then III, II, I, three, two, one,
+         3, 2 or 1; Category III is tested first. When its own words state none, what the performance data says of the fund the
+         holding matched counts as a statement ("AIF (CAT III) - Listed Equity" is Category III). "Listed AIF", the holding's
+         own category or the data's, is Category III too (the answer of 2 Nov 2026) and is marked catRuled. With nothing at all,
+         Category I or II is assumed and marked catAssumed. */
+      var _ct=c+" "+n+" "+p, _lab="", _ruled=false,
+          _cat3=/\bcat(egory)?[\s.:()\-\u2010-\u2015\u2212]*(iii|three|3)\b/.test(_ct),
+          _st12=!_cat3&&/\bcat(egory)?[\s.:()\-\u2010-\u2015\u2212]*(ii|two|i|one|2|1)\b/.test(_ct);
+      if(!_cat3&&!_st12){
+        _lab=(h.perfSrc==="AIF"&&R&&R.AIF_PERF&&R.AIF_PERF[h.perfKey])?String(R.AIF_PERF[h.perfKey].category||"").toLowerCase():"";
+        if(/\bcat(egory)?[\s.:()\-\u2010-\u2015\u2212]*(iii|three|3)\b/.test(_lab)) _cat3=true;
+        else if(/\bcat(egory)?[\s.:()\-\u2010-\u2015\u2212]*(ii|two|i|one|2|1)\b/.test(_lab)) _st12=true;
+        else if(/^\s*listed\s*aif\s*$/.test(c)||/^\s*listed\s*aif\s*$/.test(_lab)) _ruled=true;
+      }
+      if(_cat3||_ruled){
+        var _r3=K(/debt/.test(a) ? "Debt AIF – Cat III" : (/long[\s-]?short/.test(_ct+" "+_lab) ? "Equity AIF – Cat III (Long Short)" : "Equity AIF – Cat III (Listed Equity)"));
+        if(_ruled) _r3.catRuled=true;
+        return _r3;
+      }
       var _r12=K(/debt/.test(a) ? "Debt AIF – Cat I/II" : "Equity AIF – Cat I/II");
-      if(!/cat(egory)?\.?\s*-?\s*(ii?|[12])\b/i.test(c+" "+n)) _r12.catAssumed=true;
+      if(!_st12) _r12.catAssumed=true;
       return _r12;
     }
     if (/unlisted/.test(p+c)) return K(/debt/.test(a) ? "Unlisted Bonds / NCDs" : "Unlisted Equity Shares");
@@ -1231,7 +1250,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
                cls:cls, cmv:cmv, gl:gl, baseUnits:amtMode?null:baseU, fifoUnits:amtMode?null:fifoU,
                amtMode:amtMode||undefined, lots:L.length,
                pxGap:pxGap||undefined, viaSwitchIn:(pxGap&&swIn[_k])||undefined,
-               usualBucket:_tc.usual||undefined, catAssumed:_tc.catAssumed||undefined};   /* T5 */
+               usualBucket:_tc.usual||undefined, catAssumed:_tc.catAssumed||undefined, catRuled:_tc.catRuled||undefined};   /* T5 */
 
       /* the reason a holding has no class goes with it; a class with no TAX_RULES row is
          reported the same way, never kept as a position with no rule (KI-180) */
@@ -1372,7 +1391,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     function summarise(pos, unrec, unmap){
       var t={cmv:0,gl:0,glMissing:0,ltcgCmv:0,stcgCmv:0,unclassCmv:0,ltcgGain:0,stcgGain:0,unclassGain:0,lockedCmv:0,lockedGain:0,lockedN:0,
              fundLevelCmv:0,fundLevelGain:0,fundLevelN:0,
-             notSplit:{fundLevel:{n:0,cmv:0,gl:0},passThrough:{n:0,cmv:0,gl:0,assumedN:0,assumedCmv:0},pms:{n:0,cmv:0,gl:0}}};
+             notSplit:{fundLevel:{n:0,cmv:0,gl:0,ruledN:0,ruledCmv:0},passThrough:{n:0,cmv:0,gl:0,assumedN:0,assumedCmv:0},pms:{n:0,cmv:0,gl:0}}};
       var clsTot={};
       pos.forEach(function(r){
         t.cmv+=r.cmv;
@@ -1386,7 +1405,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
            a Category I or II AIF and a PMS stay in the not classified amounts. */
         if(r.notSplit){
           var ns=t.notSplit[r.notSplit]; if(ns){ ns.n++; ns.cmv+=r.cmv; if(r.gl!=null) ns.gl+=r.gl;
-            if(r.catAssumed){ ns.assumedN=(ns.assumedN||0)+1; ns.assumedCmv=(ns.assumedCmv||0)+r.cmv; } }   /* T5 */
+            if(r.catAssumed){ ns.assumedN=(ns.assumedN||0)+1; ns.assumedCmv=(ns.assumedCmv||0)+r.cmv; }
+            if(r.catRuled){ ns.ruledN=(ns.ruledN||0)+1; ns.ruledCmv=(ns.ruledCmv||0)+r.cmv; } }   /* T5 */
           g.notSplit=r.notSplit;
           if(r.fundLevel){ t.fundLevelCmv+=r.cmv; t.fundLevelN++; if(r.gl!=null) t.fundLevelGain+=r.gl; }
           else { t.unclassCmv+=(r.unknownCmv||0); if(r.gl!=null) t.unclassGain+=r.gl; }
@@ -3549,13 +3569,13 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         "No IRR transaction history is loaded, so the long- and short-term split of this holding is not known.");
     /* a merged position sums the lot history of every plan it is held in */
     var names = {}; (h.members || [{ name: h.name }]).forEach(function(m){ names[m.name] = 1; });
-    var acc = { ltCmv: 0, stCmv: 0, ltGain: null, stGain: null, cls: "", n: 0, lockCmv: 0, gf: 0, nsN: 0, ns: "", usual: false, catAs: false };
+    var acc = { ltCmv: 0, stCmv: 0, ltGain: null, stGain: null, cls: "", n: 0, lockCmv: 0, gf: 0, nsN: 0, ns: "", usual: false, catAs: false, catRu: false };
     for (var i = 0; i < T.positions.length; i++){
       var p = T.positions[i];
       if (!names[p.name]) continue;
       if (!p.splitPart) acc.n++;   /* TX-02: a holding split at 1 Apr 2023 is one holding */
       if (p.notSplit && !p.splitPart){ acc.nsN++; acc.ns = p.notSplit; }   /* TX-07, TX-10, TX-12 */
-      if (p.usualBucket) acc.usual = true; if (p.catAssumed) acc.catAs = true;   /* T5 */
+      if (p.usualBucket) acc.usual = true; if (p.catAssumed) acc.catAs = true; if (p.catRuled) acc.catRu = true;   /* T5 */
       acc.gf += (p.gfLots || 0);
       acc.ltCmv += (p.ltCmv || 0); acc.stCmv += (p.stCmv || 0); acc.lockCmv += (p.lockedCmv || 0);
       if (p.ltGain != null) acc.ltGain = (acc.ltGain || 0) + p.ltGain;
@@ -3573,8 +3593,9 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     /* TX-07, TX-10, TX-12 (D-040 d, h): no investor-level split, so the reason and no long- or short-term figures */
     if (acc.nsN && acc.nsN === acc.n){
       ev.cls = acc.cls;
-      /* T5 (CR-0008 question 17): an AIF whose category the file does not state */
-      return aiaSig("tax", "Tax", "na", ev, ((acc.catAs && acc.ns === "passThrough") ? "The file does not state this AIF's category, so it is treated as Category I or II; confirm the category against the AIF's statement. " : "") + (({
+      /* T5 (CR-0008 question 17): an AIF whose category the file does not state, or that is called a Listed AIF */
+      return aiaSig("tax", "Tax", "na", ev, ((acc.catAs && acc.ns === "passThrough") ? "The file does not state this AIF's category, so it is treated as Category I or II; confirm the category against the AIF's statement. "
+        : ((acc.catRu && acc.ns === "fundLevel") ? "This AIF is called a Listed AIF, so it is treated as Category III; confirm the category against the AIF's statement. " : "")) + (({
         fundLevel: "A Category III AIF is taxed inside the fund: the investor receives a post-tax amount that is not taxed again, so there is no investor-level long- or short-term gain (Tax Reckoner TY 2026-27, #25).",
         passThrough: "A Category I or II AIF passes its income through to the investor, with the holding period counted at the AIF's level for each underlying asset, as its annual statement (Form 64C) reports; that statement is not loaded, so the gain is not split into long and short term (Tax Reckoner TY 2026-27, #24).",
         pms: "A PMS holds securities in the investor's own demat account, each taxed as if held directly from its own purchase date (Tax Reckoner TY 2026-27, #23); the IRR sheet holds only the capital put in and taken out, so the gain is not split into long and short term."
@@ -5667,12 +5688,13 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       /* kept short: the class footnote holds about two lines (KI-109); the tab gives the full reasons and source */
       var _nsb=[];
       if(_ns.pms.n) _nsb.push('PMS (per security)');
-      /* T5 (CR-0008 question 17): an AIF whose category the file does not state is treated as Cat I/II, never asserted.
-         Kept short: the class footnote holds about two lines (KI-109). */
-      var _ptA=_ns.passThrough.assumedN||0;
-      if(_ns.passThrough.n) _nsb.push((_ptA?'AIFs treated as Cat I/II':'Cat I/II AIFs')+' (per underlying asset)');
-      var _nsFoot=(_nsb.length?(' Not split: '+_nsb.join(', ')+'.'):'')+(_ns.fundLevel.n?' Cat III AIFs: fund level.':'')+
-        (_ptA?(' '+(_ptA===1?'1 AIF is':_ptA+' AIFs are')+' treated as Cat I/II because the file states no category: confirm it against the AIF\u2019s statement.'):'');
+      /* T5 items 4 and 10 (CR-0008 question 17): an AIF whose category the file does not state is treated as Cat I/II and a Listed AIF as
+         Cat III, never asserted. Kept short: the class footnote holds about two lines (KI-109). */
+      var _ptA=_ns.passThrough.assumedN||0, _rA=_ns.fundLevel.ruledN||0, _aifs=function(n){ return n===1?'1 AIF is':n+' AIFs are'; };
+      if(_ns.passThrough.n) _nsb.push((_ptA===_ns.passThrough.n?'AIFs treated as Cat I/II':'Cat I/II AIFs')+' (per underlying asset)');
+      var _nsFoot=(_nsb.length?(' Not split: '+_nsb.join(', ')+'.'):'')+(_ns.fundLevel.n>_rA?' Cat III AIFs: fund level.':'')+
+        (_ptA?(' '+_aifs(_ptA)+' treated as Cat I/II because the file states no category: confirm it against the AIF\u2019s statement.'):'')+
+        (_rA?(' '+_aifs(_rA)+' treated as Cat III (fund level) because '+(_rA===1?'it is called a Listed AIF':'they are called Listed AIFs')+': confirm against the AIF\u2019s statement.'):'');
       /* T5 (TR-7, LD-11): aggressive hybrid, arbitrage and equity savings funds classed by the usual bucket; worded for the client */
       var _ubFoot=T.positions.some(function(r){ return r.usualBucket; })?' Aggressive hybrid, arbitrage, equity savings: usual bucket per the tax reckoner; confirm with the fund house.':'';
       var _srcFoot=T.byClass.filter(function(g){ return g.rule&&g.rule.source; }).map(function(g){ return ' '+g.cls+': no tax reckoner row; '+rt(g.rule.st)+' kept, the law being unchanged.'; }).join('');
@@ -5926,8 +5948,12 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
           (H.noSetOffGain>1e-9?(' ('+U.m(H.noSetOffGain)+', taxed in full)'):'')+', and a crypto loss'+(H.noSetOffLoss>1e-9?(' ('+U.m(H.noSetOffLoss)+')'):'')+' reduces no other gain and is not carried forward.');
         var _lo=[];
         if(_ns.pms.n) _lo.push(_ns.pms.n+' PMS ('+U.m(_ns.pms.cmv)+')');
-        if(_ns.passThrough.n) _lo.push(_ns.passThrough.n+(_ptA?(' AIF'+(_ns.passThrough.n===1?'':'s')+' treated as Cat I/II'):(' Cat I/II AIF'+(_ns.passThrough.n===1?'':'s')))+' ('+U.m(_ns.passThrough.cmv)+')');
-        if(_ns.fundLevel.n) _lo.push(_ns.fundLevel.n+' Cat III AIF'+(_ns.fundLevel.n===1?'':'s')+' ('+U.m(_ns.fundLevel.cmv)+')');
+        /* T5 items 4 and 10: an AIF whose category is assumed or ruled is named apart from one whose category the file states */
+        var _lop=function(n,one,many,cmv){ if(n>0) _lo.push(n+' '+(n===1?one:many)+' ('+U.m(cmv)+')'); };
+        _lop(_ns.passThrough.n-_ptA,'Cat I/II AIF','Cat I/II AIFs',_ns.passThrough.cmv-(_ns.passThrough.assumedCmv||0));
+        _lop(_ptA,'AIF treated as Cat I/II','AIFs treated as Cat I/II',_ns.passThrough.assumedCmv||0);
+        _lop(_ns.fundLevel.n-_rA,'Cat III AIF','Cat III AIFs',_ns.fundLevel.cmv-(_ns.fundLevel.ruledCmv||0));
+        _lop(_rA,'AIF treated as Cat III','AIFs treated as Cat III',_ns.fundLevel.ruledCmv||0);
         if(_lo.length) nt.push('Left out, as not split into long and short term: '+_lo.join(', ')+'.');
         if(T.unnamedN) nt.push(T.unnamedN+' holding(s) with no client name are treated as one person.');
         /* rows from the band left above the note: a pool whose name wraps counts as a taller row */
@@ -10994,9 +11020,10 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
   function taxNsLong(k){ return k==='fundLevel'?'Fund level: taxed inside the fund, nothing at investor level'
     :(k==='passThrough'?'Not split: passed through per underlying asset (the AIF&rsquo;s annual statement)':'Not split: taxed per security, as if held directly'); }
   function taxNsSub(r){ return (r&&r.notSplit==='pms')?'<span class="taxsub">Gain/Loss on capital contributed: not a capital-gains figure</span>':''; }
-  /* T5: a class taken from the reckoner's usual bucket (TR-7, LD-11), or an AIF whose category the file does not state */
+  /* T5: a class taken from the reckoner's usual bucket (TR-7, LD-11), an AIF whose category the file does not state, or one called a Listed AIF */
   function taxT5Sub(r){ return (r&&r.usualBucket)?'<span class="taxsub">usual bucket per the owner&rsquo;s reckoner; confirm with the fund house</span>'
-    :((r&&r.catAssumed)?'<span class="taxsub">category not stated in the file: treated as Category I or II</span>':''); }
+    :((r&&r.catAssumed)?'<span class="taxsub">category not stated in the file: treated as Category I or II</span>'
+    :((r&&r.catRuled)?'<span class="taxsub">called a Listed AIF: treated as Category III</span>':'')); }
   /* T5: an amount taken off; one that rounds to zero shows 0, never "-0" */
   function taxNegM(U,v){ var s=U.m(v); return (v>0&&/[1-9]/.test(s))?('-'+s):U.m(0); }
   function taxU(v){ return (v==null||isNaN(v))?'—':Number(v).toLocaleString('en-IN',{maximumFractionDigits:3}); }
@@ -11792,7 +11819,10 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
     var _nsT=t.notSplit||{fundLevel:{n:0,cmv:0,gl:0},passThrough:{n:0,cmv:0,gl:0},pms:{n:0,cmv:0,gl:0}}, _nsp=[];
     var _pl=function(n,one,many){ return n+' '+(n===1?one:many); };
     if(_nsT.fundLevel.n) _nsp.push(_pl(_nsT.fundLevel.n,'Category III AIF is','Category III AIFs are')+' taxed inside the fund: the investor receives a post-tax amount that is not taxed again, so there is no investor-level long- or short-term gain (Tax Reckoner TY 2026-27, #25). '+
-      'CMV '+U.m(_nsT.fundLevel.cmv)+' and Gain/Loss '+gm(_nsT.fundLevel.gl)+' are shown as fund level, apart from the not classified amounts, and do not enter the investor&rsquo;s set-off.');
+      'CMV '+U.m(_nsT.fundLevel.cmv)+' and Gain/Loss '+gm(_nsT.fundLevel.gl)+' are shown as fund level, apart from the not classified amounts, and do not enter the investor&rsquo;s set-off.'+
+      /* T5 item 10 (CR-0008 question 17): an AIF called a Listed AIF is treated as Category III; the page says so and asks for the statement */
+      (_nsT.fundLevel.ruledN?(' '+(_nsT.fundLevel.ruledN===_nsT.fundLevel.n?(_nsT.fundLevel.n===1?'It is':'They are'):(_nsT.fundLevel.ruledN+' of them '+(_nsT.fundLevel.ruledN===1?'is':'are')))+
+        ' treated as Category III because '+(_nsT.fundLevel.ruledN===1?'it is called a Listed AIF':'they are called Listed AIFs')+' in the file or the performance data. Confirm the category against the AIF&rsquo;s statement.'):''));
     /* T5 (CR-0008 question 17): an AIF whose category the file does not state is treated as Category I or II, never asserted */
     var _ptN=_nsT.passThrough.n, _ptA=_nsT.passThrough.assumedN||0;
     if(_ptN) _nsp.push((_ptA
@@ -11859,8 +11889,12 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       }
       var _lo=[];
       if(_nsT.pms.n) _lo.push(_nsT.pms.n+' PMS ('+U.m(_nsT.pms.cmv)+')');
-      if(_nsT.passThrough.n) _lo.push(_pl(_nsT.passThrough.n,_ptA?'AIF treated as Category I or II':'Category I or II AIF',_ptA?'AIFs treated as Category I or II':'Category I or II AIFs')+' ('+U.m(_nsT.passThrough.cmv)+')');   /* T5 */
-      if(_nsT.fundLevel.n) _lo.push(_pl(_nsT.fundLevel.n,'Category III AIF','Category III AIFs')+' ('+U.m(_nsT.fundLevel.cmv)+')');
+      /* T5 items 4 and 10 (CR-0008 question 17): an AIF whose category is assumed (Cat I/II) or ruled (Listed AIF, Cat III) is never listed as one whose category the file states */
+      var _lop=function(n,one,many,cmv){ if(n>0) _lo.push(_pl(n,one,many)+' ('+U.m(cmv)+')'); }, _fR=_nsT.fundLevel.ruledN||0;
+      _lop(_ptN-_ptA,'Category I or II AIF','Category I or II AIFs',_nsT.passThrough.cmv-(_nsT.passThrough.assumedCmv||0));
+      _lop(_ptA,'AIF treated as Category I or II','AIFs treated as Category I or II',_nsT.passThrough.assumedCmv||0);
+      _lop(_nsT.fundLevel.n-_fR,'Category III AIF','Category III AIFs',_nsT.fundLevel.cmv-(_nsT.fundLevel.ruledCmv||0));
+      _lop(_fR,'AIF treated as Category III','AIFs treated as Category III',_nsT.fundLevel.ruledCmv||0);
       var loNote=_lo.length?('<div class="sub" style="margin-top:8px;">Left out of the harvest, as they have no investor-level long- or short-term split (see the notes above): '+_lo.join(', ')+'.</div>'):'';
       var unnNote=T.unnamedN?('<div class="sub" style="margin-top:6px;">'+_pl(T.unnamedN,'holding has','holdings have')+' no client name; they are treated as one person for the set-off and the exemption.</div>'):'';
       /* TX-23 (KI-182; CR-0008 question 18): the Crypto row is kept out of set-off until the owner rules */
