@@ -159,9 +159,14 @@ own working rules (below; `app/README.md`, `docs/new-build/toolchain.md`).
   live only in `app/src/exports/ooxml/namespaces.ts`. The pure layers (model, ingest, engine, views, exports) read no
   browser global: no `window.`, `document.`, `globalThis.`, `localStorage.`, `sessionStorage.` or `indexedDB.` there.
   The source scan also matches words in comments. Downloads go through `app/src/services/download.ts`, never a
-  library `writeFile`; only `app/src/ui/wiring.ts` imports SheetJS and PptxGenJS. Before pushing a change to an
-  exporter, run the Office acceptance (`npm run accept:office`, local only); the Office scripts run under the
-  session's execution policy, and a run blocked by that policy is reported as "not run", never as passed.
+  library `writeFile`; only `app/src/ui/wiring.ts` imports SheetJS and PptxGenJS. The Office acceptance
+  (`npm run accept:office`, local only) follows the owner's standing rule of 2 Nov 2026 (`docs/TESTING.md` §6.1):
+  attach only to an Excel or PowerPoint already running, with the task list checked first, and never start one;
+  open only your own synthetic file, read-only and without a window (in Excel, hide only that workbook's window);
+  close only that file; never Quit, never kill or stop a process, and change no application option. With no
+  instance running, or a run the execution policy blocks, the result is NOT RUN with the paths of the files for the
+  owner to open by hand, never a pass. After a change to sections 1 or 2 of the new app, also run
+  `node tests/browser/overview.cdp.mjs` (headless, served and from disk; `--port` if 8112 is taken).
 - Start at `docs/new-build/README.md` (the Phase 0 record and which living document owns what); the living PRD is
   `docs/PRD.md`; the new application's living architecture `docs/ARCHITECTURE.md` (the legacy page's is
   `docs/legacy/ARCHITECTURE.md`); the data model `docs/DATA_DICTIONARY.md`; the roadmap
