@@ -25,7 +25,7 @@ import { loadPptxGenJS } from './pptxgenjs.ts';
 import { slideInventory } from './slide-inventory.ts';
 import { NUM_FMT_CODES } from '../../app/src/exports/xlsx/styles.ts';
 import {
-  buildVariants, loadLegacyHost, overviewFixtures, overviewVariants, sampleFixtures, SYNTHETIC_BOOK, syntheticFixtures, type Fixture,
+  buildVariants, loadLegacyHost, officeVariants, overviewFixtures, overviewVariants, sampleFixtures, SYNTHETIC_BOOK, syntheticFixtures, type Fixture,
 } from '../fixtures/make-books.ts';
 
 /** The clock of every integration test: 24 Oct 2026, midnight UTC. */
@@ -104,14 +104,15 @@ let synCache: Map<string, Fixture> | null = null;
 let familyCache: Map<string, Fixture> | null = null;
 
 /**
- * A fixture by id: the synthetic variants ('syn-...', built here) or the sample families ('family-a', 'family-b' and
- * family-a's variants, written by tools/make-sample-base.js through the legacy engine host, loaded only when asked).
+ * A fixture by id: the synthetic variants ('syn-...', built here, with the Office variants syn-six-classes and
+ * syn-big-return) or the sample families ('family-a', 'family-b' and family-a's variants, written by
+ * tools/make-sample-base.js through the legacy engine host, loaded only when asked).
  */
 export function fixtureById(id: string): Fixture {
   if (id.startsWith('syn-')) {
     if (!synCache) {
       const xlsx = loadSheetJS();
-      synCache = new Map([...syntheticFixtures(xlsx), ...overviewFixtures(xlsx)].map((f) => [f.id, f] as const));
+      synCache = new Map([...syntheticFixtures(xlsx), ...overviewFixtures(xlsx), ...officeVariants(xlsx, SYNTHETIC_BOOK, 'syn')].map((f) => [f.id, f] as const));
     }
     const f = synCache.get(id);
     if (!f) throw new Error(`no fixture ${id}`);
@@ -132,9 +133,12 @@ export function fixtureById(id: string): Fixture {
 
 /**
  * The fixtures of the Office acceptance: syn-standard, syn-lakh, syn-blank-invested, syn-negative-gain (the negative
- * red), family-a (D-039) and big-lakh (money above 1,00,000 L in Indian grouping).
+ * red), family-a (D-039), big-lakh (money above 1,00,000 L in Indian grouping), and from the M1.4 fix round 2
+ * syn-six-classes (N13: six classes, the REITs/InvITs slice centred on 6 o'clock above a two-row legend; its slide PNG
+ * is looked at) and syn-big-return (N9: Commodity's absolute return of 1,900.00% in the workbook's percent format).
  */
-export const ACCEPTANCE_FIXTURES = ['syn-standard', 'syn-lakh', 'syn-blank-invested', 'syn-negative-gain', 'family-a', 'big-lakh'] as const;
+export const ACCEPTANCE_FIXTURES = ['syn-standard', 'syn-lakh', 'syn-blank-invested', 'syn-negative-gain', 'family-a', 'big-lakh',
+  'syn-six-classes', 'syn-big-return'] as const;
 
 /** Where the negative red is checked: Portfolio Overview I2 is the Equity row's gain, negative in syn-negative-gain. */
 const NEGATIVE_CELL: Readonly<Record<string, { sheet: string; cell: string }>> = {
@@ -174,10 +178,10 @@ export async function acceptanceFiles(): Promise<{ xlsx: unknown[]; pptx: unknow
   const formats = [
     { sheet: H, cell: 'A2', numberFormat: 'General' },
     { sheet: H, cell: 'X2', numberFormat: NUM_FMT_CODES.money },
-    { sheet: H, cell: 'AF2', numberFormat: '0.00"%"' },
+    { sheet: H, cell: 'AF2', numberFormat: NUM_FMT_CODES.pct },
     { sheet: H, cell: 'R2', numberFormat: 'd mmm yyyy' },
     { sheet: 'Portfolio Overview', cell: 'G2', numberFormat: NUM_FMT_CODES.money },
-    { sheet: 'Portfolio Overview', cell: 'H2', numberFormat: '0.00"%"' },
+    { sheet: 'Portfolio Overview', cell: 'H2', numberFormat: NUM_FMT_CODES.pct },
   ];
   const xlsx: unknown[] = [];
   const pptx: unknown[] = [];

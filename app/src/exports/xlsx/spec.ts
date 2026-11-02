@@ -50,6 +50,10 @@ export type ConditionalSpec = { kind: 'negative-red'; columns: string[] };
 export type SheetSpec = {
   name: string;
   columns: ColumnSpec[];
+  /**
+   * The data rows. A row with no cell at all (an empty array) is a blank row: the writer writes nothing for it, so
+   * Excel sees an empty row there (a row of nulls is written as bordered empty cells).
+   */
   rows: CellSpec[][];
   /** A style per data row (for example a bold asset row), merged under each cell's own style. */
   rowStyles?: Array<StyleSpec | undefined>;

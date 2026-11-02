@@ -1,8 +1,8 @@
-// covers: E-75 BR-10.1
+// covers: E-75 BR-10.1 D-039
 // The in-house SpreadsheetML writer: schema element order in every part, reserved fills, escaping and XML 1.0
 // illegal characters, Excel's 32,767-character cell limit, fullCalcOnLoad, no calcChain, sharedStrings or docProps,
-// one hidden _xlnm._FilterDatabase per filter, a visible active tab. Read back with tests/helpers/xlsx-read.ts,
-// which shares no code with the writer.
+// one hidden _xlnm._FilterDatabase per filter, a visible active tab, a blank row written as no row at all (N7).
+// Read back with tests/helpers/xlsx-read.ts, which shares no code with the writer.
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -65,9 +65,9 @@ test('reserved fills, the house font and the negative dxf', () => {
   assert.ok(st.fonts.every((f) => f.name === 'Cambria' && f.size === 9));
   assert.equal(st.dxfs.length, 1);
   assert.equal(kid(kid(st.dxfs[0]!, 'font')!, 'color')!.attrs.rgb, 'FF931621');
-  assert.equal(st.numFmts.get(164), '[>=10000000]##\\,##\\,##\\,##0.00;[>=100000]##\\,##\\,##0.00;##,##0.00');
-  assert.equal(st.numFmts.get(165), '0.00"%"');
-  assert.equal(st.numFmts.get(166), '[>=10000000]##\\,##\\,##\\,##0.000;[>=100000]##\\,##\\,##0.000;##,##0.000');
+  assert.equal(st.numFmts.get(164), '[>=9999999.995]##\\,##\\,##\\,##0.00;[>=99999.995]##\\,##\\,##0.00;##,##0.00');
+  assert.equal(st.numFmts.get(165), '#,##0.00"%"');
+  assert.equal(st.numFmts.get(166), '[>=9999999.9995]##\\,##\\,##\\,##0.000;[>=99999.9995]##\\,##\\,##0.000;##,##0.000');
   assert.equal(st.numFmts.get(167), 'd mmm yyyy');
 });
 
@@ -149,6 +149,21 @@ test('the writer refuses what Excel would repair or misread', () => {
   assert.throws(() => writeWorkbook(oneSheet({ name: 'Bad/Name' })), /invalid sheet name/);
   assert.throws(() => writeWorkbook({ sheets: [oneSheet({}).sheets[0]!, { ...oneSheet({}).sheets[0]!, name: 'DATA' }], definedNames: [] }), /duplicate sheet name/);
   assert.throws(() => writeWorkbook(oneSheet({ rows: [[null, null, { kind: 'str', v: 'too wide' }]] })), /wider than its table/);
+});
+
+test('a row with no cell is a blank row: nothing is written for it; a row of nulls is bordered empty cells (N7)', () => {
+  const wb = readXlsx(writeWorkbook(oneSheet({
+    rows: [[{ kind: 'str', v: 'a' }, { kind: 'num', v: 1 }], [], [null, null], [{ kind: 'str', v: 'after' }]],
+    tableRows: 1,
+  })));
+  const s = wb.sheets[0]!;
+  const rows = kids(kid(s.root, 'sheetData')!, 'row');
+  // Header row 1, data rows 2 and 4 and 5; row 3 (the empty array) is absent.
+  assert.deepEqual(rows.map((r) => r.attrs.r), ['1', '2', '4', '5']);
+  assert.deepEqual(kids(rows[2]!, 'c').map((c) => c.attrs.r), ['A4', 'B4'], 'the row of nulls keeps its two styled cells');
+  assert.equal(s.cells.get('A5')!.v, 'after', 'the rows below keep their place');
+  assert.equal(kid(s.root, 'dimension')!.attrs.ref, 'A1:B5');
+  assert.equal(kid(s.root, 'autoFilter')!.attrs.ref, 'A1:B2', 'the filter stops at tableRows');
 });
 
 test('numbers are written as the shortest text that reads back as the same double', () => {

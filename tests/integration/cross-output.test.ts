@@ -3,9 +3,11 @@
 // (Figure.key): renderC08 records where each figure prints on the slide, and the workbook's _manifest lists the
 // '<sheet>!<cell>' of each figure it writes. For every key present in two or more outputs, the screen text (the
 // figure's display), the slide text read back from the pptx, and the sheet value (evaluated independently, then put
-// through tests/helpers/excel-text.ts, which rounds as Excel shows a cell and is written apart from the app's
-// formatter) are equal after display rounding (D-039). A missing figure is the marker alone on screen and
-// slide, and a blank cell in the workbook.
+// through tests/helpers/excel-text.ts in the number format written to that cell, which shows it as Excel does and is
+// written apart from the app's formatter) are equal after display rounding (D-039). A missing figure is the marker
+// alone on screen and slide, and a blank cell in the workbook. syn-big-return holds an absolute return of 1,900.00%
+// (N9: the percent format groups thousands as the screen does) and syn-six-classes the six classes of slide C-08's
+// pie (N13).
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,8 +17,8 @@ import { fixtureById, nodeWiring, reviewOf } from '../helpers/node-wiring.ts';
 import { loadPptxGenJS } from '../helpers/pptxgenjs.ts';
 import { slideInventory, textAt } from '../helpers/slide-inventory.ts';
 import { readWorkbookForEval, evaluateAll, closeTo } from '../helpers/formula-eval.ts';
-import { readXlsx, sheetByName, sheetTable } from '../helpers/xlsx-read.ts';
-import { excelText } from '../helpers/excel-text.ts';
+import { numberFormatAt, readXlsx, sheetByName, sheetTable } from '../helpers/xlsx-read.ts';
+import { excelFormatText, withoutZeroSign } from '../helpers/excel-text.ts';
 
 const { JSZip } = loadPptxGenJS();
 
@@ -38,16 +40,8 @@ function figuresByKey(vm: OverviewVM): Map<string, Figure> {
   return out;
 }
 
-/** A sheet number as Excel shows it (excel-text.ts), with the decimals and the "%" of the figure's own display. */
-function asScreen(v: number, display: string): string {
-  const pct = display.endsWith('%');
-  const body = pct ? display.slice(0, -1) : display;
-  const dot = body.indexOf('.');
-  return excelText(v, dot < 0 ? 0 : body.length - dot - 1) + (pct ? '%' : '');
-}
-
 const FIXTURES = ['syn-standard', 'syn-lakh', 'syn-blank-invested', 'syn-na-cmv', 'syn-all-classes', 'syn-money-columns', 'syn-single-entity', 'syn-zero-cmv',
-  'syn-dash-labels', 'syn-case-variants', 'family-a', 'family-a-dash-labels'];
+  'syn-dash-labels', 'syn-case-variants', 'family-a', 'family-a-dash-labels', 'syn-big-return', 'syn-six-classes'];
 
 for (const id of FIXTURES) {
   describe(id, () => {
@@ -79,6 +73,7 @@ for (const id of FIXTURES) {
       };
 
       let shared = 0;
+      let bigReturns = 0;
       for (const [key, f] of figures) {
         const outputs: string[] = ['screen'];
         const text = f.display.text;
@@ -96,12 +91,17 @@ for (const id of FIXTURES) {
           } else {
             assert.equal(typeof v, 'number', `${key}: ${at} holds a number`);
             assert.ok(closeTo(v as number, f.shown.v), `${key}: ${at} = ${String(v)}, the figure is ${f.shown.v}`);
-            assert.equal(asScreen(v as number, text), text, `${key}: ${at} reads as the screen text`);
+            const [sheet, cell] = at.split('!') as [string, string];
+            const excel = withoutZeroSign(excelFormatText(v as number, numberFormatAt(wb, sheet, cell)));
+            assert.equal(excel, text, `${key}: ${at} reads as the screen text in its own number format`);
+            if (text === '1,900.00%') bigReturns += 1;
           }
         }
         if (outputs.length >= 2) shared += 1;
       }
       assert.ok(shared >= 10, `${shared} figures are shared by two or more outputs`);
+      // syn-big-return: Commodity's row and its product row, (0.2 - 0.01) / 0.01 x 100 = 1,900.00% in all three.
+      if (id === 'syn-big-return') assert.equal(bigReturns, 2, 'two sheet cells read 1,900.00%');
       // The pie labels on the slide are the screen's labels on two lines: the category, a line break, the percent
       // (D-039 point 6); a pie of one slice prints no label (the legend and the table carry its 100%).
       const pieLocs = deck.deck!.components[0]!.result.figures.filter((l) => l.cell.startsWith('pie:'));

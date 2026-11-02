@@ -3,8 +3,9 @@
 // view-model's order | Grand Total | Status. Each cell is
 //   SUMIFS(Hd!X, Hd!C, "C01", Hd!O, $A r, Hd!AL, "Yes")      (distributors: Hd!H with D keys)
 // with Hd!K = $C r added on product rows; the Grand Total row drops the class; the Grand Total column drops the
-// entity; the last row is the share of the family, entity total / grand total * 100, below the Grand Total and outside
-// the autoFilter range and the negative red (SheetSpec.tableRows; D-039).
+// entity; the last row is the share of the family, entity total / grand total * 100, one blank row below the Grand
+// Total and outside the autoFilter range and the negative red (SheetSpec.tableRows; D-039 point 5, N7: Excel extends
+// a filter to a row that touches it when it opens the file, so the blank row keeps the share row out).
 
 import type { BuildContext } from '../overview-workbook.ts';
 import type { EntityMatrixVM, Figure, MatrixRow } from '../../../views/overview-vm.ts';
@@ -114,9 +115,13 @@ export function entityAllocationSheet(ctx: BuildContext, level: 'client' | 'dist
   });
 
   // The share row sits below the Grand Total but outside the table: the autoFilter and the negative red stop at the
-  // Grand Total, so a sort or a sum over a money column never takes in the percentages (D-039).
+  // Grand Total, so a sort or a sum over a money column never takes in the percentages (D-039). One blank row (no
+  // cell at all) parts them: Excel, opening the file, extends an autoFilter to a row that touches its range, which
+  // took the share row into the filter and moved it among the money rows on a sort (Office acceptance, 27 Oct 2026).
+  sheet.tableRows = sheet.rows.length;
+  sheet.rows.push([]);
+  sheet.rowStyles!.push(undefined);
   const share = sheet.rows.length;
-  sheet.tableRows = share;
   const statuses: string[] = [];
   const shareCells: CellSpec[] = [strCell('Share of family (%)'), null, null];
   const grand = rows[totalRow]!.total;
