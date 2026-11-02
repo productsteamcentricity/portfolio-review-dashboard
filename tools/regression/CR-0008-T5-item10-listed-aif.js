@@ -73,6 +73,23 @@ ok(cls({ category: 'Category III - Long Short' }).cls === CAT3LS && cls({ asset:
 ok(cls({ category: 'Category: III', name: 'Synthetic Wildcat III Fund', product: 'AIF - Cat III Long Short' }).cls === CAT3,
   'the Category III row is picked from the category and the name, as before: a product that says Long Short does not pick the Long Short row (delta review D6-3)');
 
+console.log('--- 1a1. every separator, the word boundary and the forms that are not read (ARC-01, its mutants of the reader at stage S6) ---');
+/* the characters the pattern accepts between "Cat"/"Category" and the number: a blank, a colon, a dot, round, square and curly brackets, a slash, an underscore, a hash, a comma, a hyphen,
+   the dashes U+2010 to U+2015 and the minus sign U+2212; one assertion for each, so that a pattern that drops any one of them fails here */
+const SEPS = [' ', ':', '.', '(', ')', '[', ']', '{', '}', '/', '_', '#', ',', '-', '\u2010', '\u2011', '\u2012', '\u2013', '\u2014', '\u2015', '\u2212'];
+SEPS.forEach(s => {
+  const u = 'U+' + ('0000' + s.charCodeAt(0).toString(16).toUpperCase()).slice(-4);
+  ok(stated3(cls({ category: 'Category' + s + 'III' })) && stated12(cls({ category: 'Category' + s + 'II' })) && stated12(cls({ category: 'Cat' + s + '1' })) && stated3(cls({ category: 'CAT' + s + s + '3' })),
+    'the separator ' + u + ' between "Category" and the number is read: Category III, II, and "Cat 1", as stated, no mark');
+});
+ok(['*', '+', ';', '|', '=', '~'].every(s => cls({ category: 'Category' + s + 'III' }).catAssumed === true && cls({ category: 'Category' + s + 'II' }).catAssumed === true),
+  'a character that is not a separator (*, +, ; | = ~) between "Category" and the number is not read: nothing stated, assumed (a boundary, pinned)');
+ok(['Bobcat 1', 'Tomcat 2', 'Scat Three', 'Bobcat III', '9Cat I', 'Wildcat II', 'Concat I'].every(n => cls({ category: '', name: n }).catAssumed === true) &&
+   ['Fund-Cat I', 'Fund (Cat II)', 'Fund/Cat 1', 'Fund CAT_III'].every(n => cls({ category: '', name: n }).catAssumed !== true),
+  'the word boundary before "cat": "Bobcat 1", "Tomcat 2", "Scat Three", "9Cat I" are not categories (assumed); "Fund-Cat I", "(Cat II)", "/Cat 1", "Fund CAT_III" are');
+ok(stated12(cls({ category: 'Category II/III' })) && cls({ category: 'AIF-III' }).catAssumed === true && cls({ category: 'AIF-III' }).cls === EQ12,
+  'data points for the financial reviewer, pinned as they are built: "Category II/III" is read as Category II (the first number), as stated; "AIF-III" is read as nothing: Category I or II, assumed');
+
 console.log('--- 1a2. the entry counts as a statement about the same fund only (delta review D1-F1, D1-F3, D1-F5) ---');
 const FX = Object.assign({}, REF.AIF_PERF, { 'Synthetic Alpha Strategy Fund': { category: 'Category II' }, 'Synthetic Beta Strategy Fund': { category: 'Cat 1' }, 'Synthetic Gamma Strategy Fund': { category: 'Category IV' },
   'Synthetic Delta Strategy Fund': { category: 'AIF (CAT III) - Long Short' }, 'Synthetic Listed Strategy Fund': { category: 'Listed AIF' } });
@@ -81,6 +98,27 @@ const mx = (name, key, h) => E.taxClassify(Object.assign({ product: 'AIF', asset
 ok(stated12(mx('Synthetic Alpha Strategy Fund', 'Synthetic Alpha Strategy Fund')) && stated12(mx('Synthetic Beta Strategy Fund', 'Synthetic Beta Strategy Fund')) && mx('Synthetic Gamma Strategy Fund', 'Synthetic Gamma Strategy Fund').catAssumed === true,
   'an entry that says Category II or Cat 1 is a statement for the same fund (Category I or II, no mark); one that says Category IV is read as nothing: assumed');
 ok(mx('Synthetic Delta Strategy Fund', 'Synthetic Delta Strategy Fund').cls === CAT3LS && !mx('Synthetic Delta Strategy Fund', 'Synthetic Delta Strategy Fund').catRuled, 'an entry that says Category III Long Short gives the Long Short row, as stated');
+ok(mx('Synthetic Delta Sibling Fund 2', 'Synthetic Delta Strategy Fund').cls === EQ12 && mx('Synthetic Delta Sibling Fund 2', 'Synthetic Delta Strategy Fund').catAssumed === true && !mx('Synthetic Delta Sibling Fund 2', 'Synthetic Delta Strategy Fund').catRuled,
+  'a sibling the matcher maps to the Long Short entry does not take its Long Short row: Category I or II, assumed, with the note (the entry is read only for the fund of the same name)');
+/* the entry's category text has its own patterns, so each separator is tried there too (ARC-01: the entry-label branches were not reached by its mutants) */
+const hex4 = s => ('0000' + s.charCodeAt(0).toString(16).toUpperCase()).slice(-4);
+const ENT = {};
+SEPS.forEach(s => { const u = hex4(s);
+  ENT['Synthetic Sep3x' + u + ' Fund'] = { category: 'Category' + s + 'III' }; ENT['Synthetic Sep2x' + u + ' Fund'] = { category: 'Category' + s + 'II' };
+  ENT['Synthetic Sep1x' + u + ' Fund'] = { category: 'Cat' + s + '1' }; ENT['Synthetic Sep4x' + u + ' Fund'] = { category: 'CAT' + s + s + '3' };
+  ENT['Synthetic Sep5x' + u + ' Fund'] = { category: 'Cat' + s + s + '2' }; });
+Object.assign(ENT, { 'Synthetic Word3 Fund': { category: 'Category Three' }, 'Synthetic Word2 Fund': { category: 'Category Two' }, 'Synthetic Word1 Fund': { category: 'Cat One' },
+  'Synthetic Bob3 Fund': { category: 'Bobcat III' }, 'Synthetic Wild2 Fund': { category: 'Wildcat II' }, 'Synthetic Star3 Fund': { category: 'Category*III' }, 'Synthetic Junk2 Fund': { category: 'Category X II' } });
+const REFXS = Object.assign({}, REF, { AIF_PERF: Object.assign({}, FX, ENT) });
+const mxs = name => E.taxClassify({ product: 'AIF', asset: 'Equity', category: '', name, perfSrc: 'AIF', perfKey: name }, REFXS);
+const badEnt = SEPS.filter(s => !(stated3(mxs('Synthetic Sep3x' + hex4(s) + ' Fund')) && stated12(mxs('Synthetic Sep2x' + hex4(s) + ' Fund')) && stated12(mxs('Synthetic Sep1x' + hex4(s) + ' Fund')) &&
+  stated3(mxs('Synthetic Sep4x' + hex4(s) + ' Fund')) && stated12(mxs('Synthetic Sep5x' + hex4(s) + ' Fund')))).map(hex4);
+ok(badEnt.length === 0, 'every separator (' + SEPS.length + ' characters) in the performance entry\'s own category text is read for the fund of that name, singly and twice in a row: Category III, II, "Cat 1", "CAT  3" and "Cat  2" as stated, no mark' +
+  (badEnt.length ? ' (not: U+' + badEnt.join(', U+') + ')' : ''));
+ok(stated3(mxs('Synthetic Word3 Fund')) && stated12(mxs('Synthetic Word2 Fund')) && stated12(mxs('Synthetic Word1 Fund')),
+  'an entry that says "Category Three", "Category Two" or "Cat One" is a statement for the fund of that name, as the fund\'s own words are');
+ok(['Synthetic Bob3 Fund', 'Synthetic Wild2 Fund', 'Synthetic Star3 Fund', 'Synthetic Junk2 Fund'].every(n => mxs(n).catAssumed === true),
+  'an entry that says "Bobcat III", "Wildcat II", "Category*III" or "Category X II" states no category: Category I or II, assumed, with the note');
 ok(stated3(mx(CK.toUpperCase(), CK)) && stated3(mx(CK + ' ', CK)), 'the same name in another letter case or with a trailing space is the same fund: the Category III entry is a statement');
 ok(mx('Synthetic Alpha Sibling Fund 2', 'Synthetic Alpha Strategy Fund').catAssumed === true && mx('Synthetic Alpha Sibling Fund 2', 'Synthetic Alpha Strategy Fund').cls === EQ12,
   'a sibling the loose matcher maps to an entry that says Category II is not told it is Category II: assumed, with the note');

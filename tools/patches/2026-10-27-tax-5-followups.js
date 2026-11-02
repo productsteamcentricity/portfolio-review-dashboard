@@ -50,10 +50,11 @@
    6. The harvest slide's "Left out" line gives the count and the CMV, as the tab does.
    7. The harvest assumption inputs are text fields that accept Indian and international digit
       grouping ("1,25,000", "125,000", "1 25 000"), a leading rupee sign, Rs, Rs. or INR (with or without
-      the dot), a trailing "/-", "/=", INR or Rs (and "%" in the slab-rate field) and an exponent; only a blank or non-numeric entry restores
-      the default. A number field reads such entries differently in different browsers; an entry
-      of "1,25,000" that restored the default without a word was reported, and the cause is
-      UNKNOWN. A text field reads the same everywhere.
+      the dot), a trailing "/-", "/=", INR or Rs (and "%" in the slab-rate field) and an exponent; an entry that is
+      not a number once those marks are removed (blank, text, a zero-width space, a number too large to hold)
+      restores the default, and the field says nothing when it does. A number field reads such entries
+      differently in different browsers; an entry of "1,25,000" that restored the default without a word was
+      reported, and the cause is UNKNOWN. A text field reads the same everywhere.
    8. A comment only: the foreign-share marker reads the ISIN of the matched STOCK_RET entry; the base
       file's own ISIN column is not read by parseBaseRows (KI-184, open, not fixed here; D-040 c corrected).
    9. The harvest defaults the engine exports (ENGINE.taxDefaults, part T3) are frozen: only taxAssumeFor reads
@@ -72,8 +73,11 @@
   11. A date-time written with an explicit zone in the IRR sheet ("2023-04-01T20:00:00Z", "...+05:30") is read as the day
       it states, the same in every zone; part T2 read the machine-local day of the instant, which is another day in some
       zones (parsers script, irrParseDate; ARC-01, C2 of its review of the contract; KI-186). Only ISO-like
-      date-times are read as written; text such as an RFC 2822 string ("Sat, 01 Apr 2023 20:00:00 GMT") still
-      goes through Date and stays the machine-local day of the instant (KI-186).
+      date-times are read as written, and only after Date has accepted the text (an impossible month, hour or
+      offset is dropped, as before); text such as an RFC 2822 string ("Sat, 01 Apr 2023 20:00:00 GMT"), an
+      hour-only offset, a zone word, a bare Z and the ISO year and year-month still go through Date and stay the
+      machine-local day of the instant (KI-186). A Z time is its UTC day: an Indian local midnight written in
+      UTC ("2026-03-31T18:30:00.000Z") reads as 31 Mar, as it does on main; part T2 read 1 Apr on an Indian machine.
 
    Corrections from the independent review of this part (8 reviewers, 3 skeptics on each MEDIUM; the ids are
    the reviewers' own and are traced in CR-0008 and in the review addendum):
@@ -85,7 +89,10 @@
                      sentence; a call with no date includes the usual bucket)
       R3-F3          the pass-through note: "Pass-through means that income ..."
       R3-F6          assumedCmv and ruledCmv give the CMV of the AIFs named apart in the "Left out" lines
-      R4-1, R4-2     the harvest inputs read a leading rupee sign, Rs, Rs. or INR, a trailing "/-" and an exponent
+      R4-1, R4-2     the harvest inputs read a leading rupee sign, Rs, Rs. or INR, a trailing "/-" and an exponent;
+                     a trailing "%" is stripped in the slab-rate field only
+      (own, at the 17:36 rebuild)  item 11 is used only after Date has accepted the text, so the accepted set is the
+                     parent's and an impossible date-time is still dropped
       R5-F1          a sale or transfer out that carries no price has its own unreconciled reason (noPxSell)
       R5-F2          the AI Analyst comment says an unreconciled holding gets the general sentence
       R5-F4, R7-F1, R8-F3   holding-detail footnote: shorter sentences, "1 unreconciled holding is ..."
@@ -117,8 +124,28 @@
       tests only: D1-F5 D2-F4 D3-F6 D5-F4 (mutants killed, more forms and zones, the sample book's Listed AIF found by what it is)
       not changed, with the reason in CR-0008 and KNOWN_ISSUES: D1-F4 (the AI Analyst sentences for AIFs are not shown),
                      D2-F1 D2-F2 D2-F3 D2-F5 (KI-186), D2-F6 (TESTING), D3-F4 (no hint beside a rejected entry), D4-F1 and
-                     D4-F2 (a 6 pt step for the class footnote would set it smaller in the common book, because the page's
-                     estimate of the table is on the safe side; the hairline in a rare worst case stays)
+                     D4-F2 (a 6 pt step for the class footnote was built and taken out: it set the footnote at 6 pt in the
+                     common 14-class book too, because the page's estimate of the table counts every flagged row as wrapped;
+                     in a rare book (14 classes, 4 rows counted as wrapping, every optional sentence) the 6.5 pt footnote's
+                     first line starts 0.12 in above that estimate, and nobody has rendered such a deck: KI-210)
+
+   Additions after ARC-01's pre-review of the stages (2 Nov 2026, evening):
+      PD-50          the comment above the tax signal says what tax does to the composite (it is not "never a reason to
+                     act": an amber verdict lowers the composite and can move a trim, a target weight, an action label
+                     and the plan summary); no behaviour changes
+      footnote       the comment above the class footnote's fit says what the page's estimate of the table does not
+                     tell: the first line of a 6.5 pt footnote starts 0.12 in above the estimate in a book of 14 classes,
+                     4 rows counted as wrapping and every optional sentence, and nobody has rendered such a deck
+                     (KI-210); the comment said 0.04 in; no behaviour changes
+      tools/check-invariants.js   ENGINE_KEYS is checked both ways: an export that the list does not name fails
+                     (KI-185; the list had missed six names for that reason); new test KI-185-engine-keys.js
+      tests only     item 11: a known-answer test from the text through parseIRR into the XIRR and into the tax-lot
+                     day (hand-computed, eight zones), ten more forms of the date pattern, and the 24:00 form pinned as built
+                     item 10: every character of the separator class, in the fund's own words and in the performance
+                     entry's text, singly and twice in a row; the word boundary before "cat"; the number words; texts that
+                     are not read; a sibling of the Long Short entry; "Category II/III" and "AIF-III" pinned as built
+                     the class footnote: the 8, 7 and 6.5 pt sizes, each in a book of its own, with the bottom anchor, the
+                     number of lines and the clearance from the table; the plural sentence for AIFs treated as Cat I/II
 
      node tools/patches/2026-10-27-tax-5-followups.js
    ========================================================================== */
@@ -349,6 +376,19 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, AIF categ
         '        : ((acc.catRu && acc.ns === "fundLevel") ? "This AIF is called a Listed AIF, so it is treated as Category III; confirm the category against the AIF\'s statement. " : "")) + (({\n'
   },
   {
+    label: 'AI Analyst: the comment above the tax signal says what tax does to the composite (T5, PD-50, ARC-01 review)',
+    from: '     Tax is a SIZING AND SEQUENCING input, never a reason to act: it modifies\n' +
+          '     how much and when, not whether. It therefore never scores red.\n',
+    to: '     Tax is meant as a SIZING AND SEQUENCING input, not a reason to act on its\n' +
+        '     own. It never scores red. Its weight (7) is part of the composite, though,\n' +
+        '     so an amber verdict (mostly short-term lots) lowers the composite and can\n' +
+        '     change a trim, a target weight and, at the margin, an action label (Exit,\n' +
+        '     Partial, Retain) and the plan summary; a holding with no tax class is not\n' +
+        '     assessed on tax at all. Tax batch T5 dates the class of an aggressive\n' +
+        '     hybrid, arbitrage or equity savings fund (CR-0008 question 21, PD-50), so\n' +
+        '     for those funds the review date can move the same things.\n'
+  },
+  {
     label: 'AI Analyst: the not-split reasons close the added bracket (T5)',
     from: '      })[acc.ns] || "This holding is not split into long and short term.");\n',
     to: '      })[acc.ns] || "This holding is not split into long and short term."));\n'
@@ -524,9 +564,10 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, AIF categ
         "         from the band's edge (7.18 in) instead of running into it. The table above it (rows of 0.30 in, 0.40 when a cell wraps)\n" +
         "         sets the room; when 8 pt does not fit in it (with several wrapped rows, from about 13 classes), the footnote drops to 7 pt and, if it must, to\n" +
         "         6.5 pt, and it always ends at the band's edge, never on the band (review R6-1, R7-F2). At 8 pt a line holds about 260\n" +
-        "         characters and is 0.14 in high; at 7 pt about 300 and 0.125 in; at 6.5 pt about 320 and 0.115 in. The estimate of the table's height is on\n" +
-        "         the safe side (the real table is often shorter), and 6.5 pt is the last step: in a rare book with every optional sentence the first\n" +
-        "         line can start up to 0.04 in above that estimate, a hairline on the table's border (delta review D4-F1, D4-F2). */\n" +
+        "         characters and is 0.14 in high; at 7 pt about 300 and 0.125 in; at 6.5 pt about 320 and 0.115 in. The table's height is an estimate that is\n" +
+        "         never measured (a row that wraps may be taller than 0.40 in, one that does not shorter), and 6.5 pt is the last step: with 14 classes shown,\n" +
+        "         four rows counted as wrapped and every optional sentence, the first line starts 0.12 in above the estimate (more with more wrapped rows).\n" +
+        "         No such deck has been rendered; slide geometry for 13 or more classes is NOT RUN (delta review D4-F1, D4-F2; ARC-01, 2 Nov 2026). */\n" +
         "      var _tb=1.94+0.30+T.byClass.slice(0,14).reduce(function(a,g){ return a+((lta(g.rule).length>24||String(g.cls).length>44)?0.40:0.30); },0);\n" +
         "      var _footFit=function(sl,txt){ var len=String(txt).length, n=Math.ceil(len/260); if(n<=2){ foot(sl,txt); return; }\n" +
         "        var room=7.18-(_tb+0.04), fs=8, lh=0.14;\n" +

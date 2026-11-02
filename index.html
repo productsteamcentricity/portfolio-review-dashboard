@@ -3560,8 +3560,14 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
 
   /* =======================================================================
      RULE 7 — LTCG available for rebalancing, and exit load
-     Tax is a SIZING AND SEQUENCING input, never a reason to act: it modifies
-     how much and when, not whether. It therefore never scores red.
+     Tax is meant as a SIZING AND SEQUENCING input, not a reason to act on its
+     own. It never scores red. Its weight (7) is part of the composite, though,
+     so an amber verdict (mostly short-term lots) lowers the composite and can
+     change a trim, a target weight and, at the margin, an action label (Exit,
+     Partial, Retain) and the plan summary; a holding with no tax class is not
+     assessed on tax at all. Tax batch T5 dates the class of an aggressive
+     hybrid, arbitrage or equity savings fund (CR-0008 question 21, PD-50), so
+     for those funds the review date can move the same things.
 
      EXIT LOAD IS NOT HELD ANYWHERE IN THIS BUILD — not in REFDATA and not in
      the base file. It is reported as absent, with a footnote. Substituting
@@ -5734,9 +5740,10 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
          from the band's edge (7.18 in) instead of running into it. The table above it (rows of 0.30 in, 0.40 when a cell wraps)
          sets the room; when 8 pt does not fit in it (with several wrapped rows, from about 13 classes), the footnote drops to 7 pt and, if it must, to
          6.5 pt, and it always ends at the band's edge, never on the band (review R6-1, R7-F2). At 8 pt a line holds about 260
-         characters and is 0.14 in high; at 7 pt about 300 and 0.125 in; at 6.5 pt about 320 and 0.115 in. The estimate of the table's height is on
-         the safe side (the real table is often shorter), and 6.5 pt is the last step: in a rare book with every optional sentence the first
-         line can start up to 0.04 in above that estimate, a hairline on the table's border (delta review D4-F1, D4-F2). */
+         characters and is 0.14 in high; at 7 pt about 300 and 0.125 in; at 6.5 pt about 320 and 0.115 in. The table's height is an estimate that is
+         never measured (a row that wraps may be taller than 0.40 in, one that does not shorter), and 6.5 pt is the last step: with 14 classes shown,
+         four rows counted as wrapped and every optional sentence, the first line starts 0.12 in above the estimate (more with more wrapped rows).
+         No such deck has been rendered; slide geometry for 13 or more classes is NOT RUN (delta review D4-F1, D4-F2; ARC-01, 2 Nov 2026). */
       var _tb=1.94+0.30+T.byClass.slice(0,14).reduce(function(a,g){ return a+((lta(g.rule).length>24||String(g.cls).length>44)?0.40:0.30); },0);
       var _footFit=function(sl,txt){ var len=String(txt).length, n=Math.ceil(len/260); if(n<=2){ foot(sl,txt); return; }
         var room=7.18-(_tb+0.04), fs=8, lh=0.14;

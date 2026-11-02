@@ -221,6 +221,14 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
        /Left out of the harvest.*: 1 AIF treated as Category I or II \(₹0\.60 Cr\)\./.test(tx3) && !/Category I or II AIF is pass-through/.test(tx3), 'Taxation tab, one such AIF: the note and the left-out list');
     ok(/Left out, as not split into long and short term: 1 AIF treated as Cat I\/II \(₹0\.60 Cr\)\./.test(sl3) &&
        /Not split: AIFs treated as Cat I\/II \(per underlying asset\)\. 1 AIF is treated as Cat I\/II because the file states no Category I, II or III: confirm it against the AIF’s statement\./.test(sl3), 'slides, one such AIF');
+    /* the plural of the same sentences (ARC-01: no test pinned them; the singular and the plural are chosen by count) */
+    const two1 = new T.Book().add(aif('Synthetic Unstated Category Fund', '', 5000000, 6000000)).add(aif('Synthetic Second Unstated Fund', '', 4000000, 5000000))
+      .add(eq('Client A', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 300, '2024-01-10')).review(AS_ON);
+    const tx4 = R8377(T.text(T.renderTaxTab(two1))), sl4 = await T.taxSlidesText(two1);
+    ok(tx4.indexOf('2 AIFs are treated as Category I or II (pass-through) because the file does not state Category I, II or III. Pass-through means that income keeps its character') >= 0 &&
+       /Left out of the harvest.*: 2 AIFs treated as Category I or II \(₹1\.10 Cr\)\./.test(tx4) && !/1 of them|2 of them/.test(tx4), 'Taxation tab, two such AIFs: "2 AIFs are treated as ... because", and the left-out list');
+    ok(/Left out, as not split into long and short term: 2 AIFs treated as Cat I\/II \(₹1\.10 Cr\)\./.test(sl4) &&
+       /Not split: AIFs treated as Cat I\/II \(per underlying asset\)\. 2 AIFs are treated as Cat I\/II because the file states no Category I, II or III: confirm it against the AIF’s statement\./.test(sl4) && !/\bholding\(s\)|AIF\(s\)/.test(sl4), 'slides, two such AIFs: "2 AIFs are treated as Cat I/II because ...", the left-out line, and no "(s)"');
 
     console.log('--- 5. wording that part T3 left stale ---');
     const fl = TX.positions.find(p => p.name === 'Synthetic Flexi Cap Fund-Reg(G)'), el = TX.positions.find(p => p.name === 'Synthetic Tax Saver Fund-Reg(G)');
@@ -268,7 +276,7 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
     big.tx.find(t => t.instrument === 'Synthetic Short History Fund-Reg(G)').a = -500 * 100;
     big.trade({ name: 'Synthetic Flexi Cap Fund-Reg(G)', date: '2026-10-05', units: 10, price: 290 });
     const fb = await footBox(big.review(AS_ON, { asOnDate: '30 Sep 2026' })), fs = await footBox(new T.Book().add(eq('Client A', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 150, '2024-01-15')).review(AS_ON));
-    ok(fb && fb.len > 520 && fb.bottom <= 7.18 + 1e-6 && fb.top < 6.92 && fs && fs.len < 520 && Math.abs(fs.top - 6.92) < 1e-3,
+    ok(fb && fb.len > 520 && Math.abs(fb.bottom - 7.18) < 1e-6 && fb.top < 6.92 && fs && fs.len < 520 && Math.abs(fs.top - 6.92) < 1e-3,
       'class slide: a footnote past two lines (' + (fb && fb.len) + ' characters) ends at 7.18 in, above the band (top ' + (fb && fb.top.toFixed(2)) + ' in); a short one keeps its place at 6.92 in');
     /* a wide class table (review R6-1, R7-F2): 20 distinct tax classes, the tall (wrapping) rows among the 14 shown, leave no room for a four-line
        footnote at 8 pt. It drops to 7 pt, or 6.5, and still ends at the band's edge (7.18 in) rather than on the band (its top is at 7.23 in). */
@@ -294,18 +302,59 @@ ok(isinRows.length === 1 && isinRows[0].isin === undefined && isinRows[0].name =
       .add(hh('Synthetic Sovereign Gold Bond 2031', 'Bonds', 'Gold', 'SGB', 20, [['2024-01-10', 100, 15]]))
       .add(hh('Synthetic Infra NCD 2029', 'Bonds', 'Debt', 'NCD', 10, [['2024-01-10', 100, 8]]));
     const wm = wide.review(AS_ON, { asOnDate: '30 Sep 2026' }), wb = await footBox(wm);
-    ok(wm.taxation.byClass.length >= 17 && wb && wb.len > 600 && wb.bottom <= 7.18 + 1e-6 && wb.pt < 8 && wb.top > 6.4,
+    ok(wm.taxation.byClass.length >= 17 && wb && wb.len > 600 && Math.abs(wb.bottom - 7.18) < 1e-6 && wb.pt < 8 && wb.top > 6.4,
       'class slide, ' + wm.taxation.byClass.length + ' tax classes: a ' + (wb && wb.len) + '-character footnote drops to ' + (wb && wb.pt) + ' pt and ends at ' + (wb && wb.bottom.toFixed(2)) + ' in, above the band (top at 7.23 in); it starts at ' + (wb && wb.top.toFixed(2)) + ' in');
+    /* The three sizes of the class footnote, one book each (ARC-01: nothing pinned the 7 pt step, the bottom anchor, the clearance from the table or the line lengths).
+       The page estimates the table's bottom as 1.94 + 0.30 (the header row) + 0.30 for each of the 14 largest classes, 0.40 for a class whose "Long term after" text has
+       more than 24 characters or whose name has more than 44 (a row it counts as wrapping; the same rule is written out here). The footnote box is as high as its lines (0.14,
+       0.125 or 0.115 in at 8, 7 or 6.5 pt, about 260, 300 and 320 characters a line), ends at 7.18 in, and takes the largest size that leaves 0.04 in below the estimate; 6.5 pt
+       is the last size whether it leaves that or not, and a footnote of two lines or less keeps the fixed box at 6.92 in. Each book below has a footnote whose length the
+       other line lengths (260 against 300, 300 against 280 or 320, 320 against 340) would count in another number of lines. */
+    const ltaLabel = r => !r ? '-' : r.fundLevel ? 'Fund level' : r.passThrough ? 'At AIF level, per asset' : r.alwaysShort ? 'Always short term' : r.anyPeriod ? 'Any period' :
+      (r.perSecurity ? 'Per security, more' : 'More') + ' than ' + r.months + ' months' + (r.listedEtfMonths ? ' (' + r.listedEtfMonths + ' if listed ETF)' : '') + (r.lockMonths ? ' (' + (r.lockMonths % 12 ? r.lockMonths + '-mo' : r.lockMonths / 12 + '-yr') + ' lock-in)' : '');
+    const wraps = g => ltaLabel(g.rule).length > 24 || String(g.cls).length > 44;
+    const NM = { pms: 'Synthetic Capital - Long Term Value', elss: 'Synthetic Tax Saver Fund-Reg(G)', corp: 'Synthetic Corporate Bond Fund-Reg(G)', cons: 'Synthetic Conservative Hybrid Fund-Reg(G)',
+      flexi: 'Synthetic Flexi Cap Fund-Reg(G)', aggr: 'Synthetic Aggressive Hybrid Fund-Reg(G)', balh: 'Synthetic Balanced Hybrid Fund-Reg(G)', pe2: 'Synthetic Private Equity Fund II', ls: 'Synthetic Long Short Fund',
+      unst: 'Synthetic Unstated Category Fund', crypto: 'Synthetic Crypto Basket', glob: 'Synthetic Global Opportunities Fund-Reg(G)', goldetf: 'Synthetic Gold ETF', nifty: 'Synthetic Nifty 50 ETF',
+      ind: 'Synthetic Industries Ltd', ovs: 'Synthetic Overseas Tech Inc', reit: 'Synthetic REIT Trust', sgb: 'Synthetic Sovereign Gold Bond 2031', ncd: 'Synthetic Infra NCD 2029' };
+    const subset = (keys, trade) => {
+      const names = keys.split(',').map(k => NM[k]), b = new T.Book();
+      b.rows = wide.rows.filter(x => names.indexOf(x[1]) >= 0); b.tx = wide.tx.filter(t => names.indexOf(t.instrument) >= 0);
+      if (trade) b.trade({ name: NM.flexi, date: '2026-10-05', units: 10, price: 290 });
+      return b;
+    };
+    const LH = { 8: 0.14, 7: 0.125, 6.5: 0.115 };
+    /* [what it is, holdings, a later trade, tax classes, rows that wrap among the 14 shown, the footnote's length (from, to), its size, its lines] */
+    const SIZES = [
+      ['8 pt in 3 lines', 'pms,elss,corp,flexi,balh,glob,goldetf,nifty,ind,ovs,reit,unst', false, 13, 3, [561, 600], 8, 3],
+      ['7 pt in 2 lines (8 pt would need 3 lines of 0.14 in, 0.42 in, against 0.40 in of room)', 'pms,elss,corp,flexi,balh,glob,goldetf,nifty,ind,ovs,reit,sgb,unst', false, 14, 3, [561, 600], 7, 2],
+      ['7 pt in 3 lines', 'pms,elss,corp,flexi,balh,glob,goldetf,nifty,ind,ovs,reit,sgb,unst', true, 14, 3, [601, 640], 7, 3],
+      ['7 pt in 3 lines, 4 lines at 8 pt', 'pms,elss,corp,flexi,aggr,balh,pe2,ls,unst,crypto,glob,goldetf,nifty,ind,ovs,reit,sgb,ncd', false, 18, 3, [781, 900], 7, 3],
+      ['6.5 pt in 3 lines (7 pt would need 3 lines of 0.125 in, 0.375 in, against 0.30 in of room)', 'pms,elss,corp,cons,flexi,aggr,balh,pe2,ls,crypto,glob,goldetf,nifty,ind,ovs,reit,sgb,ncd', false, 20, 4, [641, 680], 6.5, 3]
+    ];
+    for (const [what, keys, trade, nClasses, nWrap, [lo, hi], pt, lines] of SIZES) {
+      const mm = subset(keys, trade).review(AS_ON, { asOnDate: '30 Sep 2026' }), ff = await footBox(mm), shown = mm.taxation.byClass.slice(0, 14);
+      const est = 1.94 + 0.30 + shown.reduce((a, g) => a + (wraps(g) ? 0.40 : 0.30), 0), want = 2.24 + 0.30 * (shown.length - nWrap) + 0.40 * nWrap;
+      ok(mm.taxation.byClass.length === nClasses && shown.filter(wraps).length === nWrap && Math.abs(est - want) < 1e-9,
+        'class slide, ' + what + ': the book has ' + nClasses + ' tax classes, ' + nWrap + ' of the 14 shown wrap, so the page estimates the table to end at ' + want.toFixed(2) + ' in (got ' + mm.taxation.byClass.length + ' classes, ' + shown.filter(wraps).length + ' wrapping)');
+      ok(ff && ff.len >= lo && ff.len <= hi && ff.pt === pt && Math.abs(ff.bottom - 7.18) < 1e-6 && Math.abs(ff.top - (7.18 - lines * LH[pt])) < 1e-3 && (pt === 6.5 || ff.top >= est + 0.04 - 1e-6),
+        'class slide, ' + what + ': a ' + (ff && ff.len) + '-character footnote (' + lo + ' to ' + hi + ' expected) is set at ' + (ff && ff.pt) + ' pt, ends at ' + (ff && ff.bottom.toFixed(3)) + ' in and starts at ' +
+        (ff && ff.top.toFixed(3)) + ' in (' + (7.18 - lines * LH[pt]).toFixed(3) + ' expected)' + (pt === 6.5 ? '' : ', 0.04 in or more below the estimate of the table'));
+    }
+    /* and the wide book itself (20 classes, 4 rows that wrap, the unstated-category AIF too): a footnote of 782 characters, also 6.5 pt in 3 lines, from 6.835 in */
+    ok(wb && wb.pt === 6.5 && wb.len > 640 && wb.len <= 960 && Math.abs(wb.top - (7.18 - 3 * 0.115)) < 1e-3,
+      'class slide, the 20-class book: the footnote is set at 6.5 pt in 3 lines (top ' + (wb && wb.top.toFixed(3)) + ' in; 6.835 in expected)');
     ok(fb && fb.pt === 8, 'class slide: a nine-class book keeps the footnote at 8 pt');
     /* every optional sentence at once (delta review D4-F1, D4-F2): pre-2018 lots, a later trade, a balanced advantage fund with no class and a Listed AIF on top of the
-       wide book. The footnote is 6.5 pt, the last size, and ends at the band's edge. Its first line starts at 6.72 in, 0.04 in above the page's own estimate of the
-       table's bottom (6.76 in), which is on the safe side (the real table ends higher): a known hairline, not a defect this test hides. */
+       wide book. The footnote is 6.5 pt, the last size, and ends at the band's edge. Its first line starts at 6.72 in. The 14 classes shown hold 4 rows the page counts as
+       wrapping, so its own estimate of the table's bottom is 1.94 + 0.30 + 10 x 0.30 + 4 x 0.40 = 6.84 in: the first line starts 0.12 in above that estimate. Nobody has
+       rendered such a deck (slide geometry for 13 or more classes is NOT RUN), so whether it touches the table is not known: a known issue (KI-210), not a defect this test hides. */
     wide.add(hh('Synthetic Value Fund-Reg(G)', 'Mutual Funds', 'Equity', 'Value Fund', 700, [['2017-06-10', 100, 500]]))
       .add(hh('Synthetic Balanced Advantage Fund-Reg(G)', 'Mutual Funds', 'Hybrid', 'Balanced Advantage', 1070, [['2025-03-20', 5000, 1000]]))
       .add({ client: 'Client A', name: 'Synthetic Listed Opportunities Fund', product: 'AIF', asset: 'Equity', category: 'Listed AIF', noUnits: true, nav: 43000000, lots: [['2024-03-15', 1, 40000000]] });
     wide.trade({ name: 'Synthetic Flexi Cap Fund-Reg(G)', date: '2026-10-05', units: 10, price: 290 });
     const wb2 = await footBox(wide.review(AS_ON, { asOnDate: '30 Sep 2026' }));
-    ok(wb2 && wb2.len > 950 && wb2.pt === 6.5 && wb2.bottom <= 7.18 + 1e-6 && wb2.top >= 6.7 && wb2.top < 6.76,
+    ok(wb2 && wb2.len > 950 && wb2.pt === 6.5 && Math.abs(wb2.bottom - 7.18) < 1e-6 && wb2.top >= 6.7 && wb2.top < 6.76,
       'class slide, every optional sentence: a ' + (wb2 && wb2.len) + '-character footnote is set at ' + (wb2 && wb2.pt) + ' pt, starts at ' + (wb2 && wb2.top.toFixed(2)) + ' in and ends at ' + (wb2 && wb2.bottom.toFixed(2)) + ' in');
     const slN1 = await T.taxSlidesText(new T.Book().add(eq(' ', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 400, '2024-01-15')).add(eq('Client A', 'Synthetic Value Fund-Reg(G)', 1000, 100, 150, '2024-01-15')).review(AS_ON));
     const slN2 = await T.taxSlidesText(new T.Book().add(eq(' ', 'Synthetic Flexi Cap Fund-Reg(G)', 1000, 100, 400, '2024-01-15')).add(eq(' ', 'Synthetic Focused Fund-Reg(G)', 1000, 400, 100, '2024-01-15')).add(eq('Client A', 'Synthetic Value Fund-Reg(G)', 1000, 100, 150, '2024-01-15')).review(AS_ON));
