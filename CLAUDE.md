@@ -47,6 +47,15 @@ and the monthly data owner.
    identity must be explicit (`user.useConfigOnly` is on; never let git invent an author email).
 9. **Stage discipline**: implement only what the owner asked. Record other defects/ideas in
    `docs/KNOWN_ISSUES.md` or the backlog in `docs/PROJECT_STATE.md`; do not fix them on the side.
+10. **Office automation never touches the owner's open work** (owner's rule, 2 Nov 2026). PowerPoint and Excel are
+   usually open on the owner's PC, and COM attaches to a running instance. Before any Office check run `tasklist`
+   for `POWERPNT.EXE` and `EXCEL.EXE`. Attach only to a running instance (`GetActiveObject`, never
+   `New-Object -ComObject`); open only synthetic files, read-only, with no window; close only the presentation or
+   workbook you opened; never call `Quit`; never `Stop-Process` or `taskkill` an Office process; change no global
+   option (`DisplayAlerts`, `Visible`, `AutomationSecurity`, `Calculation`, `ScreenUpdating`, `EnableEvents`); use a
+   timeout, and on a timeout abandon the file, never kill. If Office is not running, or the check is risky, report
+   NOT RUN and give the owner the path of the synthetic file to open themselves. This binds every chat, agent and
+   script. The Step 3 snippet of `docs/MONTHLY_REFRESH.md` ends with `Quit()` and must not be run as written (TA-26).
 
 ## Conventions the code actually uses (verified at baseline, see docs/legacy/ARCHITECTURE.md)
 - Base file: header row found in the first 5 rows, columns matched by alias. **`XIRR (%)` / `BMXIRR (%)`

@@ -161,10 +161,10 @@ rewrite, no second worktree, nothing deleted, never new work on both names. The 
 release-check does not warn. Other PRs are decided when they are opened.
 
 **R-9. ENGINE_KEYS and KI-185, 2 Nov 2026.** MOD-02 adopts REC-06 and, on ARC-01's change C1 and EX-01's recommendation, does not
-waive the I-09 same-PR rule: the TA-03 PR adds all six names to ENGINE_KEYS in `tools/check-invariants.js` (the four new keys
+waive the I-09 same-PR rule: the TA-03 PR is to add all six names (planned, not in git yet) to ENGINE_KEYS in `tools/check-invariants.js` (the four new keys
 `taxClassify`, `taxApplyAssumptions`, `taxAssumeFor`, `taxDefaults`, plus `amcKey` and `xirr`, which main lacks; 22 + 6 = 28), and
-that file is listed in the change-impact contract (item 5). TA-22 moves into TA-03 and closes with it. EX-01 files KI-184 and
-KI-185 with TA-03, KI-185 as FIXED there. KI-183 stays reserved for TA-05; a gap in the numbering is normal.
+that file is listed in the change-impact contract (item 5). TA-22 moves into TA-03 and closes with it. EX-01 is to file KI-184 and
+KI-185 with TA-03, KI-185 as FIXED there (planned, not in git yet). KI-183 stays reserved for TA-05; a gap in the numbering is normal.
 
 **R-10. Re-run rule when `main` moves after the gates (CONFIRMED by ARC-01 on 2 Nov 2026, with additions).** If `origin/main`
 gains commits after a branch has passed Gates A to C, the branch merges `origin/main` (a merge, never a rebase) and:
@@ -182,14 +182,28 @@ gains commits after a branch has passed Gates A to C, the branch merges `origin/
    checks plus ARC-01's review of the resolution are enough when 1 holds; re-running the full Gate C list is also safe.
 Any non-docs change in `main` means the full Gate C list again.
 
-**R-11. D-043, KI-186 and the owner's answers, 2 Nov 2026.** D-043 (EX-01's range, written on the TA-03 branch) records the
+**R-11. D-043, KI-186 and the owner's answers, 2 Nov 2026.** D-043 (EX-01's range, to be written on the TA-03 branch; not in git yet) records the
 owner's answers to CR-0008 Q17 and Q18 and amends D-040 point (d). KI-186 (P3, EX-01's range) records the IRR explicit-zone
 date strings: the tax batch's T2 reads a date-time with an explicit zone as the machine-local calendar day of the instant, where
 main read the UTC date, so late-evening Z times read as the next day in IST and midnight Z times as the previous day west of
 UTC; zone-less forms are fixed in every zone; real IRR exports with such strings are [UNKNOWN] (sample files have none). EX-01
 decides in its T5 review addendum, with the financial-domain-reviewer, between a minimal fix (read the date as written) and no
-code change. The new build's M3 IRR reader reads a free-text date as written, the same date in every zone, and states its own rule
+code change. The new build's M3 IRR reader (not built yet) is to read a free-text date as written, the same date in every zone, and states its own rule
 for strings with an explicit zone.
+
+**R-12. The Office rule, 2 Nov 2026.** The owner's standing rule for every Office check by any chat, agent or script, now rule 10
+of `CLAUDE.md`: `tasklist` first; attach only to a running instance (`GetActiveObject`, never `New-Object -ComObject`); open only
+synthetic files, read-only, with no window; close only the file you opened; never `Quit`; never `Stop-Process` or `taskkill` an
+Office process; change no global option; use a timeout and abandon, never kill; NOT RUN with the file path for the owner when Office
+is not running or the check is risky. NB-01 must rewrite the Office scripts of M1.4 to it (ARC-01's K1; the 07a6460 and be7f395
+versions break it) and run no `npm run accept:office` from any head until then; EX-01 applies it to its slide checks. A script that
+started an Office instance is not allowed to Quit it either; whether that may ever be allowed is the owner's decision, not MOD-02's.
+TA-26 covers the existing tooling and docs (the Step 3 snippet of `docs/MONTHLY_REFRESH.md` ends with `Quit()`).
+
+**R-13. TB-08, 2 Nov 2026.** MOD-02's lead decision under D-033 (REC-01), taken in the owner's own handover prompt: NB-01 pushed its
+four local-only branches (`feat/m1-4-overview` and the three fixer branches, 26 commits) as plain branches, no pull request, after
+clean pre-push scans (MOD-02 re-ran all four, same counts as NB-01) and a security-release-reviewer GO (NB-01's report). Verified
+afterwards with `git ls-remote origin` by MOD-02 and ARC-01.
 
 ## 2. Pending owner decisions
 
@@ -263,6 +277,9 @@ that builds it (EX-01 or NB-01).
 | PD-44 | The other tax defaults settled while building | Accept as built | TA-03 sign-off |
 | PD-45 | The 26 "to be confirmed" research items of the capital-gains design | Send the top five to the tax adviser | M7 accuracy |
 | PD-46 | Did you ask for anything outside these chats between 24 and 27 Oct? | Tell MOD-02 | none |
+| PD-47 | A fund whose own statement gives a category: keep that, even if the performance data calls it "Listed AIF"? (follows PD-02) | Yes, the file's own words win | TA-03 item 10 wording (D-043) |
+| PD-48 | The new app rounds a half-way value up like Excel (35.675 shows 35.68; the live page shows 35.67): accept in the new app? | Yes | M1.4 Gate B (D-039 point 13) |
+| PD-49 | May the monthly refresh open the vendor deck in PowerPoint under the Office rule, or will you export the slides yourself? | You export the slides until a safe attach-only path is proven | TA-10 Step 3 (TA-26) |
 
 ### 2.3 Each decision explained
 
@@ -311,8 +328,10 @@ its relay list. The text below is the question as asked on 2 Nov.
 - **What each changes.** A: the class name and the note change on the tab and slides. B: the note can become
   definite. C: nothing.
 - **Good and bad.** C is honest and safe but asks analysts to check. A or B is cleaner but must be right.
-- **Impact.** Wording only: neither treatment produces an investor tax figure, so no rupee amount changes
-  [VERIFIED CR-0008 question 17].
+- **Impact.** Category III gets no investor-level tax figure, as before. EX-01's measurement on the standard sample book
+  (2 Nov): no tax, LTCG, STCG, estimated tax, saving, harvest or total market value moves; the not-classified market value and
+  gain move into a new "Fund level" amount (2.7051 to 2.0535 Cr and 0.6516 Cr) and the "Left out" wording changes
+  [VERIFIED by EX-01 on a prototype; MOD-01's earlier text said "no rupee amount changes"].
 - **Can it be undone?** Yes, by a small wording patch.
 - **Recommendation.** C now, then confirm from the AIF documents. If you reply "accept the safe defaults for
   questions 17 and 18", TA-03 can merge once it passes its checks.
@@ -806,6 +825,36 @@ See the private supplement. **Blocks:** nothing.
 - **Options.** Tell MOD-02 about any such request, or confirm there was none.
 - **Recommendation.** A one-line reply to MOD-02. **Blocks.** Nothing.
 
+#### PD-47. Which category wins when the file states one? (follows PD-02)
+
+**Status: QUEUED, not asked yet (2 Nov 2026).**
+- **Problem.** You ruled that the funds the performance data lists as "Listed AIF" are Category III. Some client files state a
+  category for a fund (Category I, II or III) in their own words, and it might differ from the ruling.
+- **Why we need you.** It is a reading of a financial rule. ARC-01 asked that you see it in one sentence.
+- **Options.** A: the file's own words win; the ruling applies only to a fund with no stated category. B: the ruling always wins.
+- **What each changes.** A: a fund stated as Category I or II stays pass-through, no mark. B: it would be shown as Category III.
+- **Recommendation / default.** A (the conservative reading, and the one EX-01 designed). Built that way unless you say otherwise.
+- **Can it be undone?** Yes, by a small patch. **Blocks.** The wording of TA-03 item 10 and D-043.
+
+#### PD-48. Half-way rounding in the new app (D-039 point 13)
+
+**Status: QUEUED, not asked yet (2 Nov 2026).**
+- **Problem.** A value exactly half-way between two roundings (35.675%) shows 35.68% in the new app, as Excel does, and 35.67% on the
+  live page. It changes only the last digit and only at exact half-way values.
+- **Why we need you.** It changes a figure clients may see. The lead decided it in a fix round; no approval is on record (ARC-01's K2).
+- **Options.** A: accept in the new app (preview only). B: make the new app show what the live page shows.
+- **Recommendation / default.** A. Built that way; the new app is a preview (D-024). **Blocks.** M1.4 Gate B.
+
+#### PD-49. The vendor deck and Office (October refresh, Step 3)
+
+**Status: QUEUED, not asked yet (2 Nov 2026); ask before the vendor files arrive (11 to 17 Nov).**
+- **Problem.** Step 3 of the refresh renders the vendor's Monthly Outlook deck in PowerPoint to check every slide. Your Office rule
+  allows only synthetic files, and PowerPoint is usually open on your PC.
+- **Options.** A: the refresh attaches to your open PowerPoint, opens a copy of the deck on a short local path, read-only, no
+  window, closes only that copy, never Quit. B: you export the slides yourself and put them in the inbox folder. C: skip the check.
+- **Recommendation / default.** B until a safe attach-only path is proven. Step 3 says NOT RUN until you answer.
+- **Blocks.** TA-10 Step 3 and TA-26.
+
 ## 3. Recommendations not yet approved
 
 These are Claude's recommendations. None is a decision until the named approver accepts it.
@@ -839,3 +888,4 @@ These are Claude's recommendations. None is a decision until the named approver 
 | 28 Oct 2026 | MOD-01 | First version, for the MOD-01 to MOD-02 handover |
 | 30 Oct 2026 | MOD-01 (fixer pass) | Index range D-001 to D-042; R-4 defers to README section 5.2 (ARC-01 informed of the merge and the Pages check; MOD-02 shows the evidence for "publish"); R-7 (ARC-01's scratch worktrees) recorded; PD-01 (c) says the base file's ISIN column is not read (KI-184) |
 | 2 Nov 2026 | MOD-02 | Lead rulings R-8 to R-11 (TA-03 PR branch, six ENGINE keys, re-run rule confirmed by ARC-01, D-043 and KI-186); PD-02 and PD-03 marked answered with the owner's words |
+| 2 Nov 2026 | MOD-02 | R-12 (Office rule), R-13 (TB-08); PD-47 to PD-49 queued; PD-02 impact line corrected; "planned, not in git yet" tags |
