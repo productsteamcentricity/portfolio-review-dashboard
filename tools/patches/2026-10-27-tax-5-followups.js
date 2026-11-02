@@ -147,6 +147,12 @@
                      the class footnote: the 8, 7 and 6.5 pt sizes, each in a book of its own, with the bottom anchor, the
                      number of lines and the clearance from the table; the plural sentence for AIFs treated as Cat I/II
 
+   Wording after the owner's answer to CR-0008 question 18 (stage S9, 2 Nov 2026; KI-182, D-043; the owner kept no set-off for crypto):
+      the Taxation tab's harvest card says crypto is kept out of set-off "as the owner has ruled and the reckoner is silent
+      on them" and the harvest slide "as the tax reckoner is silent on them (confirm with the tax adviser)", no longer
+      "pending" a ruling; the comments beside them say so; no figure moves. The TAX_RULES row still carries the older
+      noSetOffSource text ("until the owner rules"); no page shows it, and it is data (KI-182).
+
      node tools/patches/2026-10-27-tax-5-followups.js
    ========================================================================== */
 'use strict';
@@ -658,5 +664,30 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, AIF categ
         '    m=/^(\\d{4})-(\\d{2})-(\\d{2})[T ]\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?\\s*(?:Z|[+-]\\d{2}:?\\d{2})$/i.exec(s);\n' +
         '    if(m) return new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));\n' +
         '    return new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));\n'
+  },
+
+  /* ======================= wording after the owner's answer to question 18 (stage S9; KI-182, D-043) ======================= */
+  {
+    label: "Taxation tab: the crypto set-off sentence no longer says \"pending the owner's ruling\" (T5 stage S9, KI-182, D-043)",
+    from: "      /* TX-23 (KI-182; CR-0008 question 18): the Crypto row is kept out of set-off until the owner rules */\n" +
+          "      var nsoNote=(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9)?('<div class=\"taxwarn\" style=\"margin-top:10px;\">Crypto gains and losses are kept out of set-off pending the owner&rsquo;s ruling, as the reckoner is silent on them: '+\n",
+    to: "      /* TX-23 (KI-182; CR-0008 question 18, answered 2 Nov 2026: keep no set-off; D-043): the Crypto row is kept out of set-off */\n" +
+          "      var nsoNote=(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9)?('<div class=\"taxwarn\" style=\"margin-top:10px;\">Crypto gains and losses are kept out of set-off, as the owner has ruled and the reckoner is silent on them: '+\n"
+  },
+  {
+    label: "harvest slide: the crypto set-off sentence no longer says \"pending a ruling on their treatment\" (T5 stage S9, KI-182, D-043)",
+    from: "        /* TX-23 (KI-182; CR-0008 question 18): the Crypto row is kept out of set-off until a ruling */\n" +
+          "        if(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9) nt.push('Crypto gains and losses are kept out of set-off pending a ruling on their treatment: no loss is set against a crypto gain'+\n",
+    to: "        /* TX-23 (KI-182; CR-0008 question 18, answered 2 Nov 2026: keep no set-off; D-043): the Crypto row is kept out of set-off */\n" +
+          "        if(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9) nt.push('Crypto gains and losses are kept out of set-off, as the tax reckoner is silent on them (confirm with the tax adviser): no loss is set against a crypto gain'+\n"
+  },
+  {
+    label: "engine: the comment on the noSetOff row says the owner has ruled (T5 stage S9, KI-182, D-043)",
+    from: "     TX-23 (KI-182; the re-review of part T3): a row marked noSetOff (Crypto) is kept out of set-off\n" +
+          "       until the owner rules (CR-0008 question 18): no loss is set against its gain, which is taxed\n" +
+          "       in full before and after, and its own loss reduces no other gain and is not carried forward.\n",
+    to: "     TX-23 (KI-182; the re-review of part T3): a row marked noSetOff (Crypto) is kept out of set-off,\n" +
+          "       as the owner ruled on 2 Nov 2026 (CR-0008 question 18, D-043): no loss is set against its gain,\n" +
+          "       which is taxed in full before and after, and its own loss reduces no other gain and is not carried forward.\n"
   }
 ]);

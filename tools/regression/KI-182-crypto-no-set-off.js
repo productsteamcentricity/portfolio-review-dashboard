@@ -1,14 +1,14 @@
 /* ============================================================================
    KI-182 (TX-23), with KI-175 (TX-16) — crypto gains and losses are kept out of
-   set-off until the owner rules (the re-review of tax batch T3, finding F1).
+   set-off (the re-review of tax batch T3, finding F1; the owner ruled on 2 Nov 2026, CR-0008 question 18).
 
      node tools/regression/KI-182-crypto-no-set-off.js
 
    The Tax Reckoner TY 2026-27 has no row for crypto or virtual digital assets and says
    nothing on their set-off; under the 1961 Act, Sec 115BBH allowed no loss to be set
    against a crypto gain and no crypto loss against other income or carried forward.
-   Whether that carries over is the owner's open question (CR-0008 question 18). Until it is
-   answered, the safe behaviour: the Crypto row carries noSetOff; no loss reaches a crypto
+   Whether that carries over was the owner's question (CR-0008 question 18); the owner answered on
+   2 Nov 2026: keep no set-off, no carry-forward of a crypto loss (D-043). The behaviour: the Crypto row carries noSetOff; no loss reaches a crypto
    gain (taxed in full before and after); a crypto loss is in no loss pool, reduces no other
    gain, is never carried forward and is not a harvest candidate. Part T3 ranked the crypto
    pool at 30%, above every 20% and 12.5% gain, so a loss went to it first.
@@ -117,8 +117,9 @@ const crOnly = new T.Book().add(hold(CRY, 'Client A', 'Synthetic Ether Holding',
     const raw = T.renderTaxTab(m), tx = R8377(T.text(raw));
     ok(/₹7\.34 L Estimated tax before harvesting ₹7\.09 L After setting off available losses ₹0\.25 L Estimated tax saved/.test(tx),
       'Taxation tab: ₹7.34 L before, ₹7.09 L after, ₹0.25 L saved, as the engine');
-    ok(/Crypto gains and losses are kept out of set-off pending the owner’s ruling, as the reckoner is silent on them: no loss is set against a crypto gain \(₹10\.00 L, taxed in full before and after\), and a crypto loss \(₹10\.00 L\) reduces no other gain, is not carried forward and is not listed as a holding to sell\./.test(tx),
+    ok(/Crypto gains and losses are kept out of set-off, as the owner has ruled and the reckoner is silent on them: no loss is set against a crypto gain \(₹10\.00 L, taxed in full before and after\), and a crypto loss \(₹10\.00 L\) reduces no other gain, is not carried forward and is not listed as a holding to sell\./.test(tx),
       'Taxation tab: the sentence on crypto and set-off, with the amounts');
+    ok(!/kept out of set-off pending/.test(tx), 'Taxation tab: the sentence no longer says "pending" (the owner has ruled, 2 Nov 2026)');
     ok(/Client A Crypto Short term 30% ₹10\.00 L — ₹10\.00 L ₹3\.00 L/.test(tx), 'Taxation tab: client A\'s crypto pool, nothing set off, ₹3.00 L of tax');
     ok(/Losses available: ₹0\.00 L long term, ₹2\.00 L short term/.test(tx) && !/cannot be set off this year/.test(tx),
       'Taxation tab: losses available ₹2.00 L short term (the crypto loss not among them), nothing carried forward');
@@ -127,8 +128,10 @@ const crOnly = new T.Book().add(hold(CRY, 'Client A', 'Synthetic Ether Holding',
     const sl = await T.taxSlidesText(m);
     ok(/₹7\.34 L Estimated tax before harvesting ₹7\.09 L After setting off available losses ₹0\.25 L Estimated tax saved/.test(sl),
       'harvest slide: the same ₹7.34 L, ₹7.09 L and ₹0.25 L');
-    ok(/Crypto gains and losses are kept out of set-off pending a ruling on their treatment: no loss is set against a crypto gain \(₹10\.00 L, taxed in full\), and a crypto loss \(₹10\.00 L\) reduces no other gain and is not carried forward\./.test(sl),
+    ok(/Crypto gains and losses are kept out of set-off, as the tax reckoner is silent on them \(confirm with the tax adviser\): no loss is set against a crypto gain \(₹10\.00 L, taxed in full\), and a crypto loss \(₹10\.00 L\) reduces no other gain and is not carried forward\./.test(sl),
       'harvest slide: the sentence on crypto and set-off, with the same amounts');
+    ok(!/kept out of set-off pending/.test(sl) && !/the owner/i.test(sl.slice(Math.max(0, sl.indexOf('kept out of set-off') - 40), sl.indexOf('kept out of set-off') + 260)),
+      'harvest slide: no "pending", and no mention of the owner in the sentence (the deck goes to the client)');
     ok(/Losses available: ₹0\.00 L long term, ₹2\.00 L short term\./.test(sl) && !/cannot be set off this year/.test(sl), 'harvest slide: the same losses available, nothing carried forward');
     /* the slide title is upper case; its table runs up to its footer, "Largest loss first" */
     const ci = sl.indexOf('HOLDINGS AT A LOSS'), cand = ci >= 0 ? sl.slice(ci, sl.indexOf('Largest loss first', ci)) : '';

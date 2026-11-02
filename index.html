@@ -1041,9 +1041,9 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
        after every other gain still goes to them, as set-off comes before the exemption. At an equal
        rate the order is fixed (a slab-rate gain first, then other gains before Sec 198 gains, short
        term before long term, then by class name), never by the size of a holding.
-     TX-23 (KI-182; the re-review of part T3): a row marked noSetOff (Crypto) is kept out of set-off
-       until the owner rules (CR-0008 question 18): no loss is set against its gain, which is taxed
-       in full before and after, and its own loss reduces no other gain and is not carried forward.
+     TX-23 (KI-182; the re-review of part T3): a row marked noSetOff (Crypto) is kept out of set-off,
+       as the owner ruled on 2 Nov 2026 (CR-0008 question 18, D-043): no loss is set against its gain,
+       which is taxed in full before and after, and its own loss reduces no other gain and is not carried forward.
      ========================================================================= */
   var TAX_S198_EXEMPT_RS=125000;
   /* T5 (ARC-01 C3): exported as ENGINE.taxDefaults and read only by taxAssumeFor, so it is frozen */
@@ -5969,8 +5969,8 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
           '. It can be carried forward for up to eight tax years'+(_multi?' in that person\u2019s own return':'')+', provided the return is filed by the due date; a short-term loss can then be set off against any capital gain, a long-term loss only against long-term gains.');
         if(H.unquantifiedPools) nt.push(H.unquantifiedPools+' pool(s) totalling '+U.m(H.unquantifiedGain)+' are at the slab rate, so the tax shown is a floor'+
           (H.slabSheltered>1e-9?('; losses set against them ('+U.m(H.slabSheltered)+') save tax at the slab rate, not counted above'):'')+'.');
-        /* TX-23 (KI-182; CR-0008 question 18): the Crypto row is kept out of set-off until a ruling */
-        if(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9) nt.push('Crypto gains and losses are kept out of set-off pending a ruling on their treatment: no loss is set against a crypto gain'+
+        /* TX-23 (KI-182; CR-0008 question 18, answered 2 Nov 2026: keep no set-off; D-043): the Crypto row is kept out of set-off */
+        if(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9) nt.push('Crypto gains and losses are kept out of set-off, as the tax reckoner is silent on them (confirm with the tax adviser): no loss is set against a crypto gain'+
           (H.noSetOffGain>1e-9?(' ('+U.m(H.noSetOffGain)+', taxed in full)'):'')+', and a crypto loss'+(H.noSetOffLoss>1e-9?(' ('+U.m(H.noSetOffLoss)+')'):'')+' reduces no other gain and is not carried forward.');
         var _lo=[];
         if(_ns.pms.n) _lo.push(_ns.pms.n+' PMS ('+U.m(_ns.pms.cmv)+')');
@@ -11926,8 +11926,8 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       _lop(_fR,'AIF treated as Category III','AIFs treated as Category III',_nsT.fundLevel.ruledCmv||0);
       var loNote=_lo.length?('<div class="sub" style="margin-top:8px;">Left out of the harvest, as they have no investor-level long- or short-term split (see the notes above): '+_lo.join(', ')+'.</div>'):'';
       var unnNote=T.unnamedN?('<div class="sub" style="margin-top:6px;">'+_pl(T.unnamedN,'holding has','holdings have')+' no client name; they are treated as one person for the set-off and the exemption.</div>'):'';
-      /* TX-23 (KI-182; CR-0008 question 18): the Crypto row is kept out of set-off until the owner rules */
-      var nsoNote=(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9)?('<div class="taxwarn" style="margin-top:10px;">Crypto gains and losses are kept out of set-off pending the owner&rsquo;s ruling, as the reckoner is silent on them: '+
+      /* TX-23 (KI-182; CR-0008 question 18, answered 2 Nov 2026: keep no set-off; D-043): the Crypto row is kept out of set-off */
+      var nsoNote=(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9)?('<div class="taxwarn" style="margin-top:10px;">Crypto gains and losses are kept out of set-off, as the owner has ruled and the reckoner is silent on them: '+
         'no loss is set against a crypto gain'+(H.noSetOffGain>1e-9?' ('+U.m(H.noSetOffGain)+', taxed in full before and after)':'')+
         ', and a crypto loss'+(H.noSetOffLoss>1e-9?' ('+U.m(H.noSetOffLoss)+')':'')+' reduces no other gain, is not carried forward and is not listed as a holding to sell.</div>'):'';
       var candRows=H.candidates.slice(0,25).map(function(c){
