@@ -190,7 +190,15 @@ checks run, with the owner's work in them, so no check starts, quits, stops or r
    application, no further case of that application starts: each remaining one is NOT RUN ("not attempted: Office did
    not answer") with its file's path, so no second script is sent to an Excel or PowerPoint that has not answered.
    The one abandoned script may still resume after the run has reported; it then stops at its own deadline at its
-   next check and closes its file.
+   next check and closes its file. This holds after the run has ended (the security gate's F-1, 2 Nov 2026): on
+   Windows, Node keeps the processes it spawns in a job object that ends them when Node exits, so the runner spawns
+   (not detached) only a small PowerShell wrapper, passed as `-EncodedCommand`, which starts the script with
+   `Start-Process` (hidden, its output and errors redirected to `<case>.report.out.log` and `.err.log`), waits for it
+   and exits with its exit code. A process the wrapper starts is not in Node's job, so the script outlives the run;
+   the wrapper, which only waits, ends with it. Proven on the owner's PC with a sleep child outside the suite: abandoned
+   after 2 s, Node exited, the child ran on and wrote its marker file 20 s later. The runner passes no execution
+   policy argument: where the session's policy refuses scripts, each case is NOT RUN with that reason, read from the
+   redirected logs.
 7. **No negative control against the owner's Office.** The damaged files (a workbook Excel must repair, a deck without
    slide 1) would raise a repair prompt on the owner's screen, so they are written next to the reports and reported
    NOT RUN with their paths; the owner may open them by hand.
@@ -203,6 +211,8 @@ forbidden calls or options appears anywhere in them (the calculation mode is rea
 list comes before the attach, the only window hidden is the script's own workbook's, hidden right after the open, the
 edit check runs only in manual calculation, the file is closed in a finally block, the negative controls are never
 run, after a TIMEOUT no further case of that application starts (the decision tested with stand-in cases; no test
-starts PowerShell or Office), and the verdict rules hold. `tests/unit/exports/xlsx-number-formats.test.ts` checks the workbook's number formats against
+starts PowerShell or Office), the verdict rules hold, and the runner's one spawn is the wrapper, not detached, whose
+decoded `-EncodedCommand` holds `Start-Process`, `-WindowStyle Hidden`, both redirections, `-PassThru`,
+`WaitForExit` and `exit $p.ExitCode`, with no execution policy argument and no kill (F-1). `tests/unit/exports/xlsx-number-formats.test.ts` checks the workbook's number formats against
 Excel's own texts without Office. The scripts are checked with the PowerShell parser before a push and run only by
 hand, never in CI.

@@ -9,6 +9,9 @@
 // pass. The security review of 2ef7216: after the first TIMEOUT of an application no further case of it starts (F1);
 // the calculation mode is only read, and the edit check runs only in manual calculation (F2); the workbook's window
 // is hidden at once after the open (F3). Also N7: the workbook check reads the filter range as Excel holds it.
+// The security gate's F-1 (round 3, 2 Nov 2026): the runner starts each script through a PowerShell wrapper
+// (-EncodedCommand, Start-Process), so the script is outside Node's job object and never ended by the run's exit;
+// the wrapper's text is decoded and pinned here (its behaviour was proven with a sleep child outside the suite).
 // `npm run accept:office` runs the scripts themselves (local only, under the same rule). No test here starts
 // PowerShell or Office: the run's decisions are tested with stand-in cases, and attempt false never reaches runPs.
 
@@ -20,7 +23,7 @@ import path from 'node:path';
 import { REPO } from '../../helpers/sheetjs.ts';
 import {
   caseVerdict, overallVerdict, summaryLine, PS_TIMEOUT_MS, NOT_ATTEMPTED, notAttempted, officeTimedOut, runInTurn,
-  acceptXlsx, acceptPptx,
+  acceptXlsx, acceptPptx, wrapperArgs, wrapperScript, quoteWinArg, psLogs, noReportReason,
 } from '../../../scripts/office/run-acceptance.ts';
 import { writeWorkbook } from '../../../app/src/exports/xlsx/writer.ts';
 import { storeZip } from '../../../app/src/exports/zip/store-zip.ts';
@@ -156,15 +159,67 @@ describe('K1: attach only, never start, quit or kill Office, no application opti
 
   test('run-acceptance.ts: the negative controls are written, never run; no kill; an abandoned script is left running', () => {
     assert.ok(!/excelKilled|powerpointKilled/.test(RUN), 'no killed fields');
-    assert.ok(!/\.kill\(|process\.kill|taskkill|spawnSync/.test(RUN), 'no kill and no blocking spawn with a timeout');
+    assert.ok(!/\.kill\(|process\.kill|taskkill|spawnSync|Stop-Process/i.test(RUN), 'no kill and no blocking spawn with a timeout');
+    assert.ok(!/-ExecutionPolicy/i.test(RUN), 'the session\'s execution policy is never overridden');
     const runs = [...RUN.matchAll(/await runPs\(([^)]*)\)/g)].map((m) => m[1]!);
     assert.equal(runs.length, 2, 'one run per script');
     for (const r of runs) assert.ok(!/neg/i.test(r), `a negative control is never run: ${r}`);
-    // Not detached: a detached PowerShell lost its output and report on Windows (2 Nov 2026); the abandon on timeout
-    // is the unref below, and Node never kills the child.
-    assert.match(RUN, /detached: false/);
+    // F-1 (2 Nov 2026): Node spawns one PowerShell, not detached (a detached PowerShell lost its output and report on
+    // Windows), and only the wrapper; the script is the wrapper's own child, outside Node's job object, so the run's
+    // exit never ends it. The abandon on timeout is the unref below.
+    const spawns = [...RUN.matchAll(/\bspawn\(([^\n]*)\);/g)].map((m) => m[1]!);
+    assert.deepEqual(spawns, ["'powershell.exe', wrapperArgs(inner, logs.out, logs.err), { stdio: ['ignore', fd, fd], windowsHide: true, detached: false }"]);
     assert.match(RUN, /child\.unref\(\); resolve\('timeout'\)/);
+    assert.match(RUN, /return runWrapped\(\['-NoProfile', '-NonInteractive', '-File', script, \.\.\.args, '-Report', reportPath\], reportPath, file\);/);
     assert.ok(PS_TIMEOUT_MS >= 180_000 + 60_000, `the run waits longer than the script's own deadline: ${PS_TIMEOUT_MS}`);
+  });
+});
+
+describe('F-1: the wrapper that keeps the script outside the run (-EncodedCommand, Start-Process)', () => {
+  const inner = ['-NoProfile', '-NonInteractive', '-File', 'C:\\Synthetic dir\\accept-xlsx.ps1', '-Path', "C:\\Owner's dir\\a b.xlsx", '-Report', 'C:\\out\\r.json'];
+  const args = wrapperArgs(inner, 'C:\\Synthetic dir\\r.out.log', "C:\\it's\\r.err.log");
+  const decoded = Buffer.from(args[3]!, 'base64').toString('utf16le');
+
+  test('the wrapper\'s powershell.exe: -NoProfile -NonInteractive -EncodedCommand, and no policy argument', () => {
+    assert.deepEqual(args.slice(0, 3), ['-NoProfile', '-NonInteractive', '-EncodedCommand']);
+    assert.equal(args.length, 4);
+    assert.equal(decoded, wrapperScript(inner, 'C:\\Synthetic dir\\r.out.log', "C:\\it's\\r.err.log"));
+    assert.ok(!/ExecutionPolicy|Bypass|Unrestricted/i.test(decoded), decoded);
+    assert.ok(!/Stop-Process|\.Kill\(|taskkill|-Wait\b/i.test(decoded), 'the wrapper kills nothing and only waits on its own child');
+  });
+
+  test('the decoded wrapper: Start-Process hidden, both logs redirected, -PassThru, WaitForExit, the exit code passed through', () => {
+    const lines = decoded.split('\n');
+    assert.equal(lines[0], "$ErrorActionPreference = 'Stop'");
+    const start = lines.find((l) => l.startsWith('$p = Start-Process '))!;
+    assert.ok(start, decoded);
+    assert.match(start, /^\$p = Start-Process -FilePath 'powershell\.exe' -ArgumentList '.*' -WindowStyle Hidden -RedirectStandardOutput 'C:\\Synthetic dir\\r\.out\.log' -RedirectStandardError 'C:\\it''s\\r\.err\.log' -PassThru$/);
+    // One literal holding the Windows command line: paths with spaces quoted, the PowerShell quote doubled.
+    assert.ok(start.includes(`-ArgumentList '-NoProfile -NonInteractive -File "C:\\Synthetic dir\\accept-xlsx.ps1" -Path "C:\\Owner''s dir\\a b.xlsx" -Report C:\\out\\r.json'`), start);
+    assert.ok(lines.indexOf('$p.WaitForExit()') > lines.indexOf(start));
+    assert.equal(lines.at(-1), 'exit $p.ExitCode');
+    assert.ok(lines.includes('$null = $p.Handle'), 'the handle is held so that the exit code can be read');
+    assert.ok(lines.includes('Write-Output "script pid $($p.Id)"'));
+  });
+
+  test('quoteWinArg: as the C runtime reads a Windows command line back', () => {
+    assert.equal(quoteWinArg('C:\\plain\\x.ps1'), 'C:\\plain\\x.ps1');
+    assert.equal(quoteWinArg('C:\\a b\\x.ps1'), '"C:\\a b\\x.ps1"');
+    assert.equal(quoteWinArg(''), '""');
+    assert.equal(quoteWinArg('a"b'), '"a\\"b"');
+    assert.equal(quoteWinArg('C:\\dir with space\\'), '"C:\\dir with space\\\\"');
+    assert.equal(quoteWinArg('x\\\\"y z'), '"x\\\\\\\\\\"y z"');
+  });
+
+  test('the logs of a script and the reason when it leaves no report: the policy\'s refusal, else the exit code and its text', () => {
+    assert.deepEqual(psLogs('C:\\o\\c.xlsx.report.json'), { wrapper: 'C:\\o\\c.xlsx.report.log', out: 'C:\\o\\c.xlsx.report.out.log', err: 'C:\\o\\c.xlsx.report.err.log' });
+    const refused = 'File C:\\o\\accept-xlsx.ps1 cannot be loaded because running sc\r\nripts is disabled on this system.';
+    assert.equal(noReportReason(1, { wrapper: 'script pid 12', out: '', err: refused }), 'the execution policy refuses scripts in this session');
+    assert.equal(noReportReason(1, { wrapper: '', out: '', err: 'File x.ps1 cannot be lo\r\naded because running scripts is dis\r\nabled.' }),
+      'the execution policy refuses scripts in this session', 'the words split by the console\'s wrap');
+    assert.equal(noReportReason(7, { wrapper: 'script pid 12\r\n', out: 'fast child, no report\r\n', err: '' }), 'no report (exit 7): fast child, no report');
+    assert.equal(noReportReason(1, { wrapper: '#< CLIXML\r\n<Objs Version="1.1.0.1"><Obj S="progress"></Obj></Objs>Start-Process : This command cannot be run.', out: '', err: '' }),
+      'no report (exit 1): Start-Process : This command cannot be run.', 'the wrapper\'s own failure, without the progress records');
   });
 });
 
@@ -251,7 +306,8 @@ describe('F1: after the first TIMEOUT of an application, none of its remaining c
         assert.equal(r.verdict, 'not run');
         assert.deepEqual(main, notAttempted(path.join(dir, `${String(r.id)}.${ext}`)));
         assert.ok(fs.existsSync(String(r.file)), `${String(r.file)} written for the owner`);
-        assert.ok(!fs.existsSync(path.join(dir, `${String(r.id)}.${ext}.report.json`)) && !fs.existsSync(path.join(dir, `${String(r.id)}.${ext}.report.log`)), 'no script started');
+        const logs = psLogs(path.join(dir, `${String(r.id)}.${ext}.report.json`));
+        assert.ok(!fs.existsSync(path.join(dir, `${String(r.id)}.${ext}.report.json`)) && ![logs.wrapper, logs.out, logs.err].some((l) => fs.existsSync(l)), 'no script started');
       }
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

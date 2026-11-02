@@ -23,16 +23,22 @@
 //    absolute paths of the synthetic files for the owner to open by hand;
 //  - the damaged-file negative controls (sheetViews moved after sheetData; a deck without slide 1) would raise a
 //    repair prompt on the owner's screen, so they are written but never run: each is reported NOT RUN with its path;
+//  - each script runs outside the run's own process tree (F-1, 2 Nov 2026): Node starts, not detached, a small
+//    PowerShell wrapper (-EncodedCommand) that starts the script with Start-Process, hidden, its output and errors
+//    redirected to two log files, and waits for it, passing its exit code through. On Windows Node keeps its children
+//    in a job object that ends them when Node exits; a process the wrapper starts is not in that job, so the script
+//    is never ended by the run, whatever happens to the run;
 //  - a script that does not answer within PS_TIMEOUT_MS is abandoned: the run stops waiting, reports TIMEOUT with the
-//    path of the file left open for the owner to close, and leaves every process running (no kill, of Office or of
-//    the PowerShell process);
+//    path of the file left open for the owner to close, and kills nothing (no kill, of Office or of any PowerShell
+//    process). The wrapper, which only waits, ends with the run; the script runs on;
 //  - after the first TIMEOUT of an application (the run's or the script's own deadline), no further case of that
 //    application starts: each remaining one is NOT RUN ("not attempted: Office did not answer") with its file's path,
 //    so no second script is ever sent to an Excel or PowerPoint that has not answered. The one abandoned script may
 //    still resume after the run has reported; it then meets its own deadline at its next check and closes its file.
 // The overall verdict is PASS only when every case ran and passed; FAIL when a case failed or timed out; NOT RUN
-// otherwise. The PowerShell scripts run under the session's execution policy: where it refuses scripts, the run is
-// NOT RUN. Exit code 0 PASS, 1 FAIL, 2 NOT RUN (64 for a usage error).
+// otherwise. The PowerShell scripts run under the session's execution policy, which the run never overrides (it
+// passes no policy argument): where it refuses scripts, the case is NOT RUN with that reason, read from the script's
+// redirected logs. Exit code 0 PASS, 1 FAIL, 2 NOT RUN (64 for a usage error).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -235,7 +241,7 @@ type PsReport = {
 
 /**
  * How long the run waits for one script: the script's own deadline is 180 s between checks, so 300 s leaves room.
- * After it the run stops waiting (TIMEOUT) and kills nothing.
+ * After it the run stops waiting (TIMEOUT) and kills nothing; the script runs on outside the run (runPs).
  */
 export const PS_TIMEOUT_MS = 300_000;
 
@@ -273,37 +279,111 @@ export async function runInTurn<C>(cases: readonly C[], run: (c: C, attempt: boo
 }
 
 /**
- * Runs one script and reads its report. The script's output goes to a log file next to the report. A run abandoned at
- * PS_TIMEOUT_MS leaves the child running: Node never kills it, unrefs it, and on Windows the child outlives Node's
- * exit; the result is then TIMEOUT, with the file left open for the owner. The child is not detached: a detached
- * PowerShell on Windows lost its output and its report (it exited 0 with an empty log, 2 Nov 2026), so a refusal by
- * the execution policy read as "no report" instead of its reason.
+ * One argument on a Windows command line, as the C runtime and CommandLineToArgvW read it back: left alone when it
+ * holds no space, tab or quote; otherwise quoted, a quote inside escaped with a backslash, and the backslashes before
+ * a quote or before the closing quote doubled. Paths with spaces reach the script whole.
  */
-async function runPs(script: string, args: string[], reportPath: string, file: string): Promise<PsReport> {
+export function quoteWinArg(arg: string): string {
+  if (arg !== '' && !/[\s"]/.test(arg)) return arg;
+  let out = '"';
+  let slashes = 0;
+  for (const ch of arg) {
+    if (ch === '\\') { slashes += 1; continue; }
+    out += ch === '"' ? `${'\\'.repeat(slashes * 2 + 1)}"` : `${'\\'.repeat(slashes)}${ch}`;
+    slashes = 0;
+  }
+  return `${out}${'\\'.repeat(slashes * 2)}"`;
+}
+
+/** A PowerShell single-quoted literal: every quote PowerShell reads as a single quote is doubled inside it. */
+function psLiteral(s: string): string {
+  return `'${s.replace(/['\u2018\u2019\u201A\u201B]/g, (q) => q + q)}'`;
+}
+
+/**
+ * The wrapper's PowerShell (F-1): it starts powershell.exe with the given arguments as its own child, hidden, with
+ * the child's output and errors redirected to two files, records the child's process id in its own output, waits for
+ * it, and exits with the child's exit code. The child is not in Node's job object, so it outlives the run. The
+ * arguments are quoted here for the Windows command line and the whole is passed as one literal, so a path with
+ * spaces or quotes stays one argument. No execution policy argument: the session's policy decides.
+ */
+export function wrapperScript(inner: readonly string[], outLog: string, errLog: string): string {
+  return [
+    "$ErrorActionPreference = 'Stop'",
+    "$ProgressPreference = 'SilentlyContinue'",
+    `$p = Start-Process -FilePath 'powershell.exe' -ArgumentList ${psLiteral(inner.map(quoteWinArg).join(' '))} -WindowStyle Hidden `
+      + `-RedirectStandardOutput ${psLiteral(outLog)} -RedirectStandardError ${psLiteral(errLog)} -PassThru`,
+    '$null = $p.Handle',
+    'Write-Output "script pid $($p.Id)"',
+    '$p.WaitForExit()',
+    'exit $p.ExitCode',
+  ].join('\n');
+}
+
+/** The arguments of the wrapper's own powershell.exe: the wrapper as -EncodedCommand (UTF-16LE in base64). */
+export function wrapperArgs(inner: readonly string[], outLog: string, errLog: string): string[] {
+  return ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(wrapperScript(inner, outLog, errLog), 'utf16le').toString('base64')];
+}
+
+/** The three logs of one script run: the wrapper's own output, and the script's output and errors. */
+export function psLogs(reportPath: string): { wrapper: string; out: string; err: string } {
+  const base = reportPath.replace(/\.json$/, '');
+  return { wrapper: `${base}.log`, out: `${base}.out.log`, err: `${base}.err.log` };
+}
+
+/**
+ * Why a script left no report: the execution policy's refusal, read from any of the logs, or else the exit code with
+ * the script's own errors and output (the wrapper's log only when the script wrote nothing, as when the wrapper itself
+ * failed). PowerShell's serialized progress records are left out. PowerShell wraps an error at the width of its
+ * hidden console ("running sc" then "ripts is disabled"), so the policy's words are also looked for with the line
+ * breaks taken out.
+ */
+export function noReportReason(status: number | null, logs: { wrapper: string; out: string; err: string }): string {
+  const clean = (s: string): string => s.replace(/#< CLIXML\s*/g, '').replace(/<Objs[\s\S]*?(<\/Objs>|$)/g, '').replace(/^script pid \d+\s*$/gm, '').trim();
+  const all = `${logs.err}\n${logs.out}\n${logs.wrapper}`;
+  const policy = /running scripts is disabled|cannot be loaded|execution polic/i;
+  if (policy.test(all) || policy.test(all.replace(/\r?\n/g, ''))) return 'the execution policy refuses scripts in this session';
+  const own = [clean(logs.err), clean(logs.out)].filter((s) => s !== '').join('\n');
+  return `no report (exit ${status}): ${(own || clean(logs.wrapper)).slice(0, 400)}`;
+}
+
+/**
+ * Runs powershell.exe with the given arguments through the wrapper (F-1) and reads the report the script writes to
+ * reportPath. Node spawns the wrapper not detached (a detached PowerShell on Windows lost its output and report: it
+ * exited 0 with an empty log, 2 Nov 2026). At timeoutMs the run stops waiting: it unrefs the wrapper and reports
+ * TIMEOUT with the file left open for the owner, and kills nothing. The wrapper ends with the run (Node's job object);
+ * the script, outside that job, runs on to its own deadline and closes its file. The exit code passes through the
+ * wrapper; with no report, the reason comes from the script's two redirected logs and the wrapper's own.
+ */
+export async function runWrapped(inner: readonly string[], reportPath: string, file: string, timeoutMs = PS_TIMEOUT_MS): Promise<PsReport> {
   if (process.platform !== 'win32') return { verdict: 'not run', ran: false, pass: false, notRunReason: 'not Windows' };
-  fs.rmSync(reportPath, { force: true });
-  const logPath = reportPath.replace(/\.json$/, '.log');
-  const fd = fs.openSync(logPath, 'w');
-  const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', script, ...args, '-Report', reportPath],
-    { stdio: ['ignore', fd, fd], windowsHide: true, detached: false });
+  const logs = psLogs(reportPath);
+  for (const p of [reportPath, logs.out, logs.err]) fs.rmSync(p, { force: true });
+  const fd = fs.openSync(logs.wrapper, 'w');
+  const child = spawn('powershell.exe', wrapperArgs(inner, logs.out, logs.err), { stdio: ['ignore', fd, fd], windowsHide: true, detached: false });
   fs.closeSync(fd);
   const status = await new Promise<number | null | 'timeout'>((resolve) => {
-    const timer = setTimeout(() => { child.unref(); resolve('timeout'); }, PS_TIMEOUT_MS);
+    const timer = setTimeout(() => { child.unref(); resolve('timeout'); }, timeoutMs);
     child.on('exit', (code) => { clearTimeout(timer); resolve(code); });
     child.on('error', () => { clearTimeout(timer); resolve(null); });
   });
+  const read = (p: string): string => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, '').replace(/\0/g, '') : '');
   if (status === 'timeout') {
+    const pid = /script pid (\d+)/.exec(read(logs.wrapper))?.[1];
     return {
-      verdict: 'timeout', ran: true, pass: false, closed: false, leftOpenForOwner: file, abandonedPid: child.pid ?? null,
-      notRunReason: `no answer within ${PS_TIMEOUT_MS / 1000} s: the run stopped waiting and killed nothing; the owner closes ${file}`,
+      verdict: 'timeout', ran: true, pass: false, closed: false, leftOpenForOwner: file, abandonedPid: pid ? Number(pid) : null,
+      notRunReason: `no answer within ${timeoutMs / 1000} s: the run stopped waiting and killed nothing; the script runs on to its own deadline and closes its file, and if Office never answers it the owner closes ${file}`,
     };
   }
   if (!fs.existsSync(reportPath)) {
-    const out = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
-    const policy = /running scripts is disabled|cannot be loaded|execution polic/i.test(out);
-    return { verdict: 'not run', ran: false, pass: false, notRunReason: policy ? 'the execution policy refuses scripts in this session' : `no report (exit ${status}): ${out.slice(0, 400)}` };
+    return { verdict: 'not run', ran: false, pass: false, notRunReason: noReportReason(status, { wrapper: read(logs.wrapper), out: read(logs.out), err: read(logs.err) }) };
   }
-  return JSON.parse(fs.readFileSync(reportPath, 'utf8').replace(/^\uFEFF/, '')) as PsReport;
+  return JSON.parse(fs.readFileSync(reportPath, 'utf8').replace(/^﻿/, '')) as PsReport;
+}
+
+/** Runs one Office script (-File, its arguments, -Report) through the wrapper and reads its report. */
+async function runPs(script: string, args: string[], reportPath: string, file: string): Promise<PsReport> {
+  return runWrapped(['-NoProfile', '-NonInteractive', '-File', script, ...args, '-Report', reportPath], reportPath, file);
 }
 
 /** One case's verdict: the Node checks first, then the script's own verdict (NOT RUN is never a pass). */
@@ -454,7 +534,7 @@ async function main(): Promise<number> {
   }
   const notRun = results.filter((r) => r.verdict === 'not run');
   if (notRun.length > 0) {
-    console.log(`NOT RUN (${notRun.length} of ${results.length}): Office was not running, could not be attached to, or did not answer an earlier case; it is never started. Files for the owner to open by hand:`);
+    console.log(`NOT RUN (${notRun.length} of ${results.length}): Office was not running, could not be attached to, or did not answer an earlier case (it is never started), or the session's execution policy refused the script (never overridden). Files for the owner to open by hand:`);
     for (const r of notRun) {
       const reason = (((r.excel ?? r.powerpoint) ?? {}) as Record<string, unknown>).notRunReason;
       console.log(`  ${String(r.file)}${typeof reason === 'string' ? `  (${reason})` : ''}`);
@@ -462,7 +542,8 @@ async function main(): Promise<number> {
   }
   for (const r of results.filter(officeTimedOut)) {
     const main = ((r.excel ?? r.powerpoint) ?? {}) as Record<string, unknown>;
-    const left = main.closed === true ? 'the script closed its file' : `the run stopped waiting; the owner closes ${String(r.file)}`;
+    const left = main.closed === true ? 'the script closed its file'
+      : `the run stopped waiting; the script runs on and closes its file at its own deadline, and if Office never answers it the owner closes ${String(r.file)}`;
     console.log(`TIMEOUT ${String(r.id)}: nothing was killed; ${left}; no later case of that application was started`);
   }
   console.log('Negative controls NOT RUN (never against an attached Office; the owner may open them by hand and expect a repair prompt):');
