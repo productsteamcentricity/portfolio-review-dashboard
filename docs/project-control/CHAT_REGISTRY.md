@@ -1,7 +1,7 @@
 # Chat registry
 
-Last verified: **28 Oct 2026 (IST)**, by MOD-01 during the MOD-01 to MOD-02 handover.
-Maintained by: **MOD-02** from the moment it validates this handover.
+Last verified: **2 Nov 2026 (IST)**, by MOD-02 (validation of the MOD-01 to MOD-02 handover; see "Handover validation record" below).
+Maintained by: **MOD-02**.
 
 This register lists every Claude chat that works on the project, what each one owns and where its work is.
 It is one of the project-control registers; [README.md](README.md) maps all of them.
@@ -29,9 +29,9 @@ They are in the private supplement `C:\dev\private\handover\PRIVATE_SUPPLEMENT_2
 
 | Chat line | Exact name in the Claude interface | Created | Compactions |
 |---|---|---|---|
-| `MOD-01 \| Project-Wide \| Coordinating Moderator; Workstream A lead until handover \| HANDOVER REQUIRED` | "Portfolio Review Dashboard architecture" | 14 Oct 2026 | **4** [VERIFIED: transcript metadata scan, 28 Oct] |
+| `MOD-01 \| Project-Wide \| Coordinating Moderator; Workstream A lead until handover \| RETIRED` | "Portfolio Review Dashboard architecture" | 14 Oct 2026 | **4** [VERIFIED: transcript metadata scan, 28 Oct] |
 | `NB-01 \| Workstream B (new build, CR-0006) \| New-build implementation \| WAITING` | "Build the new Portfolio Review dashboard" | 22 Oct 2026, 21:47 IST | **1** [VERIFIED: transcript metadata scan, 28 Oct] |
-| `MOD-02 \| Project-Wide \| Master Project Moderator \| QUEUED` | not created yet; recommended title is the chat line itself | not yet | none |
+| `MOD-02 \| Project-Wide \| Master Project Moderator \| ACTIVE` | owner asked to rename the chat to the chat line itself (2 Nov) | 2 Nov 2026 (successor prompt dated 28 Oct) | 0 [UNKNOWN: not scanned] |
 | `EX-01 \| Workstream A (existing dashboard) \| Existing-dashboard implementation \| QUEUED` | not created yet; recommended title is the chat line itself | not yet | none |
 | `ARC-01 \| Project-Wide \| Codebase Integrity & Integration Guardian \| QUEUED` | not created yet; recommended title is the chat line itself | not yet | none |
 
@@ -45,6 +45,23 @@ that started them. They are listed under that chat below.
 | Party | Role | Contact route | Standing rule | Open items |
 |---|---|---|---|---|
 | The previous owner | Built the existing dashboard (May to Oct 2026) and supplied two exports (15 Oct, 23 Oct) | Only through the owner. No chat talks to the previous owner directly | Never mention deleting or retiring the existing dashboard in anything addressed to the previous owner (owner, 15 Oct; REQ-020, REQ-021) | TC-20 (held files, missing files, a note about one exported file, an unmatched fund label): owner decisions PD-22..PD-25 |
+
+## Handover validation record
+
+Validated by MOD-02 on **2 Nov 2026**, with the read-only block "Verify before you trust" in
+[REPOSITORY_AND_ENVIRONMENT_STATE.md](REPOSITORY_AND_ENVIRONMENT_STATE.md) [VERIFIED: commands run that day].
+
+- **Matched:** node v24.21.0; the continuation branch `0f1c5d3` on origin with parent `97a7d69`; `feat/m1-4-overview` 07a6460 and the fixers
+  4610684, be7f395, 202f8f6; no remote branch contains 07a6460 (still local only); 23 worktrees, all clean; no stashes; `core.hooksPath`
+  set; no open PR; live page MD5 `12b5e572...` equal to `main`'s `index.html`; `/next/` 46,905 bytes.
+- **Differences (expected):** `main` is `4a1a747` (PR #17, the handover package, docs only, merged 30 Oct), not `6443826`;
+  `origin/main...feat/m1-4-overview` is 2 / 23; the handover branch now has its own upstream, so the upstream hazard lists
+  `feat/m1-4-overview`, `fix/legacy-batch-3-tax`, `fix/legacy-batch-4-basefile` and `main`; Dashboard checks on `4a1a747` succeeded
+  (run 41022932782). No Pages run for a docs-only merge.
+- **Not yet done:** the full read of the registers against git (SHA by SHA), the deny-list is unset in this shell, NB-01 not yet contacted,
+  EX-01 and ARC-01 not yet created.
+- **MOD-01** is RETIRED: its outstanding work, file ownership and handover are in this package; its context is treated as unreliable.
+  TA-03 ownership sits with MOD-02 until EX-01 confirms it.
 
 ## Context-health rule
 

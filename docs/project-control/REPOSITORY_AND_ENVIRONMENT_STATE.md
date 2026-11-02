@@ -13,13 +13,13 @@ record any difference in [INTEGRATION_AND_REGRESSION_LOG.md](INTEGRATION_AND_REG
 
 | Anchor | Value | Evidence |
 |---|---|---|
-| main = origin/main | **6443826** "Merge pull request #16 from productsteamcentricity/fix/legacy-batch-4-basefile-r2" (27 Oct 18:13 IST) | [VERIFIED: `git rev-parse`, `git ls-remote origin`] |
+| main = origin/main | **4a1a747** "Merge pull request #17 from productsteamcentricity/handover/mod-01-to-mod-02-20261028" (30 Oct, docs only; last page change 6443826) | [VERIFIED: `git rev-parse`, `git ls-remote origin`] |
 | Live page `/` | **16,837,249 bytes, MD5 12B5E5727FCA01EF2EA162C59913F01D**, equal to `git show origin/main:index.html`. Pages last modified 27 Oct 2026 12:44:48 GMT | [VERIFIED: curl download and MD5 by the repo-env investigation, 28 Oct; Pages verified 27 Oct after the merge] |
 | Live preview `/next/` | **46,905 bytes**, MD5 b4f23c7e55e7baab25086c14f2d0448c; byte-identical to the PR #14 build; unchanged since PR #14 | [VERIFIED: curl; `git diff 4813482 6443826 -- app scripts package.json package-lock.json data` is empty] |
 | TA-03 continuation | `continuation/ex-01-task-ta-03-20261027` at **0f1c5d3** (pushed, equal to origin), parent **97a7d69**. Page MD5 0713C6BE at 97a7d69, 5F1C2FC5 at 0f1c5d3 | [VERIFIED: `git ls-remote`, `git rev-parse 0f1c5d3^1`, `git show <sha>:index.html \| md5sum`] |
 | NB-01 M1.4 | `feat/m1-4-overview` at **07a6460**, **LOCAL ONLY**, 23 commits ahead of origin/main | [VERIFIED: `git rev-list --count origin/main..feat/m1-4-overview` = 23; `git branch -r --contains 07a6460` empty] |
 | NB-01 round-2 fixers | `worktree-wf_bdc6c774-599-1/-2/-3` at **4610684 / be7f395 / 202f8f6**, **LOCAL ONLY** | [VERIFIED: `git rev-parse`; not in `git ls-remote origin`] |
-| Handover branch | `handover/mod-01-to-mod-02-20261028`, based on 6443826, local | [VERIFIED: `git rev-parse`] |
+| Handover branch | `handover/mod-01-to-mod-02-20261028` @ 5f551cc, merged as PR #17; also on origin | [VERIFIED: `git rev-parse`] |
 
 Site addresses: live page `https://productsteamcentricity.github.io/portfolio-review-dashboard/`, preview `.../next/`.
 Repository: `https://github.com/productsteamcentricity/portfolio-review-dashboard`.
@@ -237,4 +237,5 @@ If main has moved since 28 Oct (a merge after this snapshot), the live MD5 must 
 | Date (IST) | By | Change |
 |---|---|---|
 | 28 Oct 2026 | MOD-01 | First snapshot for the MOD-01 to MOD-02 handover |
+| 2 Nov 2026 | MOD-02 | Validated; main now 4a1a747; handover branch merged; expected values in the verify block need the same update (see INTEGRATION log section 6) |
 | 30 Oct 2026 | MOD-01 (fixer pass) | Remote head count corrected (18 heads: main plus 17); the two `git rev-parse` lines of the verify block now work (`--short` takes one ref only) |

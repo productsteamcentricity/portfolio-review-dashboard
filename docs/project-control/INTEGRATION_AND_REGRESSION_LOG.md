@@ -15,7 +15,7 @@ chat that wants to know "what is the last state we know is good?" reads section 
 
 | Item | Value | Evidence |
 |---|---|---|
-| `main` (= `origin/main`) | `6443826`, "Merge pull request #16 from productsteamcentricity/fix/legacy-batch-4-basefile-r2", 27 Oct 2026 18:13 IST | `git ls-remote origin`; `git log` [VERIFIED] |
+| `main` (= `origin/main`) | `4a1a747`, "Merge pull request #17 from productsteamcentricity/handover/mod-01-to-mod-02-20261028" (docs only), 30 Oct 2026 07:53 UTC; the last change to `index.html` is `6443826` (PR #16) | `git ls-remote origin`; `git log` [VERIFIED] |
 | Live page `/` | 16,837,249 bytes, MD5 `12B5E5727FCA01EF2EA162C59913F01D`, SHA-256 `9794454d4edba9b43975f57757f887ef46c806e1a83f5f63872093731c9138bd` | downloaded 28 Oct 07:08 UTC; equal to `git show origin/main:index.html` [VERIFIED] |
 | Preview `/next/` | 46,905 bytes, MD5 `b4f23c7e55e7baab25086c14f2d0448c`, SHA-256 `0407eb12033ec8c1432fb787f9c5956200318c84f0172f3a4c8243a50ee73693` | downloaded 28 Oct; equal to the PR #14 build recorded in `CHANGELOG.md` [VERIFIED] |
 | CI and Pages on `6443826` | "Dashboard checks" success; "Publish dashboard to GitHub Pages" success, including the new-app install, build and check steps | `gh run list`, `gh run view` (run ids below) [VERIFIED] |
@@ -40,6 +40,7 @@ Pages run. Until then every recovery returns to the row above.
 | 23 Oct 2026 | `517becf` (PRs #11 to #13) | `911A0465` | first build (size [UNKNOWN]) | MOD-01 / NB-01 |
 | 27 Oct 2026 | `c9ec1cc` (PR #14) | `911A0465` | 46,905 B, `0407eb12` | NB-01 |
 | 27 Oct 2026 | `6443826` (PR #16) | `12B5E572` | 46,905 B, `0407eb12` (unchanged) | MOD-01; re-verified 28 Oct |
+| 30 Oct 2026 | `4a1a747` (PR #17, docs only; no Pages run) | `12B5E572` (unchanged) | 46,905 B (unchanged) | MOD-01; re-verified by MOD-02 on 2 Nov |
 
 ## 2. Integration history: pull requests #1 to #16
 
@@ -203,6 +204,7 @@ detail of each change is in [ACTIVE_CHANGE_REGISTER.md](ACTIVE_CHANGE_REGISTER.m
 | 27 Oct | PR #16 changed `index.html` | on the unpushed M1.4 branch, the vendor-extract MD5 pin and the AG ledger tests now fail (4 failures) | G1 replaces the pin with block equality and updates the ledger; not yet integrated | open (TB-07) [VERIFIED] |
 | 27 Oct | two implementer agents started in the TA-03 worktree during T5 | the T5 patch cannot be trusted as reviewed | treat it as unreviewed; full review in TA-03 | open (TA-03) [VERIFIED] |
 | 28 Oct | the documented rebuild rule ("check out `index.html`, then every patch in file-name order") was replayed in scratch | 4 of 9 patches refuse on today's page; the file is not damaged | use "parent page MD5 plus this branch's new patches"; TA-23 rewords the rule | open (TA-23) [VERIFIED] |
+| 2 Nov | MOD-02 validated the handover with the read-only block of `REPOSITORY_AND_ENVIRONMENT_STATE.md` | every anchor matched except expected drift: `main` is `4a1a747` (PR #17, docs only) not `6443826`; `origin/main...feat/m1-4-overview` is 2 / 23 not 0 / 23; the handover branch now has its own upstream, so the upstream hazard lists 3 branches plus `main` (`feat/m1-4-overview`, `fix/legacy-batch-3-tax`, `fix/legacy-batch-4-basefile`); the remote handover branch exists at `5f551cc`; Dashboard checks on `4a1a747` succeeded (run 41022932782) | registers corrected in `docs/registers-1`; live MD5 `12B5E572…` and `/next/` 46,905 B re-verified | closed [VERIFIED: commands run 2 Nov] |
 
 No regression has reached the live page so far: every published page passed its gates and the current one equals
 `main`. [VERIFIED for the current page; INFERRED for earlier pages from the records]
@@ -262,5 +264,6 @@ regression 44 files, 1,385 checks; CI run <id> green".
 
 | Date (IST) | By | Change |
 |---|---|---|
+| 2 Nov 2026 | MOD-02 | Handover validated: baseline now `4a1a747` (docs only), baseline history and section 6 updated |
 | 28 Oct 2026 | MOD-01 | First version: baseline, PR #1 to #16, MD5 lineage, `/next/` deployments, pending integrations, incidents, recovery procedure, empty gate table |
 | 30 Oct 2026 | MOD-01 (fixer pass) | Validation findings applied: the baseline rule points to the gate records (section 8); the first page went live on 15 Oct; TA-03's "Usual buckets" docs item; the recovery procedure prefers a forward fix, because release-check fails a plain revert of a patch merge |
