@@ -26,10 +26,10 @@ Repository: `https://github.com/productsteamcentricity/portfolio-review-dashboar
 
 ## Remote, tags, stash, hooks, identity
 
-- **Remote:** one, `origin` = `https://github.com/productsteamcentricity/portfolio-review-dashboard.git` (fetch and push). It has 18 heads
-  (main plus 17 branches), the `HEAD` symref, the tag and `refs/pull/1..16/head`; every SHA equals the local remote-tracking ref
-  [VERIFIED: `git ls-remote --heads origin` lists 18 lines, re-run 30 Oct]. All 17 non-main remote branches are merged into main,
-  except the TA-03 continuation branch [VERIFIED: `git merge-base --is-ancestor` for each, 30 Oct].
+- **Remote:** one, `origin` = `https://github.com/productsteamcentricity/portfolio-review-dashboard.git` (fetch and push). It has 20 heads
+  (main plus 19 branches), the `HEAD` symref, the tag and `refs/pull/1..18/head`; every SHA equals the local remote-tracking ref
+  [VERIFIED: `git ls-remote --heads origin` lists 20 lines, re-run 2 Nov]. All 19 non-main remote branches are merged into main,
+  except the TA-03 continuation branch and `docs/registers-1` (PR #18, open) [VERIFIED: `git merge-base --is-ancestor` for each, 2 Nov].
 - **Tag:** one, `legacy-baseline-782794f`, an annotated tag pointing at 782794f (the PR #6 merge, page EF2FF4F1), on origin too. It marks
   the page after fix batch 1b, which the new build uses as its legacy baseline; it is **not** the Stage A baseline (root 511f554)
   [VERIFIED: `git cat-file -t`, `git rev-parse legacy-baseline-782794f^{commit}`].
@@ -50,8 +50,9 @@ Repository: `https://github.com/productsteamcentricity/portfolio-review-dashboar
 
 ### Upstream hazard
 
-Four local branches track `origin/main` instead of a branch of their own name: `feat/m1-4-overview`, `fix/legacy-batch-3-tax`,
-`fix/legacy-batch-4-basefile` and `handover/mod-01-to-mod-02-20261028` [VERIFIED: `git for-each-ref` upstream field].
+Three local branches track `origin/main` instead of a branch of their own name: `feat/m1-4-overview`, `fix/legacy-batch-3-tax`
+and `fix/legacy-batch-4-basefile` [VERIFIED: `git for-each-ref` upstream field, 2 Nov]. The handover branch had the same hazard until
+it was pushed with `-u` (PR #17).
 - A plain `git push` is refused under `simple` (the names differ).
 - A plain `git pull` would merge main into the branch.
 - So the first push of any branch is `git push -u origin <branch>`, which also fixes the upstream [INFERRED from git semantics].
@@ -93,17 +94,19 @@ Four local branches track `origin/main` instead of a branch of their own name: `
 
 ## Branches
 
-There are 80 local branches: 38 named and 42 `worktree-wf_*` [VERIFIED: repo-env investigation, `git for-each-ref`].
+There are 82 local branches on 2 Nov: 40 named and 42 `worktree-wf_*` (80 and 38 on 28 Oct; the two new ones are `docs/registers-1` and `fix/legacy-batch-3-tax-cr-0008`, EX-01's PR branch) [VERIFIED: `git for-each-ref` and reflog dates, 2 Nov]. The "behind" counts below were taken against 6443826 on 28 Oct; `origin/main` has gained the 2 commits of PR #17 since, so each is 2 higher (re-checked on 2 Nov for the rows of active work).
 
 | Group | Branch @ head | Upstream | Behind / ahead of origin/main | On a remote? | Holds | Action |
 |---|---|---|---|---|---|---|
-| Main | `main` @ 6443826 | origin/main | 0 / 0 | yes | the live state | none |
-| Handover | `handover/mod-01-to-mod-02-20261028` @ 6443826 | origin/main (hazard) | 0 / 0 | no | this package once committed | push with `-u` (TC-01) |
-| **Pushed, unmerged** | `continuation/ex-01-task-ta-03-20261027` @ 0f1c5d3 | its own origin branch | 0 / 5 | yes | TA-03: T1 c459f8d, T2 92c7c83, T3+T4 5581d90, rebase merge 97a7d69, T5 WIP 0f1c5d3 | EX-01 continues (TA-03) |
-| **Local only, unique work** | `feat/m1-4-overview` @ 07a6460 | origin/main (hazard) | 0 / 23 | **no** | M1.4 units U1..U5, fix round FA/FB/FC/FD, integration, docs, merge of PR #16 | **preserve first** (TB-08) |
-| **Local only, unique work** | `worktree-wf_bdc6c774-599-1` @ 4610684 (G1) | none | 0 / 24 | **no** | round-2 fix G1 | preserve (TB-08) |
-| **Local only, unique work** | `worktree-wf_bdc6c774-599-2` @ be7f395 (G2) | none | 0 / 24 | **no** | round-2 fix G2 (untested) | preserve (TB-08) |
-| **Local only, unique work** | `worktree-wf_bdc6c774-599-3` @ 202f8f6 (G3) | none | 0 / 24 | **no** | round-2 fix G3 | preserve (TB-08) |
+| Main | `main` @ 4a1a747 | origin/main | 0 / 0 | yes | the live state | none |
+| Handover | `handover/mod-01-to-mod-02-20261028` @ 5f551cc | its own origin branch | 1 / 0 | yes | the handover package, merged as PR #17 | none; kept until housekeeping (TC-18) |
+| **Pushed, unmerged** | `docs/registers-1` @ 227f65a | its own origin branch | 0 / 2 | yes | PR #18: MOD-02's register update | MOD-02 (TC-02) |
+| **Pushed, unmerged** | `continuation/ex-01-task-ta-03-20261027` @ 0f1c5d3 | its own origin branch | 2 / 5 | yes | TA-03: T1 c459f8d, T2 92c7c83, T3+T4 5581d90, rebase merge 97a7d69, T5 WIP 0f1c5d3 | frozen as the checkpoint (R-8); EX-01 continues on `fix/legacy-batch-3-tax-cr-0008` |
+| **Local only** | `fix/legacy-batch-3-tax-cr-0008` @ 0f1c5d3 | none (a plain push is refused) | 2 / 5 | **no** | EX-01's PR branch (R-8): the same commit as the checkpoint until its first new commit | EX-01 pushes it with `-u` after the Gate A checks and the security GO |
+| **Local only, unique work** | `feat/m1-4-overview` @ 07a6460 | origin/main (hazard) | 2 / 23 | **no** | M1.4 units U1..U5, fix round FA/FB/FC/FD, integration, docs, merge of PR #16 | **preserve first** (TB-08) |
+| **Local only, unique work** | `worktree-wf_bdc6c774-599-1` @ 4610684 (G1) | none | 2 / 24 | **no** | round-2 fix G1 | preserve (TB-08) |
+| **Local only, unique work** | `worktree-wf_bdc6c774-599-2` @ be7f395 (G2) | none | 2 / 24 | **no** | round-2 fix G2 (untested) | preserve (TB-08) |
+| **Local only, unique work** | `worktree-wf_bdc6c774-599-3` @ 202f8f6 (G3) | none | 2 / 24 | **no** | round-2 fix G3 | preserve (TB-08) |
 | Local only, contained in the pushed continuation branch | `fix/legacy-batch-3-tax` @ c459f8d; `fix/legacy-batch-3-tax-p2` @ 92c7c83; `fix/legacy-batch-3-tax-p3-r2` @ 97a7d69 | origin/main (hazard); none; none | 14/1; 14/2; 0/4 | through the continuation branch | T1; T2; T1..T4 rebased | nothing unique; keep until TA-03 merges |
 | Local only, contained only in the local `feat/m1-4-overview` | `worktree-wf_ca03729e-33b-2..6` @ 43bff28, f2e83e6, a9630b6, bd12cb9, 93f2126; `worktree-wf_c3548c88-811-1..4` @ f7e9ba8, 8d8448f, eaa67aa, c06205c | none | 9/1 each; 7/13 (811-3: 7/14) | no | M1.4 units U1..U5; round-1 fixers FA, FB, FC, FD and tests. FC commit 94f5d5b is also held by `811-3` [VERIFIED: `git merge-base --is-ancestor`] | only as safe as `feat/m1-4-overview` |
 | Superseded | `fix/b1b-ki007-ki048` (+`-r2`) @ a577679 / 7bbe51e; `fix/b1b-ki061-ki062` (+`-r2`) @ f3c7acb / 0abe484; `fix/b1b-ki063` (+`-r2`) @ f0c2fcf / b37efee; `fix/b1b-ki067-ki068` (+`-r2`) @ aa77b75 / 1dfc73f | none | 51 / 1..2 | no | fix batch 1b drafts; their content reached main in 741373a (PR #6); the patch scripts differ only in the date lines of the header [VERIFIED: blob comparison] | nothing unique [INFERRED]; remove only on the owner's word |
@@ -111,15 +114,16 @@ There are 80 local branches: 38 named and 42 `worktree-wf_*` [VERIFIED: repo-env
 
 ## Worktrees
 
-23 worktrees: the main checkout, 21 under `.claude/worktrees/`, and `C:\dev\pr-review`. **Every one is clean** (0 staged, 0 unstaged,
+24 worktrees on 2 Nov (23 on 28 Oct): the main checkout, 22 under `.claude/worktrees/` (the new one is `mod-02-docs`, MOD-02's) and `C:\dev\pr-review`. All 24 were clean on 2 Nov [VERIFIED: `git status --porcelain` in each]. **Every one is clean** (0 staged, 0 unstaged,
 0 untracked); none is locked; `git worktree prune --dry-run` lists nothing [VERIFIED: `git worktree list`, `git status --porcelain`
 in each, 28 Oct].
 
 | Worktree (under `C:\dev\portfolio-review` unless absolute) | Branch @ head | Chat | Unique unpushed work | State |
 |---|---|---|---|---|
-| main checkout | `main` @ 6443826 | shared | none | in sync with origin/main; not a work area |
-| `.claude/worktrees/handover` | `handover/mod-01-to-mod-02-20261028` @ 6443826 | MOD-01 → MOD-02 | none yet | ACTIVE (TC-01) |
-| `.claude/worktrees/wf_c9c8da96-497-10` | `continuation/ex-01-task-ta-03-20261027` @ 0f1c5d3 | MOD-01 → EX-01 | none (pushed) | ACTIVE (TA-03) |
+| main checkout | `main` @ 4a1a747 | shared | none | in sync with origin/main; not a work area |
+| `.claude/worktrees/handover` | `handover/mod-01-to-mod-02-20261028` @ 5f551cc | MOD-01 → MOD-02 | none (merged, PR #17) | idle; kept until housekeeping (TC-18) |
+| `.claude/worktrees/mod-02-docs` | `docs/registers-1` @ 227f65a | MOD-02 | none (pushed) | ACTIVE (TC-02, PR #18) |
+| `.claude/worktrees/wf_c9c8da96-497-10` | `fix/legacy-batch-3-tax-cr-0008` @ 0f1c5d3 (checked out since 2 Nov; the continuation branch stays on origin) | EX-01 | none yet (no commit after 0f1c5d3) | ACTIVE (TA-03) |
 | `.claude/worktrees/wf_c9c8da96-497-1` | `fix/legacy-batch-3-tax` @ c459f8d | MOD-01 | none | stale |
 | `.claude/worktrees/wf_c9c8da96-497-2` | `fix/legacy-batch-4-basefile` @ 7869676 | MOD-01 | none (merged) | stale |
 | `.claude/worktrees/wf_c9c8da96-497-3` | `fix/legacy-batch-3-tax-p2` @ 92c7c83 | MOD-01 | none | stale |
@@ -207,26 +211,27 @@ cd /c/dev/portfolio-review
 node --version                                    # v24.21.0
 git status --short --branch                       # "## main...origin/main" and nothing else
 git ls-remote origin refs/heads/main refs/heads/continuation/ex-01-task-ta-03-20261027
-                                                  # 6443826... (main) and 0f1c5d3... (continuation)
-git rev-parse main origin/main | cut -c1-7        # 6443826 twice
+                                                  # 4a1a747... (main; a later docs-only merge moves it) and 0f1c5d3... (continuation, frozen)
+git rev-parse main origin/main | cut -c1-7        # the same SHA twice (4a1a747 on 2 Nov)
 git rev-parse --short 0f1c5d3^1                   # 97a7d69
 git rev-parse feat/m1-4-overview worktree-wf_bdc6c774-599-1 worktree-wf_bdc6c774-599-2 worktree-wf_bdc6c774-599-3 | cut -c1-7
                                                   # 07a6460 4610684 be7f395 202f8f6 (unless NB-01 has moved on)
 git branch -r --contains 07a6460                  # empty until TB-08 is done
-git rev-list --left-right --count origin/main...feat/m1-4-overview   # 0 23
-git worktree list | wc -l                         # 23
+git rev-list --left-right --count origin/main...feat/m1-4-overview   # N 23 (N = commits main gained since 28 Oct: 2 on 2 Nov)
+git worktree list | wc -l                         # 24 on 2 Nov (23 on 28 Oct)
 for w in $(git worktree list --porcelain | sed -n 's/^worktree //p'); do
   printf '%s %s\n' "$(git -C "$w" status --porcelain | wc -l)" "$w"; done          # 0 for every worktree
 git stash list | wc -l                            # 0
 git config --get core.hooksPath                   # C:\dev\portfolio-review\scripts\hooks
 git for-each-ref --format='%(refname:short) -> %(upstream:short)' refs/heads | grep ' -> origin/main$'
-                                                  # main plus the four hazard branches
+                                                  # main plus three hazard branches (feat/m1-4-overview, fix/legacy-batch-3-tax, fix/legacy-batch-4-basefile)
 echo "${PRD_PRIVACY_DENYLIST:-unset}"             # unset unless exported in this shell
-gh pr list --state open                           # empty, unless a PR was opened after 28 Oct
-gh run list --limit 4                             # latest runs succeeded on 6443826
+gh pr list --state open                           # PR #18 (docs/registers-1) until it merges; any other PR is new
+gh run list --limit 4                             # latest runs succeeded (main 4a1a747: Dashboard checks run 41022932782; Pages last ran on 6443826)
 git show origin/main:index.html | md5sum          # 12b5e5727fca01ef2ea162c59913f01d
 curl -s https://productsteamcentricity.github.io/portfolio-review-dashboard/ | md5sum       # the same MD5
 curl -s https://productsteamcentricity.github.io/portfolio-review-dashboard/next/ | wc -c  # 46905
+git diff --name-only 6443826 origin/main -- . ':!docs'   # empty: nothing but docs changed on main since the last page change
 ```
 
 If main has moved since 28 Oct (a merge after this snapshot), the live MD5 must equal the new main's `index.html`, and this file and the
@@ -237,5 +242,5 @@ If main has moved since 28 Oct (a merge after this snapshot), the live MD5 must 
 | Date (IST) | By | Change |
 |---|---|---|
 | 28 Oct 2026 | MOD-01 | First snapshot for the MOD-01 to MOD-02 handover |
-| 2 Nov 2026 | MOD-02 | Validated; main now 4a1a747; handover branch merged; expected values in the verify block need the same update (see INTEGRATION log section 6) |
 | 30 Oct 2026 | MOD-01 (fixer pass) | Remote head count corrected (18 heads: main plus 17); the two `git rev-parse` lines of the verify block now work (`--short` takes one ref only) |
+| 2 Nov 2026 | MOD-02 | Updated to main 4a1a747 (PR #17): remote heads 20, pull refs 1 to 18, 82 local branches, 24 worktrees, three hazard branches, the handover and docs/registers-1 branches, EX-01's fix/ branch, and the verify block's expected values |

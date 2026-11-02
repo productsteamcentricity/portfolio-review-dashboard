@@ -15,7 +15,7 @@ chat that wants to know "what is the last state we know is good?" reads section 
 
 | Item | Value | Evidence |
 |---|---|---|
-| `main` (= `origin/main`) | `4a1a747`, "Merge pull request #17 from productsteamcentricity/handover/mod-01-to-mod-02-20261028" (docs only), 30 Oct 2026 07:53 UTC; the last change to `index.html` is `6443826` (PR #16) | `git ls-remote origin`; `git log` [VERIFIED] |
+| `main` (= `origin/main`) | `4a1a747`, "Merge pull request #17 from productsteamcentricity/handover/mod-01-to-mod-02-20261028" (docs only), 30 Oct 2026 07:54 UTC (13:24 IST); the last change to `index.html` is `6443826` (PR #16) | `git ls-remote origin`; `git log` [VERIFIED] |
 | Live page `/` | 16,837,249 bytes, MD5 `12B5E5727FCA01EF2EA162C59913F01D`, SHA-256 `9794454d4edba9b43975f57757f887ef46c806e1a83f5f63872093731c9138bd` | downloaded 28 Oct 07:08 UTC; equal to `git show origin/main:index.html` [VERIFIED] |
 | Preview `/next/` | 46,905 bytes, MD5 `b4f23c7e55e7baab25086c14f2d0448c`, SHA-256 `0407eb12033ec8c1432fb787f9c5956200318c84f0172f3a4c8243a50ee73693` | downloaded 28 Oct; equal to the PR #14 build recorded in `CHANGELOG.md` [VERIFIED] |
 | CI and Pages on `6443826` | "Dashboard checks" success; "Publish dashboard to GitHub Pages" success, including the new-app install, build and check steps | `gh run list`, `gh run view` (run ids below) [VERIFIED] |
@@ -205,7 +205,7 @@ detail of each change is in [ACTIVE_CHANGE_REGISTER.md](ACTIVE_CHANGE_REGISTER.m
 | 27 Oct | two implementer agents started in the TA-03 worktree during T5 | the T5 patch cannot be trusted as reviewed | treat it as unreviewed; full review in TA-03 | open (TA-03) [VERIFIED] |
 | 28 Oct | the documented rebuild rule ("check out `index.html`, then every patch in file-name order") was replayed in scratch | 4 of 9 patches refuse on today's page; the file is not damaged | use "parent page MD5 plus this branch's new patches"; TA-23 rewords the rule | open (TA-23) [VERIFIED] |
 | 2 Nov | MOD-02 validated the handover with the read-only block of `REPOSITORY_AND_ENVIRONMENT_STATE.md` | every anchor matched except expected drift: `main` is `4a1a747` (PR #17, docs only) not `6443826`; `origin/main...feat/m1-4-overview` is 2 / 23 not 0 / 23; the handover branch now has its own upstream, so the upstream hazard lists 3 branches plus `main` (`feat/m1-4-overview`, `fix/legacy-batch-3-tax`, `fix/legacy-batch-4-basefile`); the remote handover branch exists at `5f551cc`; Dashboard checks on `4a1a747` succeeded (run 41022932782) | registers corrected in `docs/registers-1`; live MD5 `12B5E572…` and `/next/` 46,905 B re-verified | closed [VERIFIED: commands run 2 Nov] |
-| 2 Nov | The EX-01 successor prompt said that blocks 00 to 06, 09, 10 and 12 of `index.html` stay unchanged for the whole TA-03 batch | wrong: against main the batch also changes script 04 (the TAX_RULES key of REFDATA) and script 09 (parsers, T2); only T5 alone is limited to 07, 08 and 11 | corrected in the prompt and in `ACTIVE_CHANGE_REGISTER.md` section 1, on the strength of EX-01's script-by-script comparison (not yet re-run by MOD-02) | closed [VERIFIED by EX-01; INFERRED by MOD-02] |
+| 2 Nov | The EX-01 successor prompt said that blocks 00 to 06, 09, 10 and 12 of `index.html` stay unchanged for the whole TA-03 batch | wrong: against main the batch also changes script 04 (the TAX_RULES key of REFDATA) and script 09 (parsers, T2); only T5 alone is limited to 07, 08 and 11 | corrected in the prompt and in `ACTIVE_CHANGE_REGISTER.md` section 1, on the strength of EX-01's script-by-script comparison, repeated by ARC-01 | closed [VERIFIED by EX-01 and by ARC-01 on 2 Nov: every script block of main's page compared with 0f1c5d3's, and 97a7d69's with 0f1c5d3's] |
 
 No regression has reached the live page so far: every published page passed its gates and the current one equals
 `main`. [VERIFIED for the current page; INFERRED for earlier pages from the records]
@@ -260,12 +260,14 @@ regression 44 files, 1,385 checks; CI run <id> green".
 | # | Date (IST) | Task and change | Gate | By | Branch at base SHA to head SHA | Evidence (commands, counts, run ids, MD5 or SHA-256) | Result | Follow-ups and notices sent |
 |---|---|---|---|---|---|---|---|---|
 | 1 | 28 Oct 2026 | (none yet) | none | MOD-01 | none | No change has passed a gate under this model yet. Evidence gathered before 28 Oct is in sections 2 and 5 | none | none |
+| 2 | 2 Nov 2026 | TC-02: register update, PR #18 (docs only) | Gate B (quick review) | ARC-01 | `docs/registers-1`, base 4a1a747, head 227f65a | ARC-01 reported: read `git diff 203d5fa 227f65a` and the first commit in full; head equal to origin and to the clean worktree; CI run 41413344450 success; all 7 files in MOD-02's area; pattern scan found no PAN, UUID, session id, token, user path or claude.ai link. MOD-02 re-checked: head 227f65a equals origin; run 41413344450 is success on 227f65a. ARC-01 did not run the deny-list scan (MOD-02's: 0 blocking). Findings P1 to P6 non-blocking | GO for head 227f65a only | P1 to P6 fixed in the next head; ARC-01 reviews the delta; the security-release-reviewer GO is MOD-02's to obtain before the push |
 
 ## 9. Change log of this file
 
 | Date (IST) | By | Change |
 |---|---|---|
-| 2 Nov 2026 | MOD-02 | TA-03 CI evidence (run 41412086208), the wrong "blocks unchanged" statement (section 6) |
-| 2 Nov 2026 | MOD-02 | Handover validated: baseline now `4a1a747` (docs only), baseline history and section 6 updated |
 | 28 Oct 2026 | MOD-01 | First version: baseline, PR #1 to #16, MD5 lineage, `/next/` deployments, pending integrations, incidents, recovery procedure, empty gate table |
 | 30 Oct 2026 | MOD-01 (fixer pass) | Validation findings applied: the baseline rule points to the gate records (section 8); the first page went live on 15 Oct; TA-03's "Usual buckets" docs item; the recovery procedure prefers a forward fix, because release-check fails a plain revert of a patch merge |
+| 2 Nov 2026 | MOD-02 | Handover validated: baseline now `4a1a747` (docs only), baseline history and section 6 updated |
+| 2 Nov 2026 | MOD-02 | TA-03 CI evidence (run 41412086208), the wrong "blocks unchanged" statement (section 6) |
+| 2 Nov 2026 | MOD-02 | Gate record 2 (PR #18 quick review, ARC-01); the PR #17 time corrected to 07:54 UTC; section 6 block row cites ARC-01's confirmation |

@@ -160,16 +160,27 @@ refused) and puts every later commit there, pushing with `git push -u origin <br
 rewrite, no second worktree, nothing deleted, never new work on both names. The PR comes from the `fix/` branch, so
 release-check does not warn. Other PRs are decided when they are opened.
 
-**R-9. KI-185 filed with TA-03, 2 Nov 2026.** MOD-02 adopts REC-06. EX-01 files KI-184 and KI-185 (the ENGINE_KEYS gap in
-`tools/check-invariants.js`: `amcKey` and `xirr` on main, plus `taxClassify`, `taxApplyAssumptions`, `taxAssumeFor` and
-`taxDefaults` from the batch; fix under TA-22) with TA-03. KI-183 stays reserved for TA-05; a gap in the numbering is normal.
+**R-9. ENGINE_KEYS and KI-185, 2 Nov 2026.** MOD-02 adopts REC-06 and, on ARC-01's change C1, does not waive the I-09 same-PR
+rule: the TA-03 PR adds the four new ENGINE keys (`taxClassify`, `taxApplyAssumptions`, `taxAssumeFor`, `taxDefaults`) to
+ENGINE_KEYS in `tools/check-invariants.js`, and that file is listed in the change-impact contract (item 5). EX-01 files KI-184
+and KI-185 with TA-03; KI-185 covers what stays open: ENGINE_KEYS omits `amcKey` and `xirr` on main, and the list is kept by hand
+(fix under TA-22). KI-183 stays reserved for TA-05; a gap in the numbering is normal.
 
-**R-10. Re-run rule when `main` moves after the gates (PROPOSED 2 Nov 2026; ARC-01 to confirm at Gate B).** If `origin/main`
-gains only `docs/` files after a branch has passed its gates, the branch merges `origin/main` (a merge, never a rebase) and
-re-runs docs-links, traceability, the privacy scan with the deny-list, the pre-push scan on the new head and release-check;
-`check-invariants --expect-md5` must still hold and CI must be green on the PR head. A non-docs change in `main`, or a docs
-conflict in a file the branch also changed (DECISIONS, KNOWN_ISSUES, PROJECT_STATE, TESTING, CHANGELOG), means the full Gate C
-list again.
+**R-10. Re-run rule when `main` moves after the gates (CONFIRMED by ARC-01 on 2 Nov 2026, with additions).** If `origin/main`
+gains commits after a branch has passed Gates A to C, the branch merges `origin/main` (a merge, never a rebase) and:
+1. "Only docs" is tested, not assumed: `git diff --name-only <last head that passed Gates A to C> <new head> -- . ':!docs' ':!CHANGELOG.md'`
+   must be empty. `CLAUDE.md` does not count as docs (it sets commands and counts).
+2. CI is green on the new PR head, both jobs.
+3. ARC-01 reviews the delta, re-runs the merge simulation and gives a new verdict bound to the new head; the
+   security-release-reviewer gives a GO on the delta before the push.
+4. Browser QA and the Office checks are not repeated when the page MD5 and `tools/` are unchanged (this follows from 1). Re-run:
+   docs-links, traceability, the privacy scan with the deny-list, the pre-push scan on the new head, release-check and
+   `check-invariants --expect-md5`.
+5. The gate record (INTEGRATION_AND_REGRESSION_LOG section 8) gets the old head, the new head, the empty diff and the CI run id.
+6. The rule covers `main` moving after the gates; a commit the branch adds itself voids all gates as before.
+7. A docs conflict in a file the branch also changed (DECISIONS, KNOWN_ISSUES, PROJECT_STATE, TESTING, CHANGELOG): the docs
+   checks plus ARC-01's review of the resolution are enough when 1 holds; re-running the full Gate C list is also safe.
+Any non-docs change in `main` means the full Gate C list again.
 
 ## 2. Pending owner decisions
 
