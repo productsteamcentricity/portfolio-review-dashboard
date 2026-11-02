@@ -169,18 +169,28 @@ checks run, with the owner's work in them, so no check starts, quits, stops or r
    hand.
 3. **Read only, without a window.** PowerPoint opens the deck with `Presentations.Open(path, -1, 0, 0)` (read-only,
    not untitled, no window). Excel opens the workbook with `Workbooks.Open(path, 0, True)`; a shared Excel has no true
-   "no window", so the script remembers the owner's active workbook and window, hides its own workbook's window right
-   after the open (frozen panes need a shown window, so they are checked in the file by the writer's tests, not in
-   Excel), and after closing its file re-activates the owner's workbook and window only when they still exist. It
-   creates and closes nothing else.
+   "no window", so the script remembers the owner's active workbook and window, hides its own workbook's window at
+   once after a successful open, before any wait or other work (frozen panes need a shown window, so they are checked
+   in the file by the writer's tests, not in Excel), and after closing its file re-activates the owner's workbook and
+   window only when they still exist. It creates and closes nothing else.
 4. **No application option changes.** Alerts, visibility, macro security, calculation mode, screen updating and events
-   stay as the owner set them. Only the script's own workbook is recalculated, sheet by sheet.
+   stay as the owner set them. Only the script's own workbook is recalculated, sheet by sheet. The Excel script reads
+   the calculation mode, never writes it, and runs the edit check (one input of its own workbook changed in memory)
+   only when Excel is in manual calculation. In automatic calculation an edit could recalculate the owner's open
+   workbooks (their volatile formulas, marking them unsaved), so the edit check is skipped and reported as not checked
+   in Excel, never as a pass and never as a failure. Even so, in an Excel in automatic calculation, opening the file
+   may itself start a recalculation, because the file asks for a full calculation on load: volatile formulas in the
+   owner's open workbooks may then recalculate. The owner may prefer to close other workbooks before a run.
 5. **Close only your file.** Each script closes only the file it opened (Excel without saving; the deck marked saved),
    in a finally block, and releases its COM references. It never quits Office, never stops or kills a process and runs
    no watchdog.
 6. **On a hang, abandon.** Each script stops at its own deadline between checks (180 s; verdict TIMEOUT, exit code 3)
    and still closes its file. If a call into Office never returns, the run stops waiting after 300 s, reports TIMEOUT
-   with the path of the file left open, kills nothing, and the owner closes that file.
+   with the path of the file left open, kills nothing, and the owner closes that file. After the first TIMEOUT of an
+   application, no further case of that application starts: each remaining one is NOT RUN ("not attempted: Office did
+   not answer") with its file's path, so no second script is sent to an Excel or PowerPoint that has not answered.
+   The one abandoned script may still resume after the run has reported; it then stops at its own deadline at its
+   next check and closes its file.
 7. **No negative control against the owner's Office.** The damaged files (a workbook Excel must repair, a deck without
    slide 1) would raise a repair prompt on the owner's screen, so they are written next to the reports and reported
    NOT RUN with their paths; the owner may open them by hand.
@@ -189,8 +199,10 @@ checks run, with the owner's work in them, so no check starts, quits, stops or r
    passed (contract v2, K1c).
 
 `tests/exports/xlsx/office-scripts.test.ts` (in `node --test`) reads both scripts and the runner: none of the
-forbidden calls or options appears anywhere in them, the task list comes before the attach, the only window hidden is
-the script's own workbook's, the file is closed in a finally block, the negative controls are never run, and the
-verdict rules hold. `tests/unit/exports/xlsx-number-formats.test.ts` checks the workbook's number formats against
+forbidden calls or options appears anywhere in them (the calculation mode is read once and never written), the task
+list comes before the attach, the only window hidden is the script's own workbook's, hidden right after the open, the
+edit check runs only in manual calculation, the file is closed in a finally block, the negative controls are never
+run, after a TIMEOUT no further case of that application starts (the decision tested with stand-in cases; no test
+starts PowerShell or Office), and the verdict rules hold. `tests/unit/exports/xlsx-number-formats.test.ts` checks the workbook's number formats against
 Excel's own texts without Office. The scripts are checked with the PowerShell parser before a push and run only by
 hand, never in CI.

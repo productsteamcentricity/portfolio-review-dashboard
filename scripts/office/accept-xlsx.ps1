@@ -12,19 +12,27 @@ this PC with the owner's work in it, so the script:
      synthetic file for the owner to open by hand. It never starts Excel and never creates a second instance.
   2. opens only its own synthetic file, read-only (UpdateLinks 0, ReadOnly true, not added to the recent list).
      Excel has no true "no window" in a shared instance: the file opens in a window of the owner's Excel. Before the
-     open the script remembers the owner's active workbook and window. Right after the open it hides only its own
-     workbook's window (Windows.Item(1) of its workbook, a property of that file), so frozen panes, which need a shown
-     window, are not checked in Excel (the writer's tests check them in the file). After closing its file it
-     re-activates the owner's workbook and window, only when they still exist; it never creates, closes or changes
-     anything else.
+     open the script remembers the owner's active workbook and window. Right after the open, before any wait or other
+     work, it hides only its own workbook's window (Windows.Item(1) of its workbook, a property of that file), so
+     frozen panes, which need a shown window, are not checked in Excel (the writer's tests check them in the file).
+     After closing its file it re-activates the owner's workbook and window, only when they still exist; it never
+     creates, closes or changes anything else.
   3. changes no application option: no alert, visibility, macro security, calculation mode, screen updating or event
-     setting is read for change or written. It recalculates only its own workbook, sheet by sheet (Worksheet.Calculate),
-     never the application, which would recalculate the owner's books.
+     setting is written. It recalculates only its own workbook, sheet by sheet (Worksheet.Calculate), never the
+     application, which would recalculate the owner's books. It reads the calculation mode, and only that, and runs
+     the edit check (one input of its own workbook changed in memory) only when Excel is in manual calculation: in
+     automatic calculation an edit could recalculate the owner's open workbooks (their volatile formulas, marking
+     them unsaved), so the edit check is then skipped and reported as not checked in Excel, never as a pass and never
+     as a failure. Even so, in an Excel in automatic calculation, opening the file may itself start a recalculation,
+     because the file asks for a full calculation on load: volatile formulas in the owner's open workbooks may then
+     recalculate. The owner may prefer to close other workbooks before a run.
   4. closes only the file it opened, without saving, in a finally block, and releases its COM references. It never
      asks Excel to quit and never stops, kills or watches over any process.
   5. on a hang: the script stops at its own deadline between checks (verdict TIMEOUT, exit code 3) and still closes
      its file. If a call into Excel never returns, run-acceptance.ts stops waiting, reports TIMEOUT with the path of
-     the file left open, and leaves every process running; the owner closes that file in Excel.
+     the file left open, and leaves every process running; the owner closes that file in Excel. After a TIMEOUT the
+     run starts no further workbook in Excel: each remaining one is NOT RUN ("not attempted: Office did not answer")
+     with its path.
   6. the damaged-file negative control is never run against the attached Excel (it would raise the repair prompt on
      the owner's screen): run-acceptance.ts writes it and reports it NOT RUN with its path.
 
@@ -32,7 +40,8 @@ Checks: detects a repair; recalculates its own sheets; compares every expected f
 relative; compares the text Excel shows (Range.Text) with the screen's text for every figure of the _manifest and every
 sample text cell; checks each filter's range as Excel holds it after the open
 (AutoFilter.Range.Address(False, False)) against the file's, the hidden sheet, names, fonts, number formats and the red
-of a negative cell; edits one input in memory and compares the recalculated dependents.
+of a negative cell; in manual calculation only (point 3), edits one input in memory and compares the recalculated
+dependents.
 The report is JSON (synthetic data only). Exit code 0 when every check passed, 1 when one failed, 2 when not run,
 3 on the deadline (TIMEOUT).
 #>
@@ -147,12 +156,17 @@ function Invoke-WorkbookChecks($xl) {
       try {
         # Filename, UpdateLinks 0, ReadOnly true; AddToMru stays at its default (false).
         $wb = $xl.Workbooks.Open($full, 0, $true)
-        $openError = $null
       } catch {
         $openError = $_
         if (-not (Test-Busy $_)) { break }
         Start-Sleep -Seconds 2
+        continue
       }
+      $openError = $null
+      # Only this workbook's own window is hidden, at once: before any wait, scan or other call, so nothing of it stays
+      # on the owner's screen. If hiding fails, the error ends the checks and the finally block closes the file.
+      $win = $wb.Windows.Item(1)
+      $win.Visible = $false
     }
     if ($wb -eq $null -and $openError -ne $null -and (Test-Busy $openError)) { throw $openError }
     $result.ran = $true
@@ -170,7 +184,7 @@ function Invoke-WorkbookChecks($xl) {
     if ($wb -ne $null) {
       $result.opened = $true
       $caption = ''
-      try { $caption = [string]$wb.Windows.Item(1).Caption } catch { }
+      try { $caption = [string]$win.Caption } catch { }
       if ($caption -match 'Repaired') { [void]$evidence.Add("window caption: $caption") }
     }
     $result.repairEvidence = @($evidence)
@@ -178,12 +192,12 @@ function Invoke-WorkbookChecks($xl) {
     Add-Check 'opens without repair' (-not $result.repaired) ($evidence -join '; ')
     if ($wb -eq $null) { throw 'the workbook did not open' }
 
-    # Only this workbook's own window is hidden, at once, so nothing of it stays on the owner's screen. Frozen panes
-    # are a property of a shown window (a sheet of a hidden window cannot be activated), so they are not checked in
-    # Excel; the writer's tests check them in the file (tests/exports/xlsx/writer.test.ts).
-    $win = $wb.Windows.Item(1)
-    $win.Visible = $false
-    $result.notCheckedInExcel = @('frozen panes: they need the window shown; checked in the file by tests/exports/xlsx/writer.test.ts')
+    # This workbook's window was hidden right after the open. Frozen panes are a property of a shown window (a sheet
+    # of a hidden window cannot be activated), so they are not checked in Excel; the writer's tests check them in the
+    # file (tests/exports/xlsx/writer.test.ts). What is not checked in Excel is recorded, never as a pass or a failure.
+    $notChecked = New-Object System.Collections.ArrayList
+    [void]$notChecked.Add('frozen panes: they need the window shown; checked in the file by tests/exports/xlsx/writer.test.ts')
+    $result.notCheckedInExcel = $notChecked
 
     # Recalculation of this workbook only.
     Test-Deadline 'recalculation'
@@ -294,20 +308,35 @@ function Invoke-WorkbookChecks($xl) {
     }
 
     # The edit check: one input changed in memory (the file is read-only and is closed without saving), this
-    # workbook's sheets recalculated, its dependents compared.
+    # workbook's sheets recalculated, its dependents compared. It runs only while the owner's Excel is in manual
+    # calculation (xlCalculationManual, -4135). In automatic calculation (-4105, or semi-automatic, 2) the edit could
+    # recalculate the owner's open workbooks, so it is skipped and recorded as not checked in Excel: never a pass and
+    # never a failure. The calculation mode is only read here, never written.
     if ($exp.edit -ne $null) {
-      Test-Deadline 'the edit check'
-      $ws = $wb.Worksheets.Item([string]$exp.edit.sheet)
-      $ws.Range([string]$exp.edit.cell).Value2 = [double]$exp.edit.value
-      Invoke-OwnCalculate $wb
-      $editBad = New-Object System.Collections.ArrayList
-      foreach ($d in $exp.edit.dependents) {
-        $v = $wb.Worksheets.Item([string]$d.sheet).Range([string]$d.cell).Value2
-        if ((Get-ErrorName $v) -or $v -eq $null -or -not (Test-Close ([double]$v) ([double]$d.value))) {
-          [void]$editBad.Add("$($d.sheet)!$($d.cell): Excel $v, expected $($d.value)")
+      $editCell = "$($exp.edit.sheet)!$($exp.edit.cell)"
+      $calcMode = $null
+      try { $calcMode = [int]$xl.Calculation } catch { }
+      $result.calcMode = $calcMode
+      if ($calcMode -eq -4135) {
+        Test-Deadline 'the edit check'
+        $ws = $wb.Worksheets.Item([string]$exp.edit.sheet)
+        $ws.Range([string]$exp.edit.cell).Value2 = [double]$exp.edit.value
+        Invoke-OwnCalculate $wb
+        $editBad = New-Object System.Collections.ArrayList
+        foreach ($d in $exp.edit.dependents) {
+          $v = $wb.Worksheets.Item([string]$d.sheet).Range([string]$d.cell).Value2
+          if ((Get-ErrorName $v) -or $v -eq $null -or -not (Test-Close ([double]$v) ([double]$d.value))) {
+            [void]$editBad.Add("$($d.sheet)!$($d.cell): Excel $v, expected $($d.value)")
+          }
         }
+        Add-Check "edit of $editCell recalculates $(@($exp.edit.dependents).Count) dependents" ($editBad.Count -eq 0) @($editBad)
+      } elseif ($calcMode -eq -4105) {
+        [void]$notChecked.Add("edit of ${editCell}: Excel is in automatic calculation: editing an input could recalculate the owner's open workbooks")
+      } elseif ($calcMode -eq 2) {
+        [void]$notChecked.Add("edit of ${editCell}: Excel is in semi-automatic calculation: editing an input could recalculate the owner's open workbooks")
+      } else {
+        [void]$notChecked.Add("edit of ${editCell}: Excel's calculation mode could not be read: editing an input could recalculate the owner's open workbooks")
       }
-      Add-Check "edit of $($exp.edit.sheet)!$($exp.edit.cell) recalculates $(@($exp.edit.dependents).Count) dependents" ($editBad.Count -eq 0) @($editBad)
     }
   } finally {
     # Only the file this script opened is closed, without saving; then the owner's workbook and window come back.

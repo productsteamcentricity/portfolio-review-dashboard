@@ -18,7 +18,8 @@ this PC with the owner's work in it, so the script:
   5. on a hang: the script stops at its own deadline between slides (verdict TIMEOUT, exit code 3) and still closes
      its deck. If a call into PowerPoint never returns, run-acceptance.ts stops waiting, reports TIMEOUT with the path
      of the deck left open, and leaves every process running; the owner closes that deck (opened without a window,
-     it closes when the owner next closes PowerPoint).
+     it closes when the owner next closes PowerPoint). After a TIMEOUT the run starts no further deck in PowerPoint:
+     each remaining one is NOT RUN ("not attempted: Office did not answer") with its path.
   6. the damaged-deck negative control is never run against the attached PowerPoint (it could raise a repair prompt
      on the owner's screen): run-acceptance.ts writes it and reports it NOT RUN with its path.
 

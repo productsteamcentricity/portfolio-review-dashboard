@@ -6,15 +6,25 @@
 // are re-activated when they still exist); change no application option; recalculate only the script's own workbook;
 // close only that file, in a finally block; never quit, stop, kill or watch over a process. The negative controls
 // are written and never run. The run's verdict is PASS only when every case ran and passed, and NOT RUN is never a
-// pass. Also N7: the workbook check reads the filter range as Excel holds it.
-// `npm run accept:office` runs the scripts themselves (local only, under the same rule).
+// pass. The security review of 2ef7216: after the first TIMEOUT of an application no further case of it starts (F1);
+// the calculation mode is only read, and the edit check runs only in manual calculation (F2); the workbook's window
+// is hidden at once after the open (F3). Also N7: the workbook check reads the filter range as Excel holds it.
+// `npm run accept:office` runs the scripts themselves (local only, under the same rule). No test here starts
+// PowerShell or Office: the run's decisions are tested with stand-in cases, and attempt false never reaches runPs.
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { REPO } from '../../helpers/sheetjs.ts';
-import { caseVerdict, overallVerdict, summaryLine, PS_TIMEOUT_MS } from '../../../scripts/office/run-acceptance.ts';
+import {
+  caseVerdict, overallVerdict, summaryLine, PS_TIMEOUT_MS, NOT_ATTEMPTED, notAttempted, officeTimedOut, runInTurn,
+  acceptXlsx, acceptPptx,
+} from '../../../scripts/office/run-acceptance.ts';
+import { writeWorkbook } from '../../../app/src/exports/xlsx/writer.ts';
+import { storeZip } from '../../../app/src/exports/zip/store-zip.ts';
+import { spikeWorkbookSpec } from './sample-input.ts';
 
 const read = (name: string): string => fs.readFileSync(path.join(REPO, 'scripts', 'office', name), 'utf8').replace(/\r\n/g, '\n');
 const XLSX = read('accept-xlsx.ps1');
@@ -27,7 +37,9 @@ const code = (s: string): string => s.replace(/<#[\s\S]*?#>/g, '').split('\n').m
 const FORBIDDEN: ReadonlyArray<[string, RegExp]> = [
   ['Quit(', /Quit\(/], ['Stop-Process', /Stop-Process/i], ['New-Object -ComObject', /New-Object\s+-ComObject/i],
   ['DisplayAlerts', /DisplayAlerts/i], ['AutomationSecurity', /AutomationSecurity/i], ['ScreenUpdating', /ScreenUpdating/i],
-  ['EnableEvents', /EnableEvents/i], ['.Calculation', /\.Calculation/], ['Start-Process (a watchdog)', /Start-Process/i],
+  // The calculation mode may be read (F2), never written; a property set by reflection is refused as well.
+  ['EnableEvents', /EnableEvents/i], ['a write to .Calculation', /\.Calculation\s*=/i], ['InvokeMember', /InvokeMember/i],
+  ['Start-Process (a watchdog)', /Start-Process/i],
   ['taskkill', /taskkill/i], ['.Kill(', /\.Kill\(/i], ['UserControl', /UserControl/i], ['AskToUpdateLinks', /AskToUpdateLinks/i],
   ['Application.Calculate', /\$xl\.Calculate|Application\.Calculate|CalculateFull/],
   ['Visible = on the application', /\$(xl|pp)\.Visible\s*=|Application\.Visible\s*=/i],
@@ -91,6 +103,50 @@ describe('K1: attach only, never start, quit or kill Office, no application opti
     assert.match(c, /\} finally \{\n[^\n]*\n\s*if \(\$wb -ne \$null\) \{\n\s*try \{\n\s*\$wb\.Close\(\$false\)/);
   });
 
+  test('accept-xlsx.ps1 (F3): its window is hidden at once after a successful open, before any wait, scan or caption read', () => {
+    const c = code(XLSX);
+    const open = c.indexOf('$wb = $xl.Workbooks.Open($full, 0, $true)');
+    const hide = c.indexOf('$win.Visible = $false');
+    assert.ok(open > 0 && hide > open, `open ${open}, hide ${hide}`);
+    // Between the open and the hide: only the catch of a failed open (no window then), and the window itself.
+    assert.match(c.slice(open, hide), /^\$wb = \$xl\.Workbooks\.Open\(\$full, 0, \$true\)\n\s*\} catch \{\n[\s\S]*?\n\s*\}\n\s*\$openError = \$null\n\s*\$win = \$wb\.Windows\.Item\(1\)\n\s*$/);
+    for (const later of ['Start-Sleep -Milliseconds 300', '$newLogs = ', '$win.Caption', "Test-Deadline '", '$result.ran = $true']) {
+      const at = c.indexOf(later, open);
+      assert.ok(at > hide, `${later} at ${at} comes after the hide at ${hide}`);
+    }
+    assert.ok(!/\$wb\.Windows\.Item\(1\)\.Caption/.test(c), 'the caption is read from the hidden window');
+  });
+
+  test('accept-xlsx.ps1 (F2): the calculation mode is only read; the edit check runs only in manual calculation, else it is not checked in Excel', () => {
+    const c = code(XLSX);
+    // One read of the calculation mode, and no other use of it.
+    const uses = [...c.matchAll(/\.Calculation\b/gi)].map((m) => c.slice(Math.max(0, m.index - 30), m.index + 12));
+    assert.deepEqual(uses.length, 1, `uses of Calculation: ${JSON.stringify(uses)}`);
+    assert.match(c, /try \{ \$calcMode = \[int\]\$xl\.Calculation \} catch \{ \}/);
+    const edit = c.slice(c.indexOf('if ($exp.edit -ne $null) {'), c.indexOf('} finally {', c.indexOf('if ($exp.edit -ne $null) {')));
+    const read = edit.indexOf('$xl.Calculation');
+    const manual = edit.indexOf('if ($calcMode -eq -4135) {');
+    const write = edit.indexOf('.Value2 = [double]$exp.edit.value');
+    const auto = edit.indexOf('} elseif ($calcMode -eq -4105) {');
+    assert.ok(read > 0 && manual > read && write > manual && auto > write, `read ${read}, manual ${manual}, edit ${write}, automatic ${auto}`);
+    // The edit, its recalculation and its check sit in the manual branch only.
+    const manualBranch = edit.slice(manual, auto);
+    assert.match(manualBranch, /Test-Deadline 'the edit check'[\s\S]*Invoke-OwnCalculate \$wb[\s\S]*Add-Check "edit of \$editCell recalculates/);
+    assert.equal([...c.matchAll(/\.Value2\s*=/g)].length, 1, 'the only write to a cell is the edit in the manual branch');
+    // Automatic, semi-automatic and an unreadable mode: no edit, no check (never a pass, never a failure), recorded.
+    const skip = edit.slice(auto);
+    assert.ok(!/Add-Check|\.Value2\s*=|Invoke-OwnCalculate|\.Calculate\(/.test(skip), 'the skip edits, recalculates and checks nothing');
+    assert.ok(skip.includes('[void]$notChecked.Add("edit of ${editCell}: Excel is in automatic calculation: editing an input could recalculate the owner\'s open workbooks")'));
+    assert.match(skip, /\} elseif \(\$calcMode -eq 2\) \{\n\s*\[void\]\$notChecked\.Add\(/);
+    assert.match(skip, /\} else \{\n\s*\[void\]\$notChecked\.Add\(/);
+    assert.match(c, /\$result\.notCheckedInExcel = \$notChecked/);
+    // The header says so, and that the open itself may recalculate the owner's books in automatic calculation.
+    const head = /<#([\s\S]*?)#>/.exec(XLSX)![1]!.replace(/\s+/g, ' ');
+    assert.match(head, /runs the edit check \([^)]*\) only when Excel is in manual calculation/);
+    assert.match(head, /skipped and reported as not checked in Excel, never as a pass and never as a failure/);
+    assert.match(head, /opening the file may itself start a recalculation, because the file asks for a full calculation on load: volatile formulas in the owner's open workbooks may then recalculate\. The owner may prefer to close other workbooks before a run\./);
+  });
+
   test('accept-pptx.ps1: its own deck read-only without a window, marked saved and closed in finally', () => {
     const c = code(PPTX);
     assert.match(c, /\$deck = \$pp\.Presentations\.Open\(\$full, -1, 0, 0\)/);
@@ -136,6 +192,76 @@ describe('K1: the run\'s verdict; NOT RUN is never a pass', () => {
     assert.equal(summaryLine({ id: 'x', verdict: 'not run', excel: { ran: false } }), 'NOT RUN  x  closed=not run negativeControl=not run');
     assert.equal(summaryLine({ id: 'd', verdict: 'timeout', powerpoint: { closed: false, leftOpenForOwner: 'C:\\x\\d.pptx' } }),
       'TIMEOUT  d  closed=false negativeControl=not run  left open for the owner: C:\\x\\d.pptx');
+  });
+});
+
+describe('F1: after the first TIMEOUT of an application, none of its remaining cases starts', () => {
+  const stand = (id: string, verdict: string, app: 'excel' | 'powerpoint' = 'excel', closed = false): Record<string, unknown> =>
+    ({ id, file: `C:\\x\\${id}`, verdict, [app]: { verdict, ran: verdict !== 'not run', closed } });
+
+  test('the cases after the first TIMEOUT get attempt false, in order, and are NOT RUN with the reason and their path', async () => {
+    const calls: Array<[string, boolean]> = [];
+    const outcome: Record<string, string> = { a: 'pass', b: 'timeout', c: 'pass', d: 'timeout' };
+    const results = await runInTurn(['a', 'b', 'c', 'd'], async (id, attempt) => {
+      calls.push([id, attempt]);
+      if (!attempt) { const excel = notAttempted(`C:\\x\\${id}`); return { id, file: `C:\\x\\${id}`, excel, verdict: caseVerdict(excel) }; }
+      return stand(id, outcome[id]!);
+    });
+    assert.deepEqual(calls, [['a', true], ['b', true], ['c', false], ['d', false]]);
+    assert.deepEqual(results.map((r) => r.verdict), ['pass', 'timeout', 'not run', 'not run']);
+    for (const r of results.slice(2)) {
+      assert.deepEqual(r.excel, { verdict: 'not run', ran: false, pass: false, notRunReason: NOT_ATTEMPTED, file: r.file });
+    }
+    assert.equal(NOT_ATTEMPTED, 'not attempted: Office did not answer');
+    assert.equal(overallVerdict(results.map((r) => String(r.verdict))), 'fail');
+  });
+
+  test('without a TIMEOUT every case is attempted; NOT RUN (Office not running) stops nothing', async () => {
+    const calls: boolean[] = [];
+    await runInTurn(['a', 'b', 'c'], async (id, attempt) => { calls.push(attempt); return stand(id, id === 'a' ? 'not run' : 'pass'); });
+    assert.deepEqual(calls, [true, true, true]);
+    assert.deepEqual(await runInTurn([], async () => { throw new Error('never called'); }), []);
+  });
+
+  test('a TIMEOUT is the script\'s report, whatever the case verdict: the run\'s deadline, the script\'s own, or with a failed Node check', () => {
+    assert.equal(officeTimedOut(stand('a', 'timeout')), true);
+    assert.equal(officeTimedOut(stand('a', 'timeout', 'powerpoint', true)), true, 'the script\'s own deadline (it closed its file)');
+    assert.equal(officeTimedOut({ id: 'a', verdict: 'fail', excel: { verdict: 'timeout' } }), true, 'a Node failure does not hide the TIMEOUT');
+    assert.equal(officeTimedOut(stand('a', 'pass')), false);
+    assert.equal(officeTimedOut(stand('a', 'not run')), false);
+    assert.equal(officeTimedOut(stand('a', 'fail')), false);
+    assert.equal(officeTimedOut({ id: 'a', verdict: 'not run' }), false);
+  });
+
+  test('the summary line of a case not started names the reason and its file', () => {
+    assert.equal(summaryLine({ id: 'c', verdict: 'not run', file: 'C:\\x\\c.xlsx', excel: notAttempted('C:\\x\\c.xlsx') }),
+      'NOT RUN  c  closed=not run negativeControl=not run  not attempted: Office did not answer; open by hand: C:\\x\\c.xlsx');
+  });
+
+  test('acceptXlsx and acceptPptx with attempt false write the files, start no script and report NOT RUN with the path', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'office-f1-'));
+    try {
+      const x = await acceptXlsx({ id: 'f1-book', bytes: writeWorkbook(spikeWorkbookSpec()), edit: null, formats: [], unitsText: null, negative: null }, dir, false);
+      const enc = new TextEncoder();
+      const deck = storeZip([{ name: '[Content_Types].xml', data: enc.encode('<Types/>') }, { name: 'ppt/slides/slide1.xml', data: enc.encode('<sld/>') }]);
+      const p = await acceptPptx({ id: 'f1-deck', bytes: deck, inventory: { slides: [] } }, dir, false);
+      for (const [r, main, ext] of [[x, x.excel, 'xlsx'], [p, p.powerpoint, 'pptx']] as const) {
+        assert.equal(r.verdict, 'not run');
+        assert.deepEqual(main, notAttempted(path.join(dir, `${String(r.id)}.${ext}`)));
+        assert.ok(fs.existsSync(String(r.file)), `${String(r.file)} written for the owner`);
+        assert.ok(!fs.existsSync(path.join(dir, `${String(r.id)}.${ext}.report.json`)) && !fs.existsSync(path.join(dir, `${String(r.id)}.${ext}.report.log`)), 'no script started');
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('run-acceptance.ts: each application\'s cases run in turn through runInTurn; runPs only when attempt is true', () => {
+    assert.match(RUN, /\.\.\.await runInTurn\(xlsx, \(c, attempt\) => acceptXlsx\(c, outDir, attempt\)\)/);
+    assert.match(RUN, /\.\.\.await runInTurn\(pptx, \(c, attempt\) => acceptPptx\(c, outDir, attempt\)\)/);
+    assert.ok(!/for \(const c of (xlsx|pptx)\)/.test(RUN), 'no other loop over the cases');
+    assert.equal([...RUN.matchAll(/const main = attempt\n\s*\? await runPs\([^\n]*\n\s*: notAttempted\(file\);/g)].length, 2);
+    assert.match(RUN, /within a run no two scripts are ever\n\s*\/\/ attached to the same Excel or PowerPoint at once/);
   });
 });
 
