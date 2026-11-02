@@ -593,12 +593,26 @@ independent review, 2 Nov 2026), within the decisions above, for the owner to co
 - **The reference date is the assumed sale date.** The harvest reads "If the book were sold on <date>", so the
   valuation date (a) is the date of sale that the new build's TR-7 gates on; a review valued before 1 Apr 2026 asks
   about a sale before the usual bucket applied.
-- **The AI Analyst moves with the class (PD-50).** The AI Analyst's tax signal has weight 7 in its composite, so the
-  class a fund takes, and for the three fund kinds the review date, change the trim amounts, target weights and plan
-  summary of a book that holds such funds (measured on a synthetic stress book: one fund's release 0.37 to 0.54 Cr
-  and its target weight 6 to 3). Built: the signal uses the class, as it does for every other fund. The alternative,
-  "not assessed until the analyst confirms the class", is one line in `aiaSigTax`; it awaits the owner's answer to
-  PD-50.
+- **The AI Analyst moves with the class (PD-50).** The AI Analyst's tax signal has weight 7 in its composite (score 22,
+  performance 18, risk 15, overlap 13, manager 10, weight 10, tax 7, impact 5), so the class a fund takes, and for the
+  three fund kinds the review date, change what the AI Analyst does with a book that holds them: the composite, the
+  target-weight band, the trim, the action label (Exit, Partial, Retain) and with it the number of exits, top-up
+  candidacy, the plan summary, and through "Apply plan to Portfolio Rebalancing" the Rebalancing tab and its exports.
+  The signal scores only a holding that has a split class; a usual-bucket holding is green when 75% or more of it is
+  long term and amber otherwise, never red; without an IRR file nothing changes. Measured on a synthetic stress book:
+  one fund's release 0.37 to 0.54 Cr and its target weight 6 to 3. ARC-01 measured it again on 2 Nov 2026 (not repeated
+  by EX-01): the composite moves 0 to +6.75 points for long-term lots and -10.94 to +1.32 for short-term lots; on 98
+  usual-bucket funds, each held once at 8.33% in a 12-fund synthetic book with only the as-on date changing, the target
+  weight or trim differs for 15 funds and the action for 2 with long-term lots, and for 4 and 4 with short-term lots; one
+  equity savings fund is an Exit of 1.00 Cr on 31 Mar 2026 (tax not assessed) and a Partial of 0.16 Cr on 31 Jul 2026
+  (tax green). The same weight moves ordinary funds when their lots change (ARC-01 counts 9 of 264 cases that "flip",
+  against 21 of 504 for usual-bucket funds), so this is the design of the signal, not a defect of part T5. An amber
+  verdict (mostly short-term lots) lowers the composite, so the AI Analyst trims more when lots are short term, which
+  is the costly direction to sell. Until stage S8 a code comment above `aiaSigTax` called tax "never a reason to act";
+  it now says what the weight does. Built: the signal uses the class, as it does for every other fund. The alternative,
+  "not assessed until the analyst confirms the class", is one line in `aiaSigTax` (the page has no control to confirm a
+  class, so "until confirmed" is more than one line) and takes the arbitrage score away from the live page; it awaits
+  the owner's answer to PD-50 (CR-0008 question 21).
 - **An AIF's category is read once** (D-043): the fund's own words, then the performance data's category for the fund
   it matched (when the holding's name is the entry's own name once normalised: the page's name matcher is loose, and a
   sibling series is not told its category by it), then "Listed AIF" (Category III, with a note), else Category I or II
@@ -612,7 +626,8 @@ independent review, 2 Nov 2026), within the decisions above, for the owner to co
   (part T2 read 1 Apr on an Indian machine); which day a Z time means is the owner's call if a real export shows one.
 - **The harvest inputs** are text fields. Indian or international digit grouping, a leading rupee sign, Rs, Rs. or
   INR (with or without the dot), a trailing "/-", "/=", INR or Rs, a "%" in the slab-rate field and an exponent are
-  read; only a blank or non-numeric entry restores the default, with no message beside the field (a known gap).
+  read; an entry that is not a number once those marks are removed (blank, text, a zero-width space, a number too
+  large to hold) restores the default, with no message beside the field (a known gap).
 - **A sale, switch out or transfer out with no price** (and a stated amount) never reaches the unit ledger. A holding
   whose history then gives more units than the base file says that such a row in the sheet carries no price, instead of
   saying a sale is missing.

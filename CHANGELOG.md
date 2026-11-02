@@ -7,13 +7,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ### Fixed (fix batch 3: tax rules per the TY2026-27 reckoner, CR-0008)
 - **Tax batch, part T5 (CR-0008, D-040, D-043): the follow-ups to parts T1 to T4, the owner's answers to questions 17
   and 18, and the corrections from two reviews.** `index.html` MD5 `0713C6BEEFCB35D778730AB9BEF3E430` →
-  `9375366FAC8093A870EF61DEE2C763FF` (16,898,566 → 16,916,640 bytes; patch `tools/patches/2026-10-27-tax-5-followups.js`).
+  `91D6530F428A7668F2CE7E43B0E57F7D` (16,898,566 → 16,917,282 bytes; patch `tools/patches/2026-10-27-tax-5-followups.js`).
   On branch `fix/legacy-batch-3-tax-cr-0008`, which carries the whole batch; the batch merges as one change.
   - Aggressive hybrid, arbitrage and equity savings funds take the reckoner's usual bucket only when the review is valued
     on or after 1 Apr 2026, labelled "usual bucket per the tax reckoner; confirm with the fund house"; before that date
     they are unclassified, with a reason (KI-170). Equity savings funds are now classed from that date; aggressive
     hybrid and arbitrage funds are no longer classed in a review valued earlier. The AI Analyst's tax signal follows the
-    class, so a book that holds these funds can get different trims (PD-50, CR-0008 question 21).
+    class, so a book that holds these funds can get different trims, target weights, action labels (an Exit can become a
+    Partial) and plan summary (PD-50, CR-0008 question 21; D-040 has ARC-01's figures).
   - A fund called a Listed AIF is Category III, fund level, with a note that asks the analyst to confirm the category
     (question 17, D-043); an AIF whose category the file does not state stays Category I or II with a note; a fund's own
     stated category wins; the category the performance data gives is a statement about the fund only when the names
@@ -27,12 +28,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     or without a dot), "/-", "/=", a trailing INR or Rs, a "%" in the slab rate and an exponent; no "-Rs 0.00"; the
     unreconciled table says why, and a sale with no price has its own reason; the class footnote fits the slide (KI-109) and the class and harvest slides count holdings in the singular and the plural; the wording
     says "the tax reckoner" because the AI Analyst slide goes to the client.
-  - `ENGINE.taxDefaults` is frozen and `check-invariants` lists all 28 engine names (KI-185). KI-184 is filed (the base
+  - `ENGINE.taxDefaults` is frozen and `check-invariants` lists all 28 engine names and checks them both ways (KI-185). KI-184 is filed (the base
     file's ISIN column is not read; D-040 point (c) corrected). The independent review (8 reviewers, 51 findings) and
-    the delta review of its corrections (6 reviewers) are answered in CR-0008; KI-200 to KI-206 are the first review's
+    the delta review of its corrections (6 reviewers) and ARC-01's pre-review of the stages are answered in CR-0008; KI-200 to KI-206 are the first review's
     open findings.
-  - 3 new regression files (`CR-0008-T5-followups.js`, `CR-0008-T5-item10-listed-aif.js`,
-    `CR-0008-T5-item11-irr-zone-dates.js`); `KI-170`, `KI-171` and `KI-180` changed. 46 files, 1,512 checks, pass in
+  - 4 new regression files (`CR-0008-T5-followups.js`, `CR-0008-T5-item10-listed-aif.js`,
+    `CR-0008-T5-item11-irr-zone-dates.js`, `KI-185-engine-keys.js`); `KI-170`, `KI-171` and `KI-180` changed. 47 files, 1,582 checks, pass in
     IST and UTC; `node --test` 234/234; `smoke-review` 36/36; `test-ai-analyst` 24/24.
 - **Tax batch rebased on fix batch 4 (CR-0008): the branch merged `main` (PR #14 to #16) and its page was rebuilt**
   from main's page (fix batch 4) with the four tax patches in file-name order: `index.html` MD5
