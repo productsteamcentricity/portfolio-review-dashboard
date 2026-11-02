@@ -34,8 +34,8 @@
 //      kept on each button [L13]; the workbook passes the evaluator-only check (scripts/office/run-acceptance.ts);
 //   9. Remove: the focus on the new file input [L13]; the XIRR questions answered with real clicks: the focus moves
 //      to the next question, then to the import report heading [L13]; an acknowledged High result: the focus moves on
-//      (syn-total-like; where the reader skips its "Grand Total" row, N1, there is no High result and the book reads
-//      as syn-standard, never doubled);
+//      (syn-total-rows: its fund named "Total Return ..." is High; its "Total" and "GRAND TOTAL" rows are skipped, N1,
+//      so the KPIs read as syn-standard's, never doubled);
 //  10. syn-all-classes (six slices, Commodity unlabelled, Unknown last in #D9D9D9) and syn-single-entity (the single
 //      client and distributor lines) [L2, L14];
 //  11. [N12] syn-blank-entities: the matrix notes count named columns and put the rest in words ("2 clients, and 2
@@ -255,7 +255,7 @@ async function writeFixtures(dir) {
   const { loadSheetJS, writeXlsx } = await import(pathToFileURL(path.join(ROOT, 'tests', 'helpers', 'sheetjs.ts')).href);
   const xlsx = loadSheetJS();
   fs.mkdirSync(dir, { recursive: true });
-  const want = ['syn-standard', 'syn-ambiguous-xirr', 'syn-all-classes', 'syn-single-entity', 'syn-total-like', 'syn-blank-entities', 'syn-case-variants'];
+  const want = ['syn-standard', 'syn-ambiguous-xirr', 'syn-all-classes', 'syn-single-entity', 'syn-total-rows', 'syn-blank-entities', 'syn-case-variants'];
   const all = [...syntheticFixtures(xlsx), ...overviewFixtures(xlsx)];
   const files = {};
   for (const id of want) {
@@ -578,25 +578,24 @@ async function runMode({ browser, mode, files, opt, expect }) {
   const q2 = await questions();
   expect('answering the last question moves the focus to the import report heading (L13)', q2.length === 0 && f2 === 'group-import-report-heading', { f2, q2 });
 
-  await pick(files['syn-total-like']);
+  // syn-total-rows (M1.4 fix round 2, N1; D-041 point 3): its "Total" and "GRAND TOTAL" rows are skipped, and the
+  // fund whose name only begins with "Total" stays a holding with a High result to acknowledge (KI-142).
+  await pick(files['syn-total-rows']);
   await accept();
   const ackButton = await page.eval(`Boolean(document.querySelector('#group-validation .issue button'))`);
+  expect('syn-total-rows: a High result with Acknowledge', ackButton, ackButton);
   if (ackButton) {
-    expect('syn-total-like: a High result with Acknowledge', ackButton, ackButton);
     await page.click(await page.eval(CENTRE('#group-validation .issue button')));
     await sleep(500);
     const fa = await page.eval(FOCUSED);
     const left = await page.eval(`document.querySelectorAll('#group-validation .issue button').length`);
     expect('after Acknowledge the focus moves to the validation heading, not the body', left === 0 && fa === 'group-validation-heading', { fa, left });
-  } else {
-    // A reader that skips a "Grand Total" row (M1.4 fix round 2, N1; D-041 point 3) raises no High result here: the
-    // book then reads as syn-standard, never doubled.
-    await tab('overview');
-    const tl = await page.eval(OVERVIEW);
-    await tab('uploads');
-    expect('syn-total-like: no High result, so the "Grand Total" row was skipped (N1): the KPIs are syn-standard\'s 2.85 and 3.35, never doubled',
-      tl.kpis[0] === '2.85' && tl.kpis[1] === '3.35', tl.kpis);
   }
+  await tab('overview');
+  const tl = await page.eval(OVERVIEW);
+  await tab('uploads');
+  expect('syn-total-rows: the "Total" and "GRAND TOTAL" rows were skipped (N1): the KPIs are syn-standard\'s 2.85 and 3.35, never doubled',
+    tl.kpis[0] === '2.85' && tl.kpis[1] === '3.35', tl.kpis);
 
   // 10. syn-all-classes and syn-single-entity [L2, L14]; a reload
   await pick(files['syn-all-classes']);

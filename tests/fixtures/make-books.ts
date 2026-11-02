@@ -474,7 +474,7 @@ export function overviewVariants(xlsx: SheetJS, book: readonly BookRow[], prefix
       invested: inv, mv: total }, layout, total, book.length);
     return row;
   };
-  add('total-like', 'a last row named "Grand Total" with the book\'s total market value and invested value, read as a holding (KI-142)',
+  add('total-like', 'a last row named "Grand Total" with the book\'s total market value and invested value: skipped by both readers (D-041 point 3, N1)',
     [...rowsOf(book, STANDARD), totalRow(STANDARD)]);
 
   // KI-147 (the owner's answer of 24 Oct 2026 and the lead's decisions in D-039), in Crore and Lakh columns:

@@ -203,11 +203,11 @@ describe('the as-on date through the store and the wiring (U-05)', () => {
   });
 
   test('an acknowledged High result stays acknowledged when the date changes or is cleared (KI-142)', () => {
-    const { store } = session('syn-total-like');
+    const { store } = session('syn-total-rows');
     store.dispatch({ type: 'as-on', day: SEP30.day });
     store.dispatch({ type: 'accept' });
     const high = store.get().review!.issues.find((i) => i.severity === 'High' && i.status === 'open');
-    assert.ok(high, 'syn-total-like has an open High result');
+    assert.ok(high, 'syn-total-rows has an open High result');
     assert.equal(store.get().review!.gate.canExport, false);
     store.dispatch({ type: 'acknowledge', resultId: high.id });
     assert.equal(store.get().review!.gate.canExport, true);

@@ -36,17 +36,17 @@ describe('the export gate', () => {
     // Acknowledging a Blocking result does nothing.
     assert.equal(review('syn-standard', { asOn: null, acknowledged: [b.id] }).gate.canExport, false);
   });
-  test('a holding named like a total row is High (KI-142): exports wait until it is acknowledged', () => {
-    const open = review('syn-total-like');
+  test('a holding whose name only begins with Total is High (KI-142): exports wait until it is acknowledged; Total and Grand Total rows are skipped (N1)', () => {
+    const open = review('syn-total-rows');
     const high = open.issues.find((i) => i.ruleId === 'review.total-like-holding')!;
     const reader = open.issues.find((i) => i.ruleId === 'base-file.total-like-name')!;
     assert.deepEqual([high.severity, high.decision, high.count, high.blocksPublication], ['High', 'KI-142', 1, false]);
     assert.deepEqual(high.scope, reader.scope, 'scoped to the holdings the reader named');
     assert.deepEqual(open.gate, { blocking: 0, highOpen: 1, canExport: false, reasons: [high.message] });
-    const ack = review('syn-total-like', { acknowledged: [high.id] });
+    const ack = review('syn-total-rows', { acknowledged: [high.id] });
     assert.deepEqual(ack.gate, { blocking: 0, highOpen: 0, canExport: true, reasons: [] });
     // The id stays the same whether or not the as-on date is set, so an acknowledgement survives setting it.
-    assert.equal(review('syn-total-like', { asOn: null }).issues.find((i) => i.ruleId === 'review.total-like-holding')!.id, high.id);
+    assert.equal(review('syn-total-rows', { asOn: null }).issues.find((i) => i.ruleId === 'review.total-like-holding')!.id, high.id);
   });
   test('Warnings and Information never block', () => {
     for (const id of ['syn-na-cmv', 'syn-money-columns', 'syn-blank-entities', 'syn-all-classes', 'syn-odd-asset-labels', 'syn-invalid-text']) {

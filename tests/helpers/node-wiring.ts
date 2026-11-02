@@ -24,6 +24,7 @@ import { loadSheetJS } from './sheetjs.ts';
 import { loadPptxGenJS } from './pptxgenjs.ts';
 import { slideInventory } from './slide-inventory.ts';
 import { NUM_FMT_CODES } from '../../app/src/exports/xlsx/styles.ts';
+import { sixOClockFixtures } from '../exports/pptx/pie-6-oclock.ts';
 import {
   buildVariants, loadLegacyHost, officeVariants, overviewFixtures, overviewVariants, sampleFixtures, SYNTHETIC_BOOK, syntheticFixtures, type Fixture,
 } from '../fixtures/make-books.ts';
@@ -136,6 +137,8 @@ export function fixtureById(id: string): Fixture {
  * red), family-a (D-039), big-lakh (money above 1,00,000 L in Indian grouping), and from the M1.4 fix round 2
  * syn-six-classes (N13: six classes, the REITs/InvITs slice centred on 6 o'clock above a two-row legend; its slide PNG
  * is looked at) and syn-big-return (N9: Commodity's absolute return of 1,900.00% in the workbook's percent format).
+ * Decks only, after these (SIX_O_CLOCK_DECKS): syn-pie6-reits and syn-pie6-hybrid (tests/exports/pptx/pie-6-oclock.ts)
+ * put a slice at 6 o'clock above the two-row legend of C-08 (N13); look at the slide-01 PNG of each of them.
  */
 export const ACCEPTANCE_FIXTURES = ['syn-standard', 'syn-lakh', 'syn-blank-invested', 'syn-negative-gain', 'family-a', 'big-lakh',
   'syn-six-classes', 'syn-big-return'] as const;
@@ -203,5 +206,19 @@ export async function acceptanceFiles(): Promise<{ xlsx: unknown[]; pptx: unknow
       inventory: { slides: inv.slides.map((s) => ({ shapes: s.shapes.length, charts: s.charts.length, tables: s.tables.length })) },
     });
   }
+  // The two six-class decks of N13 (decks only): a slice at 6 o'clock above the two-row legend.
+  for (const f of sixOClockFixtures()) {
+    const { review, vm } = reviewOf(w, f);
+    await w.exportDeck(review, vm, null as LogoAsset | null);
+    const inv = await slideInventory(w.last.pptx!.bytes, lib.JSZip);
+    pptx.push({
+      id: `wired-${f.id}`,
+      bytes: w.last.pptx!.bytes,
+      inventory: { slides: inv.slides.map((s) => ({ shapes: s.shapes.length, charts: s.charts.length, tables: s.tables.length })) },
+    });
+  }
   return { xlsx, pptx };
 }
+
+/** The decks-only cases of the Office acceptance, after ACCEPTANCE_FIXTURES (N13). */
+export const SIX_O_CLOCK_DECKS = ['syn-pie6-reits', 'syn-pie6-hybrid'] as const;

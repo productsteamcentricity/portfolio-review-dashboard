@@ -32,9 +32,9 @@ test('every number in the allocation sheets carries a number format and an unrou
     for (const c of s.cells.values()) {
       if (typeof c.v !== 'number') continue;
       const fmt = wb.styles!.numFmts.get(wb.styles!.xfs[c.s]!.numFmtId);
-      assert.ok(fmt === NUM_FMT_CODES.money || fmt === '0.00"%"', `${name}!${c.ref}: ${String(fmt)}`);
+      assert.ok(fmt === NUM_FMT_CODES.money || fmt === NUM_FMT_CODES.pct, `${name}!${c.ref}: ${String(fmt)}`);
     }
-    const shares = [...s.cells.values()].filter((c) => typeof c.v === 'number' && wb.styles!.numFmts.get(wb.styles!.xfs[c.s]!.numFmtId) === '0.00"%"');
+    const shares = [...s.cells.values()].filter((c) => typeof c.v === 'number' && wb.styles!.numFmts.get(wb.styles!.xfs[c.s]!.numFmtId) === NUM_FMT_CODES.pct);
     assert.ok(shares.length >= 2 && shares.some((c) => !Number.isInteger((c.v as number) * 100)), 'shares are not pre-rounded');
   }
 });

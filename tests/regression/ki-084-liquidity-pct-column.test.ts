@@ -26,6 +26,6 @@ for (const [name, invested, cmv] of [['standard', 2.85, 3.353], ['lakh', 285, 33
     assert.ok(closeTo(v.get(`Portfolio Overview!H${r}`) as number, 100), 'H is the % of CMV');
     const fmt = (ref: string): string | undefined => wb.styles!.numFmts.get(wb.styles!.xfs[po.cells.get(ref)!.s]!.numFmtId);
     assert.equal(fmt(`F${r}`), NUM_FMT_CODES.money);
-    assert.equal(fmt(`H${r}`), '0.00"%"');
+    assert.equal(fmt(`H${r}`), NUM_FMT_CODES.pct);
   });
 }

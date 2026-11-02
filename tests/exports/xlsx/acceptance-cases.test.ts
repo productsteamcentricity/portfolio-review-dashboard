@@ -12,7 +12,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NUM_FMT_CODES } from '../../../app/src/exports/xlsx/styles.ts';
-import { acceptanceFiles, ACCEPTANCE_FIXTURES, bigLakhFixture, fixtureById, nodeWiring, reviewOf } from '../../helpers/node-wiring.ts';
+import { acceptanceFiles, ACCEPTANCE_FIXTURES, bigLakhFixture, fixtureById, nodeWiring, reviewOf, SIX_O_CLOCK_DECKS } from '../../helpers/node-wiring.ts';
 import { autoFilterRanges, expectedFor, expectedTexts, summaryLine, type XlsxCase } from '../../../scripts/office/run-acceptance.ts';
 import { closeTo, evaluateAll, readWorkbookForEval } from '../../helpers/formula-eval.ts';
 import { numberFormatAt, readXlsx, sheetByName, sheetTable } from '../../helpers/xlsx-read.ts';
@@ -58,11 +58,13 @@ describe('the Office acceptance cases (L4, L8, L24; N7, N9, N13)', async () => {
   const files = await acceptanceFiles();
   const cases = files.xlsx as XlsxCase[];
 
-  test('eight workbooks and eight decks, syn-negative-gain, big-lakh, syn-six-classes and syn-big-return among them', () => {
+  test('eight workbooks and ten decks, syn-negative-gain, big-lakh, syn-six-classes and syn-big-return among them, and the two six-class decks of N13', () => {
     assert.deepEqual(cases.map((c) => c.id), ACCEPTANCE_FIXTURES.map((id) => `wired-${id}`));
     assert.deepEqual([...ACCEPTANCE_FIXTURES], ['syn-standard', 'syn-lakh', 'syn-blank-invested', 'syn-negative-gain', 'family-a', 'big-lakh',
       'syn-six-classes', 'syn-big-return']);
-    assert.equal(files.pptx.length, ACCEPTANCE_FIXTURES.length);
+    assert.deepEqual([...SIX_O_CLOCK_DECKS], ['syn-pie6-reits', 'syn-pie6-hybrid']);
+    assert.deepEqual((files.pptx as Array<{ id: string }>).map((p) => p.id),
+      [...ACCEPTANCE_FIXTURES, ...SIX_O_CLOCK_DECKS].map((id) => `wired-${id}`));
   });
 
   test('syn-negative-gain: Portfolio Overview!I2 (the Equity gain) is negative and is the cell the red is checked on', () => {
