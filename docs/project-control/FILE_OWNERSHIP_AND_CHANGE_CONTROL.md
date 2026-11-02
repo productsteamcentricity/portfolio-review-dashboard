@@ -159,8 +159,8 @@ Lead decision, 28 Oct. Use only your own range; MOD-02 allocates new ranges and 
 
 | Series | EX-01 | MOD-02 | NB-01 | Already used (before 28 Oct) |
 |---|---|---|---|---|
-| D-nnn (decisions) | **D-042..D-045**. D-042 = "no fallback", amending D-041 point 4 (TA-05); D-043 = the owner's answers to CR-0008 Q17 and Q18 (2 Nov 2026, TA-03) | **D-046..D-049**, then allocates new ranges | **D-038, D-039** (on its branch), then **D-050 onward** | D-001..D-037, D-041 on main; D-038, D-039 on `feat/m1-4-overview`; D-040 on the TA-03 branch |
-| KI-nnn (known issues) | **KI-183..KI-186**. KI-183 = labels equal to Object.prototype keys; KI-184 = base-file ISIN column not read; KI-185 = ENGINE_KEYS gap (FIXED in TA-03); KI-186 = IRR explicit-zone date strings (P3) | **KI-187..KI-189**, then allocates | **KI-150..KI-159** (KI-150, KI-151 used on its branch), then **KI-190 onward** | KI-001..KI-148 on main; KI-160..KI-182 on the TA-03 branch |
+| D-nnn (decisions) | **D-042..D-045**. D-042 = "no fallback", amending D-041 point 4 (TA-05); D-043 = the owner's answers to CR-0008 Q17 and Q18 (2 Nov 2026, to be written in TA-03) | **D-046..D-049**, then allocates new ranges | **D-038, D-039** (on its branch), then **D-050 onward** | D-001..D-037, D-041 on main; D-038, D-039 on `feat/m1-4-overview`; D-040 on the TA-03 branch |
+| KI-nnn (known issues) | **KI-183..KI-186**. KI-183 = labels equal to Object.prototype keys; KI-184 = base-file ISIN column not read; KI-185 = ENGINE_KEYS gap (to be FIXED in TA-03; not in git yet); KI-186 = IRR explicit-zone date strings (P3, to be filed) | **KI-187..KI-189**, then allocates | **KI-150..KI-159** (KI-150, KI-151 used on its branch), then **KI-190 onward** | KI-001..KI-148 on main; KI-160..KI-182 on the TA-03 branch |
 | KI-140..KI-149 | | | **KI-148** (an M1.4 follow-up) is worked by NB-01 under TB-06/TB-07 | the fix-batch-4 range; KI-140..KI-147 used; KI-149 unused |
 | TX-nn (tax register) | TX-nn = KI-(159+nn), so TX-01..TX-23 = KI-160..KI-182 | | | |
 | CR-nnnn | asks MOD-02 | **allocates; next free is CR-0010** | asks MOD-02 | CR-0001..CR-0009 (CR-0008 on the TA-03 branch) |

@@ -28,7 +28,7 @@ Anything that must not be public is in the private supplement on the owner's lap
 registers carry the current values): TA-03 has had a CI run (run 41412086208 on 2 Nov, WIP head only); the batch changes blocks
 04 (the TAX_RULES key), 07, 08, 09 and 11 of `index.html`, not only 07, 08 and 11; TA-03 is EX-01's, with the PR branch
 `fix/legacy-batch-3-tax-cr-0008`; the handover package is on main (PR #17, 4a1a747); the owner answered PD-02 and PD-03 on
-2 Nov 2026.
+2 Nov 2026; NB-01's four local-only branches were pushed on 2 Nov (TB-08); the Office rule is rule 10 of CLAUDE.md.
 
 When two records disagree, git wins over every document. Then the authoritative record wins for its subject (section
 2). Record the disagreement as a defect and fix it in the next docs change.
