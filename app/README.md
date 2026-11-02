@@ -20,7 +20,7 @@ npm run check       # the built page's invariants (CSP, no network, one allowed 
 npm test            # every test, .mjs and .ts (run it under TZ=UTC too)
 npm run serve       # http://127.0.0.1:8100/next/
 npm run vendor:extract -- --check   # app/vendor and the logos equal to the blocks of index.html (M1.4)
-npm run accept:office               # local only: the wired deck and workbook opened in PowerPoint and Excel (M1.4)
+npm run accept:office               # local only: the wired deck and workbook checked in the PowerPoint and Excel already running (M1.4; owner's rule, docs/TESTING.md 6.1: never started, quit or killed; NOT RUN if not running)
 ```
 
 ## What is here, and what will be

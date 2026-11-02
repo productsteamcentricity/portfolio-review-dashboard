@@ -21,9 +21,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **Milestone M1.4 of the new build (CR-0006): the portfolio overview.** Section 1 reads a base file through its
   Upload, Validate, Preview and Review stages, and section 2 shows the headline figures, the allocations and the pies;
   the overview deck (slide C-08) and the overview workbook download from it. Every number on screen, slide and sheet
-  is a figure of one view-model (D-038, D-039). The `/next/` build, after the fix round: 1,991,388 bytes, SHA-256
-  `9b9962cd…` (deterministic, build id `739379c2249b8cfe`), with the four vendored libraries inlined. `index.html` is
-  unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
+  is a figure of one view-model (D-038, D-039). The `/next/` build, after the second fix round: 2,002,299
+  bytes, SHA-256 `064f8484…` (deterministic, build id `8088217924dedef9`), with the four vendored libraries inlined.
+  M1.4 leaves `index.html` unchanged (MD5 `12B5E5727FCA01EF2EA162C59913F01D`, main after PR #16); the libraries were vendored
+  from `911A04659CB34383E478416B54E9C306`.
   - Platform (D-038). Chart.js 4.4.0, chartjs-plugin-datalabels 2.2.0, SheetJS CE 0.18.5 and PptxGenJS 3.12.0 are
     vendored byte for byte from `index.html` (`scripts/vendor-extract.mjs`, `--check` in CI); licence texts are in
     `app/vendor/licences/`. The build accepts vendored files under the HTML parsing rule and the jszip alias, and
@@ -73,8 +74,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     `cross-output.test.ts` (one figure, one text on screen, slide and sheet) and `labels.test.ts` (labels in every
     output, never in the audit; the family switch leaves nothing behind).
   - Fixed in the new app (the legacy page is unchanged, D-028): KI-007, KI-020, KI-021, KI-071, KI-078, KI-084,
-    KI-087, KI-089, KI-091, KI-092, KI-093, KI-094 and KI-147. Filed for the legacy page: KI-150 (PptxGenJS random pie
-    colours) and KI-151 (an Asset Name such as "constructor" breaks `computeReview`).
+    KI-087, KI-089, KI-091, KI-092, KI-093, KI-094, KI-147 and, in the second fix round, KI-148. Filed for the legacy
+    page: KI-150 (PptxGenJS random pie colours). KI-151 is the new app's guard against labels such as "constructor"
+    (groups in Maps, pinned by a 7 by 5 grid); the live page's defect is KI-183 (Workstream A).
   - **Fix round, 27 Oct 2026** (CR-0006; the lead's decisions after the browser QA and the financial, Office and
     security reviews; D-039 points 1 to 15, D-037 point 1 amended, D-038's counts):
     - Numbers and Excel. Display rounding agrees with Excel (half up on the 15-significant-digit decimal; 0.145 shows
@@ -85,8 +87,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
       Workbook money is in Indian grouping. The pie label threshold applies to the displayed share. The share row of
       the client and distributor sheets sits outside the filter and the red. The source register records the Review
       stage. The Exclusion Reason follows the market value's status. The partial invested note counts holdings when
-      the share is meaningless. The Office scripts quit Excel and PowerPoint cleanly and never use or stop a
-      PowerPoint that holds someone else's deck; the Office acceptance adds syn-negative-gain (red at I2), the date
+      the share is meaningless. The Office scripts' quit and stop rules of this round were replaced in the
+      second fix round by the owner's rule of 2 Nov 2026 (below);
+      the Office acceptance adds syn-negative-gain (red at I2), the date
       format at R2, a Lakh book above 1,00,000 L and Excel's `Range.Text` of every figure compared with the screen.
       `npm run accept:office --full` passed on the FC branch: 6 workbooks and 6 decks.
     - Sections 1 and 2. The review bar stays in view when a section opens from its tab. Pie labels no longer collide
@@ -108,6 +111,34 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
       workbook equal to the screen; one display unit; house style D-029. New browser check
       `tests/browser/overview.cdp.mjs` (112 of 112, served and from disk); the spike now 149 of 149. The suite: 837
       tests under IST and under UTC. The parity matrix has 49 rows in progress (AC-01 and W-1 added).
+  - **Second fix round, integrated 2 Nov 2026** (CR-0006; the lead's decisions N1 to N19 of 27 Oct 2026 and the
+    owner's Office rule of 2 Nov 2026; D-039 points 16 to 20, D-037 point 1 reworded):
+    - Reader and parity. The base-file reader skips rows named Total or Grand Total and dates merged folios by their
+      earliest purchase date, as the live page does (D-041 points 2 and 3; KI-148 fixed in the new app). A negative
+      market value is warned, and the overview notes the pie slices and liquidity lines left out at a market value
+      of 0 or less. A joint-holder label in another letter case is reported, not linked. The parity re-run against
+      the live page after fix batch 4 retires AG-01, AG-02, AG-05, AG-06 and AG-08 and rewords AG-04, AG-09, AG-13
+      and AG-14 (KI-147 now differs from the live page by design). A 7 by 5 grid of label fields and
+      Object.prototype names pins the KI-151 guard. Tests no longer pin the live page's MD5 (N4).
+    - Workbook. The "Share of family (%)" row sits one blank row below the Grand Total, so Excel no longer takes it
+      into the Client and Distributor Allocation filter (N7). Money and units read in Indian grouping at the
+      rounding edge ("1,00,000.00", never "100,000.00" or "100,00,000.00"), and percents of 1,000 or more read as on
+      screen ("1,900.00%") (N8, N9).
+    - Sections 1 and 2, and slide C-08. Client and distributor column headers show the labels as the file spells
+      them; the group notes count named clients and put the rest in words ("2 clients, and 2 holdings with no
+      client"); an empty liquidity table is a sentence; the review bar never names a refused file ("Base file
+      refused") (N12). From 5 categories the C-08 pie leaves 26 pt above its two-row legend, so a label at 6
+      o'clock no longer sits on the legend (N13). The deck post-processing replaces with functions, so labels
+      holding $ patterns are written as they read (N14). The browser checks retry the DevToolsActivePort read on
+      EBUSY, EPERM and ENOENT, and pin the review-bar gap at 8 to 20 px.
+    - Office acceptance under the owner's rule (K1). The scripts attach only to an Excel or PowerPoint already
+      running, open only their own synthetic file read-only without a window, change no application option, close
+      only that file and never quit, stop or kill Office; with no instance running the result is NOT RUN with the
+      paths of the files for the owner to open, never a pass, and the damaged-file negative controls are never run
+      against the owner's Office. The run builds 8 workbooks and 10 decks (the six-class decks syn-pie6-reits and
+      syn-pie6-hybrid, and the cases syn-six-classes and syn-big-return). It has not been run under the new rule.
+    - Tests: 1,004 of 1,004 under IST and under UTC with node_modules, 940 of 940 without (the four "(needs npm
+      ci)" suites skipped); the spike 149 of 149 and overview.cdp 124 of 124.
 - **The capital-gains upload design for M7 (CR-0006, D-036, amending D-032).** Documents only; no code, `/next/` and
   `index.html` unchanged. The upload accepts the wealth platform's "Capital Gain Report" export as produced (columns
   by header name, PAN removed at read time, folio parsed from the instrument name, totals row reconciled, footer text

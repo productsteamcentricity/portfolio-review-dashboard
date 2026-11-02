@@ -43,7 +43,7 @@ fixtures and the CI gates. Ids: capabilities E-nn and U-nn (`02-capability-inven
 | Monthly parity (private) | `scripts/monthly-update/parity-local.ts` | node, local only; reads the licensed archive through `PRD_MONTHLY_ARCHIVE`, copies nothing | Re-derivation of 2026-09 equals the embedded blocks (canonical hashes); report of names, counts, hashes and classifications only | Before M11 merges; again on the first live month run by both pipelines |
 | Invariants | `scripts/check-next.mjs` | node | Built file: CSP first and hashes match, no network API or URL outside the allow-list, no `innerHTML`/`eval`, vendor hashes, size budget, deterministic build | CI-blocking |
 | Browser | `tests/browser/*.cdp.mjs` | zero-dependency CDP driver (Q-15), local | Sections render without console errors; no network requests; uploads; downloads | Local per release; manual preview checks before M9 |
-| Office acceptance | `scripts/office/accept-pptx.ps1`, `accept-xlsx.ps1` | PowerShell COM, from a short local path (Excel refuses long paths, D-018) | Deck opens without repair, slides export to PNG for review; workbook opens without repair, a full recalculation leaves no error value in any cell, Excel's results equal the CI evaluator's, frozen panes and filters present | Local: M1.4, M6, M9, M15, and before every release that changes `exports/xlsx/**`, `exports/pptx/**` or a sheet's or slide's view-model (release gate, section 7) |
+| Office acceptance | `scripts/office/accept-pptx.ps1`, `accept-xlsx.ps1` | PowerShell COM, from a short local path (Excel refuses long paths, D-018), attached only to the Excel or PowerPoint already running, under the owner's rule of 2 Nov 2026 ([TESTING.md](../TESTING.md) §6.1; NOT RUN with the file paths when Office is not running, never a pass) | Deck opens without repair, slides export to PNG for review; workbook opens without repair, the recalculation of its own sheets leaves no error value in any cell, Excel's results equal the CI evaluator's, frozen panes and filters present | Local: M1.4, M6, M9, M15, and before every release that changes `exports/xlsx/**`, `exports/pptx/**` or a sheet's or slide's view-model (release gate, section 7) |
 | Legacy suites | `tools/check-invariants.js`, `smoke-review.js`, `test-ai-analyst.js`, `run-regression.js` | node | The legacy page is unchanged and still correct | CI-blocking (`checks` job) until retirement |
 
 ## 3. The brief's 24 acceptance cases
@@ -280,7 +280,9 @@ force-push after the fact.
    URLs; from M11 also binaries, file classes under `monthly_updates/` and size caps.
 3. `npm test`, `npm run build`, `npm run check`, legacy suites (before M1.2: `node --test` and the legacy suites).
 4. Office acceptance (`accept-xlsx.ps1`, `accept-pptx.ps1`) when the push changes an exporter or a view-model it
-   renders: full recalculation with no error value, Excel equal to the CI evaluator, deck opens without repair.
+   renders: the workbook's own sheets recalculated with no error value, Excel equal to the CI evaluator, deck opens
+   without repair; under the owner's rule of 2 Nov 2026 (attach only, never start, quit or kill Office; NOT RUN with
+   the file paths when Office is not running, never a pass).
 5. For a monthly cycle: the monthly PRD (hand-written before M14) and the `HANDOVER.md` refresh pass
    `monthly-prd-check.mjs`.
 6. `security-release-reviewer` on the staged diff; `financial-domain-reviewer` for financial changes.

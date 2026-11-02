@@ -280,7 +280,8 @@ full width (up to 90rem). On a wide screen the header stays in view; on a narrow
 scroll sideways. The look follows the owner's design reference (the upload console of the brief): sand tabs with the
 current one black, black table headers, bordered groups, dashed upload slots, status chips. A slim review bar at
 the top of the section area shows the logo, the family label and the as-on date of the review on screen (M1.4,
-KI-020); it holds no heading and no link, so the section heading and the header keep their focus rules.
+KI-020), and the base file read; a refused file is never named ("Base file refused", M1.4 second fix round);
+it holds no heading and no link, so the section heading and the header keep their focus rules.
 
 ## 8. Calculation engine
 
@@ -453,8 +454,9 @@ Allocation and 5b Distributor Allocation, written only when the view-model shows
 Me saying why a sheet was left out; 19 Audit Log; 20 `_manifest`. Conventions: Cambria 9; header rows white bold on
 black; thin borders in #D9D9D9; the header row frozen on every sheet, and column A also on Holdings and the
 allocation sheets; an autoFilter on every table, with its hidden `_xlnm._FilterDatabase`; no merged cells; number
-formats money and units in Indian grouping (two conditional sections, D-039 point 5), percent `0.00"%"` and dates
-`d mmm yyyy`; the "Share of family (%)" row outside the filter and the conditional formats (`SheetSpec.tableRows`);
+formats money and units in Indian grouping (two conditional sections at the rounding edge, D-039 point 5), percent
+`#,##0.00"%"` and dates `d mmm yyyy`; the "Share of family (%)" row one blank row below the Grand Total, outside the
+filter and the conditional formats (`SheetSpec.tableRows`; the blank row keeps Excel from extending the filter);
 negatives in #931621
 through conditional formatting; `fullCalcOnLoad`. SUMIFS criteria refer only to canonical asset classes, the
 generated keys (P01, L01, C01, D01; C00 and D00 when not given) and Yes/No flags. A missing value is a blank cell
@@ -470,8 +472,12 @@ cached values, and every changed input is an audit entry. The engine stays the o
 **How "no formula errors" is proved:** formulas come only from a typed builder whose references resolve at build time
 to declared tables, columns and named inputs, using an allow-listed function subset; in CI a small evaluator for that
 subset computes every formula cell and compares it with the engine value (1e-9 relative), also after the AC-17 edits;
-locally, `scripts/office/accept-xlsx.ps1` opens the workbook in Excel through COM, recalculates fully and compares,
-whenever an exporter or a sheet's view-model changes. The Excel `XIRR` check column is verified by that local step only.
+locally, `scripts/office/accept-xlsx.ps1` opens the workbook in Excel through COM, recalculates the workbook's own
+sheets and compares, whenever an exporter or a sheet's view-model changes. Under the owner's rule of 2 Nov 2026
+(D-039 point 20, [TESTING.md](TESTING.md) §6.1) it attaches only to an Excel already running, opens its own file
+read-only and hides only that workbook's window, changes no application option, closes only its file and never quits
+or stops Excel; with no Excel running the result is NOT RUN with the file's path, never a pass. The Excel `XIRR`
+check column is verified by that local step only.
 
 ## 15. PowerPoint component library
 
@@ -499,7 +505,10 @@ Catalogue and tokens: [deck-design-system.md](new-build/deck-design-system.md).
   6); keeps one paragraph-properties element per paragraph and one paragraph per table cell; gives unique
   shape ids; drops content types for parts that do not exist; numbers chart parts from 1; and sets the core-property
   and zip dates to the export clock, zipping the embedded workbooks again. The same view-model and clock therefore
-  give a byte-identical deck. Text from the view-model is stripped of characters XML 1.0 cannot carry. The exporter
+  give a byte-identical deck. Every replacement takes a function, never a replacement string, so a label holding `$&`,
+  `$'` or `$$` is written as it reads (M1.4 second fix round). From 5 categories C-08's pie takes a manual plot
+  layout (`C08_LAYOUT.piePlot`, `piePlotLayout`) that leaves 26 pt above its two-row legend (D-039 point 6).
+  Text from the view-model is stripped of characters XML 1.0 cannot carry. The exporter
   takes the libraries as an argument and reads no global (D-038).
 - **Export isolation:** a deck or workbook is built only from the current `Review`; embedded chart workbooks, notes and
   alternative text come from the same view-model, so nothing of a previous family survives (AC-20).
@@ -571,10 +580,10 @@ Commands (built in M1.2 unless marked planned; [toolchain.md](new-build/toolchai
 | `npm run check` | `scripts/validation/check-next.mjs`: CSP first, hashes match, no network, one allowed link, banner, size budget, a scan of `app/src`; `-- --rebuild` for the deterministic build |
 | `npm run serve` | `scripts/serve.mjs`, 127.0.0.1:8100: legacy at `/`, new at `/next/` |
 | `node scripts/vendor-extract.mjs [--check]` | writes `app/vendor/` (the four libraries, their licences and manifest) and `app/src/config/brand-logos.json` from the blocks of `index.html`, or checks them equal (M1.4, D-038; CI runs `--check`) |
-| `node tests/browser/next-spike.mjs` | the CSP, network, layout, focus and IndexedDB gates, and the four-library page with its Blob downloads, in headless Edge or Chrome (local only; 149 checks in M1.4, with the review-bar gate of D-039 point 15) |
-| `node tests/browser/overview.cdp.mjs [--served \| --file \| --url <url>] [--port] [--browser] [--out] [--json]` | sections 1 and 2 with synthetic files (from `tests/fixtures/make-books.ts`), real keys and clicks, in headless Edge or Chrome, served and from disk: Accept under the pinned header, the review bar, focus after every action, refusals, the register stage, the full SHA-256, the KPIs, tables, matrices and notes, the pies' drawn labels (the pure Chart.js configuration is `app/src/ui/pie-config.ts`, which `chart-lib.ts` uses), both downloads and the logo after a reload (local only, M1.4) |
+| `node tests/browser/next-spike.mjs` | the CSP, network, layout, focus and IndexedDB gates, and the four-library page with its Blob downloads, in headless Edge or Chrome (local only; 149 checks in M1.4, with the review-bar gate of D-039 point 15, the gap pinned at 8 to 20 px in the second fix round; its launch retries the DevToolsActivePort read on EBUSY, EPERM and ENOENT, tested by `tests/browser/cdp-port.test.mjs` in `node --test`) |
+| `node tests/browser/overview.cdp.mjs [--served \| --file \| --url <url>] [--port] [--browser] [--out] [--json]` | sections 1 and 2 with synthetic files (from `tests/fixtures/make-books.ts`), real keys and clicks, in headless Edge or Chrome, served and from disk: Accept under the pinned header, the review bar, focus after every action, refusals, the register stage, the full SHA-256, the KPIs, tables, matrices and notes, the pies' drawn labels (the pure Chart.js configuration is `app/src/ui/pie-config.ts`, which `chart-lib.ts` uses), both downloads and the logo after a reload; from the second fix round the matrix notes, the entity headers' letter case, the empty liquidity sentence and the review bar after a refusal, and a High result acknowledged on `syn-total-rows` (local only, M1.4; run it after a change to sections 1 or 2) |
 | `npm run update -- <YYYY-MM>` (planned, M11) | the monthly update engine (local; `PRD_MONTHLY_INBOX`) |
-| `npm run accept:office` | local only (M1.4): `scripts/office/run-acceptance.ts --full` builds the wired deck and workbook for syn-standard, syn-lakh, syn-blank-invested, syn-negative-gain, family-a and a Lakh book above 1,00,000 L, opens each in Excel or PowerPoint through COM with a negative control (Excel's `Range.Text` of every `_manifest` figure compared with the screen's text; the scripts quit Office cleanly and never use or stop a PowerPoint that holds someone else's presentation), and writes the reports under `app/dist/office/`; `--spike`, `--samples` and `--check-file <xlsx>` (evaluator only, no Office) also exist |
+| `npm run accept:office` | local only (M1.4): `scripts/office/run-acceptance.ts --full` builds the wired workbook and deck for syn-standard, syn-lakh, syn-blank-invested, syn-negative-gain, family-a, a Lakh book above 1,00,000 L, syn-six-classes and syn-big-return, and the decks of syn-pie6-reits and syn-pie6-hybrid (a C-08 slice at 6 o'clock above the two-row legend), and checks each in the Excel or PowerPoint the owner already runs, under the owner's rule of 2 Nov 2026 ([TESTING.md](TESTING.md) §6.1: attach only, the task list first; the script's own file read-only without a window; no application option changed; only that file closed; never quit, stop or kill Office; NOT RUN with the file paths when Office is not running, never a pass; on a hang TIMEOUT with the path of the file left open). Excel's `Range.Text` of every `_manifest` figure is compared with the screen's text and each sheet's filter range with the file's; the damaged-file negative controls are written and reported NOT RUN. Reports under `app/dist/office/`; `--spike`, `--samples` and `--check-file <xlsx>` (evaluator only, no Office) also exist |
 
 **CI today** (`.github/workflows/ci.yml`): the job `checks` runs the legacy gates (invariants, smoke, AI Analyst,
 regression) unchanged; the job `next` runs the privacy scan of the documentation, the docs link check and the monthly
@@ -626,7 +635,9 @@ owner's audit decisions are OD-nn in
 Each is a gate of the milestone named, and this section is updated when it closes:
 
 - PowerPoint rendering of the components and theme XML post-processing (M9); for C-08, `accept-pptx.ps1` on the
-  wired deck (`npm run accept:office`, M1.4) is still to run.
+  wired decks of the integrated head (`npm run accept:office`, M1.4) is still to run, under the owner's rule of 2 Nov
+  2026 (attached to a PowerPoint the owner runs; NOT RUN with the deck paths otherwise). The second fix round's
+  fixer looked at the six-class decks in PowerPoint on its own branch on 27 Oct 2026, before that rule.
 - A real double-click of the built page on an analyst's own browser profile (the M1.2 spikes ran headless; the browser
   QA steps of [toolchain.md](new-build/toolchain.md) §9).
 - The capital-gains columns (D-036: the platform export's, decided 23 Oct 2026; the blank template not yet tried by analysts; M7).
