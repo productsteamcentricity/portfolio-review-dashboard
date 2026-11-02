@@ -5,6 +5,35 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ## [Unreleased]
 
 ### Fixed (fix batch 3: tax rules per the TY2026-27 reckoner, CR-0008)
+- **Tax batch, part T5 (CR-0008, D-040, D-043): the follow-ups to parts T1 to T4, the owner's answers to questions 17
+  and 18, and the corrections from two reviews.** `index.html` MD5 `0713C6BEEFCB35D778730AB9BEF3E430` →
+  `9375366FAC8093A870EF61DEE2C763FF` (16,898,566 → 16,916,640 bytes; patch `tools/patches/2026-10-27-tax-5-followups.js`).
+  On branch `fix/legacy-batch-3-tax-cr-0008`, which carries the whole batch; the batch merges as one change.
+  - Aggressive hybrid, arbitrage and equity savings funds take the reckoner's usual bucket only when the review is valued
+    on or after 1 Apr 2026, labelled "usual bucket per the tax reckoner; confirm with the fund house"; before that date
+    they are unclassified, with a reason (KI-170). Equity savings funds are now classed from that date; aggressive
+    hybrid and arbitrage funds are no longer classed in a review valued earlier. The AI Analyst's tax signal follows the
+    class, so a book that holds these funds can get different trims (PD-50, CR-0008 question 21).
+  - A fund called a Listed AIF is Category III, fund level, with a note that asks the analyst to confirm the category
+    (question 17, D-043); an AIF whose category the file does not state stays Category I or II with a note; a fund's own
+    stated category wins; the category the performance data gives is a statement about the fund only when the names
+    are the same (the name matcher is loose); the category is read once, in `taxClassify`. Question 18: crypto stays
+    out of set-off, no code.
+    On the sample book no tax, LTCG, STCG, estimated tax, saving, harvest or total CMV moves; the not-classified CMV and
+    gain move into a Fund level amount (2.7051 to 2.0535 Cr, new 0.6516 Cr).
+  - An IRR date written with an explicit zone ("2023-04-01T20:00:00Z") is read as the day written in every time zone
+    (KI-186, interface I-04); other zone text keeps the machine-local day.
+  - The harvest inputs are text fields that read Indian and international digit grouping, a rupee sign, Rs, INR (with
+    or without a dot), "/-", "/=", a trailing INR or Rs, a "%" in the slab rate and an exponent; no "-Rs 0.00"; the
+    unreconciled table says why, and a sale with no price has its own reason; the class footnote fits the slide (KI-109) and the class and harvest slides count holdings in the singular and the plural; the wording
+    says "the tax reckoner" because the AI Analyst slide goes to the client.
+  - `ENGINE.taxDefaults` is frozen and `check-invariants` lists all 28 engine names (KI-185). KI-184 is filed (the base
+    file's ISIN column is not read; D-040 point (c) corrected). The independent review (8 reviewers, 51 findings) and
+    the delta review of its corrections (6 reviewers) are answered in CR-0008; KI-200 to KI-206 are the first review's
+    open findings.
+  - 3 new regression files (`CR-0008-T5-followups.js`, `CR-0008-T5-item10-listed-aif.js`,
+    `CR-0008-T5-item11-irr-zone-dates.js`); `KI-170`, `KI-171` and `KI-180` changed. 46 files, 1,512 checks, pass in
+    IST and UTC; `node --test` 234/234; `smoke-review` 36/36; `test-ai-analyst` 24/24.
 - **Tax batch rebased on fix batch 4 (CR-0008): the branch merged `main` (PR #14 to #16) and its page was rebuilt**
   from main's page (fix batch 4) with the four tax patches in file-name order: `index.html` MD5
   `12B5E5727FCA01EF2EA162C59913F01D` → `0713C6BEEFCB35D778730AB9BEF3E430`. Parts T1, T3 and T4 apply unchanged. Part T2

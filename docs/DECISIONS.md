@@ -475,13 +475,16 @@ data fixes for the live page. Some fixes need a rule the reckoner leaves open; t
   added to the purchase date, clamped to the month end (29 Feb 2024 + 12 months = 28 Feb 2025), and the lot is long
   term from the next day (TX-01, KI-160). The clamp is for the tax adviser to confirm.
 - **(c) Shares held directly.** A foreign-listed share is 24 months, short term at slab, long term 12.5%, no
-  exemption, only on a positive marker: an ISIN not starting with IN, or a product or category label naming foreign,
+  exemption, only on a positive marker: an ISIN not starting with IN (the ISIN of the matching reference entry; the
+  base file's own ISIN column is not read, KI-184), or a product or category label naming foreign,
   international, US or overseas equity. Every other direct equity is Listed Equity Shares, and direct-equity product
   labels such as Equity, Shares and Stocks count as direct equity (TX-03, KI-162). The reckoner has no row for
   foreign-listed shares.
 - **(d) AIFs.** Category III is taxed at fund level: no investor-level gain, loss or tax, kept out of the harvest
   pools, with a plain note (TX-07, KI-166). Category I and II pass through per the AIF's annual statement: no
   investor-level tax figure is computed and they are kept out of the harvest pools, with a note (TX-12, KI-171).
+  Amended by D-043 (2 Nov 2026): a fund called a Listed AIF is treated as Category III, with a note to confirm the
+  category against the AIF's statement; a category the fund states itself wins.
 - **(e) Set-off order.** Short-term losses go first against the gains taxed at the highest rate. Slab-rate gains are
   ranked at an analyst-set slab rate that defaults to 30% and is shown as an assumption (TX-16, KI-175).
 - **(f) The Rs 1.25 lakh exemption** is per client (person) and per tax year, shared across listed shares,
@@ -500,8 +503,10 @@ Settled while building part T1 (classification and the TAX_RULES rows, 27 Oct 20
 for the owner to confirm or change:
 - **Usual buckets.** Hybrid funds take the reckoner's bucket for their SEBI category: aggressive hybrid
   equity-oriented, balanced hybrid the general rule, conservative hybrid Specified. Balanced advantage, dynamic asset
-  allocation, equity savings, multi asset and life cycle funds, and retirement and children's funds, stay
-  unclassified with the reason until the AMC's year-end classification is an input. SIFs are classed by strategy
+  allocation, multi asset and life cycle funds, and retirement and children's funds, stay
+  unclassified with the reason until the AMC's year-end classification is an input. (Part T5 amends this for
+  aggressive hybrid, arbitrage and equity savings funds: they take the reckoner's usual bucket from 1 Apr 2026 and
+  are unclassified before it; see "Settled while building part T5" below.) SIFs are classed by strategy
   name: equity long-short and sector rotation equity-oriented, debt long-short Specified; ex-top 100, hybrid and active
   asset allocator unclassified. A single equity ETF or BeES fund of funds is "Equity ETF FoF (90/90)", pending the
   owner's or AMC's confirmation fund by fund; other multi-ETF or index FoFs (Bharat 22, ESG sector leaders, multi
@@ -570,6 +575,49 @@ above, for the owner to confirm or change:
   flag comes off the row and the ranking at 30% applies again.
 - **The carry-forward sentence** says "tax years" for every review (the review's question on reviews valued before 1
   Apr 2026 is open).
+
+Settled while building part T5 (the follow-ups to parts T1 to T4, the owner's answers of 2 Nov 2026 and the
+independent review, 2 Nov 2026), within the decisions above, for the owner to confirm or change:
+- **The usual bucket, dated (the new build's TR-7 and LD-11).** Aggressive hybrid, arbitrage and equity savings funds
+  take the reckoner's usual bucket (Master Summary rows 16 to 18, column P; Hybrid Funds & FoFs D19 to D21):
+  "Hybrid MF (equity-oriented)" for aggressive hybrid and equity savings, "Equity Mutual Funds" for arbitrage, each
+  labelled "usual bucket per the tax reckoner; confirm with the fund house" on the tab, the class slide and the AI
+  Analyst, but only when the tax reference date (a) is on or after 1 Apr 2026. Before it they are unclassified, with a
+  reason saying the AMC's classification for that year is needed. The reckoner calls the bucket equity-oriented only
+  while 65% or more of the fund is in listed Indian equity on average over the tax year, so the AMC's year-end
+  classification stays the check. A fund whose name says arbitrage is read as an arbitrage fund whatever its
+  category. Part T1 had classed aggressive hybrid and arbitrage always and left equity savings unclassified always.
+  The new build's design states the same rule (TR-7, LD-11; [`new-build/capital-gains-upload.md`
+  §10.5](new-build/capital-gains-upload.md#105-tax-class-by-fund-type)); its label says "the owner's reckoner", which
+  the live page does not use because its AI Analyst slide goes to the client (below).
+- **The reference date is the assumed sale date.** The harvest reads "If the book were sold on <date>", so the
+  valuation date (a) is the date of sale that the new build's TR-7 gates on; a review valued before 1 Apr 2026 asks
+  about a sale before the usual bucket applied.
+- **The AI Analyst moves with the class (PD-50).** The AI Analyst's tax signal has weight 7 in its composite, so the
+  class a fund takes, and for the three fund kinds the review date, change the trim amounts, target weights and plan
+  summary of a book that holds such funds (measured on a synthetic stress book: one fund's release 0.37 to 0.54 Cr
+  and its target weight 6 to 3). Built: the signal uses the class, as it does for every other fund. The alternative,
+  "not assessed until the analyst confirms the class", is one line in `aiaSigTax`; it awaits the owner's answer to
+  PD-50.
+- **An AIF's category is read once** (D-043): the fund's own words, then the performance data's category for the fund
+  it matched (when the holding's name is the entry's own name once normalised: the page's name matcher is loose, and a
+  sibling series is not told its category by it), then "Listed AIF" (Category III, with a note), else Category I or II
+  assumed, with a note. An own category that says unlisted blocks the Listed AIF label of a matched entry.
+- **IRR dates with an explicit zone.** A date-time with a zone in the IRR sheet ("2023-04-01T20:00:00Z",
+  "2023-04-01T00:00:00+05:30") is read as the day written, the same in every time zone (part T2 read the machine-local
+  day of the instant, which is another day in some zones; main read the UTC date). Only text that the browser's Date
+  accepts is read at all, so an impossible date-time is still dropped. Other zone-named text, such as an RFC 2822
+  string, stays the machine-local day (KI-186). The new build's IRR reader reads free text as written (R-11). A Z time
+  that is an Indian local midnight written in UTC ("2026-03-31T18:30:00.000Z") reads as 31 Mar, as it did on `main`
+  (part T2 read 1 Apr on an Indian machine); which day a Z time means is the owner's call if a real export shows one.
+- **The harvest inputs** are text fields. Indian or international digit grouping, a leading rupee sign, Rs, Rs. or
+  INR (with or without the dot), a trailing "/-", "/=", INR or Rs, a "%" in the slab-rate field and an exponent are
+  read; only a blank or non-numeric entry restores the default, with no message beside the field (a known gap).
+- **A sale, switch out or transfer out with no price** (and a stated amount) never reaches the unit ledger. A holding
+  whose history then gives more units than the base file says that such a row in the sheet carries no price, instead of
+  saying a sale is missing.
+- **Client-facing wording** says "the tax reckoner", never "the owner's reckoner": the AI Analyst slide and the
+  workbook's AI Analyst sheet go to the client.
 **Alternatives.** Leaving every hybrid and SIF unclassified until an AMC classification exists (rejected for the
 categories whose bucket is fixed by their SEBI limits); mapping funds by plan name (rejected: wrong for 3 of 7
 retirement plans on the review's measure); a fund whitelist for the international test (rejected: it loses
@@ -577,8 +625,10 @@ international funds with a blank product).
 **Consequences.** CR-0008 implements the fixes in parts on `fix/legacy-batch-3-tax`; part T1 is KI-162 to KI-165,
 KI-170, KI-172 to KI-174 and KI-178 to KI-180; part T2 (`fix/legacy-batch-3-tax-p2`) is KI-160, KI-161, KI-176 and
 step 1 of KI-177; part T3 (`fix/legacy-batch-3-tax-p3-r2`) is KI-166 to KI-169, KI-171, KI-175, KI-181 and KI-182, with
-KI-130; part T4 (the same branch) keeps crypto out of set-off after the re-review (KI-182, KI-175). The owner's and
-tax adviser's questions are listed in CR-0008. The new build ports each rule with
+KI-130; part T4 (the same branch) keeps crypto out of set-off after the re-review (KI-182, KI-175). Part T5
+(`fix/legacy-batch-3-tax-cr-0008`, the branch that merges the whole batch) carries the follow-ups above, the owner's
+answers to questions 17 and 18 (D-043), KI-184 to KI-186 and the known issues its independent review filed
+(KI-200 to KI-206). The owner's and tax adviser's questions are listed in CR-0008. The new build ports each rule with
 the same known answer (D-028).
 
 ## D-041 — Live-page base-file reading fixes (27 Oct 2026, lead under D-033)
@@ -661,3 +711,46 @@ fixture exercises yet; the ledger notes list them and KI-148 tracks them for M1.
 `DATA_DICTIONARY.md` §5.3 and §8 with point 2 (and consider point 3) before its reader ships: their "as the legacy"
 wording on merged purchase dates and holding days is stale once this merges. The owner's questions BF-19 and BF-26
 stay open for both, with question 1 above.
+
+## D-043 — The owner's answers on the AIF category and on crypto set-off (2 Nov 2026, relayed by the lead; CR-0008)
+**Context.** CR-0008 left two questions to the owner. Question 17: the performance data labels 11 of the 12 AIFs it
+holds "Listed AIF", which states no SEBI category, and the live page (part T3) treated an AIF whose category it could
+not read as Category I or II (pass-through). Question 18: whether crypto gains and losses can be set off under the Act
+in force from 1 Apr 2026 (D-040 (g)); the page kept crypto out of set-off meanwhile (part T4). The owner answered both
+on 2 Nov 2026 through the lead.
+**Decision.**
+1. **Question 17: yes.** A fund called a "Listed AIF" is treated as Category III (taxed inside the fund; no
+   investor-level gain, loss or tax; kept out of the harvest), and every surface says so in a safe note that asks the
+   analyst to confirm the category against the AIF's statement. The owner's words: "Yes and still put a safe note".
+2. **How the page reads an AIF's category** (`taxClassify`, one place, four steps):
+   1. the fund's own words (its category, name and product): Category III, else Category I or II, as stated, with no
+      mark;
+   2. else the category of the performance-data entry the holding matched (the page's own matcher links the holding to
+      the entry before it computes tax), when the holding's name is the entry's own name once normalised; the matcher
+      is loose, so a sibling series it maps to the entry is not told the entry's category. "AIF (CAT III) - Listed
+      Equity" is Category III, as stated;
+   3. else "Listed AIF" (the holding's category, or the matched entry's, through any match, unless the holding's own
+      category says unlisted): Category III, fund level, marked as treated by this answer, with the note;
+   4. else nothing states a category: Category I or II, pass-through, marked as assumed, with a note (part T5 item 4).
+   A fund whose own words say Category I or II while the performance data calls it a Listed AIF is therefore Category I
+   or II, as stated, with no note. The words that count are cat or category followed by III, II, I, three, two, one, 3,
+   2 or 1, with spaces, dots, brackets (round, square or curly), slashes, underscores, hashes, commas or dashes between.
+   "AIF-II" and "Category No. III" are not read ("AIF-II" because a series number such as "Fund III" would then be taken
+   for a category); such a fund falls to step 4 and its note asks for confirmation. [The owner has not yet confirmed
+   step 1 in plain words; the lead asked on 2 Nov 2026. This line is updated when they answer.]
+3. **Question 18: keep "no set-off".** Crypto gains and losses stay out of set-off and a crypto loss is not carried
+   forward, as in part T4 (D-040 (g)). No code changes.
+**Measured effect (question 17, the standard synthetic sample book).** No tax, LTCG, STCG, estimated tax, saving,
+harvest or total CMV moves. The Listed AIF's CMV and Gain/Loss move out of "not classified" into a "Fund level" amount:
+the not-classified CMV 2.7051 Cr becomes 2.0535 Cr, the not-classified gain 0.8051 Cr becomes 0.6535 Cr, and Fund
+level shows a new 0.6516 Cr (gain 0.1516 Cr). The Left-out lists name the AIFs by what they are treated as.
+**Alternatives.** Keep Category I or II for a Listed AIF (the default of part T3; the answer replaces it). Treat every
+Listed AIF as Category III with no note (rejected: the owner asked for a safe note, and the performance data states no
+category). Let the label override a category the fund states itself (not taken: step 1 is the conservative reading and
+keeps a stated Category I or II as pass-through; it awaits the owner's plain-words confirmation).
+**Consequences.** Amends D-040 (d); D-040 (g) and question 18 are unchanged. The tests that asserted the old reading
+move with it: `KI-171-aif-cat-i-ii.js` (the sample book's Listed AIF is Category III, fund level) and
+`KI-180-debt-row-section.js` (every TAX_RULES row is still reached, with an equity Category II case added; the sample
+book's totals as above). A new `CR-0008-T5-item10-listed-aif.js` pins the four steps, the debt and long-short rows and
+every surface. The new build ports the same four steps when it ports AIF treatment (M7). D-042 is reserved for fix
+batch 5.
