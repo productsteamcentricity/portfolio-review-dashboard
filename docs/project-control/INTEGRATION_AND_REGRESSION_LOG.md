@@ -15,7 +15,7 @@ chat that wants to know "what is the last state we know is good?" reads section 
 
 | Item | Value | Evidence |
 |---|---|---|
-| `main` (= `origin/main`) | `4a1a747`, "Merge pull request #17 from productsteamcentricity/handover/mod-01-to-mod-02-20261028" (docs only), 30 Oct 2026 07:54 UTC (13:24 IST); the last change to `index.html` is `6443826` (PR #16) | `git ls-remote origin`; `git log` [VERIFIED] |
+| `main` (= `origin/main`) | `234fa31`, "Merge pull request #18 from productsteamcentricity/docs/registers-1" (docs only), 2 Nov 2026 10:13 UTC (15:43 IST); before it `4a1a747` (PR #17, docs only, 30 Oct 07:54 UTC); the last change to `index.html` is `6443826` (PR #16) | `git ls-remote origin`; `git log` [VERIFIED] |
 | Live page `/` | 16,837,249 bytes, MD5 `12B5E5727FCA01EF2EA162C59913F01D`, SHA-256 `9794454d4edba9b43975f57757f887ef46c806e1a83f5f63872093731c9138bd` | downloaded 28 Oct 07:08 UTC; equal to `git show origin/main:index.html` [VERIFIED] |
 | Preview `/next/` | 46,905 bytes, MD5 `b4f23c7e55e7baab25086c14f2d0448c`, SHA-256 `0407eb12033ec8c1432fb787f9c5956200318c84f0172f3a4c8243a50ee73693` | downloaded 28 Oct; equal to the PR #14 build recorded in `CHANGELOG.md` [VERIFIED] |
 | CI and Pages on `6443826` | "Dashboard checks" success; "Publish dashboard to GitHub Pages" success, including the new-app install, build and check steps | `gh run list`, `gh run view` (run ids below) [VERIFIED] |
@@ -41,8 +41,9 @@ Pages run. Until then every recovery returns to the row above.
 | 27 Oct 2026 | `c9ec1cc` (PR #14) | `911A0465` | 46,905 B, `0407eb12` | NB-01 |
 | 27 Oct 2026 | `6443826` (PR #16) | `12B5E572` | 46,905 B, `0407eb12` (unchanged) | MOD-01; re-verified 28 Oct |
 | 30 Oct 2026 | `4a1a747` (PR #17, docs only; no Pages run) | `12B5E572` (unchanged) | 46,905 B (unchanged) | MOD-01; re-verified by MOD-02 on 2 Nov |
+| 2 Nov 2026 | `234fa31` (PR #18, docs only; no Pages run) | `12B5E572` (unchanged) | 46,905 B (unchanged) | MOD-02 |
 
-## 2. Integration history: pull requests #1 to #16
+## 2. Integration history: pull requests #1 to #18
 
 All 16 PRs are merged; none is open. Merge times are the merge commits' times in IST. "Pages" says whether the merge
 published the site (the path filter skips docs-only merges). [VERIFIED: `git log --first-parent origin/main`,
@@ -66,10 +67,12 @@ published the site (the path filter skips docs-only merges). [VERIFIED: `git log
 | #14 | 27 Oct 12:55 | `c9ec1cc` | `feat/next-top-tabs` | section tabs across the top (D-037) | B | unchanged | yes | layout spike 99/99; owner approved the layout 27 Oct 11:43 IST |
 | #15 | 27 Oct 15:17 | `fb7f59c` | `docs/cg-template-spec` | capital-gains upload design and tax-rule table v1 (D-036) | B | unchanged | no | financial reviewer approval (design section 10.10) |
 | #16 | 27 Oct 18:13 | `6443826` | `fix/legacy-batch-4-basefile-r2` | fix batch 4: base-file reading, KI-140 to KI-146 (CR-0009, D-041) | A | `12B5E572` | yes | see section 1 |
+| #17 | 30 Oct 13:24 | `4a1a747` | `handover/mod-01-to-mod-02-20261028` | the handover package: project-control registers and handover documents (TC-01) | C | `12B5E572` (unchanged) | no | docs only; merged by MOD-01; Dashboard checks run 41022932782 |
+| #18 | 2 Nov 15:43 | `234fa31` | `docs/registers-1` | MOD-02's register update (TC-02 to TC-04, rulings R-8 to R-11) | C | `12B5E572` (unchanged) | no | gate rows 2 to 6 in section 8 |
 
 Notes:
 - PRs #11, #12 and #13 were merged one after another and pushed together, so Pages ran once, on `517becf`.
-- PRs #2 to #16 were merged locally on `main` with `git merge --no-ff` and pushed (D-020). [VERIFIED: `git reflog show main`]
+- PRs #2 to #18 were merged locally on `main` with `git merge --no-ff` and pushed (D-020). [VERIFIED: `git reflog show main`]
 - Pages run ids: `af96042` 38690981853 (manual, 15 Oct); `9f018e4` 38729292021; `f778283` 39209527079; `782794f`
   39236998758; `bb413c4` 39799324084; `517becf` 39958670578; `c9ec1cc` 40467080510; `6443826` 40506084394. All
   succeeded. [VERIFIED: `gh run list --workflow pages.yml`]
@@ -160,7 +163,7 @@ detail of each change is in [ACTIVE_CHANGE_REGISTER.md](ACTIVE_CHANGE_REGISTER.m
   [VERIFIED: `git merge-tree` of `6443826` with both branches]
 
 ### 5.2 M1.4, TB-06 and TB-07, owner NB-01
-- **Branches (LOCAL ONLY, never pushed, never CI'd, never scanned with the deny-list):** `feat/m1-4-overview` at
+- **Branches (pushed to origin on 2 Nov after clean pre-push scans, TB-08; no CI run on them yet):** `feat/m1-4-overview` at
   `07a6460` (23 commits ahead of `main`, contains `6443826`, worktree `.claude/worktrees/m14`) and the round-2 fixers
   G1 `4610684`, G2 `be7f395`, G3 `202f8f6` on `worktree-wf_bdc6c774-599-1/-2/-3`, one unique commit each. The round-1
   fixers FA, FB, FC and FD are contained in `feat/m1-4-overview`; FC (`94f5d5b`) is also on the local branch
@@ -174,10 +177,11 @@ detail of each change is in [ACTIVE_CHANGE_REGISTER.md](ACTIVE_CHANGE_REGISTER.m
 - **Round-1 verification (on `6015190`, before `main` was merged in), as reported by NB-01:** QA PASS with 6 Low
   items; financial review approved; Office acceptance 12/12 but verdict FAIL on one medium item (the share row, fixed by
   G2's N7); security gate NO-GO only because `main` had moved.
-- **First step:** preserve the work off this laptop (TB-08), after a read-only run of the m14 worktree's own pre-push
+- **First step (done 2 Nov):** preserve the work off this laptop (TB-08), after a read-only run of the m14 worktree's own pre-push
   scan with the deny-list. Then NB-01's plan: integrate G1 to G3, docs, full checks, round-3 verification, PR.
 - **Coordination:** whichever of M1.4 or TA-05 merges second retires AG-13 and AG-14 and edits the pinned retired list
   (INTERFACE_CONTRACTS.md, I-14). The docs conflicts with TA-03 are in section 5.1.
+- **2 Nov updates.** Contract v1 ACCEPT with K1 to K8 and v2 ACCEPT (ARC-01); early cross-build signal (ARC-01, not a verdict): with the three fixers merged and the TA-03 head 0f1c5d3 merged in, `node --test` gives 994 tests, 989 pass, 5 fail in IST and UTC, the same 5 as without TA-03, so TA-03 adds no failure; the only conflicts are the three docs files. NB-01 integrates locally under "continue"; no push of the integrated head and no PR without MOD-02's go; the Office scripts follow the owner's rule first (R-12).
 
 ### 5.3 TC-01, this handover package
 - **Branch:** `handover/mod-01-to-mod-02-20261028` at `6443826` plus the handover documents, worktree
@@ -262,6 +266,9 @@ regression 44 files, 1,385 checks; CI run <id> green".
 | 1 | 28 Oct 2026 | (none yet) | none | MOD-01 | none | No change has passed a gate under this model yet. Evidence gathered before 28 Oct is in sections 2 and 5 | none | none |
 | 2 | 2 Nov 2026 | TC-02: register update, PR #18 (docs only) | Gate B (quick review) | ARC-01 | `docs/registers-1`, base 4a1a747, head 227f65a | ARC-01 reported: read `git diff 203d5fa 227f65a` and the first commit in full; head equal to origin and to the clean worktree; CI run 41413344450 success; all 7 files in MOD-02's area; pattern scan found no PAN, UUID, session id, token, user path or claude.ai link. MOD-02 re-checked: head 227f65a equals origin; run 41413344450 is success on 227f65a. ARC-01 did not run the deny-list scan (MOD-02's: 0 blocking). Findings P1 to P6 non-blocking | GO for head 227f65a only | P1 to P6 fixed in the next head; ARC-01 reviews the delta; the security-release-reviewer GO is MOD-02's to obtain before the push |
 | 3 | 2 Nov 2026 | TC-02: register update, PR #18 (docs only) | Security (security-release-reviewer) | MOD-02 ran the agent | `docs/registers-1`, base 4a1a747, head f2fc29f (3 commits, 8 files) | GO bound to f2fc29f: all files under docs/; full diff read; own pattern scan of the net diff and of every commit's patch (e-mail, tokens, keys, session ids, claude.ai links, user paths, PAN, phone, hidden characters, private-folder mentions): 0 hits; privacy scan with the deny-list 0 blocking, 12 warnings, all the digit-run rule on GitHub run ids; pre-push scan PASS; identity of the 3 commits is the project noreply; the SHAs and run ids in the diff checked with `git cat-file` and `gh run view`; docs-links 0 broken; `check-invariants --expect-md5 12B5E572` holds. Not verified by it: the live Pages MD5, ARC-01's findings, the session facts | GO for head f2fc29f only | six non-blocking documentation findings: five fixed in the next commit (a delta review of that commit is requested), the PR body is edited after the push |
+| 4 | 2 Nov 2026 | TC-02: register update, PR #18 (docs only) | Gate B (quick review of the whole PR) | ARC-01 | `docs/registers-1`, base 4a1a747, head 2f48d13 (4 commits, 12 files) | ARC-01 reported: read the delta f2fc29f..2f48d13 and the middle commit in full; head equal to origin and to the clean worktree; CI run 41421459841 success; all files under docs/; pattern scan clean; facts checked against git (branch counts, remote heads, clean worktrees, 22 + 6 = 28; KI-186 replicated with 17 forms in six zones). MOD-02 re-checked the head and the run | GO for head 2f48d13 only | three non-blocking findings (status words, the RR-09 evidence cell, recording the verdict) fixed in the follow-up docs commit |
+| 5 | 2 Nov 2026 | TC-02: PR #18 | Security (security-release-reviewer), delta | MOD-02 ran the agent | `docs/registers-1`, head 2f48d13 (parent f2fc29f) | GO bound to 2f48d13: the delta (10 files, +82/-45) and the whole PR (12 files, +214/-100) all under docs/; pattern scans of the added lines, the delta, the net diff and every commit's patch: 0 hits; privacy scan with the deny-list 0 blocking (15 warnings, all the digit-run rule on run ids); pre-push scan PASS; identity of the 4 commits; SHAs and run ids checked with git and gh; five of its six earlier findings fixed (the PR body edited after the push). New non-blocking findings A to C | GO for head 2f48d13 only | A (wording that reads as done where it is planned in TA-03), B (RR-09 evidence cell), C (M3 reader not built yet) fixed in the follow-up docs commit |
+| 6 | 2 Nov 2026 | TC-02: PR #18 | Gate D (merge) | MOD-02, with the owner's approval ("Yes, merge") | main 4a1a747 to 234fa31 | D-020 merge in the main checkout: second parent 2f48d13, message per D-020, 12 files all under docs/; pre-push scan PASS; `git ls-remote origin refs/heads/main` = 234fa31; Dashboard checks on main run 41427015317 success (both jobs); live page MD5 12b5e572... equal to main's index.html and /next/ 46,905 B; no Pages run (docs only). `release-check --after-push` run in the main checkout: FAIL on the "branch" check only (it was run on main), every other check PASS | merged | process note: run `--after-push` from the PR branch's worktree and verify main with `git ls-remote` (see the known-issues note) |
 
 ## 9. Change log of this file
 
@@ -272,3 +279,4 @@ regression 44 files, 1,385 checks; CI run <id> green".
 | 2 Nov 2026 | MOD-02 | Handover validated: baseline now `4a1a747` (docs only), baseline history and section 6 updated |
 | 2 Nov 2026 | MOD-02 | TA-03 CI evidence (run 41412086208), the wrong "blocks unchanged" statement (section 6) |
 | 2 Nov 2026 | MOD-02 | Gate record 2 (PR #18 quick review, ARC-01); the PR #17 time corrected to 07:54 UTC; section 6 block row cites ARC-01's confirmation |
+| 2 Nov 2026 | MOD-02 | PR #17 and #18 in the history, baseline 234fa31, gate rows 4 to 6, section 5.2 updated for TB-08 and the contract verdict |
