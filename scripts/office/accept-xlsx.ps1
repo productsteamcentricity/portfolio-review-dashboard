@@ -11,12 +11,12 @@ this PC with the owner's work in it, so the script:
      GetActiveObject fails, the verdict is NOT RUN (exit code 2), and the script prints the absolute path of the
      synthetic file for the owner to open by hand. It never starts Excel and never creates a second instance.
   2. opens only its own synthetic file, read-only (UpdateLinks 0, ReadOnly true, not added to the recent list).
-     Excel has no true "no window" in a shared instance: the file opens in a window of the owner's Excel. Before the
-     open the script remembers the owner's active workbook and window. Right after the open, before any wait or other
-     work, it hides only its own workbook's window (Windows.Item(1) of its workbook, a property of that file), so
-     frozen panes, which need a shown window, are not checked in Excel (the writer's tests check them in the file).
-     After closing its file it re-activates the owner's workbook and window, only when they still exist; it never
-     creates, closes or changes anything else.
+     Excel has no true "no window" in a shared instance: the file opens in a window of the owner's Excel. Right after
+     the open, before any wait or other work, it hides only its own workbook's window (Windows.Item(1) of its
+     workbook, a property of that file), so frozen panes, which need a shown window, are not checked in Excel (the
+     writer's tests check them in the file). It holds no object of the owner's: it neither remembers nor re-activates
+     the owner's workbook or window (point 7); which window is active once its own is hidden is left to Excel. It
+     never creates, closes or changes anything else.
   3. changes no application option: no alert, visibility, macro security, calculation mode, screen updating or event
      setting is written. It recalculates only its own workbook, sheet by sheet (Worksheet.Calculate), never the
      application, which would recalculate the owner's books. It reads the calculation mode, and only that, and runs
@@ -35,10 +35,19 @@ this PC with the owner's work in it, so the script:
      with its path.
   6. the damaged-file negative control is never run against the attached Excel (it would raise the repair prompt on
      the owner's screen): run-acceptance.ts writes it and reports it NOT RUN with its path.
+  7. RULE 10 AS AMENDED (CLAUDE.md, 9 Nov 2026): never enumerate, read, copy, save or record the name or path of a
+     document you did not open. The script uses only the workbook its own Open returned and that workbook's own
+     window, sheets, names and cells. It reads no name, path, caption or content of any workbook or window it did
+     not open: it reads neither the active workbook nor the active window, so it holds and re-activates nothing of
+     the owner's (point 2); it uses the application's Workbooks only to open its own file (no count, no index, no
+     loop) and never the application's Windows. The repair log of another document is never read: Excel writes its
+     repair logs to the temporary folder, where they can name the owner's documents, so the script neither lists
+     nor reads them. A repair is detected from its own workbook only: the error of its own open, and the caption of
+     its own workbook's window.
 
-Checks: detects a repair; recalculates its own sheets; compares every expected formula cell with Excel's value at 1e-9
-relative; compares the text Excel shows (Range.Text) with the screen's text for every figure of the _manifest and every
-sample text cell; checks each filter's range as Excel holds it after the open
+Checks: detects a repair (from its own workbook only, point 7); recalculates its own sheets; compares every expected
+formula cell with Excel's value at 1e-9 relative; compares the text Excel shows (Range.Text) with the screen's text for
+every figure of the _manifest and every sample text cell; checks each filter's range as Excel holds it after the open
 (AutoFilter.Range.Address(False, False)) against the file's, the hidden sheet, names, fonts, number formats and the red
 of a negative cell; in manual calculation only (point 3), edits one input in memory and compares the recalculated
 dependents.
@@ -63,7 +72,7 @@ $full = [System.IO.Path]::GetFullPath($Path)
 $result = [ordered]@{
   tool = 'accept-xlsx.ps1'; file = $full; verdict = 'not run'; ran = $false; pass = $false; excel = $null
   officeRunning = $false; attached = $false; opened = $false; repaired = $false; repairEvidence = @(); checks = $checks
-  notRunReason = $null; timedOut = $false; closed = $false; leftOpenForOwner = $null; ownerWindowRestored = $null
+  notRunReason = $null; timedOut = $false; closed = $false; leftOpenForOwner = $null
 }
 function Write-Report {
   $result.pass = $result.ran -and -not $result.timedOut -and (@($checks | Where-Object { -not $_.ok }).Count -eq 0)
@@ -124,34 +133,12 @@ function Invoke-OwnCalculate($wb) {
   }
 }
 
-$tempDir = [System.IO.Path]::GetTempPath()
-$before = @{}
-Get-ChildItem -LiteralPath $tempDir -Filter 'error*.xml' -ErrorAction SilentlyContinue | ForEach-Object { $before[$_.FullName] = $_.LastWriteTimeUtc }
-
-# The owner's active workbook and window before the open, by name, so they are re-activated only if they still exist.
-$owner = @{ book = $null; window = $null }
-function Save-OwnerWindow($xl) {
-  try { $ab = $xl.ActiveWorkbook; if ($ab -ne $null) { $owner.book = [string]$ab.FullName } } catch { }
-  try { $aw = $xl.ActiveWindow; if ($aw -ne $null) { $owner.window = [string]$aw.Caption } } catch { }
-}
-function Restore-OwnerWindow($xl) {
-  if (-not $owner.book) { return 'nothing to restore' }
-  $book = $null
-  foreach ($b in $xl.Workbooks) { if ([string]$b.FullName -eq $owner.book) { $book = $b; break } }
-  if ($book -eq $null) { return 'the owner''s workbook is no longer open: nothing activated' }
-  foreach ($w in $book.Windows) {
-    if ([string]$w.Caption -eq $owner.window) { [void]$w.Activate(); return 'restored' }
-  }
-  return 'the owner''s window is no longer open: nothing activated'
-}
-
 # Opens the workbook, runs every check and closes it again. Every COM object it touches is a local of this function,
 # and the workbook is closed (without saving) and released in its finally block.
 function Invoke-WorkbookChecks($xl) {
   $wb = $null
   try {
     $openError = $null
-    Save-OwnerWindow $xl
     for ($try = 0; $try -lt 5 -and $wb -eq $null; $try++) {
       try {
         # Filename, UpdateLinks 0, ReadOnly true; AddToMru stays at its default (false).
@@ -170,17 +157,10 @@ function Invoke-WorkbookChecks($xl) {
     }
     if ($wb -eq $null -and $openError -ne $null -and (Test-Busy $openError)) { throw $openError }
     $result.ran = $true
-    Start-Sleep -Milliseconds 300
-    $newLogs = @(Get-ChildItem -LiteralPath $tempDir -Filter 'error*.xml' -ErrorAction SilentlyContinue |
-      Where-Object { -not $before.ContainsKey($_.FullName) -or $before[$_.FullName] -ne $_.LastWriteTimeUtc })
+    # A repair, from this workbook only (header point 7): the error of its own open and its own window's caption. No
+    # repair log in the temporary folder is listed or read: such a log can name the owner's documents.
     $evidence = New-Object System.Collections.ArrayList
     if ($openError) { [void]$evidence.Add("open failed: $($openError.Exception.Message)") }
-    foreach ($log in $newLogs) {
-      $text = Get-Content -LiteralPath $log.FullName -Raw -ErrorAction SilentlyContinue
-      if ($text -and $text -match [Regex]::Escape([System.IO.Path]::GetFileName($full))) {
-        [void]$evidence.Add("repair log $($log.Name)")
-      }
-    }
     if ($wb -ne $null) {
       $result.opened = $true
       $caption = ''
@@ -339,7 +319,7 @@ function Invoke-WorkbookChecks($xl) {
       }
     }
   } finally {
-    # Only the file this script opened is closed, without saving; then the owner's workbook and window come back.
+    # Only the file this script opened is closed, without saving. Nothing of the owner's is re-activated (rule 10).
     if ($wb -ne $null) {
       try {
         $wb.Close($false)
@@ -350,7 +330,6 @@ function Invoke-WorkbookChecks($xl) {
       }
       try { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($wb) } catch { }
       $wb = $null
-      try { $result.ownerWindowRestored = Restore-OwnerWindow $xl } catch { $result.ownerWindowRestored = "not restored: $($_.Exception.Message)" }
     }
   }
 }

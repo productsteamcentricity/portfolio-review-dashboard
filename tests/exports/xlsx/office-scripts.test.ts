@@ -2,8 +2,8 @@
 // The Office scripts under the owner's rule (standing rule of 2 Nov 2026, K1; docs/TESTING.md section 6.1), read from
 // their text, since Office does not run in CI: attach only to a running Excel or PowerPoint (the task list first, then
 // GetActiveObject; never a new instance); NOT RUN, with the file's path, when none runs; open only the script's own
-// file read-only, without a window (Excel: only that workbook's window is hidden, and the owner's workbook and window
-// are re-activated when they still exist); change no application option; recalculate only the script's own workbook;
+// file read-only, without a window (Excel: only that workbook's window is hidden); change no application option;
+// recalculate only the script's own workbook;
 // close only that file, in a finally block; never quit, stop, kill or watch over a process. The negative controls
 // are written and never run. The run's verdict is PASS only when every case ran and passed, and NOT RUN is never a
 // pass. The security review of 2ef7216: after the first TIMEOUT of an application no further case of it starts (F1);
@@ -12,6 +12,10 @@
 // The security gate's F-1 (round 3, 2 Nov 2026): the runner starts each script through a PowerShell wrapper
 // (-EncodedCommand, Start-Process), so the script is outside Node's job object and never ended by the run's exit;
 // the wrapper's text is decoded and pinned here (its behaviour was proven with a sleep child outside the suite).
+// Rule 10 as amended (9 Nov 2026): never enumerate, read, copy, save or record the name or path of a document you did
+// not open. Each script reads a name, path or caption only of the object its own Open returned and that object's
+// children; it reads no active workbook, presentation or window, uses the application's collections only to open its
+// own file, re-activates nothing of the owner's and reads no repair log in the temporary folder.
 // `npm run accept:office` runs the scripts themselves (local only, under the same rule). No test here starts
 // PowerShell or Office: the run's decisions are tested with stand-in cases, and attempt false never reaches runPs.
 
@@ -84,7 +88,7 @@ describe('K1: attach only, never start, quit or kill Office, no application opti
     });
   }
 
-  test('accept-xlsx.ps1: its own file read-only, only its window hidden, the owner\'s window re-activated, its own sheets recalculated, closed in finally', () => {
+  test('accept-xlsx.ps1: its own file read-only, only its window hidden, its own sheets recalculated, closed in finally', () => {
     const c = code(XLSX);
     assert.match(c, /\$wb = \$xl\.Workbooks\.Open\(\$full, 0, \$true\)/);
     // The only assignment to a Visible property is the script's own workbook window.
@@ -95,13 +99,9 @@ describe('K1: attach only, never start, quit or kill Office, no application opti
     // Recalculation of its own sheets only.
     assert.match(c, /function Invoke-OwnCalculate\(\$wb\) \{[\s\S]*?foreach \(\$ws in \$wb\.Worksheets\) \{ \[void\]\$ws\.Calculate\(\) \}/);
     assert.ok(!/\$xl\.Calculate|CalculateFullRebuild/.test(c));
-    // The owner's workbook and window: saved before the open, re-activated after the close, only when they still exist.
-    const save = c.indexOf('Save-OwnerWindow $xl');
     const open = c.indexOf('$xl.Workbooks.Open(');
     const close = c.indexOf('$wb.Close($false)');
-    const restore = c.indexOf('Restore-OwnerWindow $xl');
-    assert.ok(save > 0 && open > save && close > open && restore > close, `save ${save}, open ${open}, close ${close}, restore ${restore}`);
-    assert.match(c, /function Restore-OwnerWindow[\s\S]*?if \(\$book -eq \$null\) \{ return [\s\S]*?if \(\[string\]\$w\.Caption -eq \$owner\.window\) \{ \[void\]\$w\.Activate\(\)/);
+    assert.ok(open > 0 && close > open, `open ${open}, close ${close}`);
     // Closed in the finally block of the checks, without saving.
     assert.match(c, /\} finally \{\n[^\n]*\n\s*if \(\$wb -ne \$null\) \{\n\s*try \{\n\s*\$wb\.Close\(\$false\)/);
   });
@@ -113,7 +113,7 @@ describe('K1: attach only, never start, quit or kill Office, no application opti
     assert.ok(open > 0 && hide > open, `open ${open}, hide ${hide}`);
     // Between the open and the hide: only the catch of a failed open (no window then), and the window itself.
     assert.match(c.slice(open, hide), /^\$wb = \$xl\.Workbooks\.Open\(\$full, 0, \$true\)\n\s*\} catch \{\n[\s\S]*?\n\s*\}\n\s*\$openError = \$null\n\s*\$win = \$wb\.Windows\.Item\(1\)\n\s*$/);
-    for (const later of ['Start-Sleep -Milliseconds 300', '$newLogs = ', '$win.Caption', "Test-Deadline '", '$result.ran = $true']) {
+    for (const later of ['$evidence = ', '$win.Caption', "Test-Deadline '", '$result.ran = $true']) {
       const at = c.indexOf(later, open);
       assert.ok(at > hide, `${later} at ${at} comes after the hide at ${hide}`);
     }
@@ -172,6 +172,132 @@ describe('K1: attach only, never start, quit or kill Office, no application opti
     assert.match(RUN, /child\.unref\(\); resolve\('timeout'\)/);
     assert.match(RUN, /return runWrapped\(\['-NoProfile', '-NonInteractive', '-File', script, \.\.\.args, '-Report', reportPath\], reportPath, file\);/);
     assert.ok(PS_TIMEOUT_MS >= 180_000 + 60_000, `the run waits longer than the script's own deadline: ${PS_TIMEOUT_MS}`);
+  });
+});
+
+/** Every read of a Name, FullName, Path or Caption in the code, with the variable its chain starts from ('' if none). */
+function nameReads(c: string): Array<{ root: string; at: string }> {
+  const out: Array<{ root: string; at: string }> = [];
+  for (const m of c.matchAll(/\.(Name|FullName|Path|Caption)\b/gi)) {
+    const before = c.slice(0, m.index);
+    if (/\[[\w.]*$/.test(before)) continue; // inside a type literal, such as [System.IO.Path]
+    const chain = /(\$\w+)(?:\.\w+(?:\([^()]*\))?)*$/.exec(before);
+    out.push({ root: chain ? chain[1]! : '', at: c.slice(Math.max(0, m.index - 40), m.index + m[0].length) });
+  }
+  return out;
+}
+
+/** The right-hand sides of every assignment to a variable, and the collections a foreach over it walks. */
+function sources(c: string, v: string): string[] {
+  const name = v.slice(1);
+  return [
+    ...[...c.matchAll(new RegExp(`\\$${name}(?!\\w)\\s*=\\s*([^\\n;]*)`, 'g'))].map((m) => m[1]!.trim()),
+    ...[...c.matchAll(new RegExp(`foreach \\(\\$${name} in ([^)]*)\\)`, 'g'))].map((m) => m[1]!.trim()),
+  ];
+}
+
+/** Every member of a variable the code reads or calls, sorted and without repeats. */
+const members = (c: string, v: string): string[] => [...new Set([...c.matchAll(new RegExp(`\\$${v.slice(1)}\\.(\\w+)`, 'g'))].map((m) => m[1]!))].sort();
+
+describe('Rule 10 as amended (9 Nov 2026): no name or path of a document the script did not open', () => {
+  // The objects each script may read a name, path or caption of: what its own Open returned and that object's
+  // children, each pinned to its source below. $o is Test-Property's parameter, the expected JSON.
+  const OWN = {
+    'accept-xlsx.ps1': ['$wb', '$win', '$ws', '$n', '$r', '$o'],
+    'accept-pptx.ps1': ['$deck'],
+  } as const;
+
+  for (const [name, script] of [['accept-xlsx.ps1', XLSX], ['accept-pptx.ps1', PPTX]] as const) {
+    test(`${name}: the header states the amended clause and how the script keeps it`, () => {
+      const head = /<#([\s\S]*?)#>/.exec(script)![1]!.replace(/\s+/g, ' ');
+      assert.match(head, /RULE 10 AS AMENDED \(CLAUDE\.md, 9 Nov 2026\): never enumerate, read, copy, save or record the name or path of a document you did not open\./);
+      assert.match(head, /It reads no name, path, caption or content of any (workbook|presentation) or window it did not open/);
+      assert.match(head, /uses the application's (Workbooks|Presentations) only to open its own (file|deck) \(no count, no index, no loop\) and never the application's Windows/);
+    });
+
+    test(`${name}: no active document or window, no listing of the temporary folder, no full name, anywhere in the file`, () => {
+      for (const re of [
+        /ActiveWorkbook/i, /ActivePresentation/i, /ActiveWindow/i, /ActiveSheet/i, /ActiveCell/i, /ActiveChart/i,
+        /ActiveProtectedViewWindow/i, /ProtectedViewWindows/i, /RecentFiles/i, /MainWindowTitle/i, /FullName/i,
+        /GetTempPath/i, /\$env:(TEMP|TMP)\b/i, /%TEMP%/i, /error\S*\.xml/i, /Get-ChildItem/i,
+      ]) assert.ok(!re.test(script), `${name} holds ${re}`);
+      const c = code(script);
+      assert.ok(!/(^|[\s|;(])(gci|dir|ls)(\s|$)/im.test(c), 'no directory listing by an alias');
+      assert.deepEqual([...c.matchAll(/Get-Content [^\n|]*/g)].map((m) => m[0].trim()),
+        [`Get-Content -LiteralPath ${name === 'accept-xlsx.ps1' ? '$Expected' : '$Inventory'} -Raw -Encoding UTF8`], 'the only file read is its own input JSON');
+    });
+
+    test(`${name}: a name, path or caption is read only of the script's own objects`, () => {
+      const c = code(script);
+      const own: readonly string[] = OWN[name];
+      const reads = nameReads(c);
+      assert.ok(reads.length > 0, 'the scan finds the reads');
+      for (const r of reads) assert.ok(own.includes(r.root), `a read of ${r.at.trim()} on ${r.root || 'an expression'}, not the script's own object`);
+    });
+
+    test(`${name}: the application's collections only to open its own file; no count, index or loop over them`, () => {
+      const c = code(script);
+      if (name === 'accept-xlsx.ps1') {
+        assert.deepEqual(members(c, '$xl'), ['Build', 'Calculation', 'Version', 'Workbooks'], 'the members of the application it uses');
+        assert.deepEqual([...c.matchAll(/\.Workbooks\b[^\n]*/g)].map((m) => m[0]), ['.Workbooks.Open($full, 0, $true)']);
+        assert.deepEqual([...c.matchAll(/\.Windows\b[^\n]*/g)].map((m) => m[0]), ['.Windows.Item(1)'], 'its own workbook\'s window only');
+        assert.match(c, /\$win = \$wb\.Windows\.Item\(1\)/);
+        assert.ok(!/\.Presentations\b/.test(c));
+      } else {
+        assert.deepEqual(members(c, '$pp'), ['Build', 'Presentations', 'Version'], 'the members of the application it uses');
+        assert.deepEqual([...c.matchAll(/\.Presentations\b[^\n]*/g)].map((m) => m[0].trim()), ['.Presentations.Open($full, -1, 0, 0)']);
+        assert.ok(!/\.(Windows|Workbooks)\b/.test(c), 'no window or workbook collection');
+      }
+      const app = name === 'accept-xlsx.ps1' ? 'xl' : 'pp';
+      assert.ok(!new RegExp(`=\\s*\\$${app}(?![\\w.])`).test(c), 'the application object is never copied to another variable');
+      assert.ok(!/\.Parent\b|\$\w+(?:\.\w+)*\.Application\b/.test(c), 'no way back to the application or to another document');
+    });
+  }
+
+  test('accept-xlsx.ps1: every object it reads a name or caption of comes from its own workbook', () => {
+    const c = code(XLSX);
+    assert.deepEqual(sources(c, '$wb'), ['$null', '$xl.Workbooks.Open($full, 0, $true)', '$null']);
+    assert.deepEqual(sources(c, '$win'), ['$wb.Windows.Item(1)']);
+    for (const v of ['$ws', '$n', '$r']) {
+      const from = sources(c, v);
+      assert.ok(from.length > 0 && from.every((s) => s.startsWith('$wb.')), `${v} from ${JSON.stringify(from)}`);
+    }
+    // $wb is also Invoke-OwnCalculate's parameter, always given the script's own workbook.
+    assert.deepEqual([...c.matchAll(/Invoke-OwnCalculate (\S+)/g)].map((m) => m[1]), ['$wb', '$wb']);
+    // $o is Test-Property's parameter, only ever the expected JSON.
+    assert.match(c, /function Test-Property\(\$o, \[string\]\$name\)/);
+    assert.deepEqual([...c.matchAll(/Test-Property (\S+)/g)].map((m) => m[1]), ['$exp']);
+    assert.deepEqual(sources(c, '$o'), []);
+  });
+
+  test('accept-pptx.ps1: its own deck only; the slides and shapes it walks are the deck\'s', () => {
+    const c = code(PPTX);
+    assert.deepEqual(sources(c, '$deck'), ['$null', '$pp.Presentations.Open($full, -1, 0, 0)', '$null']);
+    assert.deepEqual(sources(c, '$slide'), ['$deck.Slides.Item($i)']);
+    assert.deepEqual(sources(c, '$s'), ['$slide.Shapes']);
+    assert.match(c, /\$name = \[string\]\$deck\.Name/);
+  });
+
+  test('accept-xlsx.ps1: nothing of the owner\'s is held or re-activated (the re-activation is removed)', () => {
+    // Rule 10 allows only the object Open returned, so the owner's window is never held: no Activate anywhere.
+    for (const re of [/\.Activate\(/, /Save-OwnerWindow/, /Restore-OwnerWindow/, /ownerWindowRestored/, /\$owner\b/, /\$prev\b/]) {
+      assert.ok(!re.test(XLSX), `accept-xlsx.ps1 holds ${re}`);
+      assert.ok(!re.test(PPTX), `accept-pptx.ps1 holds ${re}`);
+    }
+    assert.ok(!/ownerWindowRestored/.test(RUN), 'the run carries no field of the owner\'s window');
+    const head = /<#([\s\S]*?)#>/.exec(XLSX)![1]!.replace(/\s+/g, ' ');
+    assert.match(head, /It holds no object of the owner's: it neither remembers nor re-activates the owner's workbook or window/);
+  });
+
+  test('accept-xlsx.ps1: a repair is detected from its own workbook only; the repair log of another document is never read', () => {
+    const c = code(XLSX);
+    const adds = [...c.matchAll(/\$evidence\.Add\(([^\n]*?)\)( \})?$/gm)].map((m) => m[1]);
+    assert.deepEqual(adds, ['"open failed: $($openError.Exception.Message)"', '"window caption: $caption"']);
+    assert.match(c, /try \{ \$caption = \[string\]\$win\.Caption \} catch \{ \}/);
+    assert.match(c, /\$result\.repaired = \(\$evidence\.Count -gt 0\)/);
+    const head = /<#([\s\S]*?)#>/.exec(XLSX)![1]!.replace(/\s+/g, ' ');
+    assert.match(head, /The repair log of another document is never read/);
+    assert.match(head, /A repair is detected from its own workbook only: the error of its own open, and the caption of its own workbook's window\./);
   });
 });
 

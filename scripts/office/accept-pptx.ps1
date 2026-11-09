@@ -22,6 +22,12 @@ this PC with the owner's work in it, so the script:
      each remaining one is NOT RUN ("not attempted: Office did not answer") with its path.
   6. the damaged-deck negative control is never run against the attached PowerPoint (it could raise a repair prompt
      on the owner's screen): run-acceptance.ts writes it and reports it NOT RUN with its path.
+  7. RULE 10 AS AMENDED (CLAUDE.md, 9 Nov 2026): never enumerate, read, copy, save or record the name or path of a
+     document you did not open. The script uses only the deck its own Open returned and that deck's slides and
+     shapes. It reads no name, path, caption or content of any presentation or window it did not open: it reads
+     neither the active presentation nor the active window, uses the application's Presentations only to open its
+     own deck (no count, no index, no loop) and never the application's Windows. It reads its own deck's name, to
+     detect a repair.
 
 Checks: detects a repair or a refusal; compares the slide count and each slide's shape, chart and table counts with
 the inventory; exports each slide as a 1920 x 1080 PNG for visual review (when -PngDir is given).

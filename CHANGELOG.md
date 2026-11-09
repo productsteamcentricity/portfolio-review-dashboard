@@ -163,6 +163,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
       13 records the owner's acceptance (PD-48).
     - Tests: 1,017 of 1,017 under IST and under UTC with node_modules, 953 of 953 without (the four "(needs npm
       ci)" suites skipped); the spike 149 of 149 and overview.cdp 128 of 128.
+  - **Rule 10 as amended, 9 Nov 2026:** the Office scripts read no name or path of a document they did not open, so
+    the Excel script no longer remembers or re-activates the owner's workbook and window and no longer scans Excel's
+    repair logs in the temporary folder, and a static guard in `tests/exports/xlsx/office-scripts.test.ts` pins it
+    (`docs/TESTING.md` section 6.1, point 9).
 - **The capital-gains upload design for M7 (CR-0006, D-036, amending D-032).** Documents only; no code, `/next/` and
   `index.html` unchanged. The upload accepts the wealth platform's "Capital Gain Report" export as produced (columns
   by header name, PAN removed at read time, folio parsed from the instrument name, totals row reconciled, footer text

@@ -169,10 +169,9 @@ checks run, with the owner's work in them, so no check starts, quits, stops or r
    hand.
 3. **Read only, without a window.** PowerPoint opens the deck with `Presentations.Open(path, -1, 0, 0)` (read-only,
    not untitled, no window). Excel opens the workbook with `Workbooks.Open(path, 0, True)`; a shared Excel has no true
-   "no window", so the script remembers the owner's active workbook and window, hides its own workbook's window at
-   once after a successful open, before any wait or other work (frozen panes need a shown window, so they are checked
-   in the file by the writer's tests, not in Excel), and after closing its file re-activates the owner's workbook and
-   window only when they still exist. It creates and closes nothing else.
+   "no window", so the script hides its own workbook's window at once after a successful open, before any wait or
+   other work (frozen panes need a shown window, so they are checked in the file by the writer's tests, not in
+   Excel). It holds nothing of the owner's and re-activates nothing (point 9). It creates and closes nothing else.
 4. **No application option changes.** Alerts, visibility, macro security, calculation mode, screen updating and events
    stay as the owner set them. Only the script's own workbook is recalculated, sheet by sheet. The Excel script reads
    the calculation mode, never writes it, and runs the edit check (one input of its own workbook changed in memory)
@@ -205,13 +204,26 @@ checks run, with the owner's work in them, so no check starts, quits, stops or r
 8. **The verdict.** PASS only when every case ran and passed; FAIL when one failed or timed out; NOT RUN otherwise
    (exit codes 0, 1 and 2). At a gate, the Office acceptance passes or is NOT RUN with these paths, never reported as
    passed (contract v2, K1c).
+9. **No name or path of a document the script did not open** (rule 10 of `CLAUDE.md` as amended on 9 Nov 2026:
+   never enumerate, read, copy, save or record the name or path of a document you did not open). Each script uses
+   only the object its own `Open` returned and that object's children (Excel: its workbook, that workbook's window,
+   sheets, names and cells; PowerPoint: its deck, slides and shapes). Neither reads the active workbook, presentation
+   or window, and the application's `Workbooks` or `Presentations` serve only to open the script's own file (no
+   count, no index, no loop); the application's `Windows` are never used. So no window object of the owner's is
+   held: the Excel script no longer remembers or re-activates the owner's workbook and window, and which window is
+   active once its own is hidden is left to Excel. Excel's repair logs in the temporary folder can name the owner's
+   documents, so the repair-log scan is dropped: a repair is detected from the script's own workbook only (the error
+   of its own open and the caption of its own window), and the repair log of another document is never read.
 
 `tests/exports/xlsx/office-scripts.test.ts` (in `node --test`) reads both scripts and the runner: none of the
 forbidden calls or options appears anywhere in them (the calculation mode is read once and never written), the task
-list comes before the attach, the only window hidden is the script's own workbook's, hidden right after the open, the
-edit check runs only in manual calculation, the file is closed in a finally block, the negative controls are never
-run, after a TIMEOUT no further case of that application starts (the decision tested with stand-in cases; no test
-starts PowerShell or Office), the verdict rules hold, and the runner's one spawn is the wrapper, not detached, whose
+list comes before the attach, the only window hidden is the script's own workbook's, hidden right after the open, a
+name, path or caption is read only of the script's own objects (each pinned to its own `Open`), no active workbook,
+presentation or window is read, the application's collections are used only to open the script's own file, nothing
+is re-activated and no repair log is listed or read (point 9), the edit check runs only in manual calculation, the
+file is closed in a finally block, the negative controls are never run, after a TIMEOUT no further case of that
+application starts (the decision tested with stand-in cases; no test starts PowerShell or Office), the verdict rules
+hold, and the runner's one spawn is the wrapper, not detached, whose
 decoded `-EncodedCommand` holds `Start-Process`, `-WindowStyle Hidden`, both redirections, `-PassThru`,
 `WaitForExit` and `exit $p.ExitCode`, with no execution policy argument and no kill (F-1). `tests/unit/exports/xlsx-number-formats.test.ts` checks the workbook's number formats against
 Excel's own texts without Office. The scripts are checked with the PowerShell parser before a push and run only by
