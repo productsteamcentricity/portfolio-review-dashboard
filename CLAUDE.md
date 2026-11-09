@@ -51,7 +51,8 @@ and the monthly data owner.
    paragraph is the owner's decision of 9 Nov 2026). PowerPoint and Excel are usually open on the owner's PC, and COM
    attaches to a running instance. Before any Office check look for `POWERPNT.EXE` and `EXCEL.EXE` with
    `tasklist /FI "IMAGENAME eq POWERPNT.EXE"` (and the same for Excel; in Git Bash write `//FI`, and read the output,
-   because it exits 0 when nothing matches), never with `/V` and never reading `MainWindowTitle`, because window
+   because it exits 0 when nothing matches) or, in PowerShell, `Get-Process -Name POWERPNT` (and `EXCEL`), used only
+   to learn whether a process runs: never `/V`, never `MainWindowTitle` or any other property, because window
    titles name the owner's open documents. Attach only to a running instance
    (`GetActiveObject`, never `New-Object -ComObject`). Open only synthetic files: `.xlsx` or `.pptx` generated in this
    session by the repository's own tools from synthetic inputs (`tools/make-sample-base.js`,
