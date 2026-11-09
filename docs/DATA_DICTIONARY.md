@@ -725,8 +725,8 @@ Phase 0 (authority column). A change to any of them is a financial change (`CLAU
   data, and the invested coverage says so. For the file's own gain or loss, the result is Information only (OD-18).
   A blank or placeholder Crore cell takes the next column with a notice (the lead's decision; the owner confirmed on
   2 Nov 2026, PD-09, that "NA", "N/A", "-" and "nil" count as an empty cell, then Lakh, then rupees, and that any
-  other text makes the value invalid; the reader's other placeholders, such as "n.a.", "none" or "--", are read the
-  same way as built, pending the owner's word on them), and amounts more than 0.005 Cr apart are warned (the lead's
+  other text makes the value invalid; the owner confirmed on 9 Nov 2026, PD-51, that the reader's other placeholders,
+  "n.a.", "n.a", "none", "not available", "--" and a lone en or em dash, count the same way, as built), and amounts more than 0.005 Cr apart are warned (the lead's
   decision). §5.3 and §5.8 state the rule;
   KNOWN_ISSUES KI-147 is fixed in the new app.
 - **Units of merged folios and the tax base (M1.3; BF-17 (KI-113) and BF-18 (KI-113 extended to units) accepted by the lead, D-035).** Base-file units are
