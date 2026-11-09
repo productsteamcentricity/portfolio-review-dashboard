@@ -50,13 +50,15 @@ and the monthly data owner.
 10. **Office automation never touches the owner's open work** (owner's rule, 2 Nov 2026; the exception in the last
    paragraph is the owner's decision of 9 Nov 2026). PowerPoint and Excel are usually open on the owner's PC, and COM
    attaches to a running instance. Before any Office check look for `POWERPNT.EXE` and `EXCEL.EXE` with
-   `tasklist /FI "IMAGENAME eq POWERPNT.EXE"` (and the same for Excel), never with `/V` and never reading
-   `MainWindowTitle`, because window titles name the owner's open documents. Attach only to a running instance
+   `tasklist /FI "IMAGENAME eq POWERPNT.EXE"` (and the same for Excel; in Git Bash write `//FI`, and read the output,
+   because it exits 0 when nothing matches), never with `/V` and never reading `MainWindowTitle`, because window
+   titles name the owner's open documents. Attach only to a running instance
    (`GetActiveObject`, never `New-Object -ComObject`). Open only synthetic files: `.xlsx` or `.pptx` generated in this
    session by the repository's own tools from synthetic inputs (`tools/make-sample-base.js`,
    `tests/fixtures/make-books.ts`), never an inbox, vendor or downloaded file. Open them read-only with no window
    (Excel cannot open a workbook without one: hide only that workbook's own window with
-   `$wb.Windows(1).Visible = $false`, never `Application.Visible`); close only the presentation or workbook you opened; never call `Quit`;
+   `$wb.Windows(1).Visible = $false`, never `Application.Visible`); close only the presentation or workbook you
+   opened; never call `Quit`;
    never `Stop-Process`, `taskkill` or `.Kill()` an Office process or terminate it by any other means; change no
    global option, including `Application.DisplayAlerts`, `Application.Visible`, `Application.AutomationSecurity`,
    `Application.Calculation`, `Application.ScreenUpdating`, `Application.EnableEvents`, `Application.UserControl` and
@@ -68,17 +70,21 @@ and the monthly data owner.
    synthetic file to open themselves. NOT RUN is never a pass: the check stays open until the owner has opened the file
    and said what they saw. This binds every chat, agent and script.
    The one exception is the owner's decision of 9 Nov 2026 (PD-49). It is for the Step 3 script of TA-26
-   (`docs/MONTHLY_REFRESH.md`) after ARC-01 has reviewed it; until then Step 3 is NOT RUN and no other code may use it.
-   That script may open one COPY of the current cycle's Monthly Outlook deck (the research team's
-   `Monthly Outlook Pagers_<month>.pptx`, never an older deck, never the original), through an already running
-   PowerPoint, read-only with no window, only to export its slides, under every other condition above except
-   "synthetic". The copy is a byte copy made by the script (`Copy-Item`, the only touch of the original) into a new
-   empty folder under `%TEMP%`, outside OneDrive, under a new random file name, never a link or shortcut. Before
-   opening it the script lists the copy's zip entries and reports NOT RUN if there is a `vbaProject.bin`, an `activeX`
-   part, an embedded macro-enabled or legacy workbook, or linked chart or OLE data. It runs only after the owner has
-   opened PowerPoint and said, in this session, that it is idle with nothing unsaved in it (the script may not look).
-   It closes the copy, deletes it and its folder, and leaves the original untouched. The old Step 3 snippet ends with
-   `Quit()` and must not be run as written (TA-26).
+   (`docs/MONTHLY_REFRESH.md`), in the reviewed version whose SHA-256 is recorded in its D entry, after ARC-01 has
+   reviewed it; until then Step 3 is NOT RUN and no other code may use it. That script may open one COPY of the
+   current cycle's Monthly Outlook deck (the research team's `Monthly Outlook Pagers_<month>.pptx`, never an older
+   deck, never the original), through an already running PowerPoint, read-only with no window, only to export its
+   slides. Only the "synthetic" condition above is lifted, for this one file; every other condition stays. The copy
+   is a byte copy made by the script (`Copy-Item`, the only touch of the original) into a new empty folder under
+   `%TEMP%`, outside OneDrive, that holds only the copy, under a new random file name, never a link or shortcut (the
+   exported images go to the refresh's own slide folder). Before opening it the script lists the copy's zip entries
+   and reports NOT RUN if the copy is not a readable `.pptx` zip, or has a `vbaProject.bin`, an `activeX` part, any
+   embedded object other than an `.xlsx` chart workbook, or any external (linked) chart, OLE or workbook
+   relationship (hyperlinks excepted). It runs only after the owner has opened PowerPoint and said, immediately
+   before this run, that it is idle with nothing unsaved in it (the script may not look). It closes the copy and
+   deletes the copy and that folder (the exported images stay) and leaves the original untouched. If it reports NOT
+   RUN, the owner exports the slides themselves and puts them in the inbox folder (PD-49 option B). The old Step 3
+   snippet ends with `Quit()` and must not be run as written (TA-26).
 
 ## Conventions the code actually uses (verified at baseline, see docs/legacy/ARCHITECTURE.md)
 - Base file: header row found in the first 5 rows, columns matched by alias. **`XIRR (%)` / `BMXIRR (%)`
