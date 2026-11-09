@@ -148,10 +148,21 @@
                      number of lines and the clearance from the table; the plural sentence for AIFs treated as Cat I/II
 
    Wording after the owner's answer to CR-0008 question 18 (stage S9, 2 Nov 2026; KI-182, D-043; the owner kept no set-off for crypto):
-      the Taxation tab's harvest card says crypto is kept out of set-off "as the owner has ruled and the reckoner is silent
-      on them" and the harvest slide "as the tax reckoner is silent on them (confirm with the tax adviser)", no longer
-      "pending" a ruling; the comments beside them say so; no figure moves. The TAX_RULES row still carries the older
-      noSetOffSource text ("until the owner rules"); no page shows it, and it is data (KI-182).
+      the Taxation tab's harvest card says crypto is kept out of set-off "as the reckoner is silent on them" (stage S10 took
+      "as the owner has ruled" out of it, below) and the harvest slide "as the tax reckoner is silent on them (confirm with
+      the tax adviser)", no longer "pending" a ruling; the comments beside them say so; no figure moves. The TAX_RULES row
+      still carries the older noSetOffSource text ("until the owner rules"); no page shows it, and it is data (KI-182).
+
+   Stage S10 (9 Nov 2026; the owner's answer to CR-0008 question 24, "Restrict it (Recommended)"; D-043 point 2; KI-166, KI-171):
+      step 3 of the AIF category reader, the "Listed AIF" label that makes a fund Category III (fund level, with the note), counts
+      only through the holding's own words (its own category says Listed AIF, as before) or through the matched performance entry
+      when the entry is labelled Listed AIF AND the holding's name is the entry's own name once normalised with the word "AIF" and
+      brackets ignored: "Name AIF" and "Name (AIF)" still count for all 11 genuine entries of the data; a merely similar name
+      (another fund of the same house, a series, a real-estate fund that the matcher linked by two shared words) stays Category I
+      or II, assumed, with the note. The narrowing of step 2 (a sibling does not inherit a stated Category I, II or III) is
+      unchanged. The sentences that say a fund "is called a Listed AIF" stay as they are: since this stage they are true of every
+      fund that carries the label. The Taxation tab's crypto sentence no longer cites the owner (FDR-A F7). No tax figure moves;
+      only the class of a loosely linked fund and its wording do.
 
      node tools/patches/2026-10-27-tax-5-followups.js
    ========================================================================== */
@@ -240,7 +251,7 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, AIF categ
         '         cat or category at a word start, any run of spaces, dots, colons, brackets and dashes, then III, II, I, three, two, one,\n' +
         '         3, 2 or 1; Category III is tested first. When its own words state none, what the performance data says of the fund the\n' +
         '         holding matched counts as a statement ("AIF (CAT III) - Listed Equity" is Category III). "Listed AIF", the holding\'s\n' +
-        '         own category or the data\'s, is Category III too (the answer of 2 Nov 2026) and is marked catRuled. With nothing at all,\n' +
+        '         own category or the data\'s for the entry of the same name, is Category III too (the answers of 2 and 9 Nov 2026) and is marked catRuled. With nothing at all,\n' +
         '         Category I or II is assumed and marked catAssumed. */\n' +
         '      var _ct=c+" "+n+" "+p, _lab="", _ruled=false,\n' +
         '          _cat3=/\\bcat(egory)?[\\s.:()\\[\\]{}\\/_#,\\-\\u2010-\\u2015\\u2212]*(iii|three|3)\\b/.test(_ct),\n' +
@@ -248,12 +259,16 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, AIF categ
         '      if(!_cat3&&!_st12){\n' +
         '        _lab=(h.perfSrc==="AIF"&&R&&R.AIF_PERF&&R.AIF_PERF[h.perfKey])?String(R.AIF_PERF[h.perfKey].category||"").toLowerCase():"";\n' +
         '        /* the loose name matcher can map a sibling series, or another fund of the house, to an entry: the entry\'s Category I, II or III is read as\n' +
-        '           a statement about this fund only when the two names are the same once normalised (the matcher\'s exact branch); a "Listed AIF" label\n' +
-        '           from a looser match still gives Category III, with the note that asks for the statement. An own category that says unlisted blocks it. */\n' +
-        '        var _same=!!_lab&&normalize(h.name).join(" ")===normalize(h.perfKey).join(" ");\n' +
+        '           a statement about this fund only when the two names are the same once normalised (the matcher\'s exact branch). The entry\'s "Listed AIF"\n' +
+        '           label (Category III, with the note) counts only for the fund of the entry\'s own name, with the word AIF and brackets ignored ("Name AIF"\n' +
+        '           and "Name (AIF)" are the entry "Name"): the owner\'s answer of 9 Nov 2026 to CR-0008 question 24 (restrict). A merely similar name stays\n' +
+        '           Category I or II, assumed, with the note. The holding\'s own category "Listed AIF" counts as before; an own category that says unlisted blocks the entry\'s label. */\n' +
+        '        var _same=!!_lab&&normalize(h.name).join(" ")===normalize(h.perfKey).join(" "),\n' +
+        '            _nkAif=function(s){ return normalize(s).filter(function(t){ return t!=="aif"; }).join(" "); },\n' +
+        '            _lsame=!!_lab&&_nkAif(h.name)===_nkAif(h.perfKey);\n' +
         '        if(_same&&/\\bcat(egory)?[\\s.:()\\[\\]{}\\/_#,\\-\\u2010-\\u2015\\u2212]*(iii|three|3)\\b/.test(_lab)) _cat3=true;\n' +
         '        else if(_same&&/\\bcat(egory)?[\\s.:()\\[\\]{}\\/_#,\\-\\u2010-\\u2015\\u2212]*(ii|two|i|one|2|1)\\b/.test(_lab)) _st12=true;\n' +
-        '        else if(/^\\s*listed\\s*aif\\s*$/.test(c)||(!/unlisted/.test(c)&&/^\\s*listed\\s*aif\\s*$/.test(_lab))) _ruled=true;\n' +
+        '        else if(/^\\s*listed\\s*aif\\s*$/.test(c)||(!/unlisted/.test(c)&&_lsame&&/^\\s*listed\\s*aif\\s*$/.test(_lab))) _ruled=true;\n' +
         '      }\n' +
         '      if(_cat3||_ruled){\n' +
         '        /* the row is picked from the category and the name, as before; the entry\'s own wording picks it only for a category the entry stated */\n' +
@@ -672,7 +687,7 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, AIF categ
     from: "      /* TX-23 (KI-182; CR-0008 question 18): the Crypto row is kept out of set-off until the owner rules */\n" +
           "      var nsoNote=(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9)?('<div class=\"taxwarn\" style=\"margin-top:10px;\">Crypto gains and losses are kept out of set-off pending the owner&rsquo;s ruling, as the reckoner is silent on them: '+\n",
     to: "      /* TX-23 (KI-182; CR-0008 question 18, answered 2 Nov 2026: keep no set-off; D-043): the Crypto row is kept out of set-off */\n" +
-          "      var nsoNote=(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9)?('<div class=\"taxwarn\" style=\"margin-top:10px;\">Crypto gains and losses are kept out of set-off, as the owner has ruled and the reckoner is silent on them: '+\n"
+          "      var nsoNote=(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9)?('<div class=\"taxwarn\" style=\"margin-top:10px;\">Crypto gains and losses are kept out of set-off, as the reckoner is silent on them: '+\n"
   },
   {
     label: "harvest slide: the crypto set-off sentence no longer says \"pending a ruling on their treatment\" (T5 stage S9, KI-182, D-043)",

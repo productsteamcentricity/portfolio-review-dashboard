@@ -869,7 +869,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
          cat or category at a word start, any run of spaces, dots, colons, brackets and dashes, then III, II, I, three, two, one,
          3, 2 or 1; Category III is tested first. When its own words state none, what the performance data says of the fund the
          holding matched counts as a statement ("AIF (CAT III) - Listed Equity" is Category III). "Listed AIF", the holding's
-         own category or the data's, is Category III too (the answer of 2 Nov 2026) and is marked catRuled. With nothing at all,
+         own category or the data's for the entry of the same name, is Category III too (the answers of 2 and 9 Nov 2026) and is marked catRuled. With nothing at all,
          Category I or II is assumed and marked catAssumed. */
       var _ct=c+" "+n+" "+p, _lab="", _ruled=false,
           _cat3=/\bcat(egory)?[\s.:()\[\]{}\/_#,\-\u2010-\u2015\u2212]*(iii|three|3)\b/.test(_ct),
@@ -877,12 +877,16 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       if(!_cat3&&!_st12){
         _lab=(h.perfSrc==="AIF"&&R&&R.AIF_PERF&&R.AIF_PERF[h.perfKey])?String(R.AIF_PERF[h.perfKey].category||"").toLowerCase():"";
         /* the loose name matcher can map a sibling series, or another fund of the house, to an entry: the entry's Category I, II or III is read as
-           a statement about this fund only when the two names are the same once normalised (the matcher's exact branch); a "Listed AIF" label
-           from a looser match still gives Category III, with the note that asks for the statement. An own category that says unlisted blocks it. */
-        var _same=!!_lab&&normalize(h.name).join(" ")===normalize(h.perfKey).join(" ");
+           a statement about this fund only when the two names are the same once normalised (the matcher's exact branch). The entry's "Listed AIF"
+           label (Category III, with the note) counts only for the fund of the entry's own name, with the word AIF and brackets ignored ("Name AIF"
+           and "Name (AIF)" are the entry "Name"): the owner's answer of 9 Nov 2026 to CR-0008 question 24 (restrict). A merely similar name stays
+           Category I or II, assumed, with the note. The holding's own category "Listed AIF" counts as before; an own category that says unlisted blocks the entry's label. */
+        var _same=!!_lab&&normalize(h.name).join(" ")===normalize(h.perfKey).join(" "),
+            _nkAif=function(s){ return normalize(s).filter(function(t){ return t!=="aif"; }).join(" "); },
+            _lsame=!!_lab&&_nkAif(h.name)===_nkAif(h.perfKey);
         if(_same&&/\bcat(egory)?[\s.:()\[\]{}\/_#,\-\u2010-\u2015\u2212]*(iii|three|3)\b/.test(_lab)) _cat3=true;
         else if(_same&&/\bcat(egory)?[\s.:()\[\]{}\/_#,\-\u2010-\u2015\u2212]*(ii|two|i|one|2|1)\b/.test(_lab)) _st12=true;
-        else if(/^\s*listed\s*aif\s*$/.test(c)||(!/unlisted/.test(c)&&/^\s*listed\s*aif\s*$/.test(_lab))) _ruled=true;
+        else if(/^\s*listed\s*aif\s*$/.test(c)||(!/unlisted/.test(c)&&_lsame&&/^\s*listed\s*aif\s*$/.test(_lab))) _ruled=true;
       }
       if(_cat3||_ruled){
         /* the row is picked from the category and the name, as before; the entry's own wording picks it only for a category the entry stated */
@@ -11927,7 +11931,7 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       var loNote=_lo.length?('<div class="sub" style="margin-top:8px;">Left out of the harvest, as they have no investor-level long- or short-term split (see the notes above): '+_lo.join(', ')+'.</div>'):'';
       var unnNote=T.unnamedN?('<div class="sub" style="margin-top:6px;">'+_pl(T.unnamedN,'holding has','holdings have')+' no client name; they are treated as one person for the set-off and the exemption.</div>'):'';
       /* TX-23 (KI-182; CR-0008 question 18, answered 2 Nov 2026: keep no set-off; D-043): the Crypto row is kept out of set-off */
-      var nsoNote=(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9)?('<div class="taxwarn" style="margin-top:10px;">Crypto gains and losses are kept out of set-off, as the owner has ruled and the reckoner is silent on them: '+
+      var nsoNote=(H.noSetOffGain>1e-9||H.noSetOffLoss>1e-9)?('<div class="taxwarn" style="margin-top:10px;">Crypto gains and losses are kept out of set-off, as the reckoner is silent on them: '+
         'no loss is set against a crypto gain'+(H.noSetOffGain>1e-9?' ('+U.m(H.noSetOffGain)+', taxed in full before and after)':'')+
         ', and a crypto loss'+(H.noSetOffLoss>1e-9?' ('+U.m(H.noSetOffLoss)+')':'')+' reduces no other gain, is not carried forward and is not listed as a holding to sell.</div>'):'';
       var candRows=H.candidates.slice(0,25).map(function(c){

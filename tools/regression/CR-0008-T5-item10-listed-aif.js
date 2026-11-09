@@ -1,28 +1,33 @@
 /* ============================================================================
    CR-0008, tax batch part T5, item 10: an AIF called a "Listed AIF" is Category III.
-   (CR-0008 question 17, answered 2 Nov 2026: yes, with a safe note; D-043.)
+   (CR-0008 question 17, answered 2 Nov 2026: yes, with a safe note; D-043. Question 24, answered 9 Nov 2026: "Restrict it":
+   the data's label counts for the entry's own name only, "AIF" and brackets ignored; stage S10.)
 
      node tools/regression/CR-0008-T5-item10-listed-aif.js
 
    11 of the 12 funds of the vendor's AIF universe (REFDATA.AIF_PERF, when this was written; the checks read the data and do
    not count it) carry the category "Listed AIF" and the twelfth "AIF (CAT III) - Listed Equity". Part T3 read a category that says neither Category I, II nor III as
    Category I or II (pass-through); item 4 of this part marked such an AIF "category not stated". Item 10: a
-   holding called a Listed AIF, by its own category or by the category of the AIF_PERF entry it matched, is
-   Category III, fund level (as KI-166), marked catRuled, and every surface says it is treated as Category III
-   because it is called a Listed AIF, and asks for the category to be confirmed against the AIF's statement.
+   holding called a Listed AIF, by its own category or by the category of the AIF_PERF entry it matched (when its
+   name is the entry's own name, "AIF" and brackets ignored), is Category III, fund level (as KI-166), marked
+   catRuled, and every surface says it is treated as Category III because it is called a Listed AIF, and asks for
+   the category to be confirmed against the AIF's statement.
 
    The order of reading, in taxClassify, once:
      1. the AIF's own words (category, name, product): Category III, or Category I or II, as stated: no mark;
      2. else the category of the AIF_PERF entry the holding matched, read the same way: as stated, no mark;
-     3. else "Listed AIF" (the holding's category, or the entry's): Category III, marked catRuled;
+     3. else "Listed AIF" (the holding's category, or the entry's when the names are the same once "AIF" and brackets
+        are ignored): Category III, marked catRuled;
      4. else nothing is stated anywhere: Category I or II, marked catAssumed (item 4).
    So a holding whose own words say Category II while the matched entry says "Listed AIF" is Category II, as stated.
    No figure of the harvest moves: a pass-through AIF and a fund-level AIF are both left out of it; the Listed AIF
    leaves "not classified" and enters "fund level".
-   The label is read as written, and its boundaries are pinned AS BUILT (gate review of 2 Nov 2026, TQ-01; CR-0008
-   question 24, KI-171): only the whole label counts (an own category or an entry that says "Listed AIFs" or "Listed
-   AIF - Series 2" does not, and "Unlisted AIF" never does), and the label of an entry that the loose name matcher gave
-   to another fund still gives Category III. No ruling covers these edges; a later decision changes those checks.
+   The label is read as written, and its boundaries are pinned AS BUILT (gate review of 2 Nov 2026, TQ-01; KI-171): only
+   the whole label counts (an own category or an entry that says "Listed AIFs" or "Listed AIF - Series 2" does not, and
+   "Unlisted AIF" never does). Since stage S10 (the owner's answer to question 24, 9 Nov 2026) the label of an entry that the
+   loose name matcher gave to another fund no longer gives Category III: section 1a3 pins that, and the 11 genuine entries
+   written "Name AIF" or "Name (AIF)" still count, one check for each, through the classifier and through the real matcher
+   (section 1c). No ruling covers the edges of the label's spelling; a later decision changes those checks.
    Synthetic data only.
    ========================================================================== */
 'use strict';
@@ -134,24 +139,47 @@ ok(mx('Synthetic Alpha Sibling Fund 2', 'Synthetic Alpha Strategy Fund').catAssu
   'a sibling the loose matcher maps to an entry that says Category II is not told it is Category II: assumed, with the note');
 const sib = mx(CK + ' Series 7', CK);
 ok(sib.catAssumed === true && sib.cls === EQ12, 'a sibling series of the Category III entry (its name and "Series 7") is not unmarked Category III: assumed, with the note');
-ok(mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund').catRuled === true && mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund').cls === CAT3,
-  'a sibling the matcher maps to a Listed AIF entry is still Category III by the answer of 2 Nov 2026, marked, with the note (as built, CR-0008 question 24, KI-171)');
-/* AS BUILT (gate review of 2 Nov 2026, TQ-01; CR-0008 question 24, KI-171): the entry's label is read like the holding's own, the whole label only. An entry that says "Listed AIFs" or
+ok(mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund').catAssumed === true && mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund').cls === EQ12 && !mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund').catRuled,
+  'a sibling the matcher maps to a Listed AIF entry is not Category III since the owner\'s answer of 9 Nov 2026 (question 24, restrict): Category I or II, assumed, with the note (stage S10; before it this was Category III, ruled)');
+/* AS BUILT (gate review of 2 Nov 2026, TQ-01; KI-171): the entry's label is read like the holding's own, the whole label only. An entry that says "Listed AIFs" or
    "Listed AIF - Series 2" is not the label, and an entry that says "Unlisted AIF" is not a Listed AIF (a missing start anchor would rule it Category III): for the fund of
    that name and for a sibling, Category I or II, assumed, with the note. Today's data holds none of these labels; the data guard in section 1b fails if a refresh brings one. */
 const lab = (k, sib) => mx(sib ? k + ' 2' : k, k), notLabel = x => x.cls === EQ12 && x.catAssumed === true && !x.catRuled;
 ok(['Synthetic Plural Label Fund', 'Synthetic Series Label Fund'].every(k => notLabel(lab(k)) && notLabel(lab(k, true))),
-  'an entry labelled "Listed AIFs" or "Listed AIF - Series 2" is not the label "Listed AIF" (as built, CR-0008 question 24, KI-171): Category I or II, assumed, not ruled, for the fund of that name and for a sibling');
+  'an entry labelled "Listed AIFs" or "Listed AIF - Series 2" is not the label "Listed AIF" (as built, KI-171): Category I or II, assumed, not ruled, for the fund of that name and for a sibling');
 ok(notLabel(lab('Synthetic Unlisted Label Fund')) && notLabel(lab('Synthetic Unlisted Label Fund', true)),
   'an entry labelled "Unlisted AIF" is not a Listed AIF: Category I or II, assumed, not ruled, for the fund of that name and for a sibling');
 /* the Long Short row is read from an entry only for the fund of the same name, also when the holding's own category is the label (the sibling above has a blank category and never reaches this line) */
 const lsSib = mx('Synthetic Delta Sibling Fund 2', 'Synthetic Delta Strategy Fund', { category: 'Listed AIF' });
 ok(lsSib.cls === CAT3 && lsSib.catRuled === true && !lsSib.catAssumed,
-  'own category "Listed AIF" and a sibling the matcher maps to the Long Short entry: the Listed Equity row, ruled (as built, CR-0008 question 24, KI-171; the entry\'s Long Short wording picks the row only for the fund of the same name)');
+  'own category "Listed AIF" and a sibling the matcher maps to the Long Short entry: the Listed Equity row, ruled (the fund\'s own words say Listed AIF; the entry\'s Long Short wording picks the row only for the fund of the same name)');
 ok(stated12(mx('Synthetic Growth Fund', 'Synthetic Listed Strategy Fund', { category: 'Category II' })) && stated3(mx('Synthetic Growth Fund', 'Synthetic Delta Strategy Fund', { category: 'Category III' })) && stated12(mx(CK, CK, { category: 'Category II' })),
   'the fund\'s own Category II or III beats any entry, even the Category III entry of the same name');
 ok(mx('Synthetic Listed Strategy Fund', 'Synthetic Listed Strategy Fund', { category: 'Unlisted AIF' }).catAssumed === true && !mx('Synthetic Listed Strategy Fund', 'Synthetic Listed Strategy Fund', { category: 'Unlisted AIF' }).catRuled,
   'an own category that says Unlisted AIF is not overruled by the entry\'s Listed AIF label: assumed, with the note');
+
+console.log('--- 1a3. the owner\'s answer to question 24 (9 Nov 2026, "Restrict it"): the entry\'s Listed AIF label counts for the entry\'s own name only, "AIF" and brackets ignored (stage S10) ---');
+/* A fund the loose name matcher only links by a similar name (another fund of the house, a real-estate fund, a series) is Category I or II, assumed, with the note: its own category says nothing
+   or something else, and the entry's label is a statement about another fund. The same name once "AIF" and brackets are ignored is the same fund. */
+const asm = x => x.cls === EQ12 && x.catAssumed === true && !x.catRuled, ruled3 = x => (x.cls === CAT3 || x.cls === CAT3LS) && x.catRuled === true && !x.catAssumed;
+ok(asm(mx('Synthetic Real Estate Opportunities Fund', 'Synthetic Listed Strategy Fund', { category: 'Real Estate' })) && asm(mx('Synthetic Real Estate Opportunities Fund', 'Synthetic Listed Strategy Fund')) &&
+   asm(mx('Synthetic Listed Strategy Fund II', 'Synthetic Listed Strategy Fund')) && asm(mx('Synthetic Listed Strategy Fund Series 2', 'Synthetic Listed Strategy Fund')) && asm(mx('Synthetic Listed Strategy Fund AIF II', 'Synthetic Listed Strategy Fund')) &&
+   (x => x.cls === DB12 && x.catAssumed === true && !x.catRuled)(mx('Synthetic Listed Strategy Credit Fund', 'Synthetic Listed Strategy Fund', { asset: 'Debt' })),
+  'a loose link is not the entry: a real-estate fund, "II", "Series 2" and "AIF II" of a Listed AIF entry are Category I or II, assumed, with the note (a debt holding takes the debt row, still assumed)');
+ok(['Synthetic Listed Strategy Fund', 'Synthetic Listed Strategy Fund AIF', 'Synthetic Listed Strategy Fund (AIF)', 'SYNTHETIC LISTED STRATEGY FUND (aif)', 'Synthetic Listed Strategy Fund ( AIF )', 'Synthetic Listed Strategy (AIF) Fund']
+     .every(nm => ruled3(mx(nm, 'Synthetic Listed Strategy Fund'))),
+  'the entry\'s own name written "Name", "Name AIF", "Name (AIF)", in capitals, with spaces inside the brackets or with AIF inside the name is the same fund once "AIF" and brackets are ignored: Category III, ruled');
+ok(ruled3(mx('Synthetic Real Estate Opportunities Fund', 'Synthetic Listed Strategy Fund', { category: 'Listed AIF' })) && ruled3(mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund', { category: 'listed aif' })) &&
+   asm(mx('Synthetic Listed Sibling Fund 2', 'Synthetic Listed Strategy Fund', { category: 'Unlisted AIF' })),
+  'the fund\'s own words still decide: an own category "Listed AIF" is Category III, ruled, whatever the entry or the name; an own category "Unlisted AIF" never is');
+const dbl = (nm, key, h) => E.taxClassify(Object.assign({ product: 'AIF', asset: 'Equity', category: '', name: nm, perfSrc: 'AIF', perfKey: key }, h), REF);
+/* the data, one check for each genuine entry (11 when this was written; the loop reads whatever the data holds): its own name, "Name AIF" and "Name (AIF)" count; a series or a second fund does not
+   (the sibling words are "Series 2" and an unused word: the matcher's normaliser drops a repeated word, so "Name II" of an entry that already ends in II is the same name) */
+listedKeys.forEach((k, i) => {
+  ok([k, k + ' AIF', k + ' (AIF)'].every(nm => ruled3(dbl(nm, k))) && [k + ' Series 2', k + ' Zeta', k + ' AIF Zeta'].every(nm => asm(dbl(nm, k))),
+    'Listed AIF entry ' + (i + 1) + ' of ' + listedKeys.length + ': its name, "Name AIF" and "Name (AIF)" are Category III, ruled; "Name Series 2", "Name Zeta" and "Name AIF Zeta" are Category I or II, assumed');
+});
+ok(listedKeys.length >= 1, 'the data holds at least one Listed AIF entry for the checks above (it held 11 when stage S10 was written)');
 
 console.log('--- 1b. the entry the holding matched ---');
 const lh = matched(LK), ch = matched(CK);
@@ -181,6 +209,14 @@ const withListed = () => new T.Book()
   .add(flexi);
 const without = () => new T.Book().add(aif('Synthetic Private Equity Fund II', 'Category II', 10000000, 12000000)).add(aif('Synthetic Long Short Fund', 'AIF (CAT III) - Long Short', 5000000, 10000000))
   .add(aif('Synthetic Unstated Category Fund', '', 3000000, 4000000)).add(flexi);
+console.log('--- 1c. the real name matcher: the genuine Listed AIFs written "Name AIF" or "Name (AIF)" are still Category III (owner\'s answer to question 24, stage S10) ---');
+/* One check for each Listed AIF entry of the data (11 when this was written): a base file's holding is linked to the entry by the page's own matcher, as a client's file would be, and the three spellings
+   of the name are Category III, ruled. This is the claim the owner's answer rests on ("all 11 genuine entries written Name AIF or Name (AIF) still count"); a change of the matcher or of the data that breaks it fails here. */
+listedKeys.forEach((k, i) => {
+  const names = [k, k + ' AIF', k + ' (AIF)'], pm = new T.Book().add(aif(names[0], '', 5000000, 6000000)).add(aif(names[1], '', 5000000, 6000000)).add(aif(names[2], '', 5000000, 6000000)).review(AS_ON).taxation.positions;
+  ok(names.every(nm => { const p = pm.find(q => q.name === nm); return !!p && p.catRuled === true && (p.cls === CAT3 || p.cls === CAT3LS) && p.notSplit === 'fundLevel'; }),
+    'Listed AIF entry ' + (i + 1) + ' of ' + listedKeys.length + ' through the real matcher: its name, "Name AIF" and "Name (AIF)" are linked to it and are Category III, fund level, ruled');
+});
 console.log('--- 2. the review ---');
 const m = withListed().review(AS_ON), TX = m.taxation, ns = TX.totals.notSplit, pos = n => TX.positions.find(p => p.name === n);
 const lo = pos('Synthetic Listed Opportunities Fund'), lc = pos('Synthetic Listed Credit Fund'), c2 = pos('Synthetic Private Equity Fund II'), ls = pos('Synthetic Long Short Fund'), un = pos('Synthetic Unstated Category Fund');
