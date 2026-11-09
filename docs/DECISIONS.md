@@ -643,11 +643,11 @@ independent review, 2 Nov 2026), within the decisions above, for the owner to co
   answered on 2 Nov 2026 (PD-50, CR-0008 question 21): "Keep and disclose." The signal stays as built, this paragraph is
   the disclosure, and the alternative stays a one-line change.
 - **An AIF's category is read once** (D-043): the fund's own words, then the performance data's category for the fund
-  it matched (when the holding's name is the entry's own name once normalised: the page's name matcher is loose, and a
-  sibling series is not told its category by it), then "Listed AIF" (Category III, with a note: the holding's own
-  category, or the matched entry's label when the holding's name is the entry's own name with "AIF" and brackets
-  ignored, the owner's answer to question 24 of 9 Nov 2026), else Category I or II assumed, with a note. An own
-  category that says unlisted blocks the Listed AIF label of a matched entry.
+  it matched (when the holding's name is the entry's own name once normalised with "AIF" and brackets ignored: the
+  page's name matcher is loose, and a sibling series is not told its category by it), then "Listed AIF" (Category III,
+  with a note: the holding's own category, or the matched entry's label when the holding's name is the entry's own name
+  with "AIF" and brackets ignored, the owner's answer to question 24 of 9 Nov 2026), else Category I or II assumed, with
+  a note. An own category that says unlisted blocks the Listed AIF label of a matched entry.
 - **IRR dates with an explicit zone.** A date-time with a zone in the IRR sheet ("2023-04-01T20:00:00Z",
   "2023-04-01T00:00:00+05:30") is read as the day written, the same in every time zone (part T2 read the machine-local
   day of the instant, which is another day in some zones; main read the UTC date). Only text that the browser's Date
@@ -777,9 +777,9 @@ entry. The owner answered it on 9 Nov 2026 through the moderator (PD-54).
    1. the fund's own words (its category, name and product): Category III, else Category I or II, as stated, with no
       mark;
    2. else the category of the performance-data entry the holding matched (the page's own matcher links the holding to
-      the entry before it computes tax), when the holding's name is the entry's own name once normalised; the matcher
-      is loose, so a sibling series it maps to the entry is not told the entry's category. "AIF (CAT III) - Listed
-      Equity" is Category III, as stated;
+      the entry before it computes tax), when the holding's name is the entry's own name once normalised with the word
+      "AIF" and brackets ignored (the same equality as step 3, stage S11); the matcher is loose, so a sibling series it
+      maps to the entry is not told the entry's category. "AIF (CAT III) - Listed Equity" is Category III, as stated;
    3. else "Listed AIF": the holding's own category says so, or the matched entry's category says so and the holding's
       name is the entry's own name once normalised with the word "AIF" and brackets ignored ("Name AIF" and "Name
       (AIF)" are the entry "Name"). An own category that says unlisted blocks the entry's label, and only the whole
@@ -791,7 +791,7 @@ entry. The owner answered it on 9 Nov 2026 through the moderator (PD-54).
       only if the fund's own words say 'Listed AIF', or its name matches the performance entry's name exactly (ignoring
       'AIF' and brackets); a merely similar name stays Category I or II with the caution note". His answer: "Restrict it
       (Recommended)". Built in stage S10 of part T5; the 11 genuine entries of the data keep their ruling, also when the
-      name is written "Name AIF" or "Name (AIF)";
+      name is written "Name AIF" or "Name (AIF)". Since stage S11 the same equality serves step 2;
    4. else nothing states a category: Category I or II, pass-through, marked as assumed, with a note (part T5 item 4).
    A fund whose own words say Category I or II while the performance data calls it a Listed AIF is therefore Category I
    or II, as stated, with no note. The words that count are cat or category followed by III, II, I, three, two, one, 3,
@@ -816,7 +816,10 @@ Listed AIF as Category III with no note (rejected: the owner asked for a safe no
 category). Let the label override a category the fund states itself (not taken: step 1 is the conservative reading and
 keeps a stated Category I or II as pass-through; the owner confirmed on 2 Nov 2026 that the fund's own statement wins).
 Count the entry's Listed AIF label through any match that the loose name matcher makes (the lead's reading of the
-answer to question 17, built until stage S10; the owner restricted it on 9 Nov 2026).
+answer to question 17, built until stage S10; the owner restricted it on 9 Nov 2026). Keep step 2 at the strict same
+name while step 3 ignores "AIF" and brackets (stage S10 as first built; not taken: ARC-01's pre-check of stage S10
+found the Category III entry written "Name AIF" read as an assumed Category I or II, the wrong direction and
+inconsistent with step 3).
 **Consequences.** Amends D-040 (d); D-040 (g) and question 18 are unchanged. The tests that asserted the old reading
 move with it: `KI-171-aif-cat-i-ii.js` (the sample book's Listed AIF is Category III, fund level) and
 `KI-180-debt-row-section.js` (every TAX_RULES row is still reached, with an equity Category II case added; the sample
@@ -824,5 +827,9 @@ book's totals as above). A new `CR-0008-T5-item10-listed-aif.js` pins the four s
 every surface; `KI-182-crypto-no-set-off.js` follows the new wording of the crypto sentences. Stage S10 (question 24)
 changes step 3 of the reader and one sentence of the tab: the item 10 file pins the loose link and the spellings of the
 entry's name and checks each of the 11 genuine entries through the classifier and through the real matcher (116
-checks), and `KI-182-crypto-no-set-off.js` follows the tab sentence that no longer cites the owner (33 checks). The new build ports the same four steps, step 3 as
-restricted, when it ports AIF treatment (M7). D-042 is reserved for fix batch 5.
+checks), and `KI-182-crypto-no-set-off.js` follows the tab sentence that no longer cites the owner (33 checks). Stage
+S11 (ARC-01's pre-check of stage S10) applies the same name equality to step 2; the item 10 file has 119 checks (three
+more: the Category III entry through the classifier and through the real matcher, and fixture entries that state
+Category II and Category III Long Short). The new build ports the same four steps, with the same name equality ("AIF"
+and brackets ignored) for step 2 and for step 3 as restricted, when it ports AIF treatment (M7). D-042 is reserved for
+fix batch 5.

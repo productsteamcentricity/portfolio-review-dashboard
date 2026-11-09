@@ -7,7 +7,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ### Fixed (fix batch 3: tax rules per the TY2026-27 reckoner, CR-0008)
 - **Tax batch, part T5 (CR-0008, D-040, D-043): the follow-ups to parts T1 to T4, the owner's answers to questions 17,
   18 and 24, and the corrections from two reviews.** `index.html` MD5 `0713C6BEEFCB35D778730AB9BEF3E430` →
-  `98320D2815CD6C6E565998798390A29F` (16,898,566 → 16,917,896 bytes; patch `tools/patches/2026-10-27-tax-5-followups.js`).
+  `32CE9C58307178C4A76379AA6170C413` (16,898,566 → 16,917,748 bytes; patch `tools/patches/2026-10-27-tax-5-followups.js`).
   On branch `fix/legacy-batch-3-tax-cr-0008`, which carries the whole batch; the batch merges as one change.
   - Aggressive hybrid, arbitrage and equity savings funds take the reckoner's usual bucket only when the review is valued
     on or after 1 Apr 2026, labelled "usual bucket per the tax reckoner; confirm with the fund house"; before that date
@@ -18,8 +18,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - A fund called a Listed AIF is Category III, fund level, with a note that asks the analyst to confirm the category
     (question 17, D-043); an AIF whose category the file does not state stays Category I or II with a note; a fund's own
     stated category wins; the category the performance data gives is a statement about the fund only when the names
-    are the same (the name matcher is loose); the category is read once, in `taxClassify`; the data's Listed AIF label
-    counts only for the fund of the entry's own name, "AIF" and brackets ignored (question 24, stage S10, below).
+    are the same, "AIF" and brackets ignored (the name matcher is loose); the category is read once, in `taxClassify`;
+    the data's Listed AIF label counts only for the fund of the entry's own name, "AIF" and brackets ignored (question
+    24, stage S10; the same equality for the category the data states, stage S11; below).
     Question 18: crypto stays out of set-off, with no change to the rule or to any figure (two sentences were reworded,
     below).
     On the sample book no tax, LTCG, STCG, estimated tax, saving, harvest or total CMV moves; the not-classified CMV and
@@ -40,7 +41,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     of set-off "pending" a ruling now state the rule (KI-182; no figure moves).
   - 4 new regression files (`CR-0008-T5-followups.js`, `CR-0008-T5-item10-listed-aif.js`,
     `CR-0008-T5-item11-irr-zone-dates.js`, `KI-185-engine-keys.js`); `KI-166` and `KI-169` (one assertion each), `KI-170`, `KI-171`, `KI-180` and
-    `KI-182` changed. 47 files, 1,646 checks (1,619 before stage S10), pass in IST and UTC; `node --test` 234/234 (at
+    `KI-182` changed. 47 files, 1,649 checks (1,619 before stage S10), pass in IST and UTC; `node --test` 234/234 (at
     stage S9); `smoke-review` 36/36; `test-ai-analyst` 24/24. The final head's results go into the pull request.
   - The five-reviewer review of the committed head (two financial-domain reviewers, a security and release reviewer, a
     documentation auditor and a test-quality auditor; 62 findings, 2 Nov 2026) is answered in CR-0008, "The gate reviews
@@ -59,6 +60,16 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     `CR-0008-T5-item10-listed-aif.js` has 116 checks (90) and `KI-182-crypto-no-set-off.js` 33 (32). KI-213 (a dash in
     the AI Analyst's "Not assessed" reason) and KI-214 (the regression runner passes a test file that runs no checks)
     are filed.
+  - Stage S11 (9 Nov 2026), ARC-01's pre-check of stage S10: the same name equality now serves step 2 of the AIF
+    category reader. The category that the performance data states (Category I, II or III) counts for the fund of the
+    entry's own name, "AIF" and brackets ignored, as the Listed AIF label already did at stage S10. Before, the one
+    genuine Category III entry written "Name AIF" or "Name (AIF)" read as an assumed Category I or II while a Listed AIF
+    written the same way read Category III. It is now Category III as the data states it (fund level, no note that it
+    is called a Listed AIF, no assumed note); an entry that states Category I or II is a statement for those spellings
+    too; a merely similar name still reads Category I or II, assumed, with the note; the 11 Listed AIF entries are
+    unchanged (D-043, KI-166, KI-171). No tax, LTCG, STCG, estimated-tax, saving or harvest figure moves. `index.html`
+    MD5 `98320D28…` → `32CE9C58…` (16,917,896 → 16,917,748 bytes; the engine block only);
+    `CR-0008-T5-item10-listed-aif.js` has 119 checks (116).
 - **Tax batch rebased on fix batch 4 (CR-0008): the branch merged `main` (PR #14 to #16) and its page was rebuilt**
   from main's page (fix batch 4) with the four tax patches in file-name order: `index.html` MD5
   `12B5E5727FCA01EF2EA162C59913F01D` → `0713C6BEEFCB35D778730AB9BEF3E430`. Parts T1, T3 and T4 apply unchanged. Part T2

@@ -33,7 +33,7 @@
   tax patches, two anchors of part T2 revised where the batches meet (CR-0008, "Rebased on fix batch 4"; `index.html` MD5
   `0713C6BE…`). Part T5 (2 Nov 2026: the follow-ups to T1 to T4, the owner's answers to questions 17, 18 and 24, and the
   corrections from an independent review; D-043) is committed on `fix/legacy-batch-3-tax-cr-0008`, the branch that
-  carries the whole batch (`index.html` MD5 `98320D28…`): the usual bucket of aggressive hybrid, arbitrage and equity
+  carries the whole batch (`index.html` MD5 `32CE9C58…`): the usual bucket of aggressive hybrid, arbitrage and equity
   savings funds applies only from 1 Apr 2026 (KI-170), a Listed AIF is Category III with a safe note (question 17; since
   the owner's answer to question 24 on 9 Nov 2026, only for a fund of the performance entry's own name), crypto
   stays out of set-off (question 18), an IRR date with an explicit zone is the day written (KI-186), the harvest inputs
@@ -41,7 +41,8 @@
   are fixed and KI-177 in part; KI-177's step-up waits for the owner's rulings. The five-reviewer review of the
   committed head (62 findings, 2 Nov 2026) is answered in CR-0008: the corrections were in the records and the tests
   only (page `391E722F…`); on 9 Nov 2026 the owner answered question 24 ("Restrict it (Recommended)") and stage S10
-  changed the page for it (`98320D28…`). The regression suite is 47 files and 1,646 checks. Open for the owner:
+  changed the page for it; stage S11 (ARC-01's pre-check of stage S10) then applied the same name equality to the
+  performance entry's stated category (`32CE9C58…`). The regression suite is 47 files and 1,649 checks. Open for the owner:
   question 23 (IRR dates); for the tax adviser: questions 25 and 26. The final head's check results go into the pull
   request. The batch merges as one pull request after the gate reviews and the browser acceptance (with
   `family-isolation.js`'s assumption-reset check); the slide geometry for a table of 13 or more classes in PowerPoint
