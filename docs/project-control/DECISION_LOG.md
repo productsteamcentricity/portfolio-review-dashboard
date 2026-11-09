@@ -7,7 +7,7 @@
 This log has three parts, kept apart on purpose:
 1. **Approved decisions.** An index of D-001 to D-042 and the lead's handover rulings. The full text of every D
    entry is in [docs/DECISIONS.md](../DECISIONS.md), which stays authoritative. This index never replaces it.
-2. **Pending owner decisions** (PD-01 to PD-46), each explained in plain language.
+2. **Pending owner decisions** (PD-01 to PD-54), each explained in plain language.
 3. **Recommendations not yet approved.**
 
 Evidence labels: [VERIFIED] (with the evidence), [INFERRED], [UNCERTAIN], [UNKNOWN]. Related registers:
@@ -205,9 +205,9 @@ four local-only branches (`feat/m1-4-overview` and the three fixer branches, 26 
 clean pre-push scans (MOD-02 re-ran all four, same counts as NB-01) and a security-release-reviewer GO (NB-01's report). Verified
 afterwards with `git ls-remote origin` by MOD-02 and ARC-01.
 
-**R-14. Numbers, 9 Nov 2026.** KI ranges: EX-01 KI-183 to KI-186 and KI-200 to KI-219 (KI-185, KI-186 and KI-200 to KI-212 are in the TA-03 branch; KI-213 and KI-214 allocated); NB-01 KI-190 to KI-199 (KI-190 to KI-192 used on its branch); MOD-02 KI-187 to KI-189. Decisions D-043 to D-045 EX-01 (D-043 = the owner's answers to CR-0008 Q17, Q18, Q22 and Q24, written in TA-03). PD numbers PD-47 to PD-54 allocated on 2 and 9 Nov.
+**R-14. Numbers, 9 Nov 2026.** KI ranges: EX-01 KI-183 to KI-186 and KI-200 to KI-219 (KI-185, KI-186 and KI-200 to KI-212 are in the TA-03 branch; KI-213 and KI-214 allocated); NB-01 KI-190 to KI-199 (KI-190 to KI-192 used on its branch); MOD-02 KI-187 to KI-189. Decisions D-042 to D-045 EX-01 (D-042 reserved for TA-05; D-043 = the owner's answers to CR-0008 Q17, Q18 and Q22, on the TA-03 branch, and Q24, being added in stage S10). PD numbers PD-47 to PD-54 allocated on 2 and 9 Nov.
 
-**R-15. Rule 10 amended, 9 Nov 2026.** Whose words: the owner's own rule (2 Nov): `tasklist` first; synthetic files, read-only, no window; close only the file you opened; never Quit; no global option; timeout; give the owner the path. ARC-01's K1: attach only, NOT RUN when no instance runs, no Stop-Process or taskkill, abandon on timeout. The security review's tightenings (2 Nov and 9 Nov): "synthetic" defined (from synthetic inputs, `.xlsx` or `.pptx`, never an inbox, vendor or downloaded file); only the workbook's own window may be hidden, never `Application.Visible`; `.Kill()` and any other termination; the option list is not exhaustive; never enumerate, read, copy, save or record the name or path of a document you did not open; tell the owner which file a timeout left open; "NOT RUN is never a pass". The owner's exception (PD-49, "Allow a copy"): Step 3 of the monthly refresh may open a COPY of the research team's Monthly Outlook deck, never the original, read-only with no window, through an already running PowerPoint, under every other condition; the owner opens PowerPoint first. Rule 10 of CLAUDE.md governs; R-12 is its earlier summary.
+**R-15. Rule 10 amended, 9 Nov 2026.** Whose words: the owner's own rule (2 Nov): `tasklist` first; synthetic files, read-only, no window; close only the file you opened; never Quit; no global option; timeout; give the owner the path. ARC-01's K1: attach only, NOT RUN when no instance runs, no Stop-Process or taskkill, abandon on timeout. The security review's tightenings (review points of 2 Nov, applied 9 Nov): "synthetic" defined (from synthetic inputs, `.xlsx` or `.pptx`, never an inbox, vendor or downloaded file); only the workbook's own window may be hidden, never `Application.Visible`; `.Kill()` and any other termination; the option list is not exhaustive; never enumerate, read, copy, save or record the name or path of a document you did not open; tell the owner which file a timeout left open; "NOT RUN is never a pass". The owner's exception (PD-49, "Allow a copy"): the Step 3 script of TA-26, after ARC-01 has reviewed it, may open one COPY of the current cycle's Monthly Outlook deck (never the original, never an older deck), made by the script as a byte copy into a new empty folder under `%TEMP%` outside OneDrive under a random name, through an already running PowerPoint, read-only with no window, only to export its slides, under every other condition except "synthetic"; it first lists the copy's zip entries and reports NOT RUN on a macro, an ActiveX part, an embedded workbook or linked chart or OLE data; it runs only after the owner has said in the session that PowerPoint is idle with nothing unsaved; it may not read names of other open documents; `tasklist` without `/V`. The security reviewer proposed the copy and pre-flight conditions; they only narrow the owner's decision. Rule 10 of CLAUDE.md governs; R-12 is its earlier summary.
 
 ## 2. Pending owner decisions
 
@@ -861,7 +861,7 @@ See the private supplement. **Blocks:** nothing.
   allows only synthetic files, and PowerPoint is usually open on your PC.
 - **Options.** A: the refresh attaches to your open PowerPoint, opens a copy of the deck on a short local path, read-only, no
   window, closes only that copy, never Quit. B: you export the slides yourself and put them in the inbox folder. C: skip the check.
-- **Recommendation / default.** B until a safe attach-only path is proven. Step 3 says NOT RUN until you answer.
+- **Recommendation / default.** B (not chosen). Until the amendment of rule 10 is on main and ARC-01 has reviewed the Step 3 script, Step 3 is NOT RUN.
 - **Blocks.** TA-10 Step 3 and TA-26.
 
 ## 3. Recommendations not yet approved
