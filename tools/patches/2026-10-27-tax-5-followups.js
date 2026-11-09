@@ -159,8 +159,10 @@
       when the entry is labelled Listed AIF AND the holding's name is the entry's own name once normalised with the word "AIF" and
       brackets ignored: "Name AIF" and "Name (AIF)" still count for all 11 genuine entries of the data; a merely similar name
       (another fund of the same house, a series, a real-estate fund that the matcher linked by two shared words) stays Category I
-      or II, assumed, with the note. The narrowing of step 2 (a sibling does not inherit a stated Category I, II or III) is
-      unchanged. The sentences that say a fund "is called a Listed AIF" stay as they are: since this stage they are true of every
+      or II, assumed, with the note. The narrowing of step 2 (a sibling does not inherit a stated Category I, II or III) stays,
+      and step 2 uses the same name equality (stage S11, ARC-01's pre-check of S10): a genuine Category III entry written
+      "Name AIF" or "Name (AIF)" is read as stated, no longer as an assumed Category I or II. The sentences that say a fund
+      "is called a Listed AIF" stay as they are: since this stage they are true of every
       fund that carries the label. The Taxation tab's crypto sentence no longer cites the owner (FDR-A F7). No tax figure moves;
       only the class of a loosely linked fund and its wording do.
 
@@ -258,17 +260,16 @@ applyPatch('2026-10-27 tax batch T5: follow-ups (usual bucket by date, AIF categ
         '          _st12=!_cat3&&/\\bcat(egory)?[\\s.:()\\[\\]{}\\/_#,\\-\\u2010-\\u2015\\u2212]*(ii|two|i|one|2|1)\\b/.test(_ct);\n' +
         '      if(!_cat3&&!_st12){\n' +
         '        _lab=(h.perfSrc==="AIF"&&R&&R.AIF_PERF&&R.AIF_PERF[h.perfKey])?String(R.AIF_PERF[h.perfKey].category||"").toLowerCase():"";\n' +
-        '        /* the loose name matcher can map a sibling series, or another fund of the house, to an entry: the entry\'s Category I, II or III is read as\n' +
-        '           a statement about this fund only when the two names are the same once normalised (the matcher\'s exact branch). The entry\'s "Listed AIF"\n' +
-        '           label (Category III, with the note) counts only for the fund of the entry\'s own name, with the word AIF and brackets ignored ("Name AIF"\n' +
-        '           and "Name (AIF)" are the entry "Name"): the owner\'s answer of 9 Nov 2026 to CR-0008 question 24 (restrict). A merely similar name stays\n' +
-        '           Category I or II, assumed, with the note. The holding\'s own category "Listed AIF" counts as before; an own category that says unlisted blocks the entry\'s label. */\n' +
-        '        var _same=!!_lab&&normalize(h.name).join(" ")===normalize(h.perfKey).join(" "),\n' +
-        '            _nkAif=function(s){ return normalize(s).filter(function(t){ return t!=="aif"; }).join(" "); },\n' +
-        '            _lsame=!!_lab&&_nkAif(h.name)===_nkAif(h.perfKey);\n' +
+        '        /* the loose name matcher can map a sibling series, or another fund of the house, to an entry: the entry\'s Category I, II or III, and its\n' +
+        '           "Listed AIF" label (Category III, with the note), are read as a statement about this fund only when the two names are the same once\n' +
+        '           normalised with the word AIF and brackets ignored ("Name AIF" and "Name (AIF)" are the entry "Name"): the owner\'s answer of 9 Nov 2026\n' +
+        '           to CR-0008 question 24 (restrict), applied to both steps. A merely similar name stays Category I or II, assumed, with the note. The\n' +
+        '           holding\'s own category "Listed AIF" counts as before; an own category that says unlisted blocks the entry\'s label. */\n' +
+        '        var _nkAif=function(s){ return normalize(s).filter(function(t){ return t!=="aif"; }).join(" "); },\n' +
+        '            _same=!!_lab&&_nkAif(h.name)===_nkAif(h.perfKey);\n' +
         '        if(_same&&/\\bcat(egory)?[\\s.:()\\[\\]{}\\/_#,\\-\\u2010-\\u2015\\u2212]*(iii|three|3)\\b/.test(_lab)) _cat3=true;\n' +
         '        else if(_same&&/\\bcat(egory)?[\\s.:()\\[\\]{}\\/_#,\\-\\u2010-\\u2015\\u2212]*(ii|two|i|one|2|1)\\b/.test(_lab)) _st12=true;\n' +
-        '        else if(/^\\s*listed\\s*aif\\s*$/.test(c)||(!/unlisted/.test(c)&&_lsame&&/^\\s*listed\\s*aif\\s*$/.test(_lab))) _ruled=true;\n' +
+        '        else if(/^\\s*listed\\s*aif\\s*$/.test(c)||(!/unlisted/.test(c)&&_same&&/^\\s*listed\\s*aif\\s*$/.test(_lab))) _ruled=true;\n' +
         '      }\n' +
         '      if(_cat3||_ruled){\n' +
         '        /* the row is picked from the category and the name, as before; the entry\'s own wording picks it only for a category the entry stated */\n' +

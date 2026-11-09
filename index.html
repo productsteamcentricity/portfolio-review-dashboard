@@ -876,17 +876,16 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
           _st12=!_cat3&&/\bcat(egory)?[\s.:()\[\]{}\/_#,\-\u2010-\u2015\u2212]*(ii|two|i|one|2|1)\b/.test(_ct);
       if(!_cat3&&!_st12){
         _lab=(h.perfSrc==="AIF"&&R&&R.AIF_PERF&&R.AIF_PERF[h.perfKey])?String(R.AIF_PERF[h.perfKey].category||"").toLowerCase():"";
-        /* the loose name matcher can map a sibling series, or another fund of the house, to an entry: the entry's Category I, II or III is read as
-           a statement about this fund only when the two names are the same once normalised (the matcher's exact branch). The entry's "Listed AIF"
-           label (Category III, with the note) counts only for the fund of the entry's own name, with the word AIF and brackets ignored ("Name AIF"
-           and "Name (AIF)" are the entry "Name"): the owner's answer of 9 Nov 2026 to CR-0008 question 24 (restrict). A merely similar name stays
-           Category I or II, assumed, with the note. The holding's own category "Listed AIF" counts as before; an own category that says unlisted blocks the entry's label. */
-        var _same=!!_lab&&normalize(h.name).join(" ")===normalize(h.perfKey).join(" "),
-            _nkAif=function(s){ return normalize(s).filter(function(t){ return t!=="aif"; }).join(" "); },
-            _lsame=!!_lab&&_nkAif(h.name)===_nkAif(h.perfKey);
+        /* the loose name matcher can map a sibling series, or another fund of the house, to an entry: the entry's Category I, II or III, and its
+           "Listed AIF" label (Category III, with the note), are read as a statement about this fund only when the two names are the same once
+           normalised with the word AIF and brackets ignored ("Name AIF" and "Name (AIF)" are the entry "Name"): the owner's answer of 9 Nov 2026
+           to CR-0008 question 24 (restrict), applied to both steps. A merely similar name stays Category I or II, assumed, with the note. The
+           holding's own category "Listed AIF" counts as before; an own category that says unlisted blocks the entry's label. */
+        var _nkAif=function(s){ return normalize(s).filter(function(t){ return t!=="aif"; }).join(" "); },
+            _same=!!_lab&&_nkAif(h.name)===_nkAif(h.perfKey);
         if(_same&&/\bcat(egory)?[\s.:()\[\]{}\/_#,\-\u2010-\u2015\u2212]*(iii|three|3)\b/.test(_lab)) _cat3=true;
         else if(_same&&/\bcat(egory)?[\s.:()\[\]{}\/_#,\-\u2010-\u2015\u2212]*(ii|two|i|one|2|1)\b/.test(_lab)) _st12=true;
-        else if(/^\s*listed\s*aif\s*$/.test(c)||(!/unlisted/.test(c)&&_lsame&&/^\s*listed\s*aif\s*$/.test(_lab))) _ruled=true;
+        else if(/^\s*listed\s*aif\s*$/.test(c)||(!/unlisted/.test(c)&&_same&&/^\s*listed\s*aif\s*$/.test(_lab))) _ruled=true;
       }
       if(_cat3||_ruled){
         /* the row is picked from the category and the name, as before; the entry's own wording picks it only for a category the entry stated */

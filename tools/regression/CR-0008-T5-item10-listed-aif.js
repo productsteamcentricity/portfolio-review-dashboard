@@ -1,7 +1,8 @@
 /* ============================================================================
    CR-0008, tax batch part T5, item 10: an AIF called a "Listed AIF" is Category III.
    (CR-0008 question 17, answered 2 Nov 2026: yes, with a safe note; D-043. Question 24, answered 9 Nov 2026: "Restrict it":
-   the data's label counts for the entry's own name only, "AIF" and brackets ignored; stage S10.)
+   the data's label counts for the entry's own name only, "AIF" and brackets ignored; stage S10. Stage S11, ARC-01's
+   pre-check of S10: the entry's stated Category I, II or III follows the same name equality.)
 
      node tools/regression/CR-0008-T5-item10-listed-aif.js
 
@@ -15,7 +16,8 @@
 
    The order of reading, in taxClassify, once:
      1. the AIF's own words (category, name, product): Category III, or Category I or II, as stated: no mark;
-     2. else the category of the AIF_PERF entry the holding matched, read the same way: as stated, no mark;
+     2. else the category of the AIF_PERF entry the holding matched, read the same way, when the names are the same once
+        "AIF" and brackets are ignored (stage S11; the same equality as step 3): as stated, no mark;
      3. else "Listed AIF" (the holding's category, or the entry's when the names are the same once "AIF" and brackets
         are ignored): Category III, marked catRuled;
      4. else nothing is stated anywhere: Category I or II, marked catAssumed (item 4).
@@ -27,7 +29,8 @@
    "Unlisted AIF" never does). Since stage S10 (the owner's answer to question 24, 9 Nov 2026) the label of an entry that the
    loose name matcher gave to another fund no longer gives Category III: section 1a3 pins that, and the 11 genuine entries
    written "Name AIF" or "Name (AIF)" still count, one check for each, through the classifier and through the real matcher
-   (section 1c). No ruling covers the edges of the label's spelling; a later decision changes those checks.
+   (section 1c); since stage S11 so does the Category III entry's own statement, one check for it in each of the two ways.
+   No ruling covers the edges of the label's spelling; a later decision changes those checks.
    Synthetic data only.
    ========================================================================== */
 'use strict';
@@ -180,6 +183,14 @@ listedKeys.forEach((k, i) => {
     'Listed AIF entry ' + (i + 1) + ' of ' + listedKeys.length + ': its name, "Name AIF" and "Name (AIF)" are Category III, ruled; "Name Series 2", "Name Zeta" and "Name AIF Zeta" are Category I or II, assumed');
 });
 ok(listedKeys.length >= 1, 'the data holds at least one Listed AIF entry for the checks above (it held 11 when stage S10 was written)');
+/* stage S11 (ARC-01's pre-check of S10): step 2 uses the same name equality, so a genuine Category III entry written "Name AIF" or "Name (AIF)" is read as stated, not as an assumed Category I or II */
+cat3Keys.forEach((k, i) => {
+  ok([k, k + ' AIF', k + ' (AIF)'].every(nm => stated3(dbl(nm, k))) && [k + ' Series 2', k + ' Zeta', k + ' AIF Zeta'].every(nm => asm(dbl(nm, k))),
+    'Category III entry ' + (i + 1) + ' of ' + cat3Keys.length + ': its name, "Name AIF" and "Name (AIF)" are Category III, as stated by the data, no mark; "Name Series 2", "Name Zeta" and "Name AIF Zeta" are Category I or II, assumed');
+});
+ok(stated12(mx('Synthetic Alpha Strategy Fund AIF', 'Synthetic Alpha Strategy Fund')) && stated12(mx('Synthetic Alpha Strategy Fund (AIF)', 'Synthetic Alpha Strategy Fund')) && asm(mx('Synthetic Alpha Strategy Fund AIF Zeta', 'Synthetic Alpha Strategy Fund')) &&
+   stated3(mx('Synthetic Delta Strategy Fund (AIF)', 'Synthetic Delta Strategy Fund', { category: 'Category III' })) && mx('Synthetic Delta Strategy Fund (AIF)', 'Synthetic Delta Strategy Fund').cls === CAT3LS,
+  'an entry that says Category II is a statement for "Name AIF" and "Name (AIF)" too, one that says Category III Long Short gives its row for them, and "Name AIF Zeta" is another fund: assumed');
 
 console.log('--- 1b. the entry the holding matched ---');
 const lh = matched(LK), ch = matched(CK);
@@ -216,6 +227,12 @@ listedKeys.forEach((k, i) => {
   const names = [k, k + ' AIF', k + ' (AIF)'], pm = new T.Book().add(aif(names[0], '', 5000000, 6000000)).add(aif(names[1], '', 5000000, 6000000)).add(aif(names[2], '', 5000000, 6000000)).review(AS_ON).taxation.positions;
   ok(names.every(nm => { const p = pm.find(q => q.name === nm); return !!p && p.catRuled === true && (p.cls === CAT3 || p.cls === CAT3LS) && p.notSplit === 'fundLevel'; }),
     'Listed AIF entry ' + (i + 1) + ' of ' + listedKeys.length + ' through the real matcher: its name, "Name AIF" and "Name (AIF)" are linked to it and are Category III, fund level, ruled');
+});
+/* the Category III entries of the data (stage S11): written "Name AIF" or "Name (AIF)" they are Category III as stated by the data, no mark, fund level */
+cat3Keys.forEach((k, i) => {
+  const names = [k, k + ' AIF', k + ' (AIF)'], pm = new T.Book().add(aif(names[0], '', 5000000, 6000000)).add(aif(names[1], '', 5000000, 6000000)).add(aif(names[2], '', 5000000, 6000000)).review(AS_ON).taxation.positions;
+  ok(names.every(nm => { const p = pm.find(q => q.name === nm); return !!p && !p.catRuled && !p.catAssumed && (p.cls === CAT3 || p.cls === CAT3LS) && p.notSplit === 'fundLevel'; }),
+    'Category III entry ' + (i + 1) + ' of ' + cat3Keys.length + ' through the real matcher: its name, "Name AIF" and "Name (AIF)" are Category III as the data states, no mark, fund level');
 });
 console.log('--- 2. the review ---');
 const m = withListed().review(AS_ON), TX = m.taxation, ns = TX.totals.notSplit, pos = n => TX.positions.find(p => p.name === n);
