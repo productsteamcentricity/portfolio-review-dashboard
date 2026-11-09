@@ -5,9 +5,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ## [Unreleased]
 
 ### Fixed (fix batch 3: tax rules per the TY2026-27 reckoner, CR-0008)
-- **Tax batch, part T5 (CR-0008, D-040, D-043): the follow-ups to parts T1 to T4, the owner's answers to questions 17
-  and 18, and the corrections from two reviews.** `index.html` MD5 `0713C6BEEFCB35D778730AB9BEF3E430` →
-  `391E722FFDC585D8D614CA7029FB8EA1` (16,898,566 → 16,917,379 bytes; patch `tools/patches/2026-10-27-tax-5-followups.js`).
+- **Tax batch, part T5 (CR-0008, D-040, D-043): the follow-ups to parts T1 to T4, the owner's answers to questions 17,
+  18 and 24, and the corrections from two reviews.** `index.html` MD5 `0713C6BEEFCB35D778730AB9BEF3E430` →
+  `98320D2815CD6C6E565998798390A29F` (16,898,566 → 16,917,896 bytes; patch `tools/patches/2026-10-27-tax-5-followups.js`).
   On branch `fix/legacy-batch-3-tax-cr-0008`, which carries the whole batch; the batch merges as one change.
   - Aggressive hybrid, arbitrage and equity savings funds take the reckoner's usual bucket only when the review is valued
     on or after 1 Apr 2026, labelled "usual bucket per the tax reckoner; confirm with the fund house"; before that date
@@ -18,8 +18,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - A fund called a Listed AIF is Category III, fund level, with a note that asks the analyst to confirm the category
     (question 17, D-043); an AIF whose category the file does not state stays Category I or II with a note; a fund's own
     stated category wins; the category the performance data gives is a statement about the fund only when the names
-    are the same (the name matcher is loose); the category is read once, in `taxClassify`. Question 18: crypto stays
-    out of set-off, with no change to the rule or to any figure (two sentences were reworded, below).
+    are the same (the name matcher is loose); the category is read once, in `taxClassify`; the data's Listed AIF label
+    counts only for the fund of the entry's own name, "AIF" and brackets ignored (question 24, stage S10, below).
+    Question 18: crypto stays out of set-off, with no change to the rule or to any figure (two sentences were reworded,
+    below).
     On the sample book no tax, LTCG, STCG, estimated tax, saving, harvest or total CMV moves; the not-classified CMV and
     gain move into a Fund level amount (2.7051 to 2.0535 Cr, new 0.6516 Cr).
   - An IRR date written with an explicit zone ("2023-04-01T20:00:00Z") is read as the day written in every time zone
@@ -31,23 +33,32 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - `ENGINE.taxDefaults` is frozen and `check-invariants` lists all 28 engine names and checks them both ways (KI-185). KI-184 is filed (the base
     file's ISIN column is not read; D-040 point (c) corrected). The independent review (8 reviewers, 51 findings) and
     the delta review of its corrections (6 reviewers) and ARC-01's pre-review of the stages are answered in CR-0008; KI-200 to KI-206 are the first review's
-    open findings and KI-207 to KI-212 the delta review's and ARC-01's.
+    open findings, KI-207 to KI-212 the delta review's and ARC-01's, and KI-213 and KI-214 were filed after the gate
+    review (below).
   - The owner answered on 2 Nov 2026: the fund's own statement wins when an AIF's category is read (PD-47, D-043) and the AI
     Analyst keeps following the class, with the effects disclosed (PD-50, D-040). The two sentences that said crypto is kept out
     of set-off "pending" a ruling now state the rule (KI-182; no figure moves).
   - 4 new regression files (`CR-0008-T5-followups.js`, `CR-0008-T5-item10-listed-aif.js`,
     `CR-0008-T5-item11-irr-zone-dates.js`, `KI-185-engine-keys.js`); `KI-166` and `KI-169` (one assertion each), `KI-170`, `KI-171`, `KI-180` and
-    `KI-182` changed. 47 files, 1,619 checks, pass in IST and UTC; `node --test` 234/234; `smoke-review` 36/36;
-    `test-ai-analyst` 24/24. The final head's results go into the pull request.
+    `KI-182` changed. 47 files, 1,646 checks (1,619 before stage S10), pass in IST and UTC; `node --test` 234/234 (at
+    stage S9); `smoke-review` 36/36; `test-ai-analyst` 24/24. The final head's results go into the pull request.
   - The five-reviewer review of the committed head (two financial-domain reviewers, a security and release reviewer, a
     documentation auditor and a test-quality auditor; 62 findings, 2 Nov 2026) is answered in CR-0008, "The gate reviews
-    of the committed head". The page is unchanged: `index.html` stays `391E722FFDC585D8D614CA7029FB8EA1`. The records were
-    corrected (D-040, D-043, KNOWN_ISSUES, TESTING, PROJECT_STATE, legacy ARCHITECTURE, and `CLAUDE.md`, whose
+    of the committed head". The page was unchanged by those corrections (`index.html` stayed
+    `391E722FFDC585D8D614CA7029FB8EA1` until stage S10, below). The records were corrected (D-040, D-043, KNOWN_ISSUES, TESTING, PROJECT_STATE, legacy ARCHITECTURE, and `CLAUDE.md`, whose
     `smoke-review` count is now 36); 30 checks were added to `CR-0008-T5-followups.js` (130 in all) and 5 to
     `CR-0008-T5-item10-listed-aif.js` (90 in all), `KI-182-crypto-no-set-off.js` no longer pins the stale data text and
     `KI-185-engine-keys.js` cleans up after itself and plants a number, a string, a function and an object; there is one
     new question for the owner, CR-0008 question 24 (a fund that the loose name matcher only links to a Listed AIF
-    entry), and two for the tax adviser, questions 25 and 26.
+    entry; answered 9 Nov 2026, below), and two for the tax adviser, questions 25 and 26.
+  - Stage S10 (9 Nov 2026), the owner's answer to question 24, "Restrict it (Recommended)": the data's Listed AIF label
+    gives Category III only for the fund of the entry's own name ("AIF" and brackets ignored; all 11 genuine entries of
+    the data are unchanged, also written "Name AIF" or "Name (AIF)"); a fund that the loose name matcher only links by a
+    similar name is Category I or II, assumed, with the note (D-043, KI-166, KI-171). The Taxation tab's crypto
+    sentence no longer cites the owner ("as the reckoner is silent on them", KI-182). No tax figure moves.
+    `CR-0008-T5-item10-listed-aif.js` has 116 checks (90) and `KI-182-crypto-no-set-off.js` 33 (32). KI-213 (a dash in
+    the AI Analyst's "Not assessed" reason) and KI-214 (the regression runner passes a test file that runs no checks)
+    are filed.
 - **Tax batch rebased on fix batch 4 (CR-0008): the branch merged `main` (PR #14 to #16) and its page was rebuilt**
   from main's page (fix batch 4) with the four tax patches in file-name order: `index.html` MD5
   `12B5E5727FCA01EF2EA162C59913F01D` → `0713C6BEEFCB35D778730AB9BEF3E430`. Parts T1, T3 and T4 apply unchanged. Part T2
