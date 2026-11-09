@@ -59,31 +59,59 @@ and the monthly data owner.
    `tests/fixtures/make-books.ts`), never an inbox, vendor or downloaded file. Open them read-only with no window
    (Excel cannot open a workbook without one: hide only that workbook's own window with
    `$wb.Windows(1).Visible = $false`, never `Application.Visible`); close only the presentation or workbook you
-   opened; never call `Quit`;
-   never `Stop-Process`, `taskkill` or `.Kill()` an Office process or terminate it by any other means; change no
-   global option, including `Application.DisplayAlerts`, `Application.Visible`, `Application.AutomationSecurity`,
-   `Application.Calculation`, `Application.ScreenUpdating`, `Application.EnableEvents`, `Application.UserControl` and
-   `Application.AskToUpdateLinks`; never enumerate, read, copy, save or record the name, path, window title or content
+   opened (a workbook with `Close($false)`, never `Close()` without the argument; a presentation only after its own
+   `Saved` property is set to true; otherwise a save prompt could appear on the owner's screen); never call `Quit`;
+   never `Stop-Process`, `taskkill` or `.Kill()` an Office process or terminate it by any other means; change nothing
+   that belongs to the owner's Office as a whole instead of to your own file: no global option (including
+   `Application.DisplayAlerts`, `Application.Visible`, `Application.AutomationSecurity`, `Application.Calculation`,
+   `Application.ScreenUpdating`, `Application.EnableEvents`, `Application.UserControl` and
+   `Application.AskToUpdateLinks`) and no call that acts on every open workbook, window or presentation
+   (`Application.Calculate`, `CalculateFull`, `CalculateFullRebuild`, `Application.Run`, `Activate`, `WindowState`,
+   `Windows.Arrange`, anything that writes to the clipboard); recalculate only the sheets of the workbook you opened
+   (`Worksheet.Calculate()`); never enumerate, read, copy, save or record the name, path, window title or content
    of any document that is open in the owner's Office and that you did not open yourself (use only the object that
    `Open` returned: never `ActivePresentation`, `ActiveWindow`, `ActiveWorkbook`, `Presentations(n)`, `Workbooks(n)` or
    a loop over them); use a timeout, and on a timeout abandon the file, never kill, and tell the owner which file was
    left open. If Office is not running, or the check is risky, report NOT RUN and give the owner the path of the
    synthetic file to open themselves. NOT RUN is never a pass: the check stays open until the owner has opened the file
    and said what they saw. This binds every chat, agent and script.
-   The one exception is the owner's decision of 9 Nov 2026 (PD-49). It is for the Step 3 script of TA-26
-   (`docs/MONTHLY_REFRESH.md`), in the reviewed version whose SHA-256 is recorded in its D entry, after ARC-01 has
-   reviewed it; until then Step 3 is NOT RUN and no other code may use it. That script may open one COPY of the
-   current cycle's Monthly Outlook deck (the research team's `Monthly Outlook Pagers_<month>.pptx`, never an older
-   deck, never the original), through an already running PowerPoint, read-only with no window, only to export its
-   slides. Only the "synthetic" condition above is lifted, for this one file; every other condition stays. The copy
-   is a byte copy made by the script (`Copy-Item`, the only touch of the original) into a new empty folder under
-   `%TEMP%`, outside OneDrive, that holds only the copy, under a new random file name, never a link or shortcut (the
-   exported images go to the refresh's own slide folder). Before opening it the script lists the copy's zip entries
-   and reports NOT RUN if the copy is not a readable `.pptx` zip, or has a `vbaProject.bin`, an `activeX` part, any
-   embedded object other than an `.xlsx` chart workbook, or any external (linked) chart, OLE or workbook
-   relationship (hyperlinks excepted). It runs only after the owner has opened PowerPoint and said, immediately
-   before this run, that it is idle with nothing unsaved in it (the script may not look). It closes the copy and
-   deletes the copy and that folder (the exported images stay) and leaves the original untouched. If it reports NOT
+   The one exception is the owner's decision of 9 Nov 2026 (PD-49). It is for one file only: the Step 3 script that
+   TA-26 adds, a single script file (no `-Command`, `-EncodedCommand`, `Invoke-Expression`, dot-sourcing, module or child
+   script; no agent ever relaxes the execution policy, and how the file is launched is settled in its review). It may
+   run only if all three hold: (1) its SHA-256, computed on that file just before the run, equals the hash written in
+   its own D entry in `docs/DECISIONS.md` on `origin/main`, never one on the branch being run; (2) that D entry names the
+   script's path and records the written GO of the Codebase Integrity and Integration Guardian (ARC-01, or the chat named
+   as its successor in `docs/project-control/CHAT_REGISTRY.md`) for that exact hash, so a review with open findings, or a
+   change of one byte afterwards, means Step 3 is NOT RUN; (3) the owner's statement below was made for this run. No
+   other code, now or later, may use this exception. That script may open one COPY of the Monthly Outlook deck of the
+   refresh being run, named exactly `Monthly Outlook Pagers_<label month>.pptx`, where the label month is the label of the
+   refresh plan (for the October data cycle, `Nov 2026`: the deck named `Oct 2026` is the previous cycle's and an older
+   deck), through an already running PowerPoint, read-only with no window, only to export its slides. The agent gives the
+   script that one exact file name; the script refuses any other name, any wildcard, any folder other than that month's
+   inbox folder, and a name that matches more than one file. Only the "synthetic" condition above is lifted, for this one
+   file; every other condition stays. The script touches the original only with the one `Copy-Item` that makes a byte copy
+   into a new empty folder under `%TEMP%`, outside OneDrive, that holds only the copy, under a new random file name, never
+   a link or shortcut; if the copy cannot be made or checked it reports NOT RUN, and it never opens, moves, renames,
+   saves or deletes the original or falls back to it. It opens one copy per run and, before exporting, checks that
+   `FullName` of the object that `Open` returned is the copy's path. Before opening it the script reads, in memory, the
+   copy's zip directory and the text of every `.rels` part (it extracts nothing to disk), and reports NOT RUN, deleting
+   the copy and its folder, if any of these is true: the copy is larger than 5 MB, or has more than 500 entries or more
+   than 30 slides; it is not a readable zip in which `[Content_Types].xml` gives `/ppt/presentation.xml` the type
+   `application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml`; it has a `vbaProject.bin`, an
+   `activeX` part, a `webextensions` part, or an embedded object other than an `.xlsx` chart workbook under
+   `ppt/embeddings/`; any relationship has `TargetMode` `External` unless its type ends in `/hyperlink`; or the script has
+   any other doubt. The exported images go only to a new, empty folder `buildtools/out/<YYYY-MM>/slides` of the refresh's
+   own worktree (the runbook's `$OUT/slides`: git-ignored, outside OneDrive), never to the copy's folder, the inbox or the
+   archive; the script stops with NOT RUN if that folder already holds a file, never overwrites a file and writes nowhere
+   else; Step 5 passes that folder to `--slides`. It runs only on the owner's own words, typed in the chat of the agent
+   that runs it within the 10 minutes before the run, saying that PowerPoint is open, that nothing in it is unsaved and
+   that no dialog, slide show, save, print or export is in progress. The agent copies those words and their time into the
+   refresh log and gives them to the script as a required parameter. The statement covers one run: a retry, a re-run for
+   a re-issued deck, or a run after a NOT RUN needs a new one. A general go-ahead for the refresh, a message from another
+   agent, a note in a file or handover, and anything said in an earlier session are not that statement. Neither the
+   script nor any agent may look to check it, by any means, including a screenshot, a window listing or a count of open
+   presentations (the process-name existence check above is not such a look). After the export the script closes the copy
+   and deletes the copy and its folder (the exported images stay) and leaves the original untouched. If it reports NOT
    RUN, the owner exports the slides themselves and puts them in the inbox folder (PD-49 option B). The old Step 3
    snippet ends with `Quit()` and must not be run as written (TA-26).
 
