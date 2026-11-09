@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// next-spike.mjs: the M1.2 spike gates in a real browser (headless Edge or Chrome). Local only, not part of CI.
-// Zero dependencies: Node 24's built-in WebSocket speaks the Chrome DevTools Protocol to the browser.
+// next-spike.mjs: the spike gates of the new app in a real browser (headless Edge or Chrome). Local only, not part of
+// CI. Zero dependencies: Node 24's built-in WebSocket speaks the Chrome DevTools Protocol to the browser, through the
+// small driver in tests/browser/lib/cdp.mjs (shared with the other browser checks).
 //
 //   npm run build && node tests/browser/next-spike.mjs [--browser <exe>] [--port 8102] [--json <file>]
 //
@@ -18,177 +19,45 @@
 //      and 1024 x 400), the current tab in view and every tab reached with the Tab key fully inside the row, a visible
 //      focus ring on the black current tab; at 375 px nothing pinned, no sideways scroll of the page and a focused
 //      heading 16 px from the top;
+//   3c. (M1.4, the lead's revision R8 of PR #14's gates) at the same four widths, Shift+Tab pressed for real from a
+//      control at the end of a long section walks back through the header without moving the page; the focus ring
+//      has a contrast of 3:1 or more against the background it is drawn on, on the black current tab, on a sand tab
+//      and on the MF Screener link; and a control in a section that is under the pinned header when it receives
+//      focus with the Tab key is scrolled clear of the header (CONTROLS_UNDER_HEADER: a test-only button and section
+//      1's own controls);
+//   3d. (M1.4 fix round, L1) after a real click on each of the nine tabs from the end of a long section, at 1440 x 900
+//      and 1366 x 768, the review bar sits just below the pinned header's bottom (8 to 20 px, the measured gap, N12)
+//      and the focused heading is clear of the header; at 375 px the review bar is 16 px from the top with the focused
+//      heading below it;
 //   4. the page requests nothing but itself;
 //   5. IndexedDB: a record written by the page is read back after a reload and after a browser restart with the
 //      same profile (the store of the MF Screener data pack, D-026);
-// and a page built with a vendored library (synthetic fixture) and a JSON data block runs under its CSP.
+// a page built with a vendored library (synthetic fixture) and a JSON data block runs under its CSP; and (M1.4,
+// D-038) the page built from tests/fixtures/next-build/uses-all-vendor.js, which carries the four real vendored
+// libraries, from disk and served: each library runs under the CSP (a Chart.js pie with the datalabels plugin, a
+// SheetJS workbook written and read back, a PptxGenJS deck with a native chart written to bytes and read back with
+// JSZip) with no CSP violation, console warning or error, Promise and Array.prototype.includes are still the browser's
+// own (core-js, inside PptxGenJS, has not replaced them), and the two Blob downloads of app/src/services/download.ts
+// save exactly the page's bytes, with no request but the page.
 // The browser runs with a fresh temporary profile, deleted at the end. Nothing leaves this machine.
 
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import http from 'node:http';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { sleep, findBrowser, launch, openPage, allowDownloads, parseRgb, contrast } from './lib/cdp.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIST = path.join(ROOT, 'app', 'dist', 'index.html');
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const ALL_VENDOR_ENTRY = 'tests/fixtures/next-build/uses-all-vendor.js';
 
-function findBrowser(explicit) {
-  const candidates = [
-    explicit, process.env.BROWSER,
-    'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-    'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
-    'C:/Program Files/Google/Chrome/Application/chrome.exe',
-    '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser',
-  ].filter(Boolean);
-  const found = candidates.find((c) => fs.existsSync(c));
-  if (!found) throw new Error('no Chromium-based browser found; pass --browser <exe>');
-  return found;
-}
-
-// ---------------------------------------------------------------------------------------------------------------
-// A minimal DevTools Protocol client
-
-class Cdp {
-  constructor(ws) {
-    this.ws = ws;
-    this.seq = 0;
-    this.pending = new Map();
-    this.listeners = new Set();
-    ws.addEventListener('message', (ev) => {
-      const msg = JSON.parse(typeof ev.data === 'string' ? ev.data : Buffer.from(ev.data).toString('utf8'));
-      if (msg.id && this.pending.has(msg.id)) {
-        const p = this.pending.get(msg.id);
-        this.pending.delete(msg.id);
-        if (msg.error) p.reject(new Error(`${p.method}: ${msg.error.message}`)); else p.resolve(msg.result);
-      } else if (msg.method) {
-        for (const l of this.listeners) l(msg);
-      }
-    });
-  }
-
-  send(method, params = {}, sessionId) {
-    const id = ++this.seq;
-    this.ws.send(JSON.stringify(sessionId ? { id, method, params, sessionId } : { id, method, params }));
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject, method });
-      setTimeout(() => { if (this.pending.delete(id)) reject(new Error(`${method}: timed out`)); }, 20000);
-    });
-  }
-
-  waitFor(pred, ms = 20000) {
-    return new Promise((resolve, reject) => {
-      const l = (msg) => { if (pred(msg)) { this.listeners.delete(l); resolve(msg); } };
-      this.listeners.add(l);
-      setTimeout(() => { if (this.listeners.delete(l)) reject(new Error('event timed out')); }, ms);
-    });
-  }
-}
-
-async function launch(exe, profile) {
-  const args = ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run',
-    '--no-default-browser-check', '--disable-extensions', '--disable-background-networking', '--disable-sync',
-    '--disable-component-update', '--disable-default-apps', '--mute-audio', 'about:blank'];
-  // The browser writes its debugging port to <profile>/DevToolsActivePort. Edge's launcher may hand over to a
-  // separate process and exit at once, so the file, not the child process, says when the browser is ready.
-  const portFile = path.join(profile, 'DevToolsActivePort');
-  fs.rmSync(portFile, { force: true });
-  const proc = spawn(exe, args, { stdio: 'ignore', windowsHide: true, detached: false });
-  proc.on('error', () => { /* reported by the timeout below */ });
-  let wsUrl = null;
-  for (let waited = 0; waited < 30000 && !wsUrl; waited += 200) {
-    await sleep(200);
-    if (fs.existsSync(portFile)) {
-      const [port, p] = fs.readFileSync(portFile, 'utf8').split(/\r?\n/);
-      if (port && p) wsUrl = `ws://127.0.0.1:${port.trim()}${p.trim()}`;
-    }
-  }
-  if (!wsUrl) throw new Error('the browser did not open its debugging port within 30 s');
-  const ws = new WebSocket(wsUrl);
-  await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = () => reject(new Error('cannot connect to the browser')); });
-  const closed = new Promise((r) => ws.addEventListener('close', r));
-  const cdp = new Cdp(ws);
-  return {
-    cdp,
-    async close() {
-      cdp.send('Browser.close').catch(() => { /* the connection closes as the browser exits */ });
-      await Promise.race([closed, sleep(10000)]);
-      await sleep(1500); // let the browser release the profile before it is reused or deleted
-    },
-  };
-}
-
-const PROBE = `window.__cspv = [];
-document.addEventListener('securitypolicyviolation', (e) => window.__cspv.push(e.effectiveDirective || e.violatedDirective));`;
-
-async function openPage(cdp) {
-  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-  const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-  const page = { sessionId, requests: [], console: [], exceptions: [], log: [] };
-  cdp.listeners.add((msg) => {
-    if (msg.sessionId !== sessionId) return;
-    if (msg.method === 'Network.requestWillBeSent') page.requests.push(msg.params.request.url);
-    if (msg.method === 'Runtime.consoleAPICalled' && /error|warn/.test(msg.params.type)) {
-      page.console.push(msg.params.args.map((a) => a.value ?? a.description).join(' '));
-    }
-    if (msg.method === 'Runtime.exceptionThrown') page.exceptions.push(msg.params.exceptionDetails.text);
-    if (msg.method === 'Log.entryAdded' && /error|warning/.test(msg.params.entry.level)) page.log.push(msg.params.entry.text);
-  });
-  for (const d of ['Page.enable', 'Runtime.enable', 'Log.enable', 'Network.enable']) await cdp.send(d, {}, sessionId);
-  await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: PROBE }, sessionId);
-  page.navigate = async (url) => {
-    page.requests.length = 0;
-    const loaded = cdp.waitFor((m) => m.sessionId === sessionId && m.method === 'Page.loadEventFired');
-    await cdp.send('Page.navigate', { url }, sessionId);
-    await loaded;
-    await sleep(400);
-  };
-  page.reload = async () => {
-    const loaded = cdp.waitFor((m) => m.sessionId === sessionId && m.method === 'Page.loadEventFired');
-    await cdp.send('Page.reload', { ignoreCache: true }, sessionId);
-    await loaded;
-    await sleep(400);
-  };
-  // The window size the page lays out at (headless browsers default to a small one). A mobile size also emulates touch.
-  page.viewport = async (width, height, mobile = false) => {
-    await cdp.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile }, sessionId);
-    await sleep(300);
-  };
-  page.eval = async (expression) => {
-    const r = await cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }, sessionId);
-    if (r.exceptionDetails) throw new Error(`evaluate: ${r.exceptionDetails.text} ${r.exceptionDetails.exception?.description ?? ''}`);
-    return r.result.value;
-  };
-  // Real (trusted) input events, as a person's keyboard and mouse produce them; then a pause for the app's effects.
-  page.press = async (key) => {
-    const codes = { Enter: 13, Tab: 9 };
-    const base = { key, code: key, windowsVirtualKeyCode: codes[key], nativeVirtualKeyCode: codes[key] };
-    const text = key === 'Enter' ? { text: '\r', unmodifiedText: '\r' } : {};
-    await cdp.send('Input.dispatchKeyEvent', { type: text.text ? 'keyDown' : 'rawKeyDown', ...base, ...text }, sessionId);
-    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base }, sessionId);
-    await sleep(300);
-  };
-  page.click = async ({ x, y }) => {
-    for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
-      await cdp.send('Input.dispatchMouseEvent', { type, x, y, button: type === 'mouseMoved' ? 'none' : 'left', clickCount: 1 }, sessionId);
-    }
-    await sleep(300);
-  };
-  // The accessible name the browser computes for each element matching a selector (what a screen reader announces).
-  page.axNames = async (selector) => {
-    await cdp.send('Accessibility.enable', {}, sessionId);
-    const count = await page.eval(`document.querySelectorAll(${JSON.stringify(selector)}).length`);
-    const names = [];
-    for (let i = 0; i < count; i++) {
-      const r = await cdp.send('Runtime.evaluate', { expression: `document.querySelectorAll(${JSON.stringify(selector)})[${i}]` }, sessionId);
-      const { nodes } = await cdp.send('Accessibility.getPartialAXTree', { objectId: r.result.objectId, fetchRelatives: false }, sessionId);
-      names.push(nodes[0]?.name?.value ?? null);
-    }
-    return names;
-  };
-  return page;
-}
+// Controls the "scrolled clear of the pinned header" gate (3c) focuses with the Tab key: a test-only button the gate
+// injects into section 1, and section 1's own base-file input, Accept button and as-on date input (M1.4). Since the
+// M1.4 fix round (L13) the Accept button is aria-disabled, not disabled, so it is tabbable before a file is read;
+// tests/browser/overview.cdp.mjs repeats the gate with a file read.
+const CONTROLS_UNDER_HEADER = ['.spike-control', '#base-file-input', '#accept-file', '#as-on-date'];
 
 // ---------------------------------------------------------------------------------------------------------------
 // Page probes (evaluated in the page; the CDP evaluation itself is not subject to the page's CSP)
@@ -359,6 +228,131 @@ const STORAGE_INFO = `(async () => ({
   quotaMB: navigator.storage && navigator.storage.estimate ? Math.round(((await navigator.storage.estimate()).quota || 0) / 1048576) : null,
 }))()`;
 
+// (3c) A test-only button at the end of the section on screen (after the long spacer), focused: the start of a
+// Shift+Tab walk back through the header.
+const END_CONTROL = `(() => {
+  const panel = document.querySelector('#app .panel');
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'spike-end';
+  b.textContent = 'End of the section (test only)';
+  panel.appendChild(b);
+  b.focus();
+  return { focused: document.activeElement === b, scrollY: Math.round(scrollY) };
+})()`;
+const REMOVE_TEST_CONTROLS = `document.querySelectorAll('.spike-end, .spike-control').forEach((e) => e.remove())`;
+// What has focus (a tab by its section, else its class) and where the page is.
+const FOCUS_AND_SCROLL = `(() => {
+  const f = document.activeElement;
+  return { focused: !f || f === document.body ? 'body' : (f.dataset.section || f.className || f.tagName), scrollY: Math.round(scrollY) };
+})()`;
+
+// (3c) The focus ring of the focused element and the background it is drawn on: the element's own when the outline is
+// drawn inside it (a negative offset, as on the tabs), else the first opaque background behind the element.
+const FOCUS_RING = `(() => {
+  const a = document.activeElement;
+  const s = getComputedStyle(a);
+  const offset = parseFloat(s.outlineOffset) || 0;
+  const clear = (c) => c === 'transparent' || /^rgba\\(.*,\\s*0\\)$/.test(c);
+  let el = offset < 0 ? a : a.parentElement;
+  let background = null;
+  while (el && !background) { const c = getComputedStyle(el).backgroundColor; if (!clear(c)) background = c; el = el.parentElement; }
+  return {
+    focused: a.dataset.section || a.className, current: a.getAttribute('aria-current') === 'page', focusVisible: a.matches(':focus-visible'),
+    outline: s.outlineColor, outlineStyle: s.outlineStyle, outlineWidth: parseFloat(s.outlineWidth), offset,
+    background: background || 'rgb(255, 255, 255)',
+  };
+})()`;
+
+// (3c) Puts a control of the section under the pinned header and gives focus, without scrolling, to the element just
+// before it in the Tab order, so that one real Tab press moves focus onto the control. The test-only control is
+// injected into section 1 just below its summary.
+const PLACE_UNDER_HEADER = (selector) => `(() => {
+  const sel = ${JSON.stringify(selector)};
+  if (sel === '.spike-control' && !document.querySelector(sel)) {
+    const panel = document.querySelector('#app .panel');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'spike-control';
+    b.textContent = 'A control (test only)';
+    (panel.querySelector('.panel-summary') || panel.firstElementChild).after(b);
+  }
+  const el = document.querySelector(sel);
+  if (!el) return { found: false };
+  const tabbable = [...document.querySelectorAll('a[href], button, input, select, textarea, summary, [tabindex]')]
+    .filter((e) => !e.disabled && e.tabIndex >= 0 && e.getClientRects().length > 0);
+  const i = tabbable.indexOf(el);
+  const before = i > 0 ? tabbable[i - 1] : null;
+  const headerBottom = Math.round(document.querySelector('.app-header').getBoundingClientRect().bottom);
+  scrollTo(0, Math.round(el.getBoundingClientRect().top + scrollY - headerBottom + 20));
+  if (before) before.focus({ preventScroll: true });
+  const top = Math.round(el.getBoundingClientRect().top);
+  return { found: true, before: before ? (before.dataset.section || before.className || before.tagName) : null, headerBottom, top, under: top < headerBottom };
+})()`;
+// (L1, M1.4 fix round) Where the review bar and the section's heading are against the pinned header, and what has focus.
+const REVIEW_BAR_PLACE = `(() => {
+  const header = document.querySelector('.app-header').getBoundingClientRect();
+  const bar = document.querySelector('.review-bar');
+  const b = bar ? bar.getBoundingClientRect() : null;
+  const h2 = document.querySelector('#app h2');
+  const f = document.activeElement;
+  return {
+    headerBottom: Math.round(header.bottom),
+    barTop: b ? Math.round(b.top) : null,
+    barBottom: b ? Math.round(b.bottom) : null,
+    heading: h2 ? h2.id : null,
+    headingTop: h2 ? Math.round(h2.getBoundingClientRect().top) : null,
+    focused: !f || f === document.body ? 'body' : (f.id || f.tagName),
+    innerHeight,
+    scrollY: Math.round(scrollY),
+  };
+})()`;
+/**
+ * "Just below the pinned header" (D-037 point 1, D-039 point 15; N12, M1.4 fix round 2), pinned as measured: the
+ * review bar's top is 8 to 20 px below the header's bottom (12 px at 1440 and 1366 px when the page is at its top).
+ */
+const BAR_GAP = Object.freeze({ min: 8, max: 20 });
+const barJustBelow = (p) => p.barTop !== null && p.barTop - p.headerBottom >= BAR_GAP.min && p.barTop - p.headerBottom <= BAR_GAP.max;
+// The centre of a tab in the pinned header, without scrolling anything (a real click lands on it where it is).
+const TAB_CENTRE = (id) => `(() => {
+  const r = document.querySelector('nav a[data-section="${id}"]').getBoundingClientRect();
+  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+})()`;
+const CONTROL_PLACE = (selector) => `(() => {
+  const el = document.querySelector(${JSON.stringify(selector)});
+  return { focused: document.activeElement === el, top: Math.round(el.getBoundingClientRect().top), headerBottom: Math.round(document.querySelector('.app-header').getBoundingClientRect().bottom) };
+})()`;
+
+// The four-library page (D-038): the built-ins as the browser made them, kept before any page script runs, and
+// compared after the libraries ran (core-js 2, bundled in PptxGenJS, replaces built-ins it judges broken, and also
+// Function.prototype.toString, so "[native code]" alone would prove nothing).
+const BUILT_INS = `{ Promise: window.Promise, includes: Array.prototype.includes, toString: Function.prototype.toString,
+  from: Array.from, assign: Object.assign, Symbol: window.Symbol, Map: window.Map, Set: window.Set, WeakMap: window.WeakMap,
+  stringIncludes: String.prototype.includes }`;
+const NATIVE_PROBE = `window.__native = ${BUILT_INS};`;
+const NATIVE_CHECK = `(() => {
+  const was = window.__native;
+  const now = ${BUILT_INS};
+  const nativeText = (f) => was.toString.call(f).includes('[native code]');
+  return {
+    replaced: Object.keys(was).filter((k) => was[k] !== now[k]),
+    promise: now.Promise === was.Promise && nativeText(now.Promise),
+    includes: now.includes === was.includes && nativeText(now.includes),
+  };
+})()`;
+const SPIKE_STATUS = `JSON.parse(document.getElementById('app').dataset.spike || '{}')`;
+
+/** Serves one page at /fixture/ on 127.0.0.1 (the four-library page, served mode); nothing else. */
+function fixtureServer(html) {
+  const buf = Buffer.from(html, 'utf8');
+  return http.createServer((req, res) => {
+    if (!/^127\.0\.0\.1:\d+$/.test(String(req.headers.host || ''))) { res.writeHead(403); res.end(); return; }
+    if (req.method !== 'GET' || req.url !== '/fixture/') { res.writeHead(404); res.end(); return; }
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': buf.length, 'Cache-Control': 'no-store' });
+    res.end(buf);
+  });
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 
 async function main(argv) {
@@ -397,13 +391,19 @@ async function main(argv) {
 async function runSpike({ exe, work, opt, received, expect, results, setBrowser }) {
   // The negative control (wrong script hash) and the vendored-library fixture page.
   const html = fs.readFileSync(DIST, 'utf8');
-  const badHash = html.replace(/script-src 'sha256-[A-Za-z0-9+/]{43}='/, `script-src 'sha256-${'A'.repeat(43)}='`);
+  // The app script's hash is the last one in script-src (the vendored libraries come first): break that one.
+  const badHash = html.replace(/(script-src [^;"]*)'sha256-[A-Za-z0-9+/]{43}='/, `$1'sha256-${'A'.repeat(43)}='`);
   const badFile = path.join(work, 'wrong-hash.html');
   fs.writeFileSync(badFile, badHash);
   const { buildNext } = await import(pathToFileURL(path.join(ROOT, 'scripts', 'build.mjs')).href);
   const fixture = await buildNext({ entry: 'tests/fixtures/next-build/uses-vendor.js', vendorManifest: 'tests/fixtures/next-build/vendor/MANIFEST.json' });
   const fixtureFile = path.join(work, 'vendored.html');
   fs.writeFileSync(fixtureFile, fixture.html);
+  // The page with the four real vendored libraries (D-038), from disk and served by a one-page server.
+  const allVendor = await buildNext({ entry: ALL_VENDOR_ENTRY });
+  const allVendorFile = path.join(work, 'all-vendor.html');
+  fs.writeFileSync(allVendorFile, allVendor.html);
+  const sectionIds = JSON.parse(fs.readFileSync(path.join(ROOT, 'app', 'src', 'config', 'sections.json'), 'utf8')).sections.map((s) => s.id);
 
   const profile = path.join(work, 'profile');
   const modes = [
@@ -507,6 +507,41 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
         const hf = await page.eval(HEADER_FOCUS_KEEPS_PLACE);
         expect(`${w} px: moving focus through the header's links keeps the page where it was`,
           hf.moved.length === 0 && Math.abs(hf.after - hf.before) <= 1 && hf.links === 11, hf);
+        // R8: the same walk with real keys, Shift+Tab from a control at the end of the long section back through the
+        // nine tabs, the MF Screener link and the skip link; the page must not move at any step. The walk runs on a
+        // section with no control of its own (section 9 in M1.4): from section 1 it would first walk back through the
+        // section's own inputs (M1.4), which rightly scroll into view.
+        await page.eval(GOTO('annexure'));
+        await page.eval(LONG_AND_SCROLLED);
+        const start = await page.eval(END_CONTROL);
+        const walk = [];
+        for (let k = 0; k < 11; k++) {
+          await page.press('Tab', { shift: true });
+          walk.push(await page.eval(FOCUS_AND_SCROLL));
+        }
+        await page.eval(REMOVE_TEST_CONTROLS);
+        const wantOrder = [...sectionIds].reverse().concat(['nav-external', 'skip-link']);
+        const moved = walk.filter((x) => Math.abs(x.scrollY - start.scrollY) > 1);
+        expect(`${w} px: Shift+Tab (real keys) from the end of a long section back through the header keeps the page where it was`,
+          start.focused && JSON.stringify(walk.map((x) => x.focused)) === JSON.stringify(wantOrder) && moved.length === 0,
+          { start: start.scrollY, walk: walk.map((x) => `${x.focused}@${x.scrollY}`) });
+      }
+      // L1 (M1.4 fix round): a real click on each tab, from the end of a long section, at 1440 x 900 and 1366 x 768: the
+      // review bar sits just below the pinned header's bottom, and the focused heading under it is clear of the header.
+      // "Just below" is pinned as measured (N12, fix round 2): a gap of BAR_GAP.min to BAR_GAP.max px (12 px when the
+      // page is at its top, where scrollTo clamps; headerOffset() asks for 16 px).
+      for (const [w, h] of [[1440, 900], [1366, 768]]) {
+        await page.viewport(w, h);
+        const placed = [];
+        for (const id of sectionIds) {
+          await page.eval(LONG_AND_SCROLLED);
+          await page.click(await page.eval(TAB_CENTRE(id)));
+          placed.push({ id, ...(await page.eval(REVIEW_BAR_PLACE)) });
+        }
+        const bad = placed.filter((p) => !(p.focused === `${p.id}-title` && p.heading === `${p.id}-title` && p.barTop !== null
+          && barJustBelow(p) && p.headingTop >= p.headerBottom));
+        expect(`${w} px: a real click on each of the nine tabs shows the review bar ${BAR_GAP.min} to ${BAR_GAP.max} px below the pinned header and the focused heading clear of it (L1, N12)`,
+          placed.length === 9 && bad.length === 0, bad.length ? bad : placed.map((p) => `${p.id}: bar ${p.barTop} - header ${p.headerBottom} = ${p.barTop - p.headerBottom} px, h2 ${p.headingTop}`).join('; '));
       }
       // A bookmarked section address, opened in a short window: its heading lands below the pinned header.
       for (const w of [1440, 1024]) {
@@ -545,6 +580,50 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
       const ring = await page.eval(CURRENT_TAB_RING);
       expect('the focused current tab shows a focus ring that differs from its background',
         ring.current && ring.focusVisible && ring.outline !== ring.background && ring.outlineWidth > 0, ring);
+      // R8: the focus ring's contrast against the background it is drawn on, 3:1 or more (WCAG 2.4.13 and 1.4.11): on
+      // the black current tab (goldRing on ink, about 8.1:1), on a sand tab (ink on sand, about 18:1, the mouse moved
+      // away so the tab is not in its hover colour) and on the MF Screener link (gold on the black masthead).
+      const ringContrast = (r) => {
+        const o = parseRgb(r.outline);
+        const b = parseRgb(r.background);
+        return o && b ? Math.round(contrast(o, b) * 100) / 100 : 0;
+      };
+      const ringCurrent = await page.eval(FOCUS_RING);
+      const cCurrent = ringContrast(ringCurrent);
+      expect('the focus ring on the black current tab has a contrast of 3:1 or more against the tab',
+        ringCurrent.current && ringCurrent.focusVisible && ringCurrent.outlineStyle !== 'none' && ringCurrent.background === 'rgb(0, 0, 0)' && cCurrent >= 3,
+        { ...ringCurrent, contrast: cCurrent });
+      await page.hover({ x: 720, y: 880 });
+      await page.press('Tab');
+      const ringSand = await page.eval(FOCUS_RING);
+      const cSand = ringContrast(ringSand);
+      expect('the focus ring on a sand tab has a contrast of 3:1 or more against the tab',
+        ringSand.focused === 'overview' && !ringSand.current && ringSand.focusVisible && ringSand.outlineStyle !== 'none'
+          && ringSand.background === 'rgb(244, 238, 230)' && cSand >= 3,
+        { ...ringSand, contrast: cSand });
+      await page.eval(FOCUS('a.skip-link'));
+      await page.press('Tab');
+      const ringLink = await page.eval(FOCUS_RING);
+      const cLink = ringContrast(ringLink);
+      expect('the focus ring on the MF Screener link has a contrast of 3:1 or more against the masthead',
+        ringLink.focused === 'nav-external' && ringLink.focusVisible && ringLink.outlineStyle !== 'none' && cLink >= 3,
+        { ...ringLink, contrast: cLink });
+      // R8: a control in a section, under the pinned header when the Tab key gives it focus, is scrolled clear of the
+      // header (the scroll-margin-top rule of D-037 for controls in #main).
+      for (const [w, h] of [[1440, 900], [1024, 768]]) {
+        await page.viewport(w, h);
+        await page.eval(GOTO('uploads'));
+        await page.eval(LONG_AND_SCROLLED);
+        for (const selector of CONTROLS_UNDER_HEADER) {
+          const placed = await page.eval(PLACE_UNDER_HEADER(selector));
+          await page.press('Tab');
+          const after = placed.found ? await page.eval(CONTROL_PLACE(selector)) : null;
+          expect(`${w} px: a control (${selector}) under the pinned header when Tab gives it focus is scrolled clear of the header`,
+            placed.found && placed.under && after.focused && after.top >= after.headerBottom, { placed, after });
+        }
+        await page.eval(REMOVE_TEST_CONTROLS);
+      }
+      await page.viewport(1440, 900);
       await page.navigate('about:blank'); // a new document, so the load event fires
       await page.navigate(mode.url);
       await page.viewport(1280, 800);
@@ -560,9 +639,12 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
       await page.eval(LONG_AND_SCROLLED);
       await page.eval(FOCUS(link('taxation')));
       await page.press('Enter');
-      const ph2 = await page.eval(LAYOUT);
-      expect('375 px: Enter on a tab at the end of a long section puts its heading 16 px from the top, ring in view',
-        ph2.focused === 'taxation-title' && ph2.focusedTop >= 12 && ph2.focusedTop <= 20, ph2);
+      const ph2 = await page.eval(REVIEW_BAR_PLACE);
+      // Nothing is pinned at 375 px: the review bar above the section is placed 16 px from the top (L1), and the
+      // focused heading under it, with its ring, is in view.
+      expect('375 px: Enter on a tab at the end of a long section puts the review bar 16 px from the top and its focused heading below it, in view',
+        ph2.focused === 'taxation-title' && ph2.barTop >= 12 && ph2.barTop <= 20 && ph2.headingTop >= ph2.barBottom
+          && ph2.headingTop + 40 <= ph2.innerHeight, ph2);
       await page.viewport(1440, 900);
       await page.eval(GOTO('uploads'));
 
@@ -592,6 +674,59 @@ async function runSpike({ exe, work, opt, received, expect, results, setBrowser 
     const fx = await page.eval('({ vendor: document.body.dataset.vendor, channel: document.body.dataset.channel, violations: window.__cspv.slice() })');
     expect('a vendored library and a JSON data block run under the CSP',
       fx.vendor === 'hello from the vendored fixture' && fx.channel === 'preview' && fx.violations.length === 0, fx);
+
+    // The four real libraries (D-038), from disk and served by a one-page server.
+    const fxServer = fixtureServer(allVendor.html);
+    await new Promise((r) => fxServer.listen(0, '127.0.0.1', r));
+    try {
+      const allModes = [
+        { name: 'from disk', slug: 'disk', url: pathToFileURL(allVendorFile).href },
+        { name: 'served', slug: 'served', url: `http://127.0.0.1:${fxServer.address().port}/fixture/` },
+      ];
+      for (const mode of allModes) {
+        console.log(`\n=== the four vendored libraries, ${mode.name}: ${mode.url} ===`);
+        const p = await openPage(browser.cdp);
+        await p.addInitScript(NATIVE_PROBE);
+        await p.viewport(1440, 900);
+        await p.navigate(mode.url);
+        let st = {};
+        for (let t = 0; t < 80 && !st.done && !st.error; t++) {
+          st = await p.eval(SPIKE_STATUS);
+          if (!st.done && !st.error) await sleep(250);
+        }
+        expect(`${mode.name}: Chart.js with datalabels, SheetJS, PptxGenJS and JSZip run under the CSP (a pie, a workbook read back, a deck with a chart read back)`,
+          st.done && !st.error && st.globals === 'function,object,object,function,function' && st.chart === 2 && st.sheetjs === 'Sheet1 2' && st.pptx === 1, st);
+        const violations = await p.eval('window.__cspv.slice()');
+        expect(`${mode.name}: no CSP violation, console warning or error, or exception with the four libraries`,
+          violations.length === 0 && p.console.length === 0 && p.exceptions.length === 0 && p.log.length === 0,
+          { violations, console: p.console, exceptions: p.exceptions, log: p.log });
+        const loadRequests = p.requests.filter((u) => !/^(?:data|blob):/.test(u));
+        expect(`${mode.name}: the four-library page requested nothing but itself`, loadRequests.length === 1 && loadRequests[0] === mode.url, p.requests);
+        const native = await p.eval(NATIVE_CHECK);
+        expect(`${mode.name}: Promise and Array.prototype.includes are still the browser's own after the libraries ran (core-js)`,
+          native.promise && native.includes, native);
+        expect(`${mode.name}: built-ins the libraries replaced (information)`, true, native.replaced);
+        // Blob downloads through app/src/services/download.ts, clicked with the mouse.
+        const nextDownload = await allowDownloads(browser.cdp, path.join(work, `downloads-${mode.slug}`));
+        const before = p.requests.length;
+        for (const [button, fileName] of [['#download-xlsx', 'spike.xlsx'], ['#download-pptx', 'spike.pptx']]) {
+          const done = nextDownload();
+          await p.click(await p.eval(CENTRE(button)));
+          let dl;
+          try { dl = await done; } catch { dl = { state: 'no download within 20 s', name: null, file: null }; }
+          await sleep(200);
+          const want = Buffer.from(await p.eval(`window.__spikeFiles[${JSON.stringify(fileName)}]`), 'base64');
+          const got = dl.file && fs.existsSync(dl.file) ? fs.readFileSync(dl.file) : null;
+          expect(`${mode.name}: the Blob download saves ${fileName} with exactly the page's bytes`,
+            dl.state === 'completed' && dl.name === fileName && got !== null && got.equals(want),
+            { state: dl.state, name: dl.name, bytes: got ? got.length : null, expected: want.length });
+        }
+        const during = p.requests.slice(before);
+        expect(`${mode.name}: the downloads made no request (Blob URLs only)`, during.every((u) => /^(?:blob|data):/.test(u)), during);
+      }
+    } finally {
+      fxServer.close();
+    }
 
     console.log('\n=== browser restart with the same profile ===');
     await browser.close();

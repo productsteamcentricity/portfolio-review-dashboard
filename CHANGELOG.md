@@ -18,6 +18,151 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   (deterministic). `index.html` is unchanged (MD5 `911A04659CB34383E478416B54E9C306`).
 
 ### Added
+- **Milestone M1.4 of the new build (CR-0006): the portfolio overview.** Section 1 reads a base file through its
+  Upload, Validate, Preview and Review stages, and section 2 shows the headline figures, the allocations and the pies;
+  the overview deck (slide C-08) and the overview workbook download from it. Every number on screen, slide and sheet
+  is a figure of one view-model (D-038, D-039). The `/next/` build, after round 3: 2,003,039 bytes, SHA-256
+  `b5756412…` (deterministic, build id `2418a5b671cd7622`), with the four vendored libraries inlined.
+  M1.4 leaves `index.html` unchanged (MD5 `12B5E5727FCA01EF2EA162C59913F01D`, main after PR #16); the libraries were vendored
+  from `911A04659CB34383E478416B54E9C306`.
+  - Platform (D-038). Chart.js 4.4.0, chartjs-plugin-datalabels 2.2.0, SheetJS CE 0.18.5 and PptxGenJS 3.12.0 are
+    vendored byte for byte from `index.html` (`scripts/vendor-extract.mjs`, `--check` in CI); licence texts are in
+    `app/vendor/licences/`. The build accepts vendored files under the HTML parsing rule and the jszip alias, and
+    writes `buildId` and each library's SHA-256 in build-info. `check-next` adds pinned per-library allowances, the
+    OOXML namespace names, a licence-URL rule and the pure-layer globals rule (U-53). New
+    `app/src/services/download.ts`: CSP-safe Blob downloads, the object URL revoked after 30 s. The built-in logos are
+    extracted to `app/src/config/brand-logos.json`. The browser spike drives the keys through a CDP helper
+    (`tests/browser/lib/cdp.mjs`): R8's gates (a real Shift+Tab walk, focus-ring contrast, controls scrolled clear of
+    the pinned header, section 1's file and date inputs included) and the four-library page from disk and served,
+    whose Blob downloads save the page's bytes with no request: 141 of 141.
+  - Engine. The KI-147 money-column rule: there is no fallback for text that is not an amount (the owner's answer of
+    24 Oct 2026); a blank or placeholder Crore cell takes the Lakh value with a notice, and Crore and Lakh amounts more
+    than 0.005 Cr apart are warned. `computeReview` gives totals over included holdings (gain is CMV minus invested
+    over the holdings with an invested value), the asset allocation in one order with Unknown last, liquidity by the
+    legacy rule, client and distributor matrices with "not given" columns, reconciliation, the export gate, the audit
+    log and the review fingerprint. Tests: the overview variants of the synthetic books, the hand-worked
+    `OVERVIEW_ANSWERS`, and the aggregation parity ledger AG-01 to AG-14 with no regression.
+  - Section 1, Uploads and inputs: the base file through its stages, with an import report (the sheet and header row
+    used, the sheets tried, the money unit, the counts, the skipped rows by reason, the excluded holdings by name, the
+    XIRR question with one-click answers, and "Instrument matching arrives in M2"); the as-on date (never a fallback,
+    KI-087); the family and client labels; the logo (built in or uploaded, kept in this browser); "Disclaimer in use"
+    (not available in supplied data until M11); a basic validation panel with Acknowledge on High results; and the
+    source register.
+  - Section 2, Portfolio overview: headline figures, the asset and product allocation table, the asset class and
+    liquidity pies, the client and distributor allocation (hidden behind one line for a single client or
+    distributor, OD-21), the notes, and the downloads, disabled with the gate's reasons until the review may be
+    exported. One formatter (`views/format.ts`) and one overview view-model (`views/overview.ts`) serve the screen,
+    the slide and the workbook; chart colours are fixed by category name (KI-150).
+  - The look of the owner's design reference (D-037, R4): a review bar under the tabs (logo, family label, as-on
+    date), bordered groups with a sand header band, dashed upload slots, stage pills, status chips, ledger KPI tiles,
+    and black-header tables that scroll inside their own box on a phone; the tab row's scrollbar is slim and keeps a
+    focused tab's ring clear. `tokens.json` gains the deck design system tokens and the status colours.
+  - The overview deck: slide C-08 Asset Allocation with three KPIs (Invested Value, Current Market Value, Unrealised
+    Gain/Loss, OD-18), the asset and product table over continuation pages with the header and the Grand Total on
+    every page, and the asset class and liquidity pies with colours fixed by category name, labels to one decimal and
+    no label under 2%. Cambria throughout; the preview marker in the footer band of a preview build; native, editable
+    charts with their workbooks; the same view-model and clock give byte-identical files.
+  - The overview workbook, written by an in-house deterministic STORE zip and SpreadsheetML writer
+    (`app/src/exports/xlsx`, D-038 amends A3) with a typed formula builder: Read Me and Controls, Source Register,
+    Holdings (as loaded), Portfolio Overview, Client and Distributor Allocation (only for two or more, OD-21), Audit
+    Log and a hidden `_manifest`. Every aggregate is a SUMIFS over the holdings by generated keys, cached at the
+    view-model figure; a missing figure is a blank cell with its status. An independent formula evaluator checks every
+    formula in the tests. Spike gate R1 passed in Excel on 27 Oct 2026, so the ExcelJS fallback (Q-13) is not needed;
+    the Office acceptance scripts are `npm run accept:office` (local only).
+  - Integration: `app/src/ui/wiring.ts` joins the reader, the engine and both exporters to the page;
+    `tests/helpers/node-wiring.ts` builds the same wiring in Node; `tests/integration/overview.test.ts`,
+    `cross-output.test.ts` (one figure, one text on screen, slide and sheet) and `labels.test.ts` (labels in every
+    output, never in the audit; the family switch leaves nothing behind).
+  - Fixed in the new app (the legacy page is unchanged, D-028): KI-007, KI-020, KI-021, KI-071, KI-078, KI-084,
+    KI-087, KI-089, KI-091, KI-092, KI-093, KI-094, KI-147 and, in the second fix round, KI-148. Filed for the legacy
+    page: KI-150 (PptxGenJS random pie colours). KI-151 is the new app's guard against labels such as "constructor"
+    (groups in Maps, pinned by a 7 by 5 grid); the live page's defect is KI-183 (Workstream A).
+  - **Fix round, 27 Oct 2026** (CR-0006; the lead's decisions after the browser QA and the financial, Office and
+    security reviews; D-039 points 1 to 15, D-037 point 1 amended, D-038's counts):
+    - Numbers and Excel. Display rounding agrees with Excel (half up on the 15-significant-digit decimal; 0.145 shows
+      0.15, family-a's Hybrid absolute return 35.68%). The KI-147 notes count the holdings whose figure changes, name
+      the file's column and never come from the file's gain or loss, which only reaches the import report and the
+      Audit Log. Labels with an en or em dash no longer break the workbook (the raw label is the join key). Client
+      and distributor letter case is kept, as in the legacy, with a Warning for labels that differ only in case.
+      Workbook money is in Indian grouping. The pie label threshold applies to the displayed share. The share row of
+      the client and distributor sheets sits outside the filter and the red. The source register records the Review
+      stage. The Exclusion Reason follows the market value's status. The partial invested note counts holdings when
+      the share is meaningless. The Office scripts' quit and stop rules of this round were replaced in the
+      second fix round by the owner's rule of 2 Nov 2026 (below);
+      the Office acceptance adds syn-negative-gain (red at I2), the date
+      format at R2, a Lakh book above 1,00,000 L and Excel's `Range.Text` of every figure compared with the screen.
+      `npm run accept:office --full` passed on the FC branch: 6 workbooks and 6 decks.
+    - Sections 1 and 2. The review bar stays in view when a section opens from its tab. Pie labels no longer collide
+      with the legend or get cut off at the canvas edge, and the percent alone shows on a narrow canvas. A one-slice
+      pie shows no label or radius line. The source register and the stage strip agree (Preview before Accept).
+      Keyboard focus is kept after every action. A file with no holding is refused, and refusals read as plain
+      sentences; an internal error reads "could not be reviewed", never "unreadable". A missing date is the dash
+      alone with a footnote. The import report shows the full SHA-256.
+    - Slide C-08. The pie labels sit on two lines, the category then the percent, in a text body that never wraps,
+      so PowerPoint no longer breaks a label inside a word ("Commodi / ty 3.9%"). A pie of one slice has no label and
+      no outline. The footnote states the excluded holdings once, in the view-model's words. A chart not drawn names
+      its status in words ("Chart not drawn: not applicable.").
+    - Tests: the M1.4 cross-unit tests. `tests/integration/upload.test.ts` (U-04): the upload limits at and one past
+      20 MB, 40 sheets and 400,000 cells on a sheet; unreadable files; a refused file builds no review; re-picking the
+      same file (KI-089). `tests/integration/as-on-change.test.ts` (U-05): a changed date recomputes the review id,
+      the as-on note and the Read Me and keeps labels and figures; a cleared date is Blocking with no fallback
+      (KI-087). `tests/workflows/w-01-load-family.test.ts` (W-1). `tests/acceptance/ac-01-standard-review.test.ts`
+      (AC-01): family-a and its Lakh and rupee variants against sums of the file's own money column; deck and
+      workbook equal to the screen; one display unit; house style D-029. New browser check
+      `tests/browser/overview.cdp.mjs` (112 of 112, served and from disk); the spike now 149 of 149. The suite: 837
+      tests under IST and under UTC. The parity matrix has 49 rows in progress (AC-01 and W-1 added).
+  - **Second fix round, integrated 2 Nov 2026** (CR-0006; the lead's decisions N1 to N19 of 27 Oct 2026 and the
+    owner's Office rule of 2 Nov 2026; D-039 points 16 to 20, D-037 point 1 reworded):
+    - Reader and parity. The base-file reader skips rows named Total or Grand Total and dates merged folios by their
+      earliest purchase date, as the live page does (D-041 points 2 and 3; KI-148 fixed in the new app). A negative
+      market value is warned, and the overview notes the pie slices and liquidity lines left out at a market value
+      of 0 or less. A joint-holder label in another letter case is reported, not linked. The parity re-run against
+      the live page after fix batch 4 retires AG-01, AG-02, AG-05, AG-06 and AG-08 and rewords AG-04, AG-09, AG-13
+      and AG-14 (KI-147 now differs from the live page by design). A 7 by 5 grid of label fields and
+      Object.prototype names pins the KI-151 guard. Tests no longer pin the live page's MD5 (N4).
+    - Workbook. The "Share of family (%)" row sits one blank row below the Grand Total, so Excel no longer takes it
+      into the Client and Distributor Allocation filter (N7). Money and units read in Indian grouping at the
+      rounding edge ("1,00,000.00", never "100,000.00" or "100,00,000.00"), and percents of 1,000 or more read as on
+      screen ("1,900.00%") (N8, N9).
+    - Sections 1 and 2, and slide C-08. Client and distributor column headers show the labels as the file spells
+      them; the group notes count named clients and put the rest in words ("2 clients, and 2 holdings with no
+      client"); an empty liquidity table is a sentence; the review bar never names a refused file ("Base file
+      refused") (N12). From 5 categories the C-08 pie leaves 26 pt above its two-row legend, so a label at 6
+      o'clock no longer sits on the legend (N13). The deck post-processing replaces with functions, so labels
+      holding $ patterns are written as they read (N14). The browser checks retry the DevToolsActivePort read on
+      EBUSY, EPERM and ENOENT, and pin the review-bar gap at 8 to 20 px.
+    - Office acceptance under the owner's rule (K1). The scripts attach only to an Excel or PowerPoint already
+      running, open only their own synthetic file read-only without a window, change no application option, close
+      only that file and never quit, stop or kill Office; with no instance running the result is NOT RUN with the
+      paths of the files for the owner to open, never a pass, and the damaged-file negative controls are never run
+      against the owner's Office. Excel hides its own workbook window at once after the open, so frozen panes are
+      checked in the file only. After the first TIMEOUT of an application no later case of it is started (NOT RUN,
+      "not attempted: Office did not answer"), and the Excel edit check runs only in manual calculation (in automatic
+      calculation, Excel's default, it is reported "not checked in Excel", never as a pass). The run builds 8
+      workbooks and 10 decks (the six-class decks syn-pie6-reits and syn-pie6-hybrid, and the cases syn-six-classes
+      and syn-big-return). On 2 Nov 2026 the run was NOT RUN for all 18 cases (Office was not running, and the
+      session's execution policy refuses scripts; the runner never overrides it).
+    - Tests: 1,012 of 1,012 under IST and under UTC with node_modules, 948 of 948 without (the four "(needs npm
+      ci)" suites skipped); the spike 149 of 149 and overview.cdp 124 of 124.
+  - **Round 3, 2 Nov 2026** (CR-0006; QA passed and the financial-domain reviewer approved `5a4d4c0`, naming D-039
+    point 13; the owner accepted the half-way rounding for the new app, PD-48):
+    - The Office runner (the security gate's F-1). On Windows, Node keeps the processes it spawns in a job object
+      that ends them when Node exits, so a script abandoned at a TIMEOUT was ended with the run and could leave its
+      synthetic workbook open, hidden, in the owner's Excel. `run-acceptance.ts` now spawns, not detached, only a
+      PowerShell wrapper passed as `-EncodedCommand`, which starts the script with `Start-Process` (hidden, its
+      output and errors redirected to two logs), waits for it and passes its exit code through. The script is
+      outside Node's job, so it runs on to its own deadline and closes its file; nothing kills anything. No
+      execution policy argument: a refusal is NOT RUN with its reason, read from both logs. Proven with a sleep
+      child outside the suite and outside Office (abandoned after 2 s, it outlived Node and wrote its marker file).
+    - Section 1 (QA's D1). A file the browser cannot read (gone from the disk) is refused ("Refused: the file
+      could not be read as an Excel workbook.", the review bar "Base file refused") and clears the previous
+      review, as a new pick does; it used to leave the old review on screen with an unhandled error. The logo
+      picker says "The logo file could not be read: choose it again."
+    - Records: KI-190 (badly grouped text reads as an amount), KI-191 ("Grand-Total" read as a holding with no
+      result) and KI-192 (pies drawn with a negative total market value) are filed for a follow-up; D-039 point
+      13 records the owner's acceptance (PD-48).
+    - Tests: 1,017 of 1,017 under IST and under UTC with node_modules, 953 of 953 without (the four "(needs npm
+      ci)" suites skipped); the spike 149 of 149 and overview.cdp 128 of 128.
 - **The capital-gains upload design for M7 (CR-0006, D-036, amending D-032).** Documents only; no code, `/next/` and
   `index.html` unchanged. The upload accepts the wealth platform's "Capital Gain Report" export as produced (columns
   by header name, PAN removed at read time, folio parsed from the instrument name, totals row reconciled, footer text

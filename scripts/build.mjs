@@ -5,14 +5,19 @@
 //
 // What it does, in order:
 //   1. esbuild bundles app/src/main.tsx (TypeScript and Preact JSX) into one IIFE script, readable (not minified).
-//      An import of "vendor:<name>" names a library listed in app/vendor/MANIFEST.json: the library is inlined, as
-//      its own <script> ahead of the app, ONLY when a bundled module imports it, after its SHA-256 is verified.
+//      An import of "vendor:<name>" names a library listed in app/vendor/MANIFEST.json, or one of its aliases (a
+//      second global the same file defines, such as JSZip inside PptxGenJS): the library is inlined, as its own
+//      <script> ahead of the app and in manifest order, ONLY when a bundled module imports it, after its SHA-256 is
+//      verified. A vendored file cannot be edited, so it meets the HTML parsing rule only (assertInlineSafe); the
+//      app script meets the strict one.
 //   2. The stylesheet is the design tokens (app/src/config/tokens.json, as CSS custom properties) followed by
 //      app/src/ui/shell.css, inlined in one <style>.
 //   3. The navigation is written as static HTML: the nine section tabs of app/src/config/sections.json, and the MF
 //      Screener link of app/src/config/links.json (D-027) at the right of the masthead (D-037), so the one remote URL
 //      sits in one static anchor.
-//   4. Data blocks are non-executable <script type="application/json"> elements with "<" escaped.
+//   4. Data blocks are non-executable <script type="application/json"> elements with "<" escaped: build-info
+//      (channel, buildId, and every library with its version, licence and the SHA-256 of its vendored file) and
+//      third-party-licences (the licence texts).
 //   5. A Content-Security-Policy meta tag, the first element of <head>, allows exactly the inline scripts and the
 //      style element by their SHA-256 and forbids every connection (connect-src 'none').
 // The output is deterministic: the same inputs give a byte-identical file (no dates, no absolute paths, sorted
@@ -75,13 +80,39 @@ export function jsonBlock(id, value) {
   return `<script type="application/json" id="${escapeHtml(id)}">${json}</script>`;
 }
 
-/** Refuses script or style text that would end its element early or open an HTML comment state. */
-function assertInlineSafe(kind, name, text) {
+/**
+ * Refuses script or style text that would end its element early or open an HTML comment state.
+ * App code and styles keep the strict rule: no "</script" (or "</style"), and for a script neither "<!--" nor
+ * "<script". A vendored library is copied byte for byte and cannot be edited (D-038), so for it the rule is the
+ * HTML parsing rule itself: "</script" always ends the element and is refused; "<!--" alone is harmless, but
+ * "<!--" followed later by "<script" puts the parser in the double-escaped state, where the real "</script>" no
+ * longer ends the element, so that pair is refused. (SheetJS holds "<!--" and PptxGenJS "<script", never both.)
+ */
+export function assertInlineSafe(kind, name, text, { vendored = false } = {}) {
   const closer = kind === 'style' ? /<\/style/i : /<\/script/i;
   if (closer.test(text)) throw new Error(`${name}: contains a closing </${kind} sequence; it cannot be inlined`);
-  if (kind === 'script' && /<!--|<script/i.test(text)) {
+  if (kind !== 'script') return;
+  if (vendored) {
+    const comment = text.indexOf('<!--');
+    if (comment >= 0 && /<script/i.test(text.slice(comment + 4))) {
+      throw new Error(`${name}: contains "<!--" followed by "<script", which would keep the inline script open`);
+    }
+    return;
+  }
+  if (/<!--|<script/i.test(text)) {
     throw new Error(`${name}: contains "<!--" or "<script", which change how an inline script is parsed`);
   }
+}
+
+/**
+ * The build id: the first 16 hex digits of the SHA-256 over the executable scripts only (never a data block, so the
+ * build-info block that carries the id is not part of what it hashes), in page order, each script's UTF-8 text
+ * followed by one NUL byte (a script never holds NUL: check-next refuses it).
+ */
+export function buildIdOf(scriptTexts) {
+  const h = crypto.createHash('sha256');
+  for (const t of scriptTexts) { h.update(t, 'utf8'); h.update(Buffer.from([0])); }
+  return h.digest('hex').slice(0, 16);
 }
 
 /** The MF Screener link must be a plain https URL: no credential, no query string, no fragment (D-027). */
@@ -139,7 +170,7 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-/** Loads the vendor manifest: { name -> entry }. A missing manifest means no vendored library. */
+/** Loads the vendor manifest: { name -> entry }, in manifest order. A missing manifest means no vendored library. */
 export function loadVendorManifest(file) {
   if (!fs.existsSync(file)) return new Map();
   const raw = readJson(file);
@@ -151,25 +182,50 @@ export function loadVendorManifest(file) {
     if (map.has(lib.name)) throw new Error(`${file}: library "${lib.name}" listed twice`);
     map.set(lib.name, lib);
   }
+  for (const lib of map.values()) {
+    for (const a of lib.aliases || []) {
+      if (!a || !a.name || !a.global) throw new Error(`${file}: library "${lib.name}" has an alias without "name" or "global"`);
+    }
+  }
   return map;
 }
 
-/** esbuild plugin: resolves "vendor:<name>" to the library's global and records which libraries are used. */
+/**
+ * The names a module may import as "vendor:<name>": every library, and every alias, which names another global the
+ * same file defines (JSZip, bundled inside PptxGenJS). Map<importName, { lib, global }>.
+ */
+export function vendorImportNames(manifest) {
+  const names = new Map();
+  for (const lib of manifest.values()) names.set(lib.name, { lib, global: lib.global });
+  for (const lib of manifest.values()) {
+    for (const a of lib.aliases || []) {
+      if (names.has(a.name)) throw new Error(`vendor manifest: alias "${a.name}" of "${lib.name}" is already a vendored name`);
+      names.set(a.name, { lib, global: a.global });
+    }
+  }
+  return names;
+}
+
+/**
+ * esbuild plugin: resolves "vendor:<name>" (a library or an alias) to the global it names, and records which
+ * libraries are used; an alias marks the library whose file defines it.
+ */
 function vendorPlugin(manifest, used) {
+  const names = vendorImportNames(manifest);
   return {
     name: 'vendor',
     setup(build) {
       build.onResolve({ filter: /^vendor:/ }, (args) => {
         const name = args.path.slice('vendor:'.length);
-        if (!manifest.has(name)) {
+        if (!names.has(name)) {
           return { errors: [{ text: `vendored library "${name}" is not in app/vendor/MANIFEST.json` }] };
         }
         return { path: name, namespace: 'vendor' };
       });
       build.onLoad({ filter: /.*/, namespace: 'vendor' }, (args) => {
-        const lib = manifest.get(args.path);
+        const { lib, global } = names.get(args.path);
         used.add(lib.name);
-        return { contents: `export default globalThis[${JSON.stringify(lib.global)}];`, loader: 'js' };
+        return { contents: `export default globalThis[${JSON.stringify(global)}];`, loader: 'js' };
       });
     },
   };
@@ -254,7 +310,7 @@ export async function buildNext(options = {}) {
       throw new Error(`vendored ${lib.name}: SHA-256 ${got} does not match MANIFEST.json ${lib.sha256}`);
     }
     const text = buf.toString('utf8');
-    assertInlineSafe('script', `vendored ${lib.name}`, text);
+    assertInlineSafe('script', `vendored ${lib.name}`, text, { vendored: true });
     vendored.push({ lib, text });
   }
 
@@ -276,12 +332,18 @@ export async function buildNext(options = {}) {
         : null,
     })),
   ];
-  const buildInfo = {
-    channel: 'preview',
-    libraries: licences.map(({ name, version, license }) => ({ name, version, license })),
-  };
 
   const scripts = [...vendored.map((v) => ({ name: `vendor:${v.lib.name}`, text: v.text })), { name: 'app', text: appJs }];
+  // sha256 is the vendored file's (null for an npm package bundled into the app script, such as preact).
+  const fileHash = new Map(vendored.map(({ lib }) => [lib.name, lib.sha256.toLowerCase()]));
+  const buildInfo = {
+    channel: 'preview',
+    buildId: buildIdOf(scripts.map((s) => s.text)),
+    libraries: [
+      ...packages.map(({ name, version, license }) => ({ name, version, license, sha256: null })),
+      ...vendored.map(({ lib }) => ({ name: lib.name, version: lib.version, license: lib.license, sha256: fileHash.get(lib.name) })),
+    ],
+  };
   const scriptHashes = scripts.map((s) => cspHash(s.text));
   const styleHashes = [cspHash(css)];
   const csp = cspFor(scriptHashes, styleHashes);
@@ -298,6 +360,7 @@ export async function buildNext(options = {}) {
     html,
     manifest: {
       csp,
+      buildId: buildInfo.buildId,
       scripts: scripts.map((s, i) => ({ name: s.name, bytes: Buffer.byteLength(s.text), sha256: scriptHashes[i] })),
       styles: [{ name: 'shell', bytes: Buffer.byteLength(css), sha256: styleHashes[0] }],
       vendored: vendored.map(({ lib }) => ({ name: lib.name, version: lib.version, sha256: lib.sha256 })),
@@ -335,7 +398,7 @@ async function main(argv) {
   const built = await buildNext();
   const { bytes, sha256 } = writeBuild(built, outFile);
   console.log(`build: ${path.relative(REPO_ROOT, outFile).replace(/\\/g, '/')}  ${bytes.toLocaleString('en-US')} bytes  SHA-256 ${sha256}`);
-  console.log(`build: scripts ${built.manifest.scripts.map((s) => s.name).join(', ')}; vendored ${built.manifest.vendored.length ? built.manifest.vendored.map((v) => v.name).join(', ') : 'none'}`);
+  console.log(`build: scripts ${built.manifest.scripts.map((s) => s.name).join(', ')}; vendored ${built.manifest.vendored.length ? built.manifest.vendored.map((v) => v.name).join(', ') : 'none'}; build id ${built.manifest.buildId}`);
   return 0;
 }
 

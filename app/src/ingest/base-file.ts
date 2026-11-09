@@ -16,7 +16,22 @@
 //   - blank invested value stays missing (KI-007); merged folios with a blank invested value, gain or units leave
 //     that total missing instead of partial (KI-113), and the holding names it in `mergeGaps`;
 //   - Allocation (%) is not read: weights are computed from market values by the engine (KI-093, OD-22), and the
-//     file's own rupee columns are not echoed (OD-22).
+//     file's own rupee columns are not echoed (OD-22);
+//   - money in more than one column (KI-147, config/money-columns.ts): text that is not an amount in the column the
+//     reader would use makes the amount INVALID SOURCE DATA and no later column stands in (the owner's answer of
+//     24 Oct 2026); a blank or placeholder cell passes to the next column with a notice; a later column whose amount
+//     differs from the one used by more than 0.005 Cr is warned; for the file's own gain or loss, which no figure
+//     uses (OD-18), both notices are Information only (D-039);
+//   - clients and distributors are keyed on the label as spelt, as the legacy keys them; labels that key a holding's
+//     client or distributor and differ only in letter case stay separate, with the Warning
+//     base-file.entity-case-variant (D-039; the owner's question beside BF-26); a joint-holder label that differs from
+//     a client only in letter case is not linked to it, with an Information notice;
+//   - total rows (D-041 point 3, KI-142, KI-148): a row whose Instrument Name is "Total" or "Grand Total" (any letter
+//     case, spaces collapsed) is skipped, as the live page skips it, with the Warning base-file.total-row-skipped; a
+//     fund whose name only begins with "Total" is still a holding;
+//   - merged folios' purchase date and holding days (D-041 point 2, KI-148): the earliest purchase date, whatever
+//     the row order; holding days recomputed from it when the folios count to one date, else blank with a notice;
+//   - a negative market value is read as written (the legacy figures) and warned (D-039).
 // Column aliases, the money-unit precedence (Cr., then Lakh, then rupees) and the merge key (client, instrument,
 // product, distributor) are the legacy ones. Pure function: no globals, no network, no clock unless injected.
 
@@ -42,6 +57,7 @@ import { missing, present } from '../engine/value.ts';
 import { idFactory, keyOf, normaliseLabel } from '../engine/ids.ts';
 import { readAssetLabel } from '../engine/classify/asset.ts';
 import { defaultOwnership, ownershipFromColumns, parseHoldingMode } from '../engine/ownership.ts';
+import { MONEY_COLUMN_RULE } from '../config/money-columns.ts';
 
 export const BASE_FILE_PARSER_VERSION = 'base-file@1';
 /** Rows searched for the header on each sheet (KI-074; the audit's fix asks for about 20, the legacy read 5). */
@@ -125,6 +141,25 @@ export type BaseFileCounts = {
   skipped: Record<SkipReason, number>;
 };
 
+/** The three money fields of a holding. */
+export type MoneyField = 'invested' | 'cmv' | 'fileGain';
+
+/**
+ * What the money-column rule found for one row of one holding and one field (KI-147, D-039 point 1): text that is not
+ * an amount in the column the reader would use (`invalid`), or a later column whose amount differs from the one used
+ * by more than the tolerance (`disagree`). The overview's notes count these by holding, for the market value and the
+ * invested value only: the file's own gain or loss feeds no figure (OD-18) and never makes a note.
+ */
+export type MoneyFinding = {
+  holdingId: HoldingId;
+  field: MoneyField;
+  kind: 'invalid' | 'disagree';
+  /** The column whose text is not an amount (invalid), or whose amount is used (disagree), as the file heads it. */
+  column: { header: string; unit: MoneyUnit };
+  /** The later columns of the field: not read in its place (invalid), or whose amount differs (disagree). */
+  others: Array<{ header: string; unit: MoneyUnit }>;
+};
+
 export type BaseFileImport = {
   parserVersion: string;
   sourceId: SourceFileId;
@@ -143,6 +178,8 @@ export type BaseFileImport = {
   skipped: SkippedRow[];
   questions: AnalystQuestion[];
   issues: ValidationResult[];
+  /** The KI-147 findings by holding, field and row (the notes of the overview count them). */
+  moneyFindings: MoneyFinding[];
   audit: AuditEntry[];
   counts: BaseFileCounts;
 };
@@ -165,22 +202,30 @@ function mapColumns(headerTexts: string[]): Columns {
 }
 
 const TOTAL_RE = /^(grand\s*|sub\s*-?\s*)?totals?\b/i;
+/**
+ * An Instrument Name that marks a total row of the book (D-041 point 3, the live page's rule `^(grand ?)?total$`):
+ * "Total" or "Grand Total" in any letter case, on the text with its spaces collapsed and trimmed.
+ */
+export const TOTAL_ROW_NAME_RE = /^(grand ?)?total$/i;
 const MONEY_FIELDS: readonly BaseField[] = ['invCr', 'cmvCr', 'glCr', 'invLk', 'mvLk', 'glLk', 'invR', 'mvR', 'glR'];
 
-type RowClass = { kind: 'holding' } | { kind: 'skip'; reason: SkipReason; hasMoney: boolean };
+/** A skipped row; `named` marks a total row named "Total" or "Grand Total" in the Instrument Name column. */
+type RowClass = { kind: 'holding' } | { kind: 'skip'; reason: SkipReason; hasMoney: boolean; named: boolean };
 
 function classifyRow(row: Cell[], cols: Columns, headerTexts: string[]): RowClass {
   const texts = row.map((c) => cellText(c));
-  if (texts.every((t) => t === '')) return { kind: 'skip', reason: 'blank-row', hasMoney: false };
+  if (texts.every((t) => t === '')) return { kind: 'skip', reason: 'blank-row', hasMoney: false, named: false };
   const name = cols.name === undefined ? '' : (texts[cols.name] ?? '');
   const hasMoney = MONEY_FIELDS.some((f) => cols[f] !== undefined && readNumber(row[cols[f]!]).kind === 'number');
   if (name === '') {
     const total = row.some((c) => c !== null && c !== undefined && c.t === 's' && TOTAL_RE.test(cellText(c)));
-    return { kind: 'skip', reason: total ? 'total-row' : 'no-instrument-name', hasMoney };
+    return { kind: 'skip', reason: total ? 'total-row' : 'no-instrument-name', hasMoney, named: false };
   }
   const sameAsHeader = (f: BaseField): boolean =>
     cols[f] === undefined || (texts[cols[f]!] ?? '').toLowerCase() === headerTexts[cols[f]!];
-  if (sameAsHeader('name') && sameAsHeader('client')) return { kind: 'skip', reason: 'repeated-header', hasMoney: false };
+  if (sameAsHeader('name') && sameAsHeader('client')) return { kind: 'skip', reason: 'repeated-header', hasMoney: false, named: false };
+  // A total row of the book is never a holding: it would double every total (KI-142, D-041 point 3).
+  if (TOTAL_ROW_NAME_RE.test(name)) return { kind: 'skip', reason: 'total-row', hasMoney, named: true };
   return { kind: 'holding' };
 }
 
@@ -191,7 +236,7 @@ type SheetScan = {
   headerLabels: string[];
   cols: Columns;
   holdingRows: number[];
-  skipped: Array<{ r: number; reason: SkipReason; hasMoney: boolean }>;
+  skipped: Array<{ r: number; reason: SkipReason; hasMoney: boolean; named: boolean }>;
 };
 
 function scanSheet(sheet: Sheet, headerIndex: number): SheetScan {
@@ -204,7 +249,7 @@ function scanSheet(sheet: Sheet, headerIndex: number): SheetScan {
   for (let r = headerIndex + 1; r < sheet.rows.length; r++) {
     const k = classifyRow(sheet.rows[r] ?? [], cols, headerTexts);
     if (k.kind === 'holding') holdingRows.push(r);
-    else skipped.push({ r, reason: k.reason, hasMoney: k.hasMoney });
+    else skipped.push({ r, reason: k.reason, hasMoney: k.hasMoney, named: k.named });
   }
   return { sheet, headerIndex, headerTexts, headerLabels, cols, holdingRows, skipped };
 }
@@ -275,9 +320,28 @@ type RowRecord = {
   holder3: string | null;
   guardian: string | null;
   modeText: string | null;
+  /** What the money columns of each field said on this row (KI-147 notices). */
+  money: Record<MoneyField, MoneyRead>;
 };
 
 type InvalidTally = Map<string, number>;
+
+type MoneyColumn = { header: string; unit: MoneyUnit };
+
+/** What the reader did with the money columns of one field on one row (KI-147). */
+type MoneyRead = {
+  value: Value<number>;
+  /** The header whose number was used; null when none was. */
+  from: string | null;
+  /** The unit of the column used; null when none was. */
+  fromUnit: MoneyUnit | null;
+  /** Earlier columns of the field that were blank (text null) or held a placeholder, before the one used. */
+  passedOver: Array<{ header: string; text: string | null }>;
+  /** The column whose text is not an amount: the amount is INVALID SOURCE DATA; `later` are the columns not used. */
+  invalid: { header: string; unit: MoneyUnit; text: string; later: MoneyColumn[] } | null;
+  /** Later columns of the field whose number differs from the one used by more than the tolerance. */
+  disagree: Array<{ header: string; unit: MoneyUnit; otherCr: number }>;
+};
 
 function bump(t: InvalidTally, header: string): void {
   t.set(header, (t.get(header) ?? 0) + 1);
@@ -313,41 +377,58 @@ function numberValue(
   return missing(STATUS.INVALID_SOURCE, `"${header}" holds "${n.text}", which is not a number`, prov(`base-file "${header}"`));
 }
 
-/** Money in Crore, with the legacy precedence per row: the Cr. column, then Lakh, then rupees (pickCr). */
+/**
+ * Money in Crore, with the legacy precedence per row: the Cr. column, then Lakh, then rupees (pickCr), under the
+ * KI-147 rule (config/money-columns.ts). The first cell that is not blank and not a placeholder decides: a number is
+ * used (and checked against the later columns of the field that hold a number); text that is not an amount, or a
+ * percent, makes the amount INVALID SOURCE DATA and no later column is read in its place.
+ */
 function readMoney(
   row: Cell[], cols: Columns, labels: string[], fields: readonly [BaseField, BaseField, BaseField], what: string,
   prov: (m: string) => Provenance, invalid: InvalidTally,
-): Value<number> {
+): MoneyRead {
   const units: readonly MoneyUnit[] = ['crore', 'lakh', 'rupee'];
-  let sawColumn = false;
-  let firstInvalid: { header: string; text: string } | null = null;
-  let placeholder: { header: string; text: string } | null = null;
+  const present3: Array<{ unit: MoneyUnit; col: number; header: string }> = [];
   for (let i = 0; i < 3; i++) {
     const col = cols[fields[i]!];
-    if (col === undefined) continue;
-    sawColumn = true;
-    const header = labels[col] ?? '';
+    if (col !== undefined) present3.push({ unit: units[i]!, col, header: labels[col] ?? '' });
+  }
+  const none = (value: Value<number>): MoneyRead => ({ value, from: null, fromUnit: null, passedOver: [], invalid: null, disagree: [] });
+  if (present3.length === 0) return none(missing(STATUS.NOT_AVAILABLE, `the base file has no ${what} column`));
+  const passedOver: MoneyRead['passedOver'] = [];
+  for (let k = 0; k < present3.length; k++) {
+    const { unit, col, header } = present3[k]!;
     const n = readNumber(row[col]);
-    if (n.kind === 'number') {
-      if (n.percentText) {
-        bump(invalid, header);
-        firstInvalid ??= { header, text: `${n.v}%` };
-        continue;
+    if (n.kind === 'number' && !n.percentText) {
+      const cr = toCrore(n.v, unit);
+      const disagree: MoneyRead['disagree'] = [];
+      for (const later of present3.slice(k + 1)) {
+        const m = readNumber(row[later.col]);
+        if (m.kind !== 'number' || m.percentText) continue;
+        const other = toCrore(m.v, later.unit);
+        if (Math.abs(cr - other) > MONEY_COLUMN_RULE.crossCheckToleranceCr + 1e-9) disagree.push({ header: later.header, unit: later.unit, otherCr: other });
       }
-      return present(toCrore(n.v, units[i]!), 'cr', prov(`base-file "${header}"`));
+      return { value: present(cr, 'cr', prov(`base-file "${header}"`)), from: header, fromUnit: unit, passedOver, invalid: null, disagree };
     }
-    if (n.kind === 'invalid') { bump(invalid, header); firstInvalid ??= { header, text: n.text }; }
-    if (n.kind === 'placeholder') placeholder ??= { header, text: n.text };
+    if (n.kind === 'number' || n.kind === 'invalid') {
+      const text = n.kind === 'invalid' ? n.text : `${n.v}%`;
+      bump(invalid, header);
+      return {
+        value: missing(STATUS.INVALID_SOURCE, `"${header}" holds "${text}", which is not an amount`, prov(`base-file "${header}"`)),
+        from: null,
+        fromUnit: null,
+        passedOver: [],
+        invalid: { header, unit, text, later: present3.slice(k + 1).map((p) => ({ header: p.header, unit: p.unit })) },
+        disagree: [],
+      };
+    }
+    passedOver.push({ header, text: n.kind === 'placeholder' ? n.text : null });
   }
-  if (!sawColumn) return missing(STATUS.NOT_AVAILABLE, `the base file has no ${what} column`);
-  if (firstInvalid) {
-    return missing(STATUS.INVALID_SOURCE, `"${firstInvalid.header}" holds "${firstInvalid.text}", which is not an amount`,
-      prov(`base-file "${firstInvalid.header}"`));
-  }
+  const placeholder = passedOver.find((p) => p.text !== null);
   if (placeholder) {
-    return missing(STATUS.NOT_AVAILABLE, `"${placeholder.header}" says "${placeholder.text}"`, prov(`base-file "${placeholder.header}"`));
+    return none(missing(STATUS.NOT_AVAILABLE, `"${placeholder.header}" says "${placeholder.text}"`, prov(`base-file "${placeholder.header}"`)));
   }
-  return missing(STATUS.NOT_AVAILABLE, `the ${what} is blank`, prov('base-file'));
+  return none(missing(STATUS.NOT_AVAILABLE, `the ${what} is blank`, prov('base-file')));
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -460,10 +541,174 @@ function mergedXirr(members: RowRecord[], pick: (m: RowRecord) => Value<number>,
   return present(w / c, 'pct', { ...prov, method: `market-value-weighted over ${members.length} merged folios` }, extra);
 }
 
+/** The merged holding days within a day of each other count to one date (D-041 point 2, the live page's tolerance). */
+export const MERGED_DAYS_TOLERANCE = 1;
+
+/**
+ * The purchase date and holding days of merged folios (D-041 point 2, KI-141 on the live page, KI-148 here): the
+ * earliest purchase date of the folios, whatever the row order (the first such folio on a tie). A folio's purchase
+ * date plus its holding days is the date the file counts to. When every folio with holding days has a purchase date
+ * and they count to one date (within a day), the holding days are the earliest folio's own figure, or, when it has
+ * none, the days from its purchase date to the date the first such folio counts to. When no folio has a purchase
+ * date, folios that all carry the same holding days keep that figure. Otherwise the holding days are blank, never one
+ * folio's figure (`blank` true: the reader says so in a notice). No folio with holding days: blank, without a notice.
+ */
+function mergedDateAndDays(members: RowRecord[], prov: Provenance):
+  { purchaseDate: Value<DayNumber>; holdingDays: Value<number>; blank: boolean } {
+  const n = members.length;
+  let earliest: { m: RowRecord; day: DayNumber } | null = null;
+  for (const m of members) {
+    if (m.purchaseDate.kind === 'value' && (earliest === null || m.purchaseDate.v < earliest.day)) earliest = { m, day: m.purchaseDate.v };
+  }
+  const purchaseDate: Value<DayNumber> = earliest === null ? members[0]!.purchaseDate
+    : present(earliest.day, 'date', { ...prov, method: `the earliest purchase date of ${n} merged folios (D-041)` });
+  const withDays = members.filter((m) => m.holdingDays.kind === 'value');
+  const daysOf = (m: RowRecord): number => (m.holdingDays.kind === 'value' ? m.holdingDays.v : Number.NaN);
+  const blankDays = (why: string): Value<number> => missing(STATUS.INSUFFICIENT_EVIDENCE, `${why} (D-041)`, prov);
+  if (withDays.length === 0) {
+    const first = members[0]!.holdingDays;
+    const why = first.kind === 'missing' ? first.reason : 'blank';
+    return { purchaseDate, holdingDays: missing(first.kind === 'missing' ? first.status : STATUS.NOT_AVAILABLE, `no merged folio has holding days: ${why}`, prov), blank: false };
+  }
+  if (earliest === null) {
+    const same = withDays.length === n && withDays.every((m) => daysOf(m) === daysOf(withDays[0]!));
+    if (same) {
+      return { purchaseDate, holdingDays: present(daysOf(withDays[0]!), 'days', { ...prov, method: `the same holding days on ${n} merged folios without a purchase date (D-041)` }), blank: false };
+    }
+    return { purchaseDate, holdingDays: blankDays('the merged folios have no purchase date and different holding days'), blank: true };
+  }
+  const counts = withDays.filter((m) => m.purchaseDate.kind === 'value')
+    .map((m) => (m.purchaseDate.kind === 'value' ? m.purchaseDate.v : 0) + daysOf(m));
+  if (counts.length === withDays.length && Math.max(...counts) - Math.min(...counts) <= MERGED_DAYS_TOLERANCE) {
+    const own = earliest.m.holdingDays;
+    const days = own.kind === 'value' ? own.v : counts[0]! - earliest.day;
+    return {
+      purchaseDate,
+      holdingDays: present(days, 'days', { ...prov, method: own.kind === 'value'
+        ? `the holding days of the earliest of ${n} merged folios, which count to one date (D-041)`
+        : `recomputed from the earliest purchase date of ${n} merged folios to the date they count to (D-041)` }),
+      blank: false,
+    };
+  }
+  return { purchaseDate, holdingDays: blankDays('the holding days of the merged folios do not count to one date'), blank: true };
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 
 const EMPTY_COUNTS = (): Record<SkipReason, number> =>
   ({ 'blank-row': 0, 'repeated-header': 0, 'total-row': 0, 'no-instrument-name': 0 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// KI-147 notices: money in more than one column
+
+const MONEY_WHAT: Record<MoneyField, { what: string; whats: string; article: string }> = {
+  cmv: { what: 'market value', whats: 'market values', article: 'a' },
+  invested: { what: 'invested value', whats: 'invested values', article: 'an' },
+  fileGain: { what: 'gain or loss', whats: 'gains or losses', article: 'a' },
+};
+/** The file's own gain or loss feeds no figure (OD-18): its notices are logged, never footnoted (D-039). */
+const FILE_GAIN_UNUSED = 'no figure uses the file\'s gain or loss (OD-18)';
+const MONEY_FIELDS_IN_ORDER: readonly MoneyField[] = ['cmv', 'invested', 'fileGain'];
+
+/** "row 7", "rows 2 and 5", "rows 2, 5 and 9", at most ten numbers. */
+function rowsText(rows: number[]): string {
+  const sorted = [...new Set(rows)].sort((a, b) => a - b);
+  if (sorted.length === 1) return `row ${sorted[0]}`;
+  const shown = sorted.slice(0, 10);
+  const more = sorted.length - shown.length;
+  if (more > 0) return `rows ${shown.join(', ')} and ${more} more`;
+  return `rows ${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`;
+}
+
+type MoneyGroup = { field: MoneyField; holdingIds: HoldingId[]; rows: number[] };
+
+function addTo<G extends MoneyGroup>(groups: Map<string, G>, key: string, make: () => G, id: HoldingId, row: number): G {
+  let g = groups.get(key);
+  if (!g) { g = make(); groups.set(key, g); }
+  if (!g.holdingIds.includes(id)) g.holdingIds.push(id);
+  g.rows.push(row);
+  return g;
+}
+
+/**
+ * The three KI-147 notices, grouped by field and columns, each scoped to the holdings and naming the rows:
+ * base-file.money-invalid (Warning), base-file.money-column-used (Information) and base-file.money-disagree (Warning).
+ * For the file's own gain or loss, which no figure uses (OD-18), the invalid and disagree notices are Information:
+ * they are logged in the import report and the audit log and never become a note (D-039). Returns the findings by
+ * holding, field and row, which the overview's notes count.
+ */
+function moneyNotices(records: RowRecord[], holdingOfRow: Map<number, HoldingId>, issues: Issues): MoneyFinding[] {
+  const findings: MoneyFinding[] = [];
+  const invalidG = new Map<string, MoneyGroup & { header: string; later: string[] }>();
+  const usedG = new Map<string, MoneyGroup & { from: string; passed: Map<string, { blank: boolean; texts: string[] }> }>();
+  const disagreeG = new Map<string, MoneyGroup & { from: string; other: string }>();
+  for (const rec of records) {
+    const id = holdingOfRow.get(rec.r);
+    if (id === undefined) continue;
+    for (const field of MONEY_FIELDS_IN_ORDER) {
+      const m = rec.money[field];
+      if (m.invalid) {
+        const inv = m.invalid;
+        findings.push({ holdingId: id, field, kind: 'invalid', column: { header: inv.header, unit: inv.unit }, others: inv.later.map((l) => ({ ...l })) });
+        const g = addTo(invalidG, keyOf([field, inv.header]), () => ({ field, holdingIds: [], rows: [], header: inv.header, later: [] }), id, rec.at.row);
+        for (const l of inv.later) if (!g.later.includes(l.header)) g.later.push(l.header);
+      }
+      if (m.disagree.length > 0 && m.from !== null && m.fromUnit !== null) {
+        findings.push({ holdingId: id, field, kind: 'disagree', column: { header: m.from, unit: m.fromUnit },
+          others: m.disagree.map((d) => ({ header: d.header, unit: d.unit })) });
+      }
+      if (m.from !== null && m.passedOver.length > 0) {
+        const from = m.from;
+        const g = addTo(usedG, keyOf([field, from, ...m.passedOver.flatMap((p) => [p.header, p.text])]),
+          () => ({ field, holdingIds: [], rows: [], from, passed: new Map() }), id, rec.at.row);
+        for (const p of m.passedOver) {
+          let e = g.passed.get(p.header);
+          if (!e) { e = { blank: false, texts: [] }; g.passed.set(p.header, e); }
+          if (p.text === null) e.blank = true;
+          else if (!e.texts.includes(p.text)) e.texts.push(p.text);
+        }
+      }
+      for (const d of m.disagree) {
+        const from = m.from!;
+        addTo(disagreeG, keyOf([field, from, d.header]), () => ({ field, holdingIds: [], rows: [], from, other: d.header }), id, rec.at.row);
+      }
+    }
+  }
+  const scope = (g: MoneyGroup): ValidationScope => ({ kind: 'holdings', holdingIds: g.holdingIds });
+  // The file's gain or loss: Information, logged only (OD-18); the market and invested values: a Warning, footnoted.
+  const severityOf = (field: MoneyField) => (field === 'fileGain'
+    ? { severity: 'Information' as const, extra: { resolution: 'auto-resolved' as const, status: 'resolved' as const }, tail: `; ${FILE_GAIN_UNUSED}` }
+    : { severity: 'Warning' as const, extra: {}, tail: '' });
+  for (const g of invalidG.values()) {
+    const n = g.holdingIds.length;
+    const { what, whats } = MONEY_WHAT[g.field];
+    const excluded = g.field === 'cmv' ? ` and ${n === 1 ? 'it is' : 'they are'} excluded from every total` : '';
+    const later = g.later.length ? `; ${quoteList(g.later)} ${g.later.length === 1 ? 'is' : 'are'} not used instead` : '';
+    const sv = severityOf(g.field);
+    issues.add('base-file.money-invalid', sv.severity, scope(g),
+      `${plural(n, 'holding has', 'holdings have')} text that is not an amount in "${g.header}" (${rowsText(g.rows)}), so ${n === 1 ? `its ${what} is` : `their ${whats} are`} invalid source data${excluded}${later}${sv.tail}.`,
+      { decision: 'KI-147', count: n, ...sv.extra });
+  }
+  for (const g of usedG.values()) {
+    const n = g.holdingIds.length;
+    const because = [...g.passed.entries()].map(([header, e]) => {
+      const says = e.texts.length ? `says ${e.texts.map((t) => `"${t}"`).join(' or ')}` : '';
+      return `"${header}" ${e.blank && says ? `is blank or ${says}` : e.blank ? 'is blank' : says}`;
+    }).join(' and ');
+    issues.add('base-file.money-column-used', 'Information', scope(g),
+      `${plural(n, 'holding takes', 'holdings take')} ${n === 1 ? 'its' : 'their'} ${MONEY_WHAT[g.field].what} from "${g.from}" because ${because} (${rowsText(g.rows)}).`,
+      { decision: 'KI-147', count: n, resolution: 'auto-resolved', status: 'resolved' });
+  }
+  for (const g of disagreeG.values()) {
+    const n = g.holdingIds.length;
+    const { what, article } = MONEY_WHAT[g.field];
+    const sv = severityOf(g.field);
+    issues.add('base-file.money-disagree', sv.severity, scope(g),
+      `${plural(n, 'holding has', 'holdings have')} ${article} ${what} in "${g.from}" that differs from "${g.other}" by more than ${MONEY_COLUMN_RULE.crossCheckToleranceCr} Cr (${rowsText(g.rows)}); the amount in "${g.from}" is used${sv.tail}.`,
+      { decision: 'KI-147', count: n, ...sv.extra });
+  }
+  return findings;
+}
 
 export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImport {
   const now = opts.now ?? ((): string => new Date().toISOString());
@@ -492,7 +737,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
   const empty = (): BaseFileImport => ({
     parserVersion: BASE_FILE_PARSER_VERSION, sourceId, sheet: null, sheets: attempts, columns: [], moneyUnit: null,
     holdings: [], clients: [], distributors: [], accounts: [], folios: [], ownership: [], skipped: [],
-    questions: [], issues: issues.list, audit: [],
+    questions: [], issues: issues.list, moneyFindings: [], audit: [],
     counts: { dataRows: 0, holdingRows: 0, holdings: 0, included: 0, excluded: 0, mergedRows: 0, skipped: EMPTY_COUNTS() },
   });
   if (!scan) {
@@ -589,6 +834,11 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
           d.kind === 'empty' ? `"${pdHeader}" is blank` : `"${pdHeader}" says "${d.text}"`, prov(`base-file "${pdHeader}"`));
       }
     }
+    const money: Record<MoneyField, MoneyRead> = {
+      invested: readMoney(row, cols, headerLabels, ['invCr', 'invLk', 'invR'], 'invested value', prov, invalid),
+      cmv: readMoney(row, cols, headerLabels, ['cmvCr', 'mvLk', 'mvR'], 'market value', prov, invalid),
+      fileGain: readMoney(row, cols, headerLabels, ['glCr', 'glLk', 'glR'], 'gain or loss', prov, invalid),
+    };
     return {
       r,
       at: at(r),
@@ -603,9 +853,9 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       liquidity: textOrNull(row, cols.liq),
       purchaseDate,
       units: readPlainNumber(row, cols.units, header('units'), 'units', 'Units', prov, invalid),
-      invested: readMoney(row, cols, headerLabels, ['invCr', 'invLk', 'invR'], 'invested value', prov, invalid),
-      cmv: readMoney(row, cols, headerLabels, ['cmvCr', 'mvLk', 'mvR'], 'market value', prov, invalid),
-      fileGain: readMoney(row, cols, headerLabels, ['glCr', 'glLk', 'glR'], 'gain or loss', prov, invalid),
+      invested: money.invested.value,
+      cmv: money.cmv.value,
+      fileGain: money.fileGain.value,
       holdingDays: readPlainNumber(row, cols.days, header('days'), 'days', 'holding days', prov, invalid),
       xirr: readXirr(row, cols.xirr, xPlan, prov, invalid),
       bmXirr: readXirr(row, cols.bmxirr, bPlan, prov, invalid),
@@ -613,6 +863,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       holder3: textOrNull(row, cols.holder3),
       guardian: textOrNull(row, cols.guardian),
       modeText: textOrNull(row, cols.mode),
+      money,
     };
   });
 
@@ -627,15 +878,18 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
   const accounts = new Map<AccountId, Account>();
   const folios = new Map<FolioId, Folio>();
   const ownership = new Map<FolioId, Ownership>();
+  // Clients and distributors are keyed on the label as the file spells it, after the whitespace collapse of cellText
+  // (the legacy ws()): the legacy keys its client and distributor matrices on that exact label (07_engine.js
+  // allocBreakdown), so labels that differ only in letter case stay two, with a Warning below (D-039).
   const clientOf = (label: string | null): ClientId | null => {
     if (label === null) return null;
-    const id = clientId(normaliseLabel(label));
+    const id = clientId(label);
     if (!clients.has(id)) clients.set(id, { id, label, displayLabel: null });
     return id;
   };
   const distOf = (label: string | null): DistributorId | null => {
     if (label === null) return null;
-    const id = distId(normaliseLabel(label));
+    const id = distId(label);
     if (!distributors.has(id)) distributors.set(id, { id, label });
     return id;
   };
@@ -693,11 +947,15 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
     if (!g) { g = { key, members: [] }; groups.set(key, g); groupOrder.push(g); }
     g.members.push(rec);
   }
+  /** Merged holdings whose folios' holding days do not count to one date (D-041 point 2): their days are blank. */
+  const daysBlank: HoldingId[] = [];
   const holdingFrom = (members: RowRecord[], id: HoldingId, inclusion: Holding['inclusion']): Holding => {
     const first = members[0]!;
     const ids = rowIds.get(first.r)!;
     const merged = members.length > 1;
     const mProv = prov('base-file');
+    const dates = merged ? mergedDateAndDays(members, mProv) : { purchaseDate: first.purchaseDate, holdingDays: first.holdingDays, blank: false };
+    if (dates.blank) daysBlank.push(id);
     const cmv = merged ? sumAll(members, (m) => m.cmv, 'cr', 'market value', 'E-02', mProv).value : first.cmv;
     const total = cmv.kind === 'value' ? cmv.v : 0;
     // KI-007 and KI-113: a total is summed only when every folio has it; a merge gap is recorded by name.
@@ -737,28 +995,31 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       liquidity: first.liquidity,
       folios: folioNumbers,
       folioIds,
-      purchaseDate: first.purchaseDate,
+      purchaseDate: dates.purchaseDate,
       units,
       invested,
       cmv,
       fileGain,
       xirr: merged ? mergedXirr(members, (m) => m.xirr, total, mProv) : first.xirr,
       bmXirr: merged ? mergedXirr(members, (m) => m.bmXirr, total, mProv) : first.bmXirr,
-      holdingDays: first.holdingDays,
+      holdingDays: dates.holdingDays,
       mergeGaps,
       inclusion,
     };
   };
   const built: Array<{ firstRow: number; h: Holding }> = [];
+  /** The holding each holding row went into (for the KI-147 notices: a merged holding carries its folios'). */
+  const holdingOfRow = new Map<number, HoldingId>();
   for (const g of groupOrder) {
-    built.push({ firstRow: g.members[0]!.r, h: holdingFrom(g.members, holdingId(keyOf(['in', g.key])), { status: 'included' }) });
+    const h = holdingFrom(g.members, holdingId(keyOf(['in', g.key])), { status: 'included' });
+    for (const m of g.members) holdingOfRow.set(m.r, h.id);
+    built.push({ firstRow: g.members[0]!.r, h });
   }
   for (const rec of excludedRecs) {
-    built.push({
-      firstRow: rec.r,
-      h: holdingFrom([rec], holdingId(keyOf(['ex', sheetName, String(rec.at.row)])),
-        { status: 'excluded', reasons: ['no-market-value'] }),
-    });
+    const h = holdingFrom([rec], holdingId(keyOf(['ex', sheetName, String(rec.at.row)])),
+      { status: 'excluded', reasons: ['no-market-value'] });
+    holdingOfRow.set(rec.r, h.id);
+    built.push({ firstRow: rec.r, h });
   }
   built.sort((a, b) => a.firstRow - b.firstRow);
   const holdings = built.map((b) => b.h);
@@ -796,6 +1057,63 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       `${plural(defaulted.length, 'holding has', 'holdings have')} no Product Name and ${defaulted.length === 1 ? 'is' : 'are'} read as ${DEFAULT_PRODUCT}, as in the legacy page.`,
       { count: defaulted.length, resolution: 'auto-resolved', status: 'resolved' });
   }
+  // Labels that differ only in letter case are separate clients (or distributors), as in the legacy page; whether to
+  // fold letter case is the owner's question (DATA_DICTIONARY section 8, beside BF-26). Only the labels that key a
+  // holding's client or distributor count here: a label read only from the joint-holder columns changes no matrix
+  // column and no count, and is reported below instead.
+  const keyedClients = new Set<string>(holdings.map((h) => h.clientId).filter((x): x is ClientId => x !== null));
+  const keyedDistributors = new Set<string>(holdings.map((h) => h.distributorId).filter((x): x is DistributorId => x !== null));
+  const caseLevels = [
+    { level: 'client', title: 'Client', labels: [...clients.values()].filter((c) => keyedClients.has(c.id)).map((c) => ({ id: c.id as string, label: c.label })), of: (h: Holding) => h.clientId as string | null },
+    { level: 'distributor', title: 'Distributor', labels: [...distributors.values()].filter((d) => keyedDistributors.has(d.id)).map((d) => ({ id: d.id as string, label: d.label })), of: (h: Holding) => h.distributorId as string | null },
+  ] as const;
+  for (const c of caseLevels) {
+    const byFolded = new Map<string, Array<{ id: string; label: string }>>();
+    for (const e of c.labels) {
+      const k = normaliseLabel(e.label);
+      const g = byFolded.get(k);
+      if (g) g.push(e); else byFolded.set(k, [e]);
+    }
+    const groups = [...byFolded.values()].filter((g) => g.length > 1);
+    if (groups.length === 0) continue;
+    const ids = new Set(groups.flat().map((e) => e.id));
+    const holdingIds = holdings.filter((h) => { const x = c.of(h); return x !== null && ids.has(x); }).map((h) => h.id);
+    const sets = groups.map((g) => g.map((e) => `"${e.label}"`).join(' and ')).join('; ');
+    issues.add('base-file.entity-case-variant', 'Warning',
+      holdingIds.length > 0 ? { kind: 'holdings', holdingIds } : { kind: 'sheet', sourceId, sheet: sheetName },
+      `${c.title} labels that differ only in letter case are read as separate ${c.level}s, as in the legacy page: ${sets}.`,
+      { decision: 'D-039', count: groups.length });
+  }
+  // A joint-holder label that differs from a client only in letter case is a person of its own, not linked to that
+  // client in the ownership (D-039; the owner's letter-case question covers the holder columns too).
+  const keyedByFolded = new Map<string, string[]>();
+  for (const c of clients.values()) {
+    if (!keyedClients.has(c.id)) continue;
+    const k = normaliseLabel(c.label);
+    const g = keyedByFolded.get(k);
+    if (g) g.push(c.label); else keyedByFolded.set(k, [c.label]);
+  }
+  for (const c of clients.values()) {
+    if (keyedClients.has(c.id)) continue;
+    const like = keyedByFolded.get(normaliseLabel(c.label));
+    if (!like) continue;
+    const folioIds = new Set<string>([...ownership.values()]
+      .filter((o) => o.jointHolders.kind === 'value' && o.jointHolders.v.some((j) => j.clientId === c.id)).map((o) => o.folioId));
+    const holdingIds = holdings.filter((h) => h.folioIds.some((f) => folioIds.has(f))).map((h) => h.id);
+    issues.add('base-file.holder-case-variant', 'Information',
+      holdingIds.length > 0 ? { kind: 'holdings', holdingIds } : { kind: 'sheet', sourceId, sheet: sheetName },
+      `The joint holder "${c.label}" is not linked to ${like.map((l) => `"${l}"`).join(' or ')}: the letter case differs.`,
+      { decision: 'D-039', count: 1, resolution: 'auto-resolved', status: 'resolved' });
+  }
+  // A negative market value is read as written, as the legacy reads it, so every figure matches the live page; the
+  // allocation leaves out the liquidity lines and pie slices whose market value is 0 or less, and the overview says
+  // so (D-039).
+  const negative = includedHoldings.filter((h) => h.cmv.kind === 'value' && h.cmv.v < 0);
+  if (negative.length) {
+    issues.add('base-file.negative-market-value', 'Warning', { kind: 'holdings', holdingIds: negative.map((h) => h.id) },
+      `${plural(negative.length, 'holding has', 'holdings have')} a negative market value, read as written and counted in every total: ${quoteList(negative.map((h) => h.instrumentName))}.`,
+      { decision: 'D-039', count: negative.length });
+  }
   const blankClient = holdings.filter((h) => h.clientLabel === null);
   if (blankClient.length) {
     issues.add('base-file.blank-client', 'Warning', { kind: 'holdings', holdingIds: blankClient.map((h) => h.id) },
@@ -820,6 +1138,13 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
         { decision: 'KI-113', count: partial.length, resolution: 'auto-resolved', status: 'resolved' });
     }
   }
+  if (daysBlank.length) {
+    // The live page's sentence (D-041 point 2): the merged holding days are blank, never one folio's figure.
+    issues.add('base-file.merge-days-blank', 'Information', { kind: 'holdings', holdingIds: [...daysBlank] },
+      `${plural(daysBlank.length, 'merged holding has folios', 'merged holdings have folios')} whose holding days do not count to one date: the holding days are left blank.`,
+      { decision: 'D-041', count: daysBlank.length, resolution: 'auto-resolved', status: 'resolved' });
+  }
+  const moneyFindings = moneyNotices(records, holdingOfRow, issues);
   if (invalid.size) {
     const parts = [...invalid.entries()].map(([h, n]) => `"${h}" (${n})`);
     const n = [...invalid.values()].reduce((a, b) => a + b, 0);
@@ -851,10 +1176,20 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
     'total-row': ['total row was', 'total rows were'],
     'no-instrument-name': ['row without an Instrument Name was', 'rows without an Instrument Name were'],
   };
+  // Total rows named "Total" or "Grand Total" in the Instrument Name column (D-041 point 3): one Warning with the rows,
+  // in the live page's words. They are skipped rows of reason total-row; the notice below counts the others.
+  const namedTotals = scan.skipped.filter((s) => s.named).map((s) => s.r);
+  if (namedTotals.length) {
+    const n = namedTotals.length;
+    issues.add('base-file.total-row-skipped', 'Warning', { kind: 'rows', sourceId, rows: namedTotals.map(at) },
+      `${plural(n, 'row', 'rows')} named "Total" or "Grand Total" in the Instrument Name column ${n === 1
+        ? 'was skipped as a total row, not read as a holding' : 'were skipped as total rows, not read as holdings'} (${rowsText(namedTotals.map((r) => r + 1))}).`,
+      { decision: 'KI-142', count: n });
+  }
   for (const reason of Object.keys(skipCounts) as SkipReason[]) {
-    const n = skipCounts[reason];
+    const rows = skipped.filter((s, i) => s.reason === reason && !scan.skipped[i]!.named);
+    const n = rows.length;
     if (!n) continue;
-    const rows = skipped.filter((s) => s.reason === reason);
     const withMoney = rows.filter((s) => s.hasMoney).length;
     const lost = reason === 'no-instrument-name' && withMoney > 0;
     issues.add(`base-file.skipped-${reason}`, lost ? 'Warning' : 'Information',
@@ -890,6 +1225,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
     skipped,
     questions,
     issues: issues.list,
+    moneyFindings,
     audit,
     counts,
   };
