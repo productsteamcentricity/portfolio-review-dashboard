@@ -205,6 +205,10 @@ four local-only branches (`feat/m1-4-overview` and the three fixer branches, 26 
 clean pre-push scans (MOD-02 re-ran all four, same counts as NB-01) and a security-release-reviewer GO (NB-01's report). Verified
 afterwards with `git ls-remote origin` by MOD-02 and ARC-01.
 
+**R-14. Numbers, 9 Nov 2026.** KI ranges: EX-01 KI-183 to KI-186 and KI-200 to KI-219 (KI-185, KI-186 and KI-200 to KI-212 are in the TA-03 branch; KI-213 and KI-214 allocated); NB-01 KI-190 to KI-199 (KI-190 to KI-192 used on its branch); MOD-02 KI-187 to KI-189. Decisions D-043 to D-045 EX-01 (D-043 = the owner's answers to CR-0008 Q17, Q18, Q22 and Q24, written in TA-03). PD numbers PD-47 to PD-54 allocated on 2 and 9 Nov.
+
+**R-15. Rule 10 amended, 9 Nov 2026.** Whose words: the owner's own rule (2 Nov): `tasklist` first; synthetic files, read-only, no window; close only the file you opened; never Quit; no global option; timeout; give the owner the path. ARC-01's K1: attach only, NOT RUN when no instance runs, no Stop-Process or taskkill, abandon on timeout. The security review's tightenings (2 Nov and 9 Nov): "synthetic" defined (from synthetic inputs, `.xlsx` or `.pptx`, never an inbox, vendor or downloaded file); only the workbook's own window may be hidden, never `Application.Visible`; `.Kill()` and any other termination; the option list is not exhaustive; never enumerate, read, copy, save or record the name or path of a document you did not open; tell the owner which file a timeout left open; "NOT RUN is never a pass". The owner's exception (PD-49, "Allow a copy"): Step 3 of the monthly refresh may open a COPY of the research team's Monthly Outlook deck, never the original, read-only with no window, through an already running PowerPoint, under every other condition; the owner opens PowerPoint first. Rule 10 of CLAUDE.md governs; R-12 is its earlier summary.
+
 ## 2. Pending owner decisions
 
 These are questions only the owner can answer, because they change what clients see or how a financial rule
@@ -239,7 +243,7 @@ that builds it (EX-01 or NB-01).
 | PD-06 | A fund holding one equity ETF: assume 90/90 on the live page? | Live: keep the default with a note; new build: analyst choice | consistency |
 | PD-07 | Slab rate used to order set-off | Live: 30% labelled "assumed"; new build: no default | consistency |
 | PD-08 | Holding days of one fund held in several folios (D-041 question 1) | (a) as built | KI-148 alignment |
-| PD-09 | KI-147: do placeholders like "NA" count as empty? | Yes, so both builds match | TA-05, M1.4 PR |
+| PD-09 | KI-147: do placeholders like "NA" count as empty? | **ANSWERED 2 Nov 2026** (typed in the app): "Yes, count as empty (Recommended)"; both builds match | none now (D-042 in TA-05; M1.4 PR wording) |
 | PD-10 | KI-066: change the IPS check now on the live page? | Please choose; if no answer, keep current and build it in the new build | TA-19 |
 | PD-11 | Unknown Asset Names (BF-19) | Leave "Unknown" and list | both readers |
 | PD-12 | Ignore letter case in Asset Names (BF-26) | Keep folding | parity ledger |
@@ -250,8 +254,8 @@ that builds it (EX-01 or NB-01).
 | PD-17 | Confirm the fix batch 2a details | Confirm | none |
 | PD-18 | (record fix) KI-006 still calls OD-26 open | No action; we correct the record | TC-15 |
 | PD-19 | Send the MF Screener feedback and requests | Send all three | TB-17, TB-19 |
-| PD-20 | Download the public AMFI NAV file monthly | Yes | TA-20 |
-| PD-21 | Where the risk-ratio toolchain may live | A short local folder outside the cloud folder and the repo | TA-20 |
+| PD-20 | Download the public AMFI NAV file monthly | **ANSWERED 9 Nov 2026**: "Yes (Recommended)" | none (TA-20 can start) |
+| PD-21 | Where the risk-ratio toolchain may live | **ANSWERED 9 Nov 2026**: "Short local folder (Recommended)", outside OneDrive and the repository | none (EX-01 names the path and restores the tools) |
 | PD-22 | A question about files the previous owner held back | See the private supplement | TC-20 |
 | PD-23 | Ask the previous owner for missing files | Yes | TC-20, TB-18 |
 | PD-24 | Which fund one unmatched fund label means | Owner identifies | alias table (TA-09) |
@@ -260,7 +264,7 @@ that builds it (EX-01 or NB-01).
 | PD-27 | Approve the new-build blueprint | Review after it is republished | TC-10 |
 | PD-28 | Your requests C2 to C6: live page or new build? | Calculation items live; presentation items new build | TA-09 |
 | PD-29 | Other second-export decisions | Answer before the October refresh | TA-10 |
-| PD-30 | Confirm the "publish" gate | Confirm | TA-10 |
+| PD-30 | Confirm the "publish" gate | **ANSWERED 9 Nov 2026**: "Confirm (Recommended)": nothing goes live before the owner replies "publish" | none |
 | PD-31 | Live page: dashes in sentences and the overlap threshold | Leave both to the new build | TA-25 |
 | PD-32 | Which of the previous owner's 15 promised features you still want | Owner chooses | REQ-018 |
 | PD-33 | Use the Investment Reckoner as the product-bank source | Yes | TB-18 |
@@ -277,9 +281,14 @@ that builds it (EX-01 or NB-01).
 | PD-44 | The other tax defaults settled while building | Accept as built | TA-03 sign-off |
 | PD-45 | The 26 "to be confirmed" research items of the capital-gains design | Send the top five to the tax adviser | M7 accuracy |
 | PD-46 | Did you ask for anything outside these chats between 24 and 27 Oct? | Tell MOD-02 | none |
-| PD-47 | A fund whose own statement gives a category: keep that, even if the performance data calls it "Listed AIF"? (follows PD-02) | Yes, the file's own words win | TA-03 item 10 wording (D-043) |
-| PD-48 | The new app rounds a half-way value up like Excel (35.675 shows 35.68; the live page shows 35.67): accept in the new app? | Yes | M1.4 Gate B (D-039 point 13) |
-| PD-49 | May the monthly refresh open the vendor deck in PowerPoint under the Office rule, or will you export the slides yourself? | You export the slides until a safe attach-only path is proven | TA-10 Step 3 (TA-26) |
+| PD-47 | A fund whose own statement gives a category: keep that, even if the performance data calls it "Listed AIF"? (follows PD-02) | **ANSWERED 2 Nov 2026**: "The fund's own statement wins and second order win is my ruling." | none (D-043 in TA-03) |
+| PD-48 | The new app rounds a half-way value up like Excel (35.675 shows 35.68; the live page shows 35.67): accept in the new app? | **ANSWERED 2 Nov 2026**: "Yes, accept (Recommended)" | none (the financial-domain-reviewer's named approval is still needed at Gate B) |
+| PD-49 | May the monthly refresh open the vendor deck in PowerPoint under the Office rule, or will you export the slides yourself? | **ANSWERED 9 Nov 2026**: "Allow a copy", against the recommendation: the owner amends rule 10 for one script (R-15) | TA-26 (the Step 3 script) |
+| PD-50 | The AI Analyst tax signal counts for 7 points of its score; the usual-bucket class changes trim amounts, target weights, the action label and the Exit count: keep it, or mark "not assessed" until confirmed? | **ANSWERED 2 Nov 2026**: "Keep and disclose (Recommended)" | none (the disclosure goes into the TA-03 docs with ARC-01's facts) |
+| PD-51 | Wider placeholder spellings ("n.a.", "n.a", "none", "not available", "--", a lone dash) count as an empty Crore cell? | **ANSWERED 9 Nov 2026**: "Yes, count as empty (Recommended)" | none (no code change; M1.4 PR) |
+| PD-52 | Tax adviser: does the Income-tax Act 2025 keep the rule that a loss on virtual digital assets cannot be set off or carried forward (CR-0008 question 25)? | Ask the tax adviser; the page keeps "no set-off" (PD-03) | none |
+| PD-53 | Tax adviser: should the Category III AIF sentence carry the reckoner's clause on determinate trusts (CR-0008 question 26)? | Ask the tax adviser | wording only (TA-03 stage S10 left it out) |
+| PD-54 | CR-0008 question 24: does the Listed AIF ruling reach a fund linked to a Listed AIF entry only by a loose name? | **ANSWERED 9 Nov 2026**: "Restrict it (Recommended)": only the fund's own words or an exact name (ignoring "AIF" and brackets) | none (stage S10 in TA-03) |
 
 ### 2.3 Each decision explained
 
@@ -827,7 +836,7 @@ See the private supplement. **Blocks:** nothing.
 
 #### PD-47. Which category wins when the file states one? (follows PD-02)
 
-**Status: QUEUED, not asked yet (2 Nov 2026).**
+**ANSWERED 2 Nov 2026** (typed in the app): "The fund's own statement wins and second order win is my ruling." That is option A, and EX-01's three-step rule: the fund's own words; then the category of the matched entry; then the Listed AIF ruling (Category III, marked); else Category I or II assumed. Recorded in D-043 in the owner's words.
 - **Problem.** You ruled that the funds the performance data lists as "Listed AIF" are Category III. Some client files state a
   category for a fund (Category I, II or III) in their own words, and it might differ from the ruling.
 - **Why we need you.** It is a reading of a financial rule. ARC-01 asked that you see it in one sentence.
@@ -838,17 +847,17 @@ See the private supplement. **Blocks:** nothing.
 
 #### PD-48. Half-way rounding in the new app (D-039 point 13)
 
-**Status: QUEUED, not asked yet (2 Nov 2026).**
+**ANSWERED 2 Nov 2026** (typed in the app): "Yes, accept (Recommended)". Accuracy note from ARC-01 (who ran both rules in node): the two builds differ for values that are half-way when read to 15 digits (35.675 gives 35.68 in the new app against 35.67 on the live page; 9.995 gives 10.00 against 9.99); at 2.675 and 0.125 both agree. The effect is still only the last digit.
 - **Problem.** A value exactly half-way between two roundings (35.675%) shows 35.68% in the new app, as Excel does, and 35.67% on the
   live page. It changes only the last digit and only at exact half-way values.
 - **Why we need you.** It changes a figure clients may see. The lead decided it in a fix round; no approval is on record (ARC-01's K2).
 - **Options.** A: accept in the new app (preview only). B: make the new app show what the live page shows.
 - **Recommendation / default.** A. Built that way; the new app is a preview (D-024). **Blocks.** M1.4 Gate B.
 
-#### PD-49. The vendor deck and Office (October refresh, Step 3)
+#### PD-49. The Outlook deck and Office (October refresh, Step 3)
 
-**Status: QUEUED, not asked yet (2 Nov 2026); ask before the vendor files arrive (11 to 17 Nov).**
-- **Problem.** Step 3 of the refresh renders the vendor's Monthly Outlook deck in PowerPoint to check every slide. Your Office rule
+**ANSWERED 9 Nov 2026** (typed in the app): "Allow a copy": option A, against the recommendation (B). The owner amends rule 10 so that one script may open a COPY of the research team's deck read-only through the running PowerPoint. Written into rule 10 (R-15). The Step 3 script is TA-26.
+- **Problem.** Step 3 of the refresh renders the research team's Monthly Outlook deck in PowerPoint to check every slide. Your Office rule
   allows only synthetic files, and PowerPoint is usually open on your PC.
 - **Options.** A: the refresh attaches to your open PowerPoint, opens a copy of the deck on a short local path, read-only, no
   window, closes only that copy, never Quit. B: you export the slides yourself and put them in the inbox folder. C: skip the check.
@@ -890,3 +899,4 @@ These are Claude's recommendations. None is a decision until the named approver 
 | 2 Nov 2026 | MOD-02 | Lead rulings R-8 to R-11 (TA-03 PR branch, six ENGINE keys, re-run rule confirmed by ARC-01, D-043 and KI-186); PD-02 and PD-03 marked answered with the owner's words |
 | 2 Nov 2026 | MOD-02 | R-12 (Office rule), R-13 (TB-08); PD-47 to PD-49 queued; PD-02 impact line corrected; "planned, not in git yet" tags |
 | 2 Nov 2026 | MOD-02 | Rule 10 of CLAUDE.md sharpened after the security review (synthetic defined, Excel window, NOT RUN is never a pass); residual "planned, not in git yet" tags; TA-26 priority |
+| 9 Nov 2026 | MOD-02 | Owner answers PD-09, PD-20, PD-21, PD-30, PD-47 to PD-51 and PD-54 recorded; PD-52 and PD-53 (tax adviser) queued; R-14 (numbers) and R-15 (rule 10 amended) |

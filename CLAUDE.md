@@ -47,18 +47,26 @@ and the monthly data owner.
    identity must be explicit (`user.useConfigOnly` is on; never let git invent an author email).
 9. **Stage discipline**: implement only what the owner asked. Record other defects/ideas in
    `docs/KNOWN_ISSUES.md` or the backlog in `docs/PROJECT_STATE.md`; do not fix them on the side.
-10. **Office automation never touches the owner's open work** (owner's rule, 2 Nov 2026). PowerPoint and Excel are
-   usually open on the owner's PC, and COM attaches to a running instance. Before any Office check run `tasklist`
-   for `POWERPNT.EXE` and `EXCEL.EXE`. Attach only to a running instance (`GetActiveObject`, never
-   `New-Object -ComObject`). Open only synthetic files: generated in this session by the repository's own tools, in
-   macro-free formats, never an inbox, vendor or downloaded file. Open them read-only with no window (Excel cannot
-   open a workbook without one: hide only that workbook's window); close only the presentation or workbook you
-   opened; never call `Quit`; never `Stop-Process` or `taskkill` an Office process; change no global option
-   (`Application.DisplayAlerts`, `.Visible`, `.AutomationSecurity`, `.Calculation`, `.ScreenUpdating`, `.EnableEvents`);
-   use a timeout, and on a timeout abandon the file, never kill. If Office is not running, or the check is risky,
-   report NOT RUN and give the owner the path of the synthetic file to open themselves. NOT RUN is never a pass: the
-   check stays open until the owner has opened the file and said what they saw. This binds every chat, agent and
-   script. The Step 3 snippet of `docs/MONTHLY_REFRESH.md` ends with `Quit()` and must not be run as written (TA-26).
+10. **Office automation never touches the owner's open work** (owner's rule, 2 Nov 2026; the exception in the last
+   sentences is the owner's decision of 9 Nov 2026). PowerPoint and Excel are usually open on the owner's PC, and COM
+   attaches to a running instance. Before any Office check run `tasklist` for `POWERPNT.EXE` and `EXCEL.EXE`. Attach
+   only to a running instance (`GetActiveObject`, never `New-Object -ComObject`). Open only synthetic files:
+   `.xlsx` or `.pptx` generated in this session by the repository's own tools from synthetic inputs
+   (`tools/make-sample-base.js`), never an inbox, vendor or downloaded file. Open them read-only with no window (Excel
+   cannot open a workbook without one: hide only that workbook's own window, `$wb.Windows(1).Visible = $false`, never
+   `Application.Visible`); close only the presentation or workbook you opened; never call `Quit`; never
+   `Stop-Process`, `taskkill` or `.Kill()` an Office process or terminate it by any other means; change no global
+   option, including `Application.DisplayAlerts`, `Application.Visible`, `Application.AutomationSecurity`,
+   `Application.Calculation`, `Application.ScreenUpdating`, `Application.EnableEvents`, `Application.UserControl` and
+   `Application.AskToUpdateLinks`; never enumerate, read, copy, save or record the name or path of a document you did
+   not open; use a timeout, and on a timeout abandon the file, never kill, and tell the owner which file was left
+   open. If Office is not running, or the check is risky, report NOT RUN and give the owner the path of the synthetic
+   file to open themselves. NOT RUN is never a pass: the check stays open until the owner has opened the file and
+   said what they saw. This binds every chat, agent and script. The one exception, by the owner's decision of 9 Nov
+   2026 (PD-49): Step 3 of the monthly refresh (`docs/MONTHLY_REFRESH.md`) may open a COPY of the research team's
+   Monthly Outlook deck, never the original, read-only with no window, through an already running PowerPoint, to
+   export its slides, under every other condition above; the owner opens PowerPoint first. The old Step 3 snippet
+   ends with `Quit()` and must not be run as written (TA-26).
 
 ## Conventions the code actually uses (verified at baseline, see docs/legacy/ARCHITECTURE.md)
 - Base file: header row found in the first 5 rows, columns matched by alias. **`XIRR (%)` / `BMXIRR (%)`
