@@ -32,6 +32,13 @@
         name CONTAINS the old fund's whole name is taken for a rename, so the old
         scheme is not carried; the build prints it under "renamed, not carried"
         and the next build with monitors re-tests it.
+    11. A Regular key whose only monitor listing is its Direct-plan sibling
+        ("X-Reg(G)" or "X(G)" -> "X(G)-Direct Plan") is carried; one whose sibling
+        is not listed, or that has no sibling form, is not. In a full build the
+        sibling must be in this run's Direct monitor. (Oct 2026: 17 retirement
+        funds; without it 9 of their names matched a sibling fund.)
+    12. A PMS / AIF key built this month never marks a mutual-fund key renamed.
+    13. A key that normalises to no token is never taken for a rename.
 
      node tools/regression/TA10-analytics-carry-forward.js
    ========================================================================== */
@@ -127,6 +134,50 @@ ok(!B2.HYBRID_ANALYTICS['Alpha Childrens Gift Fund-Reg(G)'] && !B2.DEBT_ANALYTIC
   '4. full build: a scheme only the embedded monitor lists is not carried (the new monitor decides)');
 ok(J(r2.carried.HYBRID_ANALYTICS) === J(['Kappa Retirement Fund(G)-Direct Plan']),
   '4b. full build: a scheme the new Direct monitor lists is carried');
+
+/* ---- 11: the Direct-plan sibling (Oct 2026: 17 retirement funds the monitors list only as their Direct plan) ---- */
+const sibRef = () => ({
+  DATA_DATES: { analytics: '30 Sep 2026' },
+  MF_PERF: {},                                                             /* the Regular monitor lists none of them */
+  MF_PERF_DIRECT: { 'Mu Retirement Fund(G)-Direct Plan': {}, 'Nu Pension Fund(G)-Direct Plan': {} },
+  EQUITY_ANALYTICS: {}, DEBT_ANALYTICS: {},
+  HYBRID_ANALYTICS: {
+    'Mu Retirement Fund-Reg(G)': hy('mu'),                                 /* "X-Reg(G)": sibling "X(G)-Direct Plan" listed */
+    'Nu Pension Fund(G)': hy('nu'),                                        /* "X(G)": sibling "X(G)-Direct Plan" listed */
+    'Xi Retirement Fund-Reg(G)': hy('xi'),                                 /* sibling not listed */
+    'Pi Retirement Fund(IDCW)': hy('pi')                                   /* no sibling form at all */
+  }
+});
+const sibMonth = () => ({ EQUITY_ANALYTICS: {}, HYBRID_ANALYTICS: { 'Omicron Balanced Fund-Reg(G)': hy('om') }, DEBT_ANALYTICS: {} });
+const R3 = sibRef(), B3 = sibMonth(); const r3 = carryForwardLookThroughs(B3, R3, E.normalize);
+ok(J(B3.HYBRID_ANALYTICS['Mu Retirement Fund-Reg(G)']) === J(Object.assign({}, R3.HYBRID_ANALYTICS['Mu Retirement Fund-Reg(G)'], { vintage: '30 Sep 2026' })),
+  '11a. a "-Reg(G)" key whose only monitor listing is its Direct plan is carried, with vintage 30 Sep 2026');
+ok(B3.HYBRID_ANALYTICS['Nu Pension Fund(G)'] && B3.HYBRID_ANALYTICS['Nu Pension Fund(G)'].vintage === '30 Sep 2026',
+  '11b. a "(G)" key whose only monitor listing is its Direct plan is carried');
+ok(!B3.HYBRID_ANALYTICS['Xi Retirement Fund-Reg(G)'] && !B3.HYBRID_ANALYTICS['Pi Retirement Fund(IDCW)'],
+  '11c. a key whose Direct sibling is not listed, or that has no sibling form, is not carried');
+ok(J(r3.carried.HYBRID_ANALYTICS) === J(['Mu Retirement Fund-Reg(G)', 'Nu Pension Fund(G)']), '11d. the carried list is exactly Mu and Nu');
+const B4 = sibMonth(); B4.MF_PERF = {}; B4.MF_PERF_DIRECT = { 'Mu Retirement Fund(G)-Direct Plan': {} };
+carryForwardLookThroughs(B4, sibRef(), E.normalize);
+ok(B4.HYBRID_ANALYTICS['Mu Retirement Fund-Reg(G)'] && !B4.HYBRID_ANALYTICS['Nu Pension Fund(G)'],
+  '11e. full build: the sibling must be in THIS run\'s Direct monitor (Nu, listed only in the embedded one, is not carried)');
+
+/* ---- 12 (review N1a): a PMS / AIF key built this month never marks a mutual-fund key as renamed ---- */
+const B5 = { EQUITY_ANALYTICS: { 'Lambda Growth Fund AIF': Object.assign(eq('la'), { pcls: 'AIF' }) }, HYBRID_ANALYTICS: {}, DEBT_ANALYTICS: {} };
+const R5 = { DATA_DATES: { analytics: '30 Sep 2026' }, MF_PERF: { 'Lambda Growth Fund-Reg(G)': {} }, MF_PERF_DIRECT: {},
+  EQUITY_ANALYTICS: { 'Lambda Growth Fund-Reg(G)': eq('l') }, HYBRID_ANALYTICS: {}, DEBT_ANALYTICS: {} };
+const r5 = carryForwardLookThroughs(B5, R5, E.normalize);
+ok(B5.EQUITY_ANALYTICS['Lambda Growth Fund-Reg(G)'] && r5.renamed.EQUITY_ANALYTICS.length === 0,
+  '12. the AIF "Lambda Growth Fund AIF" (its tokens contain the MF key\'s) does not mark "Lambda Growth Fund-Reg(G)" renamed; it is carried');
+
+/* ---- 13 (review N1b): a key that normalises to no token is never taken for a rename ---- */
+const B6 = { EQUITY_ANALYTICS: {}, HYBRID_ANALYTICS: { 'Sigma Hybrid Fund-Reg(G)': hy('sx') }, DEBT_ANALYTICS: {} };
+const R6 = { DATA_DATES: { analytics: '30 Sep 2026' }, MF_PERF: { 'Growth Plan-Reg(G)': {} }, MF_PERF_DIRECT: {},
+  EQUITY_ANALYTICS: {}, HYBRID_ANALYTICS: { 'Growth Plan-Reg(G)': hy('e') }, DEBT_ANALYTICS: {} };
+ok(E.normalize('Growth Plan-Reg(G)').length === 0, '13a. (fixture) "Growth Plan-Reg(G)" normalises to no token');
+const r6 = carryForwardLookThroughs(B6, R6, E.normalize);
+ok(B6.HYBRID_ANALYTICS['Growth Plan-Reg(G)'] && r6.renamed.HYBRID_ANALYTICS.length === 0,
+  '13b. a key with no token is not taken for a rename of an unrelated new key; it is carried');
 
 /* ---- the builder calls it for an analytics-only build (source check of the guard) ---- */
 const src = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'buildtools', 'build_refresh.js'), 'utf8');

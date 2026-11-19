@@ -170,7 +170,8 @@ function buildSIF(X, E, file){
    vendor's Hybrid file while staying in the monitor; Oct 2026: 25 again.
    - "Still listed" means this month's monitors when the same run built them, else the embedded
      ones, so an analytics-only build keeps the same coverage as a full build. A later build with
-     the monitors re-tests every carried key against them.
+     the monitors re-tests every carried key against them. A Regular key also counts as listed
+     when only its Direct-plan sibling is: both plans hold the same portfolio.
    - Closed schemes are never carried (not listed in the monitor).
    - Renamed schemes are never carried: a key whose normalised name is contained in the normalised
      name of a key built this month in the same block (Oct 2026: "Zerodha ..." became "Zerodha
@@ -185,7 +186,12 @@ function buildSIF(X, E, file){
 function carryForwardLookThroughs(B, REF, normalize){
   const names=['EQUITY_ANALYTICS','HYBRID_ANALYTICS','DEBT_ANALYTICS'];
   const inAny=k=>names.some(n=>B[n][k]);
-  const stillListed=k=>(B.MF_PERF||REF.MF_PERF||{})[k]||(B.MF_PERF_DIRECT||REF.MF_PERF_DIRECT||{})[k];
+  const REG=B.MF_PERF||REF.MF_PERF||{}, DIR=B.MF_PERF_DIRECT||REF.MF_PERF_DIRECT||{};
+  /* The Direct-plan sibling of a Regular key: "X-Reg(G)" -> "X(G)-Direct Plan" (regKeyToDir, the
+     builder's own convention) and "X(G)" -> "X(G)-Direct Plan". Oct 2026: 17 retirement funds left
+     the vendor's Hybrid file and the monitors list them only as their Direct plan. */
+  const dirSibling=k=>regKeyToDir(k)||(/\(G\)$/.test(k)&&!/direct plan/i.test(k)?k+'-Direct Plan':null);
+  const stillListed=k=>{ if(REG[k]||DIR[k]) return true; const d=dirSibling(k); return !!(d&&DIR[d]); };
   const prevDate=(REF.DATA_DATES||{}).analytics||''; const carried={}, renamed={};
   names.forEach(name=>{
     const prev=REF[name]||{};
