@@ -163,6 +163,43 @@ function buildSIF(X, E, file){
   return { SIF_PERF: out, date: p.date, stats: { parsed: Object.keys(p.SIF_PERF).length, kept: Object.keys(out).length, dropped } };
 }
 
+/* ---------- look-through carry-forward ----------
+   A scheme that is still listed in the monitor under the SAME key but is absent from every
+   analytics file supplied this month keeps last month's look-through, tagged with its vintage
+   (the PMS precedent in CLAUDE.md). Aug 2026: 23 children's / retirement schemes left the
+   vendor's Hybrid file while staying in the monitor; Oct 2026: 25 again.
+   - "Still listed" means this month's monitors when the same run built them, else the embedded
+     ones, so an analytics-only build keeps the same coverage as a full build. A later build with
+     the monitors re-tests every carried key against them.
+   - Closed schemes are never carried (not listed in the monitor).
+   - Renamed schemes are never carried: a key whose normalised name is contained in the normalised
+     name of a key built this month in the same block (Oct 2026: "Zerodha ..." became "Zerodha
+     CASE ...") would win the exact-name match for a holding under the old name and give it last
+     month's look-through in place of this month's. Without it the matcher finds the new key.
+   - Deliberately MF monitors only. The Sep 2026 analytics issue dropped every SIF scheme (29 in
+     Aug, 0 in Sep), but SIF look-through rows carry no product class, so a SIF HOLDING never
+     reaches them ("No SIF look-through data exists"): carried forward they would only sit in
+     the mutual-fund match pool as false-positive candidates.
+   - PMS / AIF entries (pcls) are carried by their own rule in main, never here.
+   B is changed in place. Returns {prevDate, carried:{block:[keys]}, renamed:{block:[keys]}}. */
+function carryForwardLookThroughs(B, REF, normalize){
+  const names=['EQUITY_ANALYTICS','HYBRID_ANALYTICS','DEBT_ANALYTICS'];
+  const inAny=k=>names.some(n=>B[n][k]);
+  const stillListed=k=>(B.MF_PERF||REF.MF_PERF||{})[k]||(B.MF_PERF_DIRECT||REF.MF_PERF_DIRECT||{})[k];
+  const prevDate=(REF.DATA_DATES||{}).analytics||''; const carried={}, renamed={};
+  names.forEach(name=>{
+    const prev=REF[name]||{};
+    const fresh=Object.keys(B[name]).filter(k=>!B[name][k].pcls).map(k=>new Set(normalize(k)));
+    const isRenamed=k=>{ const t=normalize(k); return t.length>0 && fresh.some(s=>t.every(x=>s.has(x))); };
+    carried[name]=[]; renamed[name]=[];
+    Object.keys(prev).forEach(k=>{
+      if(prev[k].pcls||inAny(k)||!stillListed(k)) return;
+      if(isRenamed(k)){ renamed[name].push(k); return; }
+      B[name][k]=Object.assign({}, prev[k], {vintage: prev[k].vintage||prevDate}); carried[name].push(k); });
+  });
+  return { prevDate, carried, renamed };
+}
+
 /* ---------- analytics ---------- */
 function collapseKeys(o){ const r={}; Object.keys(o).forEach(k=>{ const k2=ws1(k); r[k2]=(r[k2]||0)+o[k]; }); Object.keys(r).forEach(k=>r[k]=r4(r[k])); return r; }
 function tidyEq(d){ d.mcap=collapseKeys(d.mcap); d.sector=collapseKeys(d.sector); d.stocks=d.stocks.map(s=>[ws1(s[0]), s[1], ws1(s[2])]); return d; }
@@ -337,23 +374,14 @@ function main(){
   if(F.eqAn){ B.EQUITY_ANALYTICS=buildEquity(X,E,F.eqAn,stockAcc); const carried=Object.keys(REF.EQUITY_ANALYTICS).filter(k=>REF.EQUITY_ANALYTICS[k].pcls); carried.forEach(k=>{ if(!B.EQUITY_ANALYTICS[k]) B.EQUITY_ANALYTICS[k]=REF.EQUITY_ANALYTICS[k]; }); report.equity={schemes:Object.keys(B.EQUITY_ANALYTICS).length, pmsAifCarried:carried.length}; console.log('EQUITY_ANALYTICS', JSON.stringify(report.equity)); }
   if(F.hyAn){ B.HYBRID_ANALYTICS=buildHybrid(X,E,F.hyAn,stockAcc); const n=Object.keys(B.HYBRID_ANALYTICS); report.hybrid={schemes:n.length, withEq:n.filter(k=>B.HYBRID_ANALYTICS[k].eq).length, withDb:n.filter(k=>B.HYBRID_ANALYTICS[k].db).length}; console.log('HYBRID_ANALYTICS', JSON.stringify(report.hybrid)); }
   if(F.dbAn){ B.DEBT_ANALYTICS=buildDebt(X,E,F.dbAn); report.debt={schemes:Object.keys(B.DEBT_ANALYTICS).length}; console.log('DEBT_ANALYTICS', JSON.stringify(report.debt)); }
-  /* Coverage gaps: a scheme that is still listed in this month's monitor under the SAME
-     key but is absent from every analytics file supplied this month keeps last month's
-     look-through, tagged with its vintage (the PMS precedent in CLAUDE.md). Renamed or
-     closed schemes are never carried — a stale key would shadow the fresh one in the
-     fuzzy-match pool. Aug 2026: 23 children's / retirement schemes left the vendor's
-     Hybrid file while staying in the monitor. */
-  if(B.EQUITY_ANALYTICS && B.HYBRID_ANALYTICS && B.DEBT_ANALYTICS && (B.MF_PERF||B.MF_PERF_DIRECT)){
-    const inAny=k=>B.EQUITY_ANALYTICS[k]||B.HYBRID_ANALYTICS[k]||B.DEBT_ANALYTICS[k];
-    /* Deliberately MF monitors only. The Sep 2026 analytics issue dropped every SIF scheme (29 in
-       Aug, 0 in Sep), but SIF look-through rows carry no product class, so a SIF HOLDING never
-       reaches them ("No SIF look-through data exists") — carried forward they would only sit in
-       the mutual-fund match pool as false-positive candidates. */
-    const stillListed=k=>(B.MF_PERF||REF.MF_PERF)[k]||(B.MF_PERF_DIRECT||REF.MF_PERF_DIRECT)[k];
-    const prevDate=(REF.DATA_DATES||{}).analytics||''; report.carried={};
-    [['EQUITY_ANALYTICS',REF.EQUITY_ANALYTICS],['HYBRID_ANALYTICS',REF.HYBRID_ANALYTICS],['DEBT_ANALYTICS',REF.DEBT_ANALYTICS]].forEach(([name,prev])=>{
-      const carried=[]; Object.keys(prev).forEach(k=>{ if(prev[k].pcls||inAny(k)||!stillListed(k)) return; B[name][k]=Object.assign({}, prev[k], {vintage: prev[k].vintage||prevDate}); carried.push(k); });
-      report.carried[name]=carried; if(carried.length) console.log(name+' carried forward at '+prevDate+' vintage: '+carried.length+' — '+carried.join(' | ')); });
+  /* Coverage gaps: see carryForwardLookThroughs. It runs whenever the three analytics files were
+     built, with or without the monitors: an analytics-only build (Oct 2026: the analytics arrived
+     before the 31 Oct monitors) used to skip it and drop 40 still-listed schemes. */
+  if(B.EQUITY_ANALYTICS && B.HYBRID_ANALYTICS && B.DEBT_ANALYTICS){
+    const cf=carryForwardLookThroughs(B, REF, E.normalize); report.carried=cf.carried; report.notCarriedRenamed=cf.renamed;
+    Object.keys(cf.carried).forEach(name=>{
+      if(cf.carried[name].length) console.log(name+' carried forward at '+cf.prevDate+' vintage: '+cf.carried[name].length+': '+cf.carried[name].join(' | '));
+      if(cf.renamed[name].length) console.log(name+' renamed, not carried: '+cf.renamed[name].length+': '+cf.renamed[name].join(' | ')); });
   }
   if(F.eqAn||F.hyAn){ const si=buildStockInfo(X,stockAcc,F.stockMaster,REF.STOCK_INFO); B.STOCK_INFO=si.STOCK_INFO; report.stockInfo=Object.assign({total:Object.keys(si.STOCK_INFO).length},si.stats); console.log('STOCK_INFO', JSON.stringify(report.stockInfo)); }
   if(F.stockRet){ const sr=buildStockRet(X,F.stockRet); B.STOCK_RET=sr.STOCK_RET; report.stockRet={total:Object.keys(sr.STOCK_RET).length, rows:sr.rows, asOn:sr.asOn}; console.log('STOCK_RET', JSON.stringify(report.stockRet)); }
@@ -384,4 +412,4 @@ function main(){
   if(out){ fs.writeFileSync(out, JSON.stringify({blocks:B, report})); console.log('wrote '+out+' ('+fs.statSync(out).size.toLocaleString()+' bytes)'); }
 }
 if(require.main===module) main();
-module.exports = { buildER, buildStockRet, regKeyToDir, aoaOf, clean, num };
+module.exports = { buildER, buildStockRet, regKeyToDir, aoaOf, clean, num, carryForwardLookThroughs };
