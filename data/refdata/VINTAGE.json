@@ -140,12 +140,12 @@
       "source": "DS-V2 Daily MF Monitor (Direct), Accord"
     },
     "MF_RISK": {
-      "asOn": "2026-09-30",
+      "asOn": "2026-10-31",
       "asOnFrom": "DATA_DATES.risk",
       "class": "C source; this derived block is published in index.html (06: derived only)",
       "file": "MF_RISK.json",
       "records": 1088,
-      "sha256": "5a0640df4c116d84e3753a5012bb9546dd55e152b69f53676e45ceac52b39051",
+      "sha256": "e67070ca98e8e1e98796ab2d51a40325c20af59efa0c4ee7de3db208b3d7446b",
       "source": "DS-H2 Fund Risk Ratios, in-house"
     },
     "PMS_PERF": {
@@ -207,7 +207,7 @@
     "fmgr": "31 Aug 2026",
     "performance": "31 Oct 2026",
     "ranks": "15 Aug 2026",
-    "risk": "30 Sep 2026",
+    "risk": "31 Oct 2026",
     "sif": "31 Oct 2026"
   },
   "notExtracted": {

@@ -4,6 +4,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Data (October 2026 risk ratios, TA-10; not published until the owner says "publish")
+- **MF_RISK refreshed to 31 Oct 2026, computed in-house** (PD-61) from the vendor NSE TRI export and the AMFI October NAVs;
+  the last trading day is Fri 30 Oct 2026 (log section 9). 1,088 funds; risk ratios 966 → 981; 3Y rolling 433 → 439; 151
+  flags. `DATA_DATES.risk` "30 Sep 2026" → "31 Oct 2026"; `data/refdata/` regenerated. `index.html` MD5
+  `A6AD7B104521D0ABE95ADA61B61E615E` → `5995FA490D8043E51DA9E3CC5F45F621` (data only, no code change). Log:
+  [docs/refresh-log/2026-10.md](docs/refresh-log/2026-10.md), section 9.
+
 ### Data (October 2026 refresh, TA-10; not published until the owner says "publish")
 - **Performance and analytics refreshed to the October 2026 files, labelled "31 Oct 2026"** (the owner's words: "Use the 2 Nov
   files", "Show 31 Oct"). The true price days are in the log only: the Regular and SIF monitors are as on Mon 2 Nov 2026 and
