@@ -44,8 +44,14 @@ the header) holds 344 schemes. On the live page (D-028: data, calculation and se
   **exact name only** for the listed names: for each, every fuzzy match measured was another fund and every correct match is
   an exact name. Retirement Fund-40 and -30 show no Regular-plan returns, because the vendor data has no Regular row for them
   (CLAUDE.md rule 3: never another plan's figure); they keep their own Direct-plan row (a guarded branch, exact name only).
-- 22 Nov 2026, the moderator: the AMC's "The 40s Plan" spelling is listed too. "The 30s Plan" is not: its fuzzy look-through
-  is Fund-30's own (right), so exact-only would lose a correct match; it keeps Fund-50's returns until a follow-up ALIASES pin.
+- 22 Nov 2026, the moderator: the AMC's "The 40s Plan" spelling is listed too. "The 30s Plan" was not at first: its fuzzy
+  look-through is Fund-30's own (right), so exact-only alone would lose a correct match.
+- 22 Nov 2026, the moderator (after the financial review rated it should-fix): in this batch, as A2b, both spellings get an
+  ALIASES pin to their own Regular hybrid key plus exact-only, so they keep (30s) or regain (40s) their own look-through and
+  never show Fund-50's returns.
+- 22 Nov 2026, the moderator: Retirement Fund-40 / -30 with no Regular row are left out of the Regular Performance sheet by
+  the page's existing rule (fund rows without returns are not shown); accepted for the live page. A blank row or a note is
+  presentation work for the new build (D-028). Widening the international terms is a follow-up (see A3's known limits).
 
 ## Changes
 
@@ -61,6 +67,12 @@ the header) holds 344 schemes. On the live page (D-028: data, calculation and se
     name, all five keys incl. the Direct row): 42 holdings and 70 fields change, all from another fund to none; nothing else.
   - Known limits: "The 30s Plan" (above); spellings that match nothing today ("ABSL ...", "Exchange Traded Fund") are not
     listed.
+- **A2b:** patch `tools/patches/2026-11-22-retirement-plan-pins.js` (ALIASES pins for "... retirement fund 30s" / "... 40s"
+  to Fund-30 / Fund-40's Regular hybrid key; "... 30s" exact-only); cases added to the A2 test.
+  - Measured against A2: 6 matches change (the "40s" spellings' hybrid look-through from none to Fund-40's own; "The 30s
+    Plan"'s Regular and Direct returns and equity / debt look-through from Fund-50, Conglomerate and Gilt to none); engine
+    level 5 holdings. Against `main`: 52 matches, each either to none or a 30s / 40s spelling to its own hybrid entry, and
+    45 holdings at engine level; nothing outside the listed names.
 - **A3:** patch `tools/patches/2026-11-22-intl-word-boundary.js` (engine SWOT: each term of the international name test
   needs a word start, and "us" is a whole word, with "U.S." also recognised; the category test is unchanged); test
   `tools/regression/CR0010-a3-intl-word-boundary.js`.
@@ -68,7 +80,14 @@ the header) holds 344 schemes. On the live page (D-028: data, calculation and se
     the new one 117. 163 domestic names leave, all through "us " inside a word: plus 112, Taurus 16, Abakkus 13, focus 6,
     Marcellus 5, Citrus 4, Equirus 3, Avendus 2, surplus 1, ITUS 1. 2 genuine names enter (Franklin U.S. Opportunities,
     Regular and Direct). No genuine international name leaves.
-  - Known limit, unchanged: brand names that contain "Global" ("First Global ...", "SMC Global ...") still count.
+  - Known limits (a follow-up the moderator raises with the owner; the same before and after this change):
+    - genuine overseas funds the name test still misses: "Intl." (Aditya Birla SL Intl. Equity), Franklin Asian Equity, HSBC
+      Brazil, ABSL Latin America, Edelweiss ASEAN / Europe / Emerging Markets Off-shore, Templeton European Opportunities,
+      Invesco Pan European, the Hang Seng ETFs and FoF, NYSE FANG+, MSCI EAFE, PGIM Emerging Markets, Mahindra Asia Pacific
+      REITs (a holding whose base-file category says Global or International is still counted by the category test);
+    - domestic names it still catches: "First Global ..." (two PMS strategies), "SMC Global ...", and "Edelweiss MSCI India
+      Domestic & World Healthcare 45" (Indian-listed companies);
+    - debt funds of funds investing in US Treasuries count in the "International / Global equity" share.
 
 ## Verification
 

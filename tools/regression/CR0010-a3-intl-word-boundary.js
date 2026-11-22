@@ -12,7 +12,8 @@
      A. 4 domestic funds whose names contain "us " inside a word (Taurus, Plus,
         Focus, Abakkus-like) at 1 Cr each and 6 Cr of a plain equity fund:
         intlPct 0 -> the opportunities bullet names "International / Global
-        equity" (the old test gave 40%, and no such bullet).
+        equity" (the old test gave 30%: Taurus, Plus and Credit Plus; and no
+        such bullet).
      B. 1 Cr Nippon India US Equity Opp, 1 Cr Franklin U.S. Opportunities
         Equity Active FOF, 8 Cr of a plain equity fund: intlPct 20 -> no
         "International / Global equity" bullet ("U.S." now counts; the old test

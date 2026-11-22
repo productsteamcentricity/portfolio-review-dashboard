@@ -626,6 +626,9 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     // Inert until matching AIF/debt reference data containing these schemes is present (embedded or uploaded).
     "mosaic multiyield fund series i": "Mosaic Asset Management Multiyield Fund",
     "transition venture capital fund 1": "Transition VC Fund",
+    // CR-0010 A2b: the AMC's own spellings of these plans -> their own hybrid look-through (also exact-only below)
+    "aditya birla sl retirement fund 30s": "Aditya Birla SL Retirement Fund-30-Reg(G)",
+    "aditya birla sl retirement fund 40s": "Aditya Birla SL Retirement Fund-40-Reg(G)",
     // block spurious fuzzy matches (AIF/FOF base names, blank AMC, that snap onto unrelated funds):
     "icici pru leaders fund series iv": "",             // was -> ICICI Pru Commodities Fund
     "nippon equity opp aif scheme 9": "",               // was -> Nippon India US Equity Opp Fund
@@ -642,6 +645,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     "aditya birla sl retirement fund 40s": 1        // "The 40s Plan": fuzzy gave Fund-50 returns and Fund-30 look-through
   };
   function isExactOnly(name){ return Object.prototype.hasOwnProperty.call(EXACT_ONLY, normalize(name).join(" ")); }
+  EXACT_ONLY["aditya birla sl retirement fund 30s"] = 1;   // CR-0010 A2b: pinned above; no fuzzy match elsewhere
   function tokenSet(arr){ var o={}; for(var i=0;i<arr.length;i++) o[arr[i]]=1; return o; }
   function matchInstrument(name, amc, candidates, candNormCache){
     var nt = normalize(name); var ntset = tokenSet(nt);

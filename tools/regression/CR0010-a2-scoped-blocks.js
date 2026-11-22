@@ -31,11 +31,12 @@
         Nifty 100 ETF and Special Opp (own look-through and returns), the
         Nasdaq 100 FOF (own returns), the existing "" alias (Kotak), and a fuzzy
         match that must still work (a base-file spelling of a monitor name).
-     6. The AMC's "The 40s Plan" spelling is listed and matches nothing (it
-        took Fund-50's returns and Fund-30's look-through). Known limits,
-        pinned: "The 30s Plan" is not listed (its fuzzy look-through is Fund-30's
-        own, right) and keeps Fund-50's returns until a follow-up ALIASES pin;
-        "ABSL ..." and "Exchange Traded Fund" spellings match nothing anyway.
+     6. A2b: the AMC's "The 40s Plan" / "The 30s Plan" spellings are pinned to
+        their own Regular hybrid key and exact-only: their look-through is their
+        own fund's and nothing else matches (before: Fund-50's Regular and Direct
+        returns, Fund-30's look-through for "40s", Conglomerate / Gilt when
+        tagged Equity / Debt). Known limit, pinned: "ABSL ..." and "Exchange
+        Traded Fund" spellings are not listed; they match nothing anyway.
      7. Engine: a synthetic client's holdings get the keys above; Retirement-40
         keeps its own Direct row (the engine looks up Direct only after a
         Regular match; a guarded branch allows an EXACT_ONLY fund's exact
@@ -86,11 +87,14 @@ eqv('HDFC Flexi Cap Fund - Regular Plan - Growth', 'MF_PERF', 'HDFC Flexi Cap Fu
 eqv('HDFC Flexi Cap Fund - Regular Plan - Growth', 'EQUITY_ANALYTICS', 'HDFC Flexi Cap Fund(G)');
 /* 6: the AMC's "The 40s Plan" spelling is listed (every fuzzy match was another fund); "The 30s Plan" is NOT, because
    its fuzzy look-through is Fund-30's own (right), so it keeps Fund-50's returns (wrong) until an ALIASES pin maps it. */
+/* A2b: both spellings are pinned to their own Regular hybrid key and exact-only, so the hybrid look-through is their own
+   and nothing else matches (no Fund-50 Regular or Direct returns, no Conglomerate / Gilt look-through). */
 const L40 = 'Aditya Birla Sun Life Retirement Fund - The 40s Plan - Regular Plan - Growth';
-['MF_PERF', 'MF_PERF_DIRECT', 'EQUITY_ANALYTICS', 'HYBRID_ANALYTICS', 'DEBT_ANALYTICS'].forEach(b => eqv(L40, b, null));
 const L30 = 'Aditya Birla Sun Life Retirement Fund-The 30s Plan-Regular Growth';
+eqv(L40, 'HYBRID_ANALYTICS', 'Aditya Birla SL Retirement Fund-40-Reg(G)');
+eqv('Aditya Birla Sun Life Retirement Fund - 40s Plan - Regular Growth', 'HYBRID_ANALYTICS', 'Aditya Birla SL Retirement Fund-40-Reg(G)');
 eqv(L30, 'HYBRID_ANALYTICS', 'Aditya Birla SL Retirement Fund-30-Reg(G)');
-eqv(L30, 'MF_PERF', 'Aditya Birla SL Retirement Fund-50-Reg(G)');   /* known limit: a follow-up pin */
+[L40, L30].forEach(n => ['MF_PERF', 'MF_PERF_DIRECT', 'EQUITY_ANALYTICS', 'DEBT_ANALYTICS'].forEach(b => eqv(n, b, null)));
 eqv('ABSL Retirement Fund - 40 - Regular - Growth', 'MF_PERF', null);   /* matches nothing, before and after */
 eqv('Motilal Oswal Nasdaq 100 Exchange Traded Fund', 'EQUITY_ANALYTICS', null);
 /* 7 */
@@ -114,7 +118,8 @@ const rows2 = E.parseBaseRows([H,
   ['Test Client', 'HDFC Flexi Cap Fund(G)', 'Flexi Cap', 'Equity', 'HDFC', 'Mutual Fund', 1, 1]]);
 E.computeReview(rows2, REF, { familyName: 'Test', asOnDate: '22 Nov 2026' });
 ok(rows2[0].perfKey === null && !rows2[0].perfKeyDirect, '7. engine: a holding outside EXACT_ONLY with no Regular row still gets no Direct row (unchanged rule)');
-ok(rows2[1].perfKey === null && !rows2[1].perfKeyDirect && !rows2[1].hyKey && !rows2[1].eqKey, '7. engine: "The 40s Plan" gets no other fund\'s returns, Direct row or look-through');
+ok(rows2[1].perfKey === null && !rows2[1].perfKeyDirect && rows2[1].hyKey === 'Aditya Birla SL Retirement Fund-40-Reg(G)' && !rows2[1].eqKey,
+  '7. engine: "The 40s Plan" gets its own Fund-40 look-through and no other fund\'s returns or Direct row');
 ok((m.unmatched || []).indexOf(R40) < 0, '7. engine: Retirement-40 is not reported unmatched');
 const fed = ((m.equityAnalytics || {}).funds || []).map(f => f.name);
 ok(fed.indexOf(NQ) < 0 && fed.indexOf(GEO) < 0, '7. engine: neither the Nasdaq 100 ETF nor GEO feeds the equity look-through');
