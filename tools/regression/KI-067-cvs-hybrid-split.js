@@ -5,7 +5,10 @@
 
    Known answers (independent of the code under test: computed here from the
    HYBRID_ANALYTICS sleeve weight, the CMVs and the house return seeds 14.00% /
-   6.75%, and as published in the audit):
+   6.75%). Since the October 2026 refresh (TA-10) the checks take them from the
+   embedded sleeve weights, so they follow each month's data; the figures below
+   are the audit's, on the 30 Sep 2026 data (sleeves 20.40% and 23.30%), kept as
+   history (on 31 Oct 2026 data: 84.13 / 15.87, 4.13 / 95.87, 50.99 / 25.13):
      - 80% HDFC Large Cap + 20% ABSL Conservative Hybrid (sleeve 20.40%):
        Equity MF 84.08 / Debt MF 15.92 (shipped 96.82 / 3.18); expected return
        12.85% (shipped 13.77%)
@@ -77,6 +80,11 @@ async function main() {
   const PFOF = 'Franklin India Income Plus Arbitrage Active FoF(G)', PFOF_HY = 'Franklin India Arbitrage Fund-Reg(G)';
   const wCH = HY[CH].eq.weight / 100, wMA = HY[MA].eq.weight / 100;
   const EQ_RET = 14.0, DB_RET = 6.75, INFL = 6.5;   /* the house seeds of the Equity / Debt MF rows and the default inflation */
+  /* The known answers, computed here from the embedded sleeve weights (not from the code under test), so
+     they follow each monthly refresh. The audit's own figures (30 Sep 2026 data) are in the header. */
+  const K1 = { eq: r2((8 + 2 * wCH) / 10 * 100), db: r2(2 * (1 - wCH) / 10 * 100),
+               ret: r2((8 * EQ_RET + 2 * (wCH * EQ_RET + (1 - wCH) * DB_RET)) / 10) };     /* 80% Large Cap + 20% hybrid */
+  const K2 = { eq: r2(2 * wCH / 10 * 100), db: r2((8 + 2 * (1 - wCH)) / 10 * 100) };        /* 20% hybrid + 80% Short Term */
 
   /* render one book; returns the harness after renderCVS() */
   function render(model, plan, postOff, activeRef) {
@@ -102,13 +110,12 @@ async function main() {
     const m = C.bookModel(host, [[LC, 'Large Cap Fund', 'Equity', 'HDFC', 8.0], [CH, 'Conservative Hybrid Fund', 'Hybrid', 'Aditya', 2.0]]);
     pre(m.holdings[1].hyKey === CH, 'the hybrid matched its own HYBRID_ANALYTICS record (sleeve ' + (wCH * 100).toFixed(2) + '%)');
     const cv = render(m);
-    const eq = r2((8 + 2 * wCH) / 10 * 100), db = r2(2 * (1 - wCH) / 10 * 100);
-    pre(eq === 84.08 && db === 15.92, 'independent answer agrees with the audit: 84.08 / 15.92');
-    ok(near(cv.cell(1, 0, 'ca'), 84.08, 0.006), 'Current Equity MF = 84.08% (got ' + f2(cv.cell(1, 0, 'ca')) + '; shipped 96.82)');
-    ok(near(cv.cell(0, 0, 'ca'), 15.92, 0.006), 'Current Debt MF = 15.92% (got ' + f2(cv.cell(0, 0, 'ca')) + '; shipped 3.18)');
-    ok(near(cv.cell(1, 0, 'pa'), 84.08, 0.006) && near(cv.cell(0, 0, 'pa'), 15.92, 0.006), 'Sample column with no plan equals the current column');
+    pre(wCH > 0 && wCH < 1 && near(K1.eq + K1.db, 100, 0.011), 'independent answer from the sleeve: ' + f2(K1.eq) + ' / ' + f2(K1.db) + ' (audit, 30 Sep 2026 data: 84.08 / 15.92)');
+    ok(near(cv.cell(1, 0, 'ca'), K1.eq, 0.006), 'Current Equity MF = ' + f2(K1.eq) + '% (got ' + f2(cv.cell(1, 0, 'ca')) + '; shipped 96.82 on 30 Sep data)');
+    ok(near(cv.cell(0, 0, 'ca'), K1.db, 0.006), 'Current Debt MF = ' + f2(K1.db) + '% (got ' + f2(cv.cell(0, 0, 'ca')) + '; shipped 3.18 on 30 Sep data)');
+    ok(near(cv.cell(1, 0, 'pa'), K1.eq, 0.006) && near(cv.cell(0, 0, 'pa'), K1.db, 0.006), 'Sample column with no plan equals the current column');
     const ret = expRet(cv, 'ca', 'cr') * 100;
-    ok(near(ret, 12.85, 0.005), 'expected return at the house assumptions = 12.85% (got ' + ret.toFixed(2) + '%; shipped 13.77%)');
+    ok(near(ret, K1.ret, 0.006), 'expected return at the house assumptions = ' + f2(K1.ret) + '% (got ' + ret.toFixed(2) + '%; audit 12.85, shipped 13.77 on 30 Sep data)');
     ok(!un(cv), 'nothing unallocated when every hybrid has a sleeve');
     const st0 = await C.loadExports(cv, m).deck();
     ok(!!st0 && st0.warn === false && st0.msg.indexOf('Current vs Sample') < 0, 'deck export with nothing unallocated: no warning (got ' + J(st0) + ')');
@@ -118,9 +125,9 @@ async function main() {
   {
     const m = C.bookModel(host, [[CH, 'Conservative Hybrid Fund', 'Hybrid', 'Aditya', 2.0], [ST, 'Short Duration Fund', 'Debt', 'HDFC', 8.0]]);
     const cv = render(m);
-    ok(near(cv.cell(1, 0, 'ca'), r2(2 * wCH / 10 * 100), 0.006) && near(cv.cell(1, 0, 'ca'), 4.08, 0.006),
-      'Equity MF = 4.08% (got ' + f2(cv.cell(1, 0, 'ca')) + '; shipped 0.82)');
-    ok(near(cv.cell(0, 0, 'ca'), 95.92, 0.006), 'Debt MF = 95.92% (got ' + f2(cv.cell(0, 0, 'ca')) + '; shipped 99.18)');
+    ok(near(cv.cell(1, 0, 'ca'), K2.eq, 0.006),
+      'Equity MF = ' + f2(K2.eq) + '% (got ' + f2(cv.cell(1, 0, 'ca')) + '; audit 4.08, shipped 0.82 on 30 Sep data)');
+    ok(near(cv.cell(0, 0, 'ca'), K2.db, 0.006), 'Debt MF = ' + f2(K2.db) + '% (got ' + f2(cv.cell(0, 0, 'ca')) + '; audit 95.92, shipped 99.18 on 30 Sep data)');
   }
 
   console.log('--- synthetic sample book (tools/make-sample-base.js) ---');
@@ -134,10 +141,10 @@ async function main() {
     const tot = model.totalCMV, sum = a => a.reduce((s, n) => s + cmv(n), 0);
     const eq = (sum(EQMF) + cmv(MA) * wMA) / tot * 100, db = (sum(DBMF) + cmv(MA) * (1 - wMA)) / tot * 100;
     const cv = render(model);
-    ok(near(cv.cell(1, 0, 'ca'), eq, 0.011) && near(cv.cell(1, 0, 'ca'), 50.85, 0.006),
-      'Equity MF = 50.85% (independent ' + eq.toFixed(2) + '; got ' + f2(cv.cell(1, 0, 'ca')) + '; shipped 52.43)');
-    ok(near(cv.cell(0, 0, 'ca'), db, 0.006) && near(cv.cell(0, 0, 'ca'), 25.27, 0.006),
-      'Debt MF = 25.27% (independent ' + db.toFixed(2) + '; got ' + f2(cv.cell(0, 0, 'ca')) + '; shipped 23.69)');
+    ok(near(cv.cell(1, 0, 'ca'), eq, 0.011),
+      'Equity MF = independent ' + eq.toFixed(2) + '% (got ' + f2(cv.cell(1, 0, 'ca')) + '; audit 50.85, shipped 52.43 on 30 Sep data)');
+    ok(near(cv.cell(0, 0, 'ca'), db, 0.011),
+      'Debt MF = independent ' + db.toFixed(2) + '% (got ' + f2(cv.cell(0, 0, 'ca')) + '; audit 25.27, shipped 23.69 on 30 Sep data)');
     ok(near(rowsSum(cv, 'ca'), 100, 0.005), 'current rows sum to 100.00%');
   }
 
@@ -168,8 +175,8 @@ async function main() {
     const pm = cv.hooks.post(), ph = pm.holdings.find(h => h.client === 'Proposed');
     pre(ph && ph.hyKey === CH, 'the engine matches the proposed fund by name (' + (ph && ph.hyKey) + ')');
     ok(near(cv.cell(1, 0, 'ca'), 100, 0.006), 'Current Equity MF = 100.00%');
-    ok(near(cv.cell(1, 0, 'pa'), 84.08, 0.006) && near(cv.cell(0, 0, 'pa'), 15.92, 0.006),
-      'Sample Equity MF 84.08 / Debt MF 15.92 (got ' + f2(cv.cell(1, 0, 'pa')) + ' / ' + f2(cv.cell(0, 0, 'pa')) + ')');
+    ok(near(cv.cell(1, 0, 'pa'), K1.eq, 0.006) && near(cv.cell(0, 0, 'pa'), K1.db, 0.006),
+      'Sample Equity MF ' + f2(K1.eq) + ' / Debt MF ' + f2(K1.db) + ' (got ' + f2(cv.cell(1, 0, 'pa')) + ' / ' + f2(cv.cell(0, 0, 'pa')) + ')');
     const cv2 = render(m, plan, true);
     ok(near(cv2.cell(1, 0, 'pa'), 80, 0.006) && near(cv2.cell(0, 0, 'pa'), 0, 0.006) && un(cv2) && near(un(cv2).pa, 20, 0.006),
       'without the post-rebalancing model the unmatched proposed hybrid stays Unallocated (20.00%), not split');

@@ -21,12 +21,12 @@
       "source": "DS-O7 category to benchmark map, Centricity owner table"
     },
     "BENCH_RET": {
-      "asOn": "2026-09-30",
+      "asOn": "2026-10-31",
       "asOnFrom": "DATA_DATES.performance",
       "class": "P",
       "file": "BENCH_RET.json",
       "records": 108,
-      "sha256": "eb87e31387e1abda843bf167a41abbb72c8211e05af934f9976b47839f53c69e",
+      "sha256": "8419182775b51f70399d8df3ec30ccb18a3060bf1ad30ca5bbb27c5b12c99440",
       "source": "DS-V1 Daily MF Monitor (Regular), Accord"
     },
     "DEBT_ANALYTICS": {
@@ -35,17 +35,17 @@
       "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
       "class": "P",
       "file": "DEBT_ANALYTICS.json",
-      "records": 486,
-      "sha256": "8281489c19ea01afcf47c8d7000dc60681807f655335fdb94462a2fcfa2f8469",
+      "records": 490,
+      "sha256": "c45c56d1ed0efa2e9ec2f7de51780994faf26509ad4fe1ad80597ce8e912faac",
       "source": "DS-V7 Debt Analytics, Accord"
     },
     "EQUITY_ANALYTICS": {
-      "asOn": "2026-09-30",
+      "asOn": "2026-10-31",
       "asOnFrom": "DATA_DATES.analytics",
       "class": "P",
       "file": "EQUITY_ANALYTICS.json",
-      "records": 1144,
-      "sha256": "0573024bcfd115ceccbf1be2b4905b64f2ecc30d10ff06c6ae0b05e0132d02bc",
+      "records": 1161,
+      "sha256": "dec1d7db1739656418eec3b8bd879a8dcdb516b18e9b73611b9af4eb55d95790",
       "source": "DS-V5 Equity Analytics, Accord"
     },
     "FUND_MGR": {
@@ -87,8 +87,8 @@
       "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
       "class": "P",
       "file": "HYBRID_ANALYTICS.json",
-      "records": 243,
-      "sha256": "ce5f1476901183c0c57563d787a403a1736035592fd521a770c169cd1eeffcea",
+      "records": 244,
+      "sha256": "cfba620d0c6a38d46e800b27902df769bde0d118548f1b0c5c42e163ea3cbd50",
       "source": "DS-V6 Hybrid Analytics, Accord"
     },
     "MF_BENCHMARKS": {
@@ -122,30 +122,30 @@
       "source": "DS-V4 Expense Ratio, Accord"
     },
     "MF_PERF": {
-      "asOn": "2026-09-30",
+      "asOn": "2026-10-31",
       "asOnFrom": "DATA_DATES.performance",
       "class": "P",
       "file": "MF_PERF.json",
-      "records": 2130,
-      "sha256": "ebebb2c30c863a581206f4d666ced0a08aa54196f0708a66df886371b7739af1",
+      "records": 2144,
+      "sha256": "8e31c46a30010df58edde79f30c7e44beaca0450438782a9c0ca3a5c714b8d17",
       "source": "DS-V1 Daily MF Monitor (Regular), Accord"
     },
     "MF_PERF_DIRECT": {
-      "asOn": "2026-09-30",
+      "asOn": "2026-10-31",
       "asOnFrom": "DATA_DATES.direct",
       "class": "P",
       "file": "MF_PERF_DIRECT.json",
-      "records": 1765,
-      "sha256": "a1f6b2e1ebba6fc4192189c5ae46b0eaaddd7c59c7bf212d7ead6dc754c7c121",
+      "records": 1775,
+      "sha256": "dea06db3b26d502915781f9a6be4cd68a905ca78e712d6269a4e0eeebec2250e",
       "source": "DS-V2 Daily MF Monitor (Direct), Accord"
     },
     "MF_RISK": {
-      "asOn": "2026-09-30",
+      "asOn": "2026-10-31",
       "asOnFrom": "DATA_DATES.risk",
       "class": "C source; this derived block is published in index.html (06: derived only)",
       "file": "MF_RISK.json",
       "records": 1088,
-      "sha256": "5a0640df4c116d84e3753a5012bb9546dd55e152b69f53676e45ceac52b39051",
+      "sha256": "e67070ca98e8e1e98796ab2d51a40325c20af59efa0c4ee7de3db208b3d7446b",
       "source": "DS-H2 Fund Risk Ratios, in-house"
     },
     "PMS_PERF": {
@@ -159,12 +159,12 @@
       "source": "DS-P1 PMS Scheme Performance"
     },
     "SIF_PERF": {
-      "asOn": "2026-09-30",
+      "asOn": "2026-10-31",
       "asOnFrom": "DATA_DATES.sif",
       "class": "P",
       "file": "SIF_PERF.json",
       "records": 30,
-      "sha256": "188c0a11c451b9cb637059bbdf1c624c6d9b5a62a048406ad15f6d33d44d0318",
+      "sha256": "8079a71d12f94bf676222cff6b9b2c221db68abb33e6a6324fb5af6680560f0a",
       "source": "DS-V3 SIF Monitor, Accord"
     },
     "STOCK_INFO": {
@@ -173,8 +173,8 @@
       "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
       "class": "P",
       "file": "STOCK_INFO.json",
-      "records": 8684,
-      "sha256": "9441fa7ec49d14d5236e1f6783963518709626c2dfc275c4c0679470acf6f9ee",
+      "records": 8695,
+      "sha256": "7331caad480a4c06faa5eeec76f9d8ae9ffc9ec9187961cd56fc98326f4c083b",
       "source": "DS-V8 Listed Direct Equity master and DS-V5 votes, Accord"
     },
     "STOCK_RET": {
@@ -198,17 +198,17 @@
       "source": "DS-O1 Tax rules, Centricity owner table"
     }
   },
-  "dataMonth": "2026-09",
+  "dataMonth": "2026-10",
   "dataMonthRule": "the month of DATA_DATES.performance, the MF Monitor date the legacy page shows as its performance data date",
   "extractedFrom": "index.html script blocks window.REFDATA and window.MF_ER_TABLE, by scripts/data-extract.ts",
   "legacyDataDates": {
-    "analytics": "30 Sep 2026",
-    "direct": "30 Sep 2026",
+    "analytics": "31 Oct 2026",
+    "direct": "31 Oct 2026",
     "fmgr": "31 Aug 2026",
-    "performance": "30 Sep 2026",
+    "performance": "31 Oct 2026",
     "ranks": "15 Aug 2026",
-    "risk": "30 Sep 2026",
-    "sif": "30 Sep 2026"
+    "risk": "31 Oct 2026",
+    "sif": "31 Oct 2026"
   },
   "notExtracted": {
     "DATA_DATES": "kept in VINTAGE.json as legacyDataDates (parity row E-107)",

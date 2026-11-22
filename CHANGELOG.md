@@ -4,6 +4,37 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Data (October 2026: 40 children's and retirement funds, CR-0010 A1; not published until the owner says "publish")
+- **The 40 HYBRID_ANALYTICS look-throughs carried at 30 Sep 2026 now hold 31 Oct 2026 data**, from the vendor's "Other Funds
+  Analytics" file through the monthly hybrid route (`buildtools/build_other_funds.js`, new; `build_refresh.js` exports
+  `hybridFromAoa`, which `buildHybrid` now calls, output unchanged). Only those 40 keys change and their `vintage` tag goes; no
+  other block or date changes. Known-answer check: the file's Sep-26 columns reproduce the embedded 30 Sep entries (debt
+  40/40, equity 39/40, one vendor rename). `data/refdata/` regenerated. `index.html` MD5 `5995FA490D8043E51DA9E3CC5F45F621` →
+  `27EF056BC1BEF56C12D4714642260A81` (data only, no code change). Test `tools/regression/CR0010-a1-other-funds-hybrid.js`.
+  Log: [docs/refresh-log/2026-10.md](docs/refresh-log/2026-10.md), section 10; [CR-0010](docs/change-requests/CR-0010-other-funds-october.md).
+
+### Data (October 2026 risk ratios, TA-10; not published until the owner says "publish")
+- **MF_RISK refreshed to 31 Oct 2026, computed in-house** (PD-61) from the vendor NSE TRI export and the AMFI October NAVs;
+  the last trading day is Fri 30 Oct 2026 (log section 9). 1,088 funds; risk ratios 966 → 981; 3Y rolling 433 → 439; 151
+  flags. `DATA_DATES.risk` "30 Sep 2026" → "31 Oct 2026"; `data/refdata/` regenerated. `index.html` MD5
+  `A6AD7B104521D0ABE95ADA61B61E615E` → `5995FA490D8043E51DA9E3CC5F45F621` (data only, no code change). Log:
+  [docs/refresh-log/2026-10.md](docs/refresh-log/2026-10.md), section 9.
+
+### Data (October 2026 refresh, TA-10; not published until the owner says "publish")
+- **Performance and analytics refreshed to the October 2026 files, labelled "31 Oct 2026"** (the owner's words: "Use the 2 Nov
+  files", "Show 31 Oct"). The true price days are in the log only: the Regular and SIF monitors are as on Mon 2 Nov 2026 and
+  the Direct monitor as on Fri 30 Oct 2026. MF_PERF 2,130 → 2,144, MF_PERF_DIRECT 1,765 → 1,775, SIF_PERF 30, BENCH_RET 108,
+  EQUITY_ANALYTICS 1,144 → 1,161, HYBRID_ANALYTICS 243 → 244 (40 carried at 30 Sep 2026 vintage), DEBT_ANALYTICS 486 → 490,
+  STOCK_INFO 8,684 → 8,695; `data/refdata/` regenerated. Risk stays 30 Sep 2026; PMS, AIF, fund ranks, fund managers, expense
+  ratios, stock returns and the Market Update slides are unchanged. `index.html` MD5 `12B5E5727FCA01EF2EA162C59913F01D` →
+  `A6AD7B104521D0ABE95ADA61B61E615E` (data only, no code change). Log: [docs/refresh-log/2026-10.md](docs/refresh-log/2026-10.md).
+- **Pipeline:** `buildtools/build_refresh.js` carries a still-listed scheme's last look-through also in an analytics-only build,
+  never carries a renamed scheme (15 "Zerodha" keys became "Zerodha CASE"), and counts a Regular key the monitors list only as
+  its Direct plan as listed (17 retirement funds; without it 9 holdings matched a sibling fund). Test
+  `tools/regression/TA10-analytics-carry-forward.js` (26 checks).
+- **Test:** `tools/regression/KI-067-cvs-hybrid-split.js` takes its known answers from the embedded hybrid sleeve weights, so it
+  follows each refresh (the 30 Sep audit figures stay in its header).
+
 ### Changed
 - **The new app's layout (CR-0006, D-037, the owner's request of 24 Oct 2026): the nine section tabs run across the
   top** in the look of the owner's design reference, and each section uses the full page width. The black masthead
