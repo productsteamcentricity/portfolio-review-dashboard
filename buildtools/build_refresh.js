@@ -220,8 +220,10 @@ function buildDebt(X, E, file){
   const aoa=aoaOf(X,file); const db=E.parsers.parseDebtSide(aoa);
   Object.keys(db).forEach(k=>tidyDb(db[k], false)); return db;
 }
-function buildHybrid(X, E, file, stockAcc){
-  const aoa=aoaOf(X,file);
+function buildHybrid(X, E, file, stockAcc){ return hybridFromAoa(E, aoaOf(X,file), stockAcc); }
+/* The hybrid route on rows already read: also used by build_other_funds.js (CR-0010), whose
+   vendor sheet has three rows above the header. Row 0 is never data (both parsers skip it). */
+function hybridFromAoa(E, aoa, stockAcc){
   const eq=E.parsers.parseEquitySide(aoa,'Equity',stockAcc);
   const nonEq=[aoa[0]].concat(aoa.slice(1).filter(r=>r && clean(r[9])!=='Equity'));
   const db=E.parsers.parseDebtSide(nonEq);
@@ -418,4 +420,4 @@ function main(){
   if(out){ fs.writeFileSync(out, JSON.stringify({blocks:B, report})); console.log('wrote '+out+' ('+fs.statSync(out).size.toLocaleString()+' bytes)'); }
 }
 if(require.main===module) main();
-module.exports = { buildER, buildStockRet, regKeyToDir, aoaOf, clean, num, carryForwardLookThroughs };
+module.exports = { buildER, buildStockRet, regKeyToDir, aoaOf, clean, num, carryForwardLookThroughs, hybridFromAoa, normco };
