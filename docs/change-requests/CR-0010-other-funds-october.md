@@ -38,9 +38,14 @@ the header) holds 344 schemes. On the live page (D-028: data, calculation and se
 ## Decisions
 
 - 22 Nov 2026, the owner: "Yes, go ahead" (A1 to A3).
-- 22 Nov 2026, the moderator: A2 uses **pair blocks** (a holding name never matches one named wrong fund; every other
-  candidate still competes), keyed on the engine's normalised name. Retirement Fund-40 and -30 show no Regular-plan returns,
-  because the vendor data has no Regular row for them (CLAUDE.md rule 3: never another plan's figure).
+- 22 Nov 2026, the moderator: A2 first used **pair blocks** (a holding name never matches one named wrong fund), keyed on
+  the engine's normalised name. Measured over every universe, that only moved the error to the next fuzzy candidate (Nifty
+  Midcap 100 ETF, Conglomerate, Aggressive Hybrid, a CRISIL IBX index fund, Large Cap). The moderator then approved
+  **exact name only** for the listed names: for each, every fuzzy match measured was another fund and every correct match is
+  an exact name. Retirement Fund-40 and -30 show no Regular-plan returns, because the vendor data has no Regular row for them
+  (CLAUDE.md rule 3: never another plan's figure); they keep their own Direct-plan row (a guarded branch, exact name only).
+- 22 Nov 2026, the moderator: the AMC's "The 40s Plan" spelling is listed too. "The 30s Plan" is not: its fuzzy look-through
+  is Fund-30's own (right), so exact-only would lose a correct match; it keeps Fund-50's returns until a follow-up ALIASES pin.
 
 ## Changes
 
@@ -48,7 +53,15 @@ the header) holds 344 schemes. On the live page (D-028: data, calculation and se
   it, output byte-identical on the October Hybrid file); new `buildtools/build_other_funds.js`; `index.html` and
   `data/refdata/` (HYBRID_ANALYTICS.json, VINTAGE.json); test `tools/regression/CR0010-a1-other-funds-hybrid.js`; refresh log
   `docs/refresh-log/2026-10.md` section 10.
-- **A2, A3:** recorded with their commits.
+- **A2:** patch `tools/patches/2026-11-22-scoped-match-blocks.js` (engine: `EXACT_ONLY` for 5 normalised names, `isExactOnly`,
+  `matchInstrument` stops after the exact-name step for them, and the Direct-plan lookup keeps an EXACT_ONLY mutual fund's
+  exact Direct row when it has no Regular row); test `tools/regression/CR0010-a2-scoped-blocks.js`.
+  - Measured against `main` over every universe (7 universes, 4,034 names, 28,238 matches): 48 matches change, all from
+    another fund to none, all spellings of the listed names; nothing else. Engine level (4,041 synthetic holdings, every
+    name, all five keys incl. the Direct row): 42 holdings and 70 fields change, all from another fund to none; nothing else.
+  - Known limits: "The 30s Plan" (above); spellings that match nothing today ("ABSL ...", "Exchange Traded Fund") are not
+    listed.
+- **A3:** recorded with its commit.
 
 ## Verification
 

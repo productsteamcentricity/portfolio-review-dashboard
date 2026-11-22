@@ -632,6 +632,16 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     "icici pru enhanced dynamic equity fund": "",       // was -> ICICI Pru Equity & Debt Fund
     "kotak global innovation overseas equity omni fof": "" // was -> Kotak Income Plus Arbitrage
   };
+  /* CR-0010: names that match only their own exact (normalised) name, in every universe. For each, every fuzzy
+     match measured was another fund and every correct match is exact; a "" alias would also wipe the exact ones. */
+  var EXACT_ONLY = {
+    "motilal nasdaq 100 etf": 1,                    // fuzzy: Nifty 100 / Nifty Midcap 100 ETF look-through, Nasdaq 100 FOF Direct
+    "aditya birla sl global emerging opp fund": 1,  // fuzzy: Special Opp / Conglomerate, Arbitrage / Aggressive Hybrid
+    "aditya birla sl retirement fund 40": 1,        // fuzzy: Fund-50 Regular returns; Conglomerate look-through
+    "aditya birla sl retirement fund 30": 1,        // fuzzy: Fund-50 Regular returns; Conglomerate look-through
+    "aditya birla sl retirement fund 40s": 1        // "The 40s Plan": fuzzy gave Fund-50 returns and Fund-30 look-through
+  };
+  function isExactOnly(name){ return Object.prototype.hasOwnProperty.call(EXACT_ONLY, normalize(name).join(" ")); }
   function tokenSet(arr){ var o={}; for(var i=0;i<arr.length;i++) o[arr[i]]=1; return o; }
   function matchInstrument(name, amc, candidates, candNormCache){
     var nt = normalize(name); var ntset = tokenSet(nt);
@@ -661,6 +671,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       if (!_et){ _et = normalize(_ec); if(candNormCache) candNormCache[_ec]=_et; }
       if (_et.join(" ")===_ak) return _ec;
     }
+    if (Object.prototype.hasOwnProperty.call(EXACT_ONLY,_ak)) return null;   // CR-0010: no fuzzy match for these names
     var best=null, bestShared=0, bestJac=0;
     for (var i=0;i<candidates.length;i++){
       var c = candidates[i];
@@ -2247,7 +2258,10 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     if (mfdKeys.length){
       var perfByBucketD={};
       rows.forEach(function(h){
-        if (h.directEquity || h.perfSrc!=="MF") return;   // direct plans apply to mutual funds only
+        if (h.directEquity) return;
+        /* direct plans apply to mutual funds only. CR-0010: an EXACT_ONLY mutual fund with no Regular row (Retirement
+           Fund-40 / -30) still gets its own Direct row; matchInstrument() allows it only by exact name. */
+        if (h.perfSrc!=="MF" && !(h.perfSrc==null && h.pcls==="MF" && isExactOnly(h.name))) return;
         var dk=matchInstrument(h.name,"",mfdKeys,cacheMFD);   // name-only match
         if (!dk) return; h.perfKeyDirect=dk;
         var bk=bucketOf(h); (perfByBucketD[bk]||(perfByBucketD[bk]=[])).push(h);
