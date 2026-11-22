@@ -4,6 +4,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Fixed (CR-0010 A3; not published until the owner says "publish")
+- **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
+  funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.
+  Over 4,741 fund names: 278 → 117 (163 domestic names out, 2 genuine in, none genuine out). Patch
+  `tools/patches/2026-11-22-intl-word-boundary.js`; test `tools/regression/CR0010-a3-intl-word-boundary.js`.
+
 ### Fixed (CR-0010 A2; not published until the owner says "publish")
 - **Three holdings no longer take another fund's data.** Motilal Oswal Nasdaq 100 ETF no longer gets the Nifty 100 ETF's
   look-through (Indian large caps) or the Nasdaq 100 FOF's Direct-plan returns; Aditya Birla SL Global Emerging Opp Fund no

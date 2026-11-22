@@ -2385,7 +2385,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     // ============ shared signals reused across SWOT quadrants ============
     var goldPct=0; Object.keys(aMap).forEach(function(k){ if(/commodit|gold/i.test(k)) goldPct+=aMap[k].cmv; }); goldPct = totalCMV? goldPct/totalCMV*100 : 0;
     var debtPct = (aMap["Debt"]?aMap["Debt"].cmv:0)/totalCMV*100;
-    var intlCMV=0; rows.forEach(function(h){ if(/(internat|global|us |nasdaq|s&p|overseas|world|china|taiwan|japan)/i.test(h.name||"")||/global|international/i.test(h.category||"")) intlCMV+=h.cmvCr; });
+    var intlCMV=0; rows.forEach(function(h){ if(/(\binternat|\bglobal|\bus\b|\bu\.s\.|\bnasdaq|\bs&p|\boverseas|\bworld|\bchina|\btaiwan|\bjapan)/i.test(h.name||"")||/global|international/i.test(h.category||"")) intlCMV+=h.cmvCr; });
     var intlPct = totalCMV? intlCMV/totalCMV*100 : 0;
     var altCMV=0; rows.forEach(function(h){ if(h.perfSrc==="PMS"||h.perfSrc==="AIF") altCMV+=h.cmvCr; });
     var altPct = totalCMV? altCMV/totalCMV*100 : 0;

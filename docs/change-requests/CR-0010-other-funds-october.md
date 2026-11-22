@@ -61,7 +61,14 @@ the header) holds 344 schemes. On the live page (D-028: data, calculation and se
     name, all five keys incl. the Direct row): 42 holdings and 70 fields change, all from another fund to none; nothing else.
   - Known limits: "The 30s Plan" (above); spellings that match nothing today ("ABSL ...", "Exchange Traded Fund") are not
     listed.
-- **A3:** recorded with its commit.
+- **A3:** patch `tools/patches/2026-11-22-intl-word-boundary.js` (engine SWOT: each term of the international name test
+  needs a word start, and "us" is a whole word, with "U.S." also recognised; the category test is unchanged); test
+  `tools/regression/CR0010-a3-intl-word-boundary.js`.
+  - Measured over every key of the fund blocks and the 344 Other Funds names (4,741 names): the old test matched 278 names,
+    the new one 117. 163 domestic names leave, all through "us " inside a word: plus 112, Taurus 16, Abakkus 13, focus 6,
+    Marcellus 5, Citrus 4, Equirus 3, Avendus 2, surplus 1, ITUS 1. 2 genuine names enter (Franklin U.S. Opportunities,
+    Regular and Direct). No genuine international name leaves.
+  - Known limit, unchanged: brand names that contain "Global" ("First Global ...", "SMC Global ...") still count.
 
 ## Verification
 
