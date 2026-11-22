@@ -4,6 +4,15 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Data (October 2026: 40 children's and retirement funds, CR-0010 A1; not published until the owner says "publish")
+- **The 40 HYBRID_ANALYTICS look-throughs carried at 30 Sep 2026 now hold 31 Oct 2026 data**, from the vendor's "Other Funds
+  Analytics" file through the monthly hybrid route (`buildtools/build_other_funds.js`, new; `build_refresh.js` exports
+  `hybridFromAoa`, which `buildHybrid` now calls, output unchanged). Only those 40 keys change and their `vintage` tag goes; no
+  other block or date changes. Known-answer check: the file's Sep-26 columns reproduce the embedded 30 Sep entries (debt
+  40/40, equity 39/40, one vendor rename). `data/refdata/` regenerated. `index.html` MD5 `5995FA490D8043E51DA9E3CC5F45F621` →
+  `27EF056BC1BEF56C12D4714642260A81` (data only, no code change). Test `tools/regression/CR0010-a1-other-funds-hybrid.js`.
+  Log: [docs/refresh-log/2026-10.md](docs/refresh-log/2026-10.md), section 10; [CR-0010](docs/change-requests/CR-0010-other-funds-october.md).
+
 ### Data (October 2026 risk ratios, TA-10; not published until the owner says "publish")
 - **MF_RISK refreshed to 31 Oct 2026, computed in-house** (PD-61) from the vendor NSE TRI export and the AMFI October NAVs;
   the last trading day is Fri 30 Oct 2026 (log section 9). 1,088 funds; risk ratios 966 → 981; 3Y rolling 433 → 439; 151
