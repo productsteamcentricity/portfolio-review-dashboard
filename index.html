@@ -626,12 +626,26 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     // Inert until matching AIF/debt reference data containing these schemes is present (embedded or uploaded).
     "mosaic multiyield fund series i": "Mosaic Asset Management Multiyield Fund",
     "transition venture capital fund 1": "Transition VC Fund",
+    // CR-0010 A2b: the AMC's own spellings of these plans -> their own hybrid look-through (also exact-only below)
+    "aditya birla sl retirement fund 30s": "Aditya Birla SL Retirement Fund-30-Reg(G)",
+    "aditya birla sl retirement fund 40s": "Aditya Birla SL Retirement Fund-40-Reg(G)",
     // block spurious fuzzy matches (AIF/FOF base names, blank AMC, that snap onto unrelated funds):
     "icici pru leaders fund series iv": "",             // was -> ICICI Pru Commodities Fund
     "nippon equity opp aif scheme 9": "",               // was -> Nippon India US Equity Opp Fund
     "icici pru enhanced dynamic equity fund": "",       // was -> ICICI Pru Equity & Debt Fund
     "kotak global innovation overseas equity omni fof": "" // was -> Kotak Income Plus Arbitrage
   };
+  /* CR-0010: names that match only their own exact (normalised) name, in every universe. For each, every fuzzy
+     match measured was another fund and every correct match is exact; a "" alias would also wipe the exact ones. */
+  var EXACT_ONLY = {
+    "motilal nasdaq 100 etf": 1,                    // fuzzy: Nifty 100 / Nifty Midcap 100 ETF look-through, Nasdaq 100 FOF Direct
+    "aditya birla sl global emerging opp fund": 1,  // fuzzy: Special Opp / Conglomerate, Arbitrage / Aggressive Hybrid
+    "aditya birla sl retirement fund 40": 1,        // fuzzy: Fund-50 Regular returns; Conglomerate look-through
+    "aditya birla sl retirement fund 30": 1,        // fuzzy: Fund-50 Regular returns; Conglomerate look-through
+    "aditya birla sl retirement fund 40s": 1        // "The 40s Plan": fuzzy gave Fund-50 returns and Fund-30 look-through
+  };
+  function isExactOnly(name){ return Object.prototype.hasOwnProperty.call(EXACT_ONLY, normalize(name).join(" ")); }
+  EXACT_ONLY["aditya birla sl retirement fund 30s"] = 1;   // CR-0010 A2b: pinned above; no fuzzy match elsewhere
   function tokenSet(arr){ var o={}; for(var i=0;i<arr.length;i++) o[arr[i]]=1; return o; }
   function matchInstrument(name, amc, candidates, candNormCache){
     var nt = normalize(name); var ntset = tokenSet(nt);
@@ -661,6 +675,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       if (!_et){ _et = normalize(_ec); if(candNormCache) candNormCache[_ec]=_et; }
       if (_et.join(" ")===_ak) return _ec;
     }
+    if (Object.prototype.hasOwnProperty.call(EXACT_ONLY,_ak)) return null;   // CR-0010: no fuzzy match for these names
     var best=null, bestShared=0, bestJac=0;
     for (var i=0;i<candidates.length;i++){
       var c = candidates[i];
@@ -2247,7 +2262,10 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     if (mfdKeys.length){
       var perfByBucketD={};
       rows.forEach(function(h){
-        if (h.directEquity || h.perfSrc!=="MF") return;   // direct plans apply to mutual funds only
+        if (h.directEquity) return;
+        /* direct plans apply to mutual funds only. CR-0010: an EXACT_ONLY mutual fund with no Regular row (Retirement
+           Fund-40 / -30) still gets its own Direct row; matchInstrument() allows it only by exact name. */
+        if (h.perfSrc!=="MF" && !(h.perfSrc==null && h.pcls==="MF" && isExactOnly(h.name))) return;
         var dk=matchInstrument(h.name,"",mfdKeys,cacheMFD);   // name-only match
         if (!dk) return; h.perfKeyDirect=dk;
         var bk=bucketOf(h); (perfByBucketD[bk]||(perfByBucketD[bk]=[])).push(h);
@@ -2371,7 +2389,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     // ============ shared signals reused across SWOT quadrants ============
     var goldPct=0; Object.keys(aMap).forEach(function(k){ if(/commodit|gold/i.test(k)) goldPct+=aMap[k].cmv; }); goldPct = totalCMV? goldPct/totalCMV*100 : 0;
     var debtPct = (aMap["Debt"]?aMap["Debt"].cmv:0)/totalCMV*100;
-    var intlCMV=0; rows.forEach(function(h){ if(/(internat|global|us |nasdaq|s&p|overseas|world|china|taiwan|japan)/i.test(h.name||"")||/global|international/i.test(h.category||"")) intlCMV+=h.cmvCr; });
+    var intlCMV=0; rows.forEach(function(h){ if(/(\binternat|\bglobal|\bus\b|\bu\.s\.|\bnasdaq|\bs&p|\boverseas|\bworld|\bchina|\btaiwan|\bjapan)/i.test(h.name||"")||/global|international/i.test(h.category||"")) intlCMV+=h.cmvCr; });
     var intlPct = totalCMV? intlCMV/totalCMV*100 : 0;
     var altCMV=0; rows.forEach(function(h){ if(h.perfSrc==="PMS"||h.perfSrc==="AIF") altCMV+=h.cmvCr; });
     var altPct = totalCMV? altCMV/totalCMV*100 : 0;

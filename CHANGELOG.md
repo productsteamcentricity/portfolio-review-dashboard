@@ -4,6 +4,26 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Fixed (CR-0010 A3; not published until the owner says "publish")
+- **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
+  funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.
+  Over 4,741 fund names: 278 → 117 (163 domestic names out, 2 genuine in, none genuine out). Patch
+  `tools/patches/2026-11-22-intl-word-boundary.js`; test `tools/regression/CR0010-a3-intl-word-boundary.js`.
+
+### Fixed (CR-0010 A2b; not published until the owner says "publish")
+- **The AMC's own "The 30s Plan" / "The 40s Plan" spellings of Aditya Birla SL Retirement Fund** get their own fund's
+  look-through and never Retirement Fund-50's returns: an ALIASES pin to their own hybrid entry plus exact-only (patch
+  `tools/patches/2026-11-23-retirement-plan-pins.js`). Measured over every universe; nothing else moves.
+
+### Fixed (CR-0010 A2; not published until the owner says "publish")
+- **Three holdings no longer take another fund's data.** Motilal Oswal Nasdaq 100 ETF no longer gets the Nifty 100 ETF's
+  look-through (Indian large caps) or the Nasdaq 100 FOF's Direct-plan returns; Aditya Birla SL Global Emerging Opp Fund no
+  longer gets Special Opportunities' (or the Arbitrage or Gilt Fund's) look-through; Aditya Birla SL Retirement Fund-40 and
+  -30 (and "The 40s Plan") no longer show Retirement Fund-50's returns. Their own returns, Direct rows and look-through stay.
+  These names now match only their own exact name (`EXACT_ONLY` in the engine; patch
+  `tools/patches/2026-11-22-scoped-match-blocks.js`); measured over every universe, only wrong matches change, to none.
+  Test `tools/regression/CR0010-a2-scoped-blocks.js`. [CR-0010](docs/change-requests/CR-0010-other-funds-october.md).
+
 ### Data (October 2026: 40 children's and retirement funds, CR-0010 A1; not published until the owner says "publish")
 - **The 40 HYBRID_ANALYTICS look-throughs carried at 30 Sep 2026 now hold 31 Oct 2026 data**, from the vendor's "Other Funds
   Analytics" file through the monthly hybrid route (`buildtools/build_other_funds.js`, new; `build_refresh.js` exports
