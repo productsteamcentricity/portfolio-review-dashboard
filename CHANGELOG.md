@@ -81,7 +81,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   is a figure of one view-model (D-038, D-039). The `/next/` build, after round 3: 2,003,039 bytes, SHA-256
   `b5756412…` (deterministic, build id `2418a5b671cd7622`), with the four vendored libraries inlined.
   M1.4 leaves `index.html` unchanged (MD5 `12B5E5727FCA01EF2EA162C59913F01D`, main after PR #16); the libraries were vendored
-  from `911A04659CB34383E478416B54E9C306`.
+  from `911A04659CB34383E478416B54E9C306`. CLAUDE.md keeps one Office rule text (rule 10); the new-build paragraph
+  points to it.
   - Platform (D-038). Chart.js 4.4.0, chartjs-plugin-datalabels 2.2.0, SheetJS CE 0.18.5 and PptxGenJS 3.12.0 are
     vendored byte for byte from `index.html` (`scripts/vendor-extract.mjs`, `--check` in CI); licence texts are in
     `app/vendor/licences/`. The build accepts vendored files under the HTML parsing rule and the jszip alias, and

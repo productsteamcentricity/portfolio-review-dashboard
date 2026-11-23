@@ -161,9 +161,9 @@ checks run, with the owner's work in them, so no check starts, quits, stops or r
 `scripts/office/accept-xlsx.ps1` and `accept-pptx.ps1` (each states the rule in its header) and
 `scripts/office/run-acceptance.ts`, which runs them for `npm run accept:office`, follow it:
 
-1. **Attach only.** The task list first (`Get-Process EXCEL` or `POWERPNT`), then
-   `[Runtime.InteropServices.Marshal]::GetActiveObject(...)`. A new instance is never created and Office is never
-   started.
+1. **Attach only.** The process check first (`Get-Process -Name EXCEL` or `-Name POWERPNT`, only to learn
+   whether it runs), then `[Runtime.InteropServices.Marshal]::GetActiveObject(...)`. A new instance is never created
+   and Office is never started.
 2. **NOT RUN, never a pass.** With no running instance, when attaching fails, or while Office stays busy, the case is
    NOT RUN (script exit code 2), and the run prints the absolute paths of the synthetic files for the owner to open by
    hand.
