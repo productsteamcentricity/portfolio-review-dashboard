@@ -20,6 +20,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `A6AD7B104521D0ABE95ADA61B61E615E` → `5995FA490D8043E51DA9E3CC5F45F621` (data only, no code change). Log:
   [docs/refresh-log/2026-10.md](docs/refresh-log/2026-10.md), section 9.
 
+### Data (Market Update slides, TA-10 Step 3; not published until the owner says "publish")
+- **The Market Update slides are the November 2026 Reckoner's pages 5 to 10 (October data), labelled "Nov 2026" (6).**
+  They were rendered from the owner's PDF; the two new pager pages follow later. No REFDATA change. `index.html` MD5
+  `5995FA490D8043E51DA9E3CC5F45F621` → `5A9D56DA43CE21F1BAB9DD65218AE346` (738,136 bytes smaller). Log:
+  [docs/refresh-log/2026-10.md](docs/refresh-log/2026-10.md), section 4b.
+
 ### Data (October 2026 refresh, TA-10; not published until the owner says "publish")
 - **Performance and analytics refreshed to the October 2026 files, labelled "31 Oct 2026"** (the owner's words: "Use the 2 Nov
   files", "Show 31 Oct"). The true price days are in the log only: the Regular and SIF monitors are as on Mon 2 Nov 2026 and
