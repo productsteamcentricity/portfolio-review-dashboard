@@ -1,4 +1,4 @@
-// covers: E-01 E-02 E-03 E-04 BR-0.4 BR-2.5 OD-3 OD-7 OD-8 OD-22 KI-005 KI-007 KI-074 KI-093 KI-113
+// covers: E-01 E-02 E-03 E-04 BR-0.4 BR-2.5 OD-3 OD-7 OD-8 OD-22 KI-005 KI-007 KI-074 KI-093 KI-113 KI-141 KI-142 KI-148 D-041
 // Parity of app/src/ingest/base-file.ts with the legacy parseBaseRows (index.html, run through
 // tools/engine-host.js with the page's own upload path) on the synthetic fixtures: tools/make-sample-base.js's two
 // files and the variants of its book (tests/fixtures/make-books.ts). Every difference must match exactly one entry
@@ -13,7 +13,8 @@ import type { BookRow, Fixture, LegacyHost } from '../fixtures/make-books.ts';
 import type { Diff, Ledger, LegacyParse } from './base-file-compare.ts';
 import type { BaseFileImport } from '../../app/src/ingest/base-file.ts';
 import type { SourceFileId } from '../../app/src/model/ids.ts';
-import { loadLegacyHost, sampleFixtures } from '../fixtures/make-books.ts';
+import { loadLegacyHost, MERGED_DATE_CASES, sampleFixtures } from '../fixtures/make-books.ts';
+import { formatDay } from '../../app/src/engine/dates.ts';
 import { compare, entriesFor, legacyParse } from './base-file-compare.ts';
 import { readWorkbook } from '../../app/src/ingest/workbook.ts';
 import { parseBaseFile } from '../../app/src/ingest/base-file.ts';
@@ -94,13 +95,37 @@ describe(`base-file parity (TZ=${process.env.TZ ?? 'system'})`, () => {
     const plain = ['family-a', 'family-b', 'family-a-standard', 'family-a-lakh', 'family-a-rupee', 'family-a-na-cmv',
       'family-a-blank-invested', 'family-a-skipped-rows', 'family-a-holders', 'family-a-text-dates',
       // fix batch 4 (D-041): the live page reads text that is not a number and an impossible date as the new reader does
-      'family-a-invalid-text'];
+      'family-a-invalid-text',
+      // D-041 points 2 and 3 (KI-148, the M1.4 fix round 2): the new reader skips the total rows and dates merged folios
+      // by the earliest one, as the live page does
+      'family-a-total-rows', 'family-a-merged-dates'];
     for (const id of plain) {
       const r = results.find((x) => x.fixture.id === id);
       assert.ok(r, id);
       assert.deepEqual(r.diffs.filter((d) => d.kind !== 'field-not-carried').map(describeDiff), [], id);
       assert.equal(r.newIncluded, r.legacyRows, `${id}: same number of holdings`);
     }
+  });
+
+  test('KI-148: total rows and merged purchase dates read alike (D-041 points 2 and 3); the fixtures exercise both rules', () => {
+    // family-a-total-rows: a "Total" row and a "  GRAND TOTAL  " row, skipped by both; both say so in a warning.
+    const t = results.find((x) => x.fixture.id === 'family-a-total-rows')!;
+    assert.equal(t.legacyRows, book.length);
+    assert.equal(t.newIncluded, book.length);
+    assert.ok(t.legacy.notices.some((n) => n.warn && n.text.startsWith('2 rows named "Total" or "Grand Total"')));
+    assert.equal(t.imp.issues.find((i) => i.ruleId === 'base-file.total-row-skipped')!.count, 2);
+    // family-a-merged-dates: holdings 0 to 5 in two folios; the first folio is not the earliest in holdings 0, 2 and 5,
+    // so a first-row rule would differ from the live page there. Both give the hand-worked dates and days.
+    const m = results.find((x) => x.fixture.id === 'family-a-merged-dates')!;
+    assert.deepEqual([0, 2, 5].map((i) => MERGED_DATE_CASES[i]!.folios[0].date), [[2025, 3, 10], [2025, 3, 10], [2025, 3, 10]]);
+    MERGED_DATE_CASES.forEach((c, i) => {
+      const name = book[i]!.name;
+      const l = m.legacy.rows.find((x) => x.name === name)!;
+      const n = m.imp.holdings.find((h) => h.instrumentName === name)!;
+      assert.deepEqual([l.purchaseDate === '' ? null : l.purchaseDate, l.days ?? null], [c.date, c.days], `legacy ${name}`);
+      assert.deepEqual([n.purchaseDate.kind === 'value' ? formatDay(n.purchaseDate.v) : null, n.holdingDays.kind === 'value' ? n.holdingDays.v : null],
+        [c.date, c.days], `new ${name}`);
+    });
   });
 
   test('holdings without a market value: the legacy dropped them silently, the new reader excludes and lists them (OD-8)', () => {

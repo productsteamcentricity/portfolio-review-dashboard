@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "n": 4,
+      "id": "portfolio-overview",
+      "title": "Portfolio overview",
+      "components": [
+        {
+          "id": "C-08",
+          "name": "asset-allocation",
+          "include": "always",
+          "variants": [
+            "scope"
+          ],
+          "status": "in progress"
+        }
+      ]
+    }
+  ]
+}

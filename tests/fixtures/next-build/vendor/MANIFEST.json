@@ -1,14 +1,47 @@
 {
-  "_comment": "Synthetic vendor manifest for tests/next/build.test.mjs: one stand-in library.",
+  "_comment": "Synthetic vendor manifest for tests/next/*.test.mjs and tests/browser/next-spike.mjs: two stand-in libraries. hello defines one global and needs no allowance; bundle defines two globals (the second importable as vendor:alias, as JSZip is inside PptxGenJS) and holds '<script', one network-API name and one URL, pinned in its allow block.",
   "libraries": [
     {
-      "name": "hello",
-      "version": "1.0.0",
+      "allow": {
+        "inline": [],
+        "licenceUrls": [],
+        "networkApis": {},
+        "urls": {}
+      },
       "file": "hello.js",
-      "sha256": "94c81d025b6ceb42fab58bd2155ee340caf77bd73fd689b2c77e0c745f9ba672",
       "global": "HelloLib",
       "license": "MIT",
-      "source": "synthetic test fixture"
+      "name": "hello",
+      "sha256": "94c81d025b6ceb42fab58bd2155ee340caf77bd73fd689b2c77e0c745f9ba672",
+      "source": "synthetic test fixture",
+      "version": "1.0.0"
+    },
+    {
+      "aliases": [
+        {
+          "global": "AliasLib",
+          "name": "alias"
+        }
+      ],
+      "allow": {
+        "inline": [
+          "<script"
+        ],
+        "licenceUrls": [],
+        "networkApis": {
+          "XMLHttpRequest": 1
+        },
+        "urls": {
+          "https://example.org/bundle": 1
+        }
+      },
+      "file": "bundle.js",
+      "global": "BundleLib",
+      "license": "MIT",
+      "name": "bundle",
+      "sha256": "44b792a192ffe1616bc378be69533d7a680a6b50add681fd2a0bfc018616247d",
+      "source": "synthetic test fixture",
+      "version": "1.0.0"
     }
   ]
 }

@@ -22,3 +22,9 @@ export type {
   AnalystQuestion, Resolution, Severity, ValidationResult, ValidationScope, ValidationStatus, XirrUnitChoice,
 } from './validation.ts';
 export type { AuditDetail, AuditEntry, AuditKind } from './audit.ts';
+export { ASSET_ORDER } from './review.ts';
+export type {
+  AllocationLine, AssetAllocation, AssetBlock, AssetKey, BuildStamp, DisplayUnit, EntityColumn, EntityMatrix, EntityRow,
+  HoldingMetrics, LiquidityAllocation, LoadedBaseFile, LoadError, Review, ReviewGate, ReviewLabels, ReviewRequest, Totals,
+  TotalsCounts,
+} from './review.ts';

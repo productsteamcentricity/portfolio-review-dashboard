@@ -1,4 +1,4 @@
-// covers: E-01 E-02 E-03 BR-2.5 BR-2.6 BR-13.4 BR-13.5 U-60 OD-3 OD-7 OD-8 KI-005 KI-007 KI-057 KI-074 KI-093 KI-113
+// covers: E-01 E-02 E-03 BR-2.5 BR-2.6 BR-13.4 BR-13.5 U-60 OD-3 OD-7 OD-8 KI-005 KI-007 KI-057 KI-074 KI-093 KI-113 KI-142 KI-147 KI-148 D-041
 // The base-file parser on synthetic books, against known answers worked out by hand from the fixture values
 // (tests/fixtures/make-books.ts SYNTHETIC_BOOK), never from the code under test. Money: rupees / 1e7 = Crore.
 
@@ -14,7 +14,9 @@ import type { Value } from '../../../app/src/model/value.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
 import { formatDay } from '../../../app/src/engine/dates.ts';
 import { loadSheetJS } from '../../helpers/sheetjs.ts';
-import { syntheticFixtures } from '../../fixtures/make-books.ts';
+import { overviewVariants, SYNTHETIC_BOOK, syntheticFixtures } from '../../fixtures/make-books.ts';
+import { MONEY_COLUMN_RULE } from '../../../app/src/config/money-columns.ts';
+import { computeTotals } from '../../../app/src/engine/aggregate/totals.ts';
 
 const SRC = 'f'.repeat(64) as SourceFileId;
 const NOW = (): string => '2026-10-22T00:00:00.000Z';
@@ -271,13 +273,34 @@ describe('asset labels (OD-7) and other labels', () => {
     assert.doesNotMatch(unknown.message, /REIT/);
     assert.equal(issue(imp, 'base-file.asset-synonym')?.count, 2);
   });
-  test('a blank Product Name reads as Mutual Funds, flagged; a blank Client Name and a total-like name are warned', () => {
-    const imp = parseBaseFile(tiny([{ product: null }, { client: null }, { name: 'Grand Total' }]), { sourceId: SRC, now: NOW });
+  test('a blank Product Name reads as Mutual Funds, flagged; a blank Client Name and a name beginning with "Total" are warned', () => {
+    const imp = parseBaseFile(tiny([{ product: null }, { client: null }, { name: 'Total Return Sample Fund' }]), { sourceId: SRC, now: NOW });
     assert.deepEqual([imp.holdings[0]!.product, imp.holdings[0]!.productLabel, imp.holdings[0]!.productDefaulted], ['Mutual Funds', null, true]);
     assert.equal(issue(imp, 'base-file.product-defaulted')?.severity, 'Information');
     assert.equal(imp.holdings[1]!.clientId, null);
     assert.equal(issue(imp, 'base-file.blank-client')?.severity, 'Warning');
+    // A fund whose name only begins with "Total" is still a holding (D-041 point 3), with the Warning it always had.
+    assert.equal(imp.holdings.length, 3);
     assert.equal(issue(imp, 'base-file.total-like-name')?.severity, 'Warning');
+    assert.equal(issue(imp, 'base-file.total-row-skipped'), undefined);
+  });
+  test('a row named "Total" or "Grand Total" (any case, spaces collapsed) is skipped with one Warning naming the rows (D-041 point 3, N1)', () => {
+    // Rows 2 to 9 of the sheet: four holdings and four total rows; row 6 is " total " and row 9 "Grand  Total".
+    const imp = parseBaseFile(tiny([{}, {}, { name: 'Total', cmv: 2 }, { name: 'Total Return Sample Fund' }, { name: ' total ', cmv: 4 },
+      { name: 'GRAND TOTAL', cmv: 9 }, { name: 'Sample Fund 7' }, { name: 'Grand  Total', cmv: 9 }]), { sourceId: SRC, now: NOW });
+    assert.deepEqual(imp.holdings.map((h) => h.instrumentName), ['Sample Fund 1', 'Sample Fund 2', 'Total Return Sample Fund', 'Sample Fund 7']);
+    close(imp.holdings.reduce((s, h) => s + (v(h.cmv) ?? 0), 0), 4, 'four holdings of 1 Cr, no total counted');
+    assert.deepEqual(imp.skipped.map((r) => [r.at.row, r.reason, r.hasMoney]), [[4, 'total-row', true], [6, 'total-row', true], [7, 'total-row', true], [9, 'total-row', true]]);
+    assert.equal(imp.counts.skipped['total-row'], 4);
+    const w = issue(imp, 'base-file.total-row-skipped')!;
+    assert.deepEqual([w.severity, w.count, w.decision, w.blocksPublication], ['Warning', 4, 'KI-142', false]);
+    assert.equal(w.message, '4 rows named "Total" or "Grand Total" in the Instrument Name column were skipped as total rows, not read as holdings (rows 4, 6, 7 and 9).');
+    assert.deepEqual(w.scope, { kind: 'rows', sourceId: SRC, rows: [4, 6, 7, 9].map((row) => ({ sourceId: SRC, sheet: 'Base File', row })) });
+    assert.equal(issue(imp, 'base-file.skipped-total-row'), undefined, 'the named total rows are not counted twice');
+    const one = parseBaseFile(tiny([{}, { name: 'Grand Total' }]), { sourceId: SRC, now: NOW });
+    assert.equal(issue(one, 'base-file.total-row-skipped')!.message,
+      '1 row named "Total" or "Grand Total" in the Instrument Name column was skipped as a total row, not read as a holding (row 3).');
+    assert.equal(issue(one, 'base-file.total-like-name'), undefined, 'no holding is named like a total');
   });
 });
 
@@ -349,6 +372,105 @@ describe('merged folios (E-02, KI-007, KI-113, KI-093)', () => {
   });
 });
 
+describe('money in Crore and Lakh columns (KI-147: the owner\'s answer of 24 Oct 2026, and the lead\'s decisions in D-039)', () => {
+  const at = (rows: MoneyRow[]): BaseFileImport => parseBaseFile(moneyBook(rows), { sourceId: SRC, now: NOW });
+  const moneyIssues = (imp: BaseFileImport) => imp.issues.filter((i) => /^base-file\.money-/.test(i.ruleId));
+  test('the rule: no fallback for text, a tolerance of 0.005 Cr for the cross-check', () => {
+    assert.deepEqual(MONEY_COLUMN_RULE, { invalidText: 'invalid-source', crossCheckToleranceCr: 0.005 });
+  });
+  test('(1) Crore "12abc" beside Lakh 1250: INVALID SOURCE DATA, excluded and listed, and the Lakh value is not used', () => {
+    const imp = at([{ cmvCr: s('12abc'), cmvLk: n(1250) }, {}]);
+    const h = imp.holdings[0]!;
+    assert.equal(st(h.cmv), STATUS.INVALID_SOURCE);
+    assert.ok(h.cmv.kind === 'missing' && /"Current Market Value \(Cr\.\)" holds "12abc"/.test(h.cmv.reason));
+    assert.deepEqual(h.inclusion, { status: 'excluded', reasons: ['no-market-value'] });
+    assert.equal(imp.counts.excluded, 1);
+    assert.match(issue(imp, 'base-file.no-market-value')!.message, /"Sample Fund 1"/, 'listed with the holdings without a market value');
+    const w = issue(imp, 'base-file.money-invalid')!;
+    assert.deepEqual([w.severity, w.decision, w.count, w.scope], ['Warning', 'KI-147', 1, { kind: 'holdings', holdingIds: [h.id] }]);
+    assert.match(w.message, /"Current Market Value \(Cr\.\)" \(row 2\)/, 'names the column and the row');
+    assert.match(w.message, /excluded from every total; "Current Market Value \(Lakh\)" is not used instead\./);
+    // 12.5 Cr (the Lakh value) appears nowhere: not as the value and not in a total.
+    assert.equal(v(computeTotals(imp.holdings).cmv), 2);
+  });
+  test('a percent in the Crore column is not an amount either', () => {
+    const imp = at([{ cmvCr: s('12%'), cmvLk: n(50) }]);
+    assert.equal(st(imp.holdings[0]!.cmv), STATUS.INVALID_SOURCE);
+    assert.equal(issue(imp, 'base-file.money-invalid')?.count, 1);
+  });
+  test('(2) a blank Crore cell beside Lakh 50: 0.5 Cr from the Lakh column, with an Information notice naming it', () => {
+    const imp = at([{ cmvCr: null, cmvLk: n(50) }, {}]);
+    const h = imp.holdings[0]!;
+    close(v(h.cmv), 0.5);
+    assert.ok(h.cmv.kind === 'value' && /Current Market Value \(Lakh\)/.test(h.cmv.prov.method), 'provenance names the Lakh column');
+    assert.equal(h.inclusion.status, 'included');
+    const used = issue(imp, 'base-file.money-column-used')!;
+    assert.deepEqual([used.severity, used.decision, used.count, used.scope, used.status],
+      ['Information', 'KI-147', 1, { kind: 'holdings', holdingIds: [h.id] }, 'resolved']);
+    assert.equal(used.message,
+      '1 holding takes its market value from "Current Market Value (Lakh)" because "Current Market Value (Cr.)" is blank (row 2).');
+    assert.deepEqual(moneyIssues(imp).map((i) => i.ruleId), ['base-file.money-column-used']);
+  });
+  test('(3) Crore 1 beside Lakh 999: the Crore amount is used, with a Warning naming both columns', () => {
+    const imp = at([{ cmvCr: n(1), cmvLk: n(999) }, {}]);
+    const h = imp.holdings[0]!;
+    assert.equal(v(h.cmv), 1);
+    const w = issue(imp, 'base-file.money-disagree')!;
+    assert.deepEqual([w.severity, w.decision, w.count, w.scope], ['Warning', 'KI-147', 1, { kind: 'holdings', holdingIds: [h.id] }]);
+    assert.equal(w.message,
+      '1 holding has a market value in "Current Market Value (Cr.)" that differs from "Current Market Value (Lakh)" by more than 0.005 Cr (row 2); the amount in "Current Market Value (Cr.)" is used.');
+  });
+  test('(4) Crore 1 beside Lakh 100.004 (0.00004 Cr apart) raises nothing; 0.006 Cr apart does', () => {
+    assert.deepEqual(moneyIssues(at([{ cmvCr: n(1), cmvLk: n(100.004) }])), []);
+    assert.deepEqual(moneyIssues(at([{ cmvCr: n(1), cmvLk: n(100.5) }])), [], '0.005 Cr apart is within the tolerance');
+    assert.equal(issue(at([{ cmvCr: n(1), cmvLk: n(100.6) }]), 'base-file.money-disagree')?.count, 1);
+  });
+  test('(5) invested "12abc" beside a Lakh invested value: invalid, the holding stays included, counted as invalid', () => {
+    const imp = at([{ invCr: s('12abc'), invLk: n(100) }, {}]);
+    const h = imp.holdings[0]!;
+    assert.equal(st(h.invested), STATUS.INVALID_SOURCE);
+    assert.equal(h.inclusion.status, 'included');
+    close(v(h.cmv), 2);
+    const w = issue(imp, 'base-file.money-invalid')!;
+    assert.equal(w.message,
+      '1 holding has text that is not an amount in "Invested Value (Cr.)" (row 2), so its invested value is invalid source data; "Invested Value (Lakh)" is not used instead.');
+    const t = computeTotals(imp.holdings);
+    assert.deepEqual([t.counts.included, t.counts.withoutInvested, t.counts.invalidInvested], [2, 1, 1]);
+    close(v(t.invested), 1, 'only the other holding\'s invested value');
+  });
+  test('(6) a placeholder ("NA") in the Crore cell beside Lakh 50 counts as blank: the Lakh value, with the notice naming the placeholder', () => {
+    const imp = at([{ cmvCr: s('NA'), cmvLk: n(50) }, { cmvCr: s('-'), cmvLk: n(70) }]);
+    close(v(imp.holdings[0]!.cmv), 0.5);
+    close(v(imp.holdings[1]!.cmv), 0.7);
+    const used = imp.issues.filter((i) => i.ruleId === 'base-file.money-column-used');
+    assert.deepEqual(used.map((i) => i.message), [
+      '1 holding takes its market value from "Current Market Value (Lakh)" because "Current Market Value (Cr.)" says "NA" (row 2).',
+      '1 holding takes its market value from "Current Market Value (Lakh)" because "Current Market Value (Cr.)" says "-" (row 3).',
+    ]);
+    assert.deepEqual(moneyIssues(imp).filter((i) => i.severity !== 'Information'), [], 'no Warning: a placeholder is not invalid text');
+    // Pinned on the money-columns fixture, row 1 (Flexi Cap: Crore "NA", Lakh 45.2).
+    const f = overviewVariants(xlsx, SYNTHETIC_BOOK, 'syn').find((x) => x.id === 'syn-money-columns')!;
+    const mc = parseBaseFile(readWorkbook(xlsx, f.bytes), { sourceId: SRC, now: NOW });
+    const flexi = mc.holdings.find((h) => /Flexi Cap/.test(h.instrumentName))!;
+    close(v(flexi.cmv), 0.452);
+    const na = mc.issues.find((i) => i.ruleId === 'base-file.money-column-used' && /says "NA"/.test(i.message))!;
+    assert.deepEqual(na.scope, { kind: 'holdings', holdingIds: [flexi.id] });
+    assert.match(na.message, /from "Current Market Value \(Lakh\)" because "Current Market Value \(Cr\.\)" says "NA" \(row 3\)/);
+  });
+  test('a merged holding carries the notices of its folios', () => {
+    const imp = parseBaseFile(moneyBook([{ cmvCr: null, cmvLk: n(50) }, { cmvCr: n(1), cmvLk: n(100) }], { sameHolding: true }),
+      { sourceId: SRC, now: NOW });
+    assert.equal(imp.holdings.length, 1);
+    close(v(imp.holdings[0]!.cmv), 1.5);
+    assert.deepEqual(issue(imp, 'base-file.money-column-used')!.scope, { kind: 'holdings', holdingIds: [imp.holdings[0]!.id] });
+  });
+  test('books whose columns agree, Lakh-only and rupee-only books, and "NA" in every column raise no money notice', () => {
+    for (const id of ['syn-standard', 'syn-lakh', 'syn-rupee', 'syn-na-cmv', 'syn-blank-invested', 'syn-merged-folios']) {
+      assert.deepEqual(moneyIssues(parse(id)), [], id);
+    }
+  });
+});
+
 describe('outputs never carry a dash in a sentence, and the audit carries no client data', () => {
   test('no en or em dash in any message or prompt (D-029); counts only in the audit', () => {
     for (const [id] of fixtures) {
@@ -375,6 +497,18 @@ const HEAD: Cell[] = ['Client Name', 'Instrument Name', 'Product Name', 'Distrib
 
 type TinyRow = { client?: string | null; name?: string; product?: string | null; units?: Cell; cmv?: number | Cell;
   xirr?: number | null | Cell; date?: Cell };
+
+const MONEY_HEAD: Cell[] = ['Client Name', 'Instrument Name', 'Product Name', 'Distributor Name', 'Invested Value (Cr.)',
+  'Invested Value (Lakh)', 'Current Market Value (Cr.)', 'Current Market Value (Lakh)'].map(s);
+/** A row of a Crore and Lakh book; by default invested 1 Cr (100 Lakh) and market value 2 Cr (200 Lakh). */
+type MoneyRow = { invCr?: Cell; invLk?: Cell; cmvCr?: Cell; cmvLk?: Cell };
+
+function moneyBook(rows: MoneyRow[], o: { sameHolding?: boolean } = {}): Workbook {
+  const pick = (c: Cell | undefined, d: number): Cell => (c === undefined ? n(d) : c);
+  const data = rows.map((r, i): Cell[] => [s('Sample Client A'), s(o.sameHolding ? 'Sample Fund' : `Sample Fund ${i + 1}`),
+    s('Mutual Funds'), s('Centricity'), pick(r.invCr, 1), pick(r.invLk, 100), pick(r.cmvCr, 2), pick(r.cmvLk, 200)]);
+  return { sheets: [sheetOf('Base File', [MONEY_HEAD, ...data])], date1904: false };
+}
 
 function tiny(rows: TinyRow[], o: { sameHolding?: boolean } = {}): Workbook {
   const data = rows.map((r, i): Cell[] => [

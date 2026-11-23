@@ -2,12 +2,14 @@
 // check-next.mjs: the invariants of the new application's built page (CR-0006; architecture section 17).
 // Zero dependencies (Node 24 built-ins). Read-only.
 //
-//   node scripts/validation/check-next.mjs [<file>] [--src <dir>] [--no-src] [--links <file>] [--rebuild]
+//   node scripts/validation/check-next.mjs [<file>] [--src <dir>] [--no-src] [--links <file>] [--manifest <file>]
+//                                          [--rebuild]
 //
 //   <file>       the built page (default app/dist/index.html)
 //   --src        also scan the application sources (default app/src) for DOM sinks, network APIs and remote URLs
 //   --no-src     skip the source scan
 //   --links      links.json holding the one allowed remote URL (default app/src/config/links.json)
+//   --manifest   the vendored libraries and their pinned allowances (default app/vendor/MANIFEST.json)
 //   --rebuild    rebuild the page twice in memory (scripts/build.mjs) and require both builds and <file> to be
 //                byte-identical: the build is deterministic and <file> is what the sources produce
 //
@@ -18,14 +20,24 @@
 //     style-src listing exactly the SHA-256 of the inline scripts and style element;
 //   - no external resource: no script src, no stylesheet link, no frame, object, embed, form, base, media or meta
 //     refresh; no inline event handler or style attribute (the CSP would block them);
-//   - no network API in any executable script (fetch, XMLHttpRequest, WebSocket, sendBeacon, EventSource, import(),
-//     importScripts, service and shared workers, WebTransport, RTCPeerConnection);
+//   - every executable script is either a library of the vendor manifest, identified by its SHA-256 and equal byte
+//     for byte to its file in app/vendor/, or the app script, which comes last (D-038);
+//   - no network API in the app script (fetch, XMLHttpRequest, WebSocket, sendBeacon, EventSource, import(),
+//     importScripts, service and shared workers, WebTransport, RTCPeerConnection). Inside a library script the
+//     network-API names, the scheme URLs and the inline sequences ("<!--", "<script") must equal, count for count,
+//     the "allow" block that the manifest pins for that library: nothing missing, nothing extra. The allowance applies
+//     only inside the script whose SHA-256 is the library's; connect-src 'none' stays the run-time guard;
 //   - no remote URL except the MF Screener link (D-027): exactly once, in one static <a target="_blank"
 //     rel="noopener noreferrer"> with no query string or fragment. The W3C XML namespace names that the UI library
-//     passes to createElementNS (for example the SVG namespace) are allowed only as quoted strings inside a script:
-//     they name a namespace and are never fetched;
+//     passes to createElementNS (for example the SVG namespace), and the seven OOXML namespace names the in-house
+//     workbook writer writes, are allowed only as quoted strings inside the app script: they name a namespace and are
+//     never fetched. The third-party-licences data block may hold only the URLs of the licence texts listed in the
+//     manifest (licenceUrls);
 //   - the persistent banner "Preview, not for client use" in static HTML (D-024);
 //   - no en or em dash in the static text, except a dash alone as the missing-value marker (D-029).
+// The sources must hold: no DOM sink or dynamic code, no network API, no remote URL except the Screener URL in
+// links.json (and the OOXML namespace names, only in app/src/exports/ooxml/namespaces.ts), and the pure layers
+// (model, ingest, engine, views, exports) read no browser global (U-53).
 // Exit: 0 pass, 1 an invariant fails, 2 usage or runtime error.
 
 import fs from 'node:fs';
@@ -38,6 +50,8 @@ export const REPO_ROOT = path.resolve(HERE, '..', '..');
 export const DEFAULT_FILE = 'app/dist/index.html';
 export const DEFAULT_SRC = 'app/src';
 export const DEFAULT_LINKS = 'app/src/config/links.json';
+export const DEFAULT_MANIFEST = 'app/vendor/MANIFEST.json';
+export const LICENCES_BLOCK_ID = 'third-party-licences';
 
 export const BANNER_ID = 'preview-banner';
 export const BANNER_TEXT = 'Preview, not for client use';
@@ -53,6 +67,34 @@ export const NAMESPACE_URIS = new Set([
   'http://www.w3.org/XML/1998/namespace',
   'http://www.w3.org/2000/xmlns/',
 ]);
+
+/**
+ * The OOXML namespace and relationship-type names the in-house SpreadsheetML writer must write (D-038). Like the
+ * names above they are identifiers, never fetched. Allowed only as quoted strings inside the app script, and in the
+ * sources only in OOXML_SOURCE_FILE.
+ */
+export const OOXML_NAMESPACE_URIS = new Set([
+  'http://schemas.openxmlformats.org/spreadsheetml/2006/main',
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+  'http://schemas.openxmlformats.org/package/2006/relationships',
+  'http://schemas.openxmlformats.org/package/2006/content-types',
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument',
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet',
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles',
+]);
+export const OOXML_SOURCE_FILE = 'app/src/exports/ooxml/namespaces.ts';
+
+/** The layers of app/src that hold no browser code: they read no browser global (U-53, architecture section 6.1). */
+export const PURE_LAYERS = ['model', 'ingest', 'engine', 'views', 'exports'];
+// window, document, globalThis or a storage global used as an object (followed by ".", "?." or "["), not as a
+// property of something else (vm.document) and not inside a longer name.
+const GLOBAL_ACCESS_RE = /(?<![\w$.])(window|document|globalThis|localStorage|sessionStorage|indexedDB)\s*(?:\?\.|\.|\[)/g;
+
+/** The sequences that change how an inline script is parsed; a library declares which of them it holds. */
+export const INLINE_SEQUENCES = [
+  { id: '<!--', re: /<!--/ },
+  { id: '<script', re: /<script/i },
+];
 
 /** Network APIs that must not appear in any executable script of the page (or in the sources). */
 export const NETWORK_APIS = [
@@ -210,6 +252,86 @@ export function findNetworkApis(text, lineBase = 0) {
   return hits;
 }
 
+/** Finds scheme URLs in a text (JSON-escaped slashes undone): [{ url, index }], in order. */
+export function findSchemeUrls(text) {
+  const out = [];
+  for (const m of String(text).matchAll(SCHEME_URL_RE)) out.push({ url: m[0].replace(/\\\//g, '/'), index: m.index });
+  return out;
+}
+
+/** The INLINE_SEQUENCES ids a text holds, in list order. */
+export function inlineSequences(text) {
+  return INLINE_SEQUENCES.filter(({ re }) => re.test(text)).map(({ id }) => id);
+}
+
+/** Counts list items by a key: { key: count } with the keys sorted. */
+export function countBy(items, key) {
+  const counts = {};
+  for (const it of items) counts[key(it)] = (counts[key(it)] || 0) + 1;
+  return Object.fromEntries(Object.keys(counts).sort().map((k) => [k, counts[k]]));
+}
+
+/**
+ * What a library's text holds that the page rules would otherwise refuse, computed with the same finders the page
+ * check uses: { inline, networkApis, urls }. scripts/vendor-extract.mjs writes it as the library's "allow" block
+ * (with licenceUrls from its licence text); checkBuiltPage requires the script to hold exactly this.
+ */
+export function libraryAllowance(text) {
+  return {
+    inline: inlineSequences(text),
+    networkApis: countBy(findNetworkApis(text), (h) => h.id),
+    urls: countBy(findSchemeUrls(text), (u) => u.url),
+  };
+}
+
+export const sha256Hex = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+
+/**
+ * Reads a vendor manifest: { file, dir, libraries }. `manifest` is a path (relative to the repository or absolute)
+ * or null; a missing file means no vendored library, as in the build.
+ */
+export function loadManifest(manifest = DEFAULT_MANIFEST) {
+  if (manifest === null) return { file: null, dir: null, libraries: [] };
+  const file = path.resolve(REPO_ROOT, manifest);
+  if (!fs.existsSync(file)) return { file, dir: path.dirname(file), libraries: [] };
+  const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+  return { file, dir: path.dirname(file), libraries: Array.isArray(raw.libraries) ? raw.libraries : [] };
+}
+
+/** The manifest's libraries by the SHA-256 (lower-case hex) of their file: Map<sha256Hex, entry>. */
+export function vendorAllowance(manifest) {
+  const map = new Map();
+  for (const lib of (manifest && manifest.libraries) || []) {
+    if (lib && typeof lib.sha256 === 'string') map.set(lib.sha256.toLowerCase(), lib);
+  }
+  return map;
+}
+
+const sameCounts = (a = {}, b = {}) => {
+  const ka = Object.keys(a).sort();
+  const kb = Object.keys(b).sort();
+  return ka.length === kb.length && ka.every((k, i) => k === kb[i] && a[k] === b[k]);
+};
+
+/** The differences between what a library script holds and its allow block, as text (empty when equal). */
+function allowanceDifferences(name, found, allow = {}) {
+  const diffs = [];
+  const wantInline = [...(allow.inline || [])].sort();
+  if (JSON.stringify([...found.inline].sort()) !== JSON.stringify(wantInline)) {
+    diffs.push(`${name}: inline sequences ${JSON.stringify(found.inline)}, allowed ${JSON.stringify(wantInline)}`);
+  }
+  if (!sameCounts(found.networkApis, allow.networkApis)) {
+    diffs.push(`${name}: network APIs ${JSON.stringify(found.networkApis)}, allowed ${JSON.stringify(allow.networkApis || {})}`);
+  }
+  if (!sameCounts(found.urls, allow.urls)) {
+    const want = allow.urls || {};
+    const keys = [...new Set([...Object.keys(found.urls), ...Object.keys(want)])].sort();
+    const off = keys.filter((k) => found.urls[k] !== want[k]).map((k) => `${k} found ${found.urls[k] || 0}, allowed ${want[k] || 0}`);
+    diffs.push(`${name}: URLs differ from the allowance (${off.slice(0, 4).join('; ')}${off.length > 4 ? '; ...' : ''})`);
+  }
+  return diffs;
+}
+
 /** Parses a CSP string into a Map of directive name to source list; duplicates are reported. */
 export function parseCsp(csp) {
   const map = new Map();
@@ -228,10 +350,12 @@ export function parseCsp(csp) {
 // The checks on the built page
 
 /**
- * Checks a built page. `bytes` is a Buffer (or a string). `screenerUrl` is the one allowed remote URL.
- * Returns { results: [{ ok, message }], info: { bytes, sha256 } }.
+ * Checks a built page. `bytes` is a Buffer (or a string). `screenerUrl` is the one allowed remote URL. `manifest` is
+ * the vendor manifest whose libraries (and pinned allowances) the page may carry: a path, relative to the repository
+ * or absolute (default app/vendor/MANIFEST.json), or null for none.
+ * Returns { results: [{ ok, message }], info: { bytes, sha256, scripts, dataBlocks, namespaces, libraries } }.
  */
-export function checkBuiltPage(bytes, { screenerUrl, sizeBudget = SIZE_BUDGET_BYTES } = {}) {
+export function checkBuiltPage(bytes, { screenerUrl, manifest = DEFAULT_MANIFEST, sizeBudget = SIZE_BUDGET_BYTES } = {}) {
   const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(String(bytes), 'utf8');
   const results = [];
   const check = (ok, message) => { results.push({ ok: Boolean(ok), message }); return Boolean(ok); };
@@ -359,19 +483,59 @@ export function checkBuiltPage(bytes, { screenerUrl, sizeBudget = SIZE_BUDGET_BY
   check(elementProblems.length === 0,
     `no external resource, frame, form, inline handler or style attribute${elementProblems.length ? ` (found ${elementProblems.slice(0, 8).join(', ')})` : ''}`);
 
-  // Network APIs in executable scripts
-  const apiHits = [];
+  // Executable scripts: the vendored libraries, identified by their SHA-256, then the app script (D-038)
+  let man;
+  try {
+    man = loadManifest(manifest);
+  } catch (e) {
+    check(false, `the vendor manifest can be read (${e.message})`);
+    man = { file: null, dir: null, libraries: [] };
+  }
+  const allowance = vendorAllowance(man);
+  const libraryOf = new Map(); // script -> manifest entry
   for (const s of execScripts) {
+    const lib = allowance.get(sha256Hex(Buffer.from(s.content, 'utf8')));
+    if (lib) libraryOf.set(s, lib);
+  }
+  const others = execScripts.filter((s) => !libraryOf.has(s));
+  const scriptProblems = [];
+  if (others.length !== 1) scriptProblems.push(`${others.length} script(s) that are not a vendored library`);
+  else if (execScripts[execScripts.length - 1] !== others[0]) scriptProblems.push('the app script is not the last script');
+  const seen = new Set();
+  for (const [s, lib] of libraryOf) {
+    if (seen.has(lib.name)) scriptProblems.push(`${lib.name} inlined twice`);
+    seen.add(lib.name);
+    let same = false;
+    try { same = fs.readFileSync(path.join(man.dir, lib.file)).equals(Buffer.from(s.content, 'utf8')); } catch { /* missing file */ }
+    if (!same) scriptProblems.push(`${lib.name} is not byte-identical to its vendored file ${lib.file}`);
+  }
+  const libNames = [...libraryOf.values()].map((l) => l.name);
+  check(scriptProblems.length === 0,
+    `every executable script is a vendored library of the manifest (by SHA-256, equal to its file) or the app script, which comes last (${libNames.length ? libNames.join(', ') : 'no library'})`
+    + (scriptProblems.length ? ` (found ${scriptProblems.slice(0, 5).join('; ')})` : ''));
+
+  // Network APIs: none outside the libraries; inside a library exactly what its allow block pins (with its URLs and
+  // inline sequences)
+  const apiHits = [];
+  for (const s of others) {
     const base = lineOf(html, s.contentStart) - 1;
     for (const h of findNetworkApis(s.content, base)) apiHits.push(`${h.id} (line ${h.line})`);
   }
-  check(apiHits.length === 0, `no network API in the scripts${apiHits.length ? ` (found ${apiHits.slice(0, 8).join(', ')})` : ''}`);
+  check(apiHits.length === 0, `no network API in the app script${apiHits.length ? ` (found ${apiHits.slice(0, 8).join(', ')})` : ''}`);
+  const allowProblems = [];
+  for (const [s, lib] of libraryOf) allowProblems.push(...allowanceDifferences(lib.name, libraryAllowance(s.content), lib.allow));
+  check(allowProblems.length === 0,
+    `each vendored library holds exactly the network APIs, URLs and inline sequences its allow block pins (${libNames.length} librar${libNames.length === 1 ? 'y' : 'ies'})`
+    + (allowProblems.length ? ` (found ${allowProblems.slice(0, 4).join(' | ')})` : ''));
 
   // Remote URLs: only the Screener link, in its one static anchor
   const urlProblems = [];
   const namespaces = new Map();
   let screenerCount = 0;
   const inRange = (p, from, to) => p >= from && p < to;
+  const licencesBlock = dataScripts.find((s) => attr(s.tag, 'id') === LICENCES_BLOCK_ID) || null;
+  const licenceUrls = new Set([...libraryOf.values()].flatMap((l) => (l.allow && l.allow.licenceUrls) || []));
+  let licenceUrlCount = 0;
   SCHEME_URL_RE.lastIndex = 0;
   for (const m of html.matchAll(SCHEME_URL_RE)) {
     const url = m[0].replace(/\\\//g, '/');
@@ -383,7 +547,9 @@ export function checkBuiltPage(bytes, { screenerUrl, sizeBudget = SIZE_BUDGET_BY
       if (!inAnchor) urlProblems.push(`the MF Screener URL outside its anchor (line ${lineOf(html, p)})`);
       continue;
     }
-    if (NAMESPACE_URIS.has(url) && script && isExecutableScript(script.tag)) {
+    if (script && libraryOf.has(script)) continue; // counted against the library's allow block above
+    if (script && script === licencesBlock && licenceUrls.has(url)) { licenceUrlCount += 1; continue; }
+    if ((NAMESPACE_URIS.has(url) || OOXML_NAMESPACE_URIS.has(url)) && script && isExecutableScript(script.tag)) {
       const q = html[p - 1];
       if ((q === '"' || q === "'" || q === '`') && html[p + m[0].length] === q) {
         namespaces.set(url, (namespaces.get(url) || 0) + 1);
@@ -436,6 +602,8 @@ export function checkBuiltPage(bytes, { screenerUrl, sizeBudget = SIZE_BUDGET_BY
   info.scripts = execScripts.length;
   info.dataBlocks = dataScripts.length;
   info.namespaces = [...namespaces.entries()].map(([u, c]) => `${u} x${c}`);
+  info.libraries = [...libraryOf.values()].map((l) => ({ name: l.name, version: l.version, sha256: l.sha256 }));
+  info.licenceUrls = licenceUrlCount;
   return { results, info };
 }
 
@@ -452,8 +620,10 @@ function walk(dir, out = []) {
 }
 
 /**
- * Scans the application sources: no DOM sink or dynamic code, no network API, and no remote URL except the
- * Screener URL in links.json, which no module imports. Returns { results }.
+ * Scans the application sources: no DOM sink or dynamic code, no network API, no remote URL except the Screener URL
+ * in links.json (which no module imports) and the OOXML namespace names in OOXML_SOURCE_FILE, and no browser global
+ * read in the pure layers. `srcDir` plays the part of app/src, so OOXML_SOURCE_FILE and PURE_LAYERS are taken
+ * relative to it. Returns { results }.
  */
 export function checkSources(srcDir, { linksFile, screenerUrl } = {}) {
   const results = [];
@@ -464,14 +634,18 @@ export function checkSources(srcDir, { linksFile, screenerUrl } = {}) {
   }
   const files = walk(srcDir);
   const rel = (f) => path.relative(REPO_ROOT, f).replace(/\\/g, '/');
+  const inSrc = (f) => path.relative(srcDir, f).replace(/\\/g, '/');
+  const ooxmlFile = path.posix.relative(DEFAULT_SRC, OOXML_SOURCE_FILE); // exports/ooxml/namespaces.ts
   const linksAbs = linksFile ? path.resolve(linksFile) : null;
   const sinkHits = [];
   const apiHits = [];
   const urlHits = [];
   const importsLinks = [];
+  const globalHits = [];
   for (const f of files) {
     const text = fs.readFileSync(f, 'utf8');
     const isCode = /\.(?:[cm]?[jt]sx?)$/i.test(f);
+    const where = inSrc(f);
     if (isCode) {
       for (const { id, re } of SOURCE_SINKS) {
         re.lastIndex = 0;
@@ -479,17 +653,24 @@ export function checkSources(srcDir, { linksFile, screenerUrl } = {}) {
       }
       for (const h of findNetworkApis(text)) apiHits.push(`${h.id} in ${rel(f)}:${h.line}`);
       if (/links\.json/.test(text)) importsLinks.push(rel(f));
+      if (PURE_LAYERS.includes(where.split('/')[0])) {
+        for (const m of text.matchAll(GLOBAL_ACCESS_RE)) globalHits.push(`${m[1]} in ${rel(f)}:${lineOf(text, m.index)}`);
+      }
     }
     for (const m of text.matchAll(SCHEME_URL_RE)) {
       const url = m[0].replace(/\\\//g, '/');
-      const allowed = linksAbs && path.resolve(f) === linksAbs && url === screenerUrl;
+      const quote = text[m.index - 1];
+      const quoted = (quote === '"' || quote === "'" || quote === '`') && text[m.index + m[0].length] === quote;
+      const allowed = (linksAbs && path.resolve(f) === linksAbs && url === screenerUrl)
+        || (where === ooxmlFile && OOXML_NAMESPACE_URIS.has(url) && quoted);
       if (!allowed) urlHits.push(`${url} in ${rel(f)}:${lineOf(text, m.index)}`);
     }
   }
   check(sinkHits.length === 0, `sources: no innerHTML, outerHTML, insertAdjacentHTML, document.write, dangerouslySetInnerHTML, eval, new Function or string timer (${files.length} files)${sinkHits.length ? ` (found ${sinkHits.slice(0, 8).join(', ')})` : ''}`);
   check(apiHits.length === 0, `sources: no network API${apiHits.length ? ` (found ${apiHits.slice(0, 8).join(', ')})` : ''}`);
-  check(urlHits.length === 0, `sources: no remote URL except the MF Screener URL in links.json${urlHits.length ? ` (found ${urlHits.slice(0, 8).join(', ')})` : ''}`);
+  check(urlHits.length === 0, `sources: no remote URL except the MF Screener URL in links.json and the OOXML namespace names in ${ooxmlFile}${urlHits.length ? ` (found ${urlHits.slice(0, 8).join(', ')})` : ''}`);
   check(importsLinks.length === 0, `sources: no module refers to links.json (the build writes the link into the static page)${importsLinks.length ? ` (found ${importsLinks.join(', ')})` : ''}`);
+  check(globalHits.length === 0, `sources: the pure layers (${PURE_LAYERS.join(', ')}) read no browser global (U-53)${globalHits.length ? ` (found ${globalHits.slice(0, 8).join(', ')})` : ''}`);
   return { results };
 }
 
@@ -505,12 +686,13 @@ export function readScreenerUrl(linksFile) {
 // CLI
 
 function parseArgs(argv) {
-  const args = { file: DEFAULT_FILE, src: DEFAULT_SRC, links: DEFAULT_LINKS, rebuild: false };
+  const args = { file: DEFAULT_FILE, src: DEFAULT_SRC, links: DEFAULT_LINKS, manifest: DEFAULT_MANIFEST, rebuild: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--src') args.src = argv[++i];
     else if (a === '--no-src') args.src = null;
     else if (a === '--links') args.links = argv[++i];
+    else if (a === '--manifest') args.manifest = argv[++i];
     else if (a === '--rebuild') args.rebuild = true;
     else if (a === '--help' || a === '-h') args.help = true;
     else if (a.startsWith('--')) throw new Error(`unknown option ${a}`);
@@ -523,7 +705,7 @@ async function main(argv) {
   let args;
   try { args = parseArgs(argv); } catch (e) { console.error(`check-next: ${e.message}`); return 2; }
   if (args.help) {
-    console.log('Usage: node scripts/validation/check-next.mjs [<file>] [--src <dir>] [--no-src] [--links <file>] [--rebuild]');
+    console.log('Usage: node scripts/validation/check-next.mjs [<file>] [--src <dir>] [--no-src] [--links <file>] [--manifest <file>] [--rebuild]');
     return 0;
   }
   const abs = (p) => path.resolve(REPO_ROOT, p);
@@ -540,10 +722,13 @@ async function main(argv) {
   const print = (r) => { console.log(`  ${r.ok ? 'PASS' : 'FAIL'}  ${r.message}`); if (!r.ok) fails += 1; };
 
   console.log(`\n=== built page: ${args.file} ===`);
-  const page = checkBuiltPage(bytes, { screenerUrl });
+  const page = checkBuiltPage(bytes, { screenerUrl, manifest: args.manifest });
   console.log(`  INFO  ${page.info.bytes.toLocaleString('en-US')} bytes  SHA-256 ${page.info.sha256}`);
   console.log(`  INFO  ${page.info.scripts} inline script(s), ${page.info.dataBlocks} data block(s)`);
-  if (page.info.namespaces.length) console.log(`  INFO  XML namespace names in scripts (allowed): ${page.info.namespaces.join(', ')}`);
+  if (page.info.libraries && page.info.libraries.length) {
+    for (const l of page.info.libraries) console.log(`  INFO  vendored library ${l.name} ${l.version}  SHA-256 ${l.sha256}`);
+  } else console.log('  INFO  no vendored library inlined');
+  if (page.info.namespaces.length) console.log(`  INFO  XML namespace names in the app script (allowed): ${page.info.namespaces.join(', ')}`);
   page.results.forEach(print);
 
   if (args.src) {

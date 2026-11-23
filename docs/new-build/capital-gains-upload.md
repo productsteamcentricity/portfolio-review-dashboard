@@ -983,6 +983,21 @@ reviewer's was used. Each is applied in the sections named.
 | LD-41 | The financial reviewer's fix for funds of funds applied as written: the analyst's equity-oriented class on a fund of funds gives the 90/90 sub-type to that scheme's sales in that financial year only, without setting the per-scheme 90/90 flag, so a fund can pass the 90/90 test in one year and fail it in another; with the flag cleared, the analyst sets the class of each year; a lots test with the flag cleared, the equity-oriented class for FY 2019-20 and the other non-equity class for FY 2021-22 (lots bought 1 Jun 2018, sold 1 Aug 2019 and 1 Aug 2021: EQ-LT-3 and NE-LT-3) | §9.1 step 1 and "Sub-type", TR-6, TR-18, LD-27, LD-35, §14; `DATA_DICTIONARY.md` §7; parity row E-152; `08-regression-test-plan.md` |
 | LD-42 | Known answers are compared to ₹0.01 on the unrounded total; tax and cess are not rounded separately (KA-20: unrounded Rs 706.2857, Rs 706.29) | §13.4, §14; `08-regression-test-plan.md` |
 
+### 10.12 The owner's answers of 2 Nov 2026 (PD-02, PD-03)
+
+The owner answered two questions the live page's tax batch asked (CR-0008 questions 17 and 18; recorded for the live
+page as D-043 by its tax batch, TA-03). They bind the new build's M7 as requirements:
+
+- **A holding labelled "Listed AIF" (PD-02).** Its AIF category defaults to Category III, with a neutral caution on
+  screen, on the slide and in the workbook: "confirm against the AIF's statement". A category the file itself states
+  for the holding wins over the default, and then no caution is shown. The default is a labelled assumption, never a
+  silent one.
+- **Crypto (PD-03).** Gains and losses on crypto assets stay out of set-off ("no set-off"): they never absorb, and are
+  never absorbed by, other capital gains or losses.
+
+Tests for M7: a "Listed AIF" holding without a stated category reads Category III with the caution; the same holding
+with a stated category reads that category without it; a crypto loss beside a capital gain leaves the gain unreduced.
+
 ## 11. Validation results
 
 | Rule id (`capital-gains.`) | Severity | When |
@@ -1490,3 +1505,4 @@ Answers are compared to ₹0.01 (§2.3) on the unrounded total: tax and cess are
 | 27 Oct 2026 (third revision) | The financial and completeness approval reviews applied with the lead's decisions LD-33 to LD-39 (§10.11): NE-LT-1 legs chosen per lot on signed amounts before set-off, the leg of a loss lot, the year's-total figure computed with set-off, and "lower or equal" only where no loss meets NE-LT-1 gains (§9.3, TR-10, §11, §15 item 4, KA-20); lots without a computable taxable gain left out of the rate buckets and the person-year and family sum marked PARTIAL COVERAGE (§9.3, KA-21); the analyst's equity-oriented class on a fund of funds only from 2018-04-01, setting the 90/90 sub-type, and the 90/90 flag cleared to class a year otherwise (§9.1); the re-base formula and the successor candidates (§5, TR-5, KA-17 in two lots); the listed flag missing in the valid keys (§9.1); `costBasis` `none` narrowed and blank cells skipping row checks (§4); each fixture's analyst inputs recorded and its results expected without and with them (§13.1, §14); the fixtures' client labels and successor lots (§13.2, §13.4); the rule bank's tax paths read per person (§15). §10 is not yet approved |
 | 27 Oct 2026 (fourth revision) | The financial and completeness second approval reviews applied with the lead's decisions LD-40 to LD-42 (§10.11): every claim that NE-LT-1 per lot gives a tax lower than or equal to the year's-total figure removed, with its property test; NE-LT-1 per lot as the per-asset reading, the year's-total figure shown beside it, which is lower depending on the year's losses, and the 20% leg on equal positive figures (§9.3 steps 1 and 8, §10.9, §11, §15 item 4); KA-19, KA-20 and the new KA-22 as plain known answers with both figures (§13.4, §14); the analyst's equity-oriented class on a fund of funds giving the 90/90 sub-type to that scheme's sales in that financial year only, without setting the per-scheme 90/90 flag (§9.1, TR-6, TR-18, §14); known answers compared to ₹0.01 on the unrounded total, tax and cess not rounded separately (§13.4, KA-20). §10 is not yet approved |
 | 27 Oct 2026 (approval) | The financial-domain reviewer approved the design and the tax-rule table v1 for M7 code (§10.10); owner and tax-adviser items stay open (§15) |
+| 2 Nov 2026 | The owner's answers PD-02 and PD-03 as M7 requirements (§10.12): a holding labelled "Listed AIF" defaults to Category III with the neutral caution "confirm against the AIF's statement", the file's own stated category winning; crypto stays "no set-off" |
