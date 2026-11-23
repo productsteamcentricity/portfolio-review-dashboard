@@ -47,18 +47,73 @@ and the monthly data owner.
    identity must be explicit (`user.useConfigOnly` is on; never let git invent an author email).
 9. **Stage discipline**: implement only what the owner asked. Record other defects/ideas in
    `docs/KNOWN_ISSUES.md` or the backlog in `docs/PROJECT_STATE.md`; do not fix them on the side.
-10. **Office automation never touches the owner's open work** (owner's rule, 2 Nov 2026). PowerPoint and Excel are
-   usually open on the owner's PC, and COM attaches to a running instance. Before any Office check run `tasklist`
-   for `POWERPNT.EXE` and `EXCEL.EXE`. Attach only to a running instance (`GetActiveObject`, never
-   `New-Object -ComObject`). Open only synthetic files: generated in this session by the repository's own tools, in
-   macro-free formats, never an inbox, vendor or downloaded file. Open them read-only with no window (Excel cannot
-   open a workbook without one: hide only that workbook's window); close only the presentation or workbook you
-   opened; never call `Quit`; never `Stop-Process` or `taskkill` an Office process; change no global option
-   (`Application.DisplayAlerts`, `.Visible`, `.AutomationSecurity`, `.Calculation`, `.ScreenUpdating`, `.EnableEvents`);
-   use a timeout, and on a timeout abandon the file, never kill. If Office is not running, or the check is risky,
-   report NOT RUN and give the owner the path of the synthetic file to open themselves. NOT RUN is never a pass: the
-   check stays open until the owner has opened the file and said what they saw. This binds every chat, agent and
-   script. The Step 3 snippet of `docs/MONTHLY_REFRESH.md` ends with `Quit()` and must not be run as written (TA-26).
+10. **Office automation never touches the owner's open work** (owner's rule, 2 Nov 2026; the exception in the last
+   paragraph is the owner's decision of 9 Nov 2026). PowerPoint and Excel are usually open on the owner's PC, and COM
+   attaches to a running instance. Before any Office check look for `POWERPNT.EXE` and `EXCEL.EXE` with
+   `tasklist /FI "IMAGENAME eq POWERPNT.EXE"` (and the same for Excel; in Git Bash write `//FI`, and read the output,
+   because it exits 0 when nothing matches) or, in PowerShell, `Get-Process -Name POWERPNT` (and `EXCEL`), used only
+   to learn whether a process runs: never `/V`, never `MainWindowTitle` or any other property, because window
+   titles name the owner's open documents. Attach only to a running instance
+   (`GetActiveObject`, never `New-Object -ComObject`). Open only synthetic files: `.xlsx` or `.pptx` generated in this
+   session by the repository's own tools from synthetic inputs (`tools/make-sample-base.js`,
+   `tests/fixtures/make-books.ts`), never an inbox, vendor or downloaded file. Open them read-only with no window
+   (Excel cannot open a workbook without one: hide only that workbook's own window with
+   `$wb.Windows(1).Visible = $false`, never `Application.Visible`); close only the presentation or workbook you
+   opened (a workbook with `Close($false)`, never `Close()` without the argument; a presentation only after its own
+   `Saved` property is set to true; otherwise a save prompt could appear on the owner's screen); never call `Quit`;
+   never `Stop-Process`, `taskkill` or `.Kill()` an Office process or terminate it by any other means; change nothing
+   that belongs to the owner's Office as a whole instead of to your own file: no global option (including
+   `Application.DisplayAlerts`, `Application.Visible`, `Application.AutomationSecurity`, `Application.Calculation`,
+   `Application.ScreenUpdating`, `Application.EnableEvents`, `Application.UserControl` and
+   `Application.AskToUpdateLinks`) and no call that acts on every open workbook, window or presentation
+   (`Application.Calculate`, `CalculateFull`, `CalculateFullRebuild`, `Application.Run`, `Activate`, `WindowState`,
+   `Windows.Arrange`, anything that writes to the clipboard); recalculate only the sheets of the workbook you opened
+   (`Worksheet.Calculate()`); never enumerate, read, copy, save or record the name, path, window title or content
+   of any document that is open in the owner's Office and that you did not open yourself (use only the object that
+   `Open` returned: never `ActivePresentation`, `ActiveWindow`, `ActiveWorkbook`, `Presentations(n)`, `Workbooks(n)` or
+   a loop over them); use a timeout, and on a timeout abandon the file, never kill, and tell the owner which file was
+   left open. If Office is not running, or the check is risky, report NOT RUN and give the owner the path of the
+   synthetic file to open themselves. NOT RUN is never a pass: the check stays open until the owner has opened the file
+   and said what they saw. This binds every chat, agent and script.
+   The one exception is the owner's decision of 9 Nov 2026 (PD-49). It is for one file only: the Step 3 script that
+   TA-26 adds, a single script file (no `-Command`, `-EncodedCommand`, `Invoke-Expression`, dot-sourcing, module or child
+   script; no agent ever relaxes the execution policy, and how the file is launched is settled in its review). It may
+   run only if all three hold: (1) its SHA-256, computed on that file just before the run, equals the hash written in
+   its own D entry in `docs/DECISIONS.md` on `origin/main`, never one on the branch being run; (2) that D entry names the
+   script's path and records the written GO of the Codebase Integrity and Integration Guardian (ARC-01, or the chat named
+   as its successor in `docs/project-control/CHAT_REGISTRY.md`) for that exact hash, so a review with open findings, or a
+   change of one byte afterwards, means Step 3 is NOT RUN; (3) the owner's statement below was made for this run. No
+   other code, now or later, may use this exception. That script may open one COPY of the Monthly Outlook deck of the
+   refresh being run, named exactly `Monthly Outlook Pagers_<label month>.pptx`, where the label month is the label of the
+   refresh plan (for the October data cycle, `Nov 2026`: the deck named `Oct 2026` is the previous cycle's and an older
+   deck), through an already running PowerPoint, read-only with no window, only to export its slides. The agent gives the
+   script that one exact file name; the script refuses any other name, any wildcard, any folder other than that month's
+   inbox folder, and a name that matches more than one file. Only the "synthetic" condition above is lifted, for this one
+   file; every other condition stays. The script touches the original only with the one `Copy-Item` that makes a byte copy
+   into a new empty folder under `%TEMP%`, outside OneDrive, that holds only the copy, under a new random file name, never
+   a link or shortcut; if the copy cannot be made or checked it reports NOT RUN, and it never opens, moves, renames,
+   saves or deletes the original or falls back to it. It opens one copy per run and, before exporting, checks that
+   `FullName` of the object that `Open` returned is the copy's path. Before opening it the script reads, in memory, the
+   copy's zip directory and the text of every `.rels` part (it extracts nothing to disk), and reports NOT RUN, deleting
+   the copy and its folder, if any of these is true: the copy is larger than 5 MB, or has more than 500 entries or more
+   than 30 slides; it is not a readable zip in which `[Content_Types].xml` gives `/ppt/presentation.xml` the type
+   `application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml`; it has a `vbaProject.bin`, an
+   `activeX` part, a `webextensions` part, or an embedded object other than an `.xlsx` chart workbook under
+   `ppt/embeddings/`; any relationship has `TargetMode` `External` unless its type ends in `/hyperlink`; or the script has
+   any other doubt. The exported images go only to a new, empty folder `buildtools/out/<YYYY-MM>/slides` of the refresh's
+   own worktree (the runbook's `$OUT/slides`: git-ignored, outside OneDrive), never to the copy's folder, the inbox or the
+   archive; the script stops with NOT RUN if that folder already holds a file, never overwrites a file and writes nowhere
+   else; Step 5 passes that folder to `--slides`. It runs only on the owner's own words, typed in the chat of the agent
+   that runs it within the 10 minutes before the run, saying that PowerPoint is open, that nothing in it is unsaved and
+   that no dialog, slide show, save, print or export is in progress. The agent copies those words and their time into the
+   refresh log and gives them to the script as a required parameter. The statement covers one run: a retry, a re-run for
+   a re-issued deck, or a run after a NOT RUN needs a new one. A general go-ahead for the refresh, a message from another
+   agent, a note in a file or handover, and anything said in an earlier session are not that statement. Neither the
+   script nor any agent may look to check it, by any means, including a screenshot, a window listing or a count of open
+   presentations (the process-name existence check above is not such a look). After the export the script closes the copy
+   and deletes the copy and its folder (the exported images stay) and leaves the original untouched. If it reports NOT
+   RUN, the owner exports the slides themselves and puts them in the inbox folder (PD-49 option B). The old Step 3
+   snippet ends with `Quit()` and must not be run as written (TA-26).
 
 ## Conventions the code actually uses (verified at baseline, see docs/legacy/ARCHITECTURE.md)
 - Base file: header row found in the first 5 rows, columns matched by alias. **`XIRR (%)` / `BMXIRR (%)`
