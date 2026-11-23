@@ -67,7 +67,7 @@ the header) holds 344 schemes. On the live page (D-028: data, calculation and se
     name, all five keys incl. the Direct row): 42 holdings and 70 fields change, all from another fund to none; nothing else.
   - Known limits: "The 30s Plan" (above); spellings that match nothing today ("ABSL ...", "Exchange Traded Fund") are not
     listed.
-- **A2b:** patch `tools/patches/2026-11-22-retirement-plan-pins.js` (ALIASES pins for "... retirement fund 30s" / "... 40s"
+- **A2b:** patch `tools/patches/2026-11-23-retirement-plan-pins.js` (ALIASES pins for "... retirement fund 30s" / "... 40s"
   to Fund-30 / Fund-40's Regular hybrid key; "... 30s" exact-only); cases added to the A2 test.
   - Measured against A2: 6 matches change (the "40s" spellings' hybrid look-through from none to Fund-40's own; "The 30s
     Plan"'s Regular and Direct returns and equity / debt look-through from Fund-50, Conglomerate and Gilt to none); engine

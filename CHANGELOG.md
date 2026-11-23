@@ -13,7 +13,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ### Fixed (CR-0010 A2b; not published until the owner says "publish")
 - **The AMC's own "The 30s Plan" / "The 40s Plan" spellings of Aditya Birla SL Retirement Fund** get their own fund's
   look-through and never Retirement Fund-50's returns: an ALIASES pin to their own hybrid entry plus exact-only (patch
-  `tools/patches/2026-11-22-retirement-plan-pins.js`). Measured over every universe; nothing else moves.
+  `tools/patches/2026-11-23-retirement-plan-pins.js`). Measured over every universe; nothing else moves.
 
 ### Fixed (CR-0010 A2; not published until the owner says "publish")
 - **Three holdings no longer take another fund's data.** Motilal Oswal Nasdaq 100 ETF no longer gets the Nifty 100 ETF's
