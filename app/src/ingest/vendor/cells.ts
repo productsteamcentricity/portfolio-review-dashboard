@@ -10,7 +10,7 @@ export function clean(v: unknown): string {
   return v == null ? '' : String(v).trim();
 }
 
-const NULL_TEXT = new Set(['', '-', '—', 'NA', 'N/A', '#N/A']);
+const NULL_TEXT = new Set(['', '-', '\u2014', 'NA', 'N/A', '#N/A']);
 
 /** A number from a cell, rounded to 6 decimals; null for an empty cell, a placeholder or text that is not a number.
  * Commas are removed first ("1,234.5"). */

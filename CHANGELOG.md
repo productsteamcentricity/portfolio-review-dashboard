@@ -20,6 +20,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **The base file's ISIN column** (the owner's answer of 25 Nov 2026: ISIN first, then the name): any heading containing
   "ISIN" is read; a cell is kept only in the ISIN form; a file without the column reads exactly as before. Read only: no
   figure changes; the import report lists the column among those read when a file has one.
+- **The PMS performance file (E-08, KI-033):** read by header name as the monthly pipeline reads it (returns as stated,
+  never multiplied by 100; AUM from rupees to whole crore; duplicates by the normalised key; a missing column refuses the
+  file). The monthly merge into the previous block stays with M11.
 - **Tests:** `tests/unit/ingest/vendor/mf-monitor.test.ts` on synthetic issues; `tests/parity/monitor.parity.test.ts`
   against the browser's legacy parser, every difference a ledgered pipeline correction.
 
