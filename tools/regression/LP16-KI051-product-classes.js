@@ -23,6 +23,18 @@
         look-through data"; an unlisted share is not direct equity.
      4. A fund-like name under such a label used to take the mutual fund's
         look-through and returns (HDFC Flexi Cap Fund(G) as "FD"): now none.
+     5. The financial review of LP-16: a "GIFT City AIF" / "Offshore PMS" (and
+        the reverse pairs) with a real AIF or PMS name takes no domestic AIF's
+        or PMS's returns or look-through (controls: as "AIF" / "PMS" they do);
+        "Offshore Equity Shares", "GIFT City Stocks" and "Unlisted Equity
+        Shares" are not read as listed stocks.
+     6. No reference data exists for these types by design: an FD is not
+        reported as "could not be matched" (an unknown mutual fund still is).
+     7. Whole words only and the I-40 edge points: "Corporate Bond Fund",
+        "Bond ETF", "FDR", "FD Fund", "Bonded Warehouse" stay MF.
+     8. The rules are data (REFDATA.PRODUCT_CLASS_RULES, contract I-40) in
+        the owner's order, and with an empty table the engine classifies
+        nothing as non-MF (it reads the data, not a copy).
      node tools/regression/LP16-KI051-product-classes.js
    ========================================================================== */
 'use strict';
@@ -39,6 +51,7 @@ function run(product, name, asset) {
   return { h, ex, m };
 }
 const cls = (p, n) => { const r = run(p, n); return r.h.directEquity ? '(direct equity)' : r.h.pcls; };
+const _isNonMf = c => ['GIFT City funds', 'Offshore funds', 'US-dollar bonds (through LRS)', 'Fixed deposits', 'REITs and InvITs', 'Unlisted shares'].indexOf(c) >= 0;
 
 /* 1 */
 const WANT = {
@@ -72,6 +85,39 @@ ok(before.eqKey === 'HDFC Flexi Cap Fund(G)' && before.perfKey === 'HDFC Flexi C
 ok(!after.eqKey && !after.perfKey, '4. labelled "FD", the same name takes neither');
 const un = run('Unlisted shares', 'Swiggy Ltd').h;
 ok(!un.directEquity && !un.stockInfo && un.pcls === 'Unlisted shares', '4. an unlisted share is not looked up as a listed stock');
+
+/* 5: the financial review of LP-16. A GIFT City or offshore product whose text also says AIF or PMS takes no domestic
+   AIF's or PMS's returns (controls: the same names as "AIF" / "PMS" do match) */
+const AIF = 'Buoyant Capital – Opportunities Strategy', PMS = 'Abakkus - All Cap Approach';
+ok(run('AIF', AIF).h.perfSrc === 'AIF' && run('PMS', PMS).h.perfSrc === 'PMS', '5. control: as "AIF" / "PMS" these names take their own returns');
+[['GIFT City AIF', AIF], ['Offshore PMS', PMS], ['GIFT City PMS', PMS], ['Offshore AIF', AIF]].forEach(([p, n]) => {
+  const h = run(p, n).h;
+  ok(_isNonMf(h.pcls) && !h.perfKey && !h.perfSrc && !h.eqKey, '5. "' + p + '" with ' + n + ': class ' + h.pcls + ', no returns, no look-through');
+});
+/* a non-MF product is never read as a listed stock, whatever else it says */
+[['Offshore Equity Shares', 'Offshore funds'], ['GIFT City Stocks', 'GIFT City funds'], ['Unlisted Equity Shares', 'Unlisted shares']]
+  .forEach(([p, c]) => { const h = run(p, 'HDFC Bank Ltd.').h; ok(!h.directEquity && h.pcls === c, '5. "' + p + '" is ' + c + ', not a listed stock'); });
+
+/* 6: no reference data exists for these types by design, so they are not "could not be matched" */
+{ const r = run('Fixed Deposit', 'Synthetic Bank Fixed Deposit 2027');
+  ok((r.m.unmatched || []).indexOf('Synthetic Bank Fixed Deposit 2027') < 0 && r.ex && /Not a mutual fund \(Fixed deposits\)/.test(r.ex.reason),
+    '6. an FD is not reported unmatched; the look-through box lists it with its class');
+  const r2 = run('Mutual Fund', 'Synthetic Unknown Opportunities Fund');
+  ok((r2.m.unmatched || []).indexOf('Synthetic Unknown Opportunities Fund') >= 0, '6. control: an unknown mutual fund is still reported unmatched'); }
+
+/* 7: whole words only, and the edge points of contract I-40 */
+[['Corporate Bond Fund', 'MF'], ['Bond ETF', 'MF'], ['FDR', 'MF'], ['FD Fund', 'MF'], ['Bonded Warehouse', 'MF'], ['Fixeddeposit', 'Fixed deposits'],
+  ['Off Shore Fund', 'Offshore funds'], ['GIFTCity Fund', 'GIFT City funds']].forEach(([p, c]) => ok(cls(p) === c, '7. "' + p + '" -> ' + c + ' (got ' + cls(p) + ')'));
+
+/* 8: the rules are data (REFDATA.PRODUCT_CLASS_RULES, contract I-40), in this order, and the engine reads them */
+const RULES = REF.PRODUCT_CLASS_RULES || [];
+ok(RULES.map(r => r.label).join('|') === 'GIFT City funds|Offshore funds|US-dollar bonds (through LRS)|Fixed deposits|REITs and InvITs|Unlisted shares',
+  '8. REFDATA.PRODUCT_CLASS_RULES holds the six owner labels in order');
+ok(RULES.filter(r => r.beforePmsAifSif).map(r => r.label).join('|') === 'GIFT City funds|Offshore funds', '8. GIFT City and offshore are tested before PMS / AIF / SIF');
+{ const R2 = JSON.parse(JSON.stringify(REF)); R2.PRODUCT_CLASS_RULES = [];
+  const rows = E.parseBaseRows([H, ['Test Client', 'HDFC Flexi Cap Fund(G)', '', 'Equity', 'HDFC', 'FD', 1, 1]]);
+  E.computeReview(rows, R2, { familyName: 'Test', asOnDate: '25 Nov 2026' });
+  ok(rows[0].pcls === 'MF', '8. with an empty table the engine classifies nothing as non-MF (it reads the data, not a copy)'); }
 
 if (fail) { console.log('\n' + fail + ' check(s) FAILED'); process.exit(1); }
 console.log('\nall checks passed');
