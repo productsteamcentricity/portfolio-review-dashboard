@@ -88,6 +88,30 @@ the header) holds 344 schemes. On the live page (D-028: data, calculation and se
     - domestic names it still catches: "First Global ..." (two PMS strategies), "SMC Global ...", and "Edelweiss MSCI India
       Domestic & World Healthcare 45" (Indian-listed companies);
     - debt funds of funds investing in US Treasuries count in the "International / Global equity" share.
+  - The first two limits are closed by A4 for the funds in the data; the third stays.
+- **A4** (24 Nov 2026; the moderator under PD-65: an accuracy fix inside the owner-approved A3 change; branch
+  `fix/cr0010-a4-intl-terms` from `main` `0e483b6`): patch `tools/patches/2026-11-24-intl-terms.js`; test
+  `tools/regression/CR0010-a4-intl-terms.js`; the A3 test's page-pattern check follows the new form.
+  - For a fund (any holding that is not direct equity) the name test also takes intl, nyse, off-shore / offshore, asia(n),
+    asean, brazil, latin america, europ(e/ean), hang seng, fang, eafe and emerging market(s), and ignores "first global",
+    "smc global", "india domestic", "s&p bse" and "magnum global". A direct-equity holding keeps exactly A3's test. The
+    category test is unchanged.
+  - Measured over the same 4,741 fund names: A3 117, A4 139. In (27): Aditya Birla SL Intl. Equity (Regular, Direct);
+    Edelweiss ASEAN Equity Off-Shore, Emerging Markets Opp Eq. Offshore and Europe Dynamic Equity Off-shore (each Regular,
+    Direct); Franklin Asian Equity (Regular, Direct); HSBC Brazil (Regular, Direct); the Hang Seng index; Invesco Pan European
+    Equity FoF (Regular, Direct); Mahindra Manulife Asia Pacific REITs FOF (Regular, Direct); Mirae Asset Hang Seng TECH ETF and
+    its FoF (Regular, Direct); Mirae Asset NYSE FANG+ ETF and its FoF (Regular, Direct); the NYSE index; Nippon India ETF Hang
+    Seng BeES; PGIM India Emerging Markets Equity FoF (Regular, Direct). Out (5): Edelweiss MSCI India Domestic & World
+    Healthcare 45 Index Fund (Regular, Direct), First Global - Indian Multi Asset Allocation, First Global - The India Super 50,
+    SMC Global - Growth. No genuine overseas name goes out; all 14 entries of the vendor's "Global" sheet count (4 did not).
+    Every remaining name with a telling word ("MSCI India", "Innovation", "Technology") is domestic.
+  - Direct equity: over the 10,439 company names of STOCK_INFO / STOCK_RET, 357 before and 357 after. The fund terms would have
+    added 43 Indian companies ("Asian Paints", "Aban Offshore", "Asian Granito", ...), so they are not used for shares.
+  - Known limit (a finding for the moderator; not changed): under A3, a direct-equity holding whose company name contains
+    "International", "Global", "Overseas" or "World" counts as international. Most of the 357 are Indian companies (Bikaji
+    Foods International, Allcargo Global, ...); a few are foreign shares (American International Group, Apollo Global
+    Management). STOCK_RET carries an ISIN for Indian companies (INE...) and none for the foreign shares, so a domestic test
+    by ISIN is possible; it would be a new rule, for the moderator and the owner to decide.
 
 ## Verification
 
