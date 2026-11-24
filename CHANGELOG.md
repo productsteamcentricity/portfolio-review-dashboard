@@ -14,7 +14,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **The SWOT's international share counts the overseas funds it missed** ("Intl.", Asian, Asia Pacific, ASEAN, Brazil,
   Europe, Hang Seng, NYSE FANG+, Emerging Markets, Off-shore) **and no longer counts "First Global", "SMC Global" or the
   "MSCI India Domestic & World Healthcare 45" index fund.** Over 4,741 fund names: 117 → 139 (27 in, 5 out, no genuine name
-  out). A direct-equity holding keeps the A3 test. Patch `tools/patches/2026-11-24-intl-terms.js`; test
+  out). A direct-equity holding keeps the A3 test, except an ETF held as a share, which takes the fund test. Patch `tools/patches/2026-11-24-intl-terms.js`; test
   `tools/regression/CR0010-a4-intl-terms.js`. [CR-0010](docs/change-requests/CR-0010-other-funds-october.md).
 
 ### Fixed (CR-0010 A2b; not published until the owner says "publish")
