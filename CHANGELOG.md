@@ -17,6 +17,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **The SIF Monitor (E-07):** read as the pipeline does: the benchmark group, index rows, rows with no category and no AUM
   and the disclaimer are not schemes; a Month End date is not a fund house. October 2026: equal to the embedded SIF_PERF
   (30 schemes).
+- **The base file's ISIN column** (the owner's answer of 25 Nov 2026: ISIN first, then the name): any heading containing
+  "ISIN" is read; a cell is kept only in the ISIN form; a file without the column reads exactly as before. Read only: no
+  figure changes; the import report lists the column among those read when a file has one.
 - **Tests:** `tests/unit/ingest/vendor/mf-monitor.test.ts` on synthetic issues; `tests/parity/monitor.parity.test.ts`
   against the browser's legacy parser, every difference a ledgered pipeline correction.
 
