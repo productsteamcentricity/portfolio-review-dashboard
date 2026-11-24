@@ -1113,7 +1113,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
   function normCo(s){ s=String(s||"").toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\b(ltd|limited|the|inc|corp|co|of|india)\b/g," "); return s.replace(/\s+/g," ").trim(); }
   function isDirectEquity(h){
     var p=String(h.product||"").toLowerCase();
-    if (/mutual fund|pms|aif|index fund|^etf$|bond|debenture|ncd|fixed deposit|\bfd\b/.test(p)) return false;
+    if (/mutual fund|pms|aif|index fund|^etf$|bond|debenture|ncd|fixed deposit|\bfd\b|unlisted/.test(p)) return false;   /* LP-16: unlisted is its own class */
     return /direct equity|^equity$|^equities$|stock|shares?|listed equity|scrip|sip/.test(p);
   }
   // Commodity funds (gold/silver/precious-metal) — excluded from equity & debt look-through analytics
@@ -1575,11 +1575,32 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     var eqBy=splitByClass(EQ,eqKeys), hyBy=splitByClass(HY,hyKeys), dbBy=splitByClass(DB,dbKeys);
     var cacheEQP={}, cacheEQA={}, cacheEQU={};
     /* The base file's Product column, taken at face value and never rewritten. */
+    /* LP-16 / KI-051: the owner's six non-MF product types (D-7), read from the Product column without regard to
+       letter case. [class label, keywords, OD-6 exception: a product that also says ETF / MF / fund stays MF,
+       products that are none of the six and keep their old class: sovereign gold bonds and market-linked debentures]. */
+    var NON_MF_CLASSES=[
+      ["GIFT City funds", /gift\s*city|\bifsc\b/i, false],
+      ["Offshore funds", /off-?shore/i, false],
+      ["US-dollar bonds (through LRS)", /\bbonds?\b|\bncds?\b|\blrs\b|debenture/i, true, /sovereign\s*gold|\bsgbs?\b|market[\s-]*linked|\bmlds?\b/i],
+      ["Fixed deposits", /fixed\s*deposit|\bfds?\b/i, true],
+      ["REITs and InvITs", /\breits?\b|\binvits?\b/i, true],
+      ["Unlisted shares", /unlisted/i, true]
+    ], _fundWord=/\betfs?\b|\bmfs?\b|mutual fund|\bfunds?\b|\bfofs?\b/i, _nonMf={};
+    NON_MF_CLASSES.forEach(function(c){ _nonMf[c[0]]=1; });
+    function nonMfClass(product){
+      var p=String(product||"");
+      for (var i=0;i<NON_MF_CLASSES.length;i++){ var c=NON_MF_CLASSES[i];
+        if (c[1].test(p) && !(c[2] && _fundWord.test(p)) && !(c[3] && c[3].test(p))) return c[0]; }
+      return null;
+    }
     function productClass(h){
       var p=String(h.product||"").toUpperCase();
+      var _n=nonMfClass(h.product);
+      if (_n==="GIFT City funds"||_n==="Offshore funds") return _n;   /* before PMS / AIF / SIF: a "GIFT City AIF" is a GIFT City fund */
       if (p.indexOf("PMS")>=0) return "PMS";
       if (p.indexOf("AIF")>=0) return "AIF";
       if (p.indexOf("SIF")>=0) return "SIF";
+      if (_n) return _n;
       return "MF";
     }
     /* PMS names are free-form, so they use the brand-anchored matcher the
@@ -1649,6 +1670,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       if (isPMS){ h.perfKey=matchPMS(h.name,pmsKeys,cachePMS); if(h.perfKey)h.perfSrc="PMS"; }
       else if (isAIF){ h.perfKey=matchInstrument(h.name,h.amc,aifKeys,cacheAIF); if(h.perfKey)h.perfSrc="AIF"; }
       else if (isSIF){ h.perfKey=matchInstrument(h.name,"",sifKeys,cacheSIF); if(h.perfKey)h.perfSrc="SIF"; }
+      else if (_nonMf[h.pcls]){ /* LP-16: no performance data for this product class; never a mutual fund's returns */ }
       else { h.perfKey=matchInstrument(h.name,h.amc,mfKeys,cacheMF); if(h.perfKey)h.perfSrc="MF"; }
       // unmatched = neither analytics nor performance resolved
       if (!h.commodity && !h.eqKey && !h.hyKey && !h.dbKey && !h.perfKey) unmatchedSet[h.name]=1;
@@ -2042,6 +2064,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       if (h.directEquity) return "Listed stock not found in the reference data";
       var c=h.pcls||"MF";
       if (c==="SIF") return "No SIF look-through data exists";
+      if (_nonMf[c]) return "Not a mutual fund ("+c+"): no look-through data";
       if ((c==="PMS"||c==="AIF") && h.anAsset!=="equity" && h.anAsset!=="" && h.anAsset!==undefined && h.anAsset!=="hybrid")
         return "No "+c+" look-through data ("+c+" analytics cover equity only)";
       return "No "+c+" analytics data for this scheme";
