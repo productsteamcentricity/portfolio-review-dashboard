@@ -23,7 +23,7 @@ import type { DayNumber } from '../model/value.ts';
 import type { MissingStatus } from '../model/status.ts';
 import type { AccountId, ClientId, DistributorId, SourceFileId } from '../model/ids.ts';
 import type { RowRef, SheetAttempt } from '../model/source.ts';
-import type { Severity, ValidationResult, ValidationScope } from '../model/validation.ts';
+import type { AnalystQuestion, Severity, ValidationResult, ValidationScope } from '../model/validation.ts';
 import type { AuditEntry } from '../model/audit.ts';
 import { STATUS } from '../model/status.ts';
 import { cellText } from './workbook.ts';
@@ -323,12 +323,13 @@ export type CgRepeatEvent = {
 };
 
 /**
- * The analyst question of design §6, one per repeated sale event (kind `capital-gains-repeats`). Local to this
- * reader until model/validation.ts carries the kind (requested of MOD-03, PLAN-01 D2).
+ * The analyst question of design §6, one per repeated sale event. Its kind is the `capital-gains-repeats` member of
+ * the model's analyst-question kind (model/validation.ts; added under MOD-03's exception, PLAN-01 D2); the shape
+ * stays here until MOD-03 writes I-37 (D1).
  */
 export type CgRepeatQuestion = {
   id: string;
-  kind: 'capital-gains-repeats';
+  kind: Extract<AnalystQuestion['kind'], 'capital-gains-repeats'>;
   eventId: string;
   options: readonly CgRepeatAnswer[];
   prompt: string;

@@ -5,8 +5,8 @@
 //
 // Sheet "Capital Gains": row 1 holds the 29 headers of the export in its order (trimmed), the header frozen, no data
 // rows. Sheet "Read Me": one row per column (required or not, what to enter, the unit), then the instructions.
-// The column number formats (dates, money, units) are declared on the columns; the writer applies a column's style to
-// data cells only, so on the empty sheet they take effect once the writer writes column-default styles (PLAN-01 D3).
+// The column number formats are column defaults (`<col style>`, PLAN-01 D3), so what the analyst types into the empty
+// sheet takes them: dates in the house date format, money and units in the house Indian-grouped formats.
 // No sentence holds an en or em dash (D-029).
 
 import type { CgColumn, CgField } from '../../ingest/capital-gains.ts';
@@ -104,7 +104,7 @@ export function cgTemplateSheet(): SheetSpec {
   const columns: ColumnSpec[] = CG_TEMPLATE_COLUMNS.map((c) => ({
     header: c.header,
     width: Math.max(12, Math.min(40, c.header.length + 4)),
-    style: { fmt: FORMAT_BY_KIND[c.kind] },
+    defaultStyle: { fmt: FORMAT_BY_KIND[c.kind] },
   }));
   return { name: CG_TEMPLATE_SHEET, columns, rows: [], freeze: { rows: 1, cols: 0 }, filter: false };
 }
