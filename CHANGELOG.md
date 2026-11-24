@@ -4,14 +4,6 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
-### Fixed (LP-16, KI-051 P0; not published until the owner says "publish")
-- **Six non-mutual-fund product types are their own product class, never a mutual fund** (the owner's labels, D-7): "GIFT City
-  funds", "Offshore funds", "US-dollar bonds (through LRS)", "Fixed deposits", "REITs and InvITs", "Unlisted shares", read from the
-  Product column without regard to letter case. Such a holding no longer takes a mutual fund's look-through or returns, and an
-  unlisted share is no longer read as a listed stock; it is listed as excluded with its class. A product that also says ETF, MF or
-  fund stays a mutual fund (OD-6); sovereign gold bonds and MLDs keep their old class until labelled. Patch
-  `tools/patches/2026-11-25-lp16-product-classes.js`; test `tools/regression/LP16-KI051-product-classes.js`.
-
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
   funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.
@@ -22,6 +14,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **The AMC's own "The 30s Plan" / "The 40s Plan" spellings of Aditya Birla SL Retirement Fund** get their own fund's
   look-through and never Retirement Fund-50's returns: an ALIASES pin to their own hybrid entry plus exact-only (patch
   `tools/patches/2026-11-23-retirement-plan-pins.js`). Measured over every universe; nothing else moves.
+
+### Fixed (LP-16, KI-051 P0; not published until the owner says "publish")
+- **Six non-mutual-fund product types are their own product class, never a mutual fund** (the owner's labels, D-7): "GIFT City
+  funds", "Offshore funds", "US-dollar bonds (through LRS)", "Fixed deposits", "REITs and InvITs", "Unlisted shares", read from the
+  Product column without regard to letter case. Such a holding no longer takes a mutual fund's look-through or returns, and an
+  unlisted share is no longer read as a listed stock; it is listed as excluded with its class. A product that also says ETF, MF or
+  fund stays a mutual fund (OD-6); sovereign gold bonds and MLDs keep their old class until labelled. Patch
+  `tools/patches/2026-11-25-lp16-product-classes.js`; test `tools/regression/LP16-KI051-product-classes.js`.
 
 ### Fixed (CR-0010 A2; not published until the owner says "publish")
 - **Three holdings no longer take another fund's data.** Motilal Oswal Nasdaq 100 ETF no longer gets the Nifty 100 ETF's
