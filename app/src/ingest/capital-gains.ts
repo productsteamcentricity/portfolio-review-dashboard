@@ -450,10 +450,13 @@ function isPlaceholderOrBlank(text: string): boolean {
   return n.kind === 'empty' || n.kind === 'placeholder';
 }
 
-/** A number cell (money, price, units, days, percent): a number, or numeric text; other text is INVALID. */
-function readNumCell(cell: Cell | undefined): CgRead<number> {
+/**
+ * A number cell (money, price, units, days, percent): a number, or numeric text; other text is INVALID. A trailing
+ * "%" is accepted only in the percent column (XIRR): "12%" in a money, price, units or days cell is INVALID, never 12.
+ */
+function readNumCell(cell: Cell | undefined, percentAllowed: boolean): CgRead<number> {
   const n = readNumber(cell);
-  if (n.kind === 'number') return { kind: 'value', v: n.v };
+  if (n.kind === 'number') return n.percentText && !percentAllowed ? INVALID : { kind: 'value', v: n.v };
   if (n.kind === 'invalid') return INVALID;
   return NA;
 }
@@ -771,7 +774,7 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
   const readField = (r: number, f: CgField): CgRead<number> => {
     const kind = cgColumn(f).kind;
     if (!cols.has(f)) return NA;
-    const v = kind === 'date' ? readDateCell(cell(r, f), date1904) : readNumCell(cell(r, f));
+    const v = kind === 'date' ? readDateCell(cell(r, f), date1904) : readNumCell(cell(r, f), kind === 'pct');
     if (v.kind === 'missing' && v.status === STATUS.INVALID_SOURCE) {
       const h = header.labels[cols.get(f)!] ?? cgColumn(f).header;
       invalidCells.set(h, (invalidCells.get(h) ?? 0) + 1);
@@ -929,9 +932,11 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
     for (const f of CG_RECONCILED) {
       if (!cols.has(f)) continue;
       let sum = 0;
-      for (const r of lotRowIdx) { const v = readNumber(cell(r, f)); if (v.kind === 'number') sum += v.v; }
-      const t = readNumber(cell(totalsIdx, f));
-      const total = t.kind === 'number' ? t.v : null;
+      // A lot cell that is not a valid amount counts 0 (it is reported as invalid-cells); a totals cell that is not a
+      // valid amount leaves the column not reconciled.
+      for (const r of lotRowIdx) { const x = readNumCell(cell(r, f), false); if (x.kind === 'value') sum += x.v; }
+      const t = readNumCell(cell(totalsIdx, f), false);
+      const total = t.kind === 'value' ? t.v : null;
       const tolerance = totalsTolerance(lotRowIdx.length);
       const outcome = total === null ? 'not-reconciled' : Math.abs(sum - total) <= tolerance ? 'reconciled' : 'mismatch';
       reconciliation.push({ field: f, header: header.labels[cols.get(f)!] ?? cgColumn(f).header, lotSum: sum, total, tolerance, outcome });
@@ -946,20 +951,27 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
   }
   const mismatches = reconciliation.filter((x) => x.outcome === 'mismatch');
   if (mismatches.length > 0) {
-    const ex = excluded.length ? ` ${plural(excluded.length, 'row was', 'rows were')} excluded as not a lot (rows ${excluded.map((e) => e.at.row).join(', ')}), a possible cause.` : '';
+    const invalidAmounts = [...invalidCells.values()].reduce((s, n) => s + n, 0);
+    const ex = (excluded.length ? ` ${plural(excluded.length, 'row was', 'rows were')} excluded as not a lot (rows ${excluded.map((e) => e.at.row).join(', ')}), a possible cause.` : '')
+      + (invalidAmounts > 0 ? ` ${plural(invalidAmounts, 'lot cell is', 'lot cells are')} not a valid date or number and ${invalidAmounts === 1 ? 'counts' : 'count'} as 0, a possible cause.` : '');
     issues.add('totals-mismatch', 'High', sheetScope,
       `The lot rows do not add up to the statement's totals row in ${listText(mismatches.map((m) => `"${m.header}" (a difference of Rs ${(m.lotSum - (m.total ?? 0)).toFixed(2)})`))}.${ex}`,
       { count: mismatches.length });
   }
   if (review) {
-    const lotsOut = lots.filter((l) => l.clientId !== null && !l.inReview).length;
-    const lotsIn = lots.filter((l) => l.inReview).length;
+    // A lot with neither Client Name nor Account Name has no person: it matches no client of the review and is counted
+    // here too, named apart (financial-domain review of 7e9e51d, item 4; whether it deserves its own id is an owner
+    // question, NB-03 GATE-A-M7a-01).
+    const lotsOut = lots.filter((l) => !l.inReview).length;
+    const noLabel = lots.filter((l) => l.clientId === null).length;
+    const lotsIn = lots.length - lotsOut;
     if (lotsOut > 0) {
       const outPersons = [...persons.values()].filter((p) => !p.inReview).length;
+      const tail = noLabel > 0 ? ` ${plural(noLabel, 'lot has', 'lots have')} no client label at all (Client Name and Account Name blank) and no person.` : '';
       issues.add('clients-unmatched', lotsIn === 0 ? 'High' : 'Warning', sheetScope,
-        lotsIn === 0
+        (lotsIn === 0
           ? `No lot's client matches a client of the review (${plural(outPersons, 'person', 'persons')}, ${plural(lotsOut, 'lot', 'lots')}): the statement may belong to another family. Each is computed as its own person, never added to the family sum.`
-          : `${plural(lotsOut, 'lot belongs', 'lots belong')} to ${plural(outPersons, 'person', 'persons')} who match no client of the review. They are computed separately, listed under clients not in the review, and never added to the family sum.`,
+          : `${plural(lotsOut, 'lot belongs', 'lots belong')} to ${plural(outPersons, 'person', 'persons')} who match no client of the review. They are computed separately, listed under clients not in the review, and never added to the family sum.`) + tail,
         { count: lotsOut });
     }
     const fam = review.familyLabel;

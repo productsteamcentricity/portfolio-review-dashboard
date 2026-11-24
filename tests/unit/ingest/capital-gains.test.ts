@@ -6,7 +6,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readWorkbook } from '../../../app/src/ingest/workbook.ts';
-import type { Workbook } from '../../../app/src/ingest/workbook.ts';
+import type { Cell, Workbook } from '../../../app/src/ingest/workbook.ts';
 import {
   parseCapitalGains, financialYearOf, normaliseHeader, fieldOfHeader, parseInstrument, splitAccountName,
   possiblyOnePerson, scrubText, hasPanShape, amountTolerance, totalsTolerance, CG_COLUMNS, PAN_REPLACEMENT,
@@ -14,7 +14,7 @@ import {
 import type { CgImport, CgOptions, CgLot } from '../../../app/src/ingest/capital-gains.ts';
 import type { ClientId, SourceFileId } from '../../../app/src/model/ids.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
-import { ymdToDay } from '../../../app/src/engine/dates.ts';
+import { dayToExcelSerial, ymdToDay } from '../../../app/src/engine/dates.ts';
 import { loadSheetJS } from '../../helpers/sheetjs.ts';
 import {
   cgFixtures, panToken, lotAmounts, round2, STATEMENT_LOTS, CLIENT_A, CLIENT_B, FAMILY,
@@ -472,5 +472,72 @@ describe('every reader id of design §11 appears in some fixture', () => {
     const seen = new Set<string>();
     for (const id of fixtures.keys()) for (const i of parse(id).issues) seen.add(i.ruleId.replace('capital-gains.', ''));
     assert.deepEqual(readerIds.filter((r) => !seen.has(r)), []);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Boundaries and the review's findings on 7e9e51d (items 2 to 4), on small in-memory workbooks.
+
+type Mem = Partial<Record<'Sale Date' | 'Client Name' | 'Instrument Name' | 'Category Name' | 'Purchase Date' | 'Purchase Price' | 'Sale Price' | 'Sale Unit' | 'Sell Amount' | 'Invested Value' | 'Realized G/L' | 'XIRR (%)', Cell | number | string | null>>;
+const MEM_HEADERS = ['Sale Date', 'Client Name', 'Instrument Name', 'Category Name', 'Purchase Date', 'Purchase Price', 'Sale Price', 'Sale Unit', 'Sell Amount', 'Invested Value', 'Realized G/L', 'XIRR (%)'] as const;
+const dt = (y: number, m: number, d: number): Cell => ({ t: 'n', v: dayToExcelSerial(ymdToDay(y, m, d)!), fmt: 'dd-mmm-yyyy', date: true });
+const toCell = (x: Cell | number | string | null | undefined): Cell =>
+  x === null || x === undefined ? null : typeof x === 'number' ? { t: 'n', v: x, fmt: null, date: false } : typeof x === 'string' ? { t: 's', v: x } : x;
+/** A clean lot: 10 units bought at 50 and sold at 100; every row check passes. */
+const CLEAN: Mem = {
+  'Sale Date': dt(2025, 1, 2), 'Client Name': CLIENT_A, 'Instrument Name': 'Sample Fund [Folio No: 91000901 || Asset: Equity]',
+  'Category Name': 'Flexi Cap Fund', 'Purchase Date': dt(2023, 1, 2), 'Purchase Price': 50, 'Sale Price': 100, 'Sale Unit': 10,
+  'Sell Amount': 1000, 'Invested Value': 500, 'Realized G/L': 500, 'XIRR (%)': 12.5,
+};
+function memBook(lots: Mem[], tail: Cell[][] = []): Workbook {
+  const rows: Cell[][] = [MEM_HEADERS.map((h) => toCell(h)), ...lots.map((l, i) => MEM_HEADERS.map((h) =>
+    toCell(h === 'Instrument Name' ? `Sample Fund ${i} [Folio No: ${91000900 + i} || Asset: Equity]` : (h in l ? l[h] : CLEAN[h]))))];
+  return { sheets: [{ name: 'Mem', hidden: false, rows: [...rows, ...tail] }], date1904: false };
+}
+const memParse = (wb: Workbook): CgImport => parseCapitalGains(wb, { sourceId: SRC, now: NOW, review: REVIEW });
+
+describe('tolerance boundaries (§4, §7)', () => {
+  test('Rs 1 floor: exactly Rs 1 off passes, Rs 1.01 fails (each amount check)', () => {
+    const imp = memParse(memBook([
+      { 'Sell Amount': 1001, 'Realized G/L': 501 },
+      { 'Sell Amount': 1001.01, 'Realized G/L': 501.01 },
+      { 'Invested Value': 499, 'Realized G/L': 501 },
+      { 'Invested Value': 498.99, 'Realized G/L': 501.01 },
+      { 'Realized G/L': 501 },
+      { 'Realized G/L': 501.01 },
+    ]));
+    assert.deepEqual(imp.lots.map((l) => l.failedChecks), [[], ['sale-amount'], [], ['invested-value'], [], ['realised']]);
+  });
+  test('0.01% above Rs 10,000: Rs 5 off Rs 50,000 passes, Rs 5.01 fails', () => {
+    const imp = memParse(memBook([
+      { 'Sale Unit': 1, 'Sale Price': 50005, 'Sell Amount': 50000, 'Purchase Price': 500, 'Invested Value': 500, 'Realized G/L': 49500 },
+      { 'Sale Unit': 1, 'Sale Price': 50005.01, 'Sell Amount': 50000, 'Purchase Price': 500, 'Invested Value': 500, 'Realized G/L': 49500 },
+    ]));
+    assert.deepEqual(imp.lots.map((l) => l.failedChecks), [[], ['sale-amount']]);
+  });
+  test('totals: Rs 1 + Rs 0.005 x 200 lots = Rs 2 reconciles at exactly Rs 2, not at Rs 2.01', () => {
+    const lots = Array.from({ length: 200 }, (): Mem => ({}));
+    const total = (sell: number): Cell[] => MEM_HEADERS.map((h) => toCell(h === 'Sale Date' ? 'Grand Total' : h === 'Sell Amount' ? sell : null));
+    const at = (sell: number) => memParse(memBook(lots, [total(sell)])).reconciliation.find((x) => x.field === 'sellAmount')!;
+    assert.equal(at(200000 + 2).outcome, 'reconciled');
+    assert.equal(at(200000 + 2).tolerance, 2);
+    assert.equal(at(200000 + 2.01).outcome, 'mismatch');
+    assert.equal(at(200000 - 2).outcome, 'reconciled');
+  });
+});
+
+describe('the review of 7e9e51d: percent text and lots without a person', () => {
+  test('"12%" in a money cell is INVALID SOURCE DATA, never 12; a percent sign is accepted in XIRR only', () => {
+    const imp = memParse(memBook([{ 'Sell Amount': '1000%', 'XIRR (%)': '12.5%' }, { 'Purchase Price': '50%' }]));
+    assert.equal(st(imp.lots[0]!.saleValue), STATUS.INVALID_SOURCE);
+    assert.equal(st(imp.lots[1]!.purchasePrice), STATUS.INVALID_SOURCE);
+    assert.equal(issue(imp, 'invalid-cells')!.count, 2);
+  });
+  test('a lot with neither Client Name nor Account Name is counted in clients-unmatched and named', () => {
+    const imp = memParse(memBook([{}, { 'Client Name': null }]));
+    assert.equal(imp.lots[1]!.clientId, null);
+    const i = issue(imp, 'clients-unmatched')!;
+    assert.deepEqual([i.severity, i.count], ['Warning', 1]);
+    assert.ok(i.message.includes('no client label'), i.message);
   });
 });
