@@ -25,9 +25,10 @@ D-033).
 | Title | (13, 10.1) 738 x 47.5 pt; Cambria 22 pt bold, white, upper case, anchored middle | same |
 | Logo, content slides | (768, 13) 178.8 x 38.9 pt, right edge at 946.8 pt, white logo on the bar (Q-39) | same |
 | Logo, placeholder slides (cover excluded, title, dividers, closing) | lower right, right edge 946.8 pt, bottom 520 pt, no black plate (brief Phase 9; Q-39) | [I] |
-| Footer band | (0, 520.6) 960 x 19.4 pt, `#000000`, empty | same |
+| Footer band | (0, 520.6) 960 x 19.4 pt, `#000000`; carries "Preview build, not for client use" at (13, 520.6) 931 x 19.4 pt, Cambria 8 pt italic white, anchored middle, exactly when the build channel is preview; empty on a release build (M1.4, D-039 point 7) | same; [I] |
 | Footnote | (13, 498.2) 931 x 18.7 pt; Cambria 8 pt italic `#6B6B6B`; sources, as-on dates, method, status markers | same |
 | Market Update pages | no logo (owner decision of 27 Aug) | [PO §3.5] |
+| File properties | title "<family label> Portfolio overview" for the M1.4 overview deck (D-039 point 6) | [I] |
 | Theme | Cambria as heading and body theme fonts; palette as theme accents so text added by hand matches (verified in the M9 spike) | [DA §7 item 8] |
 
 No object may extend below the footnote line (y 495 pt) or outside x 13 to 947 pt; a test checks every slide.
@@ -82,7 +83,8 @@ and Hybrid swapped colours between slides [DA §2.7]): Equity `tan`, Hybrid `gre
 | Table header and body | 9 pt default (brief Phase 9); 8 pt only in components declared dense (C-19, the C-20 fund list, Q-43); otherwise paginate |
 | Footnote | 8 pt italic `#6B6B6B` |
 
-Every text run's size must equal the token for its role in this table; a size that is not a token, or 8 pt body text in
+The type scale lives in `app/src/config/tokens.json` under the key `type` (M1.4); the deck reads it from there, and a
+test checks every run against it. Every text run's size must equal the token for its role in this table; a size that is not a token, or 8 pt body text in
 a component not declared dense, fails the QA check (section 8 item 3).
 
 ### 2.3 Tables (one style)
@@ -100,16 +102,20 @@ a component not declared dense, fails the QA check (section 8 item 3).
 | Merges | only adjacent identical distributor labels on holdings slides (Q-34); never in Excel |
 | Missing values | a dash, "—", alone and centred in the cell, plus a footnote naming the status, as in the legacy deck (OD-13, OD-29); STALE and PARTIAL values carry "s" and "p" markers (D-029; architecture §6.4) |
 | Coverage footnotes | a weighted return or CAGR computed over part of the holdings (D-023 points 3 and 4) carries the "p" marker and a footnote: coverage %, the count excluded and why, the source and its date, and the label "weighted average return of current holdings"; an excluded item is never shown as 0% |
-| Negatives | hyphen-minus and `negative` red |
+| Negatives | hyphen-minus and `negative` red; on the black Grand Total row a negative stays white, and its minus sign marks it (M1.4) |
+| Cell margins | 3, 5, 3 and 5 pt; product labels indented 14 pt (M1.4) |
 
 ### 2.4 Charts (native, editable, with embedded workbooks)
 
 | Rule | Value |
 |---|---|
 | Colours | fixed by category name (section 2.1), written per data point |
-| Pie and doughnut outlines | 0.75 pt `grey75` on every slice (brief: consistent grey outlines; deck A used near-white `#F9F9F9`) |
-| Labels | category and percent with one decimal (KI-091); labels under 2% suppressed, the value stays in the legend and table |
+| Pie and doughnut outlines | 0.75 pt `grey75` (`#BFBFBF`) on every slice and on the series (brief: consistent grey outlines; deck A used near-white `#F9F9F9`). A pie of one slice has no outline (`<a:ln><a:noFill/></a:ln>` on the slice and the series): the outline of a 360 degree slice shows as a radius at 12 o'clock (M1.4 fix round) |
+| Labels | category and percent with one decimal (KI-091), from the view-model's label (`PieSlice.label`, "Equity 59.3%"), so screen and slide show the same characters. On the slide the label is two lines, the category and then the percent: in each data label the text body is `<a:bodyPr wrap="none"/>`, then the category run, a line break (`<a:br>` with the run's properties), the percent run; the separator is a new line and the format `0.0%`, so a label reset in PowerPoint reads the same way. PowerPoint caps the width of a pie label, and a label on one line broke inside a word ("Commodi / ty 3.9%"); a text body that never wraps without the break was clipped at the chart edge (Office acceptance, 27 Oct 2026). A slice whose share, rounded to two decimals as the table shows it, is under 2.00% has no label (its label is deleted), and a pie of one slice has none either: the value stays in the legend and the table. 9 pt Cambria `#222222`, placed best fit, or outside its slice (`outEnd`) when `#222222` on the slice colour reads under 4.5:1 (Commodity `#808080` 4.03:1, REITs/InvITs `#8C6B43` 3.26:1) (M1.4, D-039 point 6) |
+| Liquidity colours | Open Ended `gold`, Close Ended `grey75`; other file labels take the rating ramp in alphabetical order, skipping colours already used, never at random (KI-150) |
 | Legend | horizontal, bottom, Cambria 9 pt |
+| Pie plot area | PowerPoint places a pie whose legend is one row. From 5 categories the legend wraps to two rows, and the pie takes a manual plot layout (`c:plotArea/c:layout/c:manualLayout`, layout target inner, edge modes) that leaves 26 pt between the pie and the legend's top, the height of a two-line label (24.1 pt) and its gap to the slice: on the 220 x 190 pt chart a 106.1 pt circle, x 0.2589, y 0.0868, w 0.4823, h 0.5584 (`piePlotLayout`, `C08_LAYOUT.piePlot`). Without it, a label outside a slice at 6 o'clock sat about 2.5 pt above the legend and read as part of it (Office acceptance, 27 Oct 2026); with it, PowerPoint drew the six-class decks of `tests/exports/pptx/pie-6-oclock.ts` with the label clear of the legend (M1.4 fix round 2, N13) |
+| Post-processing | the deck's XML is edited as text by `app/src/exports/pptx/postprocess.ts`; every replacement there is a function, never a replacement string, so a label from the file holding `$&`, `$'` or `$$` is written as it reads (M1.4 fix round 2, N14) |
 | Gridlines | none, unless an axis needs a scale (stacked 100% bars keep a 0 to 100 axis without gridlines) |
 | Sizes | one panel size per chart role (pie 220 x 190 pt; bar panel 454 x 144 pt; level chart 458 x 245 pt) |
 | Totals | chart values come from the same view-model as the table beside them and must reconcile |
@@ -155,7 +161,7 @@ footnote content. "Deck A" gives the reference slide; "Legacy" the exporter grou
 | C-05 | `disclaimer` | Approved disclaimer text, native, standard chrome | none | every full and picker deck (Q-40) | 40 | image |
 | C-06 | `closing` | Thank-you slide, native, logo lower right | none | full deck | 41 | image |
 | C-07 | `review-snapshot` | Verdict banner; RO: the facts strip (current and invested value, unrealised G/L, asset mix, market cap, top sectors, performance against benchmark, risk-adjusted metrics, concentration, overlap, fund quality); up to 4 "what is working" cards; up to 6 attention rows (Evidence, Diagnosis, Implication, Action) that always cover concentration, overlap and fund quality (a fired rule or the neutral fact line). RB: principal issues with "In the plan" / "Next step" tags, the "what the plan changes" strip (both sides computed only), the trade-offs and constraints box, conclusions and next steps; footnote with sources | RO (default) / RB | exactly one per deck | 4 | none |
-| C-08 | `asset-allocation` | 3 KPIs (invested, CMV, unrealised gain/loss), asset and product table, asset-class pie and liquidity pie, insight box | scope | always | 3 | `asset` |
+| C-08 | `asset-allocation` | 3 KPIs (invested, CMV, unrealised gain/loss), asset and product table, asset-class pie and liquidity pie, insight box (M1.4 builds all but the insight box, which arrives with the observation engine in M5; a chart with nothing to show reads "Chart not drawn: " and its status in the words of the screen's notes, "Chart not drawn: not applicable."; the footnote is the as-on date and the view-model's notes of the page's figures, each sentence once, so the excluded holdings are the view-model's own sentence) | scope | always | 3 | `asset` |
 | C-09 | `alloc-level-client` | Client-level table and 100% stacked chart on one slide | scope | 2 or more clients (OD-21) | 17 (half) | `clalloc` (2 slides) |
 | C-10 | `alloc-level-advisor` | Distributor-level table and chart on one slide | scope | 2 or more distributors | 17 (half) | `distalloc` (2 slides) |
 | C-11 | `amc-allocation` | Horizontal bar of each house's share of the MF book, 20% cap line, breaches in red, "AMC not given" row | scope | MF holdings present | 18 | `amc` |
@@ -246,24 +252,34 @@ Tables paginate by measured row heights, using a committed Cambria width table (
 once in the browser and used identically in Node tests. Header row and grand total repeat on every page; titles carry
 "(n/N)"; a group header never ends a page (KI-122); text slides continue on "(2/2)" instead of shrinking the font.
 
+**C-08 as built in M1.4.** A continuation page has the section label "Allocation by Asset Class & Product
+(continued)" at (13, 76), the table from y 101.5, and no KPIs or charts. A row is lines x 10.8 + 6 pt high, from the
+committed Cambria width table `app/src/exports/pptx/cambria-widths.json` (advance widths, regular and bold, in 1/1000
+em, for code points 32 to 126, 160 to 255, U+20B9 and U+2014, measured once with canvas `measureText` at 1000 px in
+headless Microsoft Edge 156 on Windows 11, 27 Oct 2026; a code point not listed takes the widest letter or digit). An
+asset row never ends a page.
+
 ## 8. QA checks run on every generated deck (tests/exports/pptx)
 
 1. Slide order and count per mode and scope against the manifest; exactly one Review Snapshot; market updates first.
 2. Every chart native with an embedded workbook; every data table native; pictures only for C-01, C-04 (v1) and the
    logos; no full-slide placeholder image.
 3. Fonts Cambria; title 22 pt; every text run at its role's token size (section 2.2): body and table text 9 pt, 8 pt
-   only in components declared dense; legend colours by category name; slice outline `#BFBFBF`.
+   only in components declared dense; legend colours by category name; slice outline `#BFBFBF` (none on a pie of
+   one slice).
 4. No object outside the content area or below y 495 pt; footnote present on content slides.
 5. **No overlapping objects.** Bounding boxes of the objects on a slide do not intersect, except the layering each
    component declares (text on its panel, a label on its card, a chart inside its chart panel, the logo on the
    header bar).
 6. **No unintended watermark.** No rotated or semi-transparent text, no picture or full-slide shape behind content,
    no background picture on a master or layout; the only permitted marker is "Preview build, not for client use" in
-   the footnote band, present exactly when the build channel is "preview" (architecture §15).
+   the footer band, present exactly when the build channel is "preview" (architecture §15; D-039 point 7).
 7. **No excessive text boxes, redundant shapes or duplicated metrics.** Text boxes per slide within the component's
    declared budget; no empty, zero-size or off-slide text box or shape; no two shapes with identical geometry and
    fill; each metric of the cross-output registry printed at most once per slide, except declared repeats (a
-   paginated table's grand total).
+   paginated table's grand total). C-08 declares in `C08_LAYOUT` its layering, its text-box budget (14 on the first
+   page, 4 on a continuation page) and its repeats: the KPI tiles repeat the Grand Total's invested value and CMV,
+   the asset pie labels repeat the table's % CMV to one decimal, and the Grand Total repeats on every page (M1.4).
 8. No en or em dash in any text run, except a run that is exactly the missing-value marker "—" in a table cell or
    tile generated from a status, with that status in the footnote (D-029); no "slide n" literal in text; no missing
    value printed as a number.

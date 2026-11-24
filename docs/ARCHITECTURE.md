@@ -8,7 +8,7 @@
 | Built from | [03-architecture.md](new-build/03-architecture.md), the Phase 0 record (draft of 21 Oct 2026, revised on 22 Oct 2026 with the owner's answers D-024 to D-033). The record stays as it was, apart from M1.2's notes of what the build changed and verified (output path, CSP, IndexedDB, commands); its evidence tags and investigator citations are not repeated here. |
 | Section numbers | The same as in `03-architecture.md`, so "architecture §6.9" names the same topic in both. |
 
-**Where the build stands (23 Oct 2026).** Milestone M1.1 built the safety tooling in
+**Where the build stands (27 Oct 2026).** Milestone M1.1 built the safety tooling in
 `scripts/validation/` (privacy scan, docs link check, pre-push scan and hook, release check, monthly PRD check) with its
 tests in `tests/validation/` and the CI job `next`, and the folder skeleton with a README in each new folder (`app/`,
 `data/`, `product_bank/`, `monthly_updates/` with `_policy/publication-classes.json`). Milestone M1.2 built the pinned
@@ -17,8 +17,12 @@ invariant check (`scripts/validation/check-next.mjs`), and the `/next/` preview;
 [toolchain.md](new-build/toolchain.md). Milestone M1.3 built the shared model (`app/src/model/`), the workbook and
 base-file readers (`app/src/ingest/`) with the engine helpers they use (`app/src/engine/`: dates, units, asset
 classes, identifiers, ownership), the reference data in `data/refdata/` (extracted from `index.html` by
-`scripts/data-extract.ts` and checked equal, D-035), the base-file parity ledger and the traceability report; no
-page uses them yet. Next is M1.4 (the portfolio overview end to end); see
+`scripts/data-extract.ts` and checked equal, D-035), the base-file parity ledger and the traceability report.
+Milestone M1.4 built the portfolio overview end to end: the four libraries vendored byte for byte with pinned
+allowances and CSP-safe downloads (D-038), the totals, allocations, reconciliation and export gate
+(`engine/aggregate/`, `engine/validate/`, `engine/review.ts`), one formatter and one overview view-model
+(`views/`), sections 1 and 2 (`ui/`), slide C-08 (`exports/pptx/`) and the overview workbook (`exports/xlsx/`,
+`exports/zip/`), all from one view-model (D-039). Next is M2 (instrument matching); see
 [07-implementation-roadmap.md](new-build/07-implementation-roadmap.md) and [PROJECT_STATE.md](PROJECT_STATE.md).
 
 ---
@@ -60,7 +64,7 @@ page uses them yet. Next is M1.4 (the portfolio overview end to end); see
 | Bundler | esbuild, IIFE output, readable (not minified) | 0.28.2 | MIT |
 | UI | Preact (JSX, escape by default) | 10.29.8 | MIT |
 | PowerPoint | PptxGenJS (vendored), native charts and tables | 3.12.0 | MIT |
-| Excel writing | in-house SpreadsheetML writer on the vendored JSZip (ExcelJS 4.4.0 fallback) | n/a | project |
+| Excel writing | in-house SpreadsheetML writer with an in-house deterministic STORE zip and CRC-32 (D-038 amends A3; JSZip only post-processes the deck; the ExcelJS 4.4.0 fallback was not needed, R1 passed in Excel on 27 Oct 2026) | n/a | project |
 | Excel reading | SheetJS Community Edition (vendored) | 0.18.5, then 0.20.2 or later (Q-12) | Apache-2.0 |
 | On-screen charts | Chart.js and chartjs-plugin-datalabels (vendored), screen only | 4.4.0 / 2.2.0 | MIT |
 | Package hygiene | committed `package-lock.json`; `.npmrc` with `ignore-scripts=true`, `save-exact=true`, `fund=false` and `audit=false`; `npm ci` only; all three packages are `devDependencies` (M1.2, [toolchain.md](new-build/toolchain.md) §1) | | |
@@ -103,11 +107,11 @@ owner of each document are in [09-repository-and-docs-structure.md](new-build/09
 | Folder | Holds | Since |
 |---|---|---|
 | `index.html`, `tools/`, `buildtools/` | the legacy page, its checks and patch scripts, the legacy monthly pipeline (retired at M15) | before CR-0006 |
-| `app/` | the new application: `index.template.html`, `tsconfig.json`, `vendor/`, `assets/`, `src/` with `model/`, `ingest/`, `engine/`, `observations/`, `views/`, `exports/pptx/`, `exports/xlsx/`, `ui/`, `services/`, `config/` ([app/README.md](../app/README.md)) | README in M1.1; the template, `tsconfig.json`, `vendor/MANIFEST.json` and the shell (`main.tsx`, `ui/`, `config/`, `types/`) in M1.2; `model/`, `ingest/`, the first `engine/` helpers and `views/format.ts` in M1.3 |
+| `app/` | the new application: `index.template.html`, `tsconfig.json`, `vendor/`, `assets/`, `src/` with `model/`, `ingest/`, `engine/`, `observations/`, `views/`, `exports/pptx/`, `exports/xlsx/`, `ui/`, `services/`, `config/` ([app/README.md](../app/README.md)) | README in M1.1; the template, `tsconfig.json`, `vendor/MANIFEST.json` and the shell (`main.tsx`, `ui/`, `config/`, `types/`) in M1.2; `model/`, `ingest/`, the first `engine/` helpers and `views/format.ts` in M1.3; in M1.4 `vendor/` (four libraries and their licences), `config/money-columns.ts`, `config/brand-logos.json`, `ingest/load-base.ts`, `engine/aggregate/` (`sum`, `totals`, `allocation`, `entities`), `engine/classify/liquidity.ts`, `engine/validate/` (`reconcile`, `gate`), `engine/review.ts`, `views/` (the overview view-model, notes, colours, labels, logo, import report, source register, validation panel), `exports/pptx/` (chrome, blocks, measure, paginate, manifest, post-processing, C-08), `exports/zip/`, `exports/ooxml/`, `exports/xlsx/` (writer, styles, formula builder, `sheets/`), `services/` (`sha256`, `clock`, `audit-log`, `download`, `storage`) and `ui/` (store, wiring, sections 1 and 2, components) |
 | `data/` | reference data as JSON: `refdata/` with `VINTAGE.json`, `owner/` tables with approval records, `identifiers/crosswalk.json`, `history/YYYY-MM/` ([data/README.md](../data/README.md)) | README in M1.1; `refdata/` with `VINTAGE.json` in M1.3 (D-035) |
 | `product_bank/` | `schema/`, `products/`, `performance/`, `snapshots/`, `source_register/`, `pins.json` ([product_bank/README.md](../product_bank/README.md)) | README in M1.1; records from M11 |
 | `monthly_updates/` | `_policy/` and one `YYYY-MM/` folder per data month with `MANIFEST.json`, `UPDATE_REPORT.md` and the class P files in role folders ([monthly_updates/README.md](../monthly_updates/README.md)) | README and `_policy/` in M1.1; files from M11 |
-| `scripts/` | `validation/` (M1.1; `check-next.mjs` in M1.2; `traceability.mjs` in M1.3); `build.mjs` and `serve.mjs` (M1.2); data extraction, `data-extract.ts` (M1.3); vendor extraction (M1.4); `monthly-update/` (M11); `office/` (local acceptance); `docs/` (M14) | M1.1 |
+| `scripts/` | `validation/` (M1.1; `check-next.mjs` in M1.2; `traceability.mjs` in M1.3); `build.mjs` and `serve.mjs` (M1.2); data extraction, `data-extract.ts` (M1.3); vendor extraction, `vendor-extract.mjs` with `lib/legacy-blocks.mjs` (M1.4); `monthly-update/` (M11); `office/` (local Office acceptance, M1.4); `docs/` (M14) | M1.1 |
 | `tests/` | `validation/` (M1.1); `next/`, `browser/` and `fixtures/next-build/` (M1.2); `unit/`, `parity/`, `fixtures/make-books.ts` and `helpers/` (M1.3); regression, more unit and parity, exports, integration, acceptance, monthly, fixtures, helpers | M1.1 |
 | `app/dist/` | build output (git-ignored; M1.2 put it beside the sources, not at the root) | M1.2 |
 | `package.json`, `package-lock.json`, `.npmrc` | the pinned build tooling (D-025, D-034); `"type": "module"`, with `tools/` and `buildtools/` kept CommonJS by their own `package.json` (M1.3 integration) | M1.2 |
@@ -166,7 +170,9 @@ renderers receive the status, never a pre-formatted string, so a status cannot b
 slides a missing value is the dash "—" alone in its cell or tile, with a footnote naming the status; "s" and "p" mark
 STALE and PARTIAL values; the marker characters are configuration (`config/formats`). In the workbook a missing number
 is a blank cell with its status in the next column, so formulas keep working. A build-time lint fails on any en or em
-dash in generated presentation text; the only dash allowed is the marker itself.
+dash in generated presentation text; the only dash allowed is the marker itself. A file's or analyst's en or em dash
+in a label is shown as a hyphen-minus (`views/format.ts` `plainText`, M1.4), so the only dash in an output is the
+missing-value marker.
 
 ### 6.5 Scope: family, client and advisor
 
@@ -272,7 +278,10 @@ The tax-rule table was approved by the financial-domain reviewer on 27 Oct 2026.
 pack status and the MF Screener link at its right) and the nine section tabs in one row; the section below uses the
 full width (up to 90rem). On a wide screen the header stays in view; on a narrow one nothing is pinned and the tabs
 scroll sideways. The look follows the owner's design reference (the upload console of the brief): sand tabs with the
-current one black, black table headers, bordered groups, dashed upload slots, status chips.
+current one black, black table headers, bordered groups, dashed upload slots, status chips. A slim review bar at
+the top of the section area shows the logo, the family label and the as-on date of the review on screen (M1.4,
+KI-020), and the base file read; a refused file is never named ("Base file refused", M1.4 second fix round);
+it holds no heading and no link, so the section heading and the header keep their focus rules.
 
 ## 8. Calculation engine
 
@@ -409,6 +418,11 @@ for the monthly update, the owner reads the report and the pull request), **Appr
 update only) and **Final**. Only an accepted file feeds the review; the source register records each stage. The
 reference has no portfolio-review layout; the screen follows the nine sections and the deck design system.
 
+As built in M1.4 (D-039 point 14): the stage strip and the source register agree. A base file read and waiting for
+Accept shows **Preview**; a file refused (no holding, or an open Blocking reader result) or failed (`review-failed`)
+shows **Validate**; once accepted the register lists the review's sources, whose stage is **Review**
+(`app/src/ui/upload-slot.ts` `shownStage`, `registerSources`; `engine/review.ts`).
+
 ## 14. Excel model
 
 One table per sheet, so filters and frozen panes work:
@@ -434,6 +448,23 @@ data table; numbers stored as numbers, with statuses in their own column and nev
 merged cells in data ranges; `fullCalcOnLoad`; user text written as inline strings, never as formulas; sheet names
 sanitised and unique (KI-021).
 
+**As built in M1.4** (D-039 point 5; the columns are in [DATA_DICTIONARY.md](DATA_DICTIONARY.md) §5.13). Sheets in
+order: 1 Read Me and Controls; 2 Source Register; 3 Holdings (as loaded); 5 Portfolio Overview; 5a Client
+Allocation and 5b Distributor Allocation, written only when the view-model shows the matrix (OD-21), with the Read
+Me saying why a sheet was left out; 19 Audit Log; 20 `_manifest`. Conventions: Cambria 9; header rows white bold on
+black; thin borders in #D9D9D9; the header row frozen on every sheet, and column A also on Holdings and the
+allocation sheets; an autoFilter on every table, with its hidden `_xlnm._FilterDatabase`; no merged cells; number
+formats money and units in Indian grouping (two conditional sections at the rounding edge, D-039 point 5), percent
+`#,##0.00"%"` and dates `d mmm yyyy`; the "Share of family (%)" row one blank row below the Grand Total, outside the
+filter and the conditional formats (`SheetSpec.tableRows`; the blank row keeps Excel from extending the filter);
+negatives in #931621
+through conditional formatting; `fullCalcOnLoad`. SUMIFS criteria refer only to canonical asset classes, the
+generated keys (P01, L01, C01, D01; C00 and D00 when not given) and Yes/No flags. A missing value is a blank cell
+with its status in the next column (Holdings) or in the row's Status column. `_manifest` lists the schema, build,
+fingerprints, one row per formula with the SHA-256 of its text, and one `figure <key>` row per view-model figure
+with the cell it is written to (the cross-output join, `tests/integration/cross-output.test.ts`). The zip is the
+in-house deterministic STORE writer (D-038), so the same review gives the same bytes in Node and the browser.
+
 **Re-upload** (M6): the workbook must belong to the loaded review (`_manifest`); supported inputs are extracted,
 formula conflicts and unsupported changes reported, the engine recomputes, its results are compared with Excel's
 cached values, and every changed input is an audit entry. The engine stays the only calculator.
@@ -441,8 +472,12 @@ cached values, and every changed input is an audit entry. The engine stays the o
 **How "no formula errors" is proved:** formulas come only from a typed builder whose references resolve at build time
 to declared tables, columns and named inputs, using an allow-listed function subset; in CI a small evaluator for that
 subset computes every formula cell and compares it with the engine value (1e-9 relative), also after the AC-17 edits;
-locally, `scripts/office/accept-xlsx.ps1` opens the workbook in Excel through COM, recalculates fully and compares,
-whenever an exporter or a sheet's view-model changes. The Excel `XIRR` check column is verified by that local step only.
+locally, `scripts/office/accept-xlsx.ps1` opens the workbook in Excel through COM, recalculates the workbook's own
+sheets and compares, whenever an exporter or a sheet's view-model changes. Under the owner's rule of 2 Nov 2026
+(D-039 point 20, [TESTING.md](TESTING.md) §6.1) it attaches only to an Excel already running, opens its own file
+read-only and hides only that workbook's window, changes no application option, closes only its file and never quits
+or stops Excel; with no Excel running the result is NOT RUN with the file's path, never a pass. The Excel `XIRR`
+check column is verified by that local step only.
 
 ## 15. PowerPoint component library
 
@@ -459,7 +494,22 @@ Catalogue and tokens: [deck-design-system.md](new-build/deck-design-system.md).
 - **Native and editable:** native charts with embedded workbooks and native tables; pictures only for supplied artwork.
 - **Market updates first**, then one Review Snapshot per deck in the selected mode.
 - **Build channel marker:** exports from a build not released for client use carry "Preview build, not for client use"
-  in every slide's footnote band and the workbook's Read Me (D-024); a release build carries none.
+  in every slide's black footer band (white Cambria 8 pt italic; the footnote box keeps the sources and statuses) and
+  the first data row of the Read Me (row 2, under the frozen header), and file names end in `_PREVIEW` (D-024,
+  D-039 point 7); a release build
+  carries none.
+- **Post-processing** (`exports/pptx/postprocess.ts`, with the JSZip of the PptxGenJS bundle, M1.4): it writes each
+  pie label as text from the view-model on two lines (the category run, a line break, the percent run) in a text
+  body that never wraps, with a new line as the separator, and deletes the labels under 2% and the label of a pie
+  of one slice; applies token-based label defaults and the slice outline, none on a pie of one slice (D-039 point
+  6); keeps one paragraph-properties element per paragraph and one paragraph per table cell; gives unique
+  shape ids; drops content types for parts that do not exist; numbers chart parts from 1; and sets the core-property
+  and zip dates to the export clock, zipping the embedded workbooks again. The same view-model and clock therefore
+  give a byte-identical deck. Every replacement takes a function, never a replacement string, so a label holding `$&`,
+  `$'` or `$$` is written as it reads (M1.4 second fix round). From 5 categories C-08's pie takes a manual plot
+  layout (`C08_LAYOUT.piePlot`, `piePlotLayout`) that leaves 26 pt above its two-row legend (D-039 point 6).
+  Text from the view-model is stripped of characters XML 1.0 cannot carry. The exporter
+  takes the libraries as an argument and reads no global (D-038).
 - **Export isolation:** a deck or workbook is built only from the current `Review`; embedded chart workbooks, notes and
   alternative text come from the same view-model, so nothing of a previous family survives (AC-20).
 
@@ -490,7 +540,9 @@ build manifest; exported in the workbook, never sent anywhere.
 2. **Data blocks** are `<script type="application/json">` with `<` escaped, read with `JSON.parse`.
 3. **Escaping by default** through Preact; a build-time invariant fails on `innerHTML`, `outerHTML`,
    `insertAdjacentHTML`, `document.write`, `dangerouslySetInnerHTML`, `eval` or `new Function` in `app/src`, and on any
-   network API or URL in the built file except the allow-listed link.
+   network API or URL in the built file except the allow-listed link. The pure layers (model, ingest, engine, views,
+   exports) read no browser global (U-53, D-038): the source scan refuses `window.`, `document.`, `globalThis.`,
+   `localStorage.`, `sessionStorage.` and `indexedDB.` there, comments included.
 4. **The MF Screener link** (D-027): one constant in `config/links.json`, an anchor with `target="_blank"
    rel="noopener noreferrer"`, no query string, no prefetch, no availability check; the one exception to the
    no-remote-URL rule.
@@ -499,7 +551,9 @@ build manifest; exported in the workbook, never sent anywhere.
 6. **Storage:** namespaced keys, guarded access, no holdings, folios, values or names in browser storage; the only
    dataset kept is the Screener pack (market data) in its own IndexedDB database.
 7. **Supply chain:** exact pins, lockfile review, `ignore-scripts`, vendored libraries checked against their SHA-256 at
-   every build, a deterministic build.
+   every build and by `vendor-extract.mjs --check` in CI (byte for byte against `index.html`), with per-library pinned
+   allowances in `check-next.mjs` applied only inside the script whose hash is that library's (D-038), a
+   deterministic build.
 8. **Secrets:** none in the repository, logs, outputs or PRDs; the Screener data arrives as a file pack, so no Screener
    credential exists anywhere.
 9. **Repository safety tooling** (built in M1.1, [new-build/safety-tooling.md](new-build/safety-tooling.md)), Node
@@ -525,15 +579,18 @@ Commands (built in M1.2 unless marked planned; [toolchain.md](new-build/toolchai
 | `npm run build` | `scripts/build.mjs` to `app/dist/index.html` and `app/dist/build-manifest.json` (git-ignored); prints the size and SHA-256 |
 | `npm run check` | `scripts/validation/check-next.mjs`: CSP first, hashes match, no network, one allowed link, banner, size budget, a scan of `app/src`; `-- --rebuild` for the deterministic build |
 | `npm run serve` | `scripts/serve.mjs`, 127.0.0.1:8100: legacy at `/`, new at `/next/` |
-| `node tests/browser/next-spike.mjs` | the CSP, network and IndexedDB gates in headless Edge or Chrome (local only) |
+| `node scripts/vendor-extract.mjs [--check]` | writes `app/vendor/` (the four libraries, their licences and manifest) and `app/src/config/brand-logos.json` from the blocks of `index.html`, or checks them equal (M1.4, D-038; CI runs `--check`) |
+| `node tests/browser/next-spike.mjs` | the CSP, network, layout, focus and IndexedDB gates, and the four-library page with its Blob downloads, in headless Edge or Chrome (local only; 149 checks in M1.4, with the review-bar gate of D-039 point 15, the gap pinned at 8 to 20 px in the second fix round; its launch retries the DevToolsActivePort read on EBUSY, EPERM and ENOENT, tested by `tests/browser/cdp-port.test.mjs` in `node --test`) |
+| `node tests/browser/overview.cdp.mjs [--served \| --file \| --url <url>] [--port] [--browser] [--out] [--json]` | sections 1 and 2 with synthetic files (from `tests/fixtures/make-books.ts`), real keys and clicks, in headless Edge or Chrome, served and from disk: Accept under the pinned header, the review bar, focus after every action, refusals, the register stage, the full SHA-256, the KPIs, tables, matrices and notes, the pies' drawn labels (the pure Chart.js configuration is `app/src/ui/pie-config.ts`, which `chart-lib.ts` uses), both downloads and the logo after a reload; from the second fix round the matrix notes, the entity headers' letter case, the empty liquidity sentence and the review bar after a refusal, and a High result acknowledged on `syn-total-rows` (local only, M1.4; run it after a change to sections 1 or 2) |
 | `npm run update -- <YYYY-MM>` (planned, M11) | the monthly update engine (local; `PRD_MONTHLY_INBOX`) |
-| `npm run accept:office` (planned) | local only: open the latest exports in Excel and PowerPoint through COM |
+| `npm run accept:office` | local only (M1.4): `scripts/office/run-acceptance.ts --full` builds the wired workbook and deck for syn-standard, syn-lakh, syn-blank-invested, syn-negative-gain, family-a, a Lakh book above 1,00,000 L, syn-six-classes and syn-big-return, and the decks of syn-pie6-reits and syn-pie6-hybrid (a C-08 slice at 6 o'clock above the two-row legend), and checks each in the Excel or PowerPoint the owner already runs, under the owner's rule of 2 Nov 2026 ([TESTING.md](TESTING.md) §6.1: attach only, the task list first; the script's own file read-only without a window; no application option changed; only that file closed; never quit, stop or kill Office; NOT RUN with the file paths when Office is not running, never a pass; on a hang TIMEOUT with the path of the file left open). Excel's `Range.Text` of every `_manifest` figure is compared with the screen's text and each sheet's filter range with the file's; the damaged-file negative controls are written and reported NOT RUN. Reports under `app/dist/office/`; `--spike`, `--samples` and `--check-file <xlsx>` (evaluator only, no Office) also exist |
 
 **CI today** (`.github/workflows/ci.yml`): the job `checks` runs the legacy gates (invariants, smoke, AI Analyst,
 regression) unchanged; the job `next` runs the privacy scan of the documentation, the docs link check and the monthly
 PRD check (Node built-ins only), then `npm ci`, the type check, the build, `check-next.mjs --rebuild`,
 `node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"` under IST and UTC (from M1.3 with the new app's unit and
-parity tests), the traceability report, `data-extract.ts --check` and, last, the release check in its CI form. Later
+parity tests), the traceability report, `data-extract.ts --check`, `vendor-extract.mjs --check` (M1.4) and, last,
+the release check in its CI form. Later
 milestones add export structure and acceptance tests. **Pages:** from M1.2 `pages.yml` stages `_site/index.html`
 (legacy, byte for byte) and `_site/next/index.html` (new) (D-024). The legacy gates block the deployment; the new
 app's steps (`npm ci`, build, `check-next.mjs --rebuild`) never do: when one fails, `/next/` gets a static notice
@@ -566,7 +623,9 @@ and return methods), D-024 (the `/next/` preview), D-025 (npm for build tooling)
 pack never public), D-027 (the MF Screener link), D-028 (what the live page receives), D-029 (the missing-value dash),
 D-030 (observation thresholds), D-031 (borders and Actionables), D-032 (the capital-gains template, amended by D-036: the platform export accepted as produced), D-033
 (Claude's charge of GitHub and the dashboard), D-034 (the toolchain, the one-file build and the preview that never
-blocks the legacy page) and D-035 (reference data in the repository and the base-file reading conventions). The
+blocks the legacy page), D-035 (reference data in the repository and the base-file reading conventions), D-037
+(section tabs across the top), D-038 (vendored libraries, the workbook zip and downloads under the CSP) and D-039
+(the portfolio overview rules). The
 owner's audit decisions are OD-nn in
 [audits/2026-10-19-decisions.md](audits/2026-10-19-decisions.md); the open questions are Q-nn in
 [open-questions.md](new-build/open-questions.md).
@@ -575,8 +634,10 @@ owner's audit decisions are OD-nn in
 
 Each is a gate of the milestone named, and this section is updated when it closes:
 
-- Excel opening the in-house writer's output without repair (M1.4 spike); PowerPoint rendering of the components and
-  theme XML post-processing (M9).
+- PowerPoint rendering of the components and theme XML post-processing (M9); for C-08, `accept-pptx.ps1` on the
+  wired decks of the integrated head (`npm run accept:office`, M1.4) is still to run, under the owner's rule of 2 Nov
+  2026 (attached to a PowerPoint the owner runs; NOT RUN with the deck paths otherwise). The second fix round's
+  fixer looked at the six-class decks in PowerPoint on its own branch on 27 Oct 2026, before that rule.
 - A real double-click of the built page on an analyst's own browser profile (the M1.2 spikes ran headless; the browser
   QA steps of [toolchain.md](new-build/toolchain.md) §9).
 - The capital-gains columns (D-036: the platform export's, decided 23 Oct 2026; the blank template not yet tried by analysts; M7).
@@ -584,6 +645,11 @@ Each is a gate of the milestone named, and this section is updated when it close
   only, and its size in IndexedDB is unmeasured (M10).
 - The exact columns of the Index TRI files (known from the data-source survey; confirmed on the first files read, M11).
 - The remote force-push check of AC-22 (designed, not run; not done in M1.2).
+
+Closed by M1.4 (27 Oct 2026): Excel opens the in-house writer's output without repair (spike gate R1, Excel 16.0
+build 20527 through COM, with a negative control proving the detector; seven sample overview workbooks pass the same
+checks), and Blob downloads work under the CSP from `file://` and served (headless Edge and Chrome, the four-library
+page of `tests/browser/next-spike.mjs`).
 
 Closed by the M1.2 spikes (22 Oct 2026, [toolchain.md](new-build/toolchain.md) §6): `npm ci` and esbuild on this
 laptop; the hash-based CSP under `file://` and served; IndexedDB kept under `file://` and served across a reload and a

@@ -160,12 +160,24 @@ Record each drift and its fix in the log.
 
 ### Step 3: Market Update slides
 
+> **NOT RUN until the TA-26 script is reviewed (CLAUDE.md rule 10; PD-49).** Do not run the snippet below as written:
+> it uses `New-Object -ComObject` and `$ppt.Quit()`, which rule 10 forbids (PowerPoint is open on the owner's PC and
+> COM attaches to it). Never open a vendor deck in PowerPoint by any other means either. Until the reviewed script
+> exists, skip this step and say so in the refresh log:
+> - build Step 5 **without** `--slides`, and splice Step 6 **without** `--label`. The splice applies `--label` only to
+>   a blocks file that carries `MARKET_UPDATE_IMAGES`, which only a build with `--slides` writes, and it ignores the
+>   label silently otherwise. The Market Update slot then keeps its previous slides and its caption "Embedded default ·
+>   <previous label> (N)", and the log lists it under "Blocks left stale"; or
+> - the owner exports the slides by hand into a folder of `slideN.jpg` files (1920×1080) inside the inbox; Step 5 then
+>   takes that folder with `--slides` and Step 6 uses `--label` as below (PD-49, option B).
+
 The Outlook deck holds live charts, so it is rendered, not unzipped:
 1. Copy it to a short local path (OneDrive and long paths break the export).
 2. Export every slide at 1920×1080 with PowerPoint COM.
 3. **Look at every image.** A chart that failed to render comes out blank.
 
 ```powershell
+# NOT RUN: do not paste this snippet (rule 10; see the banner above).
 $tmp = "$env:TEMP\cx_slides_2026-10"; New-Item -ItemType Directory -Force $tmp | Out-Null
 Copy-Item -LiteralPath "<IN>\Monthly Outlook Pagers_Nov 2026.pptx" "$tmp\deck.pptx"
 $ppt = New-Object -ComObject PowerPoint.Application

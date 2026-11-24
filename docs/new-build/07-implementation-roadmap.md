@@ -160,6 +160,11 @@ dashboard (D-033); every other question proceeds on its default.
   cross-checked against Lakh or rupees when both are numbers and disagree.
 - **Analyst value.** The first slide that already meets the brief's allocation rules (6.1), available for preview on
   `/next/` (not for client use until switch-over).
+- **Status (27 Oct 2026): built and integrated on `feat/m1-4-overview`** (D-038, D-039), its pull request to follow
+  the browser QA and the reviews. R1 passed in Excel, so ExcelJS is not needed. KI-147 settled by the owner's answer
+  of 24 Oct 2026 (no fallback; D-039 point 1). Scope moved: U-06 (the base-file template download) to M7, beside the
+  capital-gains template; the basic validation panel ships here and U-67 in full stays in M13; the insight box of
+  C-08 comes with the observation engine (M5). The built-in logos ship (the generic scan is clean on them).
 
 ### M2 Identifiers, matching, classification and reference data (brief phases 2, 11, 13) (L): can start now
 - **M2.1 Crosswalk and matcher.** `data/identifiers/crosswalk.json` (AMFI code map, `FUND_RANKS` scheme codes only (D-026), `STOCK_RET` ISIN,
@@ -200,7 +205,10 @@ dashboard (D-033); every other question proceeds on its default.
   `tests/unit/returns/irr-reconcile.test.ts` (OD-4 cases); `tests/exports/pptx/c21-holdings.test.ts` (sort, merges,
   0.5 pt `#D9D9D9` borders (D-031), pagination by measurement, no row below the footnote line); `c22-performance.test.ts` (group
   order, centring, columns); `AC-11` missing benchmarks; `unit/returns/scope-returns.test.ts` (distributor XIRR known
-  answer; unassigned flows; a scope whose flows do not reconcile shows INSUFFICIENT EVIDENCE).
+  answer; unassigned flows; a scope whose flows do not reconcile shows INSUFFICIENT EVIDENCE). The IRR reader reads a
+  free-text date as written, the same calendar date in every time zone (tests under `TZ=Asia/Kolkata` and `TZ=UTC`);
+  its accepted text formats are compared with the live page's `parseIRR` after TA-03 merges (KI-186) (added 2 Nov
+  2026).
 - **Analyst value.** Holdings and performance slides in the brief's format, previewable on `/next/`.
 
 ### M4 Look-through, overlap, AMC and allocation levels (brief phase 6) (L): can start now (engine)
@@ -267,7 +275,10 @@ dashboard (D-033); every other question proceeds on its default.
   accepted in D-022), keeping "Reset to Actual", "Re-seed from rebalancing plan" and edited-cell marking (U-29, Q-80);
   E-63 MF Analysis with one risk resolver (KI-053), the age gate (E-12) and the rationale modal, whose verdicts feed
   the rebalancing rationale drafts through the model instead of `window.__MFA_DATA` (U-30 to U-35). Components C-12,
-  C-18, C-19, C-25, C-26, C-34 to C-38. Sheets Tax and Transactions, Cost.
+  C-18, C-19, C-25, C-26, C-34 to C-38. Sheets Tax and Transactions, Cost. The owner's answers of 2 Nov 2026
+  (PD-02, PD-03; `capital-gains-upload.md` §10.12): a holding labelled "Listed AIF" defaults to Category III with a
+  neutral caution, "confirm against the AIF's statement", and the file's own stated category wins; crypto gains and
+  losses stay "no set-off".
 - **Acceptance.** Before any code: the financial-domain reviewer approves the tax-rule table v1 of
   `capital-gains-upload.md` §10, recorded in its change log (given 27 Oct 2026). `AC-18` incomplete tax and transaction data (including a
   statement, the platform export or the blank template, that disagrees with the IRR-derived gains, a file without the

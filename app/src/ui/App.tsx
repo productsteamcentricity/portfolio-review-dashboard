@@ -1,10 +1,21 @@
-// The application shell (M1.2): the nine sections of the brief as empty-state panels.
-// The navigation, the preview banner and the MF Screener link are static HTML written by scripts/build.mjs, so the
-// page is readable without JavaScript and the one remote URL can be checked in its exact form (D-027). This component
-// renders the panel of the selected section and marks the matching navigation link.
+// The application shell: the nine sections of the brief (M1.2), with sections 1 and 2 built in M1.4 and the others
+// still empty-state panels. The navigation, the preview banner and the MF Screener link are static HTML written by
+// scripts/build.mjs, so the page is readable without JavaScript and the one remote URL can be checked in its exact
+// form (D-027). This component renders the review bar and the panel of the selected section, and marks the matching
+// navigation link. It holds the store above the panels, because only the active panel is mounted: switching sections
+// never loses the review.
 
+import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import config from '../config/sections.json' with { type: 'json' };
+import type { BuildStamp } from '../model/review.ts';
+import type { Store } from './store.ts';
+import type { LogoAsset } from './wiring.ts';
+import type { ChartLib } from './chart-lib.ts';
+import { useStore } from './use-store.ts';
+import { ReviewBar } from './components/review-bar.tsx';
+import { S1Uploads } from './sections/s1-uploads.tsx';
+import { S2Overview } from './sections/s2-overview.tsx';
 
 export type Arriving = { milestone: string; what: string };
 export type Slot = { id: string; title: string; milestone: string; text: string };
@@ -16,8 +27,9 @@ export type Section = {
   arriving: Arriving[];
   slots?: Slot[];
 };
-export type Library = { name: string; version: string; license: string | null };
-export type BuildInfo = { channel: string; libraries: Library[] };
+export type Library = { name: string; version: string; license?: string | null; sha256?: string | null };
+/** The build-info data block as the build writes it (scripts/build.mjs); main.tsx turns it into a BuildStamp. */
+export type BuildInfo = { channel?: string; buildId?: string; libraries?: Library[] };
 
 export const SECTIONS: readonly Section[] = config.sections;
 
@@ -105,16 +117,41 @@ function SlotCard({ slot }: { slot: Slot }) {
 // count moves focus to the heading, also when the section stays the same. The effect runs after the browser has
 // painted, so after the browser's own fragment navigation, which leaves focus on the document because the target
 // <section> is not focusable.
-function SectionPanel({ section, focusRequest }: { section: Section; focusRequest: number }) {
+function ArrivingTable({ section, built }: { section: Section; built: boolean }) {
+  if (section.arriving.length === 0) return null;
+  return (
+    <table class="arriving">
+      <caption>{built ? 'What arrives next, by milestone' : 'What arrives, by milestone'}</caption>
+      <thead>
+        <tr>
+          <th scope="col">Milestone</th>
+          <th scope="col">What arrives</th>
+        </tr>
+      </thead>
+      <tbody>
+        {section.arriving.map((a) => (
+          <tr key={`${a.milestone}:${a.what}`}>
+            <td class="arriving-milestone">{a.milestone}</td>
+            <td>{a.what}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function SectionPanel({ section, focusRequest, content }: { section: Section; focusRequest: number; content: ComponentChildren | null }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const headingId = `${section.id}-title`;
   useEffect(() => {
     const heading = headingRef.current;
     if (focusRequest === 0 || !heading) return;
-    // Focus without the browser's own scroll, then place the heading just below the pinned header (D-037): the
-    // browser would leave a heading that is already on screen where it is, under the header.
+    // Focus without the browser's own scroll, then place the review bar, which sits above the section, just below the
+    // pinned header (D-037; M1.4 fix L1), with the focused heading under it: the browser would leave a heading that is
+    // already on screen where it is, under the header. Without the review bar the heading is placed there.
     heading.focus({ preventScroll: true });
-    const top = heading.getBoundingClientRect().top + window.scrollY - headerOffset();
+    const anchor = document.querySelector<HTMLElement>('.review-bar') ?? heading;
+    const top = anchor.getBoundingClientRect().top + window.scrollY - headerOffset();
     window.scrollTo(0, Math.max(0, top));
   }, [section.id, focusRequest]);
   return (
@@ -123,34 +160,38 @@ function SectionPanel({ section, focusRequest }: { section: Section; focusReques
         <span class="panel-num">{section.n}</span> {section.title}
       </h2>
       <p class="panel-summary">{section.summary}</p>
-      <div class="empty-state">
-        <p class="empty-lead">Nothing to show yet: this section is still being built.</p>
-        <table class="arriving">
-          <caption>What arrives, by milestone</caption>
-          <thead>
-            <tr>
-              <th scope="col">Milestone</th>
-              <th scope="col">What arrives</th>
-            </tr>
-          </thead>
-          <tbody>
-            {section.arriving.map((a) => (
-              <tr key={`${a.milestone}:${a.what}`}>
-                <td class="arriving-milestone">{a.milestone}</td>
-                <td>{a.what}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {(section.slots ?? []).map((slot) => (
-        <SlotCard key={slot.id} slot={slot} />
-      ))}
+      {content !== null ? (
+        <>
+          {content}
+          {(section.slots ?? []).map((slot) => (
+            <SlotCard key={slot.id} slot={slot} />
+          ))}
+          <div class="empty-state arriving-next">
+            <ArrivingTable section={section} built />
+          </div>
+        </>
+      ) : (
+        <>
+          <div class="empty-state">
+            <p class="empty-lead">Nothing to show yet: this section is still being built.</p>
+            <ArrivingTable section={section} built={false} />
+          </div>
+          {(section.slots ?? []).map((slot) => (
+            <SlotCard key={slot.id} slot={slot} />
+          ))}
+        </>
+      )}
     </section>
   );
 }
 
-export function App({ build }: { build: BuildInfo | null }) {
+export function App({ build, store, logos, chart }: {
+  build: BuildStamp;
+  store: Store;
+  logos: readonly LogoAsset[];
+  chart: ChartLib | null;
+}) {
+  const state = useStore(store);
   const first = SECTIONS[0];
   if (!first) throw new Error('sections.json lists no section');
   const [active, setActive] = useState<Section>(() => sectionFromHash(location.hash) ?? first);
@@ -201,13 +242,18 @@ export function App({ build }: { build: BuildInfo | null }) {
     document.title = `${active.title} | Portfolio Review preview`;
   }, [active.id]);
 
+  const content = active.id === 'uploads' ? <S1Uploads store={store} state={state} logos={logos} />
+    : active.id === 'overview' ? <S2Overview store={store} state={state} chart={chart} />
+      : null;
+
   return (
     <>
-      <SectionPanel section={active} focusRequest={focusRequest} />
+      <ReviewBar state={state} />
+      <SectionPanel section={active} focusRequest={focusRequest} content={content} />
       <footer class="app-footer">
         <p>
           Preview build, not for client use. It works offline: nothing on this page is sent anywhere.
-          {build && build.libraries.length > 0
+          {build.libraries.length > 0
             ? ` Built with ${build.libraries.map((l) => `${l.name} ${l.version}`).join(', ')}.`
             : ''}
         </p>

@@ -58,8 +58,11 @@ ok(tc('X Nifty 50 ETF', 'Solution Oriented,ETFs,FOFs', null, 'Equity') === 'Equi
 ['MF_PERF', 'MF_PERF_DIRECT'].forEach(blk => {
   const fofs = Object.keys(REF[blk]).filter(k => REF[blk][k].sheet === 'Debt Oriented' && /\bfofs?\b|fund of funds?/i.test(k));
   const n = c => fofs.filter(k => tc(k, 'Debt Oriented') === c).length;
-  ok(fofs.length === 58 && n(ETFFOF) === 29 && n(GEN) === 22 && n(DEBT) === 7,
-    blk + ' "Debt Oriented": 58 FoFs: ' + n(ETFFOF) + ' equity ETF FoFs, ' + n(GEN) + ' general rule, ' + n(DEBT) + ' debt (29 / 22 / 7 expected; all 58 were debt)');
+  /* The 31 Oct 2026 monitors (TA-10) list 60: the 58 of 30 Sep 2026 (29 / 22 / 7) plus two new funds of funds that
+     follow the general rule: WOC Diversified Equity Small Cap Active FOF (an active equity FoF, not a 90/90 equity ETF
+     FoF) and JioBlackRock Income Plus Arbitrage Omni FOF (an income-plus-arbitrage FoF, not a debt FoF). */
+  ok(fofs.length === 60 && n(ETFFOF) === 29 && n(GEN) === 24 && n(DEBT) === 7,
+    blk + ' "Debt Oriented": 60 FoFs: ' + n(ETFFOF) + ' equity ETF FoFs, ' + n(GEN) + ' general rule, ' + n(DEBT) + ' debt (29 / 24 / 7 expected; all were debt before the fix)');
   const hy = Object.keys(REF[blk]).filter(k => REF[blk][k].sheet === 'Hybrid' && /\bfofs?\b|fund of funds?/i.test(k));
   const hn = c => hy.filter(k => tc(k, 'Hybrid', null, 'Hybrid') === c).length;
   ok(hy.length === 50 && hn(GEN) === 47 && hn(null) === 3, blk + ' "Hybrid": 50 FoFs: ' + hn(GEN) + ' general rule, ' + hn(null) + ' conservative left unclassified (47 / 3 expected; all 50 were unclassified)');

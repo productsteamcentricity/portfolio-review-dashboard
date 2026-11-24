@@ -20,12 +20,13 @@ UNKNOWN / NEEDS INVESTIGATION; SUPERSEDED. **Evidence labels:** [VERIFIED], [INF
 | # | Task | Chat | Branch @ head | On origin | Status | Ownership released |
 |---|---|---|---|---|---|---|
 | 1 | TA-03 tax batch | EX-01 (since 2 Nov) | `fix/legacy-batch-3-tax-cr-0008` @ 0f1c5d3 (local; the checkpoint `continuation/ex-01-task-ta-03-20261027` stays at 0f1c5d3 on origin) | continuation: yes; fix/: **no** | IN PROGRESS | No: the files stay reserved for TA-03; responsibility passed to EX-01 on 2 Nov |
-| 2 | TB-06 M1.4 integration | NB-01 | `feat/m1-4-overview` @ 07a6460 | **no** | IN PROGRESS | No |
-| 3 | TB-07 round-2 fixer G1 | NB-01 | `worktree-wf_bdc6c774-599-1` @ 4610684 | **no** | IMPLEMENTED, NOT FULLY VERIFIED | No |
-| 4 | TB-07 round-2 fixer G2 | NB-01 | `worktree-wf_bdc6c774-599-2` @ be7f395 | **no** | IN PROGRESS (untested) | No |
-| 5 | TB-07 round-2 fixer G3 | NB-01 | `worktree-wf_bdc6c774-599-3` @ 202f8f6 | **no** | IMPLEMENTED, NOT FULLY VERIFIED | No |
+| 2 | TB-06 M1.4 integration | NB-01 | `feat/m1-4-overview` (07a6460 on origin; the local tip moves as NB-01 integrates) | yes (pushed 2 Nov) | IN PROGRESS (local integration since 2 Nov) | No |
+| 3 | TB-07 round-2 fixer G1 | NB-01 | `worktree-wf_bdc6c774-599-1` @ 4610684 | yes (pushed 2 Nov) | IMPLEMENTED, NOT FULLY VERIFIED | No |
+| 4 | TB-07 round-2 fixer G2 | NB-01 | `worktree-wf_bdc6c774-599-2` @ be7f395 | yes (pushed 2 Nov) | IN PROGRESS (tested by NB-01 on 2 Nov: 900 tests, 893 pass, 7 fail) | No |
+| 5 | TB-07 round-2 fixer G3 | NB-01 | `worktree-wf_bdc6c774-599-3` @ 202f8f6 | yes (pushed 2 Nov) | IMPLEMENTED, NOT FULLY VERIFIED | No |
 | 6 | TC-01 handover package | MOD-01 → MOD-02 | `handover/mod-01-to-mod-02-20261028` @ 5f551cc | yes | VERIFIED COMPLETE (merged as PR #17, 4a1a747, 30 Oct) | Yes (merged) |
-| 7 | TC-02 register update | MOD-02 | `docs/registers-1` (the PR #18 head) | yes | IN PROGRESS (Gate B quick review GO by ARC-01 for 227f65a; security-release-reviewer GO for f2fc29f; the commit after f2fc29f needs a delta review) | No |
+| 7 | TC-02 register update | MOD-02 | `docs/registers-1` @ 2f48d13, merged as PR #18 (234fa31, 2 Nov) | yes | VERIFIED COMPLETE (Gate B GO and security delta GO for 2f48d13; CI green; D-020 merge) | Yes (merged) |
+| 8 | TC-02 follow-up register update | MOD-02 | `docs/registers-2` | after its first push | IN PROGRESS | No |
 
 All SHAs [VERIFIED: `git rev-parse` and `git ls-remote origin`, 28 Oct; rows 1, 6, 7 and the NB-01 heads re-checked 2 Nov]. Every worktree listed is clean: 0 staged, 0 unstaged,
 0 untracked [VERIFIED: `git status --porcelain`, repo-env investigation, 28 Oct].
@@ -85,14 +86,15 @@ G1, G2 and G3 share no file with TA-03 [VERIFIED].
 | Workstream | B |
 | Worktree | `.claude/worktrees/m14` |
 | Source branch and baseline | main; latest main merged in is **6443826** (merge commit 07a6460) |
-| Task branch | `feat/m1-4-overview`, **local only**; upstream wrongly set to origin/main (first push must be `git push -u origin feat/m1-4-overview`) |
+| Task branch | `feat/m1-4-overview`, pushed on 2 Nov with `-u` (tracks its own origin branch; TB-08) |
 | Files and modules being modified | 236 files, +27,324/-492 against main [VERIFIED: `git diff --shortstat`]: `app/src` (94 files: engine/aggregate, engine/review, engine/validate, exports/pptx, exports/xlsx, exports/zip, services, ui, views, config), `app/vendor` (10), `scripts/build.mjs`, `scripts/vendor-extract.mjs`, `scripts/lib`, `scripts/office` (3), `scripts/validation` (1), `package.json` (three npm scripts), `.github/workflows/ci.yml` (adds `vendor-extract --check`), tests (`unit` 30, `exports` 25, `regression` 14, `helpers` 9, `fixtures` 8, `integration` 7, `next` 4, `parity` 4, `browser` 3, `acceptance` 1, `workflows` 1), `docs/new-build` (6), `docs/ARCHITECTURE.md`, `docs/DATA_DICTIONARY.md`, `docs/PRD.md`, `docs/DECISIONS.md`, `docs/KNOWN_ISSUES.md`, `docs/PROJECT_STATE.md`, `docs/TESTING.md`, `CHANGELOG.md`, `CLAUDE.md`, CR-0006 |
 | Shared interfaces affected | Reads `index.html` blocks 00..03 and 06 by marker (vendor-extract, `scripts/lib/legacy-blocks.mjs`, test helpers); `tools/engine-host.js` through `tests/fixtures/make-books.ts`; new aggregation parity ledger `tests/parity/aggregation-ledger.json` (AG-01..AG-14); `MONEY_COLUMN_RULE` (D-039 point 1, the owner's KI-147 "no fallback"); CI workflow; vendored library hashes in `app/vendor/MANIFEST.json`; `app/vendor/*.js` and `brand-logos.json` have no deny-list exemption [VERIFIED: architecture investigation] |
 | Dependencies and overlapping tasks | TB-07 (round 2) must be integrated first. Docs conflict with TA-03. Coupled to TA-05 through AG-13/AG-14 and the pinned retired list |
 | Current status | IN PROGRESS. 4 tests fail on the head (fixed by G1 [INFERRED]); test totals 773 versus 837 unexplained [UNKNOWN] |
 | Latest commit | **07a6460** (27 Oct 19:22 IST) |
 | Review and integration status | Round 1 reviews on 6015190 (reported): QA PASS, financial review approved, Office verdict FAIL on one medium item, security NO-GO only because main had moved. Round 3 not started. No PR, no CI run, never pre-push scanned with the deny-list |
-| Outstanding blockers | Local only (TB-08). Paused by the owner's stop order. PD-09 for the placeholder rule |
+| Change-impact contract (Gate B pre-work) | Contract v1 ACCEPT with K1 to K8 (ARC-01, 2 Nov); v2 ACCEPT. Early cross-build signal from ARC-01 (not a verdict): G1, G2, G3 merge in turn with no conflict; with the TA-03 head 0f1c5d3 merged in, `node --test` gives 994 tests, 989 pass, 5 fail in IST and UTC, and the same 5 fail without TA-03 (G1's `gate.test.ts:39` and `as-on-change.test.ts:205`; G2's percent format against ki-084 (2 tests) and ki-094 (1 test)); TA-03 adds no failure; `data-extract --check` and `vendor-extract --check` pass; the built `/next/` file is byte-identical with and without TA-03 (2,002,299 bytes). Conflicts with TA-03: the three expected docs files only |
+| Outstanding blockers | Integration in progress under "continue" (2 Nov). To come: Gates A to E. PD-09 (placeholder rule), PD-48 (half-way rounding), the Office rule (R-12; ARC-01 K1) |
 | Ownership released | **No** |
 
 ## 3 to 5. TB-07: round-2 fixers G1, G2, G3
@@ -110,7 +112,7 @@ All three are based on 07a6460, each holds one commit that exists nowhere else, 
 | Overlaps | `tests/fixtures/make-books.ts` with G2 | `make-books.ts` with G1; `node-wiring.ts` needed by G3 | `node-wiring.ts` from G2 (sharedFileRequest) |
 | Current status | IMPLEMENTED, NOT FULLY VERIFIED: reported 904 tests, 902 pass; the 2 failures need G1's sharedFileRequests (`gate.test.ts:39`, `as-on-change.test.ts:205`) | IN PROGRESS: tests never run or reported | IMPLEMENTED, NOT FULLY VERIFIED: reported 864 tests, 860 pass; the 4 failures are the ones G1 fixes |
 | Review and integration status | Not integrated; no review | Not integrated; no review | Not integrated; no review |
-| Outstanding blockers | Local only (TB-08); NB-01 paused | Local only; untested | Local only |
+| Outstanding blockers | Pushed 2 Nov (TB-08); integration under "continue" | Pushed 2 Nov; tested by NB-01 on 2 Nov (900/893/7); Office-script rewrite (K1) pending | Pushed 2 Nov |
 | Ownership released | No | No | No |
 
 ## 6. TC-01: MOD-01 to MOD-02 handover package
@@ -140,3 +142,4 @@ All three are based on 07a6460, each holds one commit that exists nowhere else, 
 | 30 Oct 2026 | MOD-01 (fixer pass) | TC-01 lists the `docs/HANDOVER.md` banner among its files and dependencies |
 | 2 Nov 2026 | MOD-02 | TA-03 now EX-01's (branch `fix/legacy-batch-3-tax-cr-0008`, contract accepted with changes C1 to C5, interface notes I-04 and I-09); TC-01 merged (PR #17); TC-02 (PR #18) added; "Ownership released" for TA-03 reads No until it merges |
 | 2 Nov 2026 | MOD-02 | TA-03 "Ownership released" corrected to No (files stay reserved; responsibility passed); PD-02 and PD-03 answered; scope additions (T5 items 9 and 10, six ENGINE keys); self-references to the PR head removed |
+| 2 Nov 2026 | MOD-02 | TB-08 done (rows 2 to 5 on origin); contract verdict and early cross-build signal added to TB-06; row 7 merged (PR #18) and row 8 added |

@@ -30,7 +30,10 @@ console.log('--- classification ---');
 ['MF_PERF', 'MF_PERF_DIRECT'].forEach(blk => {
   const B = REF[blk], names = Object.keys(B);
   const sol = names.filter(k => /retire|child|bal bhavishya/i.test(k));
-  const want = blk === 'MF_PERF' ? 24 : 41;   /* Regular: 12 retirement + 12 children's; Direct: 23 retirement filed "Debt Oriented", 6 in "Solution Oriented,ETFs,FOFs", 12 children's */
+  /* 31 Oct 2026 monitors (TA-10): Regular 12 retirement + 11 children's; Direct 23 retirement filed "Debt Oriented",
+     6 in "Solution Oriented,ETFs,FOFs", 11 children's. UTI Children's Hybrid Fund (Regular, and its Scholarship Direct
+     plan) left the vendor's monitors in October; on 30 Sep 2026 the counts were 24 and 41. */
+  const want = blk === 'MF_PERF' ? 23 : 40;
   ok(sol.length === want, blk + ': ' + sol.length + ' retirement or children\'s funds (' + want + ' expected)');
   ['Equity', 'Hybrid', 'Debt', 'Others', ''].forEach(a => ['sheet', 'Solution Oriented', ''].forEach(cv => {
     const bad = sol.filter(k => { const r = tcx(k, cv === 'sheet' ? B[k].sheet : cv, a); return r.cls !== null || !/retirement or children's fund/.test(r.why); });
