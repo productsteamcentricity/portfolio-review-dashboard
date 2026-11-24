@@ -10,6 +10,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   market-cap shares, debt figures to 4 places, the Direct issue's unnamed sheets mapped to their category, benchmark rows.
   On the October 2026 monitors (read locally, never committed) it reproduces the embedded MF_PERF, MF_PERF_DIRECT and
   BENCH_RET exactly. Not called by the app yet; the upload buttons wait for the spreadsheet-reader decision.
+- **The monitor's expense ratio (KI-058):** read from the "Ratio" header column, one scale decision per file (median
+  below 0.05 means fractions), always stored as a fraction, values above 5% dropped and counted. It is the all-in ratio and
+  is labelled so: never used for a missing base expense ratio (CLAUDE.md rule 3). October 2026: 2,125 Regular and 1,803
+  Direct ratios read, percent scale, none above the cap.
 - **Tests:** `tests/unit/ingest/vendor/mf-monitor.test.ts` on synthetic issues; `tests/parity/monitor.parity.test.ts`
   against the browser's legacy parser, every difference a ledgered pipeline correction.
 
