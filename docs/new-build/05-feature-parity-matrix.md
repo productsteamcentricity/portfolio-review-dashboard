@@ -44,7 +44,7 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | E-04 | Dates and as-on | `engine/dates.ts` | `unit/engine/dates.test.ts` (both time zones); `integration/as-on-change.test.ts` | correction (KI-075, KI-087) | in progress |
 | E-05 | IRR parser | `ingest/irr-file.ts` | `parity/irr.parity.test.ts`; `unit/ingest/irr-file.test.ts` (incl. the DISTRIBUTOR column) | correction (KI-075, OD-16); improvement (DISTRIBUTOR read, E-142) | not started |
 | E-06 | MF Monitor parser | `ingest/vendor/mf-monitor.ts` | `unit/ingest/vendor/mf-monitor.test.ts`; `parity/monitor.parity.test.ts`; upload equals embedded (October 2026 monitors, local check: 2,144 and 1,775 schemes, 108 benchmarks, no difference) | correction (KI-026, KI-058, KI-076, OD-11) | in progress |
-| E-07 | SIF Monitor parser | `ingest/sif-monitor.ts` | `unit/ingest/sif-monitor.test.ts` | none | not started |
+| E-07 | SIF Monitor parser | `ingest/vendor/sif-monitor.ts` | `unit/ingest/vendor/sif-monitor.test.ts`; upload equals embedded (October 2026, local check: 30 schemes, no difference) | none | in progress |
 | E-08 | PMS/AIF performance parser | `ingest/pms-performance.ts`, `aif-performance.ts` | `unit/ingest/pms-performance.test.ts` | correction (KI-033) | not started |
 | E-09 | SOA look-through parsers | `ingest/soa-lookthrough.ts` | `unit/ingest/soa-lookthrough.test.ts` (incl. name variants merged only through pins) | correction (KI-077); per Q-80 (a) | not started |
 | E-10 | Debt parsers and issuer names | `ingest/debt-analytics.ts`, `bonds.ts` | `unit/ingest/debt.test.ts` (incl. issuer table and top-30 coverage) | correction (KI-056, KI-023, KI-039); per Q-80 (c) | not started |

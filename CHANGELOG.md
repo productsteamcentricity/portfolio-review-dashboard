@@ -14,6 +14,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   below 0.05 means fractions), always stored as a fraction, values above 5% dropped and counted. It is the all-in ratio and
   is labelled so: never used for a missing base expense ratio (CLAUDE.md rule 3). October 2026: 2,125 Regular and 1,803
   Direct ratios read, percent scale, none above the cap.
+- **The SIF Monitor (E-07):** read as the pipeline does: the benchmark group, index rows, rows with no category and no AUM
+  and the disclaimer are not schemes; a Month End date is not a fund house. October 2026: equal to the embedded SIF_PERF
+  (30 schemes).
 - **Tests:** `tests/unit/ingest/vendor/mf-monitor.test.ts` on synthetic issues; `tests/parity/monitor.parity.test.ts`
   against the browser's legacy parser, every difference a ledgered pipeline correction.
 
