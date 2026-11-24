@@ -5,7 +5,7 @@
 //   (b) the shipped order (data/refdata) against the legacy's embedded order: only score ties and duplicate normalised
 //       exact hits, each kind ledgered (tests/parity/matching-ledger.json, KI-036) until sprint 2's null on ties.
 // Every key of the three legacy name lists (pins, blocks, exact-only) is a named case, so a dropped entry fails.
-// Coupling with CHAT-007 (§1): while the engine block differs from the ledger's basis, differences are reported, not
+// Coupling with CHAT-007 (§1): while the matcher slice of the engine block differs from the ledger's basis, differences are reported, not
 // failed; a difference on a name the basis does not hold (added by a refresh) is reported, never failed.
 // The default run samples every 5th universe name (runtime budget: under 60 s per time zone); PRD_PARITY_FULL=1 runs
 // the full sweep. CI runs this under TZ=Asia/Kolkata and TZ=UTC.
@@ -25,7 +25,7 @@ import { AMC_ALIAS, AMC_DISPLAY, AMC_PLACEHOLDER, AMC_RENAMED, amcDisplay, amcKe
 import { firstWord } from './matching-queries.ts';
 
 type LedgerEntry = { id: string; mode: string; kind: string; countAtBasis: number; retired?: string };
-type Ledger = { basis: { engineBlockSha256: string }; entries: LedgerEntry[] };
+type Ledger = { basis: { matcherSliceSha256: string }; entries: LedgerEntry[] };
 
 const ledger = JSON.parse(fs.readFileSync(path.join(REPO, 'tests', 'parity', 'matching-ledger.json'), 'utf8')) as Ledger;
 const FULL = process.env.PRD_PARITY_FULL === '1';
@@ -68,7 +68,7 @@ before(() => {
   const t0 = Date.now();
   const { E, REF } = loadLegacyEngine();
   const block = engineBlock();
-  basisMatches = block.sha256 === ledger.basis.engineBlockSha256;
+  basisMatches = block.matcherSha256 === ledger.basis.matcherSliceSha256;
   basisNames = new Set(readBasis().names);
   queries = buildQueries(universeNames((u) => REF[u]), block.text, STRIDE);
   for (const set of CANDIDATE_SETS) {
@@ -103,7 +103,7 @@ const show = (d: Diff): string =>
 
 describe('matching parity with the legacy matcher', () => {
   test('the run: queries, calls, runtime and basis', (t) => {
-    t.diagnostic(`${FULL ? 'full sweep' : 'sample 1 in ' + STRIDE}: ${queries.length} queries, ${calls} calls, ${ms} ms; engine block ${basisMatches ? 'equals' : 'DIFFERS FROM'} the basis`);
+    t.diagnostic(`${FULL ? 'full sweep' : 'sample 1 in ' + STRIDE}: ${queries.length} queries, ${calls} calls, ${ms} ms; matcher slice of the engine block ${basisMatches ? 'equals' : 'DIFFERS FROM'} the basis`);
     assert.ok(calls > 0);
   });
 

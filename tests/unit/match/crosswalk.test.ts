@@ -12,8 +12,9 @@ const cw = buildCrosswalk({
   fundRankCodes: { 'Zeta Value Plus Fund-Reg(G)': '100001', 'Zeta Value Discovery Plus Fund-Reg(G)': '100002', 'Twin A': '100009', 'Twin B': '100009', 'Bad Code Fund': 'n/a' },
   stocks: { 'alpha industries': { isin: 'INE000A01011' }, 'beta motors': { isin: 'ine000b01012' }, 'no isin co': { isin: null } },
 });
-const funds = makeUniverse('MF_PERF', 'MF', 'instrument', ['Zeta Value Plus Fund-Reg(G)', 'Zeta Value Discovery Plus Fund-Reg(G)', 'Aditya Birla SL Retirement Fund-40-Reg(G)']);
-const stocks = makeUniverse('STOCK_RET', 'EQUITY', 'stock', ['alpha industries', 'beta motors']);
+const block = (keys: string[], extra: Record<string, unknown> = {}): Record<string, unknown> => ({ ...Object.fromEntries(keys.map((k) => [k, {}])), ...extra });
+const funds = makeUniverse('MF_PERF', block(['Zeta Value Plus Fund-Reg(G)', 'Zeta Value Discovery Plus Fund-Reg(G)', 'Aditya Birla SL Retirement Fund-40-Reg(G)']), 'MF', 'instrument', 'MF');
+const stocks = makeUniverse('STOCK_RET', block(['alpha industries', 'beta motors']), 'EQUITY', 'stock', 'EQUITY');
 
 describe('crosswalk', () => {
   test('an AMFI code resolves its scheme; the code and the name agree', () => {
@@ -38,10 +39,31 @@ describe('crosswalk', () => {
     assert.deepEqual(conflict.resolution.candidates, ['Zeta Value Plus Fund-Reg(G)']);
   });
 
-  test('a code carried by two names, or malformed, resolves nothing (never a guess)', () => {
+  test('a code carried by two names, or malformed, resolves nothing and is attached to no result (never a guess)', () => {
     assert.ok(cw.ambiguous.has('100009'));
     assert.equal(cw.nameByAmfi.has('100009'), false);
+    assert.equal(cw.amfiByName.has('Twin A'), false);
     assert.equal(cw.amfiByName.has('Bad Code Fund'), false);
+    const twins = makeUniverse('MF_PERF', block(['Twin A', 'Twin B']), 'MF', 'instrument', 'MF');
+    assert.equal(resolveInstrument({ name: 'Twin A' }, twins, cw).amfiCode, undefined);
+  });
+
+  test('product class is never crossed: a mixed-class block gives each universe only its own class', () => {
+    const eq = block(['Kappa Flexicap Fund-Reg(G)'], { 'Kappa Flexicap Approach': { pcls: 'PMS' }, 'Kappa Flexicap AIF Fund I': { pcls: 'AIF' } });
+    const mf = makeUniverse('EQUITY_ANALYTICS', eq, 'MF', 'instrument', 'MF');
+    const pms = makeUniverse('EQUITY_ANALYTICS', eq, 'PMS', 'pms', 'MF');
+    assert.deepEqual(mf.keys, ['Kappa Flexicap Fund-Reg(G)']);
+    assert.deepEqual(pms.keys, ['Kappa Flexicap Approach']);
+    /* an MF holding named exactly as the PMS entry is not given it: no vendor key, no name match across the class line */
+    const r = resolveInstrument({ name: 'Kappa Flexicap Approach' }, makeUniverse('EQUITY_ANALYTICS', block([], { 'Kappa Flexicap Approach': { pcls: 'PMS' } }), 'MF', 'instrument', 'MF'), cw);
+    assert.equal(r.resolution.method, 'none');
+  });
+
+  test('a blocked name stays unmatched even when it equals a reference name (the legacy alias step first)', () => {
+    const u = makeUniverse('MF_PERF', block(['ICICI Pru Leaders Fund Series IV', 'ICICI Pru Commodities Fund-Reg(G)']), 'MF', 'instrument', 'MF');
+    const r = resolveInstrument({ name: 'ICICI Pru Leaders Fund Series IV' }, u, cw);
+    assert.equal(r.resolution.method, 'none');
+    assert.equal(r.vendorKey, undefined);
   });
 
   test('vendor key, then the legacy name unit: pin, exact, fuzzy proposal', () => {

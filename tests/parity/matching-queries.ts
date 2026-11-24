@@ -59,7 +59,7 @@ export function buildQueries(names: readonly string[], engineText: string, strid
   return q;
 }
 
-export type Basis = { schema: string; engineBlockSha256: string; indexMd5: string; count: number; names: string[] };
+export type Basis = { schema: string; matcherSliceSha256: string; engineBlockSha256: string; indexMd5: string; count: number; names: string[] };
 
 export const BASIS_FILE = path.join(REPO, 'tests', 'parity', 'matching-basis.json');
 
@@ -73,7 +73,7 @@ if (process.argv.includes('--write-basis')) {
   for (const r of SYNTHETIC_BOOK) all.add(r.name);
   for (const k of namedKeys(block.text)) all.add(k);
   const names = [...new Set([...all].map(fnv32))].sort();
-  const basis: Basis = { schema: 'matching-basis-v1', engineBlockSha256: block.sha256, indexMd5: block.indexMd5, count: names.length, names };
+  const basis: Basis = { schema: 'matching-basis-v1', matcherSliceSha256: block.matcherSha256, engineBlockSha256: block.sha256, indexMd5: block.indexMd5, count: names.length, names };
   fs.writeFileSync(BASIS_FILE, JSON.stringify(basis) + '\n');
-  console.log(`matching-basis.json: ${names.length} names, engine block ${block.sha256.slice(0, 12)}, index.html ${block.indexMd5}`);
+  console.log(`matching-basis.json: ${names.length} names, matcher slice ${block.matcherSha256.slice(0, 12)}, index.html ${block.indexMd5}`);
 }

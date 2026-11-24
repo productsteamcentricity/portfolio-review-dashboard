@@ -7,16 +7,25 @@
 //     D-026);
 //   - STOCK_RET: listed stock key to ISIN.
 // Resolution order (stable identifiers first, names last):
-//   1. ISIN, then AMFI scheme code, then vendor key (the exact reference name);
-//   2. the legacy name unit unchanged (instrument.ts or pms.ts: alias pin or block, exact name, EXACT_ONLY stop, fuzzy).
-// No reader reads an ISIN or AMFI column of the base file yet, so in sprint 1 steps 1's ISIN and AMFI serve only the
+//   1. ISIN, then AMFI scheme code;
+//   2. the legacy name unit, in the legacy order: alias block or pin first; then the vendor key (the exact reference
+//      name), then the exact normalised name, the EXACT_ONLY stop and the fuzzy match (instrument.ts, pms.ts). A
+//      blocked name therefore stays unmatched even when it equals a reference name, as on the live page (financial
+//      review of f32ee9c, L1).
+// Product class is never crossed (CLAUDE.md rule 4): a universe holds only the entries of one class. makeUniverse
+// applies the legacy splitByClass (07_engine.js:1078-1097) to a reference block: an entry whose `pcls` is PMS or AIF
+// belongs to that class, any other entry to the block's default class (financial review of f32ee9c, M2).
+// No reader reads an ISIN or AMFI column of the base file yet, so in sprint 1 the ISIN and AMFI steps serve only the
 // reference-side joins (a stock's ISIN, a scheme's code). Nothing in the app calls this module yet: the overview's
-// holdings keep `instrument: null`, and the built page does not change.
+// holdings keep `instrument: null`, and the built page does not change. It is wired into the app only after sprint 2
+// returns no match on equal scores (KI-036): until then the shipped candidate order (data/refdata, sorted) can pick a
+// different fund than the live page on a tie (financial review of f32ee9c, L2; tests/parity/matching-ledger.json MT-01).
 // When an identifier and the name unit disagree, the identifier wins and the name unit's answer is kept in
 // `resolution.candidates`, so the conflict is visible.
 
 import type { InstrumentRef, ProductClass, ResolutionConfidence, ResolutionMethod } from '../../model/ids.ts';
 import { matchInstrumentDetail, type TokenCache } from './instrument.ts';
+import { aliasFor } from './name-lists.ts';
 import { nameKey } from './normalize.ts';
 import { matchPMS, type PmsCache } from './pms.ts';
 
@@ -30,14 +39,32 @@ export type Universe = {
   productClass: ProductClass;
   /** 'instrument' (matchInstrument), 'pms' (matchPMS) or 'stock' (identifiers only in sprint 1). */
   matcher: 'instrument' | 'pms' | 'stock';
-  /** Candidate names, in the order given (order decides ties, KI-036). */
+  /** Candidate names of this class only, in the block's order (order decides ties, KI-036). */
   keys: readonly string[];
   keySet: ReadonlySet<string>;
   tokenCache: TokenCache;
   pmsCache: PmsCache;
 };
 
-export function makeUniverse(name: UniverseName, productClass: ProductClass, matcher: Universe['matcher'], keys: readonly string[]): Universe {
+/** The product class of one reference entry: its `pcls` when PMS or AIF, else the block's default class. */
+export function entryClass(entry: unknown, blockDefault: ProductClass): ProductClass {
+  const pc = entry && typeof entry === 'object' ? (entry as { pcls?: unknown }).pcls : undefined;
+  return pc === 'PMS' || pc === 'AIF' ? pc : blockDefault;
+}
+
+/**
+ * One universe of one product class from a reference block (name to entry), in the block's key order. `blockDefault`
+ * is the class of entries with no PMS or AIF `pcls` (MF for the look-through and fund blocks, PMS for PMS_PERF, AIF for
+ * AIF_PERF, SIF for SIF_PERF, EQUITY for STOCK_RET).
+ */
+export function makeUniverse(
+  name: UniverseName,
+  block: Readonly<Record<string, unknown>>,
+  productClass: ProductClass,
+  matcher: Universe['matcher'],
+  blockDefault: ProductClass,
+): Universe {
+  const keys = Object.keys(block).filter((k) => entryClass(block[k], blockDefault) === productClass);
   return { name, productClass, matcher, keys, keySet: new Set(keys), tokenCache: new Map(), pmsCache: new Map() };
 }
 
@@ -53,59 +80,57 @@ export type Crosswalk = {
   amfiByName: ReadonlyMap<string, string>;
   stockKeyByIsin: ReadonlyMap<string, string>;
   isinByStockKey: ReadonlyMap<string, string>;
-  /** AMFI codes or ISINs carried by more than one name; such a code resolves nothing (never a guess, rule 3). */
+  /** AMFI codes or ISINs carried by more than one name; such an identifier resolves nothing and is attached to no
+   * result (never a guess, rule 3). */
   ambiguous: ReadonlySet<string>;
 };
 
 const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
 const AMFI_RE = /^[0-9]{3,8}$/;
 
-function addUnique(map: Map<string, string>, ambiguous: Set<string>, id: string, name: string): void {
-  if (ambiguous.has(id)) return;
-  const prev = map.get(id);
-  if (prev === undefined) map.set(id, name);
-  else if (prev !== name) {
-    map.delete(id);
-    ambiguous.add(id);
+/** id to name and name to id, keeping only identifiers carried by exactly one name. */
+function uniqueIndex(pairs: ReadonlyArray<readonly [string, string]>, ambiguous: Set<string>): { byId: Map<string, string>; byName: Map<string, string> } {
+  const names = new Map<string, Set<string>>();
+  for (const [id, name] of pairs) {
+    let s = names.get(id);
+    if (!s) names.set(id, (s = new Set()));
+    s.add(name);
   }
+  const byId = new Map<string, string>();
+  const byName = new Map<string, string>();
+  for (const [id, s] of names) {
+    if (s.size !== 1) {
+      ambiguous.add(id);
+      continue;
+    }
+    const name = [...s][0] as string;
+    byId.set(id, name);
+    byName.set(name, id);
+  }
+  return { byId, byName };
 }
 
 export function buildCrosswalk(src: CrosswalkSources): Crosswalk {
-  const nameByAmfi = new Map<string, string>();
-  const amfiByName = new Map<string, string>();
-  const stockKeyByIsin = new Map<string, string>();
-  const isinByStockKey = new Map<string, string>();
   const ambiguous = new Set<string>();
+  const codes: Array<readonly [string, string]> = [];
   for (const [name, v] of Object.entries(src.fundRankCodes)) {
     const code = typeof v === 'string' || typeof v === 'number' ? String(v).trim() : '';
-    if (!AMFI_RE.test(code)) continue;
-    amfiByName.set(name, code);
-    addUnique(nameByAmfi, ambiguous, code, name);
+    if (AMFI_RE.test(code)) codes.push([code, name]);
   }
+  const isins: Array<readonly [string, string]> = [];
   for (const [key, v] of Object.entries(src.stocks)) {
-    const isin = v && typeof v === 'object' && typeof (v as { isin?: unknown }).isin === 'string' ? ((v as { isin: string }).isin).trim().toUpperCase() : '';
-    if (!ISIN_RE.test(isin)) continue;
-    isinByStockKey.set(key, isin);
-    addUnique(stockKeyByIsin, ambiguous, isin, key);
+    const raw = v && typeof v === 'object' ? (v as { isin?: unknown }).isin : undefined;
+    const isin = typeof raw === 'string' ? raw.trim().toUpperCase() : '';
+    if (ISIN_RE.test(isin)) isins.push([isin, key]);
   }
-  return { nameByAmfi, amfiByName, stockKeyByIsin, isinByStockKey, ambiguous };
+  const amfi = uniqueIndex(codes, ambiguous);
+  const stock = uniqueIndex(isins, ambiguous);
+  return { nameByAmfi: amfi.byId, amfiByName: amfi.byName, stockKeyByIsin: stock.byId, isinByStockKey: stock.byName, ambiguous };
 }
 
 export type ResolveQuery = { name: string; amc?: string; isin?: string; amfiCode?: string };
 
 type Hit = { key: string; method: ResolutionMethod; confidence: ResolutionConfidence };
-
-function nameUnit(q: ResolveQuery, u: Universe): Hit | null {
-  if (u.matcher === 'pms') {
-    const k = matchPMS(q.name, u.keys, u.pmsCache);
-    return k === null ? null : { key: k, method: 'name-match', confidence: nameKey(k) === nameKey(q.name) ? 'exact' : 'proposed' };
-  }
-  if (u.matcher === 'stock') return null;
-  const d = matchInstrumentDetail(q.name, q.amc ?? '', u.keys, u.tokenCache);
-  if (d.key === null) return null;
-  if (d.step === 'pin') return { key: d.key, method: 'alias-pin', confidence: 'pinned' };
-  return { key: d.key, method: 'name-match', confidence: d.step === 'exact' ? 'exact' : 'proposed' };
-}
 
 function identifierHit(q: ResolveQuery, u: Universe, cw: Crosswalk): Hit | null {
   const isin = q.isin?.trim().toUpperCase();
@@ -118,11 +143,25 @@ function identifierHit(q: ResolveQuery, u: Universe, cw: Crosswalk): Hit | null 
     const k = cw.nameByAmfi.get(code);
     if (k !== undefined && u.keySet.has(k)) return { key: k, method: 'amfi', confidence: 'exact' };
   }
-  if (u.keySet.has(q.name)) return { key: q.name, method: 'vendor-key', confidence: 'exact' };
   return null;
 }
 
-/** Resolves one holding name (and its identifiers, when a reader supplies them) against one universe. */
+/** The legacy name unit, with the vendor key after the alias step and before the exact normalised name. */
+function nameUnit(q: ResolveQuery, u: Universe): Hit | null {
+  if (u.matcher === 'stock') return u.keySet.has(q.name) ? { key: q.name, method: 'vendor-key', confidence: 'exact' } : null;
+  const listed = aliasFor(nameKey(q.name));
+  if (listed === undefined && u.keySet.has(q.name)) return { key: q.name, method: 'vendor-key', confidence: 'exact' };
+  if (u.matcher === 'pms') {
+    const k = matchPMS(q.name, u.keys, u.pmsCache);
+    return k === null ? null : { key: k, method: 'name-match', confidence: nameKey(k) === nameKey(q.name) ? 'exact' : 'proposed' };
+  }
+  const d = matchInstrumentDetail(q.name, q.amc ?? '', u.keys, u.tokenCache);
+  if (d.key === null) return null;
+  if (d.step === 'pin') return { key: d.key, method: 'alias-pin', confidence: 'pinned' };
+  return { key: d.key, method: 'name-match', confidence: d.step === 'exact' ? 'exact' : 'proposed' };
+}
+
+/** Resolves one holding name (and its identifiers, when a reader supplies them) against one universe of one class. */
 export function resolveInstrument(q: ResolveQuery, u: Universe, cw: Crosswalk): InstrumentRef {
   const id = identifierHit(q, u, cw);
   const byName = nameUnit(q, u);

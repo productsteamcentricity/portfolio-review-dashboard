@@ -6,6 +6,8 @@
   "test": "tests/parity/matching.parity.test.ts",
   "basis": {
     "main": "0e483b620078c95d7aad0ba41b86b249639065e5",
+    "matcherSliceSha256": "80ca0a5e9c082d9f111e2878b83a9c4db58798ae8dc25171c79e30245f5d0d92",
+    "matcherSlice": "the engine block from `var AMC_DISPLAY` to the start of the TAXATION section (tests/helpers/legacy-engine.ts matcherSlice): the AMC tables and key, the normaliser, the three name lists, matchInstrument and matchPMS",
     "engineBlockSha256": "da0694f275607f70817213d98ed4dd4d548737becacdc68725d1dbde5f3dfbef",
     "indexMd5": "CAD0E21A5A2703F5A10AC04A3BE9BAD2",
     "names": "tests/parity/matching-basis.json"
@@ -13,7 +15,7 @@
   "notes": [
     "Mode (a), the same candidate array for both: no difference is allowed. On the basis, the full sweep (PRD_PARITY_FULL=1: 6,451 queries, 113,873 calls) gave 0 differences; the sampled default run (1 in 5) gave 0 in 23,052 calls, in about 33 s.",
     "Mode (b), the shipped candidate order (data/refdata, keys sorted by scripts/data-extract.ts) against the legacy's embedded order: only the kinds below are allowed. The legacy returns the first candidate of equal score (strict >) and the first equal exact name, so a different order can pick a different candidate of the same score (KI-036). Sprint 2 returns null on ties and retires these entries.",
-    "Coupling with CHAT-007 (M2 plan v2, section 1): while the engine block's SHA-256 differs from basis.engineBlockSha256, every difference is reported and none fails, until NB-02 ports the live change within 5 working days. A difference on a name the basis name set does not hold (a name a refresh added) is reported, never failed. A CHAT-007 pull request is never asked to edit this file or matching-basis.json.",
+    "Coupling with CHAT-007 (M2 plan v2, section 1): while the SHA-256 of the engine block's matcher slice differs from basis.matcherSliceSha256 (an edit elsewhere in the engine does not count), every difference is reported and none fails, until NB-02 ports the live change within 5 working days. A difference on a name the basis name set does not hold (a name a refresh added) is reported, never failed. A CHAT-007 pull request is never asked to edit this file or matching-basis.json.",
     "countAtBasis is the count of the full sweep on the basis; the sampled default run reports its own count. Counts are information: a refresh may change them without failing the test."
   ],
   "entries": [

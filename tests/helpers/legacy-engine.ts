@@ -39,8 +39,23 @@ export function loadLegacyEngine(): LegacyEngine {
   return cached;
 }
 
-/** The engine block's text (the script whose head carries "Pure compute + PPTX/XLSX builders") and its SHA-256. */
-export function engineBlock(): { text: string; sha256: string; indexMd5: string } {
+/**
+ * The matcher slice of the engine block: from `var AMC_DISPLAY` to the start of the TAXATION section, which holds the
+ * AMC tables and key, the normaliser, the three name lists, matchInstrument and matchPMS (07_engine.js:16-272 at
+ * 0e483b6). Its SHA-256 is the coupling basis: an edit elsewhere in the engine (a builder, a tax rule) does not switch
+ * the matching tests to report-only (financial review of f32ee9c, M1).
+ */
+export function matcherSlice(block: string): string {
+  const start = block.indexOf('var AMC_DISPLAY');
+  const tax = block.indexOf('TAXATION');
+  const end = tax < 0 ? -1 : block.lastIndexOf('/*', tax);
+  if (start < 0 || end <= start) throw new Error('matcher slice not found in the engine block');
+  return block.slice(start, end);
+}
+
+/** The engine block's text (the script whose head carries "Pure compute + PPTX/XLSX builders"), its SHA-256 and the
+ * SHA-256 of its matcher slice. */
+export function engineBlock(): { text: string; sha256: string; matcherSha256: string; indexMd5: string } {
   const html = fs.readFileSync(path.join(REPO, 'index.html'));
   const text = html.toString('utf8');
   const re = /<script([^>]*)>/g;
@@ -53,6 +68,7 @@ export function engineBlock(): { text: string; sha256: string; indexMd5: string 
       return {
         text: body,
         sha256: crypto.createHash('sha256').update(body, 'utf8').digest('hex'),
+        matcherSha256: crypto.createHash('sha256').update(matcherSlice(body), 'utf8').digest('hex'),
         indexMd5: crypto.createHash('md5').update(html).digest('hex').toUpperCase(),
       };
     }
@@ -91,6 +107,14 @@ export function parseLegacyNameLists(block: string): LegacyNameLists {
   for (const m of literalBody(block, 'EXACT_ONLY').matchAll(/"([^"]+)"\s*:\s*1\b/g)) exactOnly.push(m[1] as string);
   for (const m of block.matchAll(/EXACT_ONLY\["([^"]+)"\]\s*=\s*1\b/g)) exactOnly.push(m[1] as string);
   return { pins, blocks, exactOnly };
+}
+
+/** A flat object literal of the engine block (`var NAME = { k:"v", "k2":1, ... };`) as entries, comments removed. Keys
+ * may be quoted or bare; values are a quoted string or 1. Used for the AMC tables, which ENGINE does not expose. */
+export function parseLegacyTable(block: string, varName: string): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+  for (const m of literalBody(block, varName).matchAll(/["']?([A-Za-z0-9_]+)["']?\s*:\s*(?:"([^"]*)"|(1))/g)) out.push([m[1] as string, m[2] ?? (m[3] as string)]);
+  return out;
 }
 
 /** The legacy candidate sets the matchers are given (07_engine.js:1071-1097, 1784-1791; 11_app_ui.js ppResolve). */
