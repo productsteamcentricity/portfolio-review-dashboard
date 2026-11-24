@@ -1,0 +1,39 @@
+{
+  "schema": "parity-ledger-v1",
+  "area": "matching",
+  "legacy": "matchInstrument and matchPMS of the engine block of index.html (07_engine.js), run through tools/engine-host.js (tests/helpers/legacy-engine.ts), on every candidate set the legacy passes them: MF_PERF, MF_PERF_DIRECT, SIF_PERF, AIF_PERF, PMS_PERF, EQUITY_ANALYTICS by product class (MF, AIF, PMS), HYBRID_ANALYTICS and DEBT_ANALYTICS (MF), MF_RISK",
+  "new": "app/src/engine/match/instrument.ts matchInstrument and app/src/engine/match/pms.ts matchPMS",
+  "test": "tests/parity/matching.parity.test.ts",
+  "basis": {
+    "main": "0e483b620078c95d7aad0ba41b86b249639065e5",
+    "engineBlockSha256": "da0694f275607f70817213d98ed4dd4d548737becacdc68725d1dbde5f3dfbef",
+    "indexMd5": "CAD0E21A5A2703F5A10AC04A3BE9BAD2",
+    "names": "tests/parity/matching-basis.json"
+  },
+  "notes": [
+    "Mode (a), the same candidate array for both: no difference is allowed. On the basis, the full sweep (PRD_PARITY_FULL=1: 6,451 queries, 113,873 calls) gave 0 differences; the sampled default run (1 in 5) gave 0 in 23,052 calls, in about 33 s.",
+    "Mode (b), the shipped candidate order (data/refdata, keys sorted by scripts/data-extract.ts) against the legacy's embedded order: only the kinds below are allowed. The legacy returns the first candidate of equal score (strict >) and the first equal exact name, so a different order can pick a different candidate of the same score (KI-036). Sprint 2 returns null on ties and retires these entries.",
+    "Coupling with CHAT-007 (M2 plan v2, section 1): while the engine block's SHA-256 differs from basis.engineBlockSha256, every difference is reported and none fails, until NB-02 ports the live change within 5 working days. A difference on a name the basis name set does not hold (a name a refresh added) is reported, never failed. A CHAT-007 pull request is never asked to edit this file or matching-basis.json.",
+    "countAtBasis is the count of the full sweep on the basis; the sampled default run reports its own count. Counts are information: a refresh may change them without failing the test."
+  ],
+  "entries": [
+    {
+      "id": "MT-01",
+      "mode": "b",
+      "kind": "tie",
+      "class": "correction",
+      "reference": "KI-036",
+      "countAtBasis": 84,
+      "description": "The legacy and the shipped order pick different candidates that have the same fuzzy score (shared tokens and Jaccard ratio), because each returns the first of equal scores in its own order. Neither answer is better; sprint 2 returns no match on such a tie."
+    },
+    {
+      "id": "MT-02",
+      "mode": "b",
+      "kind": "duplicate-exact",
+      "class": "correction",
+      "reference": "KI-036",
+      "countAtBasis": 0,
+      "description": "Two candidates share the query's normalised name (for example a Regular and a Direct spelling of one scheme) and each order returns the first of them. None on the basis; kept so a refresh that brings one does not fail."
+    }
+  ]
+}
