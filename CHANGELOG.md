@@ -10,6 +10,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   Over 4,741 fund names: 278 → 117 (163 domestic names out, 2 genuine in, none genuine out). Patch
   `tools/patches/2026-11-22-intl-word-boundary.js`; test `tools/regression/CR0010-a3-intl-word-boundary.js`.
 
+### Fixed (CR-0010 A4; not published until the owner says "publish")
+- **The SWOT's international share counts the overseas funds it missed** ("Intl.", Asian, Asia Pacific, ASEAN, Brazil,
+  Europe, Hang Seng, NYSE FANG+, Emerging Markets, Off-shore) **and no longer counts "First Global", "SMC Global" or the
+  "MSCI India Domestic & World Healthcare 45" index fund.** Over 4,741 fund names: 117 → 139 (27 in, 5 out, no genuine name
+  out). A direct-equity holding keeps the A3 test, except an ETF held as a share, which takes the fund test. Patch `tools/patches/2026-11-24-intl-terms.js`; test
+  `tools/regression/CR0010-a4-intl-terms.js`. [CR-0010](docs/change-requests/CR-0010-other-funds-october.md).
+
 ### Fixed (CR-0010 A2b; not published until the owner says "publish")
 - **The AMC's own "The 30s Plan" / "The 40s Plan" spellings of Aditya Birla SL Retirement Fund** get their own fund's
   look-through and never Retirement Fund-50's returns: an ALIASES pin to their own hybrid entry plus exact-only (patch
