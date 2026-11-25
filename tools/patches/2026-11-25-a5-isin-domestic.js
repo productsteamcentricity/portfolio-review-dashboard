@@ -4,12 +4,15 @@
 
    1. A share held directly whose reference entry (STOCK_RET, matched by the
       company name) carries an Indian company ISIN, INE... (equity) or IN9...
-      (its partly-paid issue), is domestic. A3's name test counted Indian
-      companies whose names say "International", "Global", "Overseas", "World"
-      ("Hari Govind International", "Shanti Overseas India" ...). Measured over
-      A4's direct-equity hits (360 of the 10,439 company names): 288 Indian
-      companies leave, 72 stay (mostly foreign companies, and Indian names with
-      no STOCK_RET entry, for which the name test stays). Not any "IN" ISIN:
+      (its partly-paid, DVR or rights-entitlement issue), is domestic. A3's
+      name test counted Indian companies whose names say "International",
+      "Global", "Overseas", "World" ("Allcargo Global", "Bikaji Foods
+      International", "Indian Overseas Bank" ...). Measured over A4's
+      direct-equity hits (360 of the 10,439 company names, through the engine's
+      own name lookup): 297 Indian companies leave, 63 stay (5 Indian-domiciled
+      overseas ETFs, and 58 names with no STOCK_RET entry: mostly foreign
+      companies, and a few Indian names such as "Hari Govind International",
+      for which the name test stays). Not any "IN" ISIN:
       INF... is a mutual fund unit, and the Indian-domiciled ETFs that invest
       abroad (Nasdaq 100, Hang Seng, FANG+) carry INF ISINs and stay
       international; an ETF held as a share takes the fund test anyway (A4).

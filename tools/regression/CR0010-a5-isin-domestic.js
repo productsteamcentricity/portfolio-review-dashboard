@@ -28,6 +28,9 @@
         counts (A4: the bullet).
      K. 2 Cr "Prabhudas-Aqua Strategy" (a PMS): does not count.
      L. 2 Cr "Asian Paints Ltd." held directly: does not count (as A4).
+     M. 2 Cr "GS Auto International Partly Paid Up" (IN9): domestic.
+     N. Known limit, pinned: "Hari Govind International Ltd." (no STOCK_RET
+        entry) still counts by its name.
      node tools/regression/CR0010-a5-isin-domestic.js
    ========================================================================== */
 'use strict';
@@ -70,6 +73,11 @@ ok(!has(swot([['ICICI Pru Strategic Metal and Energy Equity FoF(G)-Direct Plan',
   'J. ICICI Pru Strategic Metal and Energy Equity FoF, Direct (99.42% overseas fund units) counts: no bullet');
 ok(has(swot([['Prabhudas-Aqua Strategy', 'Prabhudas Lilladher', 2, 'PMS'], FLEXI])), 'K. "Prabhudas-Aqua Strategy" (a PMS) is not the Aqua FoF: the bullet is shown');
 ok(has(swot([['Asian Paints Ltd.', '', 2, 'Direct Equity'], FLEXI])), 'L. "Asian Paints Ltd." held directly does not count (as A4)');
+/* the financial review of A5: an IN9 issue is domestic; an Indian name with no STOCK_RET entry keeps the name test (known limit, pinned) */
+ok(/^IN9/.test((SR[normCo('GS Auto International Partly Paid Up')] || {}).isin || '') &&
+   has(swot([['GS Auto International Partly Paid Up', '', 2, 'Direct Equity'], FLEXI])), 'M. a partly-paid issue (IN9 ISIN) held directly is domestic: the bullet is shown');
+ok(!SR[normCo('Hari Govind International Ltd.')] && !has(swot([['Hari Govind International Ltd.', '', 2, 'Direct Equity'], FLEXI])),
+  'N. known limit, pinned: an Indian company with no STOCK_RET entry ("Hari Govind International") still counts by its name');
 
 if (fail) { console.log('\n' + fail + ' check(s) FAILED'); process.exit(1); }
 console.log('\nall checks passed');

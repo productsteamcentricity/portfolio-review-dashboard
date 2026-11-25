@@ -127,10 +127,10 @@ the header) holds 344 schemes. On the live page (D-028: data, calculation and se
 
 - **A5** (25 Nov 2026; MOD-03's order after A4, the queue confirmed by MOD-04 under PD-65; branch
   `fix/cr0010-a5-isin-domestic` from `main` `c1e1974`): patch `tools/patches/2026-11-25-a5-isin-domestic.js`; test
-  `tools/regression/CR0010-a5-isin-domestic.js` (13 checks, 6 fail on `c1e1974`); the A4 test's page-form checks accept
+  `tools/regression/CR0010-a5-isin-domestic.js` (15 checks, 7 fail on `c1e1974`); the A4 test's page-form checks accept
   the A5 form. It closes A4's second and third known limits.
   - **Indian ISIN.** A share held directly (not an ETF) whose STOCK_RET entry, found by the company name as the engine
-    finds it, carries an Indian company ISIN (INE..., or IN9... for a partly-paid issue) is domestic, whatever its name
+    finds it, carries an Indian company ISIN (INE..., or IN9... for a partly-paid, DVR or rights-entitlement issue) is domestic, whatever its name
     says. Not any "IN" ISIN: INF... is a mutual fund unit, and the five Indian-domiciled ETFs that invest abroad (Mirae
     Asset Hang Seng TECH and NYSE FANG+, Motilal Oswal Nasdaq 100 and Nasdaq Q 50, Nippon India ETF Hang Seng BeES) carry
     INF ISINs and stay international. Client files have no ISIN column (the owner, 25 Nov 2026), so only the reference
@@ -149,6 +149,14 @@ the header) holds 344 schemes. On the live page (D-028: data, calculation and se
     24.78%, SBI Children's Investment Plan 12.16%) are not counted: a share-based count is the new build's (M4).
   - Unchanged: the fund test and its domestic exclusions, the ETF rule, the category fallback, and the Edelweiss "MSCI
     India Domestic & World Healthcare 45" limit (left for the new build, MOD-03).
+  - Financial review (25 Nov 2026): APPROVE WITH NOTES. All 297 names that leave are Indian issuers (Indian Overseas
+    Bank, Ircon, ...); STOCK_RET holds no IDR and no foreign company with an INE ISIN; the evidence phrases match only the
+    two funds in every block. Its record fixes are in (the patch header's figures, KI-215's wording, IN9's scope), and
+    the test pins an IN9 issue and the no-entry limit. Two older points outside A5:
+    - The same Indian names held as shares are taxed as "Global Funds" by main's tax classifier (24 months, slab rate
+      short term). TA-03 already fixes this on its branch (KI-162: a share is foreign-listed only on a positive marker);
+      checked: Indian Overseas Bank, Bikaji Foods International and Allcargo Global are "Listed Equity Shares" there.
+    - The IPS "International Equity" line keeps its own name test and can disagree with the SWOT: KI-216.
 
 ## Verification
 
