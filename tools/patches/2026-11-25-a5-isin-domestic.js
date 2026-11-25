@@ -48,8 +48,10 @@ applyPatch('CR-0010 A5 ISIN domestic and evidence list', [
     ].join('\n')
   },
   {
+    /* The anchor starts after the share test, so it applies on A4's form "((h.directEquity&&" and on LP-16's
+       "(((h.directEquity||h.heldShare)&&" (LP-16 is on main since 25 Nov, PR #32); the result text is the same. */
     label: 'engine SWOT: the international share reads the ISIN rule and the evidence list (A5)',
-    from: '    var intlCMV=0; rows.forEach(function(h){ var _n=h.name||""; if(((h.directEquity&&!_intlEtf.test(_n))?_intlA3.test(_n):(_intlFund.test(_n)&&!_intlNot.test(_n)))||/global|international/i.test(h.category||"")) intlCMV+=h.cmvCr; });\n',
-    to: '    var intlCMV=0; rows.forEach(function(h){ var _n=h.name||""; if(((h.directEquity&&!_intlEtf.test(_n))?(_intlA3.test(_n)&&!_intlInIsin(h)):((_intlFund.test(_n)||_intlEvid.test(_n))&&!_intlNot.test(_n)))||/global|international/i.test(h.category||"")) intlCMV+=h.cmvCr; });\n'
+    from: '!_intlEtf.test(_n))?_intlA3.test(_n):(_intlFund.test(_n)&&!_intlNot.test(_n)))||/global|international/i.test(h.category||"")) intlCMV+=h.cmvCr; });\n',
+    to: '!_intlEtf.test(_n))?(_intlA3.test(_n)&&!_intlInIsin(h)):((_intlFund.test(_n)||_intlEvid.test(_n))&&!_intlNot.test(_n)))||/global|international/i.test(h.category||"")) intlCMV+=h.cmvCr; });\n'
   }
 ]);
