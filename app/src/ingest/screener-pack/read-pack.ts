@@ -20,7 +20,7 @@ import { readZipDirectory, unsafeName, type ZipDirEntry } from './zip-directory.
 import { checkShape, isIsoDate, isRecord, Issues } from './schema.ts';
 import { ARRAY_CHECKS, KEYED_CHECKS, MANIFEST, MANIFEST_FILE_ENTRY, type FileSummary } from './schemas.ts';
 import { checkCsv } from './csv.ts';
-import type { AcceptedPack, PackDeps, PackFile, PackKind, PackProgress, PackReadResult, PackSummary } from './types.ts';
+import type { AcceptedPack, PackDeps, PackFile, PackKind, PackProgress, PackReadResult, PackSummary, PackZipObject } from './types.ts';
 
 const SHA_RE = /^[0-9a-f]{64}$/;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
@@ -187,7 +187,7 @@ function checkCounts(manifest: Record<string, unknown>, sums: { funds: FileSumma
   const byFamily = counts.by_family;
   if (isRecord(byFamily) && sums.funds?.byFamily) {
     for (const [fam, v] of Object.entries(byFamily)) {
-      const have = sums.funds.byFamily[fam] ?? 0;
+      const have = Object.hasOwn(sums.funds.byFamily, fam) ? sums.funds.byFamily[fam]! : 0;
       if (typeof v === 'number' && v !== have) throw new Refused(`manifest.json counts ${v} ${fam} funds; funds.json holds ${have}`, MANIFEST_FILE);
     }
   }
@@ -198,10 +198,66 @@ function asOnOf(manifest: Record<string, unknown>): Record<string, string | stri
   const a = manifest.as_on;
   if (!isRecord(a)) return out;
   for (const [k, v] of Object.entries(a)) {
+    if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
     if (typeof v === 'string') out[k] = v;
     else if (Array.isArray(v) && v.every((x) => typeof x === 'string')) out[k] = v as string[];
   }
   return out;
+}
+
+/**
+ * Inflates one entry, never holding more than its declared size plus one chunk: with JSZip's stream the inflation
+ * stops as soon as the running total passes the size the central directory declared (a zip bomb whose header lies
+ * about its size is refused after at most one chunk too many). A zip library without a stream (the engine's Node
+ * adapter) must bound the inflation itself (scripts/monthly-update/zip.ts caps zlib at the declared size).
+ */
+function inflateCapped(obj: PackZipObject, cap: number, name: string): Promise<Uint8Array> {
+  const damaged = (): Refused => new Refused(`${name} is damaged in the zip (checksum or data error)`, name);
+  const over = (): Refused => new Refused(`${name} inflates beyond the size the zip declares`, name);
+  if (typeof obj.internalStream !== 'function') {
+    return obj.async('uint8array').then((d) => {
+      if (d.length > cap) throw over();
+      return d;
+    }, () => {
+      throw damaged();
+    });
+  }
+  const stream = obj.internalStream('uint8array');
+  return new Promise<Uint8Array>((resolve, reject) => {
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    let settled = false;
+    const fail = (e: Refused): void => {
+      if (settled) return;
+      settled = true;
+      chunks.length = 0;
+      try {
+        stream.pause();
+      } catch {
+        // already stopped
+      }
+      reject(e);
+    };
+    stream.on('data', (chunk: Uint8Array) => {
+      if (settled) return;
+      total += chunk.length;
+      if (total > cap) fail(over());
+      else chunks.push(chunk);
+    });
+    stream.on('error', () => fail(damaged()));
+    stream.on('end', () => {
+      if (settled) return;
+      settled = true;
+      const out = new Uint8Array(total);
+      let at = 0;
+      for (const c of chunks) {
+        out.set(c, at);
+        at += c.length;
+      }
+      resolve(out);
+    });
+    stream.resume();
+  });
 }
 
 /** Reads and validates an MF Screener data pack. Never throws for a bad pack: it returns the refusal. */
@@ -227,21 +283,22 @@ async function read(bytes: Uint8Array, fileName: string, deps: PackDeps, onProgr
 
   let zip;
   try {
-    // no checkCRC32: it would inflate every entry once more at open; every listed file's SHA-256 is checked instead,
-    // and JSZip itself refuses an entry whose inflated size differs from its header
+    // no checkCRC32: it would inflate every entry once more at open; every listed file's SHA-256 is checked instead
     zip = await deps.JSZip.loadAsync(bytes);
   } catch (e) {
     throw new Refused(`the zip could not be opened (${(e instanceof Error ? e.message : String(e)).slice(0, 160)})`);
   }
+  // JSZip must see exactly the entries our own directory read approved (a second directory or an appended archive
+  // could hand it others)
+  const seenByLib = Object.keys(zip.files).filter((k) => !zip.files[k]!.dir).sort();
+  const approved = dir.entries.filter((e) => !e.isDir).map((e) => e.name).sort();
+  if (seenByLib.length !== approved.length || seenByLib.some((n, i) => n !== approved[i])) {
+    throw new Refused('the zip holds more than one directory, or its directory is ambiguous');
+  }
   const inflate = async (name: string): Promise<Uint8Array> => {
     const obj = zip.files[prefix + name];
     if (!obj || obj.dir) throw new Refused(`${name} is missing from the zip`, name);
-    let data: Uint8Array;
-    try {
-      data = await obj.async('uint8array');
-    } catch {
-      throw new Refused(`${name} is damaged in the zip (checksum or data error)`, name);
-    }
+    const data = await inflateCapped(obj, declared.get(name)!.size, name);
     if (data.length !== declared.get(name)!.size) throw new Refused(`${name} inflates to a size other than the zip declares`, name);
     return data;
   };

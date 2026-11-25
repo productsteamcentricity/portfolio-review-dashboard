@@ -300,6 +300,20 @@ describe('extensions seen in real packs are accepted with warnings, never silent
   });
 });
 
+describe('hostile manifest keys (ARC-03 R4)', () => {
+  test('an as_on key "__proto__" is skipped and a by_family key "constructor" counts as zero funds', async () => {
+    const r = await read({
+      editManifest: (m) => {
+        (m.as_on as Json) = JSON.parse('{"__proto__": "2026-10-15", "returns": "2026-10-15"}') as Json;
+        ((m.counts as Json).by_family as Json).constructor = 0;
+      },
+    });
+    assert.ok(r.ok, r.ok ? '' : r.refusal.reason);
+    assert.deepEqual(Object.keys(r.pack.summary.asOn), ['returns']);
+    assert.equal(Object.getPrototypeOf(r.pack.summary.asOn), Object.prototype);
+  });
+});
+
 describe('the backfill pack (screener-pack-backfill)', () => {
   test('is read with its month-ends and earlier cycles; no counts are needed', async () => {
     const r = await readScreenerPack(makeScreenerPack({ kind: 'backfill', backfillCycles: ['2026-04-15', '2026-05-15'] }), 'b.zip', deps);

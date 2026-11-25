@@ -158,7 +158,11 @@ request that is not a legacy fix must leave the `index.html` MD5 unchanged (`che
 | test-ai-analyst TEST 1 to 5 | `tests/parity/ai-analyst.parity.test.ts`, `tests/unit/ai-analyst/*.test.ts` | E-46 to E-48, E-23 |
 | `KI-007-blank-invested.js` | `tests/regression/ki-007-blank-invested.test.ts` | E-01, E-02, E-21, E-22, E-25 |
 | `KI-048-irr-join.js` | `tests/regression/ki-048-irr-join.test.ts` | E-28 |
-| `KI-061-amc-canonical-key.js` | `tests/regression/ki-061-amc-canonical-key.test.ts` | E-20, E-23, E-47 |
+| `KI-061-amc-canonical-key.js` | `tests/regression/ki-061-amc-canonical-key.test.ts` (check 1, the key, ported in M2.1; the AMC tab and the plan checks with E-23, E-47) | E-20, E-23, E-47 |
+| `OD-32-renamed-amc.js` | `tests/regression/od-32-renamed-amc.test.ts` (check 1, the key, M2.1; the AMC tab and the plan checks with E-23, E-47) | E-20, E-23, E-47 |
+| `OD-34-amc-not-given.js` | `tests/regression/od-34-blank-amc.test.ts` (checks 1b and 1c, the key, M2.1; the tab, slide and workbook checks with E-23, E-47) | E-20, E-23, E-47 |
+| `CR0010-a2-scoped-blocks.js` | `tests/regression/cr0010-a2-pins.test.ts` (checks 1 to 6, the matcher, M2.1, on fixed candidate lists); check 7, the scoped Direct row of `computeReview` (Retirement Fund-40 and -30 keep their own Direct row; a holding outside EXACT_ONLY with no Regular row gets none), is carried to M3 | E-13; E-31, E-32 (check 7) |
+| `CR0010-a3-intl-word-boundary.js` | carried to M5 (the SWOT international share is not a matcher rule): `tests/regression/cr0010-a3-word-boundary.test.ts` with the observation engine | E-45 |
 | `KI-062-degraded-exit.js` | `tests/regression/ki-062-degraded-exit.test.ts` (updated for OD-14) | E-47 |
 | `KI-063-apply-plan.js` | `tests/regression/ki-063-apply-plan.test.ts` (engine-level; no UI cut-out) | U-33, E-47 |
 | `KI-067`, `KI-068`, `KI-114` (CVS harness) | `tests/regression/ki-067-*.test.ts`, `ki-068-*`, view test for `ki-114` | E-62, U-29 |
