@@ -99,7 +99,7 @@ Stable identifiers first, names last: a name match only proposes, and an owner-a
 
 | Entity | Identifier, in order of preference | Phase 0 source |
 |---|---|---|
-| Mutual fund, ETF, SIF scheme | ISIN (plan level) > AMFI scheme code > vendor key (MF Monitor display name, with rename history) > alias pin > name match (proposal only); joined in `data/identifiers/crosswalk.json` | `03` §6.3 |
+| Mutual fund, ETF, SIF scheme | ISIN (plan level) > AMFI scheme code > vendor key (MF Monitor display name, with rename history) > alias pin > name match (proposal only); joined by the load-time crosswalk (`engine/match/crosswalk.ts`, M2.1) | `03` §6.3 |
 | Listed stock | ISIN > normalised company key | `03` §6.3 |
 | PMS, AIF, other products | `product_id` assigned by the product bank; never derived from a name | `03` §6.3, §12 |
 | Index | canonical index id (for example `NIFTY_500_TRI`); constituents from the Screener pack when supplied, else a named proxy fund and date | `03` §6.3 |
