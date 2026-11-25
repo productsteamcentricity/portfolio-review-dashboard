@@ -176,6 +176,7 @@ point 9).
 |---|---|---|
 | id | per-review holding id | rule bank §2 (`holdings[i].id`) |
 | instrument | `InstrumentRef` | `03` §6.1 |
+| isin | string, optional | the ISIN the base file gives (a column whose heading contains "ISIN"), trimmed, upper case, only in the ISIN form; absent when the file has no such column or the cell is not an ISIN; read only until the crosswalk is wired in (the owner's answer of 25 Nov 2026, M2) |
 | clientId, accountId, distributorId, folio | the holding's client, account (client + distributor + plan), distributor and folio | `03` §6.8 |
 | assetClass | canonical asset; a blank asset is unknown, with a notice (never Equity); "Fixed Income" and "Debt Funds" are Debt | `03` §8 (OD-7) |
 | category | canonical category | rule bank §2 |
