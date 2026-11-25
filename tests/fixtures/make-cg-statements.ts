@@ -257,7 +257,7 @@ const BAD_BASE: LotSpec = { client: CLIENT_A, dist: D1, ...FLEXI, folio: '910000
  *  wrong (Sale Unit x Purchase Price); 6 Realized G/L off by Rs 5; 7 purchase after sale (Holding Terms blank);
  *  8 Sale Unit 0 with both prices blank (no price derived); 9 Interest Earned 12.5; 10 Principal Repayment 100;
  *  11 tag asset Debt against Asset Name Equity; 12 Other Client Z, with a bare PAN-shaped token in Account Name;
- *  13 S Client A; 14 a sale dated 2004-09-30; 15 a sale after the as-on date (2026-10-15).
+ *  13 S Client A; 14 a sale dated 2004-09-30; 15 a sale after the as-on date (2026-10-15); 16 a blank Sale Unit (required-cell-blank, units-positive; R1).
  * Between rows 2 and 3: a row with amounts and no sale date; between rows 5 and 6: a blank row; between rows 8 and
  * 9: a repeated header.
  */
@@ -282,6 +282,7 @@ export function badCellsLots(): LotSpec[] {
     lot(13, { client: 'S Client A' }),
     lot(14, { buy: [2003, 5, 2], sell: [2004, 9, 30] }),
     lot(15, { buy: [2024, 3, 4], sell: [2026, 10, 15] }),
+    lot(16, { over: { units: null } }),
   ];
 }
 

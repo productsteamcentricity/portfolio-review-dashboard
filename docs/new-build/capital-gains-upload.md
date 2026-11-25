@@ -173,6 +173,9 @@ kept with its stated values and flagged):
 
 A check runs only when every cell it reads holds a value; a blank optional cell (Holding Terms, Sale Price, Purchase
 Price, Realized G/L) skips that check, and a derived price is not checked against the amount it was derived from.
+A blank required cell (Purchase Date, Sale Unit, Sell Amount, Invested Value) is reported (Warning
+`capital-gains.required-cell-blank`, one per column with its rows; MOD-04's decision R1 of 25 Nov 2026), and a blank Sale
+Unit fails "Sale Unit above 0": the lot has no units.
 
 Principal Repayment or Interest Earned not 0 on a mutual-fund lot raises the Warning
 `capital-gains.nonzero-principal-or-interest`; a date or number cell that is not one is INVALID SOURCE DATA for that
@@ -1013,6 +1016,7 @@ with a stated category reads that category without it; a crypto loss beside a ca
 | `row-without-sale-date` | Warning | an excluded lot: a row other than the totals row with amounts but no date in Sale Date, between lot rows or after the last one (§2.4) |
 | `invalid-cells` | Warning | a date or number cell that is not one (INVALID SOURCE DATA) |
 | `row-check-failed` | Warning | one per row check of §4 (holding days, Sell Amount, Invested Value, Realized G/L, date order, Sale Unit above 0), with its count |
+| `required-cell-blank` | Warning | a lot row whose Purchase Date, Sale Unit, Sell Amount or Invested Value is blank: one result per column, naming the rows; the value is NOT AVAILABLE IN SUPPLIED DATA, never 0 (§4; MOD-04's decision R1 of 25 Nov 2026) |
 | `nonzero-principal-or-interest` | Warning | Principal Repayment or Interest Earned not 0 on a mutual-fund lot |
 | `tag-asset-differs` | Warning | the instrument tag's asset differs from Asset Name (§2.5) |
 | `person-ambiguous` | Warning | two different client labels are "possibly one person": after folding letter case and spacing and dropping a leading honorific (Mr, Mrs, Ms, Dr, Shri, Smt, with or without a full stop), their words pair up in order, a one-letter word (with or without a full stop) pairing with any word that starts with that letter, and one label may carry extra one-letter words; two different one-letter words never pair (§9.3) |
@@ -1426,6 +1430,7 @@ Answers are compared to ₹0.01 (§2.3) on the unrounded total: tax and cess are
 | `row-without-sale-date` | `cg-statement-bad-cells`, `cg-statement-footer-mismatch` | `ingest/capital-gains` |
 | `invalid-cells` | `cg-statement-bad-cells` | `ingest/capital-gains` |
 | `row-check-failed` | `cg-statement-bad-cells` (each check) | `ingest/capital-gains` |
+| `required-cell-blank` | `cg-statement-bad-cells` (a blank Sale Unit) | `ingest/capital-gains` |
 | `nonzero-principal-or-interest` | `cg-statement-bad-cells` | `ingest/capital-gains` |
 | `tag-asset-differs` | `cg-statement-bad-cells` | `ingest/capital-gains` |
 | `person-ambiguous` | `cg-statement-bad-cells` | `ingest/capital-gains` |
@@ -1508,3 +1513,4 @@ Answers are compared to ₹0.01 (§2.3) on the unrounded total: tax and cess are
 | 27 Oct 2026 (approval) | The financial-domain reviewer approved the design and the tax-rule table v1 for M7 code (§10.10); owner and tax-adviser items stay open (§15) |
 | 2 Nov 2026 | The owner's answers PD-02 and PD-03 as M7 requirements (§10.12): a holding labelled "Listed AIF" defaults to Category III with the neutral caution "confirm against the AIF's statement", the file's own stated category winning; crypto stays "no set-off" |
 | 25 Nov 2026 | §12 and §14: the blank template's column formats are the house codes, written as column defaults (MOD-03, NB-M7a PLAN-01 D3) |
+| 25 Nov 2026 | §4, §11, §14: blank required cells reported (`required-cell-blank`, Warning) and a blank Sale Unit failing "Sale Unit above 0" (MOD-04 decision R1, after the Gate B review of the M7a reader) |

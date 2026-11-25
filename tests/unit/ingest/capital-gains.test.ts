@@ -396,11 +396,12 @@ describe('cg-statement-bad-cells: each Warning with its count (§4, §11)', () =
       ['row-check-failed', 'Warning', 1],
       ['row-check-failed', 'Warning', 1],
       ['row-check-failed', 'Warning', 1],
-      ['row-check-failed', 'Warning', 1],
+      ['row-check-failed', 'Warning', 2],
+      ['required-cell-blank', 'Warning', 1],
       ['nonzero-principal-or-interest', 'Warning', 2],
       ['tag-asset-differs', 'Warning', 1],
       ['person-ambiguous', 'Warning', 1],
-      ['pan-removed', 'Information', 17],
+      ['pan-removed', 'Information', 18],
       ['rows-skipped', 'Information', 2],
       ['no-totals-row', 'Information', undefined],
       ['stated-tax-columns-empty', 'Information', undefined],
@@ -408,7 +409,7 @@ describe('cg-statement-bad-cells: each Warning with its count (§4, §11)', () =
   });
   test('each row check fails on its own lot only', () => {
     const failed = imp.lots.map((l) => l.failedChecks);
-    assert.deepEqual(failed, [[], [], [], ['holding-days'], ['sale-amount'], ['invested-value'], ['realised'], ['date-order'], ['units-positive'], [], [], [], [], [], [], []]);
+    assert.deepEqual(failed, [[], [], [], ['holding-days'], ['sale-amount'], ['invested-value'], ['realised'], ['date-order'], ['units-positive'], [], [], [], [], [], [], [], ['units-positive']]);
   });
   test('invalid cells are INVALID SOURCE DATA; the Sale Unit 0 row gets no derived price', () => {
     assert.equal(st(imp.lots[1]!.purchaseDate), STATUS.INVALID_SOURCE);
@@ -425,7 +426,7 @@ describe('cg-statement-bad-cells: each Warning with its count (§4, §11)', () =
     assert.deepEqual(imp.persons.filter((p) => !p.inReview).map((p) => p.label).sort(), ['Other Client Z', 'S Client A']);
     assert.equal(imp.lots[12]!.accountLabel, 'Other Client Z');
     assert.equal(imp.lots[12]!.accountNote, `Held Away PAN ${PAN_REPLACEMENT}`);
-    assert.deepEqual(imp.pan, { tags: 16, tokens: 1, footerTokens: 0 });
+    assert.deepEqual(imp.pan, { tags: 17, tokens: 1, footerTokens: 0 });
     assert.equal(hasPanShape(JSON.stringify(imp)), false);
   });
   test('messages carry no folio, no client name and no en or em dash (§11, D-029)', () => {
@@ -467,7 +468,7 @@ describe('every reader id of design §11 appears in some fixture', () => {
       'no-header', 'duplicate-column', 'no-lots', 'repeats-question', 'totals-mismatch', 'clients-unmatched',
       'family-differs', 'row-without-sale-date', 'invalid-cells', 'row-check-failed', 'nonzero-principal-or-interest',
       'tag-asset-differs', 'person-ambiguous', 'sheet-used', 'columns-ignored', 'pan-removed', 'rows-skipped',
-      'footer-skipped', 'totals-reconciled', 'no-totals-row', 'stated-tax-columns-empty', 'derived-prices', 'xirr-not-used',
+      'footer-skipped', 'totals-reconciled', 'no-totals-row', 'stated-tax-columns-empty', 'derived-prices', 'xirr-not-used', 'required-cell-blank',
     ];
     const seen = new Set<string>();
     for (const id of fixtures.keys()) for (const i of parse(id).issues) seen.add(i.ruleId.replace('capital-gains.', ''));
@@ -628,5 +629,22 @@ describe('Gate B R5: losses, totals variants, units, Lakh headers and the 1904 d
     const imp = parseCapitalGains({ ...wb, date1904: true }, { sourceId: SRC, now: NOW, review: REVIEW });
     assert.equal(imp.lots[0]!.saleDate, day(2025, 1, 2));
     assert.equal(v(imp.lots[0]!.purchaseDate), day(2023, 1, 2));
+  });
+});
+
+describe('R1 (MOD-04, 25 Nov 2026): blank required cells are reported, never read as 0', () => {
+  test('a blank Purchase Date, Sell Amount and Invested Value each give a counted Warning naming the rows', () => {
+    const imp = memParse(memBook([{}, { 'Purchase Date': null }, { 'Sell Amount': null, 'Invested Value': '-' }]));
+    const blanks = imp.issues.filter((i) => i.ruleId === 'capital-gains.required-cell-blank');
+    assert.deepEqual(blanks.map((i) => [i.severity, i.count]), [['Warning', 1], ['Warning', 1], ['Warning', 1]]);
+    assert.ok(blanks[0]!.message.includes('Purchase Date') && blanks[0]!.message.includes('rows 3'), blanks[0]!.message);
+    assert.equal(st(imp.lots[2]!.saleValue), STATUS.NOT_AVAILABLE);
+    assert.equal(st(imp.lots[2]!.realised), STATUS.NOT_AVAILABLE);
+  });
+  test('a blank Sale Unit fails units-positive; an invalid one is invalid-cells, not blank', () => {
+    const imp = memParse(memBook([{ 'Sale Unit': null }, { 'Sale Unit': 'ten' }]));
+    assert.deepEqual(imp.lots.map((l) => l.failedChecks), [['units-positive'], []]);
+    assert.equal(issue(imp, 'required-cell-blank')!.count, 1);
+    assert.equal(issue(imp, 'invalid-cells')!.count, 1);
   });
 });

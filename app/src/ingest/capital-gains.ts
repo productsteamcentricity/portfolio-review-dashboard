@@ -793,6 +793,16 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
   let derivedPurchase = 0;
   let nonzeroPI = 0;
   let tagDiffers = 0;
+  // R1 (MOD-04, 25 Nov 2026; design §11 `required-cell-blank`): the rows whose required cell is blank (or a
+  // placeholder), per column; an invalid cell is reported by invalid-cells instead.
+  const blankRequired = new Map<CgField, RowRef[]>();
+  const noteBlank = (f: CgField, v: CgRead<number>, r: number): void => {
+    if (v.kind === 'missing' && v.status === STATUS.NOT_AVAILABLE) {
+      const l = blankRequired.get(f) ?? [];
+      l.push(at(r));
+      blankRequired.set(f, l);
+    }
+  };
   const checkCounts = new Map<CgRowCheck, number>();
   const date1904 = wb.date1904;
 
@@ -815,6 +825,10 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
     const purchaseValue = readField(r, 'investedValue');
     const statedSale = readField(r, 'salePrice');
     const statedPurchase = readField(r, 'purchasePrice');
+    noteBlank('purchaseDate', purchaseDate, r);
+    noteBlank('saleUnit', units, r);
+    noteBlank('sellAmount', saleValue, r);
+    noteBlank('investedValue', purchaseValue, r);
     const u = valueOf(units);
     const derive = (stated: CgRead<number>, amount: CgRead<number>): { v: CgRead<number>; derived: boolean } => {
       if (stated.kind === 'value' || stated.status === STATUS.INVALID_SOURCE) return { v: stated, derived: false };
@@ -862,7 +876,8 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
     const sr = valueOf(statement.realised);
     if (sv !== null && pv !== null && sr !== null && Math.abs(sv - pv - sr) > amountTolerance(sv)) failed.push('realised');
     if (pd !== null && pd > saleDate) failed.push('date-order');
-    if (u !== null && !(u > 0)) failed.push('units-positive');
+    // A blank Sale Unit fails this check too (R1): the lot has no units, so it cannot be above 0.
+    if ((u !== null && !(u > 0)) || (units.kind === 'missing' && units.status === STATUS.NOT_AVAILABLE)) failed.push('units-positive');
     for (const c of failed) checkCounts.set(c, (checkCounts.get(c) ?? 0) + 1);
 
     const prin = valueOf(statement.principalRepayment);
@@ -1028,6 +1043,14 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
     issues.add('row-check-failed', 'Warning', { kind: 'rows', sourceId, rows: lots.filter((l) => l.failedChecks.includes(c)).map((l) => l.at) },
       `The check "${CHECK_NAMES[c]}" failed on ${plural(n, 'lot', 'lots')}; ${n === 1 ? 'it is' : 'they are'} kept with the stated values and flagged.`,
       { count: n });
+  }
+  for (const f of ['purchaseDate', 'saleUnit', 'sellAmount', 'investedValue'] as const) {
+    const rowsBlank = blankRequired.get(f);
+    if (!rowsBlank || rowsBlank.length === 0) continue;
+    const h = header.labels[cols.get(f)!] ?? cgColumn(f).header;
+    issues.add('required-cell-blank', 'Warning', { kind: 'rows', sourceId, rows: rowsBlank },
+      `The required column "${h}" is blank on ${plural(rowsBlank.length, 'lot', 'lots')} (rows ${rowsBlank.map((x) => x.row).join(', ')}); ${rowsBlank.length === 1 ? 'its value is' : 'their values are'} ${STATUS.NOT_AVAILABLE}, never 0.`,
+      { count: rowsBlank.length });
   }
   if (nonzeroPI > 0) {
     issues.add('nonzero-principal-or-interest', 'Warning', sheetScope,
