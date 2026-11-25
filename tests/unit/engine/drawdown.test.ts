@@ -21,6 +21,7 @@ import {
   DEFAULT_SAMPLING,
   maxDrawdown,
   monthEnds,
+  monthEndsFromStart,
   wholeMonths,
 } from '../../../app/src/engine/drawdown.ts';
 import { dayToIso, ymdToDay } from '../../../app/src/engine/dates.ts';
@@ -280,13 +281,42 @@ describe("the owner's defaults of 25 Nov 2026: month-end points, one common peri
     assert.equal(apart.blend!.result.measurable, false);
   });
 
+  // D1 = 100 (30 Jan), 80 (26 Feb), 110 (27 Feb), 121 (31 Mar); D2 = 100 flat but has no 27 Feb. Built first, the
+  // blend's common days are 30 Jan, 26 Feb, 31 Mar: 100, 0.5 x 0.8 + 0.5 = 0.9 -> 90, so it falls -0.10 at 26 Feb.
+  // Sampled first, D1's February point would be 27 Feb, which D2 lacks: the blend would be 100, 110.5 with no fall.
   test('the blend is built on every common day and sampled afterwards', () => {
-    const D1 = series([['2026-01-30', 100], ['2026-02-13', 120], ['2026-02-27', 110], ['2026-03-31', 121]]);
-    const D2 = series([['2026-01-30', 100], ['2026-02-13', 100], ['2026-02-27', 100], ['2026-03-31', 100]]);
+    const D1 = series([['2026-01-30', 100], ['2026-02-26', 80], ['2026-02-27', 110], ['2026-03-31', 121]]);
+    const D2 = series([['2026-01-30', 100], ['2026-02-26', 100], ['2026-03-31', 100]]);
     const r = compareDrawdowns([{ id: 'D1', points: D1 }, { id: 'D2', points: D2 }], [{ id: 'D1', weight: 0.5 }, { id: 'D2', weight: 0.5 }]);
-    const built = blendSeries([{ points: D1, weight: 0.5 }, { points: D2, weight: 0.5 }]);
-    assert.deepEqual(r.blend!.result, maxDrawdown(monthEnds(built.points)));
+    close(r.blend!.result.maxDrawdown!, 90 / 100 - 1);
+    assert.equal(iso(r.blend!.result.troughDay), '2026-02-26');
     assert.equal(r.blend!.result.points, 3);
+    assert.equal(r.blend!.daysDropped, 1, 'the dropped day is reported, for the caller to show');
+    const sampledFirst = blendSeries([{ points: monthEnds(D1), weight: 0.5 }, { points: monthEnds(D2), weight: 0.5 }]);
+    assert.equal(maxDrawdown(sampledFirst.points).maxDrawdown, 0, 'the other order would hide the fall');
+  });
+
+  // A = 120 (31 Dec 2025), 100 (15 Jan), 85 (31 Jan), 90 (28 Feb), 100 (31 Mar); L = 100 flat from 15 Jan. The common
+  // period starts mid-month on 15 Jan: A is measured from its level that day, 100, so it falls -0.15 to 31 Jan and
+  // recovers on 31 Mar, 2 whole months later (over its full history: 85 / 120 - 1). The 50/50 blend: 100; 0.5 x 0.85
+  // + 0.5 = 0.925 -> 92.5, a fall of -0.075 that a first point at 31 Jan would hide.
+  test('a period that starts mid-month is measured from its first day, so the dates shown are the dates measured', () => {
+    const A2 = series([['2025-12-31', 120], ['2026-01-15', 100], ['2026-01-31', 85], ['2026-02-28', 90], ['2026-03-31', 100]]);
+    const L = series([['2026-01-15', 100], ['2026-01-31', 100], ['2026-02-28', 100], ['2026-03-31', 100]]);
+    const r = compareDrawdowns([{ id: 'A', points: A2 }, { id: 'L', points: L }], [{ id: 'A', weight: 0.5 }, { id: 'L', weight: 0.5 }]);
+    assert.equal(iso(r.window!.from), '2026-01-15');
+    const a = r.indices[0]!.result;
+    assert.equal(iso(a.firstDay), '2026-01-15');
+    assert.equal(iso(a.lastDay), '2026-03-31');
+    close(a.maxDrawdown!, -0.15);
+    assert.equal(iso(a.peakDay), '2026-01-15');
+    assert.equal(a.recoveryMonths, 2);
+    const blend = r.blend!.result;
+    assert.equal(iso(blend.firstDay), '2026-01-15');
+    close(blend.maxDrawdown!, 92.5 / 100 - 1);
+    assert.deepEqual(monthEndsFromStart(A2.slice(1)).map((p) => iso(p.day)), ['2026-01-15', '2026-01-31', '2026-02-28', '2026-03-31']);
+    assert.deepEqual(monthEndsFromStart(L.slice(1)).map((p) => iso(p.day)), ['2026-01-31', '2026-02-28', '2026-03-31'], 'a first point on a month-end is not repeated');
+    assert.deepEqual(monthEndsFromStart([]), []);
   });
 
   test('weights name compared indices once each, and must sum to 1', () => {

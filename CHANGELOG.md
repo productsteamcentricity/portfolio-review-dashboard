@@ -8,10 +8,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **`app/src/engine/drawdown.ts`** (E-149, D-023 point 2): per index series the maximum peak-to-trough fall, its peak and
   trough days, the recovery day and whole months to recover from the trough (or not yet recovered); a blend of series at
   given weights on the days every series has; `compareDrawdowns` applies the owner's answers of 25 Nov 2026 as named
-  defaults: month-end points, one common period for every index and the blend (returned so it can be shown), and
+  defaults: month-end points measured from the period's first day, one common period for every index and the blend (returned so it can be shown), and
   monthly rebalancing to today's weights (`buy-and-hold` also built). Which index stands for each asset class is still
   open with the owner, so the caller passes the weights. Built on the I-44 index-series type. Known-answer tests
-  (`unit/engine/drawdown.test.ts`, 21 cases, IST and UTC), including the matrix's -30.00% case.
+  (`unit/engine/drawdown.test.ts`, 22 cases, IST and UTC), including the matrix's -30.00% case.
 
 ### Added (new build, M2.1 sprint 1: identifiers and the matcher at parity; no change to `/next/` or `/`)
 - **`app/src/engine/match/`:** the legacy name normalisation, instrument and PMS matchers, the fund-house key

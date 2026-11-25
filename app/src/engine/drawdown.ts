@@ -21,9 +21,10 @@
 //
 // The owner's answers of 25 Nov 2026 (through MOD-04) are the defaults of `compareDrawdowns`, each a named option:
 // - Q1 rebalancing: monthly to today's weights (`rule`, DEFAULT_REBALANCE);
-// - Q3 sampling: month-end points (`sampling`, DEFAULT_SAMPLING): the last point of each calendar month; the last,
-//   possibly part, month keeps its latest point (the as-on day); the blend is built on every common day first and
-//   sampled afterwards, like the indices;
+// - Q3 sampling: month-end points (`sampling`, DEFAULT_SAMPLING): the period's first point as the base (the level on
+//   the start date, so a fall inside a part first month is not lost), then the last point of each calendar month; the
+//   last, possibly part, month keeps its latest point (the as-on day), so the dates shown are the first and last
+//   points measured; the blend is built on every common day first and sampled afterwards, like the indices;
 // - Q4 period: one common period for every index and the blend (`period`, DEFAULT_PERIOD): from the latest first day
 //   to the earliest last day of the indices compared (weighted 0 or not), returned as `window` so it can be shown;
 // - Q5 months to recover: from the trough (above).
@@ -196,6 +197,12 @@ export function monthEnds(points: readonly IndexPoint[]): IndexPoint[] {
   return out;
 }
 
+/** Month-end sampling as measured: the first point (the base on the start date), then `monthEnds`. */
+export function monthEndsFromStart(points: readonly IndexPoint[]): IndexPoint[] {
+  const ends = monthEnds(points);
+  return points.length > 0 && ends[0]!.day !== points[0]!.day ? [points[0]!, ...ends] : ends;
+}
+
 export type ComparedIndex = { id: string; points: readonly IndexPoint[] };
 export type BlendWeight = { id: string; weight: number };
 export type DrawdownComparison = {
@@ -243,7 +250,7 @@ export function compareDrawdowns(
     const w = window;
     inPeriod = (points) => (w ? clip(points, w) : []);
   }
-  const sample = (points: readonly IndexPoint[]): readonly IndexPoint[] => (sampling === 'month-end' ? monthEnds(points) : points);
+  const sample = (points: readonly IndexPoint[]): readonly IndexPoint[] => (sampling === 'month-end' ? monthEndsFromStart(points) : points);
 
   const result: DrawdownComparison = {
     sampling,
