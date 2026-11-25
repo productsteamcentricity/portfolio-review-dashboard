@@ -1244,6 +1244,29 @@ entry's stated category too, so that the two steps cannot disagree.
   **re-check pending**. This record claims no approval of stage S10 or S11 by any reviewer or by ARC-01, and the owner's
   answer is not a reviewer's approval.
 
+## Stage S12 (ARC-02's Gate B points on d7683a0, and bonds held through the LRS)
+ARC-02 gave Gate B GO on `d7683a0` with two medium points (T1, T2), one low (T3) and two for information. MOD-04
+(25 Nov 2026) asked for T1 now and for the medium points to be settled conservatively. Patch
+`tools/patches/2026-11-25-tax-6-wording.js`; test `tools/regression/TA03-tax-6-gate-b.js` (33 checks, 18 fail on
+`d7683a0`); `KI-182-crypto-source.js` (2 fail on `d7683a0`) and `KI-182-crypto-no-set-off.js` (1) updated.
+- **T1.** The Crypto row's source note ends "to be confirmed with the tax adviser." (PD-52), not "for the owner to
+  confirm."; its set-off note reads "No set-off either way (CR-0008 question 18, decided 2 Nov 2026; D-043): ...".
+- **T2.** PD-54's "exact name (ignoring AIF and brackets)" is now the reader's own key, not the matcher's normalize():
+  the two names compared word for word, letter case, punctuation and spacing (typography), brackets and the word AIF
+  ignored. Measured on the data's 12 entries: each entry's own name, "Name AIF", "Name (AIF)", in capitals, with a
+  hyphen for its en dash or without the dash is still the entry; a name with a word inserted ("Income") or a leading
+  "The", which normalize() used to drop, is now another fund (Category I or II, assumed, with the note). Punctuation is
+  ignored on purpose: an exact-character key would turn a hyphen-for-en-dash spelling of a Listed AIF into an assumed
+  Category I or II fund. No other check in the suite changes.
+- **T3.** The tab's crypto set-off sentence says "(confirm with the tax adviser)".
+- **Bonds held through the LRS** (MOD-03 and MOD-04, with LP-16 / KI-051): a bond whose Product names the LRS or the US
+  dollar is left without a tax class and shows "No tax row is published for a bond held abroad through the LRS. Confirm
+  its tax with the tax adviser.", instead of the domestic "Listed Bonds / NCDs" row. The tax reckoner has no row for a
+  bond held abroad. LP-16 labels every bond, NCD and debenture "US-dollar bonds (through LRS)" (the owner, 25 Nov 2026),
+  so the tax rule reads the Product's own words, not that label: "NCD", "Bonds" and "Debenture" keep Listed Bonds /
+  NCDs. The rule lives here, not in LP-16's patch, because tax-5 rewrote the classifier that LP-16 would otherwise edit.
+- T4 and T5 (information) are unchanged.
+
 ## Questions for the owner and the tax adviser
 1. Confirm the D-040 defaults (a) to (h).
 2. ELSS: is a lot redeemable on the third anniversary of its purchase or from the next day (built: the next day)?

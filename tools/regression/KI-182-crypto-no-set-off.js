@@ -121,7 +121,7 @@ const crOnly = new T.Book().add(hold(CRY, 'Client A', 'Synthetic Ether Holding',
     const raw = T.renderTaxTab(m), tx = R8377(T.text(raw));
     ok(/₹7\.34 L Estimated tax before harvesting ₹7\.09 L After setting off available losses ₹0\.25 L Estimated tax saved/.test(tx),
       'Taxation tab: ₹7.34 L before, ₹7.09 L after, ₹0.25 L saved, as the engine');
-    ok(/Crypto gains and losses are kept out of set-off, as the reckoner is silent on them: no loss is set against a crypto gain \(₹10\.00 L, taxed in full before and after\), and a crypto loss \(₹10\.00 L\) reduces no other gain, is not carried forward and is not listed as a holding to sell\./.test(tx),
+    ok(/Crypto gains and losses are kept out of set-off, as the reckoner is silent on them \(confirm with the tax adviser\): no loss is set against a crypto gain \(₹10\.00 L, taxed in full before and after\), and a crypto loss \(₹10\.00 L\) reduces no other gain, is not carried forward and is not listed as a holding to sell\./.test(tx),
       'Taxation tab: the sentence on crypto and set-off, with the amounts');
     ok(!/kept out of set-off pending/.test(tx), 'Taxation tab: the sentence no longer says "pending" (the owner has ruled, 2 Nov 2026)');
     /* stage S10 (FDR-A F7): the analyst-facing tab cites no authority for the rule, as the client's slide does not */
