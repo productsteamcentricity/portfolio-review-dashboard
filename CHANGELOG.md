@@ -7,7 +7,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ### Added (new build, M10 Screener data pack: reader and browser store; not wired into the page yet)
 - **`app/src/ingest/screener-pack/`** reads an MF Screener data pack (contract `pr-datapack-v1`, D-026): the zip's central
   directory is checked against archive limits before anything is inflated (path traversal, entry count, nesting,
-  encryption, declared sizes and ratio); then the manifest (contract version, cycle, every entry listed, required files),
+  encryption, declared sizes and ratio, local headers against the directory; inflation stops at the declared size);
+  then the manifest (contract version, cycle, every entry listed, required files),
   each file's size, SHA-256, header cycle and record count, and a schema per file, including the contract's unit suffixes
   on every field. A refused pack gets one reason naming the file. Extensions seen in real packs (extra fields,
   off-contract status codes, the `equity_sleeve` basis, a provisional pack) are accepted with warnings. The backfill pack
@@ -17,7 +18,19 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   the backfill stay as history (newest cycle wins per month-end), every read is SHA-256 checked, a quota error keeps
   nothing. No score, rank or pack figure is written outside the pack's own files; nothing leaves the browser.
 - Tests on synthetic packs only (`tests/fixtures/make-screener-pack.ts`): `unit/ingest/screener-pack`,
-  `unit/ingest/screener-pack-zip`, `unit/services/screener-store`, `integration/screener-pack-reimport` (82 cases).
+  `unit/ingest/screener-pack-zip`, `unit/services/screener-store`, `integration/screener-pack-reimport`.
+- **`scripts/validation/check-next.mjs`** fails the build on MF Screener pack content in any form (D-026): quoted or
+  unquoted keys (a pack JSON bundled by esbuild), escaped JSON, the summary CSV header, the fixture marker
+  (`tests/next/check-next-pack.test.mjs`).
+
+### Added (new build, M2.1 sprint 1: identifiers and the matcher at parity; no change to `/next/` or `/`)
+- **`app/src/engine/match/`:** the legacy name normalisation, instrument and PMS matchers, the fund-house key
+  (KI-061, OD-32, OD-34) and the three name lists (pins, blocks, exact-only: CR-0010 A2, A2b) ported at parity, and a
+  crosswalk that resolves identifiers first (ISIN, AMFI scheme code, vendor key) and then the legacy name unit unchanged,
+  built at load time from `data/refdata`. Nothing in the app calls it yet: the built page is byte-identical.
+- **Tests:** `tests/parity/matching.parity.test.ts` compares the port with the live matcher over every candidate set the
+  legacy uses (0 differences on the same candidates; in the shipped order only score ties, ledgered as KI-036); unit
+  tests in `tests/unit/match/`; the CR-0010 A2, KI-061, OD-32 and OD-34 known answers in `tests/regression/`.
 
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
