@@ -11,7 +11,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   defaults: month-end points measured from the period's first day, one common period for every index and the blend (returned so it can be shown), and
   monthly rebalancing to today's weights (`buy-and-hold` also built). Which index stands for each asset class is still
   open with the owner, so the caller passes the weights. Built on the I-44 index-series type. Known-answer tests
-  (`unit/engine/drawdown.test.ts`, 22 cases, IST and UTC), including the matrix's -30.00% case.
+  Months to recover are month-end steps on month-end points; months with no point are listed and
+  the result flagged, never hidden. (`unit/engine/drawdown.test.ts`, 28 cases, IST and UTC), including the matrix's -30.00% case.
 
 ### Added (new build, M2.1 sprint 1: identifiers and the matcher at parity; no change to `/next/` or `/`)
 - **`app/src/engine/match/`:** the legacy name normalisation, instrument and PMS matchers, the fund-house key

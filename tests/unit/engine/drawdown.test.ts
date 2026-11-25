@@ -373,6 +373,13 @@ describe('Gate B fixes: month-end steps, missing months, flags, float noise', ()
     assert.equal(r.blend!.result.points, 2);
     assert.equal(r.flagged, true, 'the 0% blend is never shown unflagged');
     assert.deepEqual(missingMonths(G, day('2025-11-30'), day('2026-04-30')), ['2025-11', '2025-12', '2026-03']);
+    // each index has February, but on different days: only the blend misses it, and that alone flags the comparison
+    const H = series([['2026-01-30', 100], ['2026-02-10', 90], ['2026-03-31', 100]]);
+    const H2 = series([['2026-01-30', 100], ['2026-02-20', 90], ['2026-03-31', 100]]);
+    const h = compareDrawdowns([{ id: 'H', points: H }, { id: 'H2', points: H2 }], [{ id: 'H', weight: 0.5 }, { id: 'H2', weight: 0.5 }]);
+    assert.deepEqual(h.indices.map((ix) => ix.missingMonths), [[], []]);
+    assert.deepEqual(h.blend!.missingMonths, ['2026-02']);
+    assert.equal(h.flagged, true);
   });
 
   test('a complete comparison is not flagged', () => {
