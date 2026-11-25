@@ -6,13 +6,40 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ### Added (new build, M12a drawdown engine on index data; not wired yet; the index for each asset class awaits the owner)
 - **`app/src/engine/drawdown.ts`** (E-149, D-023 point 2): per index series the maximum peak-to-trough fall, its peak and
-  trough days, the recovery day and whole months to recover from the trough (or not yet recovered); a blend of series at
-  given weights on the days every series has; `compareDrawdowns` applies the owner's answers of 25 Nov 2026 as named
-  defaults: month-end points measured from the period's first day, one common period for every index and the blend (returned so it can be shown), and
-  monthly rebalancing to today's weights (`buy-and-hold` also built). Which index stands for each asset class is still
-  open with the owner, so the caller passes the weights. Built on the I-44 index-series type. Known-answer tests
-  Months to recover are month-end steps on month-end points; months with no point are listed and
-  the result flagged, never hidden. (`unit/engine/drawdown.test.ts`, 28 cases, IST and UTC), including the matrix's -30.00% case.
+  trough days, the recovery day and the months to recover from the trough (or not yet recovered); a blend of series at
+  given weights on the days every series has. `compareDrawdowns` applies the owner's answers of 25 Nov 2026 as named
+  defaults: month-end points measured from the period's first day, months to recover counted in month-end steps, one
+  common period for every index and the blend (returned so it can be shown), and monthly rebalancing to today's weights
+  (`buy-and-hold` also built). Months with no point are listed per index and for the blend, and the result is flagged,
+  never hidden. Which index stands for each asset class is still open with the owner, so the caller passes the weights.
+  Built on the I-44 index-series type. Known-answer tests (`unit/engine/drawdown.test.ts`, 28 cases, IST and UTC),
+  including the matrix's -30.00% case.
+
+### Added (new build, M2.3 sprint 3a: the MF Monitor read by header name; no change to `/next/` or `/`)
+- **`app/src/ingest/vendor/`:** the shared cell readers and the Daily MF Monitor reader (Regular and Direct issues) with the
+  monthly pipeline's rules, so an upload and the refresh read a monitor the same way (OD-11): AUM from the label row,
+  market-cap shares, debt figures to 4 places, the Direct issue's unnamed sheets mapped to their category, benchmark rows.
+  On the October 2026 monitors (read locally, never committed) it reproduces the embedded MF_PERF, MF_PERF_DIRECT and
+  BENCH_RET exactly. Not called by the app yet; the upload buttons wait for the spreadsheet-reader decision.
+- **The monitor's expense ratio (KI-058):** read from the "Ratio" header column, one scale decision per file (median
+  below 0.05 means fractions), always stored as a fraction, values above 5% dropped and counted. It is the all-in ratio and
+  is labelled so: never used for a missing base expense ratio (CLAUDE.md rule 3). October 2026: 2,125 Regular and 1,803
+  Direct ratios read, percent scale, none above the cap.
+- **The SIF Monitor (E-07):** read as the pipeline does: the benchmark group, index rows, rows with no category and no AUM
+  and the disclaimer are not schemes; a Month End date is not a fund house. October 2026: equal to the embedded SIF_PERF
+  (30 schemes).
+- **The base file's ISIN column** (the owner's answer of 25 Nov 2026: ISIN first, then the name): any heading containing
+  "ISIN" is read; a cell is kept only in the ISIN form; a file without the column reads exactly as before. Read only: no
+  figure changes; the import report lists the column among those read when a file has one.
+- **The PMS performance file (E-08, KI-033):** read by header name as the monthly pipeline reads it (returns as stated,
+  never multiplied by 100; AUM from rupees to whole crore; duplicates by the normalised key; a missing column refuses the
+  file). The monthly merge into the previous block stays with M11.
+- **The portfolio analytics files (E-10, E-11):** the Equity, Debt and Hybrid Analytics read by header name instead of
+  column position (the file repeats "Holding(%)" for the previous month; the first is read), with the legacy rules and the
+  pipeline's tidy step: cash in the total only, issuers collapsed to their entity, ratings by label then basket, the issuer
+  list cut to the top 30. Equal to the legacy positional parsers on synthetic files and 18 issuer spellings.
+- **Tests:** `tests/unit/ingest/vendor/mf-monitor.test.ts` on synthetic issues; `tests/parity/monitor.parity.test.ts`
+  against the browser's legacy parser, every difference a ledgered pipeline correction.
 
 ### Added (new build, M2.1 sprint 1: identifiers and the matcher at parity; no change to `/next/` or `/`)
 - **`app/src/engine/match/`:** the legacy name normalisation, instrument and PMS matchers, the fund-house key
@@ -40,6 +67,18 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **The AMC's own "The 30s Plan" / "The 40s Plan" spellings of Aditya Birla SL Retirement Fund** get their own fund's
   look-through and never Retirement Fund-50's returns: an ALIASES pin to their own hybrid entry plus exact-only (patch
   `tools/patches/2026-11-23-retirement-plan-pins.js`). Measured over every universe; nothing else moves.
+
+### Fixed (LP-16, KI-051 P0; not published until the owner says "publish")
+- **Six non-mutual-fund product types are their own product class, never a mutual fund** (the owner's labels, D-7): "GIFT City
+  funds", "Offshore funds", "US-dollar bonds (through LRS)", "Fixed deposits", "REITs and InvITs", "Unlisted shares", read from the
+  Product column without regard to letter case, by the rules in the new REFDATA key `PRODUCT_CLASS_RULES` (contract I-40; registered
+  in `scripts/data-extract.ts` and `tools/check-invariants.js`; `data/refdata/PRODUCT_CLASS_RULES.json` generated). Such a holding
+  no longer takes a mutual fund's, PMS's or AIF's look-through or returns, is never read as a listed stock, and is listed as
+  excluded with its class instead of as unmatched; a share held directly (an unlisted share) keeps its zero fund fee on the Cost tab, its Direct Equity performance bucket and its IPS "Direct Unlisted investment" line and the SWOT's narrow name test for the international share. Every bond, NCD
+  and debenture (rupee 54EC, tax-free, RBI and corporate NCDs included) takes "US-dollar bonds (through LRS)": the owner, 25 Nov
+  2026, "No, keep as recorded"; the Taxation tab keeps its own tax classes. A product that also says ETF, MF or
+  fund stays a mutual fund (OD-6); sovereign gold bonds and MLDs keep their old class until labelled. Patch
+  `tools/patches/2026-11-25-lp16-product-classes.js`; test `tools/regression/LP16-KI051-product-classes.js`.
 
 ### Fixed (CR-0010 A2; not published until the owner says "publish")
 - **Three holdings no longer take another fund's data.** Motilal Oswal Nasdaq 100 ETF no longer gets the Nifty 100 ETF's
