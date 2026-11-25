@@ -149,7 +149,14 @@ ok(RULES.filter(r => r.beforePmsAifSif).map(r => r.label).join('|') === 'GIFT Ci
     inB = k => JSON.stringify((pb.find(b => b.key === k || b.label === k || b.name === k) || {})).indexOf('Synthetic Unlisted Co Pvt Ltd') >= 0;
   ok(inB('Direct Equity') && !inB('Equity MF'), '9. performance: an unlisted share is in the Direct Equity bucket, not Equity MF');
   ok(html.indexOf('if(h.directEquity||h.heldShare||/direct/i.test(prod)) dirUnlistedCMV') >= 0,
-    '9. IPS: an unlisted share held directly counts as Direct Unlisted investment (heldShare)'); }
+    '9. IPS: an unlisted share held directly counts as Direct Unlisted investment (heldShare)');
+  /* ARC-02's Gate B L1: a share held directly, listed or not, keeps the SWOT's narrow A3 name test (the wide fund test would
+     catch "Asian", "Offshore", "Europe" in Indian company names); an ETF held as a share still takes the fund test (A4) */
+  const UNDER = /limited or no exposure to:[^.]*International \/ Global equity/,
+    intlBullet = (p, n) => ((run(p, n).m.observations || {}).swot || {}).opportunities.some(s => UNDER.test(s));
+  ok(intlBullet('Unlisted shares', 'Asian Hotels (East) Ltd') && intlBullet('Unlisted shares', 'Synthetic Offshore Engineering Pvt Ltd'),
+    '9. SWOT: an unlisted "Asian Hotels (East) Ltd" or "... Offshore Engineering" share is not international (A3 name test)');
+  ok(!intlBullet('Equity Shares', 'Mirae Asset NYSE FANG+ ETF'), '9. SWOT control: an overseas ETF held as a share still counts (fund test, A4)'); }
 
 if (fail) { console.log('\n' + fail + ' check(s) FAILED'); process.exit(1); }
 console.log('\nall checks passed');

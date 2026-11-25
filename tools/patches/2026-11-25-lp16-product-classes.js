@@ -44,8 +44,10 @@
      - is never read as a listed stock (an "Unlisted shares", "Offshore Equity
        Shares" or "GIFT City Stocks" product); a share held directly (h.heldShare,
        the old direct-equity test) keeps what it had before LP-16: its zero fund
-       fee on the Cost tab, the Direct Equity performance bucket and the IPS
-       "Direct Unlisted investment" line;
+       fee on the Cost tab, the Direct Equity performance bucket, the IPS
+       "Direct Unlisted investment" line and the SWOT's narrow A3 name test for
+       the international share (ARC-02's Gate B L1: the wide fund test would
+       count an unlisted "Asian Hotels" as international);
      - is not reported as "could not be matched to reference data": there is no
        reference data for these types by design, and the look-through box lists
        each with its class and reason.
@@ -136,6 +138,11 @@ applyPatch('LP-16 KI-051 non-MF product classes', [
     label: 'Performance: a share held directly, listed or not, stays in the Direct Equity bucket, not "Equity MF" (FR of round 3)',
     from: '      if (h.directEquity) return "Direct Equity";\n',
     to: '      if (h.directEquity||h.heldShare) return "Direct Equity";   /* LP-16: an unlisted share is not an equity fund */\n'
+  },
+  {
+    label: 'SWOT international share: a share held directly, listed or not, keeps the narrow A3 name test (Gate B L1)',
+    from: '((h.directEquity&&!_intlEtf.test(_n))?',
+    to: '(((h.directEquity||h.heldShare)&&!_intlEtf.test(_n))?'
   },
   {
     label: 'IPS: an unlisted share held directly is "Direct Unlisted investment", not "through funds" (FR of round 3)',
