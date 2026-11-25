@@ -58,10 +58,12 @@ const once = s => html.split(s).length - 1 === 1;
 ok(once('_intlA3=' + A3.toString() + ','), '0. the page holds the A3 direct-equity test once');
 ok(once('_intlFund=' + FUND.toString() + ','), '0. the page holds the fund test once');
 ok(once('_intlNot=' + NOT.toString() + ','), '0. the page holds the domestic exceptions once');
-/* since CR-0010 A5 the ETF test is followed by A5's evidence list and ISIN rule, and the statement reads them (CR0010-a5-isin-domestic.js) */
+/* later forms of the same statement: CR-0010 A5 adds its Indian-ISIN rule and evidence list after the ETF test
+   (CR0010-a5-isin-domestic.js); LP-16 tests a share held directly, listed or not (h.heldShare), as direct equity */
 ok(once('_intlEtf=' + ETF.toString() + ',') || once('_intlEtf=' + ETF.toString() + ';'), '0. the page holds the ETF test once');
-ok(once('((h.directEquity&&!_intlEtf.test(_n))?_intlA3.test(_n):(_intlFund.test(_n)&&!_intlNot.test(_n)))') ||
-   once('((h.directEquity&&!_intlEtf.test(_n))?(_intlA3.test(_n)&&!_intlInIsin(h)):((_intlFund.test(_n)||_intlEvid.test(_n))&&!_intlNot.test(_n)))'),
+const SHARE = ['(h.directEquity&&', '((h.directEquity||h.heldShare)&&'],
+  RULE = ['?_intlA3.test(_n):(_intlFund.test(_n)&&!_intlNot.test(_n)))', '?(_intlA3.test(_n)&&!_intlInIsin(h)):((_intlFund.test(_n)||_intlEvid.test(_n))&&!_intlNot.test(_n)))'];
+ok(SHARE.reduce((n, s) => n + RULE.reduce((k, r) => k + (html.split('(' + s + '!_intlEtf.test(_n))' + r).length - 1), 0), 0) === 1,
   '0. funds and ETFs use the wider test, other direct equity the A3 test');
 
 /* 1 */

@@ -45,7 +45,9 @@ const html = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'ut
 const once = s => html.split(s).length - 1 === 1;
 ok(once(String.raw`_intlEvid=/(\bbnp paribas aqua\b|\bstrategic metal (and|&) energy\b)/i,`), '0. the page holds the evidence list once');
 ok(once(String.raw`_intlInIsin=function(h){ return !!(h.stockRet&&/^IN[E9]/i.test(String(h.stockRet.isin||"").trim())); };`), '0. the page holds the ISIN rule once');
-ok(once('((h.directEquity&&!_intlEtf.test(_n))?(_intlA3.test(_n)&&!_intlInIsin(h)):((_intlFund.test(_n)||_intlEvid.test(_n))&&!_intlNot.test(_n)))'),
+/* with LP-16 a share held directly, listed or not (h.heldShare), takes the direct-equity branch too */
+const A5RULE = '!_intlEtf.test(_n))?(_intlA3.test(_n)&&!_intlInIsin(h)):((_intlFund.test(_n)||_intlEvid.test(_n))&&!_intlNot.test(_n)))';
+ok(html.split('((h.directEquity&&' + A5RULE).length - 1 + html.split('(((h.directEquity||h.heldShare)&&' + A5RULE).length - 1 === 1,
   '0. direct equity: A3 unless an Indian ISIN; funds and ETFs: the fund test or the evidence list');
 
 /* 1 */
