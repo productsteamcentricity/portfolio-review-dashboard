@@ -51,7 +51,8 @@ const PARSER_KEYS = ['parseEquitySide', 'parseDebtSide', 'parseMonitor', 'parseS
   'parseAdditionalDebt', 'parseSOA'];
 const REF_KEYS = ['FUND_RANKS', 'FUND_RANKS_META', 'FUND_MGR', 'FUND_MGR_META', 'TAX_RULES', 'DATA_DATES',
   'EQUITY_ANALYTICS', 'HYBRID_ANALYTICS', 'DEBT_ANALYTICS', 'MF_PERF', 'MF_PERF_DIRECT', 'PMS_PERF', 'AIF_PERF',
-  'BENCHMARKS', 'BENCH_RET', 'STOCK_INFO', 'STOCK_RET', 'MF_RISK', 'MF_BENCHMARKS', 'MF_CAT_BM', 'SIF_PERF'];
+  'BENCHMARKS', 'BENCH_RET', 'STOCK_INFO', 'STOCK_RET', 'MF_RISK', 'MF_BENCHMARKS', 'MF_CAT_BM', 'SIF_PERF',
+  'PRODUCT_CLASS_RULES'];   /* LP-16, contract I-40 */
 const DATE_KEYS = ['analytics', 'performance', 'direct', 'ranks', 'fmgr', 'sif', 'risk'];
 
 let fails = 0, warns = 0;
