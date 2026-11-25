@@ -49,6 +49,9 @@ import type {
   AnalystQuestion, Severity, ValidationResult, ValidationScope, XirrUnitChoice,
 } from '../model/validation.ts';
 import type { AuditEntry } from '../model/audit.ts';
+import type {
+  BaseField, BaseFileCounts, BaseFileImport, ColumnUse, MoneyField, MoneyFinding,
+} from '../model/base-file.ts';
 import { STATUS } from '../model/status.ts';
 import { cellText, findHeaderRow } from './workbook.ts';
 import { readDate, readNumber } from './cells.ts';
@@ -69,14 +72,10 @@ export const PREFERRED_SHEET = 'Base File';
 /** The product of a row whose Product Name is blank: the legacy default, flagged on the holding. */
 export const DEFAULT_PRODUCT = 'Mutual Funds';
 
-/** Base-file columns. The first 24 are the legacy aliases; the holder columns are new (proposal, Q-79); the ISIN column is
- * new (the owner's answer of 25 Nov 2026: identify a fund or share by its ISIN before its name; M2). */
-export type BaseField =
-  | 'client' | 'name' | 'pdate' | 'cat' | 'asset' | 'folio' | 'amc' | 'product' | 'dist' | 'units'
-  | 'invR' | 'mvR' | 'glR' | 'invLk' | 'mvLk' | 'glLk' | 'invCr' | 'cmvCr' | 'glCr'
-  | 'alloc' | 'xirr' | 'bmxirr' | 'days' | 'liq'
-  | 'holder2' | 'holder3' | 'guardian' | 'mode'
-  | 'isin';
+/** The import record's types live in model/base-file.ts (decision C-01); re-exported so importers are unchanged. */
+export type {
+  BaseField, BaseFileCounts, BaseFileImport, ColumnUse, MoneyField, MoneyFinding,
+} from '../model/base-file.ts';
 
 const has = (h: string, s: string): boolean => h.indexOf(s) >= 0;
 const isCr = (h: string): boolean => has(h, 'cr');
@@ -122,8 +121,6 @@ const FIELD_PREDICATES: ReadonlyArray<readonly [BaseField, (h: string) => boolea
 
 type Columns = Partial<Record<BaseField, number>>;
 
-export type ColumnUse = { field: BaseField; header: string; column: number };
-
 export type BaseFileOptions = {
   /** SHA-256 of the file, computed by the caller (the source register id). */
   sourceId: SourceFileId;
@@ -131,62 +128,6 @@ export type BaseFileOptions = {
   answers?: Partial<Record<'xirr' | 'bmXirr', XirrUnitChoice>>;
   /** Clock for the audit entries (ISO 8601); defaults to the system clock. */
   now?: () => string;
-};
-
-export type BaseFileCounts = {
-  /** Rows below the header on the sheet used. */
-  dataRows: number;
-  /** Rows that carry an instrument name and are not repeated headers. */
-  holdingRows: number;
-  holdings: number;
-  included: number;
-  excluded: number;
-  /** Included rows that merged into another row's holding (E-02). */
-  mergedRows: number;
-  skipped: Record<SkipReason, number>;
-};
-
-/** The three money fields of a holding. */
-export type MoneyField = 'invested' | 'cmv' | 'fileGain';
-
-/**
- * What the money-column rule found for one row of one holding and one field (KI-147, D-039 point 1): text that is not
- * an amount in the column the reader would use (`invalid`), or a later column whose amount differs from the one used
- * by more than the tolerance (`disagree`). The overview's notes count these by holding, for the market value and the
- * invested value only: the file's own gain or loss feeds no figure (OD-18) and never makes a note.
- */
-export type MoneyFinding = {
-  holdingId: HoldingId;
-  field: MoneyField;
-  kind: 'invalid' | 'disagree';
-  /** The column whose text is not an amount (invalid), or whose amount is used (disagree), as the file heads it. */
-  column: { header: string; unit: MoneyUnit };
-  /** The later columns of the field: not read in its place (invalid), or whose amount differs (disagree). */
-  others: Array<{ header: string; unit: MoneyUnit }>;
-};
-
-export type BaseFileImport = {
-  parserVersion: string;
-  sourceId: SourceFileId;
-  /** The sheet read and its 1-based header row; null when no sheet has a header. */
-  sheet: { name: string; headerRow: number } | null;
-  sheets: SheetAttempt[];
-  columns: ColumnUse[];
-  /** The unit the money columns are written in (the display unit): Crore if any Cr. column, else Lakh, else rupees. */
-  moneyUnit: MoneyUnit | null;
-  holdings: Holding[];
-  clients: Client[];
-  distributors: Distributor[];
-  accounts: Account[];
-  folios: Folio[];
-  ownership: Ownership[];
-  skipped: SkippedRow[];
-  questions: AnalystQuestion[];
-  issues: ValidationResult[];
-  /** The KI-147 findings by holding, field and row (the notes of the overview count them). */
-  moneyFindings: MoneyFinding[];
-  audit: AuditEntry[];
-  counts: BaseFileCounts;
 };
 
 // ---------------------------------------------------------------------------------------------------------------

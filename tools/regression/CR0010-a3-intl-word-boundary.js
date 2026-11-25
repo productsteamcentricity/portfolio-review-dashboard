@@ -32,7 +32,8 @@ const ok = (c, m) => { console.log((c ? 'PASS  ' : 'FAIL  ') + m); if (!c) fail+
 /* the page's pattern, read from index.html (exactly one copy) */
 const html = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8');
 const SRC = '/(\\binternat|\\bglobal|\\bus\\b|\\bu\\.s\\.|\\bnasdaq|\\bs&p|\\boverseas|\\bworld|\\bchina|\\btaiwan|\\bjapan)/i';
-ok(html.split(SRC + '.test(h.name||"")').length - 1 === 1, '0. the page holds the word-boundary pattern exactly once');
+/* since A4 (2026-11-24-intl-terms.js) this pattern is the direct-equity test; funds use A4's wider terms */
+ok(html.split('_intlA3=' + SRC + ',').length - 1 === 1, '0. the page holds the word-boundary pattern exactly once (the direct-equity test since A4)');
 ok(html.indexOf('/(internat|global|us |nasdaq|') < 0, '0. the old pattern is gone from the page');
 const RE = /(\binternat|\bglobal|\bus\b|\bu\.s\.|\bnasdaq|\bs&p|\boverseas|\bworld|\bchina|\btaiwan|\bjapan)/i;
 
