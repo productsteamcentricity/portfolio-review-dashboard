@@ -13,7 +13,16 @@ import { computeContributions } from '../../app/src/engine/returns/contributions
 import type { SourceFileId } from '../../app/src/model/ids.ts';
 import { normaliseLabel } from '../../app/src/engine/ids.ts';
 import { loadSheetJS } from '../helpers/sheetjs.ts';
-import { loadLegacyHost, syntheticFixtures } from '../fixtures/make-books.ts';
+import { loadLegacyHost, syntheticFixtures, overviewVariants, SYNTHETIC_BOOK } from '../fixtures/make-books.ts';
+import type { BookRow } from '../fixtures/make-books.ts';
+
+/**
+ * The synthetic book with negative lines and a full tie (financial review of 4bfee74): holdings 1 and 2 at -8% and -3%
+ * (drags), holdings 3 and 4 with the same market value and XIRR (a tie on contribution, allocation and market value,
+ * which the legacy order and ours both leave in row order).
+ */
+const NEG_BOOK: BookRow[] = SYNTHETIC_BOOK.map((h, i) => (
+  i === 0 ? { ...h, xirr: -8 } : i === 1 ? { ...h, xirr: -3 } : i === 2 || i === 3 ? { ...h, mv: 3_000_000, xirr: 9 } : h));
 
 const SRC = 'f'.repeat(64) as SourceFileId;
 const xlsx = loadSheetJS();
@@ -64,7 +73,8 @@ describe('contributions equal the legacy contribLag on the synthetic books (end 
 describe('contributions equal the legacy contribLag on the legacy rows themselves (every synthetic book)', () => {
   // The same inputs on both sides: the legacy reader's rows (name, cmvCr, xirrFrac), so only the contribution logic is
   // compared, whatever the two base readers decide about XIRR units or header rows.
-  for (const f of syntheticFixtures(xlsx)) {
+  for (const f of [...syntheticFixtures(xlsx), ...overviewVariants(xlsx, NEG_BOOK, 'neg').filter((x) => !x.id.endsWith('-hostile'))]) {
+    // neg-hostile is left out: the legacy computeReview throws on its prototype labels (KI-151, fixed only in the new app).
     test(f.id, () => {
       const wb = host.XLSX.read(f.bytes, { type: 'array', cellDates: true });
       const sh = wb.Sheets['Base File'] ? wb.Sheets['Base File'] : wb.Sheets[wb.SheetNames[0]];
@@ -88,4 +98,17 @@ describe('contributions equal the legacy contribLag on the legacy rows themselve
       }
     });
   }
+});
+
+describe('the negative-and-tie book exercises drags and ties (financial review of 4bfee74)', () => {
+  test('the legacy lists of the book hold a drag and two lines tied on contribution', () => {
+    const f = overviewVariants(xlsx, NEG_BOOK, 'neg')[0]!;
+    const wb = host.XLSX.read(f.bytes, { type: 'array', cellDates: true });
+    const sh = wb.Sheets['Base File'] ? wb.Sheets['Base File'] : wb.Sheets[wb.SheetNames[0]];
+    const rows = host.E.parseBaseRows(host.XLSX.utils.sheet_to_json(sh, { header: 1, raw: true }));
+    const lag = host.E.computeReview(rows, host.REF, { familyName: 'Sample Family', asOnDate: '30 Sep 2026' }).contribLag;
+    assert.ok(lag.drags.length >= 2, `${lag.drags.length} drags`);
+    const all = [...lag.contributors, ...lag.laggards] as LegacyLine[];
+    assert.ok(all.some((a, i) => all.some((b, j) => i !== j && a.contrib === b.contrib)), 'a tie among the listed lines');
+  });
 });

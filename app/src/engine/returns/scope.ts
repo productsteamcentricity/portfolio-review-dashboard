@@ -145,7 +145,9 @@ export function computeScopeReturns(scope: Scope, irr: IrrFileImport | null, hol
   for (const [k, ts] of benchByInstr) {
     const o = solveXirr(flowsOf(ts));
     if ('gap' in o) {
-      invalid.set(k, { clientId: ts[0]!.clientId, instrumentName: ts[0]!.instrumentName ?? '', reason: `the benchmark flows give no rate (${o.gap})` });
+      // Named as the fund sheet spells the instrument (the name the analyst sees in the tree), else the benchmark's.
+      const fundName = scopeFund.find((t) => instrumentKey(t.clientId, t.instrumentName) === k)?.instrumentName;
+      invalid.set(k, { clientId: ts[0]!.clientId, instrumentName: fundName ?? ts[0]!.instrumentName ?? '', reason: `the benchmark flows give no rate (${o.gap})` });
     }
   }
   const keep = (t: Transaction): boolean => !invalid.has(instrumentKey(t.clientId, t.instrumentName));
