@@ -4,6 +4,183 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Fixed (fix batch 3: tax rules per the TY2026-27 reckoner, CR-0008)
+- **Tax batch, stage S12 (CR-0008): ARC-02's Gate B points on d7683a0, settled conservatively (MOD-04, 25 Nov 2026), and
+  foreign bonds.** `index.html` MD5 `8A233F94CA795FFA26029DC7CE6C744F` → `5EA6990734AB65C1C243B3990C234198` (patch
+  `tools/patches/2026-11-25-tax-6-wording.js`; test `tools/regression/TA03-tax-6-gate-b.js`, 50 checks, 34 fail on d7683a0).
+  - T1: the Crypto row's source note, shown on the Taxation tab, ends "to be confirmed with the tax adviser." instead of
+    "for the owner to confirm." (a client may read "the owner" as the portfolio's owner); the latent set-off note records
+    the decision of 2 Nov 2026 (D-043). `KI-182-crypto-source.js` asserts neither note names the owner.
+  - T2: an AIF entry's category is read as a statement about the holding only when the two names are the same word for
+    word (PD-54: letter case, punctuation, brackets and the word AIF ignored; no word dropped, replaced or de-duplicated).
+    "X Income Opportunities Strategy" and "The X Opportunities Strategy" are no longer the entry "X Opportunities
+    Strategy": Category I or II, assumed, with the note. No existing check changes.
+  - T3: the tab's crypto set-off sentence says "(confirm with the tax adviser)", as the slide does.
+  - A bond whose Product or Category names a foreign or US-dollar route (LRS, USD, US$, dollar, foreign, overseas,
+    international, global, offshore, GIFT City, IFSC, eurobond) is no longer taxed as a domestic row (MLD, G-Sec,
+    unlisted or listed bonds): no tax class, with the reason "No tax row is published for a foreign or US-dollar bond
+    (held through the LRS, GIFT City or abroad). Confirm its tax with the tax adviser." (MOD-03 and MOD-04, with LP-16;
+    widened and moved first by the financial review). "NCD", "Bonds" and "Debenture" keep their rows: the tax class is
+    not read from LP-16's product labels.
+  - A share whose Product or Category says offshore ("Offshore Equity Shares") is a foreign-listed share, as "foreign",
+    "international" and "overseas" already were. Question 27 for the tax adviser covers foreign bonds and GIFT City shares.
+- **Tax batch, part T5 (CR-0008, D-040, D-043): the follow-ups to parts T1 to T4, the owner's answers to questions 17,
+  18 and 24, and the corrections from two reviews.** `index.html` MD5 `0713C6BEEFCB35D778730AB9BEF3E430` →
+  `32CE9C58307178C4A76379AA6170C413` (16,898,566 → 16,917,748 bytes; patch `tools/patches/2026-10-27-tax-5-followups.js`).
+  On branch `fix/legacy-batch-3-tax-cr-0008`, which carries the whole batch; the batch merges as one change.
+  - Aggressive hybrid, arbitrage and equity savings funds take the reckoner's usual bucket only when the review is valued
+    on or after 1 Apr 2026, labelled "usual bucket per the tax reckoner; confirm with the fund house"; before that date
+    they are unclassified, with a reason (KI-170). Equity savings funds are now classed from that date; aggressive
+    hybrid and arbitrage funds are no longer classed in a review valued earlier. The AI Analyst's tax signal follows the
+    class, so a book that holds these funds can get different trims, target weights, action labels (an Exit can become a
+    Partial) and plan summary (PD-50, CR-0008 question 21; D-040 has ARC-01's figures).
+  - A fund called a Listed AIF is Category III, fund level, with a note that asks the analyst to confirm the category
+    (question 17, D-043); an AIF whose category the file does not state stays Category I or II with a note; a fund's own
+    stated category wins; the category the performance data gives is a statement about the fund only when the names
+    are the same, "AIF" and brackets ignored (the name matcher is loose); the category is read once, in `taxClassify`;
+    the data's Listed AIF label counts only for the fund of the entry's own name, "AIF" and brackets ignored (question
+    24, stage S10; the same equality for the category the data states, stage S11; below).
+    Question 18: crypto stays out of set-off, with no change to the rule or to any figure (two sentences were reworded,
+    below).
+    On the sample book no tax, LTCG, STCG, estimated tax, saving, harvest or total CMV moves; the not-classified CMV and
+    gain move into a Fund level amount (2.7051 to 2.0535 Cr, new 0.6516 Cr).
+  - An IRR date written with an explicit zone ("2023-04-01T20:00:00Z") is read as the day written in every time zone
+    (KI-186, interface I-04); other zone text keeps the machine-local day.
+  - The harvest inputs are text fields that read Indian and international digit grouping, a rupee sign, Rs, INR (with
+    or without a dot), "/-", "/=", a trailing INR or Rs, a "%" in the slab rate and an exponent; no "-Rs 0.00"; the
+    unreconciled table says why, and a sale with no price has its own reason; the class footnote fits the slide (KI-109) and the class and harvest slides count holdings in the singular and the plural; the wording
+    says "the tax reckoner" because the AI Analyst slide goes to the client.
+  - `ENGINE.taxDefaults` is frozen and `check-invariants` lists all 28 engine names and checks them both ways (KI-185). KI-184 is filed (the base
+    file's ISIN column is not read; D-040 point (c) corrected). The independent review (8 reviewers, 51 findings) and
+    the delta review of its corrections (6 reviewers) and ARC-01's pre-review of the stages are answered in CR-0008; KI-200 to KI-206 are the first review's
+    open findings, KI-207 to KI-212 the delta review's and ARC-01's, and KI-213 and KI-214 were filed after the gate
+    review (below).
+  - The owner answered on 2 Nov 2026: the fund's own statement wins when an AIF's category is read (PD-47, D-043) and the AI
+    Analyst keeps following the class, with the effects disclosed (PD-50, D-040). The two sentences that said crypto is kept out
+    of set-off "pending" a ruling now state the rule (KI-182; no figure moves).
+  - 4 new regression files (`CR-0008-T5-followups.js`, `CR-0008-T5-item10-listed-aif.js`,
+    `CR-0008-T5-item11-irr-zone-dates.js`, `KI-185-engine-keys.js`); `KI-166` and `KI-169` (one assertion each), `KI-170`, `KI-171`, `KI-180` and
+    `KI-182` changed. 47 files, 1,649 checks (1,619 before stage S10), pass in IST and UTC; `node --test` 234/234 (at
+    stage S9); `smoke-review` 36/36; `test-ai-analyst` 24/24. The final head's results go into the pull request.
+  - The five-reviewer review of the committed head (two financial-domain reviewers, a security and release reviewer, a
+    documentation auditor and a test-quality auditor; 62 findings, 2 Nov 2026) is answered in CR-0008, "The gate reviews
+    of the committed head". The page was unchanged by those corrections (`index.html` stayed
+    `391E722FFDC585D8D614CA7029FB8EA1` until stage S10, below). The records were corrected (D-040, D-043, KNOWN_ISSUES, TESTING, PROJECT_STATE, legacy ARCHITECTURE, and `CLAUDE.md`, whose
+    `smoke-review` count is now 36); 30 checks were added to `CR-0008-T5-followups.js` (130 in all) and 5 to
+    `CR-0008-T5-item10-listed-aif.js` (90 in all), `KI-182-crypto-no-set-off.js` no longer pins the stale data text and
+    `KI-185-engine-keys.js` cleans up after itself and plants a number, a string, a function and an object; there is one
+    new question for the owner, CR-0008 question 24 (a fund that the loose name matcher only links to a Listed AIF
+    entry; answered 9 Nov 2026, below), and two for the tax adviser, questions 25 and 26.
+  - Stage S10 (9 Nov 2026), the owner's answer to question 24, "Restrict it (Recommended)": the data's Listed AIF label
+    gives Category III only for the fund of the entry's own name ("AIF" and brackets ignored; all 11 genuine entries of
+    the data are unchanged, also written "Name AIF" or "Name (AIF)"); a fund that the loose name matcher only links by a
+    similar name is Category I or II, assumed, with the note (D-043, KI-166, KI-171). The Taxation tab's crypto
+    sentence no longer cites the owner ("as the reckoner is silent on them", KI-182). No tax figure moves.
+    `CR-0008-T5-item10-listed-aif.js` has 116 checks (90) and `KI-182-crypto-no-set-off.js` 33 (32). KI-213 (a dash in
+    the AI Analyst's "Not assessed" reason) and KI-214 (the regression runner passes a test file that runs no checks)
+    are filed.
+  - Stage S11 (9 Nov 2026), ARC-01's pre-check of stage S10: the same name equality now serves step 2 of the AIF
+    category reader. The category that the performance data states (Category I, II or III) counts for the fund of the
+    entry's own name, "AIF" and brackets ignored, as the Listed AIF label already did at stage S10. Before, the one
+    genuine Category III entry written "Name AIF" or "Name (AIF)" read as an assumed Category I or II while a Listed AIF
+    written the same way read Category III. It is now Category III as the data states it (fund level, no note that it
+    is called a Listed AIF, no assumed note); an entry that states Category I or II is a statement for those spellings
+    too; a merely similar name still reads Category I or II, assumed, with the note; the 11 Listed AIF entries are
+    unchanged (D-043, KI-166, KI-171). No tax, LTCG, STCG, estimated-tax, saving or harvest figure moves. `index.html`
+    MD5 `98320D28…` → `32CE9C58…` (16,917,896 → 16,917,748 bytes; the engine block only);
+    `CR-0008-T5-item10-listed-aif.js` has 119 checks (116).
+- **Tax batch rebased on fix batch 4 (CR-0008): the branch merged `main` (PR #14 to #16) and its page was rebuilt**
+  from main's page (fix batch 4) with the four tax patches in file-name order: `index.html` MD5
+  `12B5E5727FCA01EF2EA162C59913F01D` → `0713C6BEEFCB35D778730AB9BEF3E430`. Parts T1, T3 and T4 apply unchanged. Part T2
+  has two anchor revisions where the batches meet: the TX-17 sentence on an unreconciled holding with no lots anchors
+  on the end of that reason (its one-line anchor occurred twice once fix batch 4, KI-140, added an unreconciled exit for
+  a merged folio with blank units), and a new edit puts the same sentence after fix batch 4's reason for that holding,
+  which is unreconciled too, when one of its IRR trades is dated after the valuation date. New checks: KI-176 (2),
+  KI-166 (1: a merged AIF with blank units stays fund level) and KI-169 (2: a merged PMS with blank units is
+  unreconciled; one whose folios all lack units stays not split). 43 regression files, 1,277 checks, pass in IST and
+  UTC; detail in CR-0008, "Rebased on fix batch 4".
+- **Tax batch, part T4 (CR-0008, D-040): the financial re-review of part T3. Crypto is kept out of set-off until the
+  owner rules.** `index.html` MD5 `BB888D8E272AADE90291ED0A6ECA1721` → `61FC0FB25FB1429F805B140FBA6B308E` (patch
+  `tools/patches/2026-10-27-tax-4-review.js`). On branch `fix/legacy-batch-3-tax-p3-r2` with part T3, on top of part
+  T2; the batch merges as one change.
+  - The Crypto row carries `noSetOff` and its basis (`noSetOffSource`): no loss is set against a crypto gain, which is
+    taxed in full before and after; a crypto loss reduces no other gain, is never shown as carried forward and is not
+    offered as a holding to sell. One sentence on the tab's harvest card and on the harvest slide says so (KI-182,
+    KI-175; CR-0008 question 18). A book with no crypto is unchanged.
+  - Known answer: a Rs 1,00,000 crypto gain, a Rs 20,000 equity short-term loss and a Rs 2,00,000 equity long-term
+    gain save Rs 2,500 (part T3: Rs 6,000), crypto tax Rs 30,000 before and after; a Rs 1,00,000 crypto loss against a
+    Rs 1,00,000 equity short-term gain saves 0 (part T3: Rs 20,000).
+  - Corrections: the PMS probe's former saving is Rs 62,500, not Rs 63,000 (KI-169); the findings fixed are 22 of the
+    23 and KI-177 in part, not 21; the part T2 entry below had lost its heading line.
+  - `data/refdata/` regenerated. 1 regression file, `KI-182-crypto-no-set-off.js` (30 checks, 28 failing on the T3
+    page); 36 files in all. `smoke-review` sums the two new harvest figures in its family check.
+- **Tax batch, part T3 (CR-0008, D-040): the harvest, AIF and PMS treatment and the wording follow the TY 2026-27 Tax
+  Reckoner.** `index.html` MD5 `AE70F78B0C89E57692EE9C71A2AC8358` → `BB888D8E272AADE90291ED0A6ECA1721` (patch
+  `tools/patches/2026-10-27-tax-3-harvest.js`). On branch `fix/legacy-batch-3-tax-p3-r2`, on top of part T2; the batch
+  merges as one change.
+  - The harvest is worked out per client and the family view adds the clients' results; one client's loss is never set
+    against another's gain, and the tab and slide say whose loss is left over (KI-167).
+  - The Rs 1.25 lakh Sec 198 exemption applies per client after set-off, to listed shares, equity-oriented funds and
+    REIT and InvIT units only, less the amount the analyst enters as already used this tax year (default 0); it has its
+    own line in the pool table and the footnote no longer implies it for other gains (KI-168, closes KI-130).
+  - Losses go first to the gains taxed at the highest rate: slab-rate gains are ranked at the analyst's slab rate
+    (default 30%, never given a tax figure, the gains they shelter shown); gains inside the exemption are reached last;
+    ties follow a fixed order (KI-175).
+  - AIF Category III is taxed at fund level: no investor-level gain, loss or tax, its own "Fund level" amounts, out of
+    the harvest (KI-166). AIF Category I and II are pass-through and a PMS is taxed per security: neither is split by
+    the investor's own flows any more; both stay in the totals as not classified, out of the harvest, with a note
+    (KI-171, KI-169).
+  - Carry-forward reads "for up to eight tax years, provided the return is filed by the due date" on the tab and the
+    slide (KI-181). The Crypto row keeps 30% for any period and states its source (KI-182).
+  - Both assumptions (slab rate, exemption already used) are inputs per client on the Taxation tab, marked default
+    until changed, stated on the harvest slide, and cleared when another family is loaded (`resetFamilyState`, KI-001).
+  - The synthetic sample book: tax before harvesting Rs 0.267175 Cr → Rs 0.181787 Cr (its PMS and Category I/II AIF
+    leave the long-term pools; each of the two clients' exemption applies); long term 5.547273 → 3.639173 Cr, not
+    classified 0.797 → 2.7051 Cr.
+  - TAX_RULES still 34 rows (fields `sec198`, `fundLevel`, `passThrough`, `perSecurity`, `source`; `data/refdata/`
+    regenerated). 8 regression files (142 checks), each failing on the T2 page; 9 earlier tax tests state their
+    figures with the exemption taken as used; 35 files in all. `smoke-review` 36 checks.
+- **Tax batch, part T2 (CR-0008, D-040): holding periods and lots follow the TY 2026-27 Tax Reckoner.** `index.html`
+  MD5 `5717A7967294FA13ED3A65111D80DA61` → `AE70F78B0C89E57692EE9C71A2AC8358` (patch
+  `tools/patches/2026-10-27-tax-2-holding-period.js`). On branch `fix/legacy-batch-3-tax-p2`, on top of part T1; the
+  batch merges as one change.
+  - A lot is long term from the day after the anniversary of its purchase (more than 12 or 24 months), not after 13 or
+    25 whole months; the months are calendar months, clamped to the month end (29 Feb to 28 Feb, for the tax adviser to
+    confirm) (KI-160). "Long term after" reads "More than N months".
+  - Debt fund units (with target maturity funds, debt ETFs and debt FoFs) and conservative hybrid units bought before
+    1 Apr 2023 are no longer Specified: two new rows give them the general rule, long term after 24 months (12 for a
+    listed ETF) at 12.5%; a holding bought on both sides of the date is split into two records that add back to it and
+    count as one holding (KI-161). Free-text IRR dates are read as their calendar day.
+  - Holding periods run to the base file's valuation date: its own Valuation Date column, else the portfolio date set
+    for the review, else (with a note) the IRR sheet's latest date; IRR trades after it are left out of the lots and
+    named (KI-176, with KI-022).
+  - Lots of shares, equity-oriented funds and REIT or InvIT units bought before 1 Feb 2018 are counted and disclosed as
+    measured on actual cost, without the 31 Jan 2018 step-up (KI-177, step 1; no figure changes).
+  - TAX_RULES 32 → 34 rows (`data/refdata/` regenerated). 4 regression files (118 checks), each failing on the T1
+    page; 27 files, 950 checks in all. The synthetic sample book's taxation is unchanged.
+- **Tax batch, part T1 (CR-0008, D-040): the tax classes follow the TY 2026-27 Tax Reckoner.** `index.html` MD5
+  `911A04659CB34383E478416B54E9C306` → `5717A7967294FA13ED3A65111D80DA61` (patch
+  `tools/patches/2026-10-27-tax-1-classification.js`). On branch `fix/legacy-batch-3-tax`; it merges with the later
+  parts of the batch, never alone (the 1 Apr 2023 rule of KI-161 is needed by the Specified rows it maps).
+  - Listed Indian companies named "International", "Global" or "Overseas" are listed equity shares, not Global Funds
+    (KI-162, 286 names); Equity, Shares and Stocks count as direct-equity products; a share with a foreign marker takes
+    the new row "Foreign-listed shares (held directly)".
+  - Gold and silver ETF FoFs are 24-month Commodity Mutual Funds (KI-163, 35 per plan); international funds and FoFs are
+    Global Funds and international ETFs a new 12-month slab row (KI-164); funds of funds get their own branch: equity
+    ETF FoF (new row), debt FoF (Sec. 76), general rule (new row) (KI-165).
+  - Hybrids take the reckoner's buckets in three new rows that replace the obsolete 35% rows (KI-170); SIFs are classed
+    by strategy in two new rows (KI-172); ELSS has a 3-year lock-in row, and locked units leave the long- and
+    short-term amounts and the harvest (KI-173); REIT FoFs and index funds are not REIT units (KI-174); "ETF", "Index
+    Fund" and "FoF" products are mutual funds for the tax classes, through the AMC tab's one test (KI-178, KI-099);
+    retirement and children's funds are unclassified with the reason instead of equity (KI-179).
+  - The debt row cites Sec. 76 (old 50AA) of the Income-tax Act 2025 (KI-180, OD-28); a class with no TAX_RULES row is
+    unclassified with a reason. Every unclassified holding shows why on the Taxation tab and in the AI Analyst tax
+    signal; the slides count them.
+  - TAX_RULES 25 → 32 rows (`data/refdata/` regenerated). 11 regression files (333 checks), each failing on the
+    previous page. The synthetic sample book's taxation is unchanged apart from the debt row's name.
+  - Recorded: D-040 (the lead's defaults for the rules the reckoner leaves open, each open to the owner), KI-160 to
+    KI-182, CR-0008.
+
 ### Added (new build, M2.3 sprint 3a: the MF Monitor read by header name; no change to `/next/` or `/`)
 - **`app/src/ingest/vendor/`:** the shared cell readers and the Daily MF Monitor reader (Regular and Direct issues) with the
   monthly pipeline's rules, so an upload and the refresh read a monitor the same way (OD-11): AUM from the label row,

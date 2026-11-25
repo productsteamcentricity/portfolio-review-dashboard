@@ -70,6 +70,10 @@
     var scopeBtn = Array.prototype.find.call(document.querySelectorAll('#s-tax button'), function (b) { return /^Sample Client A/.test(b.innerText); });
     if (scopeBtn) { scopeBtn.click(); await sleep(1200); }
     var scopeSetBefore = window.__taxScope === 'Sample Client A';
+    /* tax batch T3 (CR-0008): an analyst's harvest assumption is per-family state too */
+    var slabIn = document.querySelector('#s-tax input.taxas[data-k="slabPct"]');
+    if (slabIn) { slabIn.value = '20'; slabIn.onchange(); await sleep(800); }
+    var assumeSetBefore = !!(window.__taxAssume && Object.keys(window.__taxAssume.clients || {}).length);
     var tick = document.querySelector('.rnav-cb[data-slide]:not(:checked)');
     if (tick) { tick.click(); await sleep(500); }
     var tickedBefore = document.querySelectorAll('.rnav-cb[data-slide]:checked').length;
@@ -87,6 +91,9 @@
       { name: 'status line says the previous IRR upload was cleared', pass: /Cleared from the previous file: IRR transactions/.test(statusB) },
       { name: 'no family-A fund or client name in any family section', pass: leaks.length === 0, detail: leaks },
       { name: 'Taxation scope reset (window.__taxScope = ' + JSON.stringify(window.__taxScope) + ')', pass: !window.__taxScope },
+      { name: 'precondition: a harvest assumption was set for family A', pass: assumeSetBefore },
+      { name: 'harvest assumptions reset (no client of family A keeps a slab rate or an exemption used)',
+        pass: !window.__taxAssume || Object.keys(window.__taxAssume.clients || {}).length === 0 },
       { name: 'IRR upload cleared (label: "' + text('rs-irr') + '")', pass: text('rs-irr') === 'Not uploaded' },
       { name: 'Fund IRR no longer transaction-based', pass: text('s-irr').indexOf('transaction-based') < 0 },
       { name: 'slide-picker ticks cleared', pass: document.querySelectorAll('.rnav-cb[data-slide]:checked').length === 0 },
