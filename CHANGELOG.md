@@ -57,6 +57,18 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   look-through and never Retirement Fund-50's returns: an ALIASES pin to their own hybrid entry plus exact-only (patch
   `tools/patches/2026-11-23-retirement-plan-pins.js`). Measured over every universe; nothing else moves.
 
+### Fixed (LP-16, KI-051 P0; not published until the owner says "publish")
+- **Six non-mutual-fund product types are their own product class, never a mutual fund** (the owner's labels, D-7): "GIFT City
+  funds", "Offshore funds", "US-dollar bonds (through LRS)", "Fixed deposits", "REITs and InvITs", "Unlisted shares", read from the
+  Product column without regard to letter case, by the rules in the new REFDATA key `PRODUCT_CLASS_RULES` (contract I-40; registered
+  in `scripts/data-extract.ts` and `tools/check-invariants.js`; `data/refdata/PRODUCT_CLASS_RULES.json` generated). Such a holding
+  no longer takes a mutual fund's, PMS's or AIF's look-through or returns, is never read as a listed stock, and is listed as
+  excluded with its class instead of as unmatched; a share held directly (an unlisted share) keeps its zero fund fee on the Cost tab, its Direct Equity performance bucket and its IPS "Direct Unlisted investment" line and the SWOT's narrow name test for the international share. Every bond, NCD
+  and debenture (rupee 54EC, tax-free, RBI and corporate NCDs included) takes "US-dollar bonds (through LRS)": the owner, 25 Nov
+  2026, "No, keep as recorded"; the Taxation tab keeps its own tax classes. A product that also says ETF, MF or
+  fund stays a mutual fund (OD-6); sovereign gold bonds and MLDs keep their old class until labelled. Patch
+  `tools/patches/2026-11-25-lp16-product-classes.js`; test `tools/regression/LP16-KI051-product-classes.js`.
+
 ### Fixed (CR-0010 A2; not published until the owner says "publish")
 - **Three holdings no longer take another fund's data.** Motilal Oswal Nasdaq 100 ETF no longer gets the Nifty 100 ETF's
   look-through (Indian large caps) or the Nasdaq 100 FOF's Direct-plan returns; Aditya Birla SL Global Emerging Opp Fund no
