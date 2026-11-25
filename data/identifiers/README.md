@@ -5,7 +5,7 @@ roadmap M2.1). Only data a person decides or a source states goes here, each ent
 
 | File (when it exists) | Content | Who decides |
 |---|---|---|
-| `aliases.json` | New fund-name and fund-house aliases | The owner, line by line (OD-5, PD-36); none yet |
+| (moved) | Fund-name aliases live in [`data/owner/fund-aliases.json`](../owner/README.md) (16 lines, PD-36, 25 Nov 2026); fund-house aliases (KI-117) will join `data/owner/` | The owner, line by line (OD-5, PD-36) |
 | `renames.json` | Scheme rename history (old name, new name, date, public evidence: an AMC notice, AMFI or the vendor data) | Recorded from public evidence; none yet |
 | `amfi-codes.json` | The AMFI scheme code map (DS-H4), when received, with its source and date | Data owner |
 

@@ -17,13 +17,27 @@
 // tests/parity/matching.parity.test.ts compares the shipped order (data/refdata, sorted keys) with the legacy's embedded
 // order and ledgers each such difference until sprint 2 returns null on ties.
 
+//
+// Sprint 2a corrections are opt-in through MatchOptions, so the legacy behaviour above stays the default and the
+// parity tests keep measuring it:
+//   - ownerAliases (owner-aliases.ts; KI-050, PD-36): after the legacy alias step and before the exact name, an
+//     owner-approved rename resolves the old name to the renamed fund, where that fund is a candidate (step
+//     'owner-alias').
+
 import { aliasFor, isExactOnlyKey } from './name-lists.ts';
 import { nameKey, normalize } from './normalize.ts';
+import { ownerAliasOf, ownerAliasTarget, type OwnerAliasTable } from './owner-aliases.ts';
 
 /** Normalised tokens of candidate names, kept between calls (the legacy candNormCache). */
 export type TokenCache = Map<string, string[]>;
 
-export type MatchStep = 'block' | 'pin' | 'exact' | 'exact-only-stop' | 'fuzzy' | 'none';
+/** The sprint 2a corrections, each off unless given. */
+export type MatchOptions = {
+  /** The owner's fund aliases (data/owner/fund-aliases.json, parsed by parseOwnerAliases). */
+  ownerAliases?: OwnerAliasTable;
+};
+
+export type MatchStep = 'block' | 'pin' | 'owner-alias' | 'exact' | 'exact-only-stop' | 'fuzzy' | 'none';
 
 export type MatchDetail = {
   key: string | null;
@@ -66,13 +80,18 @@ export function fuzzyScore(nameTokens: readonly string[], amcTok: string, candTo
 }
 
 /** matchInstrument with the step that decided it. */
-export function matchInstrumentDetail(name: unknown, amc: unknown, candidates: readonly string[], cache?: TokenCache): MatchDetail {
+export function matchInstrumentDetail(name: unknown, amc: unknown, candidates: readonly string[], cache?: TokenCache, opts?: MatchOptions): MatchDetail {
   const nt = normalize(name);
   const key = nt.join(' ');
   const alias = aliasFor(key);
   if (alias !== undefined) {
     if (alias === '') return { key: null, step: 'block' };
     for (const c of candidates) if (c === alias) return { key: alias, step: 'pin' };
+  }
+  if (opts?.ownerAliases) {
+    const own = ownerAliasOf(name, key, opts.ownerAliases);
+    const target = own ? ownerAliasTarget(name, own, candidates) : undefined;
+    if (target !== undefined) return { key: target, step: 'owner-alias' };
   }
   const amcTok = normalize(amc)[0] ?? nt[0] ?? '';
   for (const c of candidates) {
@@ -95,8 +114,8 @@ export function matchInstrumentDetail(name: unknown, amc: unknown, candidates: r
 }
 
 /** The legacy matchInstrument(name, amc, candidates, cache): the matched candidate, or null. */
-export function matchInstrument(name: unknown, amc: unknown, candidates: readonly string[], cache?: TokenCache): string | null {
-  return matchInstrumentDetail(name, amc, candidates, cache).key;
+export function matchInstrument(name: unknown, amc: unknown, candidates: readonly string[], cache?: TokenCache, opts?: MatchOptions): string | null {
+  return matchInstrumentDetail(name, amc, candidates, cache, opts).key;
 }
 
 /** The legacy isExactOnly(name). */

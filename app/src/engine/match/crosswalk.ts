@@ -11,7 +11,9 @@
 //   2. the legacy name unit, in the legacy order: alias block or pin first; then the vendor key (the exact reference
 //      name), then the exact normalised name, the EXACT_ONLY stop and the fuzzy match (instrument.ts, pms.ts). A
 //      blocked name therefore stays unmatched even when it equals a reference name, as on the live page (financial
-//      review of f32ee9c, L1).
+//      review of f32ee9c, L1). With MatchOptions.ownerAliases (sprint 2a; KI-050, PD-36), an owner-approved rename
+//      comes after the legacy alias step and the vendor key and before the exact normalised name; it resolves as
+//      'alias-pin', confidence 'pinned'.
 // Product class is never crossed (CLAUDE.md rule 4): a universe holds only the entries of one class. makeUniverse
 // applies the legacy splitByClass (07_engine.js:1078-1097) to a reference block: an entry whose `pcls` is PMS or AIF
 // belongs to that class, any other entry to the block's default class (financial review of f32ee9c, M2).
@@ -24,7 +26,7 @@
 // `resolution.candidates`, so the conflict is visible.
 
 import type { InstrumentRef, ProductClass, ResolutionConfidence, ResolutionMethod } from '../../model/ids.ts';
-import { matchInstrumentDetail, type TokenCache } from './instrument.ts';
+import { matchInstrumentDetail, type MatchOptions, type TokenCache } from './instrument.ts';
 import { aliasFor } from './name-lists.ts';
 import { nameKey } from './normalize.ts';
 import { matchPMS, type PmsCache } from './pms.ts';
@@ -147,7 +149,7 @@ function identifierHit(q: ResolveQuery, u: Universe, cw: Crosswalk): Hit | null 
 }
 
 /** The legacy name unit, with the vendor key after the alias step and before the exact normalised name. */
-function nameUnit(q: ResolveQuery, u: Universe): Hit | null {
+function nameUnit(q: ResolveQuery, u: Universe, opts?: MatchOptions): Hit | null {
   if (u.matcher === 'stock') return u.keySet.has(q.name) ? { key: q.name, method: 'vendor-key', confidence: 'exact' } : null;
   const listed = aliasFor(nameKey(q.name));
   if (listed === undefined && u.keySet.has(q.name)) return { key: q.name, method: 'vendor-key', confidence: 'exact' };
@@ -155,16 +157,16 @@ function nameUnit(q: ResolveQuery, u: Universe): Hit | null {
     const k = matchPMS(q.name, u.keys, u.pmsCache);
     return k === null ? null : { key: k, method: 'name-match', confidence: nameKey(k) === nameKey(q.name) ? 'exact' : 'proposed' };
   }
-  const d = matchInstrumentDetail(q.name, q.amc ?? '', u.keys, u.tokenCache);
+  const d = matchInstrumentDetail(q.name, q.amc ?? '', u.keys, u.tokenCache, opts);
   if (d.key === null) return null;
-  if (d.step === 'pin') return { key: d.key, method: 'alias-pin', confidence: 'pinned' };
+  if (d.step === 'pin' || d.step === 'owner-alias') return { key: d.key, method: 'alias-pin', confidence: 'pinned' };
   return { key: d.key, method: 'name-match', confidence: d.step === 'exact' ? 'exact' : 'proposed' };
 }
 
 /** Resolves one holding name (and its identifiers, when a reader supplies them) against one universe of one class. */
-export function resolveInstrument(q: ResolveQuery, u: Universe, cw: Crosswalk): InstrumentRef {
+export function resolveInstrument(q: ResolveQuery, u: Universe, cw: Crosswalk, opts?: MatchOptions): InstrumentRef {
   const id = identifierHit(q, u, cw);
-  const byName = nameUnit(q, u);
+  const byName = nameUnit(q, u, opts);
   const hit = id ?? byName;
   const ref: InstrumentRef = {
     productClass: u.productClass,
