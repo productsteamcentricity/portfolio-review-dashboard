@@ -33,6 +33,9 @@ export type Holding = {
   instrumentName: string;
   /** Resolved by engine/match in milestone M2; null after ingest. */
   instrument: InstrumentRef | null;
+  /** The ISIN the base file gives for this holding (a column whose heading contains "ISIN"), when well formed; absent
+   * otherwise. Read only; the crosswalk uses it first once matching is wired in (the owner's answer of 25 Nov 2026). */
+  isin?: string;
   clientLabel: string | null;
   clientId: ClientId | null;
   distributorLabel: string | null;

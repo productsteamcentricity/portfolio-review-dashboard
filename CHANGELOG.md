@@ -181,6 +181,32 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - Recorded: D-040 (the lead's defaults for the rules the reckoner leaves open, each open to the owner), KI-160 to
     KI-182, CR-0008.
 
+### Added (new build, M2.3 sprint 3a: the MF Monitor read by header name; no change to `/next/` or `/`)
+- **`app/src/ingest/vendor/`:** the shared cell readers and the Daily MF Monitor reader (Regular and Direct issues) with the
+  monthly pipeline's rules, so an upload and the refresh read a monitor the same way (OD-11): AUM from the label row,
+  market-cap shares, debt figures to 4 places, the Direct issue's unnamed sheets mapped to their category, benchmark rows.
+  On the October 2026 monitors (read locally, never committed) it reproduces the embedded MF_PERF, MF_PERF_DIRECT and
+  BENCH_RET exactly. Not called by the app yet; the upload buttons wait for the spreadsheet-reader decision.
+- **The monitor's expense ratio (KI-058):** read from the "Ratio" header column, one scale decision per file (median
+  below 0.05 means fractions), always stored as a fraction, values above 5% dropped and counted. It is the all-in ratio and
+  is labelled so: never used for a missing base expense ratio (CLAUDE.md rule 3). October 2026: 2,125 Regular and 1,803
+  Direct ratios read, percent scale, none above the cap.
+- **The SIF Monitor (E-07):** read as the pipeline does: the benchmark group, index rows, rows with no category and no AUM
+  and the disclaimer are not schemes; a Month End date is not a fund house. October 2026: equal to the embedded SIF_PERF
+  (30 schemes).
+- **The base file's ISIN column** (the owner's answer of 25 Nov 2026: ISIN first, then the name): any heading containing
+  "ISIN" is read; a cell is kept only in the ISIN form; a file without the column reads exactly as before. Read only: no
+  figure changes; the import report lists the column among those read when a file has one.
+- **The PMS performance file (E-08, KI-033):** read by header name as the monthly pipeline reads it (returns as stated,
+  never multiplied by 100; AUM from rupees to whole crore; duplicates by the normalised key; a missing column refuses the
+  file). The monthly merge into the previous block stays with M11.
+- **The portfolio analytics files (E-10, E-11):** the Equity, Debt and Hybrid Analytics read by header name instead of
+  column position (the file repeats "Holding(%)" for the previous month; the first is read), with the legacy rules and the
+  pipeline's tidy step: cash in the total only, issuers collapsed to their entity, ratings by label then basket, the issuer
+  list cut to the top 30. Equal to the legacy positional parsers on synthetic files and 18 issuer spellings.
+- **Tests:** `tests/unit/ingest/vendor/mf-monitor.test.ts` on synthetic issues; `tests/parity/monitor.parity.test.ts`
+  against the browser's legacy parser, every difference a ledgered pipeline correction.
+
 ### Added (new build, M2.1 sprint 1: identifiers and the matcher at parity; no change to `/next/` or `/`)
 - **`app/src/engine/match/`:** the legacy name normalisation, instrument and PMS matchers, the fund-house key
   (KI-061, OD-32, OD-34) and the three name lists (pins, blocks, exact-only: CR-0010 A2, A2b) ported at parity, and a
@@ -190,11 +216,60 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   legacy uses (0 differences on the same candidates; in the shipped order only score ties, ledgered as KI-036); unit
   tests in `tests/unit/match/`; the CR-0010 A2, KI-061, OD-32 and OD-34 known answers in `tests/regression/`.
 
+### Added (new build, M3a: the returns core; not wired into the page yet, `/next/` and `/` unchanged)
+- **`app/src/engine/returns/xirr.ts`** (E-26): the legacy XIRR solver ported exactly, on whole days (KI-047: flows on one
+  day have no rate). Equal to the shipped solver on 500 seeded random flow sets.
+- **`app/src/ingest/irr-file.ts`** (E-05, E-142): the IRR file's fund and benchmark sheets read by header name, with the
+  DISTRIBUTOR column, row kinds (OD-16), skipped rows with their reason, and repeated folios warned (OD-4).
+- **`app/src/engine/returns/irr-tree.ts`** (E-27, E-28): the legacy IRR tree, clients by id; the benchmark joined by
+  client and normalised instrument name, and instruments grouped on the same key.
+- **`app/src/engine/returns/contributions.ts`** (E-29): contributors, laggards and drags as the legacy contribLag, with
+  one correction: no line is called a contributor when every line is negative.
+- **`app/src/engine/returns/scope.ts` and `app/src/engine/scope.ts`** (E-142, I-45): returns per family, client and
+  advisor scope. A scope takes whole instruments, so its fund and benchmark XIRRs cover the same money; an advisor
+  scope holding an instrument split between distributors is not reconciled until a rule shares it (Gate B of
+  1bbca77). Clients with flows and no holding, redeemed instruments and invalid benchmarks are listed (OD-4); the
+  unassigned line shows its share of the money paid in (D15). The reconcile tolerance (D13) is still to be set.
+- **Tests:** unit tests for each module, `tests/regression/ki-047-xirr-same-day.test.ts`, and
+  `tests/parity/contributions.parity.test.ts` against the legacy contribLag. The IRR parity ledger waits for a real
+  export (TA-03, KI-186).
+
+### Added (new build, M7a: the capital-gains statement reader and the blank template; not wired into the page yet)
+- **`app/src/ingest/capital-gains.ts`** (E-150, D-036, design `docs/new-build/capital-gains-upload.md` §2 to §4, §6, §7,
+  §11): the wealth platform's capital-gains export read as produced. Columns are found by header name in any order, and
+  extra columns are listed. The instrument tag gives scheme, folio and asset, and the Account Name is split. Lot rows are
+  told from the totals row; excluded lots and the footer text are never kept. Each lot gets its row checks, and the
+  statement's totals are reconciled.
+- **PAN removed at read time** (E-151, reader half): PAN tags and PAN-shaped tokens are removed from every text cell and
+  sheet name before anything is kept. Only the counts are recorded.
+- **Repeated lot rows** (E-153, reader half): found and reported by sale event and year, with the analyst's answer per
+  event ("as stated", "once", "apply to all"); a year without an answer is INSUFFICIENT EVIDENCE.
+- **Blank and unreadable cells** (MOD-04's R1, design §11): a blank required cell is reported per column, never read as
+  0. A plain number in Sale Date is not a date. Review clients that differ only in letter case stay apart (D-039).
+- **`app/src/exports/xlsx/cg-template.ts`** (E-156, design §12): the blank template with the export's 29 headers in
+  order, date, money and unit formats as column defaults, a frozen header and a Read Me (how to enter a merger and a
+  loss). It loads back through the reader without loss. The workbook writer gains an optional column-default style;
+  the M1.4 workbooks are byte-identical (pinned by a test).
+- Lot classes, the tax rules and the tax engine (E-152, E-154, E-155) stay owner-gated (PD-16, LP-01).
+- **Tests:** `tests/unit/ingest/capital-gains.test.ts`, `tests/exports/xlsx/cg-template.test.ts` and
+  `tests/exports/xlsx/column-default-style.test.ts`, on synthetic statements only (`tests/fixtures/make-cg-statements.ts`).
+
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
   funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.
   Over 4,741 fund names: 278 → 117 (163 domestic names out, 2 genuine in, none genuine out). Patch
   `tools/patches/2026-11-22-intl-word-boundary.js`; test `tools/regression/CR0010-a3-intl-word-boundary.js`.
+
+### Fixed (CR-0010 A5; not published until the owner says "publish")
+- **The SWOT's international share no longer counts Indian companies held directly because their names say
+  "International", "Global", "Overseas" or "World", and counts two overseas funds of funds on evidence.** A share whose
+  STOCK_RET entry has an Indian company ISIN (INE..., IN9...) is domestic: over 10,439 company names held as direct
+  equity, 360 → 63 (297 Indian companies out, none in; the overseas ETFs with INF ISINs stay). Baroda BNP Paribas Aqua
+  FoF and ICICI Pru Strategic Metal and Energy Equity FoF (Regular, Direct) count: the vendor's Other Funds file shows
+  97.59% and 99.42% overseas fund units; over 4,741 fund names 139 → 143. `index.html` MD5 `49207832…` → `2883FE7464AAC583AF6BBE2A41476300`
+  on the branch; with LP-16 on main, `B7CA316F…` → `5B6776E8AFE2EFE94CF4DE93FA7C4D5A`.
+  Patch `tools/patches/2026-11-25-a5-isin-domestic.js`; test `tools/regression/CR0010-a5-isin-domestic.js`.
+  [CR-0010](docs/change-requests/CR-0010-other-funds-october.md).
 
 ### Fixed (CR-0010 A4; not published until the owner says "publish")
 - **The SWOT's international share counts the overseas funds it missed** ("Intl.", Asian, Asia Pacific, ASEAN, Brazil,
@@ -207,6 +282,18 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **The AMC's own "The 30s Plan" / "The 40s Plan" spellings of Aditya Birla SL Retirement Fund** get their own fund's
   look-through and never Retirement Fund-50's returns: an ALIASES pin to their own hybrid entry plus exact-only (patch
   `tools/patches/2026-11-23-retirement-plan-pins.js`). Measured over every universe; nothing else moves.
+
+### Fixed (LP-16, KI-051 P0; not published until the owner says "publish")
+- **Six non-mutual-fund product types are their own product class, never a mutual fund** (the owner's labels, D-7): "GIFT City
+  funds", "Offshore funds", "US-dollar bonds (through LRS)", "Fixed deposits", "REITs and InvITs", "Unlisted shares", read from the
+  Product column without regard to letter case, by the rules in the new REFDATA key `PRODUCT_CLASS_RULES` (contract I-40; registered
+  in `scripts/data-extract.ts` and `tools/check-invariants.js`; `data/refdata/PRODUCT_CLASS_RULES.json` generated). Such a holding
+  no longer takes a mutual fund's, PMS's or AIF's look-through or returns, is never read as a listed stock, and is listed as
+  excluded with its class instead of as unmatched; a share held directly (an unlisted share) keeps its zero fund fee on the Cost tab, its Direct Equity performance bucket and its IPS "Direct Unlisted investment" line and the SWOT's narrow name test for the international share. Every bond, NCD
+  and debenture (rupee 54EC, tax-free, RBI and corporate NCDs included) takes "US-dollar bonds (through LRS)": the owner, 25 Nov
+  2026, "No, keep as recorded"; the Taxation tab keeps its own tax classes. A product that also says ETF, MF or
+  fund stays a mutual fund (OD-6); sovereign gold bonds and MLDs keep their old class until labelled. Patch
+  `tools/patches/2026-11-25-lp16-product-classes.js`; test `tools/regression/LP16-KI051-product-classes.js`.
 
 ### Fixed (CR-0010 A2; not published until the owner says "publish")
 - **Three holdings no longer take another fund's data.** Motilal Oswal Nasdaq 100 ETF no longer gets the Nifty 100 ETF's
