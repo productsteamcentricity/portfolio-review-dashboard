@@ -222,3 +222,94 @@ describe('D9: the holdings join through engine/match (as the legacy irrKey), cli
     assert.deepEqual(r.reconciliation.redeemed, []);
   });
 });
+
+describe('Gate B of 1bbca77, B1: a figure and its benchmark cover the same money', () => {
+  // ARC-03's probe: client A holds Sample Flexi Fund through D1 (-1,000 d0, +1,100 d365: 10%; benchmark mirror -1,000 d0,
+  // +1,050 d365: 5%) and D2 (-1,000 d180, +1,200 d365; mirror -1,000 d180, +1,010 d365); plus Sample Bluechip Fund wholly
+  // under D1 (10%, benchmark 5%).
+  const FX = 'Sample Flexi Fund';
+  const H = [holding('h1', cA, d1, FX, 1, 10), holding('h2', cA, d2, FX, 1, 20), holding('h3', cA, d1, 'Sample Bluechip Fund', 1, 12)];
+  const fundRows = [tx('fund', cA, FX, d1, 0, -1000), tx('fund', cA, FX, d1, 365, 1100), tx('fund', cA, FX, d2, 180, -1000), tx('fund', cA, FX, d2, 365, 1200)];
+  const blue = [tx('fund', cA, 'Sample Bluechip Fund', d1, 0, -1000), tx('fund', cA, 'Sample Bluechip Fund', d1, 365, 1100)];
+  const blueBench = [tx('bench', cA, 'Sample Bluechip Fund', null, 0, -1000, 'Sample Index 1'), tx('bench', cA, 'Sample Bluechip Fund', null, 365, 1050, 'Sample Index 1')];
+  const mirror = (dist: boolean): Transaction[] => [
+    tx('bench', cA, FX, dist ? d1 : null, 0, -1000, 'Sample Index 2'), tx('bench', cA, FX, dist ? d1 : null, 365, 1050, 'Sample Index 2'),
+    tx('bench', cA, FX, dist ? d2 : null, 180, -1000, 'Sample Index 2'), tx('bench', cA, FX, dist ? d2 : null, 365, 1010, 'Sample Index 2')];
+  const irrOf = (fund: Transaction[], bench: Transaction[]): IrrFileImport => ({ sourceId: SRC, fund, bench, hasDistributor: true } as unknown as IrrFileImport);
+
+  for (const dist of [true, false]) {
+    test(`(a) advisor D1 with a split instrument, benchmark ${dist ? 'with' : 'without'} distributors: missing with the reason, never the whole position's benchmark`, () => {
+      const r = computeScopeReturns({ kind: 'advisor', distributorIds: [d1] }, irrOf([...fundRows, ...blue], [...mirror(dist), ...blueBench]), H);
+      assert.equal(r.reconciliation.reconciled, false);
+      assert.equal(r.reconciliation.reasons.length, 1);
+      assert.match(r.reconciliation.reasons[0]!, /^Sample Flexi Fund \(Sample Client A\): its flows are under more than one distributor/);
+      for (const x of [r.fund, r.bench, ...r.tree.flatMap((n) => [n.fund, n.bench])]) {
+        assert.equal(x.gap, 'not-reconciled');
+        assert.ok(x.xirr.kind === 'missing' && x.xirr.status === STATUS.INSUFFICIENT_EVIDENCE);
+      }
+      assert.ok(!r.tree.some((n) => n.label === FX), 'the split instrument is not in the advisor\'s flows');
+    });
+  }
+  test('(a) an instrument wholly under one distributor: its whole benchmark (5% over 2 flows) beside its fund (10% over 2)', () => {
+    const r = computeScopeReturns({ kind: 'advisor', distributorIds: [d1] }, irrOf(blue, blueBench), H);
+    assert.equal(r.reconciliation.reconciled, true);
+    assert.deepEqual([r.fund.flows, r.bench.flows], [2, 2]);
+    near(v(r.fund), 10);
+    near(v(r.bench), 5);
+  });
+  test('(a) the family and client scopes take the split instrument whole: 4 fund flows against its 4 benchmark flows', () => {
+    for (const s of [{ kind: 'family' as const }, { kind: 'client' as const, clientIds: [cA] }]) {
+      const r = computeScopeReturns(s, irrOf(fundRows, mirror(false)), H);
+      assert.equal(r.reconciliation.reconciled, true);
+      const node = r.tree.find((n) => n.level === 'instrument')!;
+      assert.deepEqual([r.fund.flows, r.bench.flows, node.fund.flows, node.bench.flows], [4, 4, 4, 4]);
+      assert.ok(Math.abs(npvAt(v(r.bench)!, [[0, -1000], [365, 1050], [180, -1000], [365, 1010]])) < 1e-6 * 4060);
+    }
+  });
+  test('(b) the closing value under D2 only: each advisor alone missing (no 131% against 6.68%); both together and the family 10%', () => {
+    // D1 -1,000 d0; D2 -1,000 d0 and +2,200 d365: the position doubles 2,000 into 2,200, 10%.
+    const f = [tx('fund', cA, FX, d1, 0, -1000), tx('fund', cA, FX, d2, 0, -1000), tx('fund', cA, FX, d2, 365, 2200)];
+    for (const d of [d1, d2]) {
+      const r = computeScopeReturns({ kind: 'advisor', distributorIds: [d] }, irrOf(f, mirror(false)), H);
+      assert.deepEqual([r.reconciliation.reconciled, r.fund.gap, r.bench.gap], [false, 'not-reconciled', 'not-reconciled']);
+    }
+    near(v(computeScopeReturns({ kind: 'family' }, irrOf(f, mirror(false)), H).fund), 10);
+    const both = computeScopeReturns({ kind: 'advisor', distributorIds: [d1, d2] }, irrOf(f, mirror(false)), H);
+    assert.equal(both.reconciliation.reconciled, true, 'a scope holding every distributor of the instrument takes it whole');
+    near(v(both.fund), 10);
+    assert.equal(both.bench.flows, 4);
+  });
+  test('(c) the unassigned line is the same in every view; the invalid-benchmark instrument is out of it everywhere', () => {
+    // Midcap (benchmark with no rate) moved to no distributor: out of the unassigned line in the family view and in both
+    // advisor views alike (at 1bbca77 an advisor view, not knowing it invalid, counted it).
+    const fund = FUND.map((t) => (t.instrumentName === 'Sample Midcap Fund' ? { ...t, distributorLabel: null, distributorId: null } : t));
+    const irr = { ...IRR, fund } as IrrFileImport;
+    const lines = [{ kind: 'family' as const }, { kind: 'advisor' as const, distributorIds: [d1] }, { kind: 'advisor' as const, distributorIds: [d2] }]
+      .map((s) => computeScopeReturns(s, irr, HOLDINGS).unassigned!);
+    assert.deepEqual(lines[1], lines[0]);
+    assert.deepEqual(lines[2], lines[0]);
+    assert.deepEqual([lines[0]!.flows, lines[0]!.instruments], [2, 1]);
+    near(v(lines[0]!.fund), 50);
+  });
+  test('(c) a split instrument with rows under no distributor: the unassigned XIRRs missing with the reason; counts kept', () => {
+    const f = [tx('fund', cA, FX, d1, 0, -1000), tx('fund', cA, FX, d1, 365, 1100), tx('fund', cA, FX, null, 180, -1000), tx('fund', cA, FX, null, 365, 1200)];
+    const u = computeScopeReturns({ kind: 'family' }, irrOf(f, mirror(false)), H).unassigned!;
+    assert.deepEqual([u.flows, u.instruments, u.fund.gap, u.bench.gap], [2, 1, 'not-reconciled', 'not-reconciled']);
+    assert.ok(u.fund.xirr.kind === 'missing' && /with and without a distributor/.test(u.fund.xirr.reason));
+    near(u.sharePct.kind === 'value' ? u.sharePct.v : null, 50);
+  });
+  test('(d) an instrument spelt two ways in the fund sheet is one node with one benchmark and its holding once', () => {
+    // "SAMPLE FLEXI FUND" -1,000 d0, +1,200 d365 and "Sample Flexi Fund" -1,000 d0, +1,100 d365: one node, 4 flows,
+    // 2,000 into 2,300, 15%; the benchmark's 4 flows once, 2,000 into 2,060, 3%.
+    const f = [tx('fund', cA, 'SAMPLE FLEXI FUND', d1, 0, -1000), tx('fund', cA, 'SAMPLE FLEXI FUND', d1, 365, 1200),
+      tx('fund', cA, FX, d1, 0, -1000), tx('fund', cA, FX, d1, 365, 1100)];
+    const b = [tx('bench', cA, FX, null, 0, -1000), tx('bench', cA, FX, null, 365, 1050), tx('bench', cA, FX, null, 0, -1000), tx('bench', cA, FX, null, 365, 1010)];
+    const r = computeScopeReturns({ kind: 'client', clientIds: [cA] }, irrOf(f, b), [H[0]!]);
+    const nodes = r.tree.filter((n) => n.level === 'instrument');
+    assert.equal(nodes.length, 1);
+    assert.equal(nodes[0]!.label, 'SAMPLE FLEXI FUND', 'shown as first spelt');
+    assert.deepEqual([nodes[0]!.fund.flows, nodes[0]!.bench.flows, nodes[0]!.holdingIds], [4, 4, ['h1']]);
+    near(v(nodes[0]!.fund), 15);
+    near(v(nodes[0]!.bench), 3);
+  });
+});

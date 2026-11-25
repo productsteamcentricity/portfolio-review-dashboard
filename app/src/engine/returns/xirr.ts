@@ -50,10 +50,10 @@ const GAP_REASON: Readonly<Record<XirrGap, string>> = {
   'invalid-benchmark': 'the benchmark flows are invalid',
 };
 
-/** A missing XIRR result for a gap, over the given flows. */
-export function xirrGap(gap: XirrGap, flows: readonly CashFlow[] = []): XirrResult {
+/** A missing XIRR result for a gap, over the given flows; `reason` replaces the gap's standard sentence when given. */
+export function xirrGap(gap: XirrGap, flows: readonly CashFlow[] = [], reason?: string): XirrResult {
   const { first, last } = span(flows);
-  return { xirr: missing(GAP_STATUS[gap], GAP_REASON[gap]), gap, flows: flows.length, firstDay: first, lastDay: last };
+  return { xirr: missing(GAP_STATUS[gap], reason ?? GAP_REASON[gap]), gap, flows: flows.length, firstDay: first, lastDay: last };
 }
 
 function span(flows: readonly CashFlow[]): { first: number | null; last: number | null } {

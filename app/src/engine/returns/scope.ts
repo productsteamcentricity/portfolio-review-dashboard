@@ -1,16 +1,19 @@
 // Returns per scope (milestone M3a, NB-M3a; parity row E-142; contracts I-31 ScopeReturns, I-45 Scope; architecture
 // §6.5; Q-57; OD-4; KI-048, KI-100). One function serves the family, client and advisor scopes:
 //   - the scope's fund flows: the flows of base-file clients only (OD-4: a client with flows and no holding in the base
-//     file is left out of every figure and listed); a client scope takes its clients' flows; an advisor scope the flows
-//     whose DISTRIBUTOR is one of its distributors (E-142);
-//   - the benchmark flows of the same clients and instruments as the scope's fund flows (KI-048: joined by client and
-//     instrument);
+//     file is left out of every figure and listed); a scope takes whole instruments (client and instrument), never single
+//     rows: a client scope its clients' instruments; an advisor scope the instruments whose fund rows all carry one of
+//     its distributors (E-142). An instrument whose rows carry more than one distributor, or some none, is split: an
+//     advisor scope that holds one does not reconcile until a rule shares it (Gate B of 1bbca77, B1; MOD-04 and owner);
+//   - the benchmark flows of the same instruments as the scope's fund flows, so both sides cover the same money (KI-048:
+//     joined by client and instrument);
 //   - OD-4, invalid benchmark: an instrument whose benchmark flows give no rate is excluded from both sides and listed
 //     (PLAN-02 D14, the default reading of "invalid benchmark series");
 //   - OD-4, redeemed: an instrument of a base-file client with flows and no current holding stays in the
 //     since-inception totals, listed;
 //   - the unassigned line (flows without a distributor) on the family and advisor scopes when the file has a
-//     DISTRIBUTOR column, never spread across distributors (Q-57; its share: PLAN-02 D15);
+//     DISTRIBUTOR column, never spread across distributors (Q-57; its share: PLAN-02 D15); family-wide, the same in
+//     every view;
 //   - a scope whose flows do not reconcile to its holdings: every XIRR missing with the gap 'not-reconciled'
 //     (INSUFFICIENT EVIDENCE). The rule that decides it is injected (`reconcile`): no rule is defined yet (PLAN-02 D13);
 //   - contributions over the scope's included holdings: a holding joined to an instrument of the IRR file takes that
@@ -25,11 +28,11 @@ import type { Scope } from '../../model/scope.ts';
 import { holdingInScope, scopeKeyOf } from '../scope.ts';
 import type { IrrFileImport, Transaction } from '../../model/transactions.ts';
 import type { Holding } from '../../model/holding.ts';
-import type { ClientId, HoldingId } from '../../model/ids.ts';
+import type { ClientId, DistributorId, HoldingId } from '../../model/ids.ts';
 import type { CashFlow, IrrNode, IrrReconciliation, ScopeReturns, UnassignedFlows, XirrResult } from '../../model/returns.ts';
 import type { Value } from '../../model/value.ts';
 import { STATUS } from '../../model/status.ts';
-import { buildIrrTree } from './irr-tree.ts';
+import { BLANK_LABEL, buildIrrTree } from './irr-tree.ts';
 import type { HoldingJoin } from './irr-tree.ts';
 import { computeContributions } from './contributions.ts';
 import type { ContributionInput } from './contributions.ts';
@@ -125,51 +128,58 @@ export function computeScopeReturns(scope: Scope, irr: IrrFileImport | null, hol
     if (e) e.flows++; else irrOnly.set(t.clientId, { clientLabel: t.clientLabel, flows: 1 });
   }
   const familyFund = irr.fund.filter((t) => baseClients.has(t.clientId));
-  const scopeFund = scope.kind === 'family' ? familyFund
-    : scope.kind === 'client' ? familyFund.filter((t) => scope.clientIds.includes(t.clientId))
-      : familyFund.filter((t) => t.distributorId !== null && scope.distributorIds.includes(t.distributorId));
-  const benchOf = (fund: readonly Transaction[]): Transaction[] => {
-    const keys = new Set(fund.map((t) => instrumentKey(t.clientId, t.instrumentName)));
-    return irr.bench.filter((t) => keys.has(instrumentKey(t.clientId, t.instrumentName)));
+  const kOf = (t: Transaction): string => instrumentKey(t.clientId, t.instrumentName);
+  const familyByInstr = groupByKey(familyFund, kOf);
+  const benchByInstr = groupByKey(irr.bench, kOf);
+
+  // 2. A scope takes whole instruments (client and instrument), never single rows, so its fund side and its benchmark
+  // side cover the same money (Gate B of 1bbca77, B1). An advisor scope takes an instrument whose fund rows all carry
+  // one of its distributors. One whose rows carry one of its distributors and also another distributor, or none, is
+  // split for the scope, and how to share it between distributors is not decided (DECISION for MOD-04 and the owner).
+  // Until it is, such a scope does not reconcile: every figure missing with the reason, never a figure over part of a
+  // position. (`split`, family-wide: rows under more than one distributor, a blank counting as one; for the unassigned line.)
+  const distsOf = new Map<string, Set<DistributorId | null>>();
+  for (const [k, ts] of familyByInstr) distsOf.set(k, new Set(ts.map((t) => t.distributorId)));
+  const split = new Set([...distsOf].filter(([, ds]) => ds.size > 1).map(([k]) => k));
+  const inAdvisor = (d: DistributorId | null): boolean => scope.kind === 'advisor' && d !== null && scope.distributorIds.includes(d);
+  const touches = (k: string): boolean => [...distsOf.get(k)!].some(inAdvisor);
+  const whollyIn = (k: string): boolean => [...distsOf.get(k)!].every(inAdvisor);
+  const inScopeKey = (k: string): boolean => {
+    const clientId = familyByInstr.get(k)![0]!.clientId;
+    if (scope.kind === 'family') return true;
+    if (scope.kind === 'client') return scope.clientIds.includes(clientId);
+    return whollyIn(k);
   };
+  const scopeKeys = new Set([...familyByInstr.keys()].filter(inScopeKey));
+  const splitReasons = [...familyByInstr.keys()].filter((k) => touches(k) && !whollyIn(k)).map((k) => {
+    const t = familyByInstr.get(k)![0]!;
+    return `${t.instrumentName ?? BLANK_LABEL} (${t.clientLabel}): its flows are under more than one distributor, or some under none; how to share them between distributors is not decided`;
+  });
 
-  // 2. Invalid benchmark (OD-4; D14): an instrument whose benchmark flows give no rate leaves both sides.
-  const benchAll = benchOf(scopeFund);
-  const benchByInstr = new Map<string, Transaction[]>();
-  for (const t of benchAll) {
-    const k = instrumentKey(t.clientId, t.instrumentName);
-    const l = benchByInstr.get(k);
-    if (l) l.push(t); else benchByInstr.set(k, [t]);
-  }
+  // 3. Invalid benchmark (OD-4; D14): an instrument whose benchmark flows give no rate leaves both sides. Decided per
+  // instrument over the family's flows, so the same instrument is invalid in every scope and on the unassigned line.
   const invalid = new Map<string, { clientId: ClientId; instrumentName: string; reason: string }>();
-  for (const [k, ts] of benchByInstr) {
-    const o = solveXirr(flowsOf(ts));
-    if ('gap' in o) {
-      // Named as the fund sheet spells the instrument (the name the analyst sees in the tree), else the benchmark's.
-      const fundName = scopeFund.find((t) => instrumentKey(t.clientId, t.instrumentName) === k)?.instrumentName;
-      invalid.set(k, { clientId: ts[0]!.clientId, instrumentName: fundName ?? ts[0]!.instrumentName ?? '', reason: `the benchmark flows give no rate (${o.gap})` });
-    }
+  for (const [k, fts] of familyByInstr) {
+    const bts = benchByInstr.get(k);
+    if (!bts) continue;
+    const o = solveXirr(flowsOf(bts));
+    // Named as the fund sheet spells the instrument (the name the analyst sees in the tree).
+    if ('gap' in o) invalid.set(k, { clientId: fts[0]!.clientId, instrumentName: fts[0]!.instrumentName ?? '', reason: `the benchmark flows give no rate (${o.gap})` });
   }
-  const keep = (t: Transaction): boolean => !invalid.has(instrumentKey(t.clientId, t.instrumentName));
-  const fund = scopeFund.filter(keep);
-  const bench = benchAll.filter(keep);
+  const keepKey = (k: string): boolean => !invalid.has(k);
+  const fund = familyFund.filter((t) => scopeKeys.has(kOf(t)) && keepKey(kOf(t)));
+  const bench = irr.bench.filter((t) => scopeKeys.has(kOf(t)) && keepKey(kOf(t)));
 
-  // 3. The tree, redeemed instruments and holdings without flows.
+  // 4. The tree, redeemed instruments and holdings without flows.
   const tree = buildIrrTree(fund, bench, { holdingsFor: scopedJoin, clientLabel: opts.clientLabel });
   const instrumentNodes = tree.filter((n) => n.level === 'instrument');
   const redeemed = instrumentNodes.filter((n) => n.redeemed).map((n) => ({
     clientId: n.clientId!, instrumentName: n.label, flows: n.fund.flows,
   }));
   // A holding's own flows are those of its instrument across the whole family (base-file clients), before the
-  // invalid-benchmark exclusion and before the distributor filter (financial review of 058a94c, finding 1): an
-  // instrument left out of the scope's aggregates for its benchmark, or whose flows carry another distributor, still has
-  // the holding's transaction XIRR, and the holding is not "without flows".
-  const familyByInstr = new Map<string, Transaction[]>();
-  for (const t of familyFund) {
-    const k = instrumentKey(t.clientId, t.instrumentName);
-    const l = familyByInstr.get(k);
-    if (l) l.push(t); else familyByInstr.set(k, [t]);
-  }
+  // invalid-benchmark exclusion and whatever the distributors (financial review of 058a94c, finding 1): an instrument
+  // left out of the scope's aggregates for its benchmark, or held through another distributor, still has the holding's
+  // transaction XIRR, and the holding is not "without flows".
   const flowsOfHolding = new Map<HoldingId, Transaction[]>();
   for (const ts of familyByInstr.values()) {
     for (const id of scopedJoin(ts[0]!.clientId, ts[0]!.instrumentName)) {
@@ -179,30 +189,42 @@ export function computeScopeReturns(scope: Scope, irr: IrrFileImport | null, hol
   }
   const holdingsWithoutFlows = inScope.filter((h) => !flowsOfHolding.has(h.id)).map((h) => h.id);
 
-  // 4. Reconciliation (D13: the rule is injected; none is defined yet).
-  const reasons = opts.reconcile ? opts.reconcile({ scope, fund, holdings: inScope }) : [];
+  // 5. Reconciliation: the split instruments of an advisor scope (step 2), then the injected rule (D13; none defined).
+  const reasons = [...splitReasons, ...(opts.reconcile ? opts.reconcile({ scope, fund, holdings: inScope }) : [])];
   const reconciliation: IrrReconciliation = {
     reconciled: reasons.length === 0, reasons, irrOnlyClients: [...irrOnly.values()], redeemed,
-    invalidBenchmark: [...invalid.values()], holdingsWithoutFlows,
+    invalidBenchmark: [...invalid].filter(([k]) => scopeKeys.has(k)).map(([, x]) => x), holdingsWithoutFlows,
   };
   const guard = (r: XirrResult, flows: readonly Transaction[]): XirrResult => (reconciliation.reconciled ? r : xirrGap('not-reconciled', flowsOf(flows)));
   const root = tree[0]!;
   const guardedTree: IrrNode[] = reconciliation.reconciled ? tree
     : tree.map((n) => ({ ...n, fund: xirrGap('not-reconciled'), bench: xirrGap('not-reconciled') }));
 
-  // 5. The unassigned line (E-142; D15: its share of the family's money paid in).
+  // 6. The unassigned line (E-142; D15: its share of the family's money paid in). A family-wide line, the same in every
+  // view (B1 (c)): its counts and share over the family's rows without a distributor; its XIRRs over the instruments
+  // wholly without one, fund and benchmark alike, and missing when a split instrument has rows without one; guarded by
+  // the family scope's rule, not the viewed scope's.
   let unassigned: UnassignedFlows | null = null;
   if (scope.kind !== 'client' && irr.hasDistributor) {
-    const uf = familyFund.filter((t) => t.distributorLabel === null && keep(t));
-    const total = paidIn(familyFund.filter(keep));
-    const ub = benchOf(uf).filter(keep);
+    const uf = familyFund.filter((t) => t.distributorId === null && keepKey(kOf(t)));
+    const total = paidIn(familyFund.filter((t) => keepKey(kOf(t))));
+    const wholly = (k: string): boolean => keepKey(k) && !split.has(k) && distsOf.get(k)!.has(null);
+    const uw = familyFund.filter((t) => wholly(kOf(t)));
+    const ub = irr.bench.filter((t) => familyByInstr.has(kOf(t)) && wholly(kOf(t)));
+    const splitUnassigned = [...split].filter((k) => keepKey(k) && distsOf.get(k)!.has(null));
+    const familyReasons = opts.reconcile
+      ? opts.reconcile({ scope: { kind: 'family' }, fund: familyFund.filter((t) => keepKey(kOf(t))), holdings: holdings.filter((h) => holdingInScope(h, { kind: 'family' })) })
+      : [];
+    const ug = (r: XirrResult, flows: readonly Transaction[]): XirrResult => (
+      splitUnassigned.length ? xirrGap('not-reconciled', flowsOf(flows), `${splitUnassigned.length} instrument(s) have flows both with and without a distributor; how to share them is not decided`)
+        : familyReasons.length ? xirrGap('not-reconciled', flowsOf(flows)) : r);
     unassigned = {
       flows: uf.length,
-      instruments: new Set(uf.map((t) => instrumentKey(t.clientId, t.instrumentName))).size,
+      instruments: new Set(uf.map(kOf)).size,
       sharePct: total > 0 ? present((paidIn(uf) / total) * 100, 'pct', { sources: [irr.sourceId], method: 'share of the family\'s money paid in (unassigned money paid in over the family\'s, D15)' })
         : missing(STATUS.NOT_AVAILABLE, 'no money paid in'),
-      fund: uf.length ? guard(xirr(flowsOf(uf), 'unassigned fund XIRR (E-142)', [irr.sourceId]), uf) : xirrGap('no-flows'),
-      bench: ub.length ? guard(xirr(flowsOf(ub), 'unassigned benchmark XIRR (E-142)', [irr.sourceId]), ub) : xirrGap('no-benchmark'),
+      fund: uf.length ? ug(uw.length ? xirr(flowsOf(uw), 'unassigned fund XIRR (E-142)', [irr.sourceId]) : xirrGap('no-flows'), uw) : xirrGap('no-flows'),
+      bench: ub.length || splitUnassigned.length ? ug(ub.length ? xirr(flowsOf(ub), 'unassigned benchmark XIRR (E-142)', [irr.sourceId]) : xirrGap('no-benchmark'), ub) : xirrGap('no-benchmark'),
     };
   }
 
@@ -228,6 +250,12 @@ export function computeScopeReturns(scope: Scope, irr: IrrFileImport | null, hol
 
 function contributionInput(h: Holding, x: Value<number>): ContributionInput {
   return { holdingId: h.id, lineKey: normaliseLabel(h.instrumentName), label: h.instrumentName, cmvCr: h.cmv, xirrPct: x };
+}
+
+function groupByKey(ts: readonly Transaction[], key: (t: Transaction) => string): Map<string, Transaction[]> {
+  const m = new Map<string, Transaction[]>();
+  for (const t of ts) { const k = key(t); const l = m.get(k); if (l) l.push(t); else m.set(k, [t]); }
+  return m;
 }
 
 function h0(holdings: readonly Holding[]): string | null {

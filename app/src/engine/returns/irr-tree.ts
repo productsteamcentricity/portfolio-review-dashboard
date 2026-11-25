@@ -104,8 +104,12 @@ export function buildIrrTree(fund: readonly Transaction[], bench: readonly Trans
         const pIndex = nodes.length;
         push('product', pKey, aKey, product, c.id, pts, benchFor(c.id, new Set(pts.map((t) => t.instrumentName))), [], false);
         const pHoldings: HoldingId[] = [];
-        const instruments = [...groupBy(pts, (t) => t.instrumentName).entries()].sort((a, b) => byLabel(labelOr(a[0]), labelOr(b[0])));
-        for (const [name, its] of instruments) {
+        // One node per instrument on the normalised name, the key of the benchmark join and of the contributions line, so
+        // "FUND X" and "Fund X" are one node with one benchmark (Gate B of 1bbca77, B1 (d)); shown as first spelt.
+        const instruments = [...groupBy(pts, (t) => normaliseLabel(t.instrumentName)).values()]
+          .map((its) => ({ name: its[0]!.instrumentName, its }))
+          .sort((a, b) => byLabel(labelOr(a.name), labelOr(b.name)));
+        for (const { name, its } of instruments) {
           const iKey = keyOf([pKey, `instrument:${labelOr(name)}`]);
           const held = holdingsFor(c.id, name);
           push('instrument', iKey, pKey, labelOr(name), c.id, its, benchFor(c.id, new Set([name])), [...held], held.length === 0);

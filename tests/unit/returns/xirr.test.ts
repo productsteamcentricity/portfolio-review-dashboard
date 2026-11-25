@@ -130,3 +130,18 @@ describe('the port equals the shipped legacy solver (07_engine.js:998)', () => {
     }
   });
 });
+
+describe('the Newton acceptance check (Gate B of 1bbca77, R2)', () => {
+  test('a loss of 759 to 314 in four days: Newton creeps to the -0.9999 floor; its NPV (-412) is not nil, so no rate', () => {
+    // The root is about -100% (1 + r = (314/759)^(365/4)), below the bracket, so the bisection cannot start; the Newton
+    // fallback "converges" on its floor. Only the |NPV| check rejects it; the legacy (same check) agrees.
+    const flows = [f(0, -759), f(4, 314)];
+    assert.deepEqual(solveXirr(flows), { gap: 'no-solution' });
+    assert.equal(xirr(flows).gap, 'no-solution');
+    assert.equal(loadLegacyHost().E.xirr(flows.map((x) => ({ d: new Date(x.day * 86400000), a: x.amount }))), null);
+  });
+  test('a gap carries a given reason in place of the standard sentence', () => {
+    const r = xirrGap('not-reconciled', [], 'a reason');
+    assert.ok(r.xirr.kind === 'missing' && r.xirr.reason === 'a reason' && r.xirr.status === STATUS.INSUFFICIENT_EVIDENCE);
+  });
+});
