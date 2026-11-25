@@ -89,6 +89,7 @@ function requiredText(c: CgColumn): string {
 export const CG_TEMPLATE_INSTRUCTIONS: readonly string[] = [
   'Enter one row per purchase lot consumed by a sale: a sale matched to three purchase lots is three rows.',
   'Enter money in rupees, and dates as Excel dates.',
+  'Enter a loss as a negative number in Realized G/L, LTCG G/L and STCG G/L.',
   'Put the folio as [Folio No: <folio>] after the scheme name in Instrument Name, or in an added Folio Number column.',
   'Never enter a PAN. Any PAN-shaped text is removed when the file is read.',
   'Leave Acquisition Date and Acquisition Price blank unless the issuer states a different cost for tax (the 31 Jan 2018 value or an indexed cost).',

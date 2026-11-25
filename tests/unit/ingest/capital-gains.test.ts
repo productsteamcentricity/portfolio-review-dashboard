@@ -541,3 +541,92 @@ describe('the review of 7e9e51d: percent text and lots without a person', () => 
     assert.ok(i.message.includes('no client label'), i.message);
   });
 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// Gate B (ARC-03, NO-GO on 1144ba8): B1, B2, and the tests asked for in R2 and R5.
+
+describe('Gate B B1: review clients that differ only in letter case stay two (D-039)', () => {
+  const caseReview = (labels: string[]): NonNullable<CgOptions['review']> => ({
+    clients: labels.map((l, i) => ({ id: `cl_case_${i}` as ClientId, label: l, displayLabel: null })), familyLabel: FAMILY,
+  });
+  const run = (review: NonNullable<CgOptions['review']>, clients: string[]) =>
+    parseCapitalGains(memBook(clients.map((c): Mem => ({ 'Client Name': c }))), { sourceId: SRC, now: NOW, review });
+  test('each spelling joins its own review client', () => {
+    const imp = run(caseReview(['Sample Client A', 'SAMPLE CLIENT A']), ['Sample Client A', 'SAMPLE CLIENT A', 'Sample  Client A']);
+    assert.deepEqual(imp.lots.map((l) => l.clientId), ['cl_case_0', 'cl_case_1', 'cl_case_0']);
+    assert.ok(imp.lots.every((l) => l.inReview));
+    assert.equal(issue(imp, 'clients-unmatched'), undefined);
+  });
+  test('a third spelling matching two case variants is left unmatched and named', () => {
+    const imp = run(caseReview(['Sample Client A', 'SAMPLE CLIENT A']), ['sample client a']);
+    assert.equal(imp.lots[0]!.inReview, false);
+    const i = issue(imp, 'clients-unmatched')!;
+    assert.deepEqual([i.severity, i.count], ['High', 1]);
+    assert.ok(i.message.includes('differ only in letter case'), i.message);
+  });
+  test('a case-insensitive match is still used when it names one review client', () => {
+    const imp = run(caseReview(['Sample Client A']), ['SAMPLE CLIENT A']);
+    assert.deepEqual([imp.lots[0]!.clientId, imp.lots[0]!.inReview], ['cl_case_0', true]);
+  });
+});
+
+describe('Gate B B2: a plain number in Sale Date is not a date', () => {
+  test('a count or SUM (1) in Sale Date with amounts is an excluded lot, never a lot sold in 1900', () => {
+    const imp = memParse(memBook([{}, { 'Sale Date': 1 }, { 'Sale Date': 45000 }]));
+    assert.equal(imp.lots.length, 1);
+    assert.deepEqual(imp.excludedRows.map((e) => [e.at.row, e.reason]), [[3, 'no-sale-date'], [4, 'no-sale-date']]);
+    assert.equal(issue(imp, 'row-without-sale-date')!.count, 2);
+  });
+});
+
+describe('Gate B R2: PAN-shaped text in a sheet name and in an error cell', () => {
+  test('both removed, counted, and absent from the whole import record', () => {
+    const lot = memBook([{ 'Category Name': { t: 'e', v: `#REF ${panToken(11)}` } }]);
+    const wb: Workbook = { date1904: false, sheets: [{ name: `Notes ${panToken(12)}`, hidden: false, rows: [['notes']] }, lot.sheets[0]!] };
+    const imp = parseCapitalGains(wb, { sourceId: SRC, now: NOW, review: REVIEW });
+    assert.equal(imp.lots.length, 1);
+    assert.equal(imp.pan.tokens, 2);
+    assert.equal(hasPanShape(JSON.stringify(imp)), false);
+    assert.ok(imp.sheets[0]!.sheet.includes(PAN_REPLACEMENT));
+  });
+});
+
+describe('Gate B R5: losses, totals variants, units, Lakh headers and the 1904 date system', () => {
+  test('a loss: signed realised gain; a loss off by more than the tolerance fails the realised check', () => {
+    const imp = memParse(memBook([
+      { 'Sale Price': 40, 'Sell Amount': 400, 'Realized G/L': -100 },
+      { 'Sale Price': 40, 'Sell Amount': 400, 'Realized G/L': -110 },
+    ]));
+    assert.equal(v(imp.lots[0]!.realised), -100);
+    assert.deepEqual(imp.lots.map((l) => l.failedChecks), [[], ['realised']]);
+  });
+  test('a negative column sum reconciles with a "Total" row (no "Grand Total")', () => {
+    const total = MEM_HEADERS.map((h) => toCell(h === 'Sale Date' ? 'Total' : h === 'Sell Amount' ? 800 : h === 'Invested Value' ? 1000 : h === 'Realized G/L' ? -200 : null));
+    const imp = memParse(memBook([{ 'Sale Price': 40, 'Sell Amount': 400, 'Realized G/L': -100 }, { 'Sale Price': 40, 'Sell Amount': 400, 'Realized G/L': -100 }], [total]));
+    assert.equal(imp.totalsRow, 4);
+    assert.equal(imp.reconciliation.find((x) => x.field === 'realisedGL')!.outcome, 'reconciled');
+  });
+  test('a negative Sale Unit fails units-positive and derives no price; Sale Unit 0 with a stated price fails both checks', () => {
+    const imp = memParse(memBook([
+      { 'Sale Unit': -10, 'Sale Price': null, 'Purchase Price': null },
+      { 'Sale Unit': 0 },
+    ]));
+    assert.deepEqual(imp.lots[0]!.failedChecks, ['units-positive']);
+    assert.equal(imp.lots[0]!.salePriceDerived, false);
+    assert.deepEqual(imp.lots[1]!.failedChecks, ['sale-amount', 'invested-value', 'units-positive']);
+  });
+  test('a header in Lakh is not a rupee column', () => {
+    assert.equal(fieldOfHeader('Sell Amount (Lakh)'), null);
+    assert.equal(fieldOfHeader('Invested Value (Cr.)'), null);
+  });
+  test('a workbook in the 1904 date system reads the same calendar days', () => {
+    const wb = memBook([{}]);
+    const d1904 = (y: number, m: number, d: number): Cell => ({ t: 'n', v: dayToExcelSerial(ymdToDay(y, m, d)!) - 1462, fmt: 'dd-mmm-yyyy', date: true });
+    const row = wb.sheets[0]!.rows[1]!;
+    row[0] = d1904(2025, 1, 2);
+    row[4] = d1904(2023, 1, 2);
+    const imp = parseCapitalGains({ ...wb, date1904: true }, { sourceId: SRC, now: NOW, review: REVIEW });
+    assert.equal(imp.lots[0]!.saleDate, day(2025, 1, 2));
+    assert.equal(v(imp.lots[0]!.purchaseDate), day(2023, 1, 2));
+  });
+});

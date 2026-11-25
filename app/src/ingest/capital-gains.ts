@@ -461,9 +461,14 @@ function readNumCell(cell: Cell | undefined, percentAllowed: boolean): CgRead<nu
   return NA;
 }
 
+/**
+ * A Sale Date cell that marks a lot row (design §2.4): a number with a date number format (Gate B B2). A plain number
+ * (a count, or a SUM typed into the first column of a filled template) is not a date: its row is an excluded lot when
+ * it holds amounts, never a lot sold in 1900. The platform export and the blank template both format the column as dates.
+ */
 function isDateLike(cell: Cell | undefined, date1904: boolean): boolean {
   if (cell === null || cell === undefined) return false;
-  if (cell.t === 'n') return excelSerialToDay(cell.v, date1904) !== null;
+  if (cell.t === 'n') return cell.date && excelSerialToDay(cell.v, date1904) !== null;
   return false;
 }
 
@@ -751,13 +756,33 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
 
   // 4. Lots (design §4).
   const review = opts.review;
-  const reviewByLabel = new Map<string, ClientId>();
+  // Joining a lot to a review client (Gate B B1, D-039): the label as spelt (spaces collapsed) first, as the base file
+  // keys its clients, so two review clients that differ only in letter case stay two; a case-insensitive match only
+  // when it names exactly one review client; two or more case variants leave the lot unmatched and are reported.
+  const spelt = (s: string): string => s.replace(/\s+/g, ' ').trim();
+  const reviewExact = new Map<string, ClientId>();
+  const reviewFolded = new Map<string, Set<ClientId>>();
   if (review) {
     for (const c of review.clients) {
-      reviewByLabel.set(normaliseLabel(c.label), c.id);
-      if (c.displayLabel) reviewByLabel.set(normaliseLabel(c.displayLabel), c.id);
+      for (const l of [c.label, c.displayLabel ?? null]) {
+        if (!l) continue;
+        if (!reviewExact.has(spelt(l))) reviewExact.set(spelt(l), c.id);
+        const f = normaliseLabel(l);
+        const s = reviewFolded.get(f) ?? new Set<ClientId>();
+        s.add(c.id);
+        reviewFolded.set(f, s);
+      }
     }
   }
+  let caseAmbiguousLots = 0;
+  const matchReview = (label: string): ClientId | undefined => {
+    const exact = reviewExact.get(spelt(label));
+    if (exact !== undefined) return exact;
+    const folded = reviewFolded.get(normaliseLabel(label));
+    if (folded && folded.size === 1) return [...folded][0]!;
+    if (folded && folded.size > 1) caseAmbiguousLots++;
+    return undefined;
+  };
   const clientIdOf = idFactory<'client'>('cl');
   const distIdOf = idFactory<'distributor'>('ds');
   const accountIdOf = idFactory<'account'>('ac');
@@ -850,7 +875,7 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
     let clientId: ClientId | null = null;
     let inReview = false;
     if (clientLabel !== null) {
-      const matched = reviewByLabel.get(normaliseLabel(clientLabel));
+      const matched = matchReview(clientLabel);
       clientId = matched ?? clientIdOf(clientLabel);
       inReview = matched !== undefined;
       const p = persons.get(clientId);
@@ -967,7 +992,8 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
     const lotsIn = lots.length - lotsOut;
     if (lotsOut > 0) {
       const outPersons = [...persons.values()].filter((p) => !p.inReview).length;
-      const tail = noLabel > 0 ? ` ${plural(noLabel, 'lot has', 'lots have')} no client label at all (Client Name and Account Name blank) and no person.` : '';
+      const tail = (noLabel > 0 ? ` ${plural(noLabel, 'lot has', 'lots have')} no client label at all (Client Name and Account Name blank) and no person.` : '')
+        + (caseAmbiguousLots > 0 ? ` ${plural(caseAmbiguousLots, 'lot matches', 'lots match')} two or more clients of the review whose labels differ only in letter case, so ${caseAmbiguousLots === 1 ? 'it is' : 'they are'} left unmatched.` : '');
       issues.add('clients-unmatched', lotsIn === 0 ? 'High' : 'Warning', sheetScope,
         (lotsIn === 0
           ? `No lot's client matches a client of the review (${plural(outPersons, 'person', 'persons')}, ${plural(lotsOut, 'lot', 'lots')}): the statement may belong to another family. Each is computed as its own person, never added to the family sum.`
