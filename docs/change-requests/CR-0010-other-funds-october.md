@@ -125,6 +125,31 @@ the header) holds 344 schemes. On the live page (D-028: data, calculation and se
       IN9 ISINs). The reverse does not hold: a share with no STOCK_RET entry is not thereby foreign; and the engine reads no
       ISIN from the base file. A new rule, for the moderator and the owner to decide.
 
+- **A5** (25 Nov 2026; MOD-03's order after A4, the queue confirmed by MOD-04 under PD-65; branch
+  `fix/cr0010-a5-isin-domestic` from `main` `c1e1974`): patch `tools/patches/2026-11-25-a5-isin-domestic.js`; test
+  `tools/regression/CR0010-a5-isin-domestic.js` (13 checks, 6 fail on `c1e1974`); the A4 test's page-form checks accept
+  the A5 form. It closes A4's second and third known limits.
+  - **Indian ISIN.** A share held directly (not an ETF) whose STOCK_RET entry, found by the company name as the engine
+    finds it, carries an Indian company ISIN (INE..., or IN9... for a partly-paid issue) is domestic, whatever its name
+    says. Not any "IN" ISIN: INF... is a mutual fund unit, and the five Indian-domiciled ETFs that invest abroad (Mirae
+    Asset Hang Seng TECH and NYSE FANG+, Motilal Oswal Nasdaq 100 and Nasdaq Q 50, Nippon India ETF Hang Seng BeES) carry
+    INF ISINs and stay international. Client files have no ISIN column (the owner, 25 Nov 2026), so only the reference
+    entry's ISIN is read. Measured over the 10,439 company names of STOCK_INFO / STOCK_RET held as direct equity
+    (scratch `a5-measure.js`): A4 360, A5 63; 297 out (Bikaji Foods International, Allcargo Global, Aanchal
+    International, ...), none in. The 63: the 5 ETFs, and 58 names with no STOCK_RET entry, mostly foreign companies
+    (American International Group, Marriott International, Taiwan and Japan names); a few are Indian companies with no
+    STOCK_RET entry (Hari Govind International, Genesys International, International Gemmological Institute, ...), for
+    which the name test stays: a known limit, since a share with no entry is not thereby foreign.
+  - **Overseas funds of funds, by evidence.** The vendor's Other Funds file (Oct 2026, read-only) shows 58 of its 344
+    funds mainly overseas (Asset Type "Overseas ..." at 50% or more); A4's test misses exactly two: Baroda BNP Paribas
+    Aqua FoF (97.59% "Overseas Mutual Fund Units": BNP Paribas Funds Aqua) and ICICI Pru Strategic Metal and Energy Equity
+    FoF (99.42%: FSM First Trust SME Equity UCITS Fund). The phrases "BNP Paribas Aqua" and "Strategic Metal and Energy"
+    name them in every plan and option; "Prabhudas-Aqua Strategy" (a PMS) is not one. Over the 4,741 fund names: A4 139,
+    A5 143 (the two, Regular and Direct); none out. Funds partly overseas below 50% (ICICI Pru Passive Multi-Asset FoF
+    24.78%, SBI Children's Investment Plan 12.16%) are not counted: a share-based count is the new build's (M4).
+  - Unchanged: the fund test and its domestic exclusions, the ETF rule, the category fallback, and the Edelweiss "MSCI
+    India Domestic & World Healthcare 45" limit (left for the new build, MOD-03).
+
 ## Verification
 
 Recorded in the refresh log (A1) and in the commits and pull request (A2, A3).

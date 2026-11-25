@@ -19,6 +19,16 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   Over 4,741 fund names: 278 → 117 (163 domestic names out, 2 genuine in, none genuine out). Patch
   `tools/patches/2026-11-22-intl-word-boundary.js`; test `tools/regression/CR0010-a3-intl-word-boundary.js`.
 
+### Fixed (CR-0010 A5; not published until the owner says "publish")
+- **The SWOT's international share no longer counts Indian companies held directly because their names say
+  "International", "Global", "Overseas" or "World", and counts two overseas funds of funds on evidence.** A share whose
+  STOCK_RET entry has an Indian company ISIN (INE..., IN9...) is domestic: over 10,439 company names held as direct
+  equity, 360 → 63 (297 Indian companies out, none in; the overseas ETFs with INF ISINs stay). Baroda BNP Paribas Aqua
+  FoF and ICICI Pru Strategic Metal and Energy Equity FoF (Regular, Direct) count: the vendor's Other Funds file shows
+  97.59% and 99.42% overseas fund units; over 4,741 fund names 139 → 143. `index.html` MD5 `49207832…` → `2883FE7464AAC583AF6BBE2A41476300`.
+  Patch `tools/patches/2026-11-25-a5-isin-domestic.js`; test `tools/regression/CR0010-a5-isin-domestic.js`.
+  [CR-0010](docs/change-requests/CR-0010-other-funds-october.md).
+
 ### Fixed (CR-0010 A4; not published until the owner says "publish")
 - **The SWOT's international share counts the overseas funds it missed** ("Intl.", Asian, Asia Pacific, ASEAN, Brazil,
   Europe, Hang Seng, NYSE FANG+, Emerging Markets, Off-shore) **and no longer counts "First Global", "SMC Global" or the

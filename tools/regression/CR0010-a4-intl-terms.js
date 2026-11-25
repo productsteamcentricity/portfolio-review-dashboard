@@ -58,8 +58,10 @@ const once = s => html.split(s).length - 1 === 1;
 ok(once('_intlA3=' + A3.toString() + ','), '0. the page holds the A3 direct-equity test once');
 ok(once('_intlFund=' + FUND.toString() + ','), '0. the page holds the fund test once');
 ok(once('_intlNot=' + NOT.toString() + ','), '0. the page holds the domestic exceptions once');
-ok(once('_intlEtf=' + ETF.toString() + ';'), '0. the page holds the ETF test once');
-ok(once('((h.directEquity&&!_intlEtf.test(_n))?_intlA3.test(_n):(_intlFund.test(_n)&&!_intlNot.test(_n)))'),
+/* since CR-0010 A5 the ETF test is followed by A5's evidence list and ISIN rule, and the statement reads them (CR0010-a5-isin-domestic.js) */
+ok(once('_intlEtf=' + ETF.toString() + ',') || once('_intlEtf=' + ETF.toString() + ';'), '0. the page holds the ETF test once');
+ok(once('((h.directEquity&&!_intlEtf.test(_n))?_intlA3.test(_n):(_intlFund.test(_n)&&!_intlNot.test(_n)))') ||
+   once('((h.directEquity&&!_intlEtf.test(_n))?(_intlA3.test(_n)&&!_intlInIsin(h)):((_intlFund.test(_n)||_intlEvid.test(_n))&&!_intlNot.test(_n)))'),
   '0. funds and ETFs use the wider test, other direct equity the A3 test');
 
 /* 1 */
