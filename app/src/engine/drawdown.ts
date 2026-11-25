@@ -292,19 +292,19 @@ export function compareDrawdowns(
     weightById.set(w.id, w.weight);
   }
 
-  let window: { from: DayNumber; to: DayNumber } | null = null;
+  let span: { from: DayNumber; to: DayNumber } | null = null;
   let inPeriod = (points: readonly IndexPoint[]): readonly IndexPoint[] => points;
   if (period === 'common') {
-    window = commonWindow(indices.map((ix) => ix.points));
-    const w = window;
+    span = commonWindow(indices.map((ix) => ix.points));
+    const w = span;
     inPeriod = (points) => (w ? clip(points, w) : []);
   }
   const sample = (points: readonly IndexPoint[]): readonly IndexPoint[] => (sampling === 'month-end' ? monthEndsFromStart(points) : points);
   const months: MonthCount = sampling === 'month-end' ? 'steps' : 'calendar';
   // the months checked for gaps: the common window, or (period 'full') the series' own first to last day
   const gaps = (points: readonly IndexPoint[]): string[] => {
-    const from = window?.from ?? points[0]?.day;
-    const to = window?.to ?? points.at(-1)?.day;
+    const from = span?.from ?? points[0]?.day;
+    const to = span?.to ?? points.at(-1)?.day;
     return from === undefined || to === undefined ? [] : missingMonths(points, from, to);
   };
 
@@ -312,15 +312,15 @@ export function compareDrawdowns(
     sampling,
     period,
     rule,
-    window,
+    window: span,
     indices: indices.map((ix) => {
       const pts = inPeriod(ix.points);
       return {
         id: ix.id,
         result: maxDrawdown(sample(pts), months),
         missingMonths: gaps(pts),
-        startsLate: window !== null && pts.length > 0 && pts[0]!.day > window.from,
-        endsEarly: window !== null && pts.length > 0 && pts.at(-1)!.day < window.to,
+        startsLate: span !== null && pts.length > 0 && pts[0]!.day > span.from,
+        endsEarly: span !== null && pts.length > 0 && pts.at(-1)!.day < span.to,
       };
     }),
     blend: null,
@@ -338,7 +338,7 @@ export function compareDrawdowns(
     };
   }
   result.flagged =
-    (period === 'common' && window === null) ||
+    (period === 'common' && span === null) ||
     result.indices.some((ix) => ix.missingMonths.length > 0 || ix.startsLate || ix.endsEarly) ||
     (result.blend !== null && result.blend.missingMonths.length > 0);
   return result;
