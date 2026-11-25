@@ -7,14 +7,20 @@
 // Definitions (fixed here, reviewed by the financial-domain review):
 // - drawdown at day t = level(t) / max(level(s), s <= t) - 1, a fraction (-0.30 is a 30% fall);
 // - the maximum drawdown is the most negative drawdown; on a tie the earliest trough counts;
-// - its peak is the running maximum's day before that trough (the first day the peak level was reached);
+// - its peak is the running maximum's day before that trough: the latest day at that level, so a peak window never
+//   contains an earlier full recovery (financial-domain review, 25 Nov);
 // - recovery is the first day after the trough whose level is at or above the peak level;
 // - months to recover = whole calendar months from the trough day to the recovery day (month-end to month-end
 //   counts exactly; a later day of month than the trough's completes the month).
 // The blend applies a named rebalancing rule (the owner's choice is pending; default: monthly to the given weights):
 // - 'monthly': the weights are restored at the last common day of each calendar month;
 // - 'buy-and-hold': the weights apply once, at the first common day.
-// Only days that every series has are used (the blend is never filled across a gap); the days dropped are counted.
+// Only days that every series with a weight above 0 has are used (the blend is never filled across a gap); the days
+// dropped and the blend's first and last day are returned. Weights must sum to 1 within 1e-9: callers normalise
+// unrounded weights first. Comparing indices with a blend over one period: `commonWindow` and `clip`.
+// Left to the caller (C-43, PERF-12): the sampling frequency (daily or month-end, fixed at wiring and shown), the
+// stale-data rule of the index-data role, and the label "index data; the blend uses today's weights and is not the
+// portfolio's own history". Field names follow DATA_DICTIONARY §6 (`recoveryMonths`).
 // Pure: no global, no clock.
 
 import type { IndexPoint } from '../model/index-series.ts';
@@ -33,7 +39,7 @@ export type DrawdownResult = {
   troughDay: DayNumber | null;
   recoveryDay: DayNumber | null;
   /** Whole months from trough to recovery; null when not recovered or when there is no drawdown. */
-  monthsToRecover: number | null;
+  recoveryMonths: number | null;
   /** False when the series ends below the peak of its maximum drawdown. */
   recovered: boolean;
 };
@@ -63,14 +69,14 @@ export function maxDrawdown(points: readonly IndexPoint[]): DrawdownResult {
   checkSeries(points);
   const base = { points: points.length, firstDay: points[0]?.day ?? null, lastDay: points.at(-1)?.day ?? null };
   if (points.length < 2) {
-    return { ...base, measurable: false, maxDrawdown: null, peakDay: null, troughDay: null, recoveryDay: null, monthsToRecover: null, recovered: false };
+    return { ...base, measurable: false, maxDrawdown: null, peakDay: null, troughDay: null, recoveryDay: null, recoveryMonths: null, recovered: false };
   }
   let peak = points[0]!;
   let worst = 0;
   let worstPeak: IndexPoint | null = null;
   let worstTrough: IndexPoint | null = null;
   for (const p of points) {
-    if (p.level > peak.level) peak = p;
+    if (p.level >= peak.level) peak = p;
     const dd = p.level / peak.level - 1;
     if (dd < worst) {
       worst = dd;
@@ -79,7 +85,7 @@ export function maxDrawdown(points: readonly IndexPoint[]): DrawdownResult {
     }
   }
   if (!worstPeak || !worstTrough) {
-    return { ...base, measurable: true, maxDrawdown: 0, peakDay: null, troughDay: null, recoveryDay: null, monthsToRecover: null, recovered: true };
+    return { ...base, measurable: true, maxDrawdown: 0, peakDay: null, troughDay: null, recoveryDay: null, recoveryMonths: null, recovered: true };
   }
   const trough = worstTrough;
   const recovery = points.find((p) => p.day > trough.day && p.level >= worstPeak.level) ?? null;
@@ -90,7 +96,7 @@ export function maxDrawdown(points: readonly IndexPoint[]): DrawdownResult {
     peakDay: worstPeak.day,
     troughDay: trough.day,
     recoveryDay: recovery?.day ?? null,
-    monthsToRecover: recovery ? wholeMonths(trough.day, recovery.day) : null,
+    recoveryMonths: recovery ? wholeMonths(trough.day, recovery.day) : null,
     recovered: recovery !== null,
   };
 }
@@ -100,7 +106,7 @@ export type RebalanceRule = 'monthly' | 'buy-and-hold';
 export const DEFAULT_REBALANCE: RebalanceRule = 'monthly';
 
 export type BlendLeg = { points: readonly IndexPoint[]; weight: number };
-export type Blend = { points: IndexPoint[]; daysUsed: number; daysDropped: number; rule: RebalanceRule };
+export type Blend = { points: IndexPoint[]; daysUsed: number; daysDropped: number; rule: RebalanceRule; firstDay: DayNumber | null; lastDay: DayNumber | null };
 
 const WEIGHT_TOLERANCE = 1e-9;
 const monthOf = (day: DayNumber): number => {
@@ -122,11 +128,13 @@ export function blendSeries(legs: readonly BlendLeg[], rule: RebalanceRule = DEF
   }
   if (Math.abs(sum - 1) > WEIGHT_TOLERANCE) throw new Error(`drawdown: blend weights must sum to 1 (they sum to ${sum})`);
 
-  const maps = legs.map((l) => new Map(l.points.map((p) => [p.day, p.level])));
+  // a leg weighted 0 takes no part, so it cannot narrow the blend's days
+  const live = legs.filter((l) => l.weight > 0);
+  const maps = live.map((l) => new Map(l.points.map((p) => [p.day, p.level])));
   const allDays = new Set<number>();
-  for (const l of legs) for (const p of l.points) allDays.add(p.day);
+  for (const l of live) for (const p of l.points) allDays.add(p.day);
   const days = [...allDays].filter((d) => maps.every((m) => m.has(d))).sort((a, b) => a - b);
-  const blend: Blend = { points: [], daysUsed: days.length, daysDropped: allDays.size - days.length, rule };
+  const blend: Blend = { points: [], daysUsed: days.length, daysDropped: allDays.size - days.length, rule, firstDay: days[0] ?? null, lastDay: days.at(-1) ?? null };
   if (days.length === 0) return blend;
 
   let anchor = days[0]!;
@@ -135,7 +143,7 @@ export function blendSeries(legs: readonly BlendLeg[], rule: RebalanceRule = DEF
   for (let i = 1; i < days.length; i++) {
     const d = days[i]!;
     let growth = 0;
-    for (let k = 0; k < legs.length; k++) growth += legs[k]!.weight * (maps[k]!.get(d)! / maps[k]!.get(anchor)!);
+    for (let k = 0; k < live.length; k++) growth += live[k]!.weight * (maps[k]!.get(d)! / maps[k]!.get(anchor)!);
     const level = anchorLevel * growth;
     blend.points.push({ day: d, level });
     // monthly: the weights are restored at the last common day of each month, so it becomes the next anchor
@@ -146,4 +154,17 @@ export function blendSeries(legs: readonly BlendLeg[], rule: RebalanceRule = DEF
     }
   }
   return blend;
+}
+
+/** The period every series covers: from the latest first day to the earliest last day, or null when they do not meet. */
+export function commonWindow(series: ReadonlyArray<readonly IndexPoint[]>): { from: DayNumber; to: DayNumber } | null {
+  if (series.length === 0 || series.some((s) => s.length === 0)) return null;
+  const from = Math.max(...series.map((s) => s[0]!.day));
+  const to = Math.min(...series.map((s) => s.at(-1)!.day));
+  return from <= to ? { from, to } : null;
+}
+
+/** The points of a series inside a window (both ends included). */
+export function clip(points: readonly IndexPoint[], w: { from: DayNumber; to: DayNumber }): IndexPoint[] {
+  return points.filter((p) => p.day >= w.from && p.day <= w.to);
 }
