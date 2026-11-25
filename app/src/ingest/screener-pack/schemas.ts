@@ -162,7 +162,7 @@ function checkFunds(records: unknown[], ctx: CheckContext, issues: Issues): File
       if (codes.has(code)) issues.error(`${ctx.file}: scheme_code ${code} appears twice`);
       codes.add(code);
     }
-    if (typeof r.family === 'string') byFamily[r.family] = (byFamily[r.family] ?? 0) + 1;
+    if (typeof r.family === 'string') byFamily[r.family] = (Object.hasOwn(byFamily, r.family) ? byFamily[r.family]! : 0) + 1;
     const rank = r.centricity_rank_in_category;
     const of = r.rank_of_count;
     if (typeof rank === 'number' && (rank < 1 || (typeof of === 'number' && rank > of))) {

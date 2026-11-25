@@ -5,6 +5,15 @@
 export interface PackZipObject {
   dir: boolean;
   async(type: 'uint8array'): Promise<Uint8Array>;
+  /** JSZip's chunked stream: lets the reader stop inflating at the declared size (read-pack.ts inflateCapped). */
+  internalStream?(type: 'uint8array'): PackZipStream;
+}
+export interface PackZipStream {
+  on(event: 'data', cb: (chunk: Uint8Array) => void): PackZipStream;
+  on(event: 'error', cb: (e: unknown) => void): PackZipStream;
+  on(event: 'end', cb: () => void): PackZipStream;
+  pause(): unknown;
+  resume(): unknown;
 }
 export interface PackZipInstance {
   files: Record<string, PackZipObject>;

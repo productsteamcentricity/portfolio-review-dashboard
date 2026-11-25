@@ -313,10 +313,10 @@ describe('check-next on vendored libraries and their pinned allowances (needs np
 
 describe('the D-026 pack-content patterns', () => {
   test('find each planted form and nothing in the reader\'s own forms', () => {
-    assert.equal(PACK_CONTENT_PATTERNS.length, 5);
+    assert.equal(PACK_CONTENT_PATTERNS.length, 6);
     assert.deepEqual(findPackContent('{"contract_version" : "pr-datapack-v1"}'), [PACK_CONTENT_PATTERNS[0].source]);
-    assert.deepEqual(findPackContent('{"centricity_score_frac":-0.1,"centricity_rank_in_category":12,"parameter_scores":{}}').length, 3);
-    assert.deepEqual(findPackContent('source_files: ["FIXTURE-SCREENER-PACK"]'), [PACK_CONTENT_PATTERNS[4].source]);
+    assert.deepEqual(findPackContent('{"centricity_score_frac":-0.1,"centricity_rank_in_category":12,"parameter_scores":{"a":1}}').length, 3);
+    assert.deepEqual(findPackContent('source_files: ["FIXTURE-SCREENER-PACK"]'), [PACK_CONTENT_PATTERNS[5].source]);
     assert.deepEqual(findPackContent("const C = 'pr-datapack-v1'; const S = { centricity_score_frac: { t: 'number' } }; x = \"centricity_score_frac\";"), []);
   });
 });

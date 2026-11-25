@@ -4,7 +4,12 @@
 // deep, encrypted, a compression method other than STORE or DEFLATE, a declared size or ratio that looks like a zip
 // bomb, duplicate names, ZIP64. Pure: works on the bytes, no library, no global.
 //
-// Format: APPNOTE 6.3.10 sections 4.3.12 (central directory header) and 4.3.16 (end of central directory record).
+// Every local header is checked against its directory entry (signature, method, name), entries may not overlap or
+// reach into the directory, and the directory must end where the end record starts, so JSZip cannot be handed a
+// different directory from the one approved here (read-pack.ts also compares JSZip's entry list with this one).
+//
+// Format: APPNOTE 6.3.10 sections 4.3.7 (local file header), 4.3.12 (central directory header) and 4.3.16 (end of
+// central directory record).
 
 import { LIMITS } from './contract.ts';
 
@@ -16,12 +21,16 @@ export type ZipDirEntry = {
   compressedSize: number;
   size: number;
   crc32: number;
+  /** Offset of the entry's local header, and the end of its compressed data. */
+  localOffset: number;
+  dataEnd: number;
 };
 
 export type ZipDirResult = { ok: true; entries: ZipDirEntry[]; totalSize: number } | { ok: false; reason: string };
 
 const EOCD_SIG = 0x06054b50;
 const CDH_SIG = 0x02014b50;
+const LFH_SIG = 0x04034b50;
 const EOCD_MIN = 22;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
@@ -71,7 +80,8 @@ export function readZipDirectory(b: Uint8Array): ZipDirResult {
   if (disk !== 0 || cdDisk !== 0 || count !== u16(b, eocd + 8)) return { ok: false, reason: 'a multi-part zip is not accepted' };
   if (count === 0xffff || cdSize === 0xffffffff || cdOffset === 0xffffffff) return { ok: false, reason: 'a ZIP64 archive is not accepted' };
   if (count > LIMITS.maxEntries) return { ok: false, reason: `the zip has ${count} entries; at most ${LIMITS.maxEntries} are accepted` };
-  if (cdOffset + cdSize > eocd) return { ok: false, reason: 'the zip central directory is damaged' };
+  // the directory ends exactly where the end record starts: nothing is hidden between them
+  if (cdOffset + cdSize !== eocd) return { ok: false, reason: 'the zip central directory is damaged' };
 
   const entries: ZipDirEntry[] = [];
   const seen = new Set<string>();
@@ -87,6 +97,7 @@ export function readZipDirectory(b: Uint8Array): ZipDirResult {
     const nameLen = u16(b, o + 28);
     const extraLen = u16(b, o + 30);
     const commentLen = u16(b, o + 32);
+    const localOffset = u32(b, o + 42);
     if (o + 46 + nameLen > eocd) return { ok: false, reason: 'the zip central directory is damaged' };
     let name: string;
     try {
@@ -117,7 +128,31 @@ export function readZipDirectory(b: Uint8Array): ZipDirResult {
       total += size;
       if (total > LIMITS.maxTotalBytes) return { ok: false, reason: `the zip declares more than ${LIMITS.maxTotalBytes} bytes in all` };
     }
-    entries.push({ name, isDir, method, compressedSize, size, crc32 });
+    entries.push({ name, isDir, method, compressedSize, size, crc32, localOffset, dataEnd: 0 });
+  }
+  // second pass: each local header must agree with its directory entry (signature, method, name) and its data must
+  // lie before the directory
+  for (const e of entries) {
+    const lo = e.localOffset;
+    const nameLen = new TextEncoder().encode(e.name).length;
+    if (lo + 30 + nameLen > cdOffset || u32(b, lo) !== LFH_SIG || u16(b, lo + 8) !== e.method || u16(b, lo + 26) !== nameLen) {
+      return { ok: false, reason: `the local header of "${e.name}" does not match the zip directory` };
+    }
+    let localName: string;
+    try {
+      localName = utf8.decode(b.subarray(lo + 30, lo + 30 + nameLen));
+    } catch {
+      localName = '';
+    }
+    if (localName !== e.name) return { ok: false, reason: `the local header of "${e.name}" does not match the zip directory` };
+    const dataStart = lo + 30 + nameLen + u16(b, lo + 28);
+    e.dataEnd = dataStart + e.compressedSize;
+    if (e.dataEnd > cdOffset) return { ok: false, reason: `the data of "${e.name}" runs into the zip directory` };
+  }
+  // no two entries share bytes
+  const byOffset = [...entries].sort((a, z) => a.localOffset - z.localOffset);
+  for (let i = 1; i < byOffset.length; i++) {
+    if (byOffset[i]!.localOffset < byOffset[i - 1]!.dataEnd) return { ok: false, reason: 'two zip entries overlap' };
   }
   return { ok: true, entries, totalSize: total };
 }

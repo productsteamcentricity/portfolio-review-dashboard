@@ -244,17 +244,20 @@ const isExecutableScript = (tag) => {
   return type === null || type === '' || /^(?:text|application)\/(?:java|ecma)script$/i.test(type);
 };
 
-/** Finds network APIs in a text; returns [{ id, line }]. */
 /**
- * Pack-shaped content of the MF Screener data pack (D-026), as it would appear if a pack file or a fixture were
- * embedded: a quoted key followed by its value, or the marker every synthetic fixture file carries
- * (tests/fixtures/make-screener-pack.ts). The reader in app/src/ingest/screener-pack/ writes its keys unquoted.
+ * Pack-shaped content of the MF Screener data pack (D-026), in every form it could take in the built page: a JSON
+ * file (quoted keys), the same file bundled by esbuild (unquoted keys), single-quoted keys, JSON escaped inside a
+ * string (\"key\"), numbers written with a leading dot (:.81), the funds_summary.csv header, and the marker every
+ * synthetic fixture file carries (tests/fixtures/make-screener-pack.ts). A key counts only with a value of its own
+ * kind after it, so the reader's schema lines (`centricity_score_frac: { t: 'number' }`, `contract_version:
+ * { t: 'string' }`, `CONTRACT_VERSION = 'pr-datapack-v1'`) pass. Case-sensitive on purpose.
  */
 export const PACK_CONTENT_PATTERNS = [
-  /"contract_version"\s*:\s*"pr-datapack-v1"/,
-  /"centricity_score_frac"\s*:\s*-?[0-9]/,
-  /"centricity_rank_in_category"\s*:\s*[0-9]/,
-  /"parameter_scores"\s*:\s*\{/,
+  /\bcontract_version\\?['"]?\s*[:=]\s*\\?['"]pr-datapack-v1/,
+  /\bcentricity_score_frac\\?['"]?\s*:\s*-?\.?\d/,
+  /\bcentricity_rank_in_category\\?['"]?\s*:\s*\d/,
+  /\bparameter_scores\\?['"]?\s*:\s*\{[^{}]{0,400}?:\s*-?\.?\d/,
+  /centricity_score_frac,centricity_rank_in_category/,
   /FIXTURE-SCREENER-PACK/,
 ];
 
@@ -263,6 +266,7 @@ export function findPackContent(text) {
   return PACK_CONTENT_PATTERNS.filter((re) => re.test(text)).map((re) => re.source);
 }
 
+/** Finds network APIs in a text; returns [{ id, line }]. */
 export function findNetworkApis(text, lineBase = 0) {
   const hits = [];
   for (const { id, re } of NETWORK_APIS) {

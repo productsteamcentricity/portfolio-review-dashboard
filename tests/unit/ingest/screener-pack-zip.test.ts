@@ -3,8 +3,9 @@
 // itself and refuses, before anything is inflated, names that escape the folder (`..`, absolute, backslash, drive
 // letters, control characters), too many entries, nesting deeper than the pack layout, encrypted entries, unknown
 // compression methods, duplicate names, ZIP64, a declared size above the per-file or total limit and a compression
-// ratio that looks like a zip bomb. An entry whose header lies about its size is refused after inflating. Each case
-// is a clean refusal, never a hang or a throw. All archives are built here from synthetic bytes.
+// ratio that looks like a zip bomb, local headers that disagree with the directory. An entry whose headers lie about
+// its size is stopped while inflating, just past the declared size (ARC-03 R1). Each case is a clean refusal, never a
+// hang or a throw. All archives are built here from synthetic bytes.
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,7 +16,33 @@ import type { PackDeps } from '../../../app/src/ingest/screener-pack/types.ts';
 import { storeZip } from '../../../app/src/exports/zip/store-zip.ts';
 import { sha256Hex } from '../../../app/src/services/sha256.ts';
 import { loadPptxGenJS } from '../../helpers/pptxgenjs.ts';
-import { makeScreenerPack } from '../../fixtures/make-screener-pack.ts';
+import { makeScreenerPack, screenerPackFiles } from '../../fixtures/make-screener-pack.ts';
+import zlib from 'node:zlib';
+
+/** A zip of deflated entries whose headers declare `claim` as the uncompressed size (both headers agree). */
+function deflateZip(entries: Array<{ name: string; data: Uint8Array; claim: number }>): Uint8Array {
+  const parts: Buffer[] = [];
+  const cds: Buffer[] = [];
+  let off = 0;
+  for (const e of entries) {
+    const comp = zlib.deflateRawSync(e.data);
+    const n = Buffer.from(e.name, 'utf8');
+    const local = Buffer.alloc(30 + n.length);
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(8, 8);
+    local.writeUInt32LE(comp.length, 18); local.writeUInt32LE(e.claim, 22); local.writeUInt16LE(n.length, 26); n.copy(local, 30);
+    const cd = Buffer.alloc(46 + n.length);
+    cd.writeUInt32LE(0x02014b50, 0); cd.writeUInt16LE(20, 4); cd.writeUInt16LE(20, 6); cd.writeUInt16LE(8, 10);
+    cd.writeUInt32LE(comp.length, 20); cd.writeUInt32LE(e.claim, 24); cd.writeUInt16LE(n.length, 28); cd.writeUInt32LE(off, 42); n.copy(cd, 46);
+    parts.push(local, comp);
+    cds.push(cd);
+    off += local.length + comp.length;
+  }
+  const cd = Buffer.concat(cds);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(entries.length, 8); end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(off, 16);
+  return new Uint8Array(Buffer.concat([...parts, cd, end]));
+}
 
 const deps: PackDeps = { JSZip: loadPptxGenJS().JSZip as unknown as PackDeps['JSZip'], sha256: sha256Hex };
 const one = new Uint8Array([0x7b, 0x7d]);
@@ -149,19 +176,30 @@ describe('archive limits', () => {
 });
 
 describe('through the reader', () => {
-  test('a header that lies about its size is refused after inflating', async () => {
+  test('R1: an entry that inflates far beyond its declared size is stopped at the cap, not inflated whole', async () => {
+    // manifest and every file as they are, except changes.json: 64 MB of spaces, deflated to about 64 KB, declared as
+    // its real small size in both headers. The reader must stop inflating just past the declared size.
+    const files = [...screenerPackFiles()].map(([name, data]) => ({ name: `pr-datapack_2026-10-15/${name}`, data, claim: data.length }));
+    const bomb = files.find((f) => f.name.endsWith('/changes.json'))!;
+    bomb.data = new Uint8Array(64 * 1024 * 1024).fill(0x20);
+    const zip = deflateZip(files);
+    assert.ok(zip.length < 1024 * 1024, 'a small zip');
+    const t = performance.now();
+    const r = await readScreenerPack(zip, 'x.zip', deps);
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.equal(r.refusal.reason, 'changes.json inflates beyond the size the zip declares');
+    assert.ok(performance.now() - t < 10000);
+  });
+
+  test('a local header that disagrees with the directory, or a second archive appended, is refused', async () => {
     const zip = makeScreenerPack();
     const offs = cdOffsets(zip);
-    const dv = new DataView(zip.buffer, zip.byteOffset);
-    const dec = new TextDecoder();
-    const i = offs.findIndex((o) => dec.decode(zip.subarray(o + 46, o + 46 + dv.getUint16(o + 28, true))).endsWith('/stocks.json'));
-    const lie = zip.slice();
-    // claim a deflated entry one byte shorter than it is (stored would fail the sizes check first)
-    setU16(lie, offs[i]! + 10, 8);
-    setU32(lie, offs[i]! + 24, dv.getUint32(offs[i]! + 24, true) - 1);
-    const r = await readScreenerPack(lie, 'x.zip', deps);
+    const bad = zip.slice();
+    setU16(bad, offs[0]! + 10, 8); // the directory says DEFLATE, the local header STORE
+    assert.match(refusedDir(bad), /local header of ".*" does not match the zip directory/);
+    const two = new Uint8Array([...makeScreenerPack(), ...makeScreenerPack({ cycle: '2026-11-15' })]);
+    const r = await readScreenerPack(two, 'x.zip', deps);
     assert.equal(r.ok, false);
-    if (!r.ok) assert.match(r.refusal.reason, /stocks\.json is damaged in the zip|could not be opened/);
   });
 
   test('changed data inside a zip entry is refused by its SHA-256', async () => {
