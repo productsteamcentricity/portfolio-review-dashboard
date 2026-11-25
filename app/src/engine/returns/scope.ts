@@ -16,8 +16,10 @@
 //   - contributions over the scope's included holdings: a holding joined to an instrument of the IRR file takes that
 //     instrument's transaction XIRR, blank when it gives no rate (KI-100, never the base-file figure in its place);
 //     otherwise its base-file XIRR (PLAN-02 D11).
-// The join of an IRR instrument to the holdings is the client id plus the exact normalised instrument name until
-// engine/match (M2) is on main (PLAN-02 D9). Pure: no globals.
+// The join of an IRR instrument to the holdings (PLAN-02 D9, switched by MOD-04 on 25 Nov 2026 once M2.1 S1 reached
+// main): as the legacy irrKey (07_engine.js, KI-048), each holding's name and AMC matched by engine/match matchInstrument
+// against the IRR instrument names of the same client; the client by its per-review id, never a fuzzy client match
+// (KI-032, KI-111; the legacy resolveClient matched on two shared words). Pure: no globals.
 
 import type { Scope } from '../../model/scope.ts';
 import { holdingInScope, scopeKeyOf } from '../scope.ts';
@@ -33,6 +35,8 @@ import { computeContributions } from './contributions.ts';
 import type { ContributionInput } from './contributions.ts';
 import { solveXirr, xirr, xirrGap } from './xirr.ts';
 import { keyOf, normaliseLabel } from '../ids.ts';
+import { matchInstrument } from '../match/instrument.ts';
+import type { TokenCache } from '../match/instrument.ts';
 import { missing, present } from '../value.ts';
 
 // The scope key and membership come from engine/scope.ts (I-45; MOD-04 decision D8), re-exported for this module's callers.
@@ -40,7 +44,35 @@ export { scopeKeyOf, holdingInScope } from '../scope.ts';
 
 const instrumentKey = (clientId: ClientId | null, name: string | null): string => keyOf([clientId, normaliseLabel(name)]);
 
-/** The interim join (PLAN-02 D9): client id plus the exact normalised instrument name. */
+/**
+ * The holdings join (D9): for each holding with a client, engine/match matchInstrument over the IRR instrument names of
+ * that client (the fund flows'); the instrument it picks joins the holding. A holding no name matches joins nothing (it is
+ * then "without flows"), and an IRR instrument no holding picks is redeemed (OD-4).
+ */
+export function matcherJoin(holdings: readonly Holding[], fund: readonly Transaction[]): HoldingJoin {
+  const namesOf = new Map<ClientId, string[]>();
+  for (const t of fund) {
+    if (t.instrumentName === null) continue;
+    const l = namesOf.get(t.clientId) ?? [];
+    if (!l.includes(t.instrumentName)) l.push(t.instrumentName);
+    namesOf.set(t.clientId, l);
+  }
+  const cache: TokenCache = new Map();
+  const m = new Map<string, HoldingId[]>();
+  for (const h of holdings) {
+    if (h.clientId === null) continue;
+    const names = namesOf.get(h.clientId);
+    if (!names) continue;
+    const hit = matchInstrument(h.instrumentName, h.amcLabel ?? '', names, cache);
+    if (hit === null) continue;
+    const k = instrumentKey(h.clientId, hit);
+    const l = m.get(k);
+    if (l) l.push(h.id); else m.set(k, [h.id]);
+  }
+  return (clientId, name) => m.get(instrumentKey(clientId, name)) ?? [];
+}
+
+/** The earlier interim join (client id plus the exact normalised instrument name), kept for tests and comparisons. */
 export function exactNameJoin(holdings: readonly Holding[]): HoldingJoin {
   const m = new Map<string, HoldingId[]>();
   for (const h of holdings) {
@@ -57,7 +89,7 @@ export type ReconcileRule = (input: { scope: Scope; fund: readonly Transaction[]
 export type ScopeReturnsOptions = {
   /** The analyst's display label of a client (defaults to the label the flows carry). */
   clientLabel?: (clientId: ClientId, labelAsWritten: string) => string;
-  /** The holdings join; defaults to the interim exact-name join over the review's holdings. */
+  /** The holdings join; defaults to the engine/match join over the review's holdings and the IRR fund flows (D9). */
   join?: HoldingJoin;
   /** No rule is defined yet (D13): without one every scope counts as reconciled. */
   reconcile?: ReconcileRule;
@@ -70,7 +102,7 @@ const paidIn = (ts: readonly Transaction[]): number => ts.reduce((s, t) => s + (
 export function computeScopeReturns(scope: Scope, irr: IrrFileImport | null, holdings: readonly Holding[], opts: ScopeReturnsOptions = {}): ScopeReturns {
   const key = scopeKeyOf(scope);
   const inScope = holdings.filter((h) => holdingInScope(h, scope));
-  const join = opts.join ?? exactNameJoin(holdings);
+  const join = opts.join ?? matcherJoin(holdings, irr ? irr.fund : []);
   const inScopeIds = new Set(inScope.map((h) => h.id));
   const scopedJoin: HoldingJoin = (c, n) => join(c, n).filter((id) => inScopeIds.has(id));
 
@@ -165,7 +197,7 @@ export function computeScopeReturns(scope: Scope, irr: IrrFileImport | null, hol
     unassigned = {
       flows: uf.length,
       instruments: new Set(uf.map((t) => instrumentKey(t.clientId, t.instrumentName))).size,
-      sharePct: total > 0 ? present((paidIn(uf) / total) * 100, 'pct', { sources: [irr.sourceId], method: 'unassigned money paid in over the family\'s money paid in' })
+      sharePct: total > 0 ? present((paidIn(uf) / total) * 100, 'pct', { sources: [irr.sourceId], method: 'share of the family\'s money paid in (unassigned money paid in over the family\'s, D15)' })
         : missing(STATUS.NOT_AVAILABLE, 'no money paid in'),
       fund: uf.length ? guard(xirr(flowsOf(uf), 'unassigned fund XIRR (E-142)', [irr.sourceId]), uf) : xirrGap('no-flows'),
       bench: ub.length ? guard(xirr(flowsOf(ub), 'unassigned benchmark XIRR (E-142)', [irr.sourceId]), ub) : xirrGap('no-benchmark'),

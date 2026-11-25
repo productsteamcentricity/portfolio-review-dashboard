@@ -273,6 +273,8 @@ export function parseIrrFile(wb: Workbook, opts: IrrFileOptions): IrrFileImport 
       const { kind, direction } = kindOf(typeLabel, rowTypeLabel);
       if (kind === 'unrecognised' && typeLabel !== null) typeTally.set(typeLabel, (typeTally.get(typeLabel) ?? 0) + 1);
       const priceRead = col.has('price') ? readAmount(get(row, 'price')) : { kind: 'empty' as const };
+      // TODO(I-32): the price is rupees per unit; `Unit` has no such unit yet, so 'ratio' stands in until MOD-04's next
+      // contracts PR adds a rupees-per-unit unit to model/value.ts (MOD-04, 25 Nov 2026).
       const price: Value<number> = priceRead.kind === 'number'
         ? present(priceRead.v, 'ratio', { sources: [sourceId], method: `irr-file "${headerTexts[col.get('price')!] ?? 'Price'}" (rupees per unit)` })
         : priceRead.kind === 'invalid' ? missing(STATUS.INVALID_SOURCE, 'the price is not a number')

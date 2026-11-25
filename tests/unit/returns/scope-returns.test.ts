@@ -200,3 +200,25 @@ describe('financial review of 058a94c: a holding\'s own flows are family-wide (f
     near(v(r.tree.find((n) => n.level === 'asset')!.bench), 5);
   });
 });
+
+describe('D9: the holdings join through engine/match (as the legacy irrKey), clients by id', () => {
+  const H = [
+    holding('m1', cA, d1, 'Sample Flexi Cap Fund - Regular Plan - Growth', 2, 11),
+    holding('m2', cB, d1, 'Sample Flexi Cap Fund - Regular Plan - Growth', 1, 11),
+    holding('m3', cA, d1, 'Sample Gilt Fund', 1, 7),
+  ];
+  const F = [tx('fund', cA, 'SAMPLE FLEXI CAP FUND REGULAR PLAN GROWTH', d1, 0, -1000), tx('fund', cA, 'SAMPLE FLEXI CAP FUND REGULAR PLAN GROWTH', d1, 365, 1100)];
+  test('a differently written name joins (exact-name join does not); another client\'s holding never does', async () => {
+    const { matcherJoin } = await import('../../../app/src/engine/returns/scope.ts');
+    const j = matcherJoin(H, F);
+    assert.deepEqual(j(cA, 'SAMPLE FLEXI CAP FUND REGULAR PLAN GROWTH'), ['m1']);
+    assert.deepEqual(exactNameJoin(H)(cA, 'SAMPLE FLEXI CAP FUND REGULAR PLAN GROWTH'), []);
+  });
+  test('the scope uses it: m1 takes the transaction 10%, m3 has no flows; the instrument is not redeemed', () => {
+    const r = computeScopeReturns({ kind: 'client', clientIds: [cA] }, { sourceId: SRC, fund: F, bench: [], hasDistributor: true } as unknown as IrrFileImport, H);
+    const row = r.contributions.rows.find((x) => x.holdingIds.includes('m1' as HoldingId))!;
+    near(row.xirr.kind === 'value' ? row.xirr.v : null, 10);
+    assert.deepEqual(r.reconciliation.holdingsWithoutFlows, ['m3']);
+    assert.deepEqual(r.reconciliation.redeemed, []);
+  });
+});
