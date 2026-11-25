@@ -10,8 +10,11 @@
 // - its peak is the running maximum's day before that trough: the latest day at that level, so a peak window never
 //   contains an earlier full recovery (financial-domain review, 25 Nov);
 // - recovery is the first day after the trough whose level is at or above the peak level;
-// - months to recover = whole calendar months from the trough day to the recovery day (month-end to month-end
-//   counts exactly; a later day of month than the trough's completes the month).
+// - months to recover, counted from the trough: on month-end points (the default sampling) the month-end steps from
+//   the trough's month to the recovery's month, so 31 Oct to 28 Nov (last trading days) is 1 (Gate B B1); a recovery
+//   on the last, part-month (as-on) point also counts as one step into that month (owner question Q-a, default
+//   recorded here); on daily points the whole calendar months from the trough day to the recovery day (`wholeMonths`);
+// - float noise: a fall smaller than 1e-12 is no fall, and a level within 1e-12 of the peak has recovered (R2).
 // The blend applies a named rebalancing rule:
 // - 'monthly' (the default): the weights are restored at the last common day of each calendar month;
 // - 'buy-and-hold': the weights apply once, at the first common day.
@@ -30,9 +33,15 @@
 // - Q5 months to recover: from the trough (above).
 // Still open with the owner (Q2): which index stands for each asset class, and whether classes without an index are
 // left out with the rest scaled to 100%. The engine takes the weights from the caller and maps nothing.
-// Left to the caller (C-43, PERF-12): the stale-data rule of the index-data role, and the label "index data; the blend
-// uses today's weights and is not the portfolio's own history". Field names follow DATA_DICTIONARY §6
-// (`recoveryMonths`). Pure: no global, no clock.
+// Gaps are reported, never filled or hidden (Gate B B2, R4; owner question Q-c, default "flag and show"): each
+// index and the blend list the calendar months inside their period that have no point (`missingMonths`), and each
+// index says whether it starts after or ends before the common period (`startsLate`, `endsEarly`); `flagged` is
+// true when anything is missing, for the caller to show beside the figures.
+// Left to the caller (C-43, PERF-12): the stale-data rule of the index-data role, showing `window` (both ends) and the
+// flags, and the label "index data; the blend uses today's weights and is not the portfolio's own history". Field
+// names here (`maxDrawdown`, `peakDay`, `troughDay`, `recoveryMonths`) are not yet the DATA_DICTIONARY §6 metric
+// paths (`maxDd`, `peak`, `trough`, `recoveryMonths`): the mapping is made at wiring (Gate B ruling).
+// Pure: no global, no clock.
 
 import type { IndexPoint } from '../model/index-series.ts';
 import type { DayNumber } from '../model/value.ts';
@@ -75,8 +84,17 @@ function checkSeries(points: readonly IndexPoint[]): void {
   }
 }
 
+/** Month-end steps from day a's month to day b's month (b >= a): the months to recover on month-end points. */
+export function monthSteps(a: DayNumber, b: DayNumber): number {
+  return Math.max(0, monthOf(b) - monthOf(a));
+}
+
+/** How months to recover are counted: 'steps' on month-end points, 'calendar' (whole months) on daily points. */
+export type MonthCount = 'steps' | 'calendar';
+const NOISE = 1e-12;
+
 /** The maximum drawdown of one series (ascending days, levels above zero, as I-44 guarantees). */
-export function maxDrawdown(points: readonly IndexPoint[]): DrawdownResult {
+export function maxDrawdown(points: readonly IndexPoint[], months: MonthCount = 'calendar'): DrawdownResult {
   checkSeries(points);
   const base = { points: points.length, firstDay: points[0]?.day ?? null, lastDay: points.at(-1)?.day ?? null };
   if (points.length < 2) {
@@ -89,7 +107,7 @@ export function maxDrawdown(points: readonly IndexPoint[]): DrawdownResult {
   for (const p of points) {
     if (p.level >= peak.level) peak = p;
     const dd = p.level / peak.level - 1;
-    if (dd < worst) {
+    if (dd < worst && dd < -NOISE) {
       worst = dd;
       worstPeak = peak;
       worstTrough = p;
@@ -99,7 +117,8 @@ export function maxDrawdown(points: readonly IndexPoint[]): DrawdownResult {
     return { ...base, measurable: true, maxDrawdown: 0, peakDay: null, troughDay: null, recoveryDay: null, recoveryMonths: null, recovered: true };
   }
   const trough = worstTrough;
-  const recovery = points.find((p) => p.day > trough.day && p.level >= worstPeak.level) ?? null;
+  const recovery = points.find((p) => p.day > trough.day && p.level >= worstPeak.level * (1 - NOISE)) ?? null;
+  const count = months === 'steps' ? monthSteps : wholeMonths;
   return {
     ...base,
     measurable: true,
@@ -107,7 +126,7 @@ export function maxDrawdown(points: readonly IndexPoint[]): DrawdownResult {
     peakDay: worstPeak.day,
     troughDay: trough.day,
     recoveryDay: recovery?.day ?? null,
-    recoveryMonths: recovery ? wholeMonths(trough.day, recovery.day) : null,
+    recoveryMonths: recovery ? count(trough.day, recovery.day) : null,
     recovered: recovery !== null,
   };
 }
@@ -211,10 +230,40 @@ export type DrawdownComparison = {
   rule: RebalanceRule;
   /** The common period ('common'); null for 'full', or when the indices do not overlap (then nothing is measurable). */
   window: { from: DayNumber; to: DayNumber } | null;
-  indices: Array<{ id: string; result: DrawdownResult }>;
+  indices: Array<{
+    id: string;
+    result: DrawdownResult;
+    /** Calendar months ('YYYY-MM') inside the period with no point of this index. */
+    missingMonths: string[];
+    /** 'common' only: the index has no point on the window's first / last day (a fall there is not seen). */
+    startsLate: boolean;
+    endsEarly: boolean;
+  }>;
   /** Null when no weights are given. */
-  blend: { result: DrawdownResult; daysDropped: number; firstDay: DayNumber | null; lastDay: DayNumber | null } | null;
+  blend: {
+    result: DrawdownResult;
+    daysDropped: number;
+    firstDay: DayNumber | null;
+    lastDay: DayNumber | null;
+    /** Calendar months ('YYYY-MM') inside the period with no day common to every weighted index. */
+    missingMonths: string[];
+  } | null;
+  /** True when the indices do not overlap, or any index or the blend misses a month, starts late or ends early. */
+  flagged: boolean;
 };
+
+/** Calendar months ('YYYY-MM') from day `from` to day `to` (both months included) with no point in `points`. */
+export function missingMonths(points: readonly IndexPoint[], from: DayNumber, to: DayNumber): string[] {
+  const have = new Set(points.map((p) => monthOf(p.day)));
+  const out: string[] = [];
+  for (let m = monthOf(from); m <= monthOf(to); m++) {
+    if (!have.has(m)) {
+      const y = Math.floor((m - 1) / 12);
+      out.push(`${y}-${String(m - y * 12).padStart(2, '0')}`);
+    }
+  }
+  return out;
+}
 
 /**
  * Drawdowns of several indices and, when weights are given, of their blend, on the owner's confirmed defaults
@@ -251,19 +300,46 @@ export function compareDrawdowns(
     inPeriod = (points) => (w ? clip(points, w) : []);
   }
   const sample = (points: readonly IndexPoint[]): readonly IndexPoint[] => (sampling === 'month-end' ? monthEndsFromStart(points) : points);
+  const months: MonthCount = sampling === 'month-end' ? 'steps' : 'calendar';
+  // the months checked for gaps: the common window, or (period 'full') the series' own first to last day
+  const gaps = (points: readonly IndexPoint[]): string[] => {
+    const from = window?.from ?? points[0]?.day;
+    const to = window?.to ?? points.at(-1)?.day;
+    return from === undefined || to === undefined ? [] : missingMonths(points, from, to);
+  };
 
   const result: DrawdownComparison = {
     sampling,
     period,
     rule,
     window,
-    indices: indices.map((ix) => ({ id: ix.id, result: maxDrawdown(sample(inPeriod(ix.points))) })),
+    indices: indices.map((ix) => {
+      const pts = inPeriod(ix.points);
+      return {
+        id: ix.id,
+        result: maxDrawdown(sample(pts), months),
+        missingMonths: gaps(pts),
+        startsLate: window !== null && pts.length > 0 && pts[0]!.day > window.from,
+        endsEarly: window !== null && pts.length > 0 && pts.at(-1)!.day < window.to,
+      };
+    }),
     blend: null,
+    flagged: false,
   };
   if (weights !== null) {
     const legs = indices.map((ix) => ({ points: inPeriod(ix.points), weight: weightById.get(ix.id) ?? 0 }));
     const b = blendSeries(legs, rule);
-    result.blend = { result: maxDrawdown(sample(b.points)), daysDropped: b.daysDropped, firstDay: b.firstDay, lastDay: b.lastDay };
+    result.blend = {
+      result: maxDrawdown(sample(b.points), months),
+      daysDropped: b.daysDropped,
+      firstDay: b.firstDay,
+      lastDay: b.lastDay,
+      missingMonths: gaps(b.points),
+    };
   }
+  result.flagged =
+    (period === 'common' && window === null) ||
+    result.indices.some((ix) => ix.missingMonths.length > 0 || ix.startsLate || ix.endsEarly) ||
+    (result.blend !== null && result.blend.missingMonths.length > 0);
   return result;
 }

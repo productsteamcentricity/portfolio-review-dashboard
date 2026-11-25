@@ -22,6 +22,8 @@ import {
   maxDrawdown,
   monthEnds,
   monthEndsFromStart,
+  monthSteps,
+  missingMonths,
   wholeMonths,
 } from '../../../app/src/engine/drawdown.ts';
 import { dayToIso, ymdToDay } from '../../../app/src/engine/dates.ts';
@@ -169,7 +171,7 @@ describe('review findings', () => {
     assert.equal(iso(r.recoveryDay), '2026-05-31');
   });
 
-  test('whole months at the calendar edges', () => {
+  test('whole months at the calendar edges (calendar count, used on daily points)', () => {
     assert.equal(wholeMonths(day('2024-02-29'), day('2025-02-28')), 12);
     assert.equal(wholeMonths(day('2026-01-30'), day('2026-02-28')), 1);
     assert.equal(wholeMonths(day('2026-03-31'), day('2026-04-29')), 0);
@@ -326,5 +328,91 @@ describe("the owner's defaults of 25 Nov 2026: month-end points, one common peri
     assert.throws(() => compareDrawdowns([{ id: 'A', points: A }, { id: 'A', points: B }]), /given twice/);
     assert.throws(() => compareDrawdowns(ixs, [{ id: 'A', weight: 0.7 }]), /sum to 1/);
     assert.throws(() => compareDrawdowns([]), /at least one index/);
+  });
+});
+
+// Gate B (ARC-03, 25 Nov 2026, NO-GO on 913e3d9) and its financial review. Hand-worked:
+// - B1: on month-end points (last trading days) months to recover are month-end steps: 31 Oct 2025 -> 28 Nov 2025 is
+//   1 (the calendar count gives 0: 28 < 31); 30 Jan 2026 -> 27 Feb 2026 is 1; 31 Jan 2006 -> 28 Apr 2006 is 3. A
+//   recovery on the last, part-month (as-on) point, 30 Oct -> 20 Nov, counts one step (Q-a default).
+// - B2: G = Jan 100, Feb 60, Apr 100 (no March) and G2 = Jan 100, Mar 50, Apr 100 (no February) fall -40% and -50%;
+//   their 50/50 blend has only Jan and Apr in common, so it shows 0% on 2 points: the missing months are listed and
+//   the comparison is flagged.
+// - R1: A = 100, 200, 100 on 31 Jan, 10 Feb, 28 Feb with B flat: monthly rebalancing holds the 31 Jan weights through
+//   February, so 28 Feb is 0.5 x 1 + 0.5 x 1 = 100; rebalancing on every common day would give
+//   150 x (0.5 x 0.5 + 0.5) = 112.5.
+describe('Gate B fixes: month-end steps, missing months, flags, float noise', () => {
+  test('B1: months to recover are month-end steps on month-end points', () => {
+    const x = series([['2025-09-30', 100], ['2025-10-31', 80], ['2025-11-28', 100]]);
+    const r = compareDrawdowns([{ id: 'X', points: x }]).indices[0]!.result;
+    assert.equal(iso(r.troughDay), '2025-10-31');
+    assert.equal(iso(r.recoveryDay), '2025-11-28');
+    assert.equal(r.recoveryMonths, 1);
+    assert.equal(compareDrawdowns([{ id: 'X', points: x }], null, { sampling: 'daily' }).indices[0]!.result.recoveryMonths, 0, 'daily points keep the calendar count');
+    assert.equal(monthSteps(day('2026-01-30'), day('2026-02-27')), 1);
+    const y = series([['2005-12-30', 100], ['2006-01-31', 90], ['2006-02-28', 95], ['2006-03-31', 97], ['2006-04-28', 100]]);
+    assert.equal(compareDrawdowns([{ id: 'Y', points: y }]).indices[0]!.result.recoveryMonths, 3);
+    const z = series([['2026-09-30', 100], ['2026-10-30', 90], ['2026-11-20', 100]]);
+    const zr = compareDrawdowns([{ id: 'Z', points: z }]).indices[0]!.result;
+    assert.equal(iso(zr.recoveryDay), '2026-11-20');
+    assert.equal(zr.recoveryMonths, 1, 'a part-month as-on recovery counts one step (Q-a default)');
+  });
+
+  test('B2: a missing month is listed per index and for the blend, and the comparison is flagged', () => {
+    const G = series([['2026-01-30', 100], ['2026-02-27', 60], ['2026-04-30', 100]]);
+    const G2 = series([['2026-01-30', 100], ['2026-03-31', 50], ['2026-04-30', 100]]);
+    const one = compareDrawdowns([{ id: 'G', points: G }]);
+    assert.deepEqual(one.indices[0]!.missingMonths, ['2026-03']);
+    assert.equal(one.flagged, true);
+    const r = compareDrawdowns([{ id: 'G', points: G }, { id: 'G2', points: G2 }], [{ id: 'G', weight: 0.5 }, { id: 'G2', weight: 0.5 }]);
+    close(r.indices[0]!.result.maxDrawdown!, -0.4);
+    close(r.indices[1]!.result.maxDrawdown!, -0.5);
+    assert.deepEqual(r.indices[0]!.missingMonths, ['2026-03']);
+    assert.deepEqual(r.indices[1]!.missingMonths, ['2026-02']);
+    assert.deepEqual(r.blend!.missingMonths, ['2026-02', '2026-03']);
+    assert.equal(r.blend!.result.points, 2);
+    assert.equal(r.flagged, true, 'the 0% blend is never shown unflagged');
+    assert.deepEqual(missingMonths(G, day('2025-11-30'), day('2026-04-30')), ['2025-11', '2025-12', '2026-03']);
+  });
+
+  test('a complete comparison is not flagged', () => {
+    const A = series([['2025-12-31', 200], ['2026-01-31', 100], ['2026-02-28', 100], ['2026-03-31', 110], ['2026-04-30', 88]]);
+    const B = series([['2026-01-31', 100], ['2026-02-28', 90], ['2026-03-31', 99], ['2026-04-30', 99]]);
+    const r = compareDrawdowns([{ id: 'A', points: A }, { id: 'B', points: B }], [{ id: 'A', weight: 0.5 }, { id: 'B', weight: 0.5 }]);
+    assert.equal(r.flagged, false);
+    assert.deepEqual(r.blend!.missingMonths, []);
+    assert.deepEqual(r.indices.map((ix) => [ix.startsLate, ix.endsEarly, ix.missingMonths.length]), [[false, false, 0], [false, false, 0]]);
+  });
+
+  test('R4: an index without a point on the first or last day of the common period is flagged', () => {
+    const P = series([['2026-01-10', 100], ['2026-01-20', 90], ['2026-02-27', 95], ['2026-03-05', 96]]);
+    const Q = series([['2026-01-15', 100], ['2026-01-30', 100], ['2026-02-27', 100], ['2026-03-10', 100]]);
+    const r = compareDrawdowns([{ id: 'P', points: P }, { id: 'Q', points: Q }]);
+    assert.equal(iso(r.window!.from), '2026-01-15');
+    assert.equal(iso(r.window!.to), '2026-03-05');
+    assert.deepEqual([r.indices[0]!.startsLate, r.indices[0]!.endsEarly], [true, false]);
+    assert.deepEqual([r.indices[1]!.startsLate, r.indices[1]!.endsEarly], [false, true]);
+    assert.deepEqual(r.indices[1]!.missingMonths, ['2026-03']);
+    assert.equal(r.flagged, true);
+    const apart = compareDrawdowns([{ id: 'X', points: series([['2020-01-31', 1]]) }, { id: 'Y', points: series([['2021-01-31', 1]]) }]);
+    assert.equal(apart.flagged, true, 'indices that do not overlap are flagged');
+  });
+
+  test('R1: monthly rebalancing holds the weights through the month (two common days in one month)', () => {
+    const A = series([['2026-01-31', 100], ['2026-02-10', 200], ['2026-02-28', 100]]);
+    const B = series([['2026-01-31', 100], ['2026-02-10', 100], ['2026-02-28', 100]]);
+    const m = blendSeries([{ points: A, weight: 0.5 }, { points: B, weight: 0.5 }]);
+    close(m.points[1]!.level, 150);
+    close(m.points[2]!.level, 100);
+  });
+
+  test('R2: float noise is no fall, and a level within 1e-12 of the peak has recovered', () => {
+    const flat = maxDrawdown(series([['2026-01-31', 0.1 + 0.2], ['2026-02-28', 0.3]]));
+    assert.equal(flat.maxDrawdown, 0);
+    assert.equal(flat.recovered, true);
+    assert.equal(flat.peakDay, null);
+    const back = maxDrawdown(series([['2026-01-31', 100], ['2026-02-28', 90], ['2026-03-31', 100 * (1 - 1e-15)]]));
+    assert.equal(back.recovered, true);
+    assert.equal(iso(back.recoveryDay), '2026-03-31');
   });
 });
