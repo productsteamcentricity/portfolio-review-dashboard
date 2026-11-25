@@ -47,13 +47,8 @@ export function listZip(b: Uint8Array): ZipEntry[] | null {
  * above `cap`, or data that inflates beyond its declared size (inflation stops there: a zip bomb costs nothing).
  */
 export function readEntry(b: Uint8Array, e: ZipEntry, cap = MAX_ENTRY_BYTES): Uint8Array {
-  const buf = Buffer.from(b.buffer, b.byteOffset, b.byteLength);
   if (e.size > cap) throw new Error(`${e.name}: entry too large`);
-  const lo = e.localOffset;
-  if (lo + 30 > buf.length || buf.readUInt32LE(lo) !== 0x04034b50) throw new Error(`${e.name}: damaged local header`);
-  const start = lo + 30 + buf.readUInt16LE(lo + 26) + buf.readUInt16LE(lo + 28);
-  const data = buf.subarray(start, start + e.compressedSize);
-  if (data.length !== e.compressedSize) throw new Error(`${e.name}: truncated`);
+  const data = compressedData(b, e);
   let out: Buffer;
   if (e.method === 0) out = data;
   else if (e.method === 8) {
@@ -67,6 +62,41 @@ export function readEntry(b: Uint8Array, e: ZipEntry, cap = MAX_ENTRY_BYTES): Ui
   else throw new Error(`${e.name}: compression method ${e.method}`);
   if (out.length !== e.size) throw new Error(`${e.name}: size mismatch`);
   return new Uint8Array(out.buffer, out.byteOffset, out.byteLength);
+}
+
+function compressedData(b: Uint8Array, e: ZipEntry): Buffer {
+  const buf = Buffer.from(b.buffer, b.byteOffset, b.byteLength);
+  const lo = e.localOffset;
+  if (lo + 30 > buf.length || buf.readUInt32LE(lo) !== 0x04034b50) throw new Error(`${e.name}: damaged local header`);
+  const start = lo + 30 + buf.readUInt16LE(lo + 26) + buf.readUInt16LE(lo + 28);
+  const data = buf.subarray(start, start + e.compressedSize);
+  if (data.length !== e.compressedSize) throw new Error(`${e.name}: truncated`);
+  return data;
+}
+
+/** The most a prefix read inflates: enough for a sheet's first rows (sniffing reads 30). */
+export const SNIFF_PREFIX_BYTES = 8 * 1024 * 1024;
+
+/**
+ * The start of an entry's inflated data, at most `maxBytes`, for parts read only from their start (a sheet's header
+ * rows): a 67 MB sheet costs 8 MB. It inflates a prefix of the compressed data and halves that prefix while it would
+ * inflate beyond `maxBytes` (deflate expands at most about 1,032 times, so it ends), so a zip bomb costs nothing here
+ * either. The last XML element may be cut short.
+ */
+export function readEntryPrefix(b: Uint8Array, e: ZipEntry, maxBytes = SNIFF_PREFIX_BYTES): Uint8Array {
+  const data = compressedData(b, e);
+  if (e.method === 0) return new Uint8Array(data.subarray(0, maxBytes));
+  if (e.method !== 8) throw new Error(`${e.name}: compression method ${e.method}`);
+  for (let take = Math.min(data.length, 1024 * 1024); ; take = Math.floor(take / 2)) {
+    try {
+      const out = zlib.inflateRawSync(data.subarray(0, take), { finishFlush: zlib.constants.Z_SYNC_FLUSH, maxOutputLength: maxBytes });
+      return new Uint8Array(out.buffer, out.byteOffset, out.byteLength);
+    } catch (err) {
+      if ((err as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE' && take > 1) continue;
+      if ((err as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE') throw new Error(`${e.name}: inflates beyond the prefix limit`);
+      throw err;
+    }
+  }
 }
 
 /** The entry with this exact name, or null. */

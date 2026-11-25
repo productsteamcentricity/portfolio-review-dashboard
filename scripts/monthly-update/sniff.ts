@@ -3,7 +3,7 @@
 // cells of its first rows and its shared strings; a pptx's slide count and slide text; a zip's entry names; the first
 // lines of a text file. Numbers are never read. Large parts are capped so a 90 MB deck reads in a moment.
 
-import { entryNamed, listZip, MAX_SNIFF_ENTRY_BYTES, readEntry, type ZipEntry } from './zip.ts';
+import { entryNamed, listZip, MAX_SNIFF_ENTRY_BYTES, readEntry, readEntryPrefix, type ZipEntry } from './zip.ts';
 import type { FileKind, Sniff } from './types.ts';
 
 const HEADER_ROWS = 30;
@@ -25,6 +25,12 @@ function empty(kind: FileKind, problem: string | null = null): Sniff {
 function part(b: Uint8Array, entries: ZipEntry[], name: string): string | null {
   const e = entryNamed(entries, name);
   return e ? utf8.decode(readEntry(b, e, MAX_SNIFF_ENTRY_BYTES)) : null;
+}
+
+/** The start of a part (at most 8 MB): a sheet is read only for its first rows. */
+function partStart(b: Uint8Array, entries: ZipEntry[], name: string): string | null {
+  const e = entryNamed(entries, name);
+  return e ? utf8.decode(readEntryPrefix(b, e)) : null;
 }
 
 /** The text of every <t> element in an XML part (shared strings, inline strings, rich text runs, slide text). */
@@ -66,7 +72,7 @@ function sniffXlsx(b: Uint8Array, entries: ZipEntry[]): Sniff {
   const strings = sst ? sharedStrings(sst) : [];
   s.text = strings.slice();
   for (const sh of sheets.slice(0, HEADER_SHEETS)) {
-    const xml = sh.path ? part(b, entries, sh.path) : null;
+    const xml = sh.path ? partStart(b, entries, sh.path) : null;
     const rows: string[][] = [];
     if (xml) {
       for (const rm of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {

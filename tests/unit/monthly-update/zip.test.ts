@@ -7,7 +7,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import zlib from 'node:zlib';
-import { listZip, MAX_SNIFF_ENTRY_BYTES, nodePackZip, readEntry } from '../../../scripts/monthly-update/zip.ts';
+import { listZip, MAX_SNIFF_ENTRY_BYTES, nodePackZip, readEntry, readEntryPrefix, SNIFF_PREFIX_BYTES } from '../../../scripts/monthly-update/zip.ts';
 import { storeZip } from '../../../app/src/exports/zip/store-zip.ts';
 import { readScreenerPack } from '../../../app/src/ingest/screener-pack/read-pack.ts';
 import { sha256Hex } from '../../../app/src/services/sha256.ts';
@@ -61,6 +61,25 @@ describe('zip access', () => {
     assert.equal(MAX_SNIFF_ENTRY_BYTES, 64 * 1024 * 1024);
     assert.throws(() => readEntry(d, listZip(d)![0]!, 4999), /sheet\.xml: entry too large/);
     assert.equal(readEntry(d, listZip(d)![0]!, 5000).length, 5000);
+  });
+
+  test('a sheet is read from its start only: a bounded prefix, even of a bomb (the real 67 MB analytics sheet)', () => {
+    assert.equal(SNIFF_PREFIX_BYTES, 8 * 1024 * 1024);
+    const rows = Array.from({ length: 4000 }, (_, i) => `<row r="${i + 1}"><c t="inlineStr"><is><t>row ${i + 1}</t></is></c></row>`).join('');
+    const xml = enc.encode(`<worksheet><sheetData>${rows}</sheetData></worksheet>`);
+    const d = deflatedZip('xl/worksheets/sheet1.xml', xml);
+    const head = new TextDecoder().decode(readEntryPrefix(d, listZip(d)![0]!, 2000));
+    assert.ok(head.length <= 2000 && head.length > 100, `prefix of ${head.length} characters`);
+    assert.ok(head.startsWith('<worksheet><sheetData><row r="1">'));
+    assert.equal(new TextDecoder().decode(readEntryPrefix(d, listZip(d)![0]!)), new TextDecoder().decode(xml), 'a small part is read whole');
+    const stored = storeZip([{ name: 's.xml', data: xml }]);
+    assert.equal(readEntryPrefix(stored, listZip(stored)![0]!, 100).length, 100);
+    const bomb = deflatedZip('bomb.xml', new Uint8Array(64 * 1024 * 1024), 1000);
+    const before = process.memoryUsage().arrayBuffers;
+    const part = readEntryPrefix(bomb, listZip(bomb)![0]!);
+    assert.ok(part.length <= SNIFF_PREFIX_BYTES);
+    // each attempt stops at the 8 MB limit (attempts not yet garbage-collected are counted): never the bomb's 64 MB
+    assert.ok(process.memoryUsage().arrayBuffers - before < 60 * 1024 * 1024, 'the bomb is never inflated whole');
   });
 
   test('bytes that are not a zip', () => {
