@@ -2412,7 +2412,14 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     // ============ shared signals reused across SWOT quadrants ============
     var goldPct=0; Object.keys(aMap).forEach(function(k){ if(/commodit|gold/i.test(k)) goldPct+=aMap[k].cmv; }); goldPct = totalCMV? goldPct/totalCMV*100 : 0;
     var debtPct = (aMap["Debt"]?aMap["Debt"].cmv:0)/totalCMV*100;
-    var intlCMV=0; rows.forEach(function(h){ if(/(\binternat|\bglobal|\bus\b|\bu\.s\.|\bnasdaq|\bs&p|\boverseas|\bworld|\bchina|\btaiwan|\bjapan)/i.test(h.name||"")||/global|international/i.test(h.category||"")) intlCMV+=h.cmvCr; });
+    /* CR-0010 A4: a fund counts by the wider terms unless its name is a known domestic one; a direct-equity
+       holding keeps the A3 terms (the wider set would catch Indian companies such as "Asian Paints"), unless it
+       is an ETF ("ETF", "BeES"), which takes the fund test. */
+    var _intlA3=/(\binternat|\bglobal|\bus\b|\bu\.s\.|\bnasdaq|\bs&p|\boverseas|\bworld|\bchina|\btaiwan|\bjapan)/i,
+        _intlFund=/(\binternat|\bintl\b|\bglobal|\bus\b|\bu\.s\.|\bnasdaq|\bnyse\b|\bs&p|\boverseas|\boff-?shore\b|\bworld|\bchina|\btaiwan|\bjapan|\basia|\basean\b|\bbrazil|\blatin america|\beurop|\bhang seng|\bfang\b|\beafe\b|\bemerging markets?\b)/i,
+        _intlNot=/(\bfirst global\b|\bsmc global\b|\bindia domestic\b|\bs&p bse\b|\bmagnum global\b)/i,
+        _intlEtf=/(\betf\b|bees\b)/i;
+    var intlCMV=0; rows.forEach(function(h){ var _n=h.name||""; if(((h.directEquity&&!_intlEtf.test(_n))?_intlA3.test(_n):(_intlFund.test(_n)&&!_intlNot.test(_n)))||/global|international/i.test(h.category||"")) intlCMV+=h.cmvCr; });
     var intlPct = totalCMV? intlCMV/totalCMV*100 : 0;
     var altCMV=0; rows.forEach(function(h){ if(h.perfSrc==="PMS"||h.perfSrc==="AIF") altCMV+=h.cmvCr; });
     var altPct = totalCMV? altCMV/totalCMV*100 : 0;

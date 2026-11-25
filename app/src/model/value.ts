@@ -12,6 +12,12 @@ import type { MissingStatus } from './status.ts';
 export type Unit = 'cr' | 'pct' | 'pp' | 'bp' | 'count' | 'ratio' | 'years' | 'days' | 'units' | 'date' | 'label';
 
 /**
+ * The unit a money column of a source file is written in (Crore, Lakh or rupees). Declared here since decision C-01,
+ * so that model types never import from engine/; engine/units.ts re-exports it.
+ */
+export type MoneyUnit = 'crore' | 'lakh' | 'rupee';
+
+/**
  * A calendar date as a whole number of days since 1970-01-01 (day 0). Time-zone free: it is converted from the
  * raw Excel serial by one function (engine/dates.ts), never through a local-time Date.
  */

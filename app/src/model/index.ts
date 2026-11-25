@@ -5,7 +5,7 @@ export const MODEL_SCHEMA_VERSION = 1;
 
 export { STATUS, MISSING_STATUSES } from './status.ts';
 export type { MissingStatus, StatusKey } from './status.ts';
-export type { DayNumber, MissingValue, PresentValue, Provenance, Unit, Value } from './value.ts';
+export type { DayNumber, MissingValue, MoneyUnit, PresentValue, Provenance, Unit, Value } from './value.ts';
 export type {
   AccountId, ClientId, DistributorId, FamilyId, FolioId, HoldingId, Id, InstrumentRef, ProductClass,
   ResolutionConfidence, ResolutionMethod, SourceFileId,
@@ -28,3 +28,18 @@ export type {
   HoldingMetrics, LiquidityAllocation, LoadedBaseFile, LoadError, Review, ReviewGate, ReviewLabels, ReviewRequest, Totals,
   TotalsCounts,
 } from './review.ts';
+export type {
+  BaseField, BaseFileCounts, BaseFileImport, ColumnUse, MoneyField, MoneyFinding,
+} from './base-file.ts';
+export type { Scope, ScopeBasis, ScopeKey, ScopeKind } from './scope.ts';
+export type {
+  FlowDateForm, FlowSide, IrrColumnUse, IrrField, IrrFileCounts, IrrFileImport, IrrSheetRead, IrrSkippedRow,
+  IrrSkipReason, Transaction, TransactionDirection, TransactionKind,
+} from './transactions.ts';
+export type {
+  CashFlow, ContributionRow, Contributions, IrrLevel, IrrNode, IrrReconciliation, ReturnsCoverage, ReturnsSource,
+  ReturnTenor, ScopeReturns, UnassignedFlows, WeightedReturn, XirrGap, XirrResult,
+} from './returns.ts';
+export type {
+  IndexColumnUse, IndexField, IndexId, IndexPoint, IndexSeries, IndexSeriesImport, IndexSkippedRow, IndexSkipReason,
+} from './index-series.ts';
