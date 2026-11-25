@@ -51,7 +51,7 @@ export type XirrUnitChoice = 'percent' | 'fraction';
  */
 export type AnalystQuestion = {
   id: string;
-  kind: 'xirr-unit';
+  kind: 'xirr-unit' | 'capital-gains-repeats';
   /** The holding field the column feeds. */
   field: 'xirr' | 'bmXirr';
   sheet: string;

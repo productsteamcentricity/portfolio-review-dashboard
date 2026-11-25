@@ -57,6 +57,26 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `tests/parity/contributions.parity.test.ts` against the legacy contribLag. The IRR parity ledger waits for a real
   export (TA-03, KI-186).
 
+### Added (new build, M7a: the capital-gains statement reader and the blank template; not wired into the page yet)
+- **`app/src/ingest/capital-gains.ts`** (E-150, D-036, design `docs/new-build/capital-gains-upload.md` §2 to §4, §6, §7,
+  §11): the wealth platform's capital-gains export read as produced. Columns are found by header name in any order, and
+  extra columns are listed. The instrument tag gives scheme, folio and asset, and the Account Name is split. Lot rows are
+  told from the totals row; excluded lots and the footer text are never kept. Each lot gets its row checks, and the
+  statement's totals are reconciled.
+- **PAN removed at read time** (E-151, reader half): PAN tags and PAN-shaped tokens are removed from every text cell and
+  sheet name before anything is kept. Only the counts are recorded.
+- **Repeated lot rows** (E-153, reader half): found and reported by sale event and year, with the analyst's answer per
+  event ("as stated", "once", "apply to all"); a year without an answer is INSUFFICIENT EVIDENCE.
+- **Blank and unreadable cells** (MOD-04's R1, design §11): a blank required cell is reported per column, never read as
+  0. A plain number in Sale Date is not a date. Review clients that differ only in letter case stay apart (D-039).
+- **`app/src/exports/xlsx/cg-template.ts`** (E-156, design §12): the blank template with the export's 29 headers in
+  order, date, money and unit formats as column defaults, a frozen header and a Read Me (how to enter a merger and a
+  loss). It loads back through the reader without loss. The workbook writer gains an optional column-default style;
+  the M1.4 workbooks are byte-identical (pinned by a test).
+- Lot classes, the tax rules and the tax engine (E-152, E-154, E-155) stay owner-gated (PD-16, LP-01).
+- **Tests:** `tests/unit/ingest/capital-gains.test.ts`, `tests/exports/xlsx/cg-template.test.ts` and
+  `tests/exports/xlsx/column-default-style.test.ts`, on synthetic statements only (`tests/fixtures/make-cg-statements.ts`).
+
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
   funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.
