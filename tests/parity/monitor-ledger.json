@@ -1,0 +1,23 @@
+{
+  "schema": "parity-ledger-v1",
+  "area": "mf-monitor",
+  "legacy": "E.parsers.parseMonitor of the parsers block of index.html (09_parsers.js:166-208), the browser upload's parser, run through tools/engine-host.js (tests/helpers/legacy-engine.ts)",
+  "new": "app/src/ingest/vendor/mf-monitor.ts parseMfMonitor: the runtime parse plus the monthly pipeline's corrections (buildtools/build_refresh.js buildMonitor), one parsing path with the refresh (OD-11, D-021)",
+  "test": "tests/parity/monitor.parity.test.ts",
+  "basis": {
+    "main": "0e483b620078c95d7aad0ba41b86b249639065e5",
+    "monitorSliceSha256": "293cf5e73576f9cf9d34729a5efdeb5720bd81535a225e6648615050eace2b6e",
+    "monitorSlice": "the parsers block from `function findHeader` to the PMS and AIF performance section (tests/helpers/legacy-engine.ts monitorParserSlice)"
+  },
+  "notes": [
+    "The embedded MF_PERF and MF_PERF_DIRECT come from the pipeline, not from the browser's parser, so the new reader follows the pipeline: every difference from the browser's parser below is a pipeline correction. On the October 2026 monitors (read locally, never committed) the new reader equals data/refdata MF_PERF (2,144 schemes), MF_PERF_DIRECT (1,775) and BENCH_RET (108) with no differing record.",
+    "Coupling with CHAT-007 (M2 plan v2, section 1): while the SHA-256 of the parsers block's MF Monitor slice differs from basis.monitorSliceSha256, differences are reported, not failed, until NB-02 ports the change. A CHAT-007 pull request is never asked to edit this file."
+  ],
+  "entries": [
+    { "id": "MM-01", "field": "aum", "class": "correction", "reference": "OD-11 KI-026", "description": "The pipeline takes the AUM from an \"AUM (Cr.)\" column found on the header row or a label row above it, where the browser's parser found no AUM column or another one." },
+    { "id": "MM-02", "field": "mcap", "class": "correction", "reference": "OD-11", "description": "The pipeline attaches the market-cap shares of the header row to every scheme of the sheet (empty when the sheet has none); the browser's parser only to equity and hybrid sheets." },
+    { "id": "MM-03", "field": "debt", "class": "correction", "reference": "OD-11", "description": "The pipeline rounds YTM, average maturity and modified duration to 4 places and drops the debt block when all three are empty." },
+    { "id": "MM-04", "field": "sheet", "class": "correction", "reference": "OD-11 KI-076", "description": "A Direct issue's unnamed sheet (Sheet43, Others, Sheet 44 ...) takes the Regular sibling's category, else its sheet-mates' majority; also changes type." },
+    { "id": "MM-05", "field": "bm", "class": "correction", "reference": "OD-11", "description": "A row with no AUM, inception date, market-cap share or fund word is marked as benchmark-like (bm)." }
+  ]
+}
