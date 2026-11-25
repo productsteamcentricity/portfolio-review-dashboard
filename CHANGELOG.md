@@ -4,6 +4,17 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M11a monthly update engine core; the legacy refresh pipeline is unchanged)
+- **`scripts/monthly-update/`** reads a month's files from the private inbox and `monthly_updates/YYYY-MM/`, classifies
+  each by content, then structure, then name (client material detected first and quarantined, never copied; a name and
+  content that disagree stop the file), fingerprints them (SHA-256 + role + key + month), stops a role on competing
+  files or a stale copy of an earlier month, reports files whose as-on belongs to another month, validates the MF
+  Screener data pack with the app's own reader and records only its fingerprint, contract version, cycle and counts
+  (D-026), and writes `MANIFEST.json` and `UPDATE_REPORT.md` atomically. Dry run by default; a repeat run changes no byte
+  (AC-24). Office files are read as zip and XML only. Checked privately on the real October inbox (dry run).
+- Tests on synthetic files built at run time (`tests/fixtures/make-monthly-files.ts`): `unit/monthly-update/{classify,
+  ledger,zip}`, `integration/monthly-update` (46 cases; AC-12, AC-21 pack in a tracked folder, AC-24).
+
 ### Added (new build, M10 Screener data pack: reader and browser store; not wired into the page yet)
 - **`app/src/ingest/screener-pack/`** reads an MF Screener data pack (contract `pr-datapack-v1`, D-026): the zip's central
   directory is checked against archive limits before anything is inflated (path traversal, entry count, nesting,
