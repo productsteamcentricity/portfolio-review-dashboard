@@ -117,6 +117,27 @@ export function monitorParserSlice(): { sha256: string } {
   throw new Error('parsers block not found in index.html');
 }
 
+/** The SHA-256 of the parsers block's analytics slice (from `var CASH` to the MF Monitor section): the coupling basis
+ * of the analytics parity test. */
+export function analyticsParserSlice(): { sha256: string } {
+  const text = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8');
+  const re = /<script([^>]*)>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const end = text.indexOf('</script>', m.index);
+    if (end < 0) break;
+    const body = text.slice(m.index + m[0].length, end);
+    if (/RUNTIME REFERENCE PARSERS/.test(body.slice(0, 900))) {
+      const a = body.indexOf('var CASH');
+      const b = body.indexOf('/* ---- MF Monitor performance');
+      if (a < 0 || b <= a) throw new Error('analytics slice not found in the parsers block');
+      return { sha256: crypto.createHash('sha256').update(body.slice(a, b), 'utf8').digest('hex') };
+    }
+    re.lastIndex = end;
+  }
+  throw new Error('parsers block not found in index.html');
+}
+
 /** ALIASES (pins and blocks) and EXACT_ONLY (the literal and every later `EXACT_ONLY["..."] = 1`) of the engine block. */
 export function parseLegacyNameLists(block: string): LegacyNameLists {
   const pins: Array<{ key: string; target: string }> = [];

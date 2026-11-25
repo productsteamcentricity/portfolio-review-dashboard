@@ -23,6 +23,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **The PMS performance file (E-08, KI-033):** read by header name as the monthly pipeline reads it (returns as stated,
   never multiplied by 100; AUM from rupees to whole crore; duplicates by the normalised key; a missing column refuses the
   file). The monthly merge into the previous block stays with M11.
+- **The portfolio analytics files (E-10, E-11):** the Equity, Debt and Hybrid Analytics read by header name instead of
+  column position (the file repeats "Holding(%)" for the previous month; the first is read), with the legacy rules and the
+  pipeline's tidy step: cash in the total only, issuers collapsed to their entity, ratings by label then basket, the issuer
+  list cut to the top 30. Equal to the legacy positional parsers on synthetic files and 18 issuer spellings.
 - **Tests:** `tests/unit/ingest/vendor/mf-monitor.test.ts` on synthetic issues; `tests/parity/monitor.parity.test.ts`
   against the browser's legacy parser, every difference a ledgered pipeline correction.
 
