@@ -71,6 +71,9 @@ describe('statuses', () => {
     assert.equal(e.storage, 'private');
     assert.equal(e.target, null);
     assert.match(e.issues[0]!, /commit its PDF/);
+    assert.equal(e.originalName, 'big.pptx');
+    // a withheld (client-like) name never reaches a manifest entry, even if such a file were recorded (Gate B B1)
+    assert.equal(entryOf({ ...r.files[0]!, nameWithheld: true })!.originalName, undefined);
   });
 
   test('client material is quarantined; a mismatch stops; unknown is unknown', () => {
