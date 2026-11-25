@@ -1279,6 +1279,25 @@ moved the bond test first, added the offshore share and question 27; its notes a
   is not "X"); the CR-0008 and D-043 references in noSetOffSource are reference data the page does not show.
 - T4 and T5 (information) are unchanged.
 
+## The owner's sign-off and the merge of main (25 Nov 2026)
+- **Sign-off (~19:30 IST, relayed by MOD-04; recorded in D-043):**
+  - PD-01: the D-040 defaults (a) to (h) are accepted.
+  - PD-04 and PD-44: "Accept all". This covers the built defaults for questions 2 to 11, 13 to 16, 19 and 20, and the
+    other defaults settled while building (24 items in MOD-04's summary for the owner, including stage S12's foreign
+    bonds and offshore shares).
+  - PD-54: the word-for-word key of stage S12 (T2) is within the 9 Nov answer.
+  - Bonds: no tax figure, with the reason shown, for bonds under the owner's US-dollar / LRS label. This is acceptable
+    for now.
+  - For the tax adviser: questions 2, 3, 13, 14, 15 and 27.
+  - Publish: "Publish when green".
+  - Questions 23, 25 and 26 were not part of this sign-off and stay as listed below.
+- **Merge of main 9c43e4f** (LP-16, CR-0010 A5, M2.3a, M3a and M7a), no rebase:
+  - `index.html` is rebuilt by D-016 from main's live page `5B6776E8…` plus every patch in file-name order:
+    `08CAC338E0F4468FDC82D032DACA7B5D` (16,408,172 B), the combined page ARC-02 confirmed for TA-03, LP-16 and A5.
+  - CHANGELOG keeps both sides. data/refdata matches (22 files).
+  - TA03-tax-6, KI-182 (both), KI-162, LP16 and CR0010 A3/A4/A5 pass on it.
+  - LP-16 does not reach the tax classes (the classifier does not read directEquity; ARC-02, 25 Nov).
+
 ## Questions for the owner and the tax adviser
 1. Confirm the D-040 defaults (a) to (h).
 2. ELSS: is a lot redeemable on the third anniversary of its purchase or from the next day (built: the next day)?

@@ -1190,3 +1190,15 @@ more: the Category III entry through the classifier and through the real matcher
 Category II and Category III Long Short). The new build ports the same four steps, with the same name equality ("AIF"
 and brackets ignored) for step 2 and for step 3 as restricted, when it ports AIF treatment (M7). D-042 is reserved for
 fix batch 5.
+**The owner's sign-off of the tax batch, 25 Nov 2026 (~19:30 IST; relayed by MOD-04).**
+- PD-01: the eight defaults of D-040, (a) to (h), are accepted as built.
+- PD-04 and PD-44: "Accept all". This covers the built defaults for CR-0008 questions 2 to 11, 13 to 16, 19 and 20 and
+  the other defaults settled while building. MOD-04 summarised them for the owner as 24 items, the last two being stage
+  S12's foreign bonds and offshore shares.
+- PD-54: stage S12's word-for-word key for the name equality (letter case, punctuation, brackets and the word "AIF"
+  ignored; no word dropped, replaced or de-duplicated) is within the 9 Nov answer "Restrict it".
+- Bonds: no tax figure for a bond whose Product or Category names a US-dollar or LRS route is acceptable for now. Under
+  the owner's LP-16 label that is every bond, NCD and debenture, each shown with its reason.
+- For the tax adviser: questions 2, 3, 13, 14, 15 and 27.
+- Publish: "Publish when green".
+- Questions 23, 25 and 26 were not part of this sign-off and stay as recorded in CR-0008.

@@ -47,6 +47,12 @@
   request. The batch merges as one pull request after the gate reviews and the browser acceptance (with
   `family-isolation.js`'s assumption-reset check); the slide geometry for a table of 13 or more classes in PowerPoint
   has not been run.
+  **25 Nov 2026:**
+  - Stage S12 (ARC-02's Gate B points T1 to T3, foreign bonds and offshore shares; ARC-02 GO on 153ccb2) is done.
+  - The owner signed off the batch: PD-01, PD-04, PD-44 and PD-54 accepted; "Publish when green". The tax-adviser
+    questions are 2, 3, 13, 14, 15 and 27 (D-043, CR-0008).
+  - The branch took main 9c43e4f, with LP-16 and A5 live: `index.html` MD5 `08CAC338E0F4468FDC82D032DACA7B5D`.
+  - MOD-04 publishes on a green Step 8 and ARC-02's delta GO.
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
   - **Phase 0 is done.** The record is in [`new-build/`](new-build/README.md) (audit, capability inventory,
     architecture, reuse plan, parity matrix, data sources, roadmap, test plan, repository structure, rule bank, deck
