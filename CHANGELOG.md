@@ -14,7 +14,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   (D-026), and writes `MANIFEST.json` and `UPDATE_REPORT.md` atomically. Dry run by default; a repeat run changes no byte
   (AC-24). Office files are read as zip and XML only. Checked privately on the real October inbox (dry run).
 - Tests on synthetic files built at run time (`tests/fixtures/make-monthly-files.ts`): `unit/monthly-update/{classify,
-  ledger,zip,report}`, `integration/monthly-update` (52 cases; AC-12, AC-21 pack in a tracked folder, AC-24).
+  ledger,zip,report}`, `integration/monthly-update` (53 cases; AC-12, AC-21 pack in a tracked folder, AC-24).
 
 ### Added (new build, M10 Screener data pack: reader and browser store; not wired into the page yet)
 - **`app/src/ingest/screener-pack/`** reads an MF Screener data pack (contract `pr-datapack-v1`, D-026): the zip's central
@@ -70,11 +70,40 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   legacy uses (0 differences on the same candidates; in the shipped order only score ties, ledgered as KI-036); unit
   tests in `tests/unit/match/`; the CR-0010 A2, KI-061, OD-32 and OD-34 known answers in `tests/regression/`.
 
+### Added (new build, M3a: the returns core; not wired into the page yet, `/next/` and `/` unchanged)
+- **`app/src/engine/returns/xirr.ts`** (E-26): the legacy XIRR solver ported exactly, on whole days (KI-047: flows on one
+  day have no rate). Equal to the shipped solver on 500 seeded random flow sets.
+- **`app/src/ingest/irr-file.ts`** (E-05, E-142): the IRR file's fund and benchmark sheets read by header name, with the
+  DISTRIBUTOR column, row kinds (OD-16), skipped rows with their reason, and repeated folios warned (OD-4).
+- **`app/src/engine/returns/irr-tree.ts`** (E-27, E-28): the legacy IRR tree, clients by id; the benchmark joined by
+  client and normalised instrument name, and instruments grouped on the same key.
+- **`app/src/engine/returns/contributions.ts`** (E-29): contributors, laggards and drags as the legacy contribLag, with
+  one correction: no line is called a contributor when every line is negative.
+- **`app/src/engine/returns/scope.ts` and `app/src/engine/scope.ts`** (E-142, I-45): returns per family, client and
+  advisor scope. A scope takes whole instruments, so its fund and benchmark XIRRs cover the same money; an advisor
+  scope holding an instrument split between distributors is not reconciled until a rule shares it (Gate B of
+  1bbca77). Clients with flows and no holding, redeemed instruments and invalid benchmarks are listed (OD-4); the
+  unassigned line shows its share of the money paid in (D15). The reconcile tolerance (D13) is still to be set.
+- **Tests:** unit tests for each module, `tests/regression/ki-047-xirr-same-day.test.ts`, and
+  `tests/parity/contributions.parity.test.ts` against the legacy contribLag. The IRR parity ledger waits for a real
+  export (TA-03, KI-186).
+
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
   funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.
   Over 4,741 fund names: 278 → 117 (163 domestic names out, 2 genuine in, none genuine out). Patch
   `tools/patches/2026-11-22-intl-word-boundary.js`; test `tools/regression/CR0010-a3-intl-word-boundary.js`.
+
+### Fixed (CR-0010 A5; not published until the owner says "publish")
+- **The SWOT's international share no longer counts Indian companies held directly because their names say
+  "International", "Global", "Overseas" or "World", and counts two overseas funds of funds on evidence.** A share whose
+  STOCK_RET entry has an Indian company ISIN (INE..., IN9...) is domestic: over 10,439 company names held as direct
+  equity, 360 → 63 (297 Indian companies out, none in; the overseas ETFs with INF ISINs stay). Baroda BNP Paribas Aqua
+  FoF and ICICI Pru Strategic Metal and Energy Equity FoF (Regular, Direct) count: the vendor's Other Funds file shows
+  97.59% and 99.42% overseas fund units; over 4,741 fund names 139 → 143. `index.html` MD5 `49207832…` → `2883FE7464AAC583AF6BBE2A41476300`
+  on the branch; with LP-16 on main, `B7CA316F…` → `5B6776E8AFE2EFE94CF4DE93FA7C4D5A`.
+  Patch `tools/patches/2026-11-25-a5-isin-domestic.js`; test `tools/regression/CR0010-a5-isin-domestic.js`.
+  [CR-0010](docs/change-requests/CR-0010-other-funds-october.md).
 
 ### Fixed (CR-0010 A4; not published until the owner says "publish")
 - **The SWOT's international share counts the overseas funds it missed** ("Intl.", Asian, Asia Pacific, ASEAN, Brazil,
