@@ -3,8 +3,10 @@
 // Money is held in Crore, unrounded. A base file states its unit in the column label (Cr., Lakh, or rupees);
 // display uses the file's unit through one formatter (views/), which is not this module's job.
 
-/** The unit a money column is written in. */
-export type MoneyUnit = 'crore' | 'lakh' | 'rupee';
+import type { MoneyUnit } from '../model/value.ts';
+
+/** The unit a money column is written in: declared in model/value.ts since decision C-01, re-exported here. */
+export type { MoneyUnit } from '../model/value.ts';
 
 /** Rupees in one unit: 1 Crore = 100 Lakh = 1,00,00,000 rupees. */
 export const RUPEES_PER: Readonly<Record<MoneyUnit, number>> = { crore: 1e7, lakh: 1e5, rupee: 1 };
