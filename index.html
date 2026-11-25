@@ -2209,7 +2209,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     /* ---- PERFORMANCE (buckets present) ---- */
     // bucket inference
     function bucketOf(h){
-      if (h.directEquity) return "Direct Equity";
+      if (h.directEquity||h.heldShare) return "Direct Equity";   /* LP-16: an unlisted share is not an equity fund */
       if (h.perfSrc==="PMS") return "PMS";
       if (h.perfSrc==="AIF") return "AIF";
       if (h.perfSrc==="SIF") return "SIF";
@@ -11418,7 +11418,7 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
       var isUnlisted=/unlisted|pre.?ipo/i.test(cat)||/unlisted|pre.?ipo/i.test(prod);
       if(isUnlisted){
         unlistedCMV+=h.cmvCr||0;
-        if(h.directEquity||/direct/i.test(prod)) dirUnlistedCMV+=h.cmvCr||0;
+        if(h.directEquity||h.heldShare||/direct/i.test(prod)) dirUnlistedCMV+=h.cmvCr||0;
         else fundUnlistedCMV+=h.cmvCr||0;
       } else {
         listedCMV+=h.cmvCr||0;

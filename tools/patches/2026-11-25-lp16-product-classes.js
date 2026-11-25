@@ -42,8 +42,10 @@
        (a "GIFT City AIF" or "Offshore PMS" takes no domestic AIF's or PMS's
        returns: the financial review of LP-16);
      - is never read as a listed stock (an "Unlisted shares", "Offshore Equity
-       Shares" or "GIFT City Stocks" product); a share held directly keeps its
-       zero fund fee on the Cost tab (h.heldShare), as before LP-16;
+       Shares" or "GIFT City Stocks" product); a share held directly (h.heldShare,
+       the old direct-equity test) keeps what it had before LP-16: its zero fund
+       fee on the Cost tab, the Direct Equity performance bucket and the IPS
+       "Direct Unlisted investment" line;
      - is not reported as "could not be matched to reference data": there is no
        reference data for these types by design, and the look-through box lists
        each with its class and reason.
@@ -129,6 +131,16 @@ applyPatch('LP-16 KI-051 non-MF product classes', [
     label: 'Cost tab: a share held directly, listed or not, still has no fund fee',
     from: 'directEq:!!h.directEquity,commodity:!!h.commodity};',
     to: 'directEq:!!(h.directEquity||h.heldShare),commodity:!!h.commodity};'
+  },
+  {
+    label: 'Performance: a share held directly, listed or not, stays in the Direct Equity bucket, not "Equity MF" (FR of round 3)',
+    from: '      if (h.directEquity) return "Direct Equity";\n',
+    to: '      if (h.directEquity||h.heldShare) return "Direct Equity";   /* LP-16: an unlisted share is not an equity fund */\n'
+  },
+  {
+    label: 'IPS: an unlisted share held directly is "Direct Unlisted investment", not "through funds" (FR of round 3)',
+    from: 'if(h.directEquity||/direct/i.test(prod)) dirUnlistedCMV+=h.cmvCr||0;',
+    to: 'if(h.directEquity||h.heldShare||/direct/i.test(prod)) dirUnlistedCMV+=h.cmvCr||0;'
   },
   {
     label: 'engine: a non-MF class is never matched for performance (tested before PMS / AIF / SIF)',

@@ -39,7 +39,9 @@
         MOD-04, 25 Nov 2026): "US-dollar bonds (through LRS)" is its own class
         (not a listed stock, no fund's data); "Unlisted shares" is not direct
         equity but is still a share held directly (heldShare), so the Cost tab
-        keeps its zero fund fee as before LP-16.
+        keeps its zero fund fee, the performance sheet its Direct Equity
+        bucket and the IPS sheet its "Direct Unlisted investment" line, as
+        before LP-16 (the financial review of round 3).
    The owner's answer of 25 Nov 2026 (through MOD-04) to the review's bond
    question: "No, keep as recorded". Every bond, NCD and debenture, rupee 54EC,
    tax-free, RBI and corporate NCDs included, takes the label "US-dollar bonds
@@ -140,7 +142,14 @@ ok(RULES.filter(r => r.beforePmsAifSif).map(r => r.label).join('|') === 'GIFT Ci
   ok(l.directEquity === true && l.heldShare === true, '9. control: a listed share is direct equity and held directly');
   const html = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'index.html'), 'utf8');
   ok(html.split('directEq:!!(h.directEquity||h.heldShare)').length === 3 && html.indexOf('directEq:!!h.directEquity') < 0,
-    '9. the Cost tab and its fallback read heldShare, so an unlisted share keeps its zero fund fee'); }
+    '9. the Cost tab and its fallback read heldShare, so an unlisted share keeps its zero fund fee');
+  /* the financial review of round 3: an unlisted share stays in the Direct Equity performance bucket (not "Equity MF")
+     and counts as "Direct Unlisted investment" on the IPS sheet, as before LP-16 */
+  const pb = run('Unlisted shares', 'Synthetic Unlisted Co Pvt Ltd').m.performance.buckets || [],
+    inB = k => JSON.stringify((pb.find(b => b.key === k || b.label === k || b.name === k) || {})).indexOf('Synthetic Unlisted Co Pvt Ltd') >= 0;
+  ok(inB('Direct Equity') && !inB('Equity MF'), '9. performance: an unlisted share is in the Direct Equity bucket, not Equity MF');
+  ok(html.indexOf('if(h.directEquity||h.heldShare||/direct/i.test(prod)) dirUnlistedCMV') >= 0,
+    '9. IPS: an unlisted share held directly counts as Direct Unlisted investment (heldShare)'); }
 
 if (fail) { console.log('\n' + fail + ' check(s) FAILED'); process.exit(1); }
 console.log('\nall checks passed');
