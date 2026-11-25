@@ -85,9 +85,45 @@ the header) holds 344 schemes. On the live page (D-028: data, calculation and se
       Brazil, ABSL Latin America, Edelweiss ASEAN / Europe / Emerging Markets Off-shore, Templeton European Opportunities,
       Invesco Pan European, the Hang Seng ETFs and FoF, NYSE FANG+, MSCI EAFE, PGIM Emerging Markets, Mahindra Asia Pacific
       REITs (a holding whose base-file category says Global or International is still counted by the category test);
-    - domestic names it still catches: "First Global ..." (two PMS strategies), "SMC Global ...", and "Edelweiss MSCI India
-      Domestic & World Healthcare 45" (Indian-listed companies);
+    - names it counts as wholly overseas that are not: "First Global ..." (two PMS strategies) and "SMC Global ..."
+      (domestic), and "Edelweiss MSCI India Domestic & World Healthcare 45" (about two thirds Indian; see A4);
     - debt funds of funds investing in US Treasuries count in the "International / Global equity" share.
+  - The first two limits are closed by A4 for the funds in the data; the third stays.
+- **A4** (24 Nov 2026; the moderator under PD-65: an accuracy fix inside the owner-approved A3 change; branch
+  `fix/cr0010-a4-intl-terms` from `main` `0e483b6`): patch `tools/patches/2026-11-24-intl-terms.js`; test
+  `tools/regression/CR0010-a4-intl-terms.js`; the A3 test's page-pattern check follows the new form.
+  - For a fund (any holding that is not direct equity) the name test also takes intl, nyse, off-shore / offshore, asia(n),
+    asean, brazil, latin america, europ(e/ean), hang seng, fang, eafe and emerging market(s), and ignores "first global",
+    "smc global", "india domestic", "s&p bse" and "magnum global" ("s&p bse" and "magnum global" match nothing today: old
+    base-file spellings of Indian funds). A direct-equity holding keeps exactly A3's test, except an ETF held as a share
+    (a name with "ETF" or "BeES"), which takes the fund test (the financial review of A4). The category test is unchanged.
+  - Measured over the same 4,741 fund names: A3 117, A4 139. In (27): Aditya Birla SL Intl. Equity (Regular, Direct);
+    Edelweiss ASEAN Equity Off-Shore, Emerging Markets Opp Eq. Offshore and Europe Dynamic Equity Off-shore (each Regular,
+    Direct); Franklin Asian Equity (Regular, Direct); HSBC Brazil (Regular, Direct); the Hang Seng index; Invesco Pan European
+    Equity FoF (Regular, Direct); Mahindra Manulife Asia Pacific REITs FOF (Regular, Direct); Mirae Asset Hang Seng TECH ETF and
+    its FoF (Regular, Direct); Mirae Asset NYSE FANG+ ETF and its FoF (Regular, Direct); the NYSE index; Nippon India ETF Hang
+    Seng BeES; PGIM India Emerging Markets Equity FoF (Regular, Direct). Out (5): Edelweiss MSCI India Domestic & World
+    Healthcare 45 Index Fund (Regular, Direct), First Global - Indian Multi Asset Allocation, First Global - The India Super 50,
+    SMC Global - Growth. No genuine overseas name goes out; all 14 entries of the vendor's "Global" sheet count (4 did not).
+    Every remaining name with a telling word ("MSCI India", "Innovation", "Technology") is domestic.
+  - Direct equity: over the 10,439 company names of STOCK_INFO / STOCK_RET, 357 before and 360 after: the 3 in are the
+    overseas ETFs held as shares (Mirae Asset Hang Seng TECH ETF, Mirae Asset NYSE FANG+ ETF, Nippon India ETF Hang Seng
+    BeES); none out. The fund terms on every share would have added 43 Indian companies ("Asian Paints", "Aban Offshore",
+    "Asian Granito", ...), so they are used only for ETFs.
+  - Known limits (findings for the moderator; not changed):
+    - "Edelweiss MSCI India Domestic & World Healthcare 45" is about two thirds Indian: its holdings data puts 32.5% in
+      foreign stocks (Eli Lilly, Johnson & Johnson, AbbVie, Merck, Novartis, ...). A3 counted it as 100% international, A4
+      as 0%, the nearer figure. Counting the true share from the holdings would be a new rule.
+    - Baroda BNP Paribas Aqua FoF and ICICI Pru Strategic Metal and Energy Equity FoF (Regular and Direct each) are likely
+      overseas funds of funds (their vendor market-cap split is 100% "Others") with no overseas word in their names; to be
+      confirmed from the factsheets, then named, before they count.
+    - Under A3, a directly held share whose company name contains "International", "Global", "Overseas" or "World"
+      counts as international. Most of the 357 are Indian companies (Bikaji Foods International, Allcargo Global, ...); a
+      few are foreign shares (American International Group, Apollo Global Management). A share matched to a STOCK_RET entry
+      with an Indian ISIN is domestic, which a rule could use, reading the whole "IN" prefix: of STOCK_RET's 290 A3 hits, 285
+      carry INE (companies) and the other 5 are still Indian (two Nasdaq ETFs with INF ISINs, three partly-paid issues with
+      IN9 ISINs). The reverse does not hold: a share with no STOCK_RET entry is not thereby foreign; and the engine reads no
+      ISIN from the base file. A new rule, for the moderator and the owner to decide.
 
 ## Verification
 
