@@ -154,6 +154,10 @@
    family, client and advisor scope), is on `feat/m3a-returns-core`, not wired into the page yet. Open before it reaches
    the page: the reconcile tolerance (D13), how an instrument split between distributors is shared, and the owner
    questions in its Gate A report. The IRR parity ledger waits for a real export (TA-03, KI-186).
+
+   **Claude: M7a**, the capital-gains statement reader (PAN removed at read time, repeated lots reported, blank cells
+   reported) and the blank template, is on `feat/m7a-cg-reader` (PR #35), not wired into the page yet. Lot classes,
+   the tax rules and the tax engine stay owner-gated (PD-16, LP-01).
 6. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;

@@ -100,7 +100,8 @@ function sheetXml(s: SheetSpec, index: number, styles: StyleTable, formulas: Map
   parts.push(`<sheetFormatPr defaultRowHeight="${DEFAULT_ROW_HEIGHT}"/>`);
   parts.push(`<cols>${s.columns.map((c, i) => {
     if (!(c.width > 0 && c.width <= 255)) throw new Error(`workbook: bad width on "${s.name}" ${c.header}`);
-    return `<col min="${i + 1}" max="${i + 1}" width="${numberText(c.width)}" customWidth="1"/>`;
+    const style = c.defaultStyle ? ` style="${styles.id(c.defaultStyle)}"` : '';
+    return `<col min="${i + 1}" max="${i + 1}" width="${numberText(c.width)}"${style} customWidth="1"/>`;
   }).join('')}</cols>`);
 
   const rows: string[] = [];
