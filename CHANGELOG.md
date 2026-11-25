@@ -4,6 +4,21 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M10 Screener data pack: reader and browser store; not wired into the page yet)
+- **`app/src/ingest/screener-pack/`** reads an MF Screener data pack (contract `pr-datapack-v1`, D-026): the zip's central
+  directory is checked against archive limits before anything is inflated (path traversal, entry count, nesting,
+  encryption, declared sizes and ratio); then the manifest (contract version, cycle, every entry listed, required files),
+  each file's size, SHA-256, header cycle and record count, and a schema per file, including the contract's unit suffixes
+  on every field. A refused pack gets one reason naming the file. Extensions seen in real packs (extra fields,
+  off-contract status codes, the `equity_sleeve` basis, a provisional pack) are accepted with warnings. The backfill pack
+  is read with its month-ends and earlier cycles. The vendored JSZip is passed in; no new library.
+- **`app/src/services/screener-store.ts`** keeps an accepted pack in IndexedDB (`prd.next.v1.screener`): a newer cycle
+  replaces it as a whole, an older one is refused, the same SHA-256 is a no-op, month-end holdings of replaced packs and
+  the backfill stay as history (newest cycle wins per month-end), every read is SHA-256 checked, a quota error keeps
+  nothing. No score, rank or pack figure is written outside the pack's own files; nothing leaves the browser.
+- Tests on synthetic packs only (`tests/fixtures/make-screener-pack.ts`): `unit/ingest/screener-pack`,
+  `unit/ingest/screener-pack-zip`, `unit/services/screener-store`, `integration/screener-pack-reimport` (82 cases).
+
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
   funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.
