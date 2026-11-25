@@ -24,6 +24,10 @@
      Fixed deposits                  fixed deposit(s), fd(s)        fund words -
      REITs and InvITs                reit(s), invit(s)              fund words -
      Unlisted shares                 unlisted                       fund words -
+   The owner's answer of 25 Nov 2026 (through MOD-04): "No, keep as recorded":
+   every bond, NCD and debenture, rupee 54EC, tax-free, RBI and corporate NCDs
+   included, takes the label "US-dollar bonds (through LRS)". The tax class is
+   not read from these labels: the Taxation tab keeps its own rules (TA-03).
    Fund words (OD-6: a product that also says ETF, MF or fund stays a mutual
    fund): etf(s), mf(s), mutual fund(s), fund(s), fof(s). So "Corporate Bond
    Fund", "Bharat Bond ETF", "REIT FoF" stay mutual funds. Sovereign gold bonds
@@ -38,7 +42,8 @@
        (a "GIFT City AIF" or "Offshore PMS" takes no domestic AIF's or PMS's
        returns: the financial review of LP-16);
      - is never read as a listed stock (an "Unlisted shares", "Offshore Equity
-       Shares" or "GIFT City Stocks" product);
+       Shares" or "GIFT City Stocks" product); a share held directly keeps its
+       zero fund fee on the Cost tab (h.heldShare), as before LP-16;
      - is not reported as "could not be matched to reference data": there is no
        reference data for these types by design, and the look-through box lists
        each with its class and reason.
@@ -113,7 +118,17 @@ applyPatch('LP-16 KI-051 non-MF product classes', [
   {
     label: 'engine: a non-MF product is never read as a listed stock',
     from: '      h.directEquity = isDirectEquity(h);\n',
-    to: '      h.directEquity = isDirectEquity(h) && !nonMfClass(h.product);   /* LP-16: "Unlisted shares", "Offshore Equity Shares" */\n'
+    to: '      h.heldShare = isDirectEquity(h); h.directEquity = h.heldShare && !nonMfClass(h.product);   /* LP-16: "Unlisted shares", "Offshore Equity Shares" are not listed stocks; heldShare keeps their zero fund fee */\n'
+  },
+  {
+    label: 'Cost (fallback): a share held directly, listed or not, still has no fund fee',
+    from: 'perfSrc:h.perfSrc||null,directEq:!!h.directEquity};',
+    to: 'perfSrc:h.perfSrc||null,directEq:!!(h.directEquity||h.heldShare)};'
+  },
+  {
+    label: 'Cost tab: a share held directly, listed or not, still has no fund fee',
+    from: 'directEq:!!h.directEquity,commodity:!!h.commodity};',
+    to: 'directEq:!!(h.directEquity||h.heldShare),commodity:!!h.commodity};'
   },
   {
     label: 'engine: a non-MF class is never matched for performance (tested before PMS / AIF / SIF)',

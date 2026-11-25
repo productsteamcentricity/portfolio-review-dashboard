@@ -1623,7 +1623,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       h.amcKey = amcKey(h.amc);                /* KI-061: the house, whatever the label */
       // Direct equity (individually-held listed stocks): classify into equity analytics by the
       // stock's own market-cap/sector; NEVER matched to a fund and NEVER shown in the performance sheet.
-      h.directEquity = isDirectEquity(h) && !nonMfClass(h.product);   /* LP-16: "Unlisted shares", "Offshore Equity Shares" */
+      h.heldShare = isDirectEquity(h); h.directEquity = h.heldShare && !nonMfClass(h.product);   /* LP-16: "Unlisted shares", "Offshore Equity Shares" are not listed stocks; heldShare keeps their zero fund fee */
       if (h.directEquity){
         h.eqKey=null; h.hyKey=null; h.dbKey=null; h.perfKey=null; h.perfSrc=null;
         h.stockInfo = SI[normCo(h.name)] || null;
@@ -4261,7 +4261,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         var hmap2={};
         (model.holdings||[]).forEach(function(h){
           var k=(h.name||'').trim(); if(!k) return;
-          if(!hmap2[k]) hmap2[k]={cmv:0,cat:h.category||'',perfKey:h.perfKey||null,perfSrc:h.perfSrc||null,directEq:!!h.directEquity};
+          if(!hmap2[k]) hmap2[k]={cmv:0,cat:h.category||'',perfKey:h.perfKey||null,perfSrc:h.perfSrc||null,directEq:!!(h.directEquity||h.heldShare)};
           hmap2[k].cmv+=(+h.cmvCr||0);
         });
         Object.keys(hmap2).forEach(function(k){
@@ -11764,7 +11764,7 @@ window.MF_ER_TABLE={"360 ONE Balanced Hybrid Fund(G)-Direct Plan":{"r":0.0045,"d
         var k=h.name;
         if(!sm[k]) sm[k]={name:k,cmv:0,cat:h.category||'',asset:h.asset||'',
           product:h.product||'',perfKey:h.perfKey||null,perfSrc:h.perfSrc||null,
-          directEq:!!h.directEquity,commodity:!!h.commodity};
+          directEq:!!(h.directEquity||h.heldShare),commodity:!!h.commodity};
         sm[k].cmv+=(+h.cmvCr||0);
       });
       var list=Object.keys(sm).map(function(k){

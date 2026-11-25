@@ -35,6 +35,15 @@
      8. The rules are data (REFDATA.PRODUCT_CLASS_RULES, contract I-40) in
         the owner's order, and with an empty table the engine classifies
         nothing as non-MF (it reads the data, not a copy).
+     9. The six labels come before the engine's bond and share tests (MOD-03,
+        MOD-04, 25 Nov 2026): "US-dollar bonds (through LRS)" is its own class
+        (not a listed stock, no fund's data); "Unlisted shares" is not direct
+        equity but is still a share held directly (heldShare), so the Cost tab
+        keeps its zero fund fee as before LP-16.
+   The owner's answer of 25 Nov 2026 (through MOD-04) to the review's bond
+   question: "No, keep as recorded". Every bond, NCD and debenture, rupee 54EC,
+   tax-free, RBI and corporate NCDs included, takes the label "US-dollar bonds
+   (through LRS)" (cases in 1 and 9).
      node tools/regression/LP16-KI051-product-classes.js
    ========================================================================== */
 'use strict';
@@ -118,6 +127,20 @@ ok(RULES.filter(r => r.beforePmsAifSif).map(r => r.label).join('|') === 'GIFT Ci
   const rows = E.parseBaseRows([H, ['Test Client', 'HDFC Flexi Cap Fund(G)', '', 'Equity', 'HDFC', 'FD', 1, 1]]);
   E.computeReview(rows, R2, { familyName: 'Test', asOnDate: '25 Nov 2026' });
   ok(rows[0].pcls === 'MF', '8. with an empty table the engine classifies nothing as non-MF (it reads the data, not a copy)'); }
+
+/* 9: the six labels are tested before the engine's bond|ncd|debenture and shares? rules */
+{ const USD = 'US-dollar bonds (through LRS)';
+  [['US-dollar bonds (through LRS)', 'Synthetic Corp 5.25% USD Bond 2030'], ['NCD', 'Tata Capital NCD 2027'], ['54EC Bonds', 'REC 54EC Bond 2029'],
+    ['Tax Free Bonds', 'NHAI Tax Free Bond 2031'], ['RBI Bonds', 'RBI Floating Rate Savings Bond 2031']].forEach(([p, n]) => {
+    const h = run(p, n).h;
+    ok(h.pcls === USD && !h.directEquity && !h.heldShare && !h.perfKey && !h.eqKey && !h.dbKey, '9. "' + p + '" (' + n + ') -> ' + USD + ' (got ' + h.pcls + ')');
+  });
+  const u = run('Unlisted shares', 'Swiggy Ltd').h, l = run('Equity Shares', 'HDFC Bank Ltd.').h;
+  ok(u.pcls === 'Unlisted shares' && !u.directEquity && u.heldShare === true, '9. "Unlisted shares": not direct equity, still a share held directly (zero fund fee)');
+  ok(l.directEquity === true && l.heldShare === true, '9. control: a listed share is direct equity and held directly');
+  const html = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'index.html'), 'utf8');
+  ok(html.split('directEq:!!(h.directEquity||h.heldShare)').length === 3 && html.indexOf('directEq:!!h.directEquity') < 0,
+    '9. the Cost tab and its fallback read heldShare, so an unlisted share keeps its zero fund fee'); }
 
 if (fail) { console.log('\n' + fail + ' check(s) FAILED'); process.exit(1); }
 console.log('\nall checks passed');

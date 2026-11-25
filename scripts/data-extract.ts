@@ -70,6 +70,7 @@ const SOURCE: Readonly<Record<string, { source: string; class: string }>> = {
   FUND_MGR: { source: 'DS-V10 Fund Manager history, Accord', class: 'P' },
   FUND_MGR_META: { source: 'DS-V10 Fund Manager history, Accord', class: 'P' },
   TAX_RULES: { source: 'DS-O1 Tax rules, Centricity owner table', class: 'P' },
+  PRODUCT_CLASS_RULES: { source: 'D-7 owner labels, Centricity owner table', class: 'P' },
   BENCHMARKS: { source: 'DS-O7 category to benchmark map, Centricity owner table', class: 'P' },
   MF_CAT_BM: { source: 'DS-O7 category to benchmark map, Centricity owner table (no consumer, KI-097)', class: 'P' },
   MF_BENCHMARKS: { source: 'unknown provenance: legacy benchmark risk rows that no tool produces (02 E-93, KI-026)', class: 'C until its source is confirmed (D-026: an unconfirmed source is private until approved; 02 E-93)' },

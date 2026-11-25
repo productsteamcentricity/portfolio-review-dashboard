@@ -21,7 +21,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   Product column without regard to letter case, by the rules in the new REFDATA key `PRODUCT_CLASS_RULES` (contract I-40; registered
   in `scripts/data-extract.ts` and `tools/check-invariants.js`; `data/refdata/PRODUCT_CLASS_RULES.json` generated). Such a holding
   no longer takes a mutual fund's, PMS's or AIF's look-through or returns, is never read as a listed stock, and is listed as
-  excluded with its class instead of as unmatched. A product that also says ETF, MF or
+  excluded with its class instead of as unmatched; a share held directly keeps its zero fund fee on the Cost tab. Every bond, NCD
+  and debenture (rupee 54EC, tax-free, RBI and corporate NCDs included) takes "US-dollar bonds (through LRS)": the owner, 25 Nov
+  2026, "No, keep as recorded"; the Taxation tab keeps its own tax classes. A product that also says ETF, MF or
   fund stays a mutual fund (OD-6); sovereign gold bonds and MLDs keep their old class until labelled. Patch
   `tools/patches/2026-11-25-lp16-product-classes.js`; test `tools/regression/LP16-KI051-product-classes.js`.
 
