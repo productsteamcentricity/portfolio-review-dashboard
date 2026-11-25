@@ -12,16 +12,26 @@
 // - recovery is the first day after the trough whose level is at or above the peak level;
 // - months to recover = whole calendar months from the trough day to the recovery day (month-end to month-end
 //   counts exactly; a later day of month than the trough's completes the month).
-// The blend applies a named rebalancing rule (the owner's choice is pending; default: monthly to the given weights):
-// - 'monthly': the weights are restored at the last common day of each calendar month;
+// The blend applies a named rebalancing rule:
+// - 'monthly' (the default): the weights are restored at the last common day of each calendar month;
 // - 'buy-and-hold': the weights apply once, at the first common day.
 // Only days that every series with a weight above 0 has are used (the blend is never filled across a gap); the days
 // dropped and the blend's first and last day are returned. Weights must sum to 1 within 1e-9: callers normalise
-// unrounded weights first. Comparing indices with a blend over one period: `commonWindow` and `clip`.
-// Left to the caller (C-43, PERF-12): the sampling frequency (daily or month-end, fixed at wiring and shown), the
-// stale-data rule of the index-data role, and the label "index data; the blend uses today's weights and is not the
-// portfolio's own history". Field names follow DATA_DICTIONARY §6 (`recoveryMonths`).
-// Pure: no global, no clock.
+// unrounded weights first.
+//
+// The owner's answers of 25 Nov 2026 (through MOD-04) are the defaults of `compareDrawdowns`, each a named option:
+// - Q1 rebalancing: monthly to today's weights (`rule`, DEFAULT_REBALANCE);
+// - Q3 sampling: month-end points (`sampling`, DEFAULT_SAMPLING): the last point of each calendar month; the last,
+//   possibly part, month keeps its latest point (the as-on day); the blend is built on every common day first and
+//   sampled afterwards, like the indices;
+// - Q4 period: one common period for every index and the blend (`period`, DEFAULT_PERIOD): from the latest first day
+//   to the earliest last day of the indices compared (weighted 0 or not), returned as `window` so it can be shown;
+// - Q5 months to recover: from the trough (above).
+// Still open with the owner (Q2): which index stands for each asset class, and whether classes without an index are
+// left out with the rest scaled to 100%. The engine takes the weights from the caller and maps nothing.
+// Left to the caller (C-43, PERF-12): the stale-data rule of the index-data role, and the label "index data; the blend
+// uses today's weights and is not the portfolio's own history". Field names follow DATA_DICTIONARY §6
+// (`recoveryMonths`). Pure: no global, no clock.
 
 import type { IndexPoint } from '../model/index-series.ts';
 import type { DayNumber } from '../model/value.ts';
@@ -101,7 +111,7 @@ export function maxDrawdown(points: readonly IndexPoint[]): DrawdownResult {
   };
 }
 
-/** How a blend keeps its weights (a named parameter: the owner's choice is pending, default 'monthly'). */
+/** How a blend keeps its weights (a named parameter; the owner confirmed 'monthly' on 25 Nov 2026). */
 export type RebalanceRule = 'monthly' | 'buy-and-hold';
 export const DEFAULT_REBALANCE: RebalanceRule = 'monthly';
 
@@ -167,4 +177,86 @@ export function commonWindow(series: ReadonlyArray<readonly IndexPoint[]>): { fr
 /** The points of a series inside a window (both ends included). */
 export function clip(points: readonly IndexPoint[], w: { from: DayNumber; to: DayNumber }): IndexPoint[] {
   return points.filter((p) => p.day >= w.from && p.day <= w.to);
+}
+
+/** Which points are measured (the owner confirmed 'month-end' on 25 Nov 2026). */
+export type Sampling = 'month-end' | 'daily';
+export const DEFAULT_SAMPLING: Sampling = 'month-end';
+/** Over which period (the owner confirmed 'common' on 25 Nov 2026; 'full' measures each series over its own days). */
+export type Period = 'common' | 'full';
+export const DEFAULT_PERIOD: Period = 'common';
+
+/** The last point of each calendar month (ascending days); the last month keeps its latest point. */
+export function monthEnds(points: readonly IndexPoint[]): IndexPoint[] {
+  const out: IndexPoint[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const next = points[i + 1];
+    if (next === undefined || monthOf(next.day) !== monthOf(points[i]!.day)) out.push(points[i]!);
+  }
+  return out;
+}
+
+export type ComparedIndex = { id: string; points: readonly IndexPoint[] };
+export type BlendWeight = { id: string; weight: number };
+export type DrawdownComparison = {
+  sampling: Sampling;
+  period: Period;
+  rule: RebalanceRule;
+  /** The common period ('common'); null for 'full', or when the indices do not overlap (then nothing is measurable). */
+  window: { from: DayNumber; to: DayNumber } | null;
+  indices: Array<{ id: string; result: DrawdownResult }>;
+  /** Null when no weights are given. */
+  blend: { result: DrawdownResult; daysDropped: number; firstDay: DayNumber | null; lastDay: DayNumber | null } | null;
+};
+
+/**
+ * Drawdowns of several indices and, when weights are given, of their blend, on the owner's confirmed defaults
+ * (month-end points, one common period, monthly rebalancing). Weights name indices by id; an index without a weight
+ * takes no part in the blend. The weights themselves come from the caller (Q2 is open).
+ */
+export function compareDrawdowns(
+  indices: readonly ComparedIndex[],
+  weights: readonly BlendWeight[] | null = null,
+  options: { sampling?: Sampling; period?: Period; rule?: RebalanceRule } = {},
+): DrawdownComparison {
+  const sampling = options.sampling ?? DEFAULT_SAMPLING;
+  const period = options.period ?? DEFAULT_PERIOD;
+  const rule = options.rule ?? DEFAULT_REBALANCE;
+  if (indices.length === 0) throw new Error('drawdown: compare at least one index');
+  const byId = new Map<string, readonly IndexPoint[]>();
+  for (const ix of indices) {
+    if (byId.has(ix.id)) throw new Error(`drawdown: index "${ix.id}" is given twice`);
+    checkSeries(ix.points);
+    byId.set(ix.id, ix.points);
+  }
+  const weightById = new Map<string, number>();
+  for (const w of weights ?? []) {
+    if (!byId.has(w.id)) throw new Error(`drawdown: the weight for "${w.id}" names no compared index`);
+    if (weightById.has(w.id)) throw new Error(`drawdown: the weight for "${w.id}" is given twice`);
+    weightById.set(w.id, w.weight);
+  }
+
+  let window: { from: DayNumber; to: DayNumber } | null = null;
+  let inPeriod = (points: readonly IndexPoint[]): readonly IndexPoint[] => points;
+  if (period === 'common') {
+    window = commonWindow(indices.map((ix) => ix.points));
+    const w = window;
+    inPeriod = (points) => (w ? clip(points, w) : []);
+  }
+  const sample = (points: readonly IndexPoint[]): readonly IndexPoint[] => (sampling === 'month-end' ? monthEnds(points) : points);
+
+  const result: DrawdownComparison = {
+    sampling,
+    period,
+    rule,
+    window,
+    indices: indices.map((ix) => ({ id: ix.id, result: maxDrawdown(sample(inPeriod(ix.points))) })),
+    blend: null,
+  };
+  if (weights !== null) {
+    const legs = indices.map((ix) => ({ points: inPeriod(ix.points), weight: weightById.get(ix.id) ?? 0 }));
+    const b = blendSeries(legs, rule);
+    result.blend = { result: maxDrawdown(sample(b.points)), daysDropped: b.daysDropped, firstDay: b.firstDay, lastDay: b.lastDay };
+  }
+  return result;
 }

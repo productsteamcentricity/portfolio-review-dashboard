@@ -11,7 +11,18 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { blendSeries, clip, commonWindow, DEFAULT_REBALANCE, maxDrawdown, wholeMonths } from '../../../app/src/engine/drawdown.ts';
+import {
+  blendSeries,
+  clip,
+  commonWindow,
+  compareDrawdowns,
+  DEFAULT_PERIOD,
+  DEFAULT_REBALANCE,
+  DEFAULT_SAMPLING,
+  maxDrawdown,
+  monthEnds,
+  wholeMonths,
+} from '../../../app/src/engine/drawdown.ts';
 import { dayToIso, ymdToDay } from '../../../app/src/engine/dates.ts';
 import type { IndexPoint } from '../../../app/src/model/index-series.ts';
 
@@ -181,5 +192,109 @@ describe('review findings', () => {
     assert.throws(() => blendSeries([{ points: A, weight: 0.6 }, { points: B, weight: 0.6 }]), /sum to 1/);
     assert.throws(() => blendSeries([{ points: A, weight: 1.5 }, { points: B, weight: -0.5 }]), /at least 0/);
     assert.throws(() => blendSeries([]), /at least one series/);
+  });
+});
+
+// The owner's answers of 25 Nov 2026 (Q1, Q3, Q4, Q5) as the defaults of compareDrawdowns. Hand-worked:
+// - A = 200 (31 Dec 2025), 100, 100, 110, 88 and B = 100, 90, 99, 99 at month-ends Jan to Apr 2026. The common period
+//   is 31 Jan to 30 Apr 2026, so A's 2025 fall is outside it: A = 100, 100, 110, 88 falls 88 / 110 - 1 = -0.20 (peak
+//   31 Mar, trough 30 Apr); over its full history A falls 88 / 200 - 1 = -0.56. B falls 90 / 100 - 1 = -0.10 and has
+//   not recovered (99 < 100).
+// - Their 50/50 blend, monthly: 100; 0.5 x 1 + 0.5 x 0.9 = 0.95 -> 95; 95 x (0.5 x 1.1 + 0.5 x 1.1) = 104.5;
+//   104.5 x (0.5 x 0.8 + 0.5 x 1) = 94.05. Falls: 95 / 100 - 1 = -0.05 (recovered in March), then
+//   94.05 / 104.5 - 1 = -0.10 (peak 31 Mar, trough 30 Apr): the maximum is -0.10.
+// - Daily against month-end: C = 100 (30 Jan), 80 (10 Feb), 95 (27 Feb), 100 (31 Mar). Month-end points 100, 95, 100
+//   fall -0.05; daily points fall -0.20 at the intra-month trough; both recover on 31 Mar, 1 whole month later.
+describe("the owner's defaults of 25 Nov 2026: month-end points, one common period, monthly rebalancing", () => {
+  const A = series([['2025-12-31', 200], ['2026-01-31', 100], ['2026-02-28', 100], ['2026-03-31', 110], ['2026-04-30', 88]]);
+  const B = series([['2026-01-31', 100], ['2026-02-28', 90], ['2026-03-31', 99], ['2026-04-30', 99]]);
+  const C = series([['2026-01-30', 100], ['2026-02-10', 80], ['2026-02-27', 95], ['2026-03-31', 100]]);
+
+  test('the defaults are the confirmed answers', () => {
+    assert.equal(DEFAULT_SAMPLING, 'month-end');
+    assert.equal(DEFAULT_PERIOD, 'common');
+    assert.equal(DEFAULT_REBALANCE, 'monthly');
+    const r = compareDrawdowns([{ id: 'A', points: A }]);
+    assert.deepEqual([r.sampling, r.period, r.rule], ['month-end', 'common', 'monthly']);
+  });
+
+  test('one common period: an index measured from earlier does not show a fall the others never saw', () => {
+    const r = compareDrawdowns([{ id: 'A', points: A }, { id: 'B', points: B }], [{ id: 'A', weight: 0.5 }, { id: 'B', weight: 0.5 }]);
+    assert.equal(iso(r.window!.from), '2026-01-31');
+    assert.equal(iso(r.window!.to), '2026-04-30');
+    const a = r.indices[0]!.result;
+    close(a.maxDrawdown!, 88 / 110 - 1);
+    assert.equal((a.maxDrawdown! * 100).toFixed(2), '-20.00');
+    assert.equal(iso(a.peakDay), '2026-03-31');
+    assert.equal(iso(a.firstDay), '2026-01-31');
+    const b = r.indices[1]!.result;
+    close(b.maxDrawdown!, -0.1);
+    assert.equal(b.recovered, false);
+    const blend = r.blend!.result;
+    close(blend.maxDrawdown!, 94.05 / 104.5 - 1);
+    assert.equal((blend.maxDrawdown! * 100).toFixed(2), '-10.00');
+    assert.equal(iso(blend.peakDay), '2026-03-31');
+    assert.equal(iso(blend.troughDay), '2026-04-30');
+    assert.equal(iso(r.blend!.firstDay), '2026-01-31');
+    assert.equal(r.blend!.daysDropped, 0);
+
+    const full = compareDrawdowns([{ id: 'A', points: A }, { id: 'B', points: B }], null, { period: 'full' });
+    assert.equal(full.window, null);
+    close(full.indices[0]!.result.maxDrawdown!, 88 / 200 - 1);
+    assert.equal(iso(full.indices[0]!.result.peakDay), '2025-12-31');
+    assert.equal(full.blend, null, 'no weights, no blend');
+  });
+
+  test('an index weighted 0 still sets the common period', () => {
+    const late = series([['2026-02-28', 100], ['2026-04-30', 100]]);
+    const r = compareDrawdowns(
+      [{ id: 'A', points: A }, { id: 'B', points: B }, { id: 'L', points: late }],
+      [{ id: 'A', weight: 0.5 }, { id: 'B', weight: 0.5 }],
+    );
+    assert.equal(iso(r.window!.from), '2026-02-28');
+    assert.equal(iso(r.blend!.firstDay), '2026-02-28');
+    assert.equal(iso(r.indices[0]!.result.firstDay), '2026-02-28');
+  });
+
+  test('month-end points against daily points', () => {
+    assert.deepEqual(monthEnds(C).map((p) => iso(p.day)), ['2026-01-30', '2026-02-27', '2026-03-31']);
+    const m = compareDrawdowns([{ id: 'C', points: C }]).indices[0]!.result;
+    close(m.maxDrawdown!, -0.05);
+    assert.equal(iso(m.troughDay), '2026-02-27');
+    assert.equal(m.recoveryMonths, 1);
+    const d = compareDrawdowns([{ id: 'C', points: C }], null, { sampling: 'daily' }).indices[0]!.result;
+    close(d.maxDrawdown!, -0.2);
+    assert.equal(iso(d.troughDay), '2026-02-10');
+    assert.equal(d.recoveryMonths, 1);
+  });
+
+  test('the last, part month keeps its latest point; a series with nothing in the period is not measurable', () => {
+    assert.deepEqual(monthEnds(series([['2026-10-31', 1], ['2026-11-03', 2], ['2026-11-20', 3]])).map((p) => iso(p.day)), ['2026-10-31', '2026-11-20']);
+    assert.deepEqual(monthEnds([]), []);
+    const apart = compareDrawdowns(
+      [{ id: 'X', points: series([['2020-01-31', 1], ['2020-02-29', 2]]) }, { id: 'Y', points: series([['2021-01-31', 1], ['2021-02-28', 2]]) }],
+      [{ id: 'X', weight: 1 }],
+    );
+    assert.equal(apart.window, null);
+    assert.equal(apart.indices[0]!.result.measurable, false);
+    assert.equal(apart.blend!.result.measurable, false);
+  });
+
+  test('the blend is built on every common day and sampled afterwards', () => {
+    const D1 = series([['2026-01-30', 100], ['2026-02-13', 120], ['2026-02-27', 110], ['2026-03-31', 121]]);
+    const D2 = series([['2026-01-30', 100], ['2026-02-13', 100], ['2026-02-27', 100], ['2026-03-31', 100]]);
+    const r = compareDrawdowns([{ id: 'D1', points: D1 }, { id: 'D2', points: D2 }], [{ id: 'D1', weight: 0.5 }, { id: 'D2', weight: 0.5 }]);
+    const built = blendSeries([{ points: D1, weight: 0.5 }, { points: D2, weight: 0.5 }]);
+    assert.deepEqual(r.blend!.result, maxDrawdown(monthEnds(built.points)));
+    assert.equal(r.blend!.result.points, 3);
+  });
+
+  test('weights name compared indices once each, and must sum to 1', () => {
+    const ixs = [{ id: 'A', points: A }, { id: 'B', points: B }];
+    assert.throws(() => compareDrawdowns(ixs, [{ id: 'Z', weight: 1 }]), /names no compared index/);
+    assert.throws(() => compareDrawdowns(ixs, [{ id: 'A', weight: 0.5 }, { id: 'A', weight: 0.5 }]), /given twice/);
+    assert.throws(() => compareDrawdowns([{ id: 'A', points: A }, { id: 'A', points: B }]), /given twice/);
+    assert.throws(() => compareDrawdowns(ixs, [{ id: 'A', weight: 0.7 }]), /sum to 1/);
+    assert.throws(() => compareDrawdowns([]), /at least one index/);
   });
 });
