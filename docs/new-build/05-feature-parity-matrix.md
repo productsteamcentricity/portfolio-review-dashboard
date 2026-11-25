@@ -50,14 +50,14 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | E-10 | Debt parsers and issuer names | `ingest/debt-analytics.ts`, `bonds.ts` | `unit/ingest/debt.test.ts` (incl. issuer table and top-30 coverage) | correction (KI-056, KI-023, KI-039); per Q-80 (c) | not started |
 | E-11 | Equity look-through parser | `ingest/equity-analytics.ts` | `unit/ingest/equity-analytics.test.ts`; `parity/refdata.parity.test.ts` | none | not started |
 | E-12 | Five-year age gate | `engine/returns/quants.ts` | `unit/returns/age-gate.test.ts` | correction (KI-053: applied everywhere) | not started |
-| E-13 | Name matcher | `engine/match/` | `unit/match/corpus.test.ts`; `parity/matching.parity.test.ts` | correction (KI-050, KI-036, KI-101, OD-5) | not started |
-| E-14 | PMS matcher | `engine/match/pms.ts` | same | none | not started |
+| E-13 | Name matcher | `engine/match/` | `parity/matching.parity.test.ts`; `unit/match/normalize.test.ts`, `instrument.test.ts`, `name-lists.test.ts`; `regression/cr0010-a2-pins.test.ts` (M2.1 sprint 1, at parity); `unit/match/corpus.test.ts` (corrections, sprint 2) | correction (KI-050, KI-036, KI-101, OD-5) | in progress |
+| E-14 | PMS matcher | `engine/match/pms.ts` | `parity/matching.parity.test.ts`; `unit/match/pms.test.ts` | none | in progress |
 | E-15 | Product-class routing | `engine/classify/product-class.ts` | `unit/classify/product-class.test.ts` | correction (KI-051 OD-6, KI-024 OD-7, KI-077) | not started |
 | E-16 | Direct equity | `engine/classify/direct-equity.ts` | `unit/classify/direct-equity.test.ts` | correction (N-4) | not started |
 | E-17 | Commodity | `engine/classify/commodity.ts` | `unit/classify/commodity.test.ts` | none | not started |
 | E-18 | Liquidity | `engine/classify/liquidity.ts` | `unit/engine/liquidity.test.ts`; `unit/views/negative-cmv.test.ts` | none | in progress |
 | E-19 | Unmatched surfacing | `engine/match/`, validation | `parity/matching.parity.test.ts` | improvement (matched-to disclosure) | not started |
-| E-20 | AMC key | `engine/match/amc.ts` | `regression/ki-061-amc-canonical-key.test.ts`; `unit/match/amc.test.ts` | correction (N-10, OD-32, OD-34) | not started |
+| E-20 | AMC key | `engine/match/amc.ts` | `regression/ki-061-amc-canonical-key.test.ts`, `od-32-renamed-amc.test.ts`, `od-34-blank-amc.test.ts`; `unit/match/amc.test.ts`; `parity/matching.parity.test.ts` | correction (N-10, OD-32, OD-34) | in progress |
 | E-21 | Totals | `engine/aggregate/totals.ts` | `parity/aggregation.parity.test.ts`; `unit/engine/totals.test.ts`; `integration/overview.test.ts`; `regression/ki-007-blank-invested.test.ts`; `acceptance/ac-01-standard-review.test.ts`; `regression/ki-148-total-rows.test.ts`; `regression/ki-151-prototype-labels.test.ts`; `unit/views/negative-cmv.test.ts` | correction (OD-18, OD-8) | in progress |
 | E-22 | Asset allocation | `engine/aggregate/allocation.ts` | `parity/aggregation.parity.test.ts`; `unit/engine/allocation.test.ts`; `integration/overview.test.ts`; `exports/xlsx/dash-labels.test.ts`; `acceptance/ac-01-standard-review.test.ts`; `regression/ki-151-prototype-labels.test.ts`; `unit/views/negative-cmv.test.ts` | correction (OD-7 unknown asset) | in progress |
 | E-23 | AMC concentration | `engine/aggregate/amc.ts` | same | none | not started |
@@ -86,8 +86,8 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | E-46 | AI Analyst signals | `engine/ai-analyst/` | `parity/ai-analyst.parity.test.ts` (TEST 1, 3 ported) | correction (KI-052, KI-013) | not started |
 | E-47 | AI Analyst plan and caps | `engine/ai-analyst/plan.ts` | same (TEST 2, 4, 5); `regression/ki-061`, `ki-062` | correction (KI-004 OD-1, KI-080 OD-19, OD-14, KI-102) | not started |
 | E-48 | AI Analyst rationale | `engine/ai-analyst/rationale.ts` | `regression/ki-120-largest-amc-label.test.ts` | correction (KI-103, KI-104, N-7) | not started |
-| E-89 | MF_PERF | `data/refdata/MF_PERF.json` | `parity/refdata.parity.test.ts` (extracted equals embedded) | none | not started |
-| E-90 | MF_PERF_DIRECT | `data/refdata/` | same | none | not started |
+| E-89 | MF_PERF | `data/refdata/MF_PERF.json` | `parity/refdata.parity.test.ts` (extracted equals embedded); `unit/match/crosswalk.test.ts` (crosswalk-keyed, M2.1) | none | in progress |
+| E-90 | MF_PERF_DIRECT | `data/refdata/` | `parity/refdata.parity.test.ts`; `unit/match/crosswalk.test.ts` (crosswalk-keyed, M2.1) | none | in progress |
 | E-91 | BENCH_RET | `data/refdata/` | same | correction (KI-073 arbitrage index) | not started |
 | E-92 | BENCHMARKS | `data/owner/category-benchmarks.json` | `unit/returns/benchmarks.test.ts` | none (merged map) | not started |
 | E-93 | MF_BENCHMARKS | computed peer medians | `unit/returns/peers.test.ts` | correction (KI-026; Q-51) | not started |
@@ -100,7 +100,7 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | E-100 | DEBT_ANALYTICS | `data/refdata/` | same | none | not started |
 | E-101 | STOCK_INFO | `data/refdata/` | same | none | not started |
 | E-102 | STOCK_RET | `data/refdata/` | same | none for the block; its 1Y, 3Y and 5Y returns are replaced in outputs by E-148 (D-023 point 4) | not started |
-| E-103 | MF_RISK | `data/refdata/` keyed by AMFI code | same; `unit/match/crosswalk.test.ts` | correction (KI-052) | not started |
+| E-103 | MF_RISK | `data/refdata/` keyed by AMFI code | `parity/refdata.parity.test.ts`; `unit/match/crosswalk.test.ts` (keying, M2.1); KI-052 correction in sprint 2 | correction (KI-052) | in progress |
 | E-104 | FUND_RANKS | scheme codes only, in the identifier crosswalk; scores and ranks are not embedded and come from the stored Screener pack (E-126, D-026) | `unit/match/crosswalk.test.ts`; `acceptance/ac-16` | accounted for (D-026: Screener scores and ranks never in a public build); correction of the code join (KI-052, OD-23) | not started |
 | E-105 | FUND_MGR | `data/refdata/` | same | none | not started |
 | E-106 | TAX_RULES | `data/owner/tax-rules.json` | `unit/tax/rules.test.ts` | improvement (version, effective date) | not started |
@@ -233,7 +233,7 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | E-122 | Formula workbook and re-upload | `exports/xlsx/`, `ingest/workbook-reupload.ts` | `acceptance/ac-17` | new | not started |
 | E-123 | Status vocabulary; the dash "—" as the missing-value marker with a status footnote, never in sentences (D-029) | `model/status.ts`, `config/formats` | `unit/model/value.test.ts`; `unit/views/missing-marker.test.ts`; `acceptance/ac-01-standard-review.test.ts` | new (the legacy dash kept as the marker; the footnote is new) | in progress |
 | E-124 | Validation layer | `engine/validate/` | `integration/gate.test.ts` (M1.4 rules); `integration/as-on-change.test.ts`; `acceptance/ac-19` later | new | in progress |
-| E-125 | Stable identifiers | `engine/match/crosswalk.ts` | `unit/match/crosswalk.test.ts` | new | not started |
+| E-125 | Stable identifiers | `engine/match/crosswalk.ts` | `unit/match/crosswalk.test.ts`; `parity/matching.parity.test.ts` | new | in progress |
 | E-126 | MF Screener data pack and Screener metrics; the "MF Screener data pack" upload slot in section 1, the pack kept in the browser's IndexedDB until a newer cycle, its cycle date in the sidebar, absence messages, never embedded or committed (D-026) | `ingest/screener-pack/` (contract `pr-datapack-v1`), `services/screener-store.ts`, `engine/returns/quants.ts` | `acceptance/ac-16`; `unit/ingest/screener-pack.test.ts` (pack validation); `integration/screener-pack-reimport.test.ts` (idempotent re-import); `unit/services/screener-store.test.ts`; `unit/views/screener-absent.test.ts`; `monthly/screener-pack-role.test.ts`; `scripts/check-next.mjs` (no pack content in the build) | new | not started |
 | E-127 | Performance per the brief | `engine/returns/performance.ts`, C-22 | `exports/pptx/c22-performance.test.ts` | new | not started |
 | E-128 | Product bank | `product_bank/`, monthly engine | `acceptance/ac-13`, `ac-14` | new | not started |
@@ -339,7 +339,7 @@ component from data (never the deck's client content).
 | BR-1.7 | Handover records branch, commit, remote, push state | `docs/HANDOVER.md`, monthly PRD section I | `acceptance/ac-23` | not started |
 | BR-2.1 | One shared model for dashboard, Excel, PowerPoint | architecture §6 | `integration/cross-output.test.ts` | in progress |
 | BR-2.2 | Representations for clients, accounts, folios, ownership, advisors, products, units, lots, NAV, values, unrealised and realised G/L, categories, benchmarks, periods, look-through, snapshots, assumptions, rules, scenarios, tax, product bank, sources, validation, outputs, audit | `model/` (ownership E-143, realised gains E-141) | `unit/model/*.test.ts`; `DATA_DICTIONARY.md` | not started |
-| BR-2.3 | Stable identifiers | E-125 | `unit/match/crosswalk.test.ts` | not started |
+| BR-2.3 | Stable identifiers | E-125 | `unit/match/crosswalk.test.ts` | in progress |
 | BR-2.4 | Separate layers; no duplicated calculation logic | architecture §6.1 | `scripts/check-next.mjs` (exports import no engine internals beyond views) | not started |
 | BR-2.5 | Missing-data statuses | E-123 | `unit/model/value.test.ts` | not started |
 | BR-2.6 | Never silently zero or outdated values | E-123, E-124 | `acceptance/ac-11`, `ac-18` | not started |

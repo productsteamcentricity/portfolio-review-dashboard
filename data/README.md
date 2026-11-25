@@ -14,8 +14,8 @@ data/
   owner/                owner-maintained tables, each versioned with its approval record: IPS profiles, Current vs
                         Sample assumptions, tax rules, observation thresholds (approved, D-030), category benchmarks,
                         rating map, fund and AMC aliases, index proxies
-  identifiers/
-    crosswalk.json      ISIN, AMFI scheme code, vendor key and product id, with rename history
+  identifiers/         curated identity data only (README inside): rename history, owner-approved aliases (PD-36),
+                        the AMFI code map when received; the crosswalk is built at load time from refdata (M2.1)
   history/YYYY-MM/      compact previous vintages, for historical analytics
 ```
 

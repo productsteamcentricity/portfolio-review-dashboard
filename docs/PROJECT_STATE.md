@@ -186,7 +186,9 @@
    below -1,00,000 and a possible -0.00. Open for the lead: the validation panel files those Warnings under
    "Footnoted"; `base-file.total-like-name` still makes a fund named "Total Return ..." High; the C-08 plot layout
    starts at 5 categories (a long 4-label legend or a one-row legend is not covered).
-5. **Claude: M2**, instrument matching ([roadmap](new-build/07-implementation-roadmap.md)).
+5. **Claude: M2**, instrument matching ([roadmap](new-build/07-implementation-roadmap.md)). Sprint 1 of M2.1 (identifiers and
+   the matcher at parity, no output change) is on `feat/m2-1-identifiers-matcher`; sprints 2 and 3 (corrections and
+   classification; parsers and uploads) follow, with the owner's alias list (PD-36) before sprint 2 merges.
 6. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;
