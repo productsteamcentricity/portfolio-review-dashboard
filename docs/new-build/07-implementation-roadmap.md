@@ -167,7 +167,10 @@ dashboard (D-033); every other question proceeds on its default.
   C-08 comes with the observation engine (M5). The built-in logos ship (the generic scan is clean on them).
 
 ### M2 Identifiers, matching, classification and reference data (brief phases 2, 11, 13) (L): can start now
-- **M2.1 Crosswalk and matcher.** `data/identifiers/crosswalk.json` (AMFI code map, `FUND_RANKS` scheme codes only (D-026), `STOCK_RET` ISIN,
+- **M2.1 Crosswalk and matcher.** Amended 23 Nov 2026 (M2 plan v2): the crosswalk is built at load time from
+  `data/refdata` plus the curated `data/identifiers/` (no committed `crosswalk.json`, so a monthly refresh never
+  regenerates a new-build file); sprint 1 ports the legacy matcher, its name lists and the AMC key at parity
+  (`tests/parity/matching.parity.test.ts`), and sprint 2 brings the corrections below with `corpus.test.ts`. As planned: `data/identifiers/crosswalk.json` (AMFI code map, `FUND_RANKS` scheme codes only (D-026), `STOCK_RET` ISIN,
   rename history); `engine/match/` port of E-13 and E-14 with house-token exclusion, idf weighting, null on ties
   (KI-036), product class never crossed, alias pins (OD-5), renamed AMC aliases (N-10, OD-32), blank AMC (OD-34);
   OD-32 and OD-34 are also built in legacy fix batch 2a (D-022), and both builds share the known answers.

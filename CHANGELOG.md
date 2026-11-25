@@ -11,6 +11,15 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   owner's answer, or `buy-and-hold`). Built on the I-44 index-series type. Known-answer tests
   (`unit/engine/drawdown.test.ts`, 9 cases, IST and UTC), including the matrix's -30.00% case.
 
+### Added (new build, M2.1 sprint 1: identifiers and the matcher at parity; no change to `/next/` or `/`)
+- **`app/src/engine/match/`:** the legacy name normalisation, instrument and PMS matchers, the fund-house key
+  (KI-061, OD-32, OD-34) and the three name lists (pins, blocks, exact-only: CR-0010 A2, A2b) ported at parity, and a
+  crosswalk that resolves identifiers first (ISIN, AMFI scheme code, vendor key) and then the legacy name unit unchanged,
+  built at load time from `data/refdata`. Nothing in the app calls it yet: the built page is byte-identical.
+- **Tests:** `tests/parity/matching.parity.test.ts` compares the port with the live matcher over every candidate set the
+  legacy uses (0 differences on the same candidates; in the shipped order only score ties, ledgered as KI-036); unit
+  tests in `tests/unit/match/`; the CR-0010 A2, KI-061, OD-32 and OD-34 known answers in `tests/regression/`.
+
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
   funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.

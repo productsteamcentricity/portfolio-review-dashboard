@@ -1,6 +1,7 @@
 # Parity tests
 
-The new application against the legacy page (`index.html`), on synthetic data only
+The new application against the legacy page (`index.html`), on the synthetic books plus the public embedded universes
+(D-023), never client data
 ([08-regression-test-plan.md](../../docs/new-build/08-regression-test-plan.md) §5.4). The legacy engine runs headless
 through `tools/engine-host.js` (from a script file, never `node -e`, KI-011).
 
@@ -9,6 +10,7 @@ through `tools/engine-host.js` (from a script file, never `node -e`, KI-011).
 | `base-file.parity.test.ts` (with `base-file-compare.ts`) | `base-file-ledger.json` |
 | `aggregation.parity.test.ts` (with `aggregation-compare.ts`) | `aggregation-ledger.json` |
 | `refdata.parity.test.ts` | none: the extracted reference data must equal the embedded blocks exactly |
+| `matching.parity.test.ts` (with `matching-queries.ts`; M2.1) | `matching-ledger.json`, basis names in `matching-basis.json` |
 
 ## The ledger
 

@@ -108,7 +108,7 @@ owner of each document are in [09-repository-and-docs-structure.md](new-build/09
 |---|---|---|
 | `index.html`, `tools/`, `buildtools/` | the legacy page, its checks and patch scripts, the legacy monthly pipeline (retired at M15) | before CR-0006 |
 | `app/` | the new application: `index.template.html`, `tsconfig.json`, `vendor/`, `assets/`, `src/` with `model/`, `ingest/`, `engine/`, `observations/`, `views/`, `exports/pptx/`, `exports/xlsx/`, `ui/`, `services/`, `config/` ([app/README.md](../app/README.md)) | README in M1.1; the template, `tsconfig.json`, `vendor/MANIFEST.json` and the shell (`main.tsx`, `ui/`, `config/`, `types/`) in M1.2; `model/`, `ingest/`, the first `engine/` helpers and `views/format.ts` in M1.3; in M1.4 `vendor/` (four libraries and their licences), `config/money-columns.ts`, `config/brand-logos.json`, `ingest/load-base.ts`, `engine/aggregate/` (`sum`, `totals`, `allocation`, `entities`), `engine/classify/liquidity.ts`, `engine/validate/` (`reconcile`, `gate`), `engine/review.ts`, `views/` (the overview view-model, notes, colours, labels, logo, import report, source register, validation panel), `exports/pptx/` (chrome, blocks, measure, paginate, manifest, post-processing, C-08), `exports/zip/`, `exports/ooxml/`, `exports/xlsx/` (writer, styles, formula builder, `sheets/`), `services/` (`sha256`, `clock`, `audit-log`, `download`, `storage`) and `ui/` (store, wiring, sections 1 and 2, components) |
-| `data/` | reference data as JSON: `refdata/` with `VINTAGE.json`, `owner/` tables with approval records, `identifiers/crosswalk.json`, `history/YYYY-MM/` ([data/README.md](../data/README.md)) | README in M1.1; `refdata/` with `VINTAGE.json` in M1.3 (D-035) |
+| `data/` | reference data as JSON: `refdata/` with `VINTAGE.json`, `owner/` tables with approval records, `identifiers/` (curated: rename history, approved aliases, the AMFI code map when received; the crosswalk itself is built at load time, M2.1), `history/YYYY-MM/` ([data/README.md](../data/README.md)) | README in M1.1; `refdata/` with `VINTAGE.json` in M1.3 (D-035) |
 | `product_bank/` | `schema/`, `products/`, `performance/`, `snapshots/`, `source_register/`, `pins.json` ([product_bank/README.md](../product_bank/README.md)) | README in M1.1; records from M11 |
 | `monthly_updates/` | `_policy/` and one `YYYY-MM/` folder per data month with `MANIFEST.json`, `UPDATE_REPORT.md` and the class P files in role folders ([monthly_updates/README.md](../monthly_updates/README.md)) | README and `_policy/` in M1.1; files from M11 |
 | `scripts/` | `validation/` (M1.1; `check-next.mjs` in M1.2; `traceability.mjs` in M1.3); `build.mjs` and `serve.mjs` (M1.2); data extraction, `data-extract.ts` (M1.3); vendor extraction, `vendor-extract.mjs` with `lib/legacy-blocks.mjs` (M1.4); `monthly-update/` (M11); `office/` (local Office acceptance, M1.4); `docs/` (M14) | M1.1 |
@@ -157,7 +157,9 @@ coverage and staleness, or a missing status with a reason) and the status list a
 
 Identifiers are resolved in a fixed order of preference (for a fund: ISIN, AMFI scheme code, vendor key with rename
 history, alias pin, then a name match that only proposes); the full table is in
-[DATA_DICTIONARY.md](DATA_DICTIONARY.md) §4. `data/identifiers/crosswalk.json` joins them; renames are history rows,
+[DATA_DICTIONARY.md](DATA_DICTIONARY.md) §4. The crosswalk (`app/src/engine/match/crosswalk.ts`) joins them, built at load time from
+`data/refdata` (FUND_RANKS scheme codes, STOCK_RET ISINs) plus the curated `data/identifiers/`, so a monthly refresh never
+regenerates a file of the new build (M2 plan v2, 23 Nov 2026); renames are history rows,
 so a renamed scheme is a lookup, not a fuzzy match. Identity fields from a loaded Screener pack enter the crosswalk
 only through the same pins. Matching keeps the legacy rules (`CLAUDE.md` rule 4), adds house-token exclusion and idf
 weighting, returns null on ties instead of the first key (KI-036), never crosses product class, and every change is
@@ -257,7 +259,7 @@ The tax-rule table was approved by the financial-domain reviewer on 27 Oct 2026.
 | `ingest/price-file.ts` | the analyst's price file for stocks the pack does not cover | accept unadjusted prices without a flag |
 | `ingest/pptx-cards.ts`, `market-update.ts` | Reckoner and one-pager slides to product-bank records; the market update deck (Node only) | infer facts from names |
 | `ingest/workbook-reupload.ts` | re-uploaded workbook: manifest check, inputs, formula-conflict report | accept holdings edits |
-| `engine/match/`, `engine/classify/` | normalisation, crosswalk, matchers, alias table; product class (OD-6), asset (OD-7), liquidity, direct equity, commodity | lower thresholds; cross product class |
+| `engine/match/`, `engine/classify/` | normalisation, crosswalk, matchers, alias table (M2.1 sprint 1: the legacy matcher, its three name lists and the AMC key ported at parity, proved by `tests/parity/matching.parity.test.ts`; not yet called by the overview); product class (OD-6), asset (OD-7), liquidity, direct equity, commodity | lower thresholds; cross product class |
 | `engine/aggregate/` | totals; allocation by asset, product, client and distributor; AMC (OD-1, OD-33, OD-34); holdings sheets | |
 | `engine/returns/` | XIRR (ported as is), IRR tree with OD-4 reconciliation, contributions, benchmarks, performance, Portfolio Quants; MF portfolio 3Y and 5Y weighted returns and direct-equity CAGR, both with coverage (D-023 points 3 and 4) | mix bases; count a missing return as 0% |
 | `engine/drawdown.ts` | drawdown and recovery on index series, per index and for a blend at today's weights (D-023 point 2) | use the client portfolio's history |
