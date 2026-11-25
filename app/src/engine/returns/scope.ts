@@ -1,0 +1,199 @@
+// Returns per scope (milestone M3a, NB-M3a; parity row E-142; contracts I-31 ScopeReturns, I-45 Scope; architecture
+// §6.5; Q-57; OD-4; KI-048, KI-100). One function serves the family, client and advisor scopes:
+//   - the scope's fund flows: the flows of base-file clients only (OD-4: a client with flows and no holding in the base
+//     file is left out of every figure and listed); a client scope takes its clients' flows; an advisor scope the flows
+//     whose DISTRIBUTOR is one of its distributors (E-142);
+//   - the benchmark flows of the same clients and instruments as the scope's fund flows (KI-048: joined by client and
+//     instrument);
+//   - OD-4, invalid benchmark: an instrument whose benchmark flows give no rate is excluded from both sides and listed
+//     (PLAN-02 D14, the default reading of "invalid benchmark series");
+//   - OD-4, redeemed: an instrument of a base-file client with flows and no current holding stays in the
+//     since-inception totals, listed;
+//   - the unassigned line (flows without a distributor) on the family and advisor scopes when the file has a
+//     DISTRIBUTOR column, never spread across distributors (Q-57; its share: PLAN-02 D15);
+//   - a scope whose flows do not reconcile to its holdings: every XIRR missing with the gap 'not-reconciled'
+//     (INSUFFICIENT EVIDENCE). The rule that decides it is injected (`reconcile`): no rule is defined yet (PLAN-02 D13);
+//   - contributions over the scope's included holdings: a holding joined to an instrument of the IRR file takes that
+//     instrument's transaction XIRR, blank when it gives no rate (KI-100, never the base-file figure in its place);
+//     otherwise its base-file XIRR (PLAN-02 D11).
+// The join of an IRR instrument to the holdings is the client id plus the exact normalised instrument name until
+// engine/match (M2) is on main (PLAN-02 D9). Pure: no globals.
+
+import type { Scope, ScopeKey } from '../../model/scope.ts';
+import type { IrrFileImport, Transaction } from '../../model/transactions.ts';
+import type { Holding } from '../../model/holding.ts';
+import type { ClientId, HoldingId } from '../../model/ids.ts';
+import type { CashFlow, IrrNode, IrrReconciliation, ScopeReturns, UnassignedFlows, XirrResult } from '../../model/returns.ts';
+import type { Value } from '../../model/value.ts';
+import { STATUS } from '../../model/status.ts';
+import { buildIrrTree } from './irr-tree.ts';
+import type { HoldingJoin } from './irr-tree.ts';
+import { computeContributions } from './contributions.ts';
+import type { ContributionInput } from './contributions.ts';
+import { solveXirr, xirr, xirrGap } from './xirr.ts';
+import { keyOf, normaliseLabel } from '../ids.ts';
+import { missing, present } from '../value.ts';
+
+/**
+ * The stable key of a scope (I-45 format): "family", or the kind and its ids sorted by code unit, joined by ",".
+ * Kept here until engine/scope.ts exists (PLAN-02 D8); it moves there unchanged.
+ */
+export function scopeKeyOf(scope: Scope): ScopeKey {
+  if (scope.kind === 'family') return 'family';
+  const ids = [...(scope.kind === 'client' ? scope.clientIds : scope.distributorIds)].map(String).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return scope.kind === 'client' ? `client:${ids.join(',')}` : `advisor:${ids.join(',')}`;
+}
+
+/** True when an included holding belongs to the scope (a client scope by the holding's client, the first holder). */
+export function holdingInScope(h: Holding, scope: Scope): boolean {
+  if (h.inclusion.status !== 'included') return false;
+  if (scope.kind === 'family') return true;
+  if (scope.kind === 'client') return h.clientId !== null && scope.clientIds.includes(h.clientId);
+  return h.distributorId !== null && scope.distributorIds.includes(h.distributorId);
+}
+
+const instrumentKey = (clientId: ClientId | null, name: string | null): string => keyOf([clientId, normaliseLabel(name)]);
+
+/** The interim join (PLAN-02 D9): client id plus the exact normalised instrument name. */
+export function exactNameJoin(holdings: readonly Holding[]): HoldingJoin {
+  const m = new Map<string, HoldingId[]>();
+  for (const h of holdings) {
+    const k = instrumentKey(h.clientId, h.instrumentName);
+    const l = m.get(k);
+    if (l) l.push(h.id); else m.set(k, [h.id]);
+  }
+  return (clientId, name) => m.get(instrumentKey(clientId, name)) ?? [];
+}
+
+/** The reconciliation rule (PLAN-02 D13): reasons the scope's flows do not reconcile to its holdings; empty when they do. */
+export type ReconcileRule = (input: { scope: Scope; fund: readonly Transaction[]; holdings: readonly Holding[] }) => string[];
+
+export type ScopeReturnsOptions = {
+  /** The analyst's display label of a client (defaults to the label the flows carry). */
+  clientLabel?: (clientId: ClientId, labelAsWritten: string) => string;
+  /** The holdings join; defaults to the interim exact-name join over the review's holdings. */
+  join?: HoldingJoin;
+  /** No rule is defined yet (D13): without one every scope counts as reconciled. */
+  reconcile?: ReconcileRule;
+};
+
+const flowsOf = (ts: readonly Transaction[]): CashFlow[] => ts.map((t) => ({ day: t.day, amount: t.amountRupees }));
+const paidIn = (ts: readonly Transaction[]): number => ts.reduce((s, t) => s + (t.amountRupees < 0 ? -t.amountRupees : 0), 0);
+
+/** The returns of one scope of a review. `holdings` are every holding of the review (any inclusion). */
+export function computeScopeReturns(scope: Scope, irr: IrrFileImport | null, holdings: readonly Holding[], opts: ScopeReturnsOptions = {}): ScopeReturns {
+  const key = scopeKeyOf(scope);
+  const inScope = holdings.filter((h) => holdingInScope(h, scope));
+  const join = opts.join ?? exactNameJoin(holdings);
+  const inScopeIds = new Set(inScope.map((h) => h.id));
+  const scopedJoin: HoldingJoin = (c, n) => join(c, n).filter((id) => inScopeIds.has(id));
+
+  if (!irr || irr.fund.length === 0) {
+    const gap = irr ? 'no-flows' : 'no-irr-file';
+    return {
+      scope: key, fund: xirrGap(gap), bench: xirrGap(irr ? 'no-benchmark' : 'no-irr-file'), tree: [],
+      reconciliation: { reconciled: true, reasons: [], irrOnlyClients: [], redeemed: [], invalidBenchmark: [], holdingsWithoutFlows: [] },
+      unassigned: null,
+      contributions: computeContributions(inScope.map((h) => contributionInput(h, h.xirr)), [h0(holdings)].filter(Boolean) as string[]),
+    };
+  }
+
+  // 1. Base-file clients only (OD-4); IRR-only clients listed.
+  const baseClients = new Set(holdings.map((h) => h.clientId).filter((x): x is ClientId => x !== null));
+  const irrOnly = new Map<ClientId, { clientLabel: string; flows: number }>();
+  for (const t of irr.fund) {
+    if (baseClients.has(t.clientId)) continue;
+    const e = irrOnly.get(t.clientId);
+    if (e) e.flows++; else irrOnly.set(t.clientId, { clientLabel: t.clientLabel, flows: 1 });
+  }
+  const familyFund = irr.fund.filter((t) => baseClients.has(t.clientId));
+  const scopeFund = scope.kind === 'family' ? familyFund
+    : scope.kind === 'client' ? familyFund.filter((t) => scope.clientIds.includes(t.clientId))
+      : familyFund.filter((t) => t.distributorId !== null && scope.distributorIds.includes(t.distributorId));
+  const benchOf = (fund: readonly Transaction[]): Transaction[] => {
+    const keys = new Set(fund.map((t) => instrumentKey(t.clientId, t.instrumentName)));
+    return irr.bench.filter((t) => keys.has(instrumentKey(t.clientId, t.instrumentName)));
+  };
+
+  // 2. Invalid benchmark (OD-4; D14): an instrument whose benchmark flows give no rate leaves both sides.
+  const benchAll = benchOf(scopeFund);
+  const benchByInstr = new Map<string, Transaction[]>();
+  for (const t of benchAll) {
+    const k = instrumentKey(t.clientId, t.instrumentName);
+    const l = benchByInstr.get(k);
+    if (l) l.push(t); else benchByInstr.set(k, [t]);
+  }
+  const invalid = new Map<string, { clientId: ClientId; instrumentName: string; reason: string }>();
+  for (const [k, ts] of benchByInstr) {
+    const o = solveXirr(flowsOf(ts));
+    if ('gap' in o) {
+      invalid.set(k, { clientId: ts[0]!.clientId, instrumentName: ts[0]!.instrumentName ?? '', reason: `the benchmark flows give no rate (${o.gap})` });
+    }
+  }
+  const keep = (t: Transaction): boolean => !invalid.has(instrumentKey(t.clientId, t.instrumentName));
+  const fund = scopeFund.filter(keep);
+  const bench = benchAll.filter(keep);
+
+  // 3. The tree, redeemed instruments and holdings without flows.
+  const tree = buildIrrTree(fund, bench, { holdingsFor: scopedJoin, clientLabel: opts.clientLabel });
+  const instrumentNodes = tree.filter((n) => n.level === 'instrument');
+  const redeemed = instrumentNodes.filter((n) => n.redeemed).map((n) => ({
+    clientId: n.clientId!, instrumentName: n.label, flows: n.fund.flows,
+  }));
+  const joined = new Set(instrumentNodes.flatMap((n) => n.holdingIds));
+  const holdingsWithoutFlows = inScope.filter((h) => !joined.has(h.id)).map((h) => h.id);
+
+  // 4. Reconciliation (D13: the rule is injected; none is defined yet).
+  const reasons = opts.reconcile ? opts.reconcile({ scope, fund, holdings: inScope }) : [];
+  const reconciliation: IrrReconciliation = {
+    reconciled: reasons.length === 0, reasons, irrOnlyClients: [...irrOnly.values()], redeemed,
+    invalidBenchmark: [...invalid.values()], holdingsWithoutFlows,
+  };
+  const guard = (r: XirrResult, flows: readonly Transaction[]): XirrResult => (reconciliation.reconciled ? r : xirrGap('not-reconciled', flowsOf(flows)));
+  const root = tree[0]!;
+  const guardedTree: IrrNode[] = reconciliation.reconciled ? tree
+    : tree.map((n) => ({ ...n, fund: xirrGap('not-reconciled'), bench: xirrGap('not-reconciled') }));
+
+  // 5. The unassigned line (E-142; D15: its share of the family's money paid in).
+  let unassigned: UnassignedFlows | null = null;
+  if (scope.kind !== 'client' && irr.hasDistributor) {
+    const uf = familyFund.filter((t) => t.distributorLabel === null && keep(t));
+    const total = paidIn(familyFund.filter(keep));
+    const ub = benchOf(uf).filter(keep);
+    unassigned = {
+      flows: uf.length,
+      instruments: new Set(uf.map((t) => instrumentKey(t.clientId, t.instrumentName))).size,
+      sharePct: total > 0 ? present((paidIn(uf) / total) * 100, 'pct', { sources: [irr.sourceId], method: 'unassigned money paid in over the family\'s money paid in' })
+        : missing(STATUS.NOT_AVAILABLE, 'no money paid in'),
+      fund: uf.length ? guard(xirr(flowsOf(uf), 'unassigned fund XIRR (E-142)', [irr.sourceId]), uf) : xirrGap('no-flows'),
+      bench: ub.length ? guard(xirr(flowsOf(ub), 'unassigned benchmark XIRR (E-142)', [irr.sourceId]), ub) : xirrGap('no-benchmark'),
+    };
+  }
+
+  // 6. Contributions (D11; KI-100): the joined instrument's transaction XIRR, else the base-file XIRR.
+  const nodeOfHolding = new Map<HoldingId, IrrNode>();
+  for (const n of instrumentNodes) for (const id of n.holdingIds) nodeOfHolding.set(id, n);
+  const contributions = computeContributions(inScope.map((h) => {
+    const n = nodeOfHolding.get(h.id);
+    if (!n) return contributionInput(h, h.xirr);
+    return contributionInput(h, reconciliation.reconciled ? n.fund.xirr : missing(STATUS.INSUFFICIENT_EVIDENCE, 'not reconciled'));
+  }), [irr.sourceId]);
+
+  return {
+    scope: key,
+    fund: guard(root.fund, fund),
+    bench: guard(root.bench, bench),
+    tree: guardedTree,
+    reconciliation,
+    unassigned,
+    contributions,
+  };
+}
+
+function contributionInput(h: Holding, x: Value<number>): ContributionInput {
+  return { holdingId: h.id, lineKey: normaliseLabel(h.instrumentName), label: h.instrumentName, cmvCr: h.cmv, xirrPct: x };
+}
+
+function h0(holdings: readonly Holding[]): string | null {
+  return holdings[0] ? (holdings[0].sourceId as string) : null;
+}
