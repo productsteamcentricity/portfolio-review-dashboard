@@ -4,6 +4,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M12a drawdown engine on index data; not wired yet; the blend's rebalancing rule awaits the owner)
+- **`app/src/engine/drawdown.ts`** (E-149, D-023 point 2): per index series the maximum peak-to-trough fall, its peak and
+  trough days, the recovery day and whole months to recover (or not yet recovered); a blend of series at given weights
+  on the days every series has, with the rebalancing rule as a named parameter (`monthly`, the default pending the
+  owner's answer, or `buy-and-hold`). Built on the I-44 index-series type. Known-answer tests
+  (`unit/engine/drawdown.test.ts`, 9 cases, IST and UTC), including the matrix's -30.00% case.
+
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
   funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.
