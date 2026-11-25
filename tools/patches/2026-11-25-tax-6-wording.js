@@ -21,12 +21,18 @@
       II, assumed, with the note.
    T3 (LOW): the tab's crypto set-off sentence now says "(confirm with the tax
       adviser)" while PD-52 is open, as the slide already does.
-   LRS bonds (MOD-03, MOD-04, 25 Nov 2026, with LP-16): a bond whose Product names
-      the LRS or the US dollar ("US-dollar bonds (through LRS)") is no longer
-      taxed as a domestic "Listed Bonds / NCDs" row. The tax reckoner has no row
-      for a bond held abroad, so it is left unclassified with its reason, as the
-      tab does for P2P lending and a debt PMS. Domestic bonds and NCDs keep their
-      rows: the tax class is not read from LP-16's product labels.
+   Foreign bonds (MOD-03, MOD-04, 25 Nov 2026, with LP-16; widened by the
+      financial review of S12): a bond whose Product or Category names a foreign
+      or US-dollar route (LRS, USD, US$, dollar, foreign, overseas, international,
+      global, offshore, GIFT City, IFSC, eurobond) is no longer taxed as a
+      domestic row (MLD, G-Sec, unlisted or listed bonds). The tax reckoner has
+      no row for it, so it is left unclassified with its reason, as the tab does
+      for P2P lending and a debt PMS. Domestic bonds and NCDs keep their rows:
+      the tax class is not read from LP-16's product labels.
+   Offshore shares (the financial review of S12): a share whose Product or
+      Category says offshore ("Offshore Equity Shares", an LP-16 product) is
+      foreign-listed, as "foreign", "international" and "overseas" already were.
+      GIFT City shares are left as they are: a question for the tax adviser.
 
      node tools/patches/2026-11-25-tax-6-wording.js
    ========================================================================== */
@@ -60,22 +66,38 @@ applyPatch('tax-6 Gate B wording, exact AIF name, LRS bonds', [
     to: 'Crypto gains and losses are kept out of set-off, as the reckoner is silent on them (confirm with the tax adviser): '
   },
   {
-    label: 'TAX_WHY: the reason shown for a bond held abroad through the LRS',
+    label: 'TAX_WHY: the reason shown for a foreign or US-dollar bond',
     from: '    p2p:"No tax row is published for peer-to-peer lending.",\n',
     to: [
       '    p2p:"No tax row is published for peer-to-peer lending.",',
-      '    lrsBond:"No tax row is published for a bond held abroad through the LRS. Confirm its tax with the tax adviser.",',
+      '    foreignBond:"No tax row is published for a foreign or US-dollar bond (held through the LRS, GIFT City or abroad). Confirm its tax with the tax adviser.",',
       ''
     ].join('\n')
   },
   {
-    label: 'engine: a bond whose Product names the LRS or the US dollar is not a domestic listed bond',
-    from: '    if (/unlisted/.test(p+c)) return K(/debt/.test(a) ? "Unlisted Bonds / NCDs" : "Unlisted Equity Shares");\n',
+    label: 'engine: a foreign or US-dollar bond is not a domestic bond row (tested before the MLD, G-Sec, unlisted and listed bond rows)',
+    from: '    if (/\\bmld\\b|market linked/.test(c+n)) return K("MLD");\n',
     to: [
-      '    /* tax-6 (MOD-03, MOD-04 with LP-16): a bond held abroad through the LRS has no reckoner row; tested before the unlisted and listed bond rows */',
-      '    if (!mfp && /(^|[^a-z])(lrs|usd|us[\\s-]*dollars?)([^a-z]|$)/.test(p) && /bond|ncd|debenture/.test(p+c)) return N(TAX_WHY.lrsBond);',
-      '    if (/unlisted/.test(p+c)) return K(/debt/.test(a) ? "Unlisted Bonds / NCDs" : "Unlisted Equity Shares");',
+      '    /* tax-6 (MOD-03, MOD-04 with LP-16; the financial review of S12): a bond whose Product or Category names a foreign or US-dollar',
+      '       route has no reckoner row, so it is left unclassified with its reason, before the MLD, G-Sec, unlisted and listed bond rows */',
+      '    if (!mfp && TAX_FOREIGN_BOND.test(p+" "+c) && /bond|ncd|debenture/.test(p+" "+c)) return N(TAX_WHY.foreignBond);',
+      '    if (/\\bmld\\b|market linked/.test(c+n)) return K("MLD");',
       ''
     ].join('\n')
+  },
+  {
+    label: 'TAX_FOREIGN_BOND: the words that mark a foreign or US-dollar bond',
+    from: '  function taxClassOf(h,R,refDate){ return taxClassify(h,R,refDate).cls; }\n',
+    to: [
+      String.raw`  /* tax-6: a bond held through the LRS, GIFT City or abroad (Product or Category); whole words, letter case ignored */`,
+      String.raw`  var TAX_FOREIGN_BOND=/(^|[^a-z])(lrs|usd|us\$|dollars?|foreign|overseas|international|global|off[\s-]*shore|gift[\s-]*city|ifsc|euro[\s-]*bonds?)([^a-z]|$)/;`,
+      '  function taxClassOf(h,R,refDate){ return taxClassify(h,R,refDate).cls; }',
+      ''
+    ].join('\n')
+  },
+  {
+    label: 'engine: a share whose Product or Category says offshore is foreign-listed (the financial review of S12)',
+    from: '    if (/foreign|international|overseas|(^|[^a-z])u\\.?s\\.?([^a-z]|$)/.test(p+" "+c)) return true;\n',
+    to: '    if (/foreign|international|overseas|off[\\s-]*shore|(^|[^a-z])u\\.?s\\.?([^a-z]|$)/.test(p+" "+c)) return true;   /* tax-6: "Offshore Equity Shares" */\n'
   }
 ]);

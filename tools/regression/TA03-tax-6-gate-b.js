@@ -16,14 +16,19 @@
          Category I or II, assumed, with the note. A hyphen for the entry's en
          dash, capitals, extra spaces, "Name AIF" and "Name (AIF)" are still the
          entry.
-     LRS. A bond whose Product names the LRS or the US dollar ("US-dollar bonds
-         (through LRS)", "USD Bonds", "Bonds (LRS)") is not taxed as a domestic
-         "Listed Bonds / NCDs" row: no class, with the reason "No tax row is
-         published for a bond held abroad through the LRS. Confirm its tax with
-         the tax adviser.", shown on the Taxation tab. Controls: "NCD" and
-         "Bonds" stay Listed Bonds / NCDs, "Unlisted Bonds" stays Unlisted Bonds
-         / NCDs, "US Stocks (LRS)" stays a foreign-listed share, a mutual fund
-         product is untouched.
+     LRS. A bond whose Product or Category names a foreign or US-dollar route
+         ("US-dollar bonds (through LRS)", "USD Bonds", "Foreign Bonds", "GIFT
+         City Bonds", "Eurobonds", "Bonds" with Category "USD Bonds (LRS)") is
+         not taxed as a domestic row, also when its Category says Government
+         Securities or MLD (the financial review of S12): no class, with the
+         reason "No tax row is published for a foreign or US-dollar bond (held
+         through the LRS, GIFT City or abroad). Confirm its tax with the tax
+         adviser.", shown on the Taxation tab. Controls: "NCD", "Bonds" and
+         "Debenture" stay Listed Bonds / NCDs, "Unlisted Bonds" stays Unlisted
+         Bonds / NCDs, a domestic G-Sec and MLD keep their rows, "US Stocks
+         (LRS)" stays a foreign-listed share, a mutual fund product is untouched.
+     OFFSHORE. "Offshore Equity Shares" is a foreign-listed share (the review
+         of S12); before, it was a domestic listed share.
      node tools/regression/TA03-tax-6-gate-b.js
    ========================================================================== */
 'use strict';
@@ -49,11 +54,20 @@ Object.keys(REF.AIF_PERF).filter(k => REF.AIF_PERF[k].category === 'Listed AIF')
 });
 
 /* LRS bonds */
-const WHY = 'No tax row is published for a bond held abroad through the LRS. Confirm its tax with the tax adviser.';
+const WHY = 'No tax row is published for a foreign or US-dollar bond (held through the LRS, GIFT City or abroad). Confirm its tax with the tax adviser.';
 const bond = (p, h) => E.taxClassify(Object.assign({ product: p, asset: 'Debt', category: '', name: 'Synthetic Corp 5.25% Bond 2030' }, h || {}), REF);
-['US-dollar bonds (through LRS)', 'USD Bonds', 'Bonds (LRS)', 'US Dollar Bond', 'NCDs (LRS)'].forEach(p => {
-  const x = bond(p); ok(x.cls === null && x.why === WHY, 'LRS. "' + p + '": no class, with the LRS reason (got ' + x.cls + ')');
+['US-dollar bonds (through LRS)', 'USD Bonds', 'Bonds (LRS)', 'US Dollar Bond', 'NCDs (LRS)', 'Foreign Bonds', 'Overseas Bonds', 'International Bonds',
+  'Global Bonds', 'Offshore Bonds', 'Off-shore Bonds', 'US$ Bonds', 'Dollar Bonds', 'GIFT City Bonds', 'IFSC Bonds', 'Eurobonds'].forEach(p => {
+  const x = bond(p); ok(x.cls === null && x.why === WHY, 'LRS. "' + p + '": no class, with the foreign-bond reason (got ' + x.cls + ')');
 });
+[['Bonds', { category: 'USD Bonds (LRS)' }], ['US-dollar bonds (through LRS)', { category: 'Government Securities' }],
+  ['US-dollar bonds (through LRS)', { name: 'Synthetic US Treasury G-Sec 2030' }], ['US-dollar bonds (through LRS)', { category: 'Market Linked Debenture' }]]
+  .forEach(([p, h]) => { const x = bond(p, h); ok(x.cls === null && x.why === WHY, 'LRS. "' + p + '" with ' + JSON.stringify(h) + ': the foreign-bond reason, before the Category, G-Sec and MLD rows (got ' + x.cls + ')'); });
+ok(bond('G-Sec', { category: 'Government Securities' }).cls === 'Government Securities / G-Secs' && bond('MLD', { category: 'Market Linked Debenture' }).cls === 'MLD',
+  'LRS. control: a domestic G-Sec and an MLD keep their rows');
+ok(E.taxClassify({ product: 'Offshore Equity Shares', asset: 'Equity', category: '', name: 'Synthetic Overseas Corp' }, REF).cls === 'Foreign-listed shares (held directly)' &&
+   E.taxClassify({ product: 'Equity Shares', asset: 'Equity', category: '', name: 'HDFC Bank Ltd.' }, REF).cls === 'Listed Equity Shares',
+  'OFFSHORE. "Offshore Equity Shares" is a foreign-listed share (control: an Indian listed share stays a listed equity share)');
 ok(bond('NCD').cls === 'Listed Bonds / NCDs' && bond('Bonds').cls === 'Listed Bonds / NCDs' && bond('Debenture').cls === 'Listed Bonds / NCDs',
   'LRS. control: "NCD", "Bonds" and "Debenture" stay Listed Bonds / NCDs');
 ok(bond('Unlisted Bonds').cls === 'Unlisted Bonds / NCDs', 'LRS. control: "Unlisted Bonds" stays Unlisted Bonds / NCDs');

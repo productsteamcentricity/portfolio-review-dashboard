@@ -6,8 +6,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ### Fixed (fix batch 3: tax rules per the TY2026-27 reckoner, CR-0008)
 - **Tax batch, stage S12 (CR-0008): ARC-02's Gate B points on d7683a0, settled conservatively (MOD-04, 25 Nov 2026), and
-  bonds held through the LRS.** `index.html` MD5 `8A233F94CA795FFA26029DC7CE6C744F` → `977795F2EED536D20F89408F18F29972` (patch
-  `tools/patches/2026-11-25-tax-6-wording.js`; test `tools/regression/TA03-tax-6-gate-b.js`, 33 checks, 18 fail on d7683a0).
+  foreign bonds.** `index.html` MD5 `8A233F94CA795FFA26029DC7CE6C744F` → `5EA6990734AB65C1C243B3990C234198` (patch
+  `tools/patches/2026-11-25-tax-6-wording.js`; test `tools/regression/TA03-tax-6-gate-b.js`, 50 checks, 34 fail on d7683a0).
   - T1: the Crypto row's source note, shown on the Taxation tab, ends "to be confirmed with the tax adviser." instead of
     "for the owner to confirm." (a client may read "the owner" as the portfolio's owner); the latent set-off note records
     the decision of 2 Nov 2026 (D-043). `KI-182-crypto-source.js` asserts neither note names the owner.
@@ -16,10 +16,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     "X Income Opportunities Strategy" and "The X Opportunities Strategy" are no longer the entry "X Opportunities
     Strategy": Category I or II, assumed, with the note. No existing check changes.
   - T3: the tab's crypto set-off sentence says "(confirm with the tax adviser)", as the slide does.
-  - A bond whose Product names the LRS or the US dollar ("US-dollar bonds (through LRS)") is no longer taxed as a domestic
-    "Listed Bonds / NCDs" row: no tax class, with the reason "No tax row is published for a bond held abroad through the
-    LRS. Confirm its tax with the tax adviser." (MOD-03 and MOD-04, with LP-16). "NCD", "Bonds" and "Debenture" keep
-    their rows: the tax class is not read from LP-16's product labels.
+  - A bond whose Product or Category names a foreign or US-dollar route (LRS, USD, US$, dollar, foreign, overseas,
+    international, global, offshore, GIFT City, IFSC, eurobond) is no longer taxed as a domestic row (MLD, G-Sec,
+    unlisted or listed bonds): no tax class, with the reason "No tax row is published for a foreign or US-dollar bond
+    (held through the LRS, GIFT City or abroad). Confirm its tax with the tax adviser." (MOD-03 and MOD-04, with LP-16;
+    widened and moved first by the financial review). "NCD", "Bonds" and "Debenture" keep their rows: the tax class is
+    not read from LP-16's product labels.
+  - A share whose Product or Category says offshore ("Offshore Equity Shares") is a foreign-listed share, as "foreign",
+    "international" and "overseas" already were. Question 27 for the tax adviser covers foreign bonds and GIFT City shares.
 - **Tax batch, part T5 (CR-0008, D-040, D-043): the follow-ups to parts T1 to T4, the owner's answers to questions 17,
   18 and 24, and the corrections from two reviews.** `index.html` MD5 `0713C6BEEFCB35D778730AB9BEF3E430` →
   `32CE9C58307178C4A76379AA6170C413` (16,898,566 → 16,917,748 bytes; patch `tools/patches/2026-10-27-tax-5-followups.js`).

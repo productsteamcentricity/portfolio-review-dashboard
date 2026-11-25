@@ -795,7 +795,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
   var TAX_WHY={
     none:"No row in the tax rules covers this product or category.",
     p2p:"No tax row is published for peer-to-peer lending.",
-    lrsBond:"No tax row is published for a bond held abroad through the LRS. Confirm its tax with the tax adviser.",
+    foreignBond:"No tax row is published for a foreign or US-dollar bond (held through the LRS, GIFT City or abroad). Confirm its tax with the tax adviser.",
     debtPms:"No tax row is published for a debt PMS.",
     blend:"An equity and G-Sec index blend needs its equity share to pick a tax class.",
     hybrid:"A balanced advantage, dynamic asset allocation, multi asset or life cycle fund is taxed by what it holds over the year. Confirm its class with the AMC's year-end tax classification.",
@@ -815,11 +815,13 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
      but parseBaseRows does not read the base file's ISIN column, KI-184, open), or
      a product or category label naming foreign, international, US or overseas equity */
   function taxForeignListed(h,p,c,R){
-    if (/foreign|international|overseas|(^|[^a-z])u\.?s\.?([^a-z]|$)/.test(p+" "+c)) return true;
+    if (/foreign|international|overseas|off[\s-]*shore|(^|[^a-z])u\.?s\.?([^a-z]|$)/.test(p+" "+c)) return true;   /* tax-6: "Offshore Equity Shares" */
     var isin=String(h.isin||(h.stockRet&&h.stockRet.isin)||"").trim().toUpperCase();
     if (!isin && R && R.STOCK_RET){ var _sr=R.STOCK_RET[normCo(h.name)]; if(_sr&&_sr.isin) isin=String(_sr.isin).trim().toUpperCase(); }
     return /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(isin) && isin.slice(0,2)!=="IN";
   }
+  /* tax-6: a bond held through the LRS, GIFT City or abroad (Product or Category); whole words, letter case ignored */
+  var TAX_FOREIGN_BOND=/(^|[^a-z])(lrs|usd|us\$|dollars?|foreign|overseas|international|global|off[\s-]*shore|gift[\s-]*city|ifsc|euro[\s-]*bonds?)([^a-z]|$)/;
   function taxClassOf(h,R,refDate){ return taxClassify(h,R,refDate).cls; }
   function taxClassify(h,R,refDate){
     var a=String(h.asset||"").toLowerCase(),
@@ -872,6 +874,9 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
         return (TAX_INTL_NAME.test(n) || TAX_INTL_CAT.test(c)) ? K("Global Funds") : N(TAX_WHY.reitFund);
       return K(/reits?\b/.test(cn) ? "REIT Units" : "InvIT Units");
     }
+    /* tax-6 (MOD-03, MOD-04 with LP-16; the financial review of S12): a bond whose Product or Category names a foreign or US-dollar
+       route has no reckoner row, so it is left unclassified with its reason, before the MLD, G-Sec, unlisted and listed bond rows */
+    if (!mfp && TAX_FOREIGN_BOND.test(p+" "+c) && /bond|ncd|debenture/.test(p+" "+c)) return N(TAX_WHY.foreignBond);
     if (/\bmld\b|market linked/.test(c+n)) return K("MLD");
     /* KI-065, KI-099: gilt / G-Sec / bond mutual funds, ETFs and FoFs are debt mutual funds, not
        directly held securities: these rows apply only when the product is not a fund */
@@ -915,8 +920,6 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       if(!_st12) _r12.catAssumed=true;
       return _r12;
     }
-    /* tax-6 (MOD-03, MOD-04 with LP-16): a bond held abroad through the LRS has no reckoner row; tested before the unlisted and listed bond rows */
-    if (!mfp && /(^|[^a-z])(lrs|usd|us[\s-]*dollars?)([^a-z]|$)/.test(p) && /bond|ncd|debenture/.test(p+c)) return N(TAX_WHY.lrsBond);
     if (/unlisted/.test(p+c)) return K(/debt/.test(a) ? "Unlisted Bonds / NCDs" : "Unlisted Equity Shares");
     if (!mfp && /bond|ncd|debenture/.test(p+c)) return K("Listed Bonds / NCDs");
     if (/pms/.test(p)) return /debt/.test(a) ? N(TAX_WHY.debtPms) : K("Equity PMS");
