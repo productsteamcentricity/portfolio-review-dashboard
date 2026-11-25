@@ -32,6 +32,7 @@
     { "path": "data/refdata/MF_PERF_DIRECT.json", "why": "generated copy of an index.html block (see data/refdata/AIF_PERF.json)" },
     { "path": "data/refdata/MF_RISK.json", "why": "generated copy of an index.html block (see data/refdata/AIF_PERF.json)" },
     { "path": "data/refdata/PMS_PERF.json", "why": "generated copy of an index.html block (see data/refdata/AIF_PERF.json)" },
+    { "path": "data/refdata/PRODUCT_CLASS_RULES.json", "why": "generated copy of an index.html block (see data/refdata/AIF_PERF.json)" },
     { "path": "data/refdata/SIF_PERF.json", "why": "generated copy of an index.html block (see data/refdata/AIF_PERF.json)" },
     { "path": "data/refdata/STOCK_INFO.json", "why": "generated copy of an index.html block (see data/refdata/AIF_PERF.json)" },
     { "path": "data/refdata/STOCK_RET.json", "why": "generated copy of an index.html block (see data/refdata/AIF_PERF.json)" },

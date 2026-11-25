@@ -11,6 +11,7 @@ through `tools/engine-host.js` (from a script file, never `node -e`, KI-011).
 | `aggregation.parity.test.ts` (with `aggregation-compare.ts`) | `aggregation-ledger.json` |
 | `refdata.parity.test.ts` | none: the extracted reference data must equal the embedded blocks exactly |
 | `matching.parity.test.ts` (with `matching-queries.ts`; M2.1) | `matching-ledger.json`, basis names in `matching-basis.json` |
+| `monitor.parity.test.ts` (fixtures `tests/fixtures/make-monitors.ts`; M2.3) | `monitor-ledger.json` |
 
 ## The ledger
 
