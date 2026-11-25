@@ -4,6 +4,32 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M2.3 sprint 3a: the MF Monitor read by header name; no change to `/next/` or `/`)
+- **`app/src/ingest/vendor/`:** the shared cell readers and the Daily MF Monitor reader (Regular and Direct issues) with the
+  monthly pipeline's rules, so an upload and the refresh read a monitor the same way (OD-11): AUM from the label row,
+  market-cap shares, debt figures to 4 places, the Direct issue's unnamed sheets mapped to their category, benchmark rows.
+  On the October 2026 monitors (read locally, never committed) it reproduces the embedded MF_PERF, MF_PERF_DIRECT and
+  BENCH_RET exactly. Not called by the app yet; the upload buttons wait for the spreadsheet-reader decision.
+- **The monitor's expense ratio (KI-058):** read from the "Ratio" header column, one scale decision per file (median
+  below 0.05 means fractions), always stored as a fraction, values above 5% dropped and counted. It is the all-in ratio and
+  is labelled so: never used for a missing base expense ratio (CLAUDE.md rule 3). October 2026: 2,125 Regular and 1,803
+  Direct ratios read, percent scale, none above the cap.
+- **The SIF Monitor (E-07):** read as the pipeline does: the benchmark group, index rows, rows with no category and no AUM
+  and the disclaimer are not schemes; a Month End date is not a fund house. October 2026: equal to the embedded SIF_PERF
+  (30 schemes).
+- **The base file's ISIN column** (the owner's answer of 25 Nov 2026: ISIN first, then the name): any heading containing
+  "ISIN" is read; a cell is kept only in the ISIN form; a file without the column reads exactly as before. Read only: no
+  figure changes; the import report lists the column among those read when a file has one.
+- **The PMS performance file (E-08, KI-033):** read by header name as the monthly pipeline reads it (returns as stated,
+  never multiplied by 100; AUM from rupees to whole crore; duplicates by the normalised key; a missing column refuses the
+  file). The monthly merge into the previous block stays with M11.
+- **The portfolio analytics files (E-10, E-11):** the Equity, Debt and Hybrid Analytics read by header name instead of
+  column position (the file repeats "Holding(%)" for the previous month; the first is read), with the legacy rules and the
+  pipeline's tidy step: cash in the total only, issuers collapsed to their entity, ratings by label then basket, the issuer
+  list cut to the top 30. Equal to the legacy positional parsers on synthetic files and 18 issuer spellings.
+- **Tests:** `tests/unit/ingest/vendor/mf-monitor.test.ts` on synthetic issues; `tests/parity/monitor.parity.test.ts`
+  against the browser's legacy parser, every difference a ledgered pipeline correction.
+
 ### Added (new build, M2.1 sprint 1: identifiers and the matcher at parity; no change to `/next/` or `/`)
 - **`app/src/engine/match/`:** the legacy name normalisation, instrument and PMS matchers, the fund-house key
   (KI-061, OD-32, OD-34) and the three name lists (pins, blocks, exact-only: CR-0010 A2, A2b) ported at parity, and a

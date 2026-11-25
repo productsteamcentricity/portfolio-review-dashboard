@@ -114,6 +114,9 @@ const FIELD_PREDICATES: ReadonlyArray<readonly [BaseField, (h: string) => boolea
   ['holder3', (h) => /^(third|3rd) holder( name)?$|^joint holder 2$|^holder 3( name)?$/.test(h)],
   ['guardian', (h) => /^guardian( name)?$/.test(h)],
   ['mode', (h) => /^(mode of holding|holding mode)$/.test(h)],
+  /* the owner's answer of 25 Nov 2026: the column is headed "ISIN" (any letter case); a heading with ISIN as a whole word
+     ("ISIN Code") is also read, the first such column winning */
+  ['isin', (h) => h === 'isin' || /(^|[^a-z0-9])isin([^a-z0-9]|$)/.test(h)],
 ];
 
 type Columns = Partial<Record<BaseField, number>>;
@@ -251,6 +254,8 @@ type RowRecord = {
   productLabel: string | null;
   distributorLabel: string | null;
   liquidity: string | null;
+  /** A well-formed ISIN of the row (12 characters, upper case), or null. */
+  isin: string | null;
   purchaseDate: Value<DayNumber>;
   units: Value<number>;
   invested: Value<number>;
@@ -288,6 +293,23 @@ type MoneyRead = {
 
 function bump(t: InvalidTally, header: string): void {
   t.set(header, (t.get(header) ?? 0) + 1);
+}
+
+const ISIN_FORM = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
+
+/** The cell as an ISIN: trimmed, upper case, in the ISIN form (two letters, nine letters or digits, one digit); else null,
+ * never a guess (CLAUDE.md rule 3). */
+function isinOrNull(row: Cell[], col: number | undefined): string | null {
+  if (col === undefined) return null;
+  const t = cellText(row[col]).toUpperCase();
+  return ISIN_FORM.test(t) ? t : null;
+}
+
+/** The ISIN of a holding: the first member row that carries one (merged folios of one instrument share it). No field
+ * at all when no row carries one, so a file without an ISIN column reads exactly as before. */
+function isinOfMembers(members: ReadonlyArray<{ isin: string | null }>): { isin?: string } {
+  for (const m of members) if (m.isin) return { isin: m.isin };
+  return {};
 }
 
 function textOrNull(row: Cell[], col: number | undefined): string | null {
@@ -794,6 +816,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       productLabel: textOrNull(row, cols.product),
       distributorLabel: textOrNull(row, cols.dist),
       liquidity: textOrNull(row, cols.liq),
+      isin: isinOrNull(row, cols.isin),
       purchaseDate,
       units: readPlainNumber(row, cols.units, header('units'), 'units', 'Units', prov, invalid),
       invested: money.invested.value,
@@ -948,6 +971,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       holdingDays: dates.holdingDays,
       mergeGaps,
       inclusion,
+      ...isinOfMembers(members),
     };
   };
   const built: Array<{ firstRow: number; h: Holding }> = [];
