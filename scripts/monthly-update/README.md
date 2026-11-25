@@ -15,6 +15,14 @@ node scripts/monthly-update/run.ts --month 2026-10 [--inbox <dir>] [--repo <dir>
 - A dry run by default: it prints the report (with file names, for the analyst) and writes nothing. `--write` stages
   new class P files into their role folders and writes the manifest and the committed report (which names only class
   P files). Writes are atomic (a temporary file, then a rename). A repeat run that adds nothing changes no byte.
+- The engine does not run the privacy scan on what it writes: run `node scripts/validation/privacy-scan.mjs` on the
+  written files before committing (the console says so; the pre-push scan is the backstop).
+- A file whose name looks like client material is never staged, even when its content is vendor data: it stops as
+  `name-content-mismatch` (or is quarantined), and its name appears only in the console report.
+- An as-on date belongs to the data month when it falls inside the month or in the first `AS_ON_GRACE_DAYS` (10) days
+  after it (monitors are dated on the first working days); otherwise the file is `other-month`.
+- Entries read to sniff an inbox file are capped at 64 MB each (`MAX_SNIFF_ENTRY_BYTES`); every entry inflates only up
+  to its declared size.
 - Classes and role folders come from `monthly_updates/_policy/publication-classes.json` (D-023, D-026). The Screener
   pack (class N) is validated by the app's own reader and recorded by fingerprint, contract version, cycle and counts
   only; it is never copied. A class N file inside `monthly_updates/` fails the run.

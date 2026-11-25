@@ -1,13 +1,13 @@
 // covers: E-129 E-126 M11a
 // The engine's zip access (scripts/monthly-update/zip.ts): entries listed from the central directory, stored and
 // deflated entries inflated one at a time, a header that lies about its size refused (inflation capped at the declared
-// size), a damaged file not read as a zip; and the JSZip subset it gives the Screener pack reader, so the browser and
-// the engine share one parser.
+// size, so a zip bomb costs nothing), entries above a caller's cap not read, a damaged file not read as a zip; and the
+// JSZip subset it gives the Screener pack reader, so the browser and the engine share one parser.
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import zlib from 'node:zlib';
-import { listZip, nodePackZip, readEntry } from '../../../scripts/monthly-update/zip.ts';
+import { listZip, MAX_SNIFF_ENTRY_BYTES, nodePackZip, readEntry } from '../../../scripts/monthly-update/zip.ts';
 import { storeZip } from '../../../app/src/exports/zip/store-zip.ts';
 import { readScreenerPack } from '../../../app/src/ingest/screener-pack/read-pack.ts';
 import { sha256Hex } from '../../../app/src/services/sha256.ts';
@@ -45,6 +45,22 @@ describe('zip access', () => {
   test('a header that claims fewer bytes than the data holds is refused', () => {
     const d = deflatedZip('lie.txt', enc.encode('y'.repeat(5000)), 100);
     assert.throws(() => readEntry(d, listZip(d)![0]!));
+  });
+
+  test('a zip bomb is refused at its declared size, without inflating it (Gate B R1)', () => {
+    // 64 MB of zeros deflate to about 64 KB; the directory declares 1,000 bytes
+    const bomb = deflatedZip('bomb.xml', new Uint8Array(64 * 1024 * 1024), 1000);
+    assert.ok(bomb.length < 200_000);
+    const before = process.memoryUsage().arrayBuffers;
+    assert.throws(() => readEntry(bomb, listZip(bomb)![0]!), /bomb\.xml: inflates beyond its declared size/);
+    assert.ok(process.memoryUsage().arrayBuffers - before < 16 * 1024 * 1024, 'inflation stopped at the declared size');
+  });
+
+  test('an entry declared above the caller\'s cap is not read (sniffing caps entries at 64 MB, Gate B R3)', () => {
+    const d = deflatedZip('sheet.xml', enc.encode('z'.repeat(5000)));
+    assert.equal(MAX_SNIFF_ENTRY_BYTES, 64 * 1024 * 1024);
+    assert.throws(() => readEntry(d, listZip(d)![0]!, 4999), /sheet\.xml: entry too large/);
+    assert.equal(readEntry(d, listZip(d)![0]!, 5000).length, 5000);
   });
 
   test('bytes that are not a zip', () => {

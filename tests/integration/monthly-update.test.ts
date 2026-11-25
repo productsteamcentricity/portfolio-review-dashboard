@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { runMonthlyUpdate } from '../../scripts/monthly-update/run.ts';
-import { clientBook, fullMonth, mfMonitor, tempInbox, tempRepo } from '../fixtures/make-monthly-files.ts';
+import { clientBook, fullMonth, mfMonitor, sifMonitor, tempInbox, tempRepo } from '../fixtures/make-monthly-files.ts';
 import { makeScreenerPack } from '../fixtures/make-screener-pack.ts';
 
 const M = '2026-10';
@@ -117,6 +117,22 @@ describe('a full synthetic month', () => {
     assert.match(report, /\| quarantined \| client_material \| quarantine \| xlsx file [0-9a-f]{12} \|/);
     assert.match(r.privateReport, /Fixture Family holdings\.xlsx/, 'the console report names it for the analyst');
     assert.deepEqual(Object.keys(tree(repo)).sort(), ['monthly_updates/2026-10/MANIFEST.json', 'monthly_updates/2026-10/UPDATE_REPORT.md', 'monthly_updates/_policy/publication-classes.json']);
+  });
+
+  test('vendor content under a client-like name stops: never staged, never named in the committed files (Gate B B1)', async () => {
+    const repo = tempRepo();
+    const inbox = tempInbox(M, { 'Fixture Family Review_ MF Monitor.xlsx': mfMonitor(false), 'Client Sample SIF.xlsx': sifMonitor() });
+    const r = await runMonthlyUpdate({ month: M, repo, inbox, write: true });
+    assert.deepEqual(r.files.map((f) => f.status), ['name-content-mismatch', 'name-content-mismatch']);
+    assert.ok(r.files.every((f) => f.target === null && f.nameWithheld === true));
+    assert.deepEqual(r.manifest.entries, []);
+    assert.deepEqual(Object.keys(tree(repo)).sort(), ['monthly_updates/2026-10/MANIFEST.json', 'monthly_updates/2026-10/UPDATE_REPORT.md', 'monthly_updates/_policy/publication-classes.json']);
+    const committed = Object.values(tree(repo)).map((b) => Buffer.from(b, 'base64').toString('utf8')).join('\n');
+    assert.doesNotMatch(committed, /Fixture Family|Client Sample/);
+    assert.match(r.report, /\| name-content-mismatch \| mf_monitor \| regular \| xlsx file [0-9a-f]{12} \| P \| - \|/);
+    assert.match(r.report, /mf_monitor \/ regular: the name and the content disagree/);
+    assert.match(r.privateReport, /Fixture Family Review_ MF Monitor\.xlsx/, 'the console report names it for the analyst');
+    assert.match(r.privateReport, /but the name looks like client material/);
   });
 
   test('a month that is not YYYY-MM is refused', async () => {

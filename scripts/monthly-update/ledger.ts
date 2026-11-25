@@ -36,11 +36,14 @@ export type Seen = {
   screener?: { ok: true; record: ScreenerRecord } | { ok: false; reason: string };
 };
 
-/** True when an as-on date belongs to the month: inside it, or in the first 10 days after it (first working days). */
+/** Days after month-end in which an as-on date still belongs to the month (monitors dated on the first working days). */
+export const AS_ON_GRACE_DAYS = 10;
+
+/** True when an as-on date belongs to the month: inside it, or in the first AS_ON_GRACE_DAYS days after it. */
 export function asOnFitsMonth(asOn: string, month: string): boolean {
   const [y, m] = month.split('-').map(Number) as [number, number];
   const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
-  return asOn.startsWith(`${month}-`) || (asOn.startsWith(`${next}-`) && Number(asOn.slice(8, 10)) <= 10);
+  return asOn.startsWith(`${month}-`) || (asOn.startsWith(`${next}-`) && Number(asOn.slice(8, 10)) <= AS_ON_GRACE_DAYS);
 }
 
 const fkey = (role: Role | null, key: string | null): string => `${role ?? ''}:${key ?? ''}`;
@@ -83,6 +86,7 @@ export function decide(month: string, seen: Seen[], policy: Policy, current: Mon
     return {
       root: s.root, path: s.path, name: s.name, bytes: s.bytes, sha256: s.sha256, kind: s.kind,
       role: c.role, key, class: cls, asOn: c.asOn, status, target, evidence: c.evidence, issues, screener,
+      ...(c.nameHint === 'client_material' ? { nameWithheld: true } : {}),
     };
   });
 
@@ -139,7 +143,7 @@ export function entryOf(f: FileRecord): ManifestEntry | null {
   const storage = f.class === 'P' && f.status !== 'too-large' ? 'tracked' : 'private';
   return {
     role: f.role, key: f.key, class: f.class, sha256: f.sha256, storage,
-    originalName: f.name, bytes: f.bytes, asOn: f.asOn, target: storage === 'tracked' ? f.target : null, issues: [...f.issues],
+    ...(f.nameWithheld ? {} : { originalName: f.name }), bytes: f.bytes, asOn: f.asOn, target: storage === 'tracked' ? f.target : null, issues: [...f.issues],
   };
 }
 

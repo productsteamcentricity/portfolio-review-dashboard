@@ -196,10 +196,13 @@ export function classify(bytes: Uint8Array, s: Sniff, name: string, path: string
   for (const rule of RULES) {
     const hit = rule(s, name, path);
     if (!hit) continue;
-    const mismatch = hint !== null && hint !== hit.role && hint !== 'client_material';
+    // a name that looks like client material stops the file even when the content is vendor data: it is never staged
+    // and its name never reaches the committed report or manifest (Gate B B1)
+    const mismatch = hint !== null && hint !== hit.role;
+    const why = hint === 'client_material' ? 'but the name looks like client material' : `but the name suggests ${hint}`;
     return {
       role: hit.role, key: hit.key, nameHint: hint, mismatch, asOn: hit.asOn ?? null,
-      evidence: mismatch ? [...hit.evidence, `but the name suggests ${hint}`] : hit.evidence,
+      evidence: mismatch ? [...hit.evidence, why] : hit.evidence,
     };
   }
   // a name that looks like client material is quarantined even when the content does not confirm it: never copied

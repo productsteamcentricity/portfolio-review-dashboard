@@ -88,6 +88,8 @@ export type FileRecord = {
   evidence: string[];
   issues: string[];
   screener: ScreenerRecord | null;
+  /** The name looks like client material: the committed report and manifest never show it (console only). */
+  nameWithheld?: boolean;
 };
 
 /** One entry of monthly_updates/YYYY-MM/MANIFEST.json (DATA_DICTIONARY §5.15). Sorted, no timestamps. */

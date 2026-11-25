@@ -8,7 +8,7 @@ import type { FileRecord, MonthManifest, Role } from './types.ts';
 const STATUS_ORDER = ['class-n-in-tracked-folder', 'competing', 'stale-copy', 'name-content-mismatch', 'rejected', 'too-large', 'other-month', 'quarantined', 'unknown', 'new', 'unchanged', 'duplicate'] as const;
 
 function label(f: FileRecord, priv: boolean): string {
-  if (priv || (f.class === 'P' && f.role !== null)) return `\`${f.name}\``;
+  if (priv || (f.class === 'P' && f.role !== null && !f.nameWithheld)) return `\`${f.name}\``;
   return `${f.kind} file ${f.sha256.slice(0, 12)}`;
 }
 
@@ -52,7 +52,7 @@ export function reportText(month: string, files: FileRecord[], manifest: MonthMa
     return ka < kb ? -1 : ka > kb ? 1 : 0;
   });
   for (const f of sorted) {
-    const notes = [...(priv || f.class === 'P' ? f.evidence : []), ...f.issues].join('; ').replace(/\|/g, '/');
+    const notes = [...(priv || (f.class === 'P' && !f.nameWithheld) ? f.evidence : []), ...f.issues].join('; ').replace(/\|/g, '/');
     out.push(`| ${f.status} | ${f.role ?? '-'} | ${f.key ?? '-'} | ${label(f, priv)} | ${f.class ?? '-'} | ${f.target ? `\`${f.target}\`` : '-'} | ${notes || '-'} |`);
   }
   return out.join('\n') + '\n';

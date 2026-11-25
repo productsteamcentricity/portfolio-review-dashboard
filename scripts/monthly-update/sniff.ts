@@ -3,7 +3,7 @@
 // cells of its first rows and its shared strings; a pptx's slide count and slide text; a zip's entry names; the first
 // lines of a text file. Numbers are never read. Large parts are capped so a 90 MB deck reads in a moment.
 
-import { entryNamed, listZip, readEntry, type ZipEntry } from './zip.ts';
+import { entryNamed, listZip, MAX_SNIFF_ENTRY_BYTES, readEntry, type ZipEntry } from './zip.ts';
 import type { FileKind, Sniff } from './types.ts';
 
 const HEADER_ROWS = 30;
@@ -24,7 +24,7 @@ function empty(kind: FileKind, problem: string | null = null): Sniff {
 
 function part(b: Uint8Array, entries: ZipEntry[], name: string): string | null {
   const e = entryNamed(entries, name);
-  return e ? utf8.decode(readEntry(b, e)) : null;
+  return e ? utf8.decode(readEntry(b, e, MAX_SNIFF_ENTRY_BYTES)) : null;
 }
 
 /** The text of every <t> element in an XML part (shared strings, inline strings, rich text runs, slide text). */
@@ -102,7 +102,7 @@ function sniffPptx(b: Uint8Array, entries: ZipEntry[]): Sniff {
     .sort((a, z) => Number(a.n) - Number(z.n));
   s.slideCount = slides.length;
   for (const { e } of slides.slice(0, SLIDES_READ)) {
-    const t = textsOf(utf8.decode(readEntry(b, e)), 'a:t').join(' ').replace(/\s+/g, ' ').trim();
+    const t = textsOf(utf8.decode(readEntry(b, e, MAX_SNIFF_ENTRY_BYTES)), 'a:t').join(' ').replace(/\s+/g, ' ').trim();
     s.slideTexts.push(t);
     s.text.push(t);
   }

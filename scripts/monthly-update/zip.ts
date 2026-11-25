@@ -10,6 +10,8 @@ export type ZipEntry = { name: string; isDir: boolean; method: number; compresse
 
 const MAX_ENTRIES = 50_000;
 const MAX_ENTRY_BYTES = 512 * 1024 * 1024;
+/** Entries read only to sniff an inbox file (sheet XML, slide text) are capped lower (Gate B R3). */
+export const MAX_SNIFF_ENTRY_BYTES = 64 * 1024 * 1024;
 
 /** The entries of a zip, or null when the bytes are not a readable zip. */
 export function listZip(b: Uint8Array): ZipEntry[] | null {
@@ -40,10 +42,13 @@ export function listZip(b: Uint8Array): ZipEntry[] | null {
   return out;
 }
 
-/** The inflated bytes of one entry. Throws on a damaged entry or a method other than STORE or DEFLATE. */
-export function readEntry(b: Uint8Array, e: ZipEntry): Uint8Array {
+/**
+ * The inflated bytes of one entry. Throws on a damaged entry, a method other than STORE or DEFLATE, an entry declared
+ * above `cap`, or data that inflates beyond its declared size (inflation stops there: a zip bomb costs nothing).
+ */
+export function readEntry(b: Uint8Array, e: ZipEntry, cap = MAX_ENTRY_BYTES): Uint8Array {
   const buf = Buffer.from(b.buffer, b.byteOffset, b.byteLength);
-  if (e.size > MAX_ENTRY_BYTES) throw new Error(`${e.name}: entry too large`);
+  if (e.size > cap) throw new Error(`${e.name}: entry too large`);
   const lo = e.localOffset;
   if (lo + 30 > buf.length || buf.readUInt32LE(lo) !== 0x04034b50) throw new Error(`${e.name}: damaged local header`);
   const start = lo + 30 + buf.readUInt16LE(lo + 26) + buf.readUInt16LE(lo + 28);
@@ -51,7 +56,14 @@ export function readEntry(b: Uint8Array, e: ZipEntry): Uint8Array {
   if (data.length !== e.compressedSize) throw new Error(`${e.name}: truncated`);
   let out: Buffer;
   if (e.method === 0) out = data;
-  else if (e.method === 8) out = zlib.inflateRawSync(data, { maxOutputLength: Math.max(1, e.size) });
+  else if (e.method === 8) {
+    try {
+      out = zlib.inflateRawSync(data, { maxOutputLength: Math.max(1, e.size) });
+    } catch (err) {
+      if ((err as { code?: string }).code === 'ERR_BUFFER_TOO_LARGE') throw new Error(`${e.name}: inflates beyond its declared size`);
+      throw err;
+    }
+  }
   else throw new Error(`${e.name}: compression method ${e.method}`);
   if (out.length !== e.size) throw new Error(`${e.name}: size mismatch`);
   return new Uint8Array(out.buffer, out.byteOffset, out.byteLength);

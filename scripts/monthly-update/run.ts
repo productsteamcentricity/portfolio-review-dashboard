@@ -143,7 +143,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   try {
     const r = await runMonthlyUpdate(parseArgs(process.argv.slice(2)));
     process.stdout.write(r.privateReport);
-    if (r.written.length) process.stdout.write(`\nWritten:\n${r.written.map((w) => `- ${w}`).join('\n')}\n`);
+    if (r.written.length) {
+      process.stdout.write(`\nWritten:\n${r.written.map((w) => `- ${w}`).join('\n')}\n`);
+      // the engine does not run the privacy scan: the analyst does, before committing (the pre-push scan is the backstop)
+      process.stdout.write('\nNot yet privacy-scanned: run node scripts/validation/privacy-scan.mjs on the written files before committing.\n');
+    }
     process.exitCode = r.failed ? 1 : 0;
   } catch (e) {
     process.stderr.write(`monthly-update: ${e instanceof Error ? e.message : String(e)}\n`);
