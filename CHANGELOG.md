@@ -39,6 +39,24 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   legacy uses (0 differences on the same candidates; in the shipped order only score ties, ledgered as KI-036); unit
   tests in `tests/unit/match/`; the CR-0010 A2, KI-061, OD-32 and OD-34 known answers in `tests/regression/`.
 
+### Added (new build, M3a: the returns core; not wired into the page yet, `/next/` and `/` unchanged)
+- **`app/src/engine/returns/xirr.ts`** (E-26): the legacy XIRR solver ported exactly, on whole days (KI-047: flows on one
+  day have no rate). Equal to the shipped solver on 500 seeded random flow sets.
+- **`app/src/ingest/irr-file.ts`** (E-05, E-142): the IRR file's fund and benchmark sheets read by header name, with the
+  DISTRIBUTOR column, row kinds (OD-16), skipped rows with their reason, and repeated folios warned (OD-4).
+- **`app/src/engine/returns/irr-tree.ts`** (E-27, E-28): the legacy IRR tree, clients by id; the benchmark joined by
+  client and normalised instrument name, and instruments grouped on the same key.
+- **`app/src/engine/returns/contributions.ts`** (E-29): contributors, laggards and drags as the legacy contribLag, with
+  one correction: no line is called a contributor when every line is negative.
+- **`app/src/engine/returns/scope.ts` and `app/src/engine/scope.ts`** (E-142, I-45): returns per family, client and
+  advisor scope. A scope takes whole instruments, so its fund and benchmark XIRRs cover the same money; an advisor
+  scope holding an instrument split between distributors is not reconciled until a rule shares it (Gate B of
+  1bbca77). Clients with flows and no holding, redeemed instruments and invalid benchmarks are listed (OD-4); the
+  unassigned line shows its share of the money paid in (D15). The reconcile tolerance (D13) is still to be set.
+- **Tests:** unit tests for each module, `tests/regression/ki-047-xirr-same-day.test.ts`, and
+  `tests/parity/contributions.parity.test.ts` against the legacy contribLag. The IRR parity ledger waits for a real
+  export (TA-03, KI-186).
+
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
   funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.
