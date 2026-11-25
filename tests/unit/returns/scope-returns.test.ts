@@ -174,3 +174,29 @@ describe('not reconciled, and no IRR file', () => {
     assert.ok('gap' in solveXirr([{ day: D0, amount: -1000 }, { day: D0, amount: 1000 }]));
   });
 });
+
+describe('financial review of 058a94c: a holding\'s own flows are family-wide (finding 1) and one benchmark key (finding 2)', () => {
+  test('a holding of an instrument excluded for its benchmark keeps its transaction XIRR (30%, not its base 33%) and has flows', () => {
+    const holdings = [...HOLDINGS, holding('hA4', cA, d1, 'Sample Midcap Fund', 1, 33)];
+    const r = computeScopeReturns({ kind: 'family' }, IRR, holdings);
+    assert.deepEqual(r.reconciliation.invalidBenchmark.map((x) => x.instrumentName), ['Sample Midcap Fund']);
+    assert.ok(!r.tree.some((n) => n.label === 'Sample Midcap Fund'), 'still out of the aggregates (OD-4)');
+    assert.ok(!r.reconciliation.holdingsWithoutFlows.includes('hA4' as HoldingId));
+    const mid = r.contributions.rows.find((x) => x.label === 'Sample Midcap Fund')!;
+    near(mid.xirr.kind === 'value' ? mid.xirr.v : null, 30);
+  });
+  test('advisor D1: B\'s Balanced (held under D1, flows with no distributor) takes its transaction 50%, not its base 40%', () => {
+    const r = computeScopeReturns({ kind: 'advisor', distributorIds: [d1] }, IRR, HOLDINGS);
+    assert.ok(!r.reconciliation.holdingsWithoutFlows.includes('hB1' as HoldingId));
+    const bal = r.contributions.rows.find((x) => x.label === 'Sample Balanced Fund')!;
+    near(bal.xirr.kind === 'value' ? bal.xirr.v : null, 50);
+    assert.ok(!r.tree.some((n) => n.label === 'Sample Balanced Fund'), 'its flows are not D1\'s, so not in the advisor tree');
+  });
+  test('a benchmark row spelt in capitals joins the instrument at every level', () => {
+    const bench = BENCH.map((t) => (t.instrumentName === 'Sample Bluechip Fund' ? { ...t, instrumentName: 'SAMPLE  BLUECHIP FUND' } : t));
+    const r = computeScopeReturns({ kind: 'client', clientIds: [cA] }, { ...IRR, bench } as IrrFileImport, HOLDINGS);
+    const node = r.tree.find((n) => n.level === 'instrument' && n.label === 'Sample Bluechip Fund')!;
+    near(v(node.bench), 5);
+    near(v(r.tree.find((n) => n.level === 'asset')!.bench), 5);
+  });
+});

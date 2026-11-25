@@ -342,6 +342,23 @@ export function parseIrrFile(wb: Workbook, opts: IrrFileOptions): IrrFileImport 
       `${plural(rows.length, 'row', 'rows')} ${what[reason]} ${rows.length === 1 ? 'was' : 'were'} skipped${withMoney ? ` (${withMoney} with an amount)` : ''}.`,
       info ? { count: rows.length, resolution: 'auto-resolved', status: 'resolved' } : { count: rows.length });
   }
+  // OD-4 "duplicate folios: flag them, never alter them": a folio number that the fund sheet gives to more than one
+  // client, or to more than one instrument (names compared without case and spacing). Flagged by count only; the flows
+  // are read as written. The folio itself never appears in a message.
+  const folioUse = new Map<string, { clients: Set<string>; instruments: Set<string> }>();
+  for (const t of fund) {
+    if (t.folio === null) continue;
+    const u = folioUse.get(t.folio) ?? { clients: new Set<string>(), instruments: new Set<string>() };
+    u.clients.add(t.clientId as string);
+    u.instruments.add((t.instrumentName ?? '').replace(/\s+/g, ' ').trim().toLowerCase());
+    folioUse.set(t.folio, u);
+  }
+  const duplicateFolios = [...folioUse.values()].filter((u) => u.clients.size > 1 || u.instruments.size > 1).length;
+  if (duplicateFolios > 0) {
+    issues.add('duplicate-folios', 'Warning', fileScope,
+      `${plural(duplicateFolios, 'folio number appears', 'folio numbers appear')} under more than one client or instrument; ${duplicateFolios === 1 ? 'it is' : 'they are'} flagged and read as written (OD-4).`,
+      { count: duplicateFolios });
+  }
   const unrecognisedTypes = [...typeTally.entries()].map(([label, rows]) => ({ label, rows }));
   if (unrecognisedTypes.length > 0) {
     const n = unrecognisedTypes.reduce((s, x) => s + x.rows, 0);

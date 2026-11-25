@@ -19,7 +19,8 @@
 // The join of an IRR instrument to the holdings is the client id plus the exact normalised instrument name until
 // engine/match (M2) is on main (PLAN-02 D9). Pure: no globals.
 
-import type { Scope, ScopeKey } from '../../model/scope.ts';
+import type { Scope } from '../../model/scope.ts';
+import { holdingInScope, scopeKeyOf } from '../scope.ts';
 import type { IrrFileImport, Transaction } from '../../model/transactions.ts';
 import type { Holding } from '../../model/holding.ts';
 import type { ClientId, HoldingId } from '../../model/ids.ts';
@@ -34,23 +35,8 @@ import { solveXirr, xirr, xirrGap } from './xirr.ts';
 import { keyOf, normaliseLabel } from '../ids.ts';
 import { missing, present } from '../value.ts';
 
-/**
- * The stable key of a scope (I-45 format): "family", or the kind and its ids sorted by code unit, joined by ",".
- * Kept here until engine/scope.ts exists (PLAN-02 D8); it moves there unchanged.
- */
-export function scopeKeyOf(scope: Scope): ScopeKey {
-  if (scope.kind === 'family') return 'family';
-  const ids = [...(scope.kind === 'client' ? scope.clientIds : scope.distributorIds)].map(String).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-  return scope.kind === 'client' ? `client:${ids.join(',')}` : `advisor:${ids.join(',')}`;
-}
-
-/** True when an included holding belongs to the scope (a client scope by the holding's client, the first holder). */
-export function holdingInScope(h: Holding, scope: Scope): boolean {
-  if (h.inclusion.status !== 'included') return false;
-  if (scope.kind === 'family') return true;
-  if (scope.kind === 'client') return h.clientId !== null && scope.clientIds.includes(h.clientId);
-  return h.distributorId !== null && scope.distributorIds.includes(h.distributorId);
-}
+// The scope key and membership come from engine/scope.ts (I-45; MOD-04 decision D8), re-exported for this module's callers.
+export { scopeKeyOf, holdingInScope } from '../scope.ts';
 
 const instrumentKey = (clientId: ClientId | null, name: string | null): string => keyOf([clientId, normaliseLabel(name)]);
 
@@ -140,8 +126,24 @@ export function computeScopeReturns(scope: Scope, irr: IrrFileImport | null, hol
   const redeemed = instrumentNodes.filter((n) => n.redeemed).map((n) => ({
     clientId: n.clientId!, instrumentName: n.label, flows: n.fund.flows,
   }));
-  const joined = new Set(instrumentNodes.flatMap((n) => n.holdingIds));
-  const holdingsWithoutFlows = inScope.filter((h) => !joined.has(h.id)).map((h) => h.id);
+  // A holding's own flows are those of its instrument across the whole family (base-file clients), before the
+  // invalid-benchmark exclusion and before the distributor filter (financial review of 058a94c, finding 1): an
+  // instrument left out of the scope's aggregates for its benchmark, or whose flows carry another distributor, still has
+  // the holding's transaction XIRR, and the holding is not "without flows".
+  const familyByInstr = new Map<string, Transaction[]>();
+  for (const t of familyFund) {
+    const k = instrumentKey(t.clientId, t.instrumentName);
+    const l = familyByInstr.get(k);
+    if (l) l.push(t); else familyByInstr.set(k, [t]);
+  }
+  const flowsOfHolding = new Map<HoldingId, Transaction[]>();
+  for (const ts of familyByInstr.values()) {
+    for (const id of scopedJoin(ts[0]!.clientId, ts[0]!.instrumentName)) {
+      const l = flowsOfHolding.get(id);
+      if (l) l.push(...ts); else flowsOfHolding.set(id, [...ts]);
+    }
+  }
+  const holdingsWithoutFlows = inScope.filter((h) => !flowsOfHolding.has(h.id)).map((h) => h.id);
 
   // 4. Reconciliation (D13: the rule is injected; none is defined yet).
   const reasons = opts.reconcile ? opts.reconcile({ scope, fund, holdings: inScope }) : [];
@@ -170,13 +172,13 @@ export function computeScopeReturns(scope: Scope, irr: IrrFileImport | null, hol
     };
   }
 
-  // 6. Contributions (D11; KI-100): the joined instrument's transaction XIRR, else the base-file XIRR.
-  const nodeOfHolding = new Map<HoldingId, IrrNode>();
-  for (const n of instrumentNodes) for (const id of n.holdingIds) nodeOfHolding.set(id, n);
+  // 6. Contributions (D11; KI-100): the transaction XIRR of the holding's own instrument flows (family-wide, above),
+  // blank when they give no rate, never the base-file figure in its place; a holding with no flows keeps its base XIRR.
   const contributions = computeContributions(inScope.map((h) => {
-    const n = nodeOfHolding.get(h.id);
-    if (!n) return contributionInput(h, h.xirr);
-    return contributionInput(h, reconciliation.reconciled ? n.fund.xirr : missing(STATUS.INSUFFICIENT_EVIDENCE, 'not reconciled'));
+    const own = flowsOfHolding.get(h.id);
+    if (!own) return contributionInput(h, h.xirr);
+    if (!reconciliation.reconciled) return contributionInput(h, missing(STATUS.INSUFFICIENT_EVIDENCE, 'not reconciled'));
+    return contributionInput(h, xirr(flowsOf(own), 'transaction XIRR of the holding\'s instrument (IRR file)', [irr.sourceId]).xirr);
   }), [irr.sourceId]);
 
   return {

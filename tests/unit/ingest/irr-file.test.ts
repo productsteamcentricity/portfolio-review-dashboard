@@ -14,7 +14,7 @@ import { STATUS } from '../../../app/src/model/status.ts';
 import { ymdToDay } from '../../../app/src/engine/dates.ts';
 import { parseBaseFile } from '../../../app/src/ingest/base-file.ts';
 import { loadSheetJS } from '../../helpers/sheetjs.ts';
-import { irrFixtures, DATE_CASES } from '../../fixtures/make-irr-files.ts';
+import { irrFixtures, DATE_CASES, toWorkbook, FUND_HEADER, fundRow, dateCell } from '../../fixtures/make-irr-files.ts';
 import { syntheticFixtures } from '../../fixtures/make-books.ts';
 
 const SRC = 'a'.repeat(64) as SourceFileId;
@@ -158,5 +158,25 @@ describe('sheets by content, and refused files', () => {
     assert.equal(imp.fundSheet?.name, 'SI Xirr');
     assert.equal(imp.fund.length, 7);
     assert.deepEqual(imp.sheets.map((s) => s.outcome), ['not-needed', 'used']);
+  });
+});
+
+describe('OD-4 duplicate folios: flagged, never altered (financial review of 058a94c, finding 5)', () => {
+  test('a folio under two clients and another under two instruments: 2 flagged; the flows read as written', () => {
+    const rows = [
+      FUND_HEADER,
+      fundRow('Sample Client A', 'Sample Bluechip Fund', 'SYN-9001', 'Equity', dateCell(2023, 4, 1), 'Purchase', null, 10, -100, null),
+      fundRow('Sample Client B', 'Sample Bluechip Fund', 'SYN-9001', 'Equity', dateCell(2023, 4, 2), 'Purchase', null, 10, -100, null),
+      fundRow('Sample Client A', 'Sample Bond Fund', 'SYN-9002', 'Debt', dateCell(2023, 4, 1), 'Purchase', null, 10, -100, null),
+      fundRow('Sample Client A', 'Sample Gilt Fund', 'SYN-9002', 'Debt', dateCell(2023, 4, 3), 'Purchase', null, 10, -100, null),
+      fundRow('Sample Client A', 'sample  BOND fund', 'SYN-9003', 'Debt', dateCell(2023, 4, 3), 'Purchase', null, 10, -100, null),
+      fundRow('Sample Client A', 'Sample Bond Fund', 'SYN-9003', 'Debt', dateCell(2023, 4, 4), 'Purchase', null, 10, -100, null),
+    ];
+    const imp = parseIrrFile(readWorkbook(xlsx, toWorkbook(xlsx, [{ name: 'Dup Xirr', rows }])), { sourceId: SRC, now: NOW });
+    const i = issue(imp, 'duplicate-folios')!;
+    assert.deepEqual([i.severity, i.count], ['Warning', 2]);
+    assert.ok(!i.message.includes('SYN-'), 'the folio never appears in a message');
+    assert.equal(imp.fund.length, 6);
+    assert.deepEqual(imp.fund.map((t) => t.folio), ['SYN-9001', 'SYN-9001', 'SYN-9002', 'SYN-9002', 'SYN-9003', 'SYN-9003']);
   });
 });

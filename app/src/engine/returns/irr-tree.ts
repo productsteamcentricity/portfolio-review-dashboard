@@ -19,7 +19,7 @@ import type { CashFlow, IrrLevel, IrrNode, XirrResult } from '../../model/return
 import type { Transaction } from '../../model/transactions.ts';
 import type { ClientId, HoldingId } from '../../model/ids.ts';
 import { xirr, xirrGap } from './xirr.ts';
-import { keyOf } from '../ids.ts';
+import { keyOf, normaliseLabel } from '../ids.ts';
 
 /** The label a blank asset, product or instrument takes (the legacy "—", the house's missing-value marker). */
 export const BLANK_LABEL = '—';
@@ -68,8 +68,12 @@ const labelOr = (s: string | null): string => (s === null || s === '' ? BLANK_LA
 export function buildIrrTree(fund: readonly Transaction[], bench: readonly Transaction[], opts: IrrTreeOptions = {}): IrrNode[] {
   const holdingsFor = opts.holdingsFor ?? ((): HoldingId[] => []);
   const nodes: IrrNode[] = [];
-  const benchFor = (clientId: ClientId, instruments: ReadonlySet<string | null> | null): Transaction[] =>
-    bench.filter((t) => t.clientId === clientId && (instruments === null || instruments.has(t.instrumentName)));
+  // The benchmark joins on the instrument name normalised (case and spacing), the same key engine/returns/scope.ts uses,
+  // so a benchmark row spelt "FUND X" joins Fund X at every level (financial review of 058a94c, finding 2).
+  const benchFor = (clientId: ClientId, instruments: ReadonlySet<string | null> | null): Transaction[] => {
+    const names = instruments === null ? null : new Set([...instruments].map((n) => normaliseLabel(n)));
+    return bench.filter((t) => t.clientId === clientId && (names === null || names.has(normaliseLabel(t.instrumentName))));
+  };
   const push = (level: IrrLevel, key: string, parentKey: string | null, label: string, clientId: ClientId | null,
     f: readonly Transaction[], b: readonly Transaction[], holdingIds: HoldingId[], redeemed: boolean): void => {
     nodes.push({ level, key, parentKey, label, clientId, fund: fundXirr(f), bench: benchXirr(b), benchmarkName: benchmarkNameOf(b), holdingIds, redeemed });
