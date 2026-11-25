@@ -8,7 +8,7 @@ import type { Client, Distributor, Ownership } from './ownership.ts';
 import type { SourceFile } from './source.ts';
 import type { AnalystQuestion, ValidationResult, XirrUnitChoice } from './validation.ts';
 import type { AuditEntry } from './audit.ts';
-import type { BaseFileImport } from '../ingest/base-file.ts';
+import type { BaseFileImport } from './base-file.ts';
 
 /** An asset class, or Unknown for a blank or unrecognised Asset Name (OD-7): never Equity. */
 export type AssetKey = AssetClass | 'Unknown';
