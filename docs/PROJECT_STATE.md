@@ -144,8 +144,16 @@
    "Footnoted"; `base-file.total-like-name` still makes a fund named "Total Return ..." High; the C-08 plot layout
    starts at 5 categories (a long 4-label legend or a one-row legend is not covered).
 5. **Claude: M2**, instrument matching ([roadmap](new-build/07-implementation-roadmap.md)). Sprint 1 of M2.1 (identifiers and
-   the matcher at parity, no output change) is on `feat/m2-1-identifiers-matcher`; sprints 2 and 3 (corrections and
-   classification; parsers and uploads) follow, with the owner's alias list (PD-36) before sprint 2 merges.
+   the matcher at parity, no output change) merged in PR #30 and was accepted on 25 Nov 2026. Sprint 3a (the vendor files
+   read by header name: MF Monitor, its all-in expense ratio, SIF Monitor, PMS performance, the analytics files; and the
+   base file's ISIN column, read only) is on `feat/m2-3-vendor-parsers`; the upload buttons wait for the spreadsheet-reader
+   decision. Sprint 2 (corrections and classification) follows, with the owner's alias list (PD-36) before it merges and
+   the product-class table after the live page's LP-16.
+
+   **Claude: M3a**, the returns core (XIRR, the IRR file reader, the IRR tree, contributors and laggards, returns per
+   family, client and advisor scope), is on `feat/m3a-returns-core`, not wired into the page yet. Open before it reaches
+   the page: the reconcile tolerance (D13), how an instrument split between distributors is shared, and the owner
+   questions in its Gate A report. The IRR parity ledger waits for a real export (TA-03, KI-186).
 6. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;

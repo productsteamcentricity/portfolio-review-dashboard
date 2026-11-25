@@ -14,12 +14,14 @@ import type { Account, Client, Distributor, Folio, Ownership } from './ownership
 import type { AnalystQuestion, ValidationResult } from './validation.ts';
 import type { AuditEntry } from './audit.ts';
 
-/** Base-file columns. The first 24 are the legacy aliases; the holder columns are new (proposal, Q-79). */
+/** Base-file columns. The first 24 are the legacy aliases; the holder columns are new (proposal, Q-79); the ISIN column is
+ * new (the owner's answer of 25 Nov 2026: identify a fund or share by its ISIN before its name; M2). */
 export type BaseField =
   | 'client' | 'name' | 'pdate' | 'cat' | 'asset' | 'folio' | 'amc' | 'product' | 'dist' | 'units'
   | 'invR' | 'mvR' | 'glR' | 'invLk' | 'mvLk' | 'glLk' | 'invCr' | 'cmvCr' | 'glCr'
   | 'alloc' | 'xirr' | 'bmxirr' | 'days' | 'liq'
-  | 'holder2' | 'holder3' | 'guardian' | 'mode';
+  | 'holder2' | 'holder3' | 'guardian' | 'mode'
+  | 'isin';
 
 export type ColumnUse = { field: BaseField; header: string; column: number };
 

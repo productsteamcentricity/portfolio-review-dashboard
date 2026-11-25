@@ -29,7 +29,7 @@ export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 export const REFDATA_KEYS = [
   'FUND_RANKS', 'FUND_RANKS_META', 'FUND_MGR', 'FUND_MGR_META', 'TAX_RULES', 'DATA_DATES', 'EQUITY_ANALYTICS',
   'HYBRID_ANALYTICS', 'DEBT_ANALYTICS', 'MF_PERF', 'MF_PERF_DIRECT', 'PMS_PERF', 'AIF_PERF', 'BENCHMARKS',
-  'BENCH_RET', 'STOCK_INFO', 'STOCK_RET', 'MF_RISK', 'MF_BENCHMARKS', 'MF_CAT_BM', 'SIF_PERF',
+  'BENCH_RET', 'STOCK_INFO', 'STOCK_RET', 'MF_RISK', 'MF_BENCHMARKS', 'MF_CAT_BM', 'SIF_PERF', 'PRODUCT_CLASS_RULES',
 ] as const;
 
 /** REFDATA keys that are not written as their own file, and why. */
@@ -70,6 +70,7 @@ const SOURCE: Readonly<Record<string, { source: string; class: string }>> = {
   FUND_MGR: { source: 'DS-V10 Fund Manager history, Accord', class: 'P' },
   FUND_MGR_META: { source: 'DS-V10 Fund Manager history, Accord', class: 'P' },
   TAX_RULES: { source: 'DS-O1 Tax rules, Centricity owner table', class: 'P' },
+  PRODUCT_CLASS_RULES: { source: 'D-7 owner labels, Centricity owner table', class: 'P' },
   BENCHMARKS: { source: 'DS-O7 category to benchmark map, Centricity owner table', class: 'P' },
   MF_CAT_BM: { source: 'DS-O7 category to benchmark map, Centricity owner table (no consumer, KI-097)', class: 'P' },
   MF_BENCHMARKS: { source: 'unknown provenance: legacy benchmark risk rows that no tool produces (02 E-93, KI-026)', class: 'C until its source is confirmed (D-026: an unconfirmed source is private until approved; 02 E-93)' },
