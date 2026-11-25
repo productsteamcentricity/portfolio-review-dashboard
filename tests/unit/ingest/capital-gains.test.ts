@@ -648,3 +648,16 @@ describe('R1 (MOD-04, 25 Nov 2026): blank required cells are reported, never rea
     assert.equal(issue(imp, 'invalid-cells')!.count, 1);
   });
 });
+
+describe('Gate B R7: a whole file whose Sale Dates have no date format', () => {
+  test('no lot: Blocking no-lots (the file is refused), the message naming the unformatted number', () => {
+    const wb = memBook([{}, {}]);
+    for (const row of wb.sheets[0]!.rows.slice(1)) row[0] = { t: 'n', v: 45000, fmt: null, date: false };
+    const imp = memParse(wb);
+    assert.equal(imp.lots.length, 0);
+    const i = issue(imp, 'no-lots')!;
+    assert.equal(i.severity, 'Blocking');
+    assert.ok(i.message.includes('a number without a date format'), i.message);
+    assert.equal(i.blocksPublication, true);
+  });
+});

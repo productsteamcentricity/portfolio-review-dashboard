@@ -744,7 +744,7 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
 
   if (lotRowIdx.length === 0) {
     issues.add('no-lots', 'Blocking', sheetScope,
-      `The sheet "${sheetName}" has the statement's header but no lot row (a row whose Sale Date is a date).`);
+      `The sheet "${sheetName}" has the statement's header but no lot row: no Sale Date cell holds a date (text, and a number without a date format, are not dates).`);
     panIssue(issues, sheetScope, pan);
     const out = refused();
     out.columns = columns;
@@ -1028,7 +1028,7 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
   const exNoDate = excluded.length;
   if (exNoDate > 0) {
     issues.add('row-without-sale-date', 'Warning', { kind: 'rows', sourceId, rows: excluded.map((e) => e.at) },
-      `${plural(exNoDate, 'row holds', 'rows hold')} amounts but no date in Sale Date (rows ${excluded.map((e) => e.at.row).join(', ')}); ${exNoDate === 1 ? 'it is' : 'they are'} excluded and listed.`,
+      `${plural(exNoDate, 'row holds', 'rows hold')} amounts but no date in Sale Date (blank, text, or a number without a date format; rows ${excluded.map((e) => e.at.row).join(', ')}); ${exNoDate === 1 ? 'it is' : 'they are'} excluded and listed.`,
       { count: exNoDate });
   }
   const invalidTotal = [...invalidCells.values()].reduce((s, n) => s + n, 0);
