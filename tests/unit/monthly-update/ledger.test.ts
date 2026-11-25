@@ -94,6 +94,13 @@ describe('statuses', () => {
 });
 
 describe('the manifest', () => {
+  test('a class N file other than the Screener pack never gets an entry, whatever its status', () => {
+    const r = decide('2026-10', [seen('x.xlsx', 'client_material', 'quarantine', 'q')], policy, null, []);
+    const f = { ...r.files[0]!, status: 'new' as const };
+    assert.equal(entryOf(f), null);
+    assert.deepEqual(buildManifest('2026-10', [f], null).entries, []);
+  });
+
   test('keeps what was recorded, adds new files, sorts, and writes no name or path for the pack (D-026)', () => {
     const cur = manifest('2026-10', [{ role: 'sif_monitor', key: 'sif_monitor', class: 'P', sha256: sha('s'), storage: 'tracked', issues: [] }]);
     const pack = seen('pr-datapack_2026-10-15.zip', 'screener_pack', null, 'p', { screener: { ok: true, record: { fingerprint: sha('p'), contractVersion: 'pr-datapack-v1', cycle: '2026-10-15', kind: 'monthly', provisional: true, counts: { 'funds.json': 3 } } } });
