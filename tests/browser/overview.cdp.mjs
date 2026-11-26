@@ -350,7 +350,7 @@ async function runMode({ browser, mode, files, opt, expect }) {
   await page.waitFor(READY);
   const tab = async (id) => {
     await page.click(await page.eval(TAB_CENTRE(id)));
-    await page.waitFor(`${HEADING} === '${id}-title'`, 5000);
+    await page.waitFor(`(${HEADING}) === '${id}-title'`, 5000); // brackets: ?? binds looser than ===
   };
   const pick = async (file) => {
     await page.eval(FOCUS('#base-file-input')); // the keyboard user's place: the input they open the file dialog from

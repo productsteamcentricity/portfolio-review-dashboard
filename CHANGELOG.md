@@ -25,6 +25,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   (`data/performance-sources.ts`).
 - **Performance sheet** (E-84, `exports/xlsx/sheets/performance.ts`): the Regular and Direct lists, every row with its plan and
   data date, every fund kept, statuses in their own column.
+### Fixed (new build, base-file reader: the platform's full holding report)
+- **KI-300** (`app/src/ingest/base-file.ts`): a money heading that is exactly the field's (Invested Value, Market Value or
+  Current Market Value, Total Gain/Loss, with any unit in brackets) is taken before a partial match, and a heading with
+  "price" is never the invested value, nor one with the word "realized" or "realised" the gain or loss. In the platform's
+  holding report "Invested Price" and "Realized Gain/Loss" come first, and the live page reads them instead (KI-300, open
+  there). Synthetic test in the report's layout (`tests/fixtures/holding-report.ts`); base-file ledger BF-27 and BF-28.
 
 ### Added (new build, M2.1 wiring for test build 1: holdings matched in section 1)
 - **Section 1 matches the base file's holdings** when the file loads (`engine/match/resolve-holdings.ts`): each holding goes to one
@@ -56,6 +62,15 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `NEW_BUILD_MATCHING`, the preset the wiring will use): rejects a candidate that leaves a known rare word of the holding's
   name unmatched; measured 2,725 to 1,594 wrong matches for absent funds and 21 of 1,206 correct official names unmatched
   (mostly normaliser gaps; a measured follow-up aims to recover them).
+- **Second normaliser and candidate-side word guard** (`MatchOptions.normaliserV2`, `candidateWordGuard`; on in
+  `NEW_BUILD_MATCHING`): matching tokens drop "(Formerly Known as ...)" and "S&P" before "BSE", split letters from digits,
+  collapse spaces before the compounds and add a few synonyms; the guard also checks the candidate's own rare words.
+  A word of the holding's name the reference data knows elsewhere counts too (`knownWords`, `referenceVocabulary`: every set's words
+  less its fund-house words). The legacy normaliser, the alias keys and the name lists are unchanged. Full sweep against the
+  legacy: self regressions 0; leave-one-out wrong matches 3,932 to 1,094 (0 added); official AMFI names right 1,195 to 1,198,
+  wrong 8 to 1. Four official names now get no match (all to null, none to another fund): two were already among the
+  stricter regime's 22 losses (UTI Focused Fund (30 stocks), Navi Nifty Smallcap 250 Momentum Quality) and two are new
+  (Kotak Infrastructure & Economic Reform Fund, Standard Plan; Baroda BNP Paribas Best-in-Class Strategy Fund).
 - **KI-052, OD-23, KI-054** (`engine/match/rekey.ts`): FUND_RANKS_CODES and MF_RISK re-keyed onto MF_PERF keys by spelling
   and owner alias, never by fuzzy match (`tests/parity/rekey-ledger.json`, also the FUND_RANKS_CODES vintage record);
   the Direct twin only for the same scheme; the look-through key.
@@ -80,6 +95,41 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `BLOCK_NAMES`; the page passes check-next; a data change leaves the build id and the CSP unchanged; deterministic),
   `tests/unit/data/refdata.test.ts`.
 
+### Changed (new build, model contracts-3: two additive type changes; types only, `/next/` build byte-identical)
+- **`app/src/model/tax.ts`** (I-37): `NotComputed` gains `'amount-missing'` (a lot whose Sell Amount is blank, the
+  reader's `required-cell-blank`; a blank Invested Value stays `'cost-input-missing'`). DATA_DICTIONARY §5.5 lists it.
+- **`app/src/model/returns.ts`** (I-31): `WeightedReturn` gains an optional `parts` list (source, as-on date and share of
+  the weights) for a figure built from more than one source or date, such as Regular and Direct plans read from
+  monitors of different dates; a rendering names every part. Asked for by NB-03 (M7a engine) and ARC-03's review of
+  NB-04's M3b data side.
+### Added (side-by-side kit for test build 1: tests only; no change to `index.html`, `/next/` or `app/`)
+- **`tests/side-by-side/`** runs the same book through the legacy engine (`tools/engine-host.js`) and the new build
+  (`app/src`: base file, matcher, IRR file, scope returns, contributions). It compares the holdings matches, the holding
+  and scope XIRRs and the contributions field by field. Each difference carries its parity-matrix row and an entry of the
+  new ledger `sbs-ledger.json` (`SB-nn`). An unclassified difference fails `side-by-side.test.ts` (14 tests, synthetic books
+  only).
+  - `node tests/side-by-side/run.ts` writes `report.json` and `report.html` to `test-data/side-by-side/`, which is
+    git-ignored. A real base and IRR file can be given locally, with `--out` and `--as-on` required; that report carries
+    a "LOCAL ONLY" banner and never leaves the PC. With a real file, an `--out` inside any working tree of the
+    repository (except its git-ignored `test-data/`) or in OneDrive is refused, after resolving links and junctions.
+  - The performance section lists the legacy rows only, as not compared (`SB-01`), until M3b's modules merge (E-31,
+    E-147). The adviser XIRR is new and has no reference (`SB-02`, E-142).
+  - The new build has no product-class routing yet (E-15), so the kit copies the live page's rule (direct equity and
+    the non-MF classes not looked up) on both sides; routing is not tested. Each holding's route is still compared: the
+    legacy side's comes from the engine's own fields, so a stale copy shows as an unclassified E-15 difference.
+  - Six synthetic cases, three with an IRR file, including a probe book: a fund through two distributors, a share, an FD,
+    an NCD, and a client without IRR flows. Every holding, match, holding XIRR and contribution agrees.
+  - One known legacy defect shows: a client without flows takes another client's flows by the fuzzy name match
+    (`SB-03`, KI-032; the new build keys clients by id, D9). The README lists the decided differences a real file can
+    show.
+  - Owner of the folder: EX-02 (MOD-04, 26 Nov 2026).
+
+### Added (new build, M10 pre-wiring tests: the zip directory defences; no change to the app, `/next/` or `/`)
+- **`tests/unit/ingest/screener-pack-zip.test.ts`** (ARC-03 R7 of M10's Gate B): each directory check of the Screener
+  pack reader has a test that fails when that check alone is removed: a second archive appended (the end-record
+  refusal is now asserted, not only a refusal), a gap between the directory and the end record, a local header whose
+  name differs at the same length, two entries whose data overlap, and a second directory that only JSZip would read
+  (the entry-list comparison). Synthetic archives only; 24 cases in the file.
 
 ### Changed (records, registers-4, 26 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/project-control/DECISION_LOG.md`**: the owner's answers of 17 to 26 Nov 2026. PD-01, PD-04 and PD-44 accepted
@@ -114,6 +164,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   no importer changed, and `model/` imports nothing outside `model/`.
 - `tests/unit/model/contracts.test.ts`: the cycle broken, the re-exports intact, types only, contract ids cited, the
   I-32 date rule in IST and UTC.
+
 ### Added (new build, M11a monthly update engine core; the legacy refresh pipeline is unchanged)
 - **`scripts/monthly-update/`** reads a month's files from the private inbox and `monthly_updates/YYYY-MM/`, classifies
   each by content, then structure, then name (client material detected first and quarantined, never copied; a name and
