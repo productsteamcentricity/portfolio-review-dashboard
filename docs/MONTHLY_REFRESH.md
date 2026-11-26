@@ -22,7 +22,7 @@ Terms used below:
 
 | # | Step | Who | When |
 |---|---|---|---|
-| 1 | Put the month's files in `01 Monthly Updates\YYYY-MM` and the five index files in its `Index TRI` subfolder | Owner | 13th–17th of month M+1 |
+| 1 | Put the month's files in `01 Monthly Updates\YYYY-MM`, the vendor's benchmark exports in its `Benchmarks` subfolder and the Investment Reckoner PDF in `Outlook export` | Owner | 13th–17th of month M+1 |
 | 2 | Tell Claude the files are in | Owner | When step 1 is done |
 | 3 | Check the files, build and validate the new data, splice it into `index.html` on a branch, run every check, write the log and a summary | Claude | Same day, about an hour |
 | 4 | Review the refreshed dashboard and the summary, then reply **"publish"** or ask questions | Owner | Within a day or two |
@@ -34,8 +34,8 @@ Terms used below:
 ## Part 1: the owner's part
 
 ### 1. Collect the files
-Put each file in `01 Monthly Updates\YYYY-MM`, or in its `Analytics` or `Index TRI` subfolder, exactly as it
-arrived. The checklist with every file name is in `01 Monthly Updates\README - How to submit monthly files.md`.
+Put each file in `01 Monthly Updates\YYYY-MM`, or in its `Analytics`, `Benchmarks`, `Index TRI` or `Outlook export`
+subfolder, exactly as it arrived. The checklist with every file name is in `01 Monthly Updates\README - How to submit monthly files.md`.
 The tracked list of every file you supply, with who sends it, where it goes, whether it is public and what it feeds
 (including the new build's additions), is in
 [MONTHLY_UPDATE_GUIDE.md](MONTHLY_UPDATE_GUIDE.md#files-the-owner-supplies-each-month).
@@ -47,10 +47,17 @@ The monthly items:
   - Expense Ratio;
   - Equity, Hybrid and Debt Analytics;
   - Listed Direct Equity master;
-  - Listed Direct Equity returns issue, which often comes a day or two later.
-- **From the research team:** the Monthly Outlook deck.
-- **From niftyindices.com, downloaded by you:** five Total Return Index files (Nifty 50, Nifty 100, Nifty 500,
-  Nifty Midcap 150 and Nifty Smallcap 250).
+  - Listed Direct Equity returns issue, which often comes a day or two later;
+  - the benchmark exports `NSE Data_…`, `BSE Data_…` and `world Data_…` into `Benchmarks`, from the 1st of the
+    previous month to the data month's last day (the risk step reads the NSE file's five TRI columns, step 4);
+  - `Other Funds Analytics.xlsx` into `Analytics`, when sent (step 7f).
+- **From the Products team:** the next month's Investment Reckoner, the PDF into `Outlook export` (the Market Update
+  pages are rendered from it, step 3; say which pages) and the PPTX into the month folder.
+- **From the research team:** the pagers deck, when there is one (`Monthly Outlook Pagers_…` or
+  `Invictus Market Outlook Pagers_…`).
+- **Fallback, from niftyindices.com, downloaded by you:** five Total Return Index files (Nifty 50, Nifty 100,
+  Nifty 500, Nifty Midcap 150 and Nifty Smallcap 250) into `Index TRI`, only when the NSE export is missing or has a
+  gap.
 
 When available, also send:
 - Fund Manager history;
@@ -108,7 +115,7 @@ Session setup (Git Bash). Replace the month values:
 ```bash
 cd /c/dev/portfolio-review
 export PATH="/c/dev/tools/node:/c/dev/tools/git/cmd:/c/dev/tools/gh/bin:$PATH"
-M=2026-10; PREVM=2026-09; ASON="31 Oct 2026"; PREVASON="30 Sep 2026"; LABEL="Nov 2026"
+M=2026-11; PREVM=2026-10; ASON="30 Nov 2026"; PREVASON="31 Oct 2026"; LABEL="Dec 2026"
 P="$OneDriveCommercial/Desktop/Claude Code-Portfolio Review Dashboard"
 IN="$P/01 Monthly Updates/$M"; PREV="$P/02 Archive/$PREVM"; OUT="buildtools/out/$M"
 mkdir -p "$OUT"
@@ -160,47 +167,121 @@ Record each drift and its fix in the log.
 
 ### Step 3: Market Update slides
 
-> **NOT RUN until the TA-26 script is reviewed (CLAUDE.md rule 10; PD-49).** Do not run the snippet below as written:
-> it uses `New-Object -ComObject` and `$ppt.Quit()`, which rule 10 forbids (PowerPoint is open on the owner's PC and
-> COM attaches to it). Never open a vendor deck in PowerPoint by any other means either. Until the reviewed script
-> exists, skip this step and say so in the refresh log:
-> - build Step 5 **without** `--slides`, and splice Step 6 **without** `--label`. The splice applies `--label` only to
->   a blocks file that carries `MARKET_UPDATE_IMAGES`, which only a build with `--slides` writes, and it ignores the
->   label silently otherwise. The Market Update slot then keeps its previous slides and its caption "Embedded default ·
+> **Never open a vendor deck in PowerPoint** (CLAUDE.md rule 10): PowerPoint is open on the owner's PC and COM
+> attaches to it. If no slide source has arrived, or the scripts below are not reviewed, skip this step and say so in
+> the refresh log:
+> - build step 5 **without** `--slides`, and splice step 6 **without** `--label`. The splice applies `--label` only to
+>   a blocks file that carries `MARKET_UPDATE_IMAGES`, which only a build with `--slides` writes, and otherwise ignores
+>   the label silently. The Market Update slot then keeps its previous slides and its caption "Embedded default ·
 >   <previous label> (N)", and the log lists it under "Blocks left stale"; or
-> - the owner exports the slides by hand into a folder of `slideN.jpg` files (1920×1080) inside the inbox; Step 5 then
->   takes that folder with `--slides` and Step 6 uses `--label` as below (PD-49, option B).
+> - the owner exports the slides by hand into a folder of `slideN.jpg` files (1920×1080) inside the inbox. Step 5
+>   then takes that folder with `--slides`, and step 6 uses `--label` (PD-49, option B).
 
-The Outlook deck holds live charts, so it is rendered, not unzipped:
-1. Copy it to a short local path (OneDrive and long paths break the export).
-2. Export every slide at 1920×1080 with PowerPoint COM.
-3. **Look at every image.** A chart that failed to render comes out blank.
+**The route since 22 Nov 2026: render the Investment Reckoner PDF, with no Office.** This route was used for the
+"Nov 2026" slides (refresh log 2026-10, §4b). The owner names the pages (October used pages 5 to 10 of the November
+Reckoner).
+1. **Scripts.** Both are reviewed by ARC-02 (26 Nov 2026; record in the Guardian's notes,
+   `lp19-slide-scripts-review-2026-11-26.md`). Run only these hashes, and check each just before its run:
+   - `C:\dev\slide-tools\render-pdf.ps1`, SHA-256 `958b095ee2ef39ba4f4624a404683ffe491e0bec1e8cd816ec74e690a79f49e0`:
+     GO on the conditions below.
+   - `C:\dev\slide-tools\shrink.ps1`, SHA-256 `530357e6ef16a302f5b5480f9fb469a4aae39bd95a39504e90596241776be3b4`
+     (997 B): GO. This is the reviewed fix: `$ErrorActionPreference='Stop'` added, so a missing `page<N>.jpg` now
+     stops the run instead of writing an all-black slide. The first version `c9e076ed…` was NO-GO; it is kept in
+     `C:\dev\slide-tools\superseded\` and is never run.
+   - They use Windows' built-in PDF renderer (Windows.Data.Pdf) and System.Drawing, with no Office, no COM, no
+     network, no process start and no deletes.
+   - **Conditions (ARC-02):**
+     - **C1, invocation.** Run them from inside PowerShell: `& 'C:\dev\slide-tools\render-pdf.ps1' -Pages 5,6 ...`,
+       or `powershell.exe -NoProfile -Command "& 'C:\dev\slide-tools\render-pdf.ps1' ... -Pages 5,6"`. **Never
+       `powershell -File` with a page list**: the list then arrives as the text "5,6" and becomes page 56, so with a
+       long PDF the wrong page is rendered silently.
+     - **C2, absolute paths** for `-Pdf`, `-InDir` and `-OutDir`. A relative `-Pdf` fails.
+     - **C3, a fresh, empty out-folder for each run**, because both scripts overwrite without asking. Afterwards,
+       check that the files are exactly the pages asked for.
+2. **Copy.** Copy the PDF from `Outlook export` to a short folder of its own outside OneDrive, for example
+   `C:\Temp\slides_<M>`.
+3. **Render** the chosen pages at width 2880: `& 'C:\dev\slide-tools\render-pdf.ps1' -Pdf <copy> -Pages 5,6,...
+   -OutDir <empty folder> -Width 2880`. It writes `page<N>.jpg` at the page's own aspect ratio.
+   - **Check the real pixel size of each file, not the size the script prints.** Read it from the JPEG header or from
+     `shrink.ps1`'s "source" line. With display scaling the output is larger: at 150%, `-Width 2880` gives 4320×2430.
+   - **Each page must be 16:9.** `shrink.ps1` stretches to 1920×1080 whatever the shape, so raise a page of another
+     shape with the owner; never stretch it.
+4. **Shrink** to 1920×1080 JPEG at quality 82: `& 'C:\dev\slide-tools\shrink.ps1' -InDir <folder> -OutDir <empty
+   folder2> -Pages 5,6,...` writes `Slide<N>.jpg`. Its "source" line gives each page's real size.
+5. **Stage** them as `slide1.jpg` … `slideK.jpg`, in the owner's order, by byte copy (check each with `cmp`), and
+   record bytes and SHA-256 in the log.
+6. **A person looks at every image before anything goes to the public repository.** The privacy scan cannot read
+   images. A page that failed to render comes out blank. Ship the pages as supplied. If the content looks wrong (a
+   wrong month in a title, the Reckoner's own page number in a corner), flag it to the owner; do not correct it.
+7. **Build.** Build with `--slides <staging>` (step 5). If no other monthly file is being rebuilt, build from an empty
+   `--src` folder: only MARKET_UPDATE_IMAGES is written and DATA_DATES comes out unchanged. Rehearse that on the
+   current slides first; it should show no REFDATA change and the same length. Then splice with `--label "$LABEL"`
+   (step 6).
 
-```powershell
-# NOT RUN: do not paste this snippet (rule 10; see the banner above).
-$tmp = "$env:TEMP\cx_slides_2026-10"; New-Item -ItemType Directory -Force $tmp | Out-Null
-Copy-Item -LiteralPath "<IN>\Monthly Outlook Pagers_Nov 2026.pptx" "$tmp\deck.pptx"
-$ppt = New-Object -ComObject PowerPoint.Application
-$p = $ppt.Presentations.Open("$tmp\deck.pptx", $true, $false, $false)
-$i = 1; foreach ($s in $p.Slides) { $s.Export("$tmp\slide$i.jpg", "JPG", 1920, 1080); $i++ }
-$p.Close(); $ppt.Quit()
-```
-
-Expect ~140–530 KB per slide. Ship the slides as supplied. If the content looks wrong (a wrong month in a
-title, say), flag it to the owner; do not correct it.
+The pagers deck (`Invictus Market Outlook Pagers_…`) is not matched by the intake's `^Monthly Outlook Pagers` pattern.
+Its pages go in only when the owner asks, and by this same PDF route (a PDF of the deck from the owner), never by
+opening the deck. **PowerPoint COM stays forbidden** (rule 10): the old export snippet has been removed. Read a deck
+only as zip/XML.
 
 ### Step 4: risk-ratio workbook
 
-The `Fund Risk Ratios & 3Y Rolling - All Funds (as on …).xlsx` workbook is computed in-house from AMFI NAV
-history and the five TRI files in `Index TRI`. **The previous owner's toolchain (`C:\Temp\navwork`) has not
-arrived yet.**
+The `Fund Risk Ratios & 3Y Rolling - All Funds (as on …).xlsx` workbook is computed in-house (PD-61; D-026 unchanged)
+from AMFI NAV history and the five TRI series. It was first run this way for 31 Oct 2026 on 19 Nov 2026 (refresh log
+2026-10, §9, the worked example). The method is in `previous-owner/knowledge/KNOWLEDGE_DUMP.md` §1.1 and §2.2.
 
-Until it does:
-- skip this step and step 7a;
-- MF_RISK and `DATA_DATES.risk` stay at 30 Sep 2026, and the MF Analysis caption says so;
-- record this in the log.
+**Where the tools are** (outside the repository and OneDrive):
+- `C:\dev\risk-tools` is the baseline, kept as received plus the reviewed changes.
+- `C:\Temp\navwork` is the working copy. It leaves out the nine Excel-COM scripts (`Render*.ps1`, `WriteAug.ps1`,
+  `ExcelCheckPR.ps1`, `FinalCheck.ps1`, `TestCom*.ps1`, `Bisect.ps1`), which are never run.
+- `NAVWORK_README.md` in both folders is the toolchain's own manual.
 
-The method is described in `previous-owner/knowledge/KNOWLEDGE_DUMP.md` §1.1 and §2.2.
+**Launch rule** (the owner, 19 Nov 2026):
+- Each script runs as `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script> <args>`, one process each, with
+  no policy change.
+- **A script runs only if ARC-02 has reviewed its SHA-256, or the owner has given permission for that run.** Check the
+  hash just before the run, and record every run, and which of the two allowed it, in the log. `BuildPRSep.ps1` (row 7
+  below) is **not** reviewed.
+- No Excel or PowerPoint is started or automated; workbooks are read and written as zip/XML.
+
+**Inputs:**
+- the previous month's NAV workbook, `02 Archive\<PREVM>\NAV Data as on <date>.xlsx` (for November:
+  `02 Archive\2026-10\NAV Data as on 31st October 2026.xlsx`, SHA-256 `3574f237…`);
+- `Benchmarks\NSE Data_….xlsx`, the vendor's "NAV Data" export, kept as received;
+- the AMFI NAV history fetched for the month (step 4b).
+
+**The chain** (each step a hard stop; the October scripts are named, and their month-parameterised successors replace
+them once ARC-02 has reviewed them, a separate toolchain item after LP-19):
+
+| # | Script (October name, SHA-256; reviewed by ARC-02 except row 7) | What it does | Must hold |
+|---|---|---|---|
+| 1 | `AmfiFetch.ps1` (`d20fcb57…`, LP-19) | Fetches the month's NAVs from portal.amfiindia.com (the only online step) and writes `amfi_<mon>.tsv` and `amfi_<mon>_ids.tsv` (step 4b) | Every chunk fetched. Fetch only after AMFI has published month-end (one request for the last days first). |
+| 2 | `ConvertVendorTri.ps1` (`d1433a17…`) | Reads the NSE export's five price/TRI column pairs (0-based, as recorded for October: NIFTY 100 7/8, NIFTY 50 15/16, NIFTY 500 19/20, Midcap 150 131/132, Smallcap 250 199/200) and keeps the trading days. Repeated-close days are dropped and printed. | The column map is checked against the header names, never assumed. |
+| 3 | `ReconcileOct.ps1` (`ae119b73…`) | Compares the converted TRI with the previous workbook's overlap (and with niftyindices files, if any) | 0 mismatches |
+| 4 | `BuildOct.ps1` (`cd937763…`) | Appends the month to the NAV workbook | A TRI value for every index on every weekday of the month; no interpolation of a gap, ever |
+| 5 | `VerifyOct.ps1` (`f938b381…`) | Checks the new workbook | Prior rows unchanged; 0 calendar gaps; every new NAV cell equals AMFI |
+| 6 | `GenOctMetrics.ps1` (`ce39f6c0…`) | Computes the metrics: first as on the previous month-end with `-Regression`, then as on the new one | The regression shows 0 differing rows against last month's published metrics |
+| 7 | `BuildPRSep.ps1` (`6b2244db…`, unchanged from the baseline; **not reviewed by ARC-02**) | Writes the risk workbook (NAVWORK_README §2 step 11 on its text encoding). It ran once, on 19 Nov 2026, under the owner's one-time permission ("Yes, allow it"; refresh log 2026-10, §9). **Before it runs again it needs ARC-02's review or the owner's permission again.** | Exit 0 |
+| 8 | `VerifyPROct.ps1` (`8a2ce821…`) | Checks every value of the workbook against the metrics | 0 mismatches; the title reads the as-on date |
+
+**Label and price day.** The label is the month-end ("30 Nov 2026"). Log the last trading day if it is earlier: for
+October it was Fri 30 Oct, and Sat 31 Oct carried the Friday close, as the workbook had done for 20 earlier weekend
+rows.
+
+**Archive.** After the publish, copy the two outputs into `02 Archive\<M>` under the September names (step 10).
+
+**If anything fails, or a script has neither a reviewed hash nor the owner's permission:** skip this step and step 7a. MF_RISK and `DATA_DATES.risk`
+stay at the previous month, the MF Analysis caption says so, and the log lists it under "Blocks left stale".
+
+### Step 4b: the AmfiFetch ids file (for the new build)
+
+`AmfiFetch.ps1` (`d20fcb57…`, installed 25 Nov 2026, LP-19) also writes `amfi_<mon>_ids.tsv` next to the NAV file.
+- It has one row per AMFI scheme code, with the columns `code`, `isin_growth_or_payout`, `isin_reinvestment`, `name`,
+  `plan`, `option`, `amc`, `category`, `last_serial` and `last_date`. The latest date in the window wins.
+- It is UTF-8 without BOM, CRLF, sorted by code.
+- **Values are as AMFI gives them.** For 23–24 Nov, three codes carried "-" as an ISIN and one carried "HDFCNIVODG".
+  A row whose name holds a ";" is skipped and counted in the script's console line.
+- **Hand the file to the new build** (NB-02 derives `data/identifiers/amfi-isin.json` from it and validates the ISIN
+  form). Record its SHA-256, row count and the console line in the log. It is not committed by the refresh branch.
 
 ### Step 5: build and gate
 
@@ -270,6 +351,30 @@ a different fund is a stop-and-investigate.
 | 7c | PMS_PERF | `refresh_pms_perf.js --src "<PMS_Scheme Performance … .xlsx>"`, then splice its output. **Read the STALENESS line**, and check the workbook's creator and created date (Part 3). |
 | 7d | FUND_RANKS | `tools/parse-fund-ranks.js` plus the wrapper in `previous-owner/knowledge/KNOWLEDGE_DUMP.md` §3.4. This has never been done; plan it with the owner first. |
 | 7e | AIF_PERF, the PMS/AIF look-throughs, tax rules, IPS profiles, topic slides | No scripted path yet. Agree each one with the owner as a change request. |
+| 7f | HYBRID_ANALYTICS keys carried forward (Other Funds analytics) | `build_other_funds.js --src "$IN/Analytics/Other Funds Analytics.xlsx" --out "$OUT/other-funds/blocks.json" --vintage "$PREVASON" --expect <N> --report "$OUT/other-funds/report.json"`, then `splice_refresh.js "$OUT/other-funds/blocks.json" --data-only` (see below) |
+
+**Step 7f, when it applies.** The main build carries a scheme's previous look-through forward, tagged
+`vintage: "<previous as-on>"`, when the month's Hybrid file has left the scheme out (`carryForwardLookThroughs`;
+October carried 40 children's and retirement funds). After the main splice:
+1. Count the HYBRID_ANALYTICS keys tagged with `$PREVASON`. If there are none, skip 7f and say so in the log.
+2. If `Other Funds Analytics.xlsx` arrived, run 7f with `--expect` set to that count. It replaces exactly the carried
+   keys in place, drops the tag, writes HYBRID_ANALYTICS only (DATA_DATES stays as embedded), and loads no other
+   scheme.
+3. **Hard stops, nothing written:**
+   - the sheet layout (the new month in columns 3..7, the previous month in 19..23);
+   - the count;
+   - a carried key missing by exact name;
+   - equity plus debt not 100 ± 0.5;
+   - any other key changing;
+   - the known-answer check (the previous month's columns must reproduce the embedded carried entries).
+4. **Month-specific parts of the tool:** the known-answer exception list `SEP_EQ_EXCEPTIONS` names October's one
+   exception (a stock the vendor renamed between issues), and the column layout is October's file. If either does not
+   fit the new file, **stop**: the change is a pipeline commit of its own, with its test, and Gate B before use. Never
+   edit the vendor file.
+5. **Record:** the keys replaced, the largest moves, and `data/refdata` regenerated (step 8). October's run is the
+   worked example (refresh log 2026-10, §10; test `tools/regression/CR0010-a1-other-funds-hybrid.js`).
+
+If the file did not arrive, the carried keys stay at the previous vintage; list them under "Blocks left stale".
 
 **One file at a time, in the order of the table.** Every blocks file carries a full copy of `DATA_DATES`,
 and the splice replaces it wholesale. A file built before another splice would therefore put the other dates
@@ -291,6 +396,43 @@ node scripts/data-extract.ts && node scripts/data-extract.ts --check   # the new
 
 Commit the regenerated `data/refdata/` (its JSON files and `VINTAGE.json`) on the refresh branch: CI checks it equal
 to the spliced `index.html`, so a refresh without it fails (D-035).
+
+**The full checks, in IST and then in UTC** (`TZ=UTC`), as every live change since October has run them:
+- invariants, smoke and AI analyst;
+- `node tools/run-regression.js`;
+- `node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"`;
+- `data-extract --check`.
+
+Record the counts. They are heavy runs: take the heavy-run lock first (`C:\dev\private\locks\HEAVY-RUN.lock`; the
+README there). Write it only when there is no lock or it is older than 90 minutes, read your own line back, and delete
+only your own line.
+
+**FUND_RANKS_CODES against renames** (read only; LP-19). `FUND_RANKS_CODES` (from the Fund Ranks file, last 15 Aug
+2026) keys fund names to AMFI codes, and a scheme renamed since then has no row under its new name. With the month's
+AmfiFetch ids file (step 4b), list every rank name that is not a key of the month's `MF_PERF`. Then split them by
+whether AMFI still lists the code (renamed) or not (closed or merged):
+
+```bash
+node - data/refdata "<…>/amfi_<mon>_ids.tsv" > "$OUT/rank-codes.txt" <<'EOF'
+const fs = require('fs'), [refdir, ids] = process.argv.slice(2);
+const R = JSON.parse(fs.readFileSync(refdir + '/FUND_RANKS_CODES.json', 'utf8'));
+const P = JSON.parse(fs.readFileSync(refdir + '/MF_PERF.json', 'utf8'));
+const A = new Map(fs.readFileSync(ids, 'utf8').split(/\r?\n/).slice(1).filter(Boolean).map(l => l.split('\t')).map(f => [f[0], f[3]]));
+const miss = Object.entries(R).filter(([n]) => !P[n]);
+const ren = miss.filter(([, c]) => A.has(String(c))), gone = miss.filter(([, c]) => !A.has(String(c)));
+console.log(`ranks ${Object.keys(R).length}; in MF_PERF ${Object.keys(R).length - miss.length}; renamed? ${ren.length}; gone? ${gone.length}`);
+ren.forEach(([n, c]) => console.log(`RENAMED?\t${c}\t${n}\t-> AMFI: ${A.get(String(c))}`));
+gone.forEach(([n, c]) => console.log(`GONE?\t${c}\t${n}`));
+EOF
+```
+
+- **Known answer (26 Nov 2026, October data, the ids file of 23–24 Nov):** 1,262 ranks, 1,207 in MF_PERF,
+  55 "renamed?", 0 "gone?". All 55 codes are still listed by AMFI. Most are renames, for example "Equity Hybrid '95" →
+  "Aggressive Hybrid" and "Regular Savings" → "Conservative Hybrid". Some only differ in spelling from the monitor's
+  name ("AlphaGrep Flexi Cap Fund - Regular - Growth"). Read every line.
+- **It is a check, not a fix.** Copy the counts and the list into the log under anomalies. The ranks are corrected
+  only from a new Fund Ranks file (step 7d), and D-026 keeps ranks and scores off the public page and out of git.
+- A rise in "gone" is a stop-and-ask.
 
 Then do the browser check:
 1. Start `node tools/serve-dashboard.js` (or the preview config `dashboard`).
@@ -327,10 +469,28 @@ Record every result in the log.
 1. **Merge.** Merge the PR once CI is green, which republishes Pages.
 2. **Verify the live site.** Poll until `https://productsteamcentricity.github.io/portfolio-review-dashboard/` has
    the same size and SHA-256 as `index.html` on `main`. This takes 1–3 minutes.
-3. **Archive the month.**
-   - Move `01 Monthly Updates\YYYY-MM` to `02 Archive\YYYY-MM`.
-   - Copy the slide images actually embedded into its `Outlook slides - exported JPEGs` folder.
-   - Create the next month's inbox: `YYYY-MM`, with the `Analytics` and `Index TRI` subfolders.
+3. **Archive the month.** Do this only once every live change that read the month's inbox has merged. October's
+   folder waited for the tax batch, because the tax reckoner was in it. Nothing in the inbox is renamed, opened,
+   re-saved or deleted; superseded files go to `99 Superseded - safe to delete`.
+   - **Before:** check there are no `~$` lock files and nothing is open. Record a SHA-256 list of every file. Check
+     that every path will stay under 218 characters (Excel's limit): the folder's archive path plus the longest
+     file name.
+   - **Move** `01 Monthly Updates\YYYY-MM` to `02 Archive\YYYY-MM` as one folder. No shell may have its working
+     directory inside it, or the move fails with "busy". If that happens nothing has moved; re-check and retry.
+   - **After:** re-hash every file; the list must equal the one taken before. If anything differs, stop and report.
+   - **Our outputs:** copy the risk toolchain's two outputs (step 4) into the month folder under the September names,
+     `NAV Data as on <date>.xlsx` and `Fund Risk Ratios & 3Y Rolling - All Funds (as on <dd-Mon-yyyy>).xlsx`.
+     Byte copies, hash-checked; the originals in `C:\Temp\navwork` stay. The next month's risk step starts from that
+     NAV workbook.
+   - **Slides:** copy the slide images actually embedded into the month's `Outlook slides - exported JPEGs` folder,
+     checked against the hashes in the log.
+   - **Reference files:** a file not tied to one month (the current tax reckoner) goes to `02 Archive\Reference`.
+     Update `02 Archive\README.md`.
+   - **Next inbox:** create `01 Monthly Updates\<next YYYY-MM>` with the `Analytics`, `Benchmarks`, `Index TRI` and
+     `Outlook export` subfolders, and update the month named in `01 Monthly Updates\README - How to submit monthly
+     files.md`.
+   - **Record** the before/after hash lists (kept outside the repository), the copies and their hashes, and the
+     longest path in the log's §8.
 4. **Close the records.** Mark the log "published" with the live hash, and update `docs/PROJECT_STATE.md`.
    Then switch the local checkout back to `main`.
 
@@ -350,23 +510,25 @@ Record every result in the log.
 | STOCK_INFO | Analytics files (vote), Listed Direct Equity master, then back-fill | `build_refresh.js` |
 | STOCK_RET | Listed Direct Equity returns issue | `build_refresh.js` or `build_stockret.js` |
 | FUND_MGR | Fund Manager history (when supplied) | `build_refresh.js` |
-| MARKET_UPDATE_IMAGES | Outlook deck, exported to JPEG | `build_refresh.js --slides` |
+| MARKET_UPDATE_IMAGES | Investment Reckoner PDF pages, rendered without Office (step 3) | `build_refresh.js --slides` |
+| HYBRID_ANALYTICS keys carried forward | `Analytics\Other Funds Analytics.xlsx` (step 7f) | `build_other_funds.js` |
 | MF_RISK, `DATA_DATES.risk` | Risk-ratio workbook (in-house, step 4) | `build_risk.js` |
+| (new build) `data/identifiers/amfi-isin.json` | AmfiFetch ids file (step 4b) | NB-02's derivation |
 | PMS_PERF | PMS_Scheme Performance | `refresh_pms_perf.js` |
 | FUND_RANKS | Fund_Ranks | `tools/parse-fund-ranks.js` (+ wrapper) |
 | `DATA_DATES` | set by each build | — |
 
 `Exit Load` and `NAV Data` are archived only; the dashboard does not use them.
 
-### Blocks that stay old until their files arrive (state at 15 Oct 2026)
+### Blocks that stay old until their files arrive (state after the October refresh, 26 Nov 2026)
 
-- FUND_RANKS: 15 Aug 2026.
+- FUND_RANKS: 15 Aug 2026; FUND_RANKS_CODES follows it, so check renames (step 8).
 - FUND_MGR: 31 Aug 2026.
-- PMS_PERF: July data.
-- AIF_PERF: 30 Jun 2026.
+- PMS_PERF: 31 Jul 2026. AIF_PERF: 30 Jun 2026. The 15 PMS/AIF look-throughs: 31 Jul 2026.
+- MF_ER_TABLE: the September overlay (no Expense Ratio file in October).
+- STOCK_RET: its last returns issue (none in October; no date of its own, KI-083).
 - MF_BENCHMARKS.
-- The 15 PMS/AIF look-throughs: 31 Jul 2026.
-- MF_RISK: 30 Sep 2026, until the risk toolchain arrives.
+- MF_RISK: 31 Oct 2026, computed in-house (step 4).
 
 ### "Is this file new?" checklist
 
@@ -387,7 +549,9 @@ The same filename has been re-issued with different content at least four times.
 | `anchor found 0 times` from the splice | Splice run without `--data-only` | Add `--data-only`. The failure is safe; nothing was written. |
 | "DATA_DATES.* did not advance" | The builder re-ran after a splice and read the spliced file as "previous" | Expected on a re-gate |
 | Out of memory | 16 MB file plus JSON | `node --max-old-space-size=8192` |
-| PowerPoint "error while saving" | Export path too long | Export to `%TEMP%\cx_slides_<month>` |
+| A rendered page is not 16:9 | The PDF page has another shape | Do not shrink it (it would be stretched); ask the owner (step 3) |
+| The page files are not the pages asked for (for example page56 for 5,6) | The scripts were run with powershell -File and a page list | Run them from inside PowerShell (step 3, C1), in a fresh out-folder |
+| `mv` of the inbox says "busy" | A shell's working directory is inside the folder | Nothing moved; leave the folder in every shell and retry (step 10) |
 | Engine fails under `node -e` | The UMD bundles take their CommonJS path | Run engine code from a script file (KI-011) |
 | Re-issued file after the splice | Common (stock returns, the deck, the SOA workbook) | Rebuild only the affected block from the new file and splice it on the same branch |
 
@@ -404,3 +568,12 @@ The previous owner's monthly runs (Jun–Sep 2026) and their pitfalls are in
 - 13–14 Oct 2026;
 - 20 minutes from start to verified;
 - logged retrospectively in `refresh-log/2026-09.md`.
+
+The October run (`refresh-log/2026-10.md`) is the first in this repository end to end. It covers:
+- the performance and analytics (19 Nov);
+- the in-house risk ratios (19 Nov);
+- the slides from the Reckoner PDF (22 Nov);
+- the 40 carried look-throughs from the Other Funds file (22 Nov);
+- the archive move (26 Nov).
+
+LP-19 (26 Nov 2026) brought steps 3, 4, 4b, 7f, 8 and 10 up to that run.

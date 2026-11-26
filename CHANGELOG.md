@@ -4,6 +4,27 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (LP-19, the December refresh prep: docs only; no change to `index.html` or the pipeline)
+- **`docs/MONTHLY_REFRESH.md` brought up to the October run** (refresh log 2026-10). This is a docs branch under
+  MOD-04's exception to FILE_OWNERSHIP row 20, which allows the runbook to change only on a `data/YYYY-MM-refresh`
+  branch.
+  - Files: the vendor's benchmark exports (`Benchmarks`), the Investment Reckoner PDF (`Outlook export`), the pagers
+    deck and Other Funds Analytics; niftyindices only as the fallback.
+  - Step 3: Market Update slides from the Reckoner PDF with Windows' PDF renderer, no Office. The scripts are pinned
+    by SHA-256 as ARC-02 reviewed them (render-pdf 958b095e GO on conditions C1 to C3; shrink
+    530357e6 GO after the one-line fix). The PowerPoint COM snippet is removed.
+  - Step 4: the in-house risk chain (tools, launch rule, inputs, hard stops).
+  - Step 4b: the AmfiFetch ids file for the new build.
+  - Step 7f: Other Funds analytics for carried look-throughs.
+  - Step 8: IST and UTC with `run-regression` and `node --test`, the heavy-run lock, and a read-only FUND_RANKS_CODES
+    rename check with its known answer (55 "renamed?", 0 "gone?").
+  - Step 10: the archive with SHA-256 lists before and after.
+  - Part 3 brought up to date.
+- `docs/MONTHLY_UPDATE_GUIDE.md`: the same file list.
+- `docs/refresh-log/2026-10.md` §8: published (PRs #21 to #36) and archived on 26 Nov 2026.
+- `docs/refresh-log/TEMPLATE.md`: sections for slides, the risk chain, the ids file, Other Funds, the rank check and
+  the archive.
+
 ### Added (new build, M12a drawdown engine on index data; not wired yet; the index for each asset class awaits the owner)
 - **`app/src/engine/drawdown.ts`** (E-149, D-023 point 2): per index series the maximum peak-to-trough fall, its peak and
   trough days, the recovery day and the months to recover from the trough (or not yet recovered); a blend of series at
