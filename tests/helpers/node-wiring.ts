@@ -26,6 +26,18 @@ import { committedMatchContext } from './match-blocks.ts';
 import { matchLoaded } from '../../app/src/engine/match/resolve-holdings.ts';
 import { loadMonitor, type MonitorSheetJS } from '../../app/src/ingest/load-monitor.ts';
 import { refdataBlock } from './legacy-engine.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import { REPO } from './sheetjs.ts';
+import { performanceSourcesFrom } from '../../app/src/data/performance-sources.ts';
+import { computePerformance } from '../../app/src/engine/returns/performance.ts';
+
+/** The page's refdata blocks from the committed files (data/refdata/<NAME>.json), as data/refdata.ts reads them. */
+export const FILE_BLOCK_TEXT = (id: string): string | null => {
+  const name = id.replace(/^refdata-/, '');
+  const p = path.join(REPO, 'data', 'refdata', `${name}.json`);
+  return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+};
 import { loadPptxGenJS } from './pptxgenjs.ts';
 import { slideInventory } from './slide-inventory.ts';
 import { NUM_FMT_CODES } from '../../app/src/exports/xlsx/styles.ts';
@@ -82,6 +94,7 @@ export function nodeWiring(build: BuildStamp = NODE_BUILD, nowIso: string = NODE
     },
     now,
     matchHoldings: (loaded, overrides) => matchLoaded(loaded, committedMatchContext(overrides)),
+    performance: (holdings, uploads) => computePerformance(holdings, performanceSourcesFrom(uploads, FILE_BLOCK_TEXT)),
     loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, xlsx as unknown as MonitorSheetJS, regular ?? (refdataBlock('MF_PERF') as never)),
   };
 }

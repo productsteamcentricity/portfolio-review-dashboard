@@ -20,6 +20,9 @@ import { auditExport } from '../services/audit-log.ts';
 import { downloadBytes, PPTX_MIME, XLSX_MIME } from '../services/download.ts';
 import { deckFileName, workbookFileName } from '../views/labels.ts';
 import { readBlock } from '../data/refdata.ts';
+import { performanceSourcesFrom, type MonitorUploads } from '../data/performance-sources.ts';
+import { computePerformance, type PerformanceResult } from '../engine/returns/performance.ts';
+import type { Holding } from '../model/holding.ts';
 import { buildMatchContext, matchLoaded, type MatchContext, type MatchReport } from '../engine/match/resolve-holdings.ts';
 import { loadMonitor, type LoadedMonitor, type MonitorBlocks, type MonitorLoadError, type MonitorSheetJS, type MonitorUploadKind } from '../ingest/load-monitor.ts';
 import type { MonitorScheme } from '../ingest/vendor/mf-monitor.ts';
@@ -36,6 +39,8 @@ export type Wiring = {
   matchHoldings?(loaded: LoadedBaseFile, overrides?: MonitorBlocks): { loaded: LoadedBaseFile; report: MatchReport | null };
   /** M2.1: reads an uploaded monitor (U-08, U-09, U-10); `regular` maps a Direct issue's sheets. */
   loadMonitor?(kind: MonitorUploadKind, bytes: Uint8Array, fileName: string, regular?: Readonly<Record<string, MonitorScheme>>): LoadedMonitor | MonitorLoadError;
+  /** M3b: section 5's performance tables of the matched holdings, the uploaded monitors standing in for their blocks. */
+  performance?(holdings: readonly Holding[], uploads: MonitorUploads): PerformanceResult;
 };
 
 /** The match context from the page's refdata blocks, an uploaded monitor standing in for its block; built once for the
@@ -71,5 +76,6 @@ export function browserWiring(build: BuildStamp): Wiring {
     now,
     matchHoldings: (loaded, overrides) => matchLoaded(loaded, pageMatchContext(overrides)),
     loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, XLSX as unknown as MonitorSheetJS, regular ?? readBlock('MF_PERF') ?? undefined),
+    performance: (holdings, uploads) => computePerformance(holdings, performanceSourcesFrom(uploads)),
   };
 }

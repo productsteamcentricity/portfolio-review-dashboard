@@ -1,11 +1,12 @@
 // Section 5, Holdings and performance (BR-3.5; M3b, test build 1): the per-client holding tables (U-23) with column
-// chips, rendered from views/holdings.ts. Performance (U-41) joins this section next.
+// chips, rendered from views/holdings.ts, then the performance tables (U-41, s5-performance.tsx).
 
 import { useMemo, useState } from 'preact/hooks';
 import type { AppState, Store } from '../store.ts';
 import type { HoldingsColumnId } from '../../views/holdings.ts';
 import { buildHoldingsVM } from '../../views/holdings.ts';
 import { Group } from '../components/group.tsx';
+import { S5Performance } from './s5-performance.tsx';
 
 const LEVEL_CLASS: Readonly<Record<string, string>> = { asset: 'row-asset', product: 'row-product', item: 'row-item', grand: 'row-total' };
 
@@ -60,6 +61,7 @@ export function S5Holdings({ state }: { store: Store; state: AppState }) {
           {c.notes.length ? <ul class="plain-list notes">{c.notes.map((n) => <li key={n}>{n}</li>)}</ul> : null}
         </Group>
       ))}
+      <S5Performance state={state} />
     </>
   );
 }

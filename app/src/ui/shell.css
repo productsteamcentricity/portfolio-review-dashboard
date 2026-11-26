@@ -471,3 +471,5 @@ table.data tr.row-item > th { padding-left: 3rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0 0.8rem; }
 .chip-toggle { border: 1px solid var(--c-tan); background: transparent; color: var(--c-textBody); border-radius: 999px; padding: 0.15rem 0.7rem; font: inherit; font-size: 0.85em; cursor: pointer; }
 .chip-toggle.on { background: var(--c-tan); color: var(--c-ink); border-color: var(--c-tan); font-weight: bold; }
+/* Section 5 performance (M3b): benchmark rows under their group's funds. */
+table.data tr.row-bench > * { font-style: italic; color: var(--c-textBody); }
