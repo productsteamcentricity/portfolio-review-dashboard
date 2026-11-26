@@ -9,7 +9,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   average return of current holdings", weighted by share of the MF value. A fund without the tenor is left out of the
   weights and counted in the coverage, never 0% (funds at 50/30/20% with 14%, 6% and none: 11.00% at 80% coverage,
   not 8.80%). Sources in order: the uploaded MF Monitor, then the embedded monthly monitor (the pack joins in M10u); a
-  fund missing in the primary is filled from a later source only at the same as-on date. One coverage footnote text
+  fund missing in the primary is filled from a later source only at the same as-on date. A fund is its plan and scheme
+  name: Regular and Direct are separate tables with their own dates (36 names of the October 2026 data are in both,
+  with different returns); a plan the first source lacks is read from the next source that has it. One coverage
+  footnote text
   for screen, slide and sheet ("3Y covers 80% of MF value; 1 fund without a 3Y return excluded", with the sources and
   dates); `asOnDay()` reads the monitor's as-on text.
 - **`app/src/engine/returns/stock-cagr.ts`** (E-148, D-023 point 4): each stock's 1Y/3Y/5Y CAGR from split- and
