@@ -6,7 +6,7 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isMonitorError, loadMonitor, type MonitorSheetJS } from '../../../app/src/ingest/load-monitor.ts';
+import { isMonitorError, loadMonitor, refArea, type MonitorSheetJS } from '../../../app/src/ingest/load-monitor.ts';
 import { parseMfMonitor } from '../../../app/src/ingest/vendor/mf-monitor.ts';
 import { directMonitor, regularMonitor, type Workbook } from '../../fixtures/make-monitors.ts';
 import { loadSheetJS } from '../../helpers/sheetjs.ts';
@@ -65,5 +65,30 @@ describe('loadMonitor', () => {
     assert.ok(isMonitorError(b));
     assert.equal(b.reason, 'not-a-monitor');
     assert.match(b.message, /is this an MF Monitor \(Regular\)\?/);
+  });
+
+  test('a sheet declaring more cells than the limit is refused before it is expanded (CHAT-008 N2)', () => {
+    /* the workbook object as SheetJS would return it: two cells, a range declared over the whole sheet (writing such a
+       file would itself expand it, so the spy hands the object back instead of parsing bytes) */
+    const ws = X.utils['aoa_to_sheet']!([['Scheme Name'], ['Sample Fund']]) as Record<string, unknown>;
+    ws['!ref'] = 'A1:XFD1048576';
+    let expanded = 0;
+    const spy: MonitorSheetJS = {
+      read: () => ({ SheetNames: ['Padded'], Sheets: { Padded: ws } }),
+      utils: { sheet_to_json: (s, o) => { expanded++; return X.utils.sheet_to_json(s, o); } },
+    };
+    const r = loadMonitor('mf-regular', new Uint8Array([1, 2, 3]), 'p.xlsx', spy);
+    assert.ok(isMonitorError(r));
+    assert.equal(r.reason, 'too-many-cells');
+    assert.match(r.message, /the sheet "Padded" declares more cells than the limit/);
+    assert.equal(expanded, 0, 'never expanded');
+  });
+
+  test('refArea: the declared range\'s cell count', () => {
+    assert.equal(refArea('A1:C10'), 30);
+    assert.equal(refArea('B7'), 1);
+    assert.equal(refArea('$A$1:$XFD$1048576'), 16384 * 1048576);
+    assert.equal(refArea(undefined), 0);
+    assert.equal(refArea('not a range'), 0);
   });
 });

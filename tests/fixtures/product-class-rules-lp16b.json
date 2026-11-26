@@ -1,0 +1,11 @@
+[
+{"beforePmsAifSif":true,"class":"OTHER","keywords":["gift city","ifsc"],"label":"GIFT City funds"},
+{"beforePmsAifSif":true,"class":"OTHER","keywords":["global exposure"],"label":"GIFT City funds","nameAny":["gift","ifsc"]},
+{"beforePmsAifSif":true,"class":"OTHER","keywords":["off-shore","global exposure"],"label":"Offshore funds"},
+{"andAny":["usd","us$","us","dollar","dollars","lrs"],"class":"BOND","keywords":["bond","bonds","ncd","ncds","debenture","debentures","lrs"],"label":"US-dollar bonds (through LRS)","notIf":["sovereign gold","sgb","sgbs","market linked","mld","mlds"],"unlessAny":["etf","etfs","mf","mfs","mutual fund","mutual funds","fund","funds","fof","fofs"]},
+{"class":"BOND","keywords":["bond","bonds","ncd","ncds","debenture","debentures"],"label":"Rupee bonds and NCDs","notIf":["sovereign gold","sgb","sgbs","market linked","mld","mlds"],"unlessAny":["etf","etfs","mf","mfs","mutual fund","mutual funds","fund","funds","fof","fofs"]},
+{"class":"OTHER","keywords":["fixed deposit","fixed deposits","fd","fds"],"label":"Fixed deposits","unlessAny":["etf","etfs","mf","mfs","mutual fund","mutual funds","fund","funds","fof","fofs"]},
+{"class":"OTHER","keywords":["reit","reits","invit","invits"],"label":"REITs and InvITs","unlessAny":["etf","etfs","mf","mfs","mutual fund","mutual funds","fund","funds","fof","fofs"]},
+{"class":"EQUITY","keywords":["unlisted"],"label":"Unlisted shares","unlessAny":["etf","etfs","mf","mfs","mutual fund","mutual funds","fund","funds","fof","fofs"]},
+{"class":"OTHER","keywords":["p2p","peer to peer"],"label":"P2P lending"}
+]

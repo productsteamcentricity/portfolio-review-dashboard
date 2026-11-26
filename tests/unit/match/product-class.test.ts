@@ -50,9 +50,8 @@ describe('product class (LP-16 known answers)', () => {
       ['Off Shore Fund', 'Offshore funds'], ['GIFTCity Fund', 'GIFT City funds']]) assert.equal(cls(p), c, p);
   });
 
-  test('the table is read in its order; a malformed rule is refused', () => {
+  test('the table is read in its order; a table that is not a list is refused', () => {
     assert.deepEqual(RULES.map((r) => r.label), ['GIFT City funds', 'Offshore funds', 'US-dollar bonds (through LRS)', 'Fixed deposits', 'REITs and InvITs', 'Unlisted shares']);
-    assert.throws(() => parseProductClassRules([{ label: 'X', class: 'NOPE', keywords: ['x'] }]), /lacks/);
     assert.throws(() => parseProductClassRules({}), /not an array/);
   });
 

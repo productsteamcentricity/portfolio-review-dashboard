@@ -174,11 +174,11 @@ function route(holdings: readonly Holding[], s: PerformanceSources, leftOut: Per
   for (const h of holdings.filter(isIncluded)) {
     const ref = h.instrument;
     const key = ref?.vendorKey ?? null;
-    if (isDirectEquityProduct(h.product) && !nonMfRule(h.product, s.rules)) {
+    if (isDirectEquityProduct(h.product) && !nonMfRule(h.product, s.rules, h.instrumentName)) {
       out.push({ h, bucket: 'Direct Equity', key, record: key && s.STOCK ? s.STOCK[key] ?? null : null });
       continue;
     }
-    const c = holdingClass(h.product, s.rules);
+    const c = holdingClass(h.product, s.rules, h.instrumentName);
     if (c.kind === 'other') {
       leftOut.push({ holdingId: h.id, name: h.instrumentName, reason: 'other-class', classLabel: c.label });
       continue;

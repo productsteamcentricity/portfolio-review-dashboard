@@ -19,7 +19,7 @@ import { buildCrosswalk, makeUniverse, resolveInstrument, type Crosswalk, type U
 import { NEW_BUILD_MATCHING, referenceVocabulary, type MatchOptions } from './instrument.ts';
 import { nameKey } from './normalize.ts';
 import { parseOwnerAliases, type OwnerAliasTable } from './owner-aliases.ts';
-import { holdingClass, nonMfRule, parseProductClassRules, type ProductClassRule } from './product-class.ts';
+import { holdingClass, nonMfRule, parseProductClassRulesDetailed, type ProductClassRule, type SkippedRule } from './product-class.ts';
 import { parseAmfiIsinRecord } from './amfi-isin.ts';
 
 type Block = Readonly<Record<string, unknown>>;
@@ -43,6 +43,8 @@ export type MatchContext = {
   crosswalk: Crosswalk;
   options: MatchOptions;
   rules: readonly ProductClassRule[];
+  /** PRODUCT_CLASS_RULES rules not applied (an unknown field or class), with the reason: shown in the import report. */
+  skippedRules: readonly SkippedRule[];
   aliasesApproved: string | null;
 };
 
@@ -61,7 +63,17 @@ export type MatchReport = {
   /** The universes the page carried (a route without its universe cannot match). */
   available: ReadonlyArray<'MF' | 'SIF' | 'AIF' | 'PMS' | 'STOCK'>;
   aliasesApproved: string | null;
+  /** The product-class rules the page did not apply, with the reason (never applied loosely). */
+  skippedRules: readonly SkippedRule[];
+  /** Set when matching could not run at all (CHAT-008 B1): the reason, shown as an error in the import report, so a
+   * failure never reads as "every holding unmatched". */
+  failed?: string;
 };
+
+/** The report of a matching run that failed before any holding was resolved. */
+export function failedMatchReport(reason: string): MatchReport {
+  return { entries: [], available: [], aliasesApproved: null, skippedRules: [], failed: reason };
+}
 
 /** The live page's normCo: a company name in lower case, punctuation and the words ltd, limited, the, inc, corp, co,
  * of and india dropped (07_engine.js:1054). */
@@ -95,12 +107,15 @@ export function buildMatchContext(b: MatchBlocks): MatchContext {
     sources.amfiNames = m.codeToName;
   }
   /* knownWords (the normaliser follow-up): the vocabulary of the names this context can answer with, its instrument
-     universes; tests/parity/matching-corrections.ts measures stage 4 with this same vocabulary */
+     universes; tests/parity/matching-corrections.ts measures stage 4 with this same vocabulary on the committed blocks.
+     An uploaded monitor (U-08 to U-10) replaces its universe, so the vocabulary is rebuilt from the uploaded names: a
+     vocabulary the ledger did not measure (CHAT-008's note N1 on the wiring); the next monthly data, embedded, is
+     measured again by the ledger. */
   const instrumentNames = Object.values(universes).filter((u) => u.matcher === 'instrument').map((u) => u.keys);
   const base: MatchOptions = { ...NEW_BUILD_MATCHING, knownWords: referenceVocabulary(instrumentNames) };
   const options: MatchOptions = aliases ? { ...base, ownerAliases: aliases } : base;
-  const rules = b.PRODUCT_CLASS_RULES === undefined || b.PRODUCT_CLASS_RULES === null ? [] : parseProductClassRules(b.PRODUCT_CLASS_RULES);
-  return { universes, crosswalk: buildCrosswalk(sources), options, rules, aliasesApproved: aliases ? aliases.approved : null };
+  const parsed = b.PRODUCT_CLASS_RULES === undefined || b.PRODUCT_CLASS_RULES === null ? { rules: [], skipped: [] } : parseProductClassRulesDetailed(b.PRODUCT_CLASS_RULES);
+  return { universes, crosswalk: buildCrosswalk(sources), options, rules: parsed.rules, skippedRules: parsed.skipped, aliasesApproved: aliases ? aliases.approved : null };
 }
 
 function unmatchedRef(productClass: ProductClass, name: string): InstrumentRef {
@@ -116,12 +131,12 @@ export function resolveHoldings(holdings: readonly Holding[], ctx: MatchContext)
     let route: MatchRoute;
     let classLabel: string | null = null;
     let ref: InstrumentRef | null;
-    if (isDirectEquityProduct(h.product) && !nonMfRule(h.product, ctx.rules)) {
+    if (isDirectEquityProduct(h.product) && !nonMfRule(h.product, ctx.rules, name)) {
       route = 'STOCK';
       const u = ctx.universes.STOCK;
       ref = u ? resolveInstrument(isin === undefined ? { name: companyKey(name) } : { name: companyKey(name), isin }, u, ctx.crosswalk) : unmatchedRef('EQUITY', name);
     } else {
-      const c = holdingClass(h.product, ctx.rules);
+      const c = holdingClass(h.product, ctx.rules, name);
       if (c.kind === 'other') {
         route = 'other';
         classLabel = c.label;
@@ -137,7 +152,7 @@ export function resolveHoldings(holdings: readonly Holding[], ctx: MatchContext)
     return { ...h, instrument: ref };
   });
   const available = (['MF', 'SIF', 'AIF', 'PMS', 'STOCK'] as const).filter((k) => ctx.universes[k] !== undefined);
-  return { holdings: out, report: { entries, available, aliasesApproved: ctx.aliasesApproved } };
+  return { holdings: out, report: { entries, available, aliasesApproved: ctx.aliasesApproved, skippedRules: ctx.skippedRules } };
 }
 
 /** Matches a loaded file's holdings with a context; the file is returned unchanged when there is none. */

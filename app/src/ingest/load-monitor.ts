@@ -48,7 +48,18 @@ export function isMonitorError(x: LoadedMonitor | MonitorLoadError): x is Monito
   return (x as MonitorLoadError).refused === true;
 }
 
-const KIND_TEXT: Readonly<Record<MonitorUploadKind, string>> = { 'mf-regular': 'an MF Monitor (Regular)', 'mf-direct': 'an MF Monitor (Direct)', sif: 'a SIF Monitor' };
+/** The cell count of a sheet's declared range ("A1:Z100", or one cell "B7"); 0 when absent or unreadable. */
+export function refArea(ref: unknown): number {
+  if (typeof ref !== 'string') return 0;
+  const m = /^[$]?([A-Za-z]{1,3})[$]?([0-9]{1,7})(?::[$]?([A-Za-z]{1,3})[$]?([0-9]{1,7}))?$/.exec(ref.trim());
+  if (!m) return 0;
+  const col = (s: string): number => [...s.toUpperCase()].reduce((a, ch) => a * 26 + (ch.charCodeAt(0) - 64), 0);
+  const c1 = col(m[1]!), r1 = Number(m[2]);
+  const c2 = m[3] ? col(m[3]) : c1, r2 = m[4] ? Number(m[4]) : r1;
+  return (Math.abs(c2 - c1) + 1) * (Math.abs(r2 - r1) + 1);
+}
+
+const KIND_TEXT: Readonly<Record<MonitorUploadKind, string>> ={ 'mf-regular': 'an MF Monitor (Regular)', 'mf-direct': 'an MF Monitor (Direct)', sif: 'a SIF Monitor' };
 
 /** Reads one monitor file. `regular` (the Regular schemes in use) maps a Direct issue's unnamed sheets. */
 export function loadMonitor(kind: MonitorUploadKind, bytes: Uint8Array, fileName: string, xlsx: MonitorSheetJS, regular?: Readonly<Record<string, MonitorScheme>>): LoadedMonitor | MonitorLoadError {
@@ -65,6 +76,12 @@ export function loadMonitor(kind: MonitorUploadKind, bytes: Uint8Array, fileName
   let cells = 0;
   for (const n of names) {
     const ws = Object.prototype.hasOwnProperty.call(wb.Sheets, n) ? wb.Sheets[n] : undefined;
+    /* CHAT-008 N2: a sheet's declared range is checked BEFORE sheet_to_json expands it, since a sparse sheet declared as
+       A1:XFD1048576 would be expanded into rows of empty cells first */
+    const declared = ws ? refArea((ws as Record<string, unknown>)['!ref']) : 0;
+    if (cells + declared > MONITOR_LIMITS.maxCells) {
+      return { refused: true, reason: 'too-many-cells', message: `the sheet "${n}" declares more cells than the limit of ${MONITOR_LIMITS.maxCells} allows for the workbook` };
+    }
     const aoa = ws ? (xlsx.utils.sheet_to_json(ws, { header: 1, raw: true }) as unknown[][]) : [];
     for (const r of aoa) cells += Array.isArray(r) ? r.length : 0;
     if (cells > MONITOR_LIMITS.maxCells) return { refused: true, reason: 'too-many-cells', message: `the workbook has more than ${MONITOR_LIMITS.maxCells} cells` };
