@@ -258,7 +258,12 @@ describe('benchmark coverage, dates and contribution lines (R2, R3, R4)', () => 
 
   test('R2: partial and none are said beside the headline benchmark; full says nothing', () => {
     assert.equal(byPicker('Family').headline.benchCoverageText,
-      'The benchmark XIRR covers 2 of the 3 instruments with fund flows; 1 instrument has no benchmark flow and is left out, so the benchmark covers less of the money paid in than the fund XIRR.');
+      // Hand worked: Bluechip 15,000 and Balanced 8,000 paid in have benchmark flows; the Bond's 20,000 has none:
+      // 23,000 / 43,000 = 53.49%.
+      'The benchmark XIRR covers 2 of the 3 instruments with fund flows; 1 instrument has no benchmark flow and is left out; the benchmark covers 53.49% of the money paid in.');
+    // Gate B of 5bb0071, F2: left-out instruments with no money paid in (share 1) never read as "less of the money".
+    assert.equal(benchCoverageText({ share: 1, basis: 'flows-in', included: 2, excluded: 1 }),
+      'The benchmark XIRR covers 2 of the 3 instruments with fund flows; 1 instrument has no benchmark flow and is left out; they hold none of the money paid in, so the benchmark covers all of it.');
     assert.equal(byPicker('Adviser: Centricity').headline.benchCoverageText, null);
     assert.equal(byPicker('Adviser: Other Distributor').headline.benchCoverageText,
       'The benchmark XIRR covers no instrument: the one instrument with fund flows has no benchmark flow.');
@@ -267,17 +272,18 @@ describe('benchmark coverage, dates and contribution lines (R2, R3, R4)', () => 
   });
 
   test('R3: the dates line always; a note when the dates differ, and the count of flows after the as-on date', () => {
-    assert.equal(matched.datesText, 'Last fund flow in the transactions file: 31 Mar 2025. As-on date of the review: 30 Sep 2026.');
+    assert.equal(matched.datesText, "Last fund flow of the review's clients in the transactions file: 31 Mar 2025. As-on date of the review: 30 Sep 2026.");
     assert.deepEqual(matched.datesNotes, [
-      'The last fund flow (31 Mar 2025) is not on the as-on date (30 Sep 2026): the XIRR figures run to the last fund flow, while the holdings and their allocation are as on the as-on date.',
+      "The last fund flow of the review's clients (31 Mar 2025) is not on the as-on date (30 Sep 2026). The XIRRs use the flows as dated; the holdings and their allocation are as on the as-on date.",
     ]);
     const last = ymdToDay(2025, 3, 31)!;
     assert.deepEqual(datesWords({ lastFlowDay: last, asOnDay: last, flowsAfterAsOn: 0 }).datesNotes, [], 'equal: no note');
     const after = datesWords({ lastFlowDay: last, asOnDay: ymdToDay(2024, 1, 1)!, flowsAfterAsOn: 4 });
-    assert.equal(after.datesText, 'Last fund flow in the transactions file: 31 Mar 2025. As-on date of the review: 1 Jan 2024.');
+    assert.equal(after.datesText, "Last fund flow of the review's clients in the transactions file: 31 Mar 2025. As-on date of the review: 1 Jan 2024.");
     assert.equal(after.datesNotes.length, 2);
-    assert.equal(after.datesNotes[1], '4 fund flows are dated after the as-on date (1 Jan 2024); they are included in every figure.');
-    assert.equal(datesWords({ lastFlowDay: last, asOnDay: last, flowsAfterAsOn: 1 }).datesNotes[0], '1 fund flow is dated after the as-on date (31 Mar 2025); it is included in every figure.');
+    assert.equal(after.datesNotes[1], "4 fund flows of the review's clients are dated after the as-on date (1 Jan 2024). They are kept as dated; whether to leave such flows out is an open question for the owner.");
+    assert.equal(datesWords({ lastFlowDay: last, asOnDay: last, flowsAfterAsOn: 1 }).datesNotes[0], "1 fund flow of the review's clients is dated after the as-on date (31 Mar 2025). It is kept as dated; whether to leave such flows out is an open question for the owner.");
+    for (const t of [...after.datesNotes, ...matched.datesNotes]) assert.ok(!/every figure/.test(t), `no claim about every figure: ${t}`);
     assert.deepEqual(datesWords({ lastFlowDay: last, asOnDay: null, flowsAfterAsOn: null }).datesNotes, ['The as-on date is not set, so the last fund flow is not compared with it.']);
     for (const t of [matched.datesText, ...matched.datesNotes, ...after.datesNotes]) assert.ok(!DASHES.test(t), t);
   });

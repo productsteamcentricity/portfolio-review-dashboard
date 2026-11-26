@@ -218,6 +218,31 @@ describe('benchmark coverage (R2) and dates (R3)', () => {
     assert.deepEqual(unset.dates, { lastFlowDay: last, asOnDay: null, flowsAfterAsOn: null });
   });
 
+  test('Gate B of 5bb0071, B1: an IRR-only client\'s flow after the as-on date sets neither the last date nor the count', () => {
+    // A client with no holding in the base file is left out of every figure (OD-4), so its flow on 10 Oct 2026 in a
+    // review as on 30 Sep 2026 must not appear in the dates, and the family XIRR is unchanged.
+    const t0 = irr.fund[0]!;
+    const outsider = { ...t0, clientId: 'cl_not_in_base' as typeof t0.clientId, clientLabel: 'Sample Client Z', day: ymdToDay(2026, 10, 10)!, amountRupees: 500 };
+    const withOutsider = { ...irr, fund: [...irr.fund, outsider] } as IrrFileImport;
+    const r = returnsForReview(run.review, withOutsider);
+    assert.deepEqual(r.dates, m.dates);
+    assert.deepEqual(byLabel('Family').result.fund, r.scopes.find((s) => s.label === 'Family')!.result.fund);
+  });
+
+  test('Gate B of 5bb0071, B1: a flow after the as-on date on an instrument with an invalid benchmark is counted as a flow of the review\'s clients', () => {
+    // Client A's Bond gets benchmark flows that all fall on one day, so they give no rate (OD-4: invalid benchmark,
+    // out of the scope aggregates). Its fund flows are still flows of the review's clients, so the date count includes
+    // its late flow; the note claims nothing about which figures a flow enters.
+    const bond = irr.fund.find((t) => /Bond/.test(t.instrumentName ?? ''))!;
+    const late = { ...bond, day: ymdToDay(2026, 10, 10)!, amountRupees: 100 };
+    const sameDayBench = [{ ...irr.bench[0]!, instrumentName: bond.instrumentName, clientId: bond.clientId, day: bond.day, amountRupees: -1000 },
+      { ...irr.bench[0]!, instrumentName: bond.instrumentName, clientId: bond.clientId, day: bond.day, amountRupees: 1000 }];
+    const invalid = { ...irr, fund: [...irr.fund, late], bench: [...irr.bench, ...sameDayBench] } as IrrFileImport;
+    const r = returnsForReview(run.review, invalid);
+    assert.ok(r.scopes[0]!.result.reconciliation.invalidBenchmark.some((x) => /Bond/.test(x.instrumentName)), 'the Bond benchmark is invalid');
+    assert.deepEqual(r.dates, { lastFlowDay: ymdToDay(2026, 10, 10), asOnDay: ymdToDay(2026, 9, 30), flowsAfterAsOn: 1 });
+  });
+
   test('no figure changes with the as-on date (exclusion is an owner question)', () => {
     const after = returnsForReview(reviewOf(w, fixtureById('syn-standard'), { asOn: ymdToDay(2024, 1, 1)! }).review, irr);
     assert.deepEqual(after.scopes.map((s) => s.result.fund.xirr), m.scopes.map((s) => s.result.fund.xirr));

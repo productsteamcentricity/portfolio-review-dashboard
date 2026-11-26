@@ -101,14 +101,19 @@ export function benchCoverageOf(result: ScopeReturns, irr: IrrFileImport): Retur
   return { share, basis: 'flows-in', included, excluded };
 }
 
-/** The file's last fund-flow day and the fund flows dated after the as-on day (R3). */
-export function returnsDatesOf(irr: IrrFileImport, asOnDay: DayNumber | null): ReturnsDates {
+/**
+ * The last fund-flow day of the review's clients and their fund flows dated after the as-on day (R3). Only the flows of
+ * base-file clients count: an IRR-only client's flows are in no figure (OD-4), so they never set either number (Gate B
+ * of 5bb0071, B1).
+ */
+export function returnsDatesOf(irr: IrrFileImport, asOnDay: DayNumber | null, baseClients: ReadonlySet<ClientId>): ReturnsDates {
+  const flows = irr.fund.filter((t) => baseClients.has(t.clientId));
   let last: DayNumber | null = null;
-  for (const t of irr.fund) if (last === null || t.day > last) last = t.day;
+  for (const t of flows) if (last === null || t.day > last) last = t.day;
   return {
     lastFlowDay: last,
     asOnDay,
-    flowsAfterAsOn: asOnDay === null ? null : irr.fund.filter((t) => t.day > asOnDay).length,
+    flowsAfterAsOn: asOnDay === null ? null : flows.filter((t) => t.day > asOnDay).length,
   };
 }
 
@@ -128,6 +133,7 @@ export function returnsForReview(review: ReturnsReviewInput, irr: IrrFileImport)
       return { scope, key: scopeKeyOf(scope), label: scopeLabelOf(scope, entities), result, benchCoverage: benchCoverageOf(result, irr) };
     }),
     advisorScopes: irr.hasDistributor ? 'listed' : 'no-distributor-column',
-    dates: returnsDatesOf(irr, review.asOn.kind === 'value' ? review.asOn.v : null),
+    dates: returnsDatesOf(irr, review.asOn.kind === 'value' ? review.asOn.v : null,
+      new Set(review.holdings.map((h) => h.clientId).filter((c): c is ClientId => c !== null))),
   };
 }

@@ -23,7 +23,7 @@ import type {
 } from './returns-vm.ts';
 import { BLANK_LABEL } from '../engine/returns/irr-tree.ts';
 import { formatDay } from '../engine/dates.ts';
-import { STATUS_PHRASE, displayNumber, displayPct, plainText, plural } from './format.ts';
+import { STATUS_PHRASE, displayNumber, displayPct, formatIndian, plainText, plural } from './format.ts';
 
 /** The method label of the contributions (R-AN-10; E-29). */
 export const CONTRIBUTION_METHOD_TEXT: Readonly<Record<ScopeReturns['contributions']['method'], string>> = {
@@ -114,7 +114,11 @@ export function benchCoverageText(c: ReturnsCoverage): string | null {
   if (c.included === 0) {
     return `The benchmark XIRR covers no instrument: ${all === 1 ? 'the one instrument with fund flows has no benchmark flow' : `none of the ${all} instruments with fund flows has a benchmark flow`}.`;
   }
-  return `The benchmark XIRR covers ${c.included} of the ${all} instruments with fund flows; ${plural(c.excluded, 'instrument has', 'instruments have')} no benchmark flow and ${c.excluded === 1 ? 'is' : 'are'} left out, so the benchmark covers less of the money paid in than the fund XIRR.`;
+  // The money share itself, never a comparison it may not support (Gate B of 5bb0071, F2): left-out instruments can
+  // hold no money paid in (share 1).
+  const money = c.share >= 1 ? 'they hold none of the money paid in, so the benchmark covers all of it'
+    : `the benchmark covers ${formatIndian(c.share * 100, 2)}% of the money paid in`;
+  return `The benchmark XIRR covers ${c.included} of the ${all} instruments with fund flows; ${plural(c.excluded, 'instrument has', 'instruments have')} no benchmark flow and ${c.excluded === 1 ? 'is' : 'are'} left out; ${money}.`;
 }
 
 /** The role words of a contributions line (R4): "Contributor", "Laggard", "Drag" joined, the first capitalised. */
@@ -285,13 +289,14 @@ export function datesWords(d: ReturnsDates): { datesText: string; datesNotes: st
   if (d.lastFlowDay !== null) {
     if (d.asOnDay === null) notes.push('The as-on date is not set, so the last fund flow is not compared with it.');
     else if (d.lastFlowDay !== d.asOnDay) {
-      notes.push(`The last fund flow (${last}) is not on the as-on date (${asOn}): the XIRR figures run to the last fund flow, while the holdings and their allocation are as on the as-on date.`);
+      // Facts about the file only (Gate B of 5bb0071, B1): no claim about which figures a flow enters.
+      notes.push(`The last fund flow of the review's clients (${last}) is not on the as-on date (${asOn}). The XIRRs use the flows as dated; the holdings and their allocation are as on the as-on date.`);
     }
     if (d.flowsAfterAsOn !== null && d.flowsAfterAsOn > 0) {
-      notes.push(`${plural(d.flowsAfterAsOn, 'fund flow is', 'fund flows are')} dated after the as-on date (${asOn}); ${d.flowsAfterAsOn === 1 ? 'it is' : 'they are'} included in every figure.`);
+      notes.push(`${plural(d.flowsAfterAsOn, "fund flow of the review's clients is", "fund flows of the review's clients are")} dated after the as-on date (${asOn}). ${d.flowsAfterAsOn === 1 ? 'It is' : 'They are'} kept as dated; whether to leave such flows out is an open question for the owner.`);
     }
   }
-  return { datesText: `Last fund flow in the transactions file: ${last}. As-on date of the review: ${asOn}.`, datesNotes: notes };
+  return { datesText: `Last fund flow of the review's clients in the transactions file: ${last}. As-on date of the review: ${asOn}.`, datesNotes: notes };
 }
 
 /** The scope a key names, else the family scope (the first). */

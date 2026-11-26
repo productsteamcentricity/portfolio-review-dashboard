@@ -238,7 +238,7 @@ async function runMode({ browser, mode, files, expect }) {
     r0.found && wanted.every((w, i) => r0.options[i] === w) && r0.options.some((o) => o.startsWith('Adviser: ')) && r0.chosen === 'Family', r0.options);
   expect('the family\'s fund XIRR is a figure (n.nn%)', /^-?\d+\.\d\d%/.test(r0.fund ?? ''), { fund: r0.fund, bench: r0.bench });
   expect('the family\'s partial benchmark coverage (2 of 3 instruments) and the dates line (last flow 31 Mar 2025, as on 30 Sep 2026) are shown',
-    /^The benchmark XIRR covers 2 of the 3 instruments/.test(r0.coverage ?? '') && r0.dates === 'Last fund flow in the transactions file: 31 Mar 2025. As-on date of the review: 30 Sep 2026.',
+    /^The benchmark XIRR covers 2 of the 3 instruments/.test(r0.coverage ?? '') && r0.dates === "Last fund flow of the review's clients in the transactions file: 31 Mar 2025. As-on date of the review: 30 Sep 2026.",
     { coverage: r0.coverage, dates: r0.dates });
   const chose = await page.eval(CHOOSE_SCOPE('Adviser: Centricity'));
   const r1 = await page.waitFor(`(() => { const r = ${RETURNS}; return r.chosen === 'Adviser: Centricity' && r.fund !== ${JSON.stringify(r0.fund)} ? r : null; })()`, 5000);
