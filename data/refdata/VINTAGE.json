@@ -165,7 +165,7 @@
       "class": "P",
       "file": "PRODUCT_CLASS_RULES.json",
       "records": 9,
-      "sha256": "268ca9b1d4a8ece65ff9d85df99f9f1000d2061e7e8ea34d9c77d0fdba2417b1",
+      "sha256": "d1eafd0a212cf6bacf74efbdb31e6165449a3cc4249bb48edc73a69bcb4ce4bc",
       "source": "D-7 owner labels, Centricity owner table"
     },
     "SIF_PERF": {

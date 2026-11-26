@@ -29,7 +29,8 @@
       - Rupee bonds and NCDs: every other bond, NCD or debenture (the owner:
         "Rupee bonds and NCDs"); the same fund and SGB / MLD exclusions;
       - Fixed deposits, REITs and InvITs, Unlisted shares: as before;
-      - P2P lending: "p2p", "peer to peer" (class DEBT; the owner: "Debt").
+      - P2P lending: "p2p", "peer to peer" (product class OTHER; the owner's
+        "Debt" is its asset: the engine sets the asset to Debt).
       Each is a non-MF class as in LP-16: no performance lookup, never a
       listed stock, listed with its class in the look-through box.
    2. "Unlisted-Direct" (or "Direct-Unlisted") is a share held directly, not
@@ -71,7 +72,9 @@ const RULES = [
   { label: 'Fixed deposits', keywords: ['fixed deposit', 'fixed deposits', 'fd', 'fds'], unlessAny: FUND_WORDS, class: 'OTHER' },
   { label: 'REITs and InvITs', keywords: ['reit', 'reits', 'invit', 'invits'], unlessAny: FUND_WORDS, class: 'OTHER' },
   { label: 'Unlisted shares', keywords: ['unlisted'], unlessAny: FUND_WORDS, class: 'EQUITY' },
-  { label: 'P2P lending', keywords: ['p2p', 'peer to peer'], class: 'DEBT' },
+  /* class is a PRODUCT class shared with the new build (I-40: MF, SIF, PMS, AIF, ETF, EQUITY, BOND, OTHER); the owner's
+     "Debt" is the ASSET class, set by the engine below (MOD-04 on CHAT-008's wiring review, 26 Nov 2026) */
+  { label: 'P2P lending', keywords: ['p2p', 'peer to peer'], class: 'OTHER' },
 ];
 
 applyPatch('LP-16b platform product names', [
@@ -116,6 +119,12 @@ applyPatch('LP-16b platform product names', [
     label: 'engine: the listed-stock test passes the name',
     from: '      h.heldShare = isDirectEquity(h); h.directEquity = h.heldShare && !nonMfClass(h.product);',
     to: '      h.heldShare = isDirectEquity(h); h.directEquity = h.heldShare && !nonMfClass(h.product,h.name);',
+  },
+  {
+    label: 'engine: P2P lending is a Debt asset, whatever the Asset Name says (the owner: "Debt")',
+    from: '      if (h.directEquity){\n        h.eqKey=null; h.hyKey=null; h.dbKey=null; h.perfKey=null; h.perfSrc=null;\n',
+    to: '      if (h.asset!=="Debt" && (nonMfClass(h.product,h.name)||{}).label==="P2P lending") h.asset="Debt";   /* LP-16b: asset allocation and the debt look-through */\n' +
+        '      if (h.directEquity){\n        h.eqKey=null; h.hyKey=null; h.dbKey=null; h.perfKey=null; h.perfSrc=null;\n',
   },
   {
     label: 'engine: "Unlisted-Direct" is a share held directly',

@@ -7,5 +7,5 @@
 {"class":"OTHER","keywords":["fixed deposit","fixed deposits","fd","fds"],"label":"Fixed deposits","unlessAny":["etf","etfs","mf","mfs","mutual fund","mutual funds","fund","funds","fof","fofs"]},
 {"class":"OTHER","keywords":["reit","reits","invit","invits"],"label":"REITs and InvITs","unlessAny":["etf","etfs","mf","mfs","mutual fund","mutual funds","fund","funds","fof","fofs"]},
 {"class":"EQUITY","keywords":["unlisted"],"label":"Unlisted shares","unlessAny":["etf","etfs","mf","mfs","mutual fund","mutual funds","fund","funds","fof","fofs"]},
-{"class":"DEBT","keywords":["p2p","peer to peer"],"label":"P2P lending"}
+{"class":"OTHER","keywords":["p2p","peer to peer"],"label":"P2P lending"}
 ]

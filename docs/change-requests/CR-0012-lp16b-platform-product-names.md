@@ -26,7 +26,7 @@ must read the platform's names in the same way.
 | Global Exposure | looked up as a mutual fund (unmatched) | GIFT City funds when the name says GIFT or IFSC, else Offshore funds (this is how the owner's "both" is read); no performance lookup; tax unchanged |
 | Bonds | "US-dollar bonds (through LRS)" (every bond, 25 Nov rule); tax Listed Bonds / NCDs | "Rupee bonds and NCDs"; tax unchanged |
 | a bond saying USD, US$, US (a whole word), dollar or LRS (product or name) | US-dollar label; no tax row only when the product or category said so | US-dollar label; no tax row also when the name says so |
-| P2P Lending | looked up as a mutual fund (unmatched); no tax row | its own class "P2P lending" (Debt), no lookup; no tax row |
+| P2P Lending | looked up as a mutual fund (unmatched); no tax row | its own class "P2P lending" (product class OTHER), no lookup; asset Debt whatever the Asset Name says; no tax row |
 
 The rules stay data (`PRODUCT_CLASS_RULES`, contract I-40, one source for both builds), with two optional fields:
 `nameAny` (words the instrument name must contain) and `andAny` (words the product or the name must contain); a "$" in a
@@ -38,13 +38,17 @@ words in the product or category, and reads only USD, US$, US, dollar or LRS in 
 named "Global" or "International" is not a foreign route (MOD-04 approved this reading, 26 Nov 2026). A fund, AIF or
 PMS named "... Bond ..." keeps its own row.
 
+The owner's "Debt" for P2P Lending is its asset class: the shared table's `class` field is a product class (the new
+build's model has MF, SIF, PMS, AIF, ETF, EQUITY, BOND and OTHER, and no DEBT), so P2P lending is product class OTHER
+there, and the live engine sets its asset to Debt (MOD-04 on CHAT-008's wiring review, 26 Nov 2026).
+
 Open owner questions (today's behaviour kept; financial review of LP-16b): a bond whose category names a foreign route
 keeps the rupee label but has no tax row; GIFT or IFSC in a bond's name alone keeps the listed bond rows; a fund named
 under the product "Bonds" (for example a bond ETF) takes the rupee bond label and rows, as before LP-16b.
 
 ## Evidence
 
-- `tools/regression/LP16b-platform-product-names.js`: 99 known-answer checks in IST and UTC, covering:
+- `tools/regression/LP16b-platform-product-names.js`: 105 known-answer checks in IST and UTC, covering:
   - one holding per platform value, with its class, the performance lookup, the look-through listing, heldShare and
     directEquity, and the tax row or the reason;
   - the edge cases: GIFT or IFSC in the name, USD, US$, dollar and LRS, a "Global" issuer, a bond fund, an SGB, an MLD,
