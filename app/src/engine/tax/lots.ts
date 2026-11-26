@@ -1,0 +1,516 @@
+// FIFO tax lots of the holdings, to the review's as-on date (parity row E-42; architecture §6.7, the engine/tax/ row;
+// roadmap M7 acceptance: long + short + unclassified = CMV, merge gaps never reconciled by amount; OD-2, OD-12, OD-15,
+// OD-16; D-040 a, b, d, h; KI-022, KI-064, KI-069, KI-070; BF-18).
+//
+// A port of the live `computeTaxation(rows, REF, asOn)` lot logic (index.html, the TAXATION section as merged by PR #36,
+// with `taxNotSplit`, `taxBucket`, `taxAnniv`, `taxLocked`, `taxListedEtf` and `taxWithLater`):
+//   - the IRR fund flows by client and instrument, the instrument joined to the holdings by the join the returns use
+//     (engine/returns/scope.ts `matcherJoin`, PLAN-02 D9, unless the caller passes one); valuation rows are never
+//     trades, and trades dated after the as-on date are left out (D-040 a), both counted;
+//   - OD-16: a trade is a flow whose `direction` is 'in' or 'out' (the widened kinds of model/transactions.ts); an
+//     untyped or unrecognised row moves no lot and is counted and named;
+//   - two FIFO ledgers from one pass: rupees always (the amount), units when the flow carries a price (units = |amount| /
+//     price); sales take the oldest lots first; a buy with no price (a switch-in, as a rule) moves the holding to the
+//     rupee ledger when the unit ledger does not reconcile;
+//   - per holding with a market value: the class (classify.ts, I-21); unmapped without one; a Category III AIF
+//     (fund level) and a Category I or II AIF (pass-through) are not split (D-040 d); a merge gap in units is never
+//     reconciled by amount (`Holding.mergeGaps`, BF-18, KI-140); no lots, or a unit (or rupee) count more than 1% away
+//     from the base file, is unreconciled with its reason (value, short, excess, noPxSell); a PMS is not split (OD-12,
+//     D-040 h); the lots are scaled onto the base file's units;
+//   - a Specified row (specifiedFrom 2023-04-01) splits a holding with lots on both sides of that day into two records;
+//   - each lot is long term strictly after its anniversary (N calendar months, clamped to the month end; OD-2,
+//     D-040 b), short term otherwise, always short on an `alwaysShort` or `anyPeriod` row, the listed-ETF months for a
+//     listed ETF, and locked through the ELSS lock-in anniversary;
+//   - the lots are valued at the base file's CMV per unit, and their costs scaled to the base Invested, so long + short
+//     + unclassified = the holding's CMV and gain exactly: an apportionment of the base file's own figures, never a
+//     recomputation.
+// One correction (OD-15, KI-069): when one IRR instrument joins more than one holding (the same scheme with two
+// distributors) and the flows carry no folio that tells them apart, the instrument's lots are apportioned by units (by
+// invested value on the rupee ledger) across those holdings and labelled `apportioned`; the live gives every such
+// holding all the lots, so none reconciles. With folios that tell the holdings apart, the flows are split by folio.
+// Money: the base file's Crore figures are carried in rupees (x 1e7), unrounded. Days are day numbers. Pure.
+
+import type { Holding } from '../../model/holding.ts';
+import type { Transaction } from '../../model/transactions.ts';
+import type { TaxPosition } from '../../model/tax.ts';
+import type { DayNumber } from '../../model/value.ts';
+import type { ClientId, HoldingId } from '../../model/ids.ts';
+import type { HoldingJoin } from '../returns/irr-tree.ts';
+import { matcherJoin } from '../returns/scope.ts';
+import { keyOf, normaliseLabel } from '../ids.ts';
+import { formatDay } from '../dates.ts';
+import { RUPEES_PER } from '../units.ts';
+import { anniversaryOf } from './rules.ts';
+import {
+  GRANDFATHER_BEFORE, GRANDFATHER_CLASSES, TAX_RULES_I21, classifyHolding, i21ByInst, i21Day, isListedEtf,
+} from './classify.ts';
+import type { ClassifyContext, HoldingTaxClass, I21Row } from './classify.ts';
+
+// ---------------------------------------------------------------------------------------------------------------
+// Types
+
+/** A lot's term to the as-on date: long, short, locked (ELSS lock-in), or unknown (the row has no holding period). */
+export type LotBucket = 'long' | 'short' | 'locked' | 'unknown';
+
+/** Why a holding is not split into long and short term (D-040 d, h; OD-12). */
+export type NotSplitKind = 'fund-level' | 'pass-through' | 'per-security';
+
+/** The live `unrec` kinds, plus 'apportion' (OD-15: the lots of a shared instrument cannot be apportioned). */
+export type UnreconciledKind = 'unitsGap' | 'noLots' | 'value' | 'short' | 'excess' | 'noPxSell' | 'apportion';
+
+/** One open lot of a record, after scaling: units (rupees on the rupee ledger), value and cost in rupees. */
+export type LotDetail = {
+  day: DayNumber;
+  /** Units on the unit ledger; rupees of cost on the rupee ledger. Scaled onto the base file's figure. */
+  units: number;
+  bucket: LotBucket;
+  /** The lot's value at the base file's CMV per unit (rupees). */
+  value: number;
+  /** The lot's cost scaled to the base Invested (rupees); null when the holding has no invested value. */
+  cost: number | null;
+  /** TX-18: bought before 1 Feb 2018 in a class the grandfathering can cover (stays on actual cost, disclosed). */
+  grandfathered: boolean;
+};
+
+type Split = { cmv: number; gain: number | null };
+
+/**
+ * One record per holding with a market value (two for a holding split at the Specified date): the contract's
+ * TaxPosition (model/tax.ts) with its gains allowed to be missing (no invested value: KI-007, never 0) and the lines
+ * the contract does not carry. `toTaxPosition` gives the contract's shape when every gain is known.
+ */
+export type TaxPositionRecord = Omit<TaxPosition, 'gain' | 'lt' | 'st' | 'unclassifiedGain'> & {
+  instrumentName: string;
+  gain: number | null;
+  lt: Split;
+  st: Split;
+  /** Neither long nor short: locked lots, lots of a row without a holding period, and every unsplit or unreconciled amount. */
+  unclassified: Split;
+  unclassifiedGain: number | null;
+  /** The part of `unclassified` inside the ELSS lock-in; null on a row without a lock-in. */
+  locked: Split | null;
+  /** A Category III AIF: CMV and gain at fund level (lt + st + unclassified + fundLevel = cmv). */
+  fundLevel: Split | null;
+  notSplit: NotSplitKind | null;
+  unreconciledKind: UnreconciledKind | null;
+  /** The class came from the usual bucket (PD-16 item 7, PD-44). */
+  usual: boolean;
+  catAssumed: boolean;
+  catRuled: boolean;
+  /** The base file's units (unit ledger only) and the FIFO units before scaling. */
+  baseUnits: number | null;
+  fifoUnits: number | null;
+  /** A buy without a price moved the holding to the rupee ledger (and whether it was a switch-in). */
+  pxGap: boolean;
+  viaSwitchIn: boolean;
+  /** TX-18: open lots bought before 1 Feb 2018 in a grandfathering class. */
+  gfLots: number;
+  oldest: DayNumber | null;
+  newest: DayNumber | null;
+  /** Trades of this holding's instrument dated after the as-on date, left out. */
+  laterTrades: number;
+  lotDetail: LotDetail[];
+};
+
+export type TaxLotsCounts = {
+  /** Fund flows given. */
+  flows: number;
+  /** Trades (direction in or out) on or before the as-on date, joined to a holding or not. */
+  trades: number;
+  /** Valuation (closing) rows: never trades. */
+  valuation: number;
+  /** Trades dated after the as-on date, left out, and their instrument names in order of first appearance. */
+  later: number;
+  laterInstruments: string[];
+  /** Trades without a price (they reach the rupee ledger only). */
+  noPrice: number;
+  /** OD-16: rows with no type, and rows whose type is none of the known kinds (each label as written, with its rows). */
+  untyped: number;
+  unrecognised: Array<{ label: string; rows: number }>;
+  /** Trades whose instrument joins no holding. */
+  unjoinedTrades: number;
+  /** Holdings without a market value above zero (no record). */
+  holdingsWithoutValue: number;
+  /** Holdings whose lots were apportioned (OD-15). */
+  apportioned: number;
+};
+
+export type TaxLotsResult = {
+  asOn: DayNumber;
+  /** Split, not split, fund level and locked records. */
+  positions: TaxPositionRecord[];
+  unreconciled: TaxPositionRecord[];
+  unmapped: TaxPositionRecord[];
+  counts: TaxLotsCounts;
+};
+
+export type TaxLotsOptions = {
+  /** The tax reference date (D-040 a): the review's as-on date, the base file's valuation date when it gives one. */
+  asOn: DayNumber;
+  /** The holdings join; defaults to the returns' join (engine/returns/scope.ts matcherJoin, PLAN-02 D9). */
+  join?: HoldingJoin;
+  /** Reference-data facts for the classification of one holding (matched STOCK_RET ISIN, AIF_PERF entry). */
+  classifyContext?: (h: Holding) => Omit<ClassifyContext, 'refDay'>;
+  /** The I-21 table; defaults to data/refdata/TAX_RULES.json. */
+  table?: readonly I21Row[];
+};
+
+// ---------------------------------------------------------------------------------------------------------------
+// Terms (D-040 b, OD-2)
+
+/** The live taxBucket: long strictly after the anniversary; short on an alwaysShort or anyPeriod row. */
+export function lotTerm(rule: I21Row, buy: DayNumber, asOn: DayNumber, listedEtf: boolean): 'long' | 'short' | null {
+  if (rule.alwaysShort || rule.anyPeriod) return 'short';
+  const months = listedEtf && rule.listedEtfMonths ? rule.listedEtfMonths : rule.months;
+  if (months === null || months === undefined) return null;
+  return asOn > anniversaryOf(buy, months) ? 'long' : 'short';
+}
+
+/** The live taxLocked: an ELSS lot is locked up to and including its lock-in anniversary. */
+export function lotLocked(rule: I21Row, buy: DayNumber, asOn: DayNumber): boolean {
+  return !!rule.lockMonths && asOn <= anniversaryOf(buy, rule.lockMonths);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// The ledgers
+
+type UnitLot = { day: DayNumber; u: number; px: number };
+type RupeeLot = { day: DayNumber; u: number };
+type Ledger = { units: UnitLot[]; rupees: RupeeLot[]; noPxBuy: boolean; swIn: boolean; noPxSell: boolean; later: number };
+
+const EPS = 1e-9;
+const priceOf = (t: Transaction): number | null => (t.price.kind === 'value' && t.price.v > 0 ? t.price.v : null);
+const isTrade = (t: Transaction): boolean => t.direction === 'in' || t.direction === 'out';
+
+function consume(lots: Array<{ u: number }>, need: number): void {
+  for (let i = 0; i < lots.length && need > EPS; i++) {
+    const take = Math.min(lots[i]!.u, need);
+    lots[i]!.u -= take;
+    need -= take;
+  }
+}
+
+/** One pass over trades sorted by day (file order within a day): both FIFO ledgers. */
+function runLedger(trades: readonly Transaction[], asOn: DayNumber): Ledger {
+  const L: Ledger = { units: [], rupees: [], noPxBuy: false, swIn: false, noPxSell: false, later: 0 };
+  for (const t of trades) {
+    if (t.day > asOn) { L.later++; continue; }
+    const amt = Math.abs(t.amountRupees);
+    const buy = t.direction === 'in';
+    if (buy) L.rupees.push({ day: t.day, u: amt }); else consume(L.rupees, amt);
+    const px = priceOf(t);
+    if (px === null) {
+      if (buy) { L.noPxBuy = true; if (t.kind === 'switch-in') L.swIn = true; } else if (amt > EPS) L.noPxSell = true;
+      continue;
+    }
+    const u = amt / px;
+    if (buy) L.units.push({ day: t.day, u, px }); else consume(L.units, u);
+  }
+  return L;
+}
+
+const byDay = (a: Transaction, b: Transaction): number => a.day - b.day;
+const folioKey = (s: string | null | undefined): string => normaliseLabel(s ?? '');
+
+// ---------------------------------------------------------------------------------------------------------------
+// Reasons (the live texts)
+
+function withLater(reason: string, n: number, asOn: DayNumber): string {
+  return `${reason.replace(/\.?\s*$/, '.')} ${n} IRR transaction${n === 1 ? '' : 's'} for this holding dated after ${formatDay(asOn)}, `
+    + `the date holding periods run to, ${n === 1 ? 'is' : 'are'} left out.`;
+}
+
+const REASON = {
+  unitsGap: 'Units are blank: a merged folio of this holding has no units in the base file, so they cannot be checked against the transaction history. No split is shown rather than one on a partial unit count.',
+  noLots: (pxGap: boolean, swIn: boolean, amtMode: boolean): string => (pxGap
+    ? `No purchase transactions in the IRR history. ${swIn ? 'The switch-in' : 'A purchase'} for this holding carries no price, so units could not be derived from it.`
+    : amtMode ? 'No purchase transactions in the IRR history (this holding has no units, so it is matched on invested value)'
+      : 'No purchase transactions in the IRR history'),
+  drift: (pxGap: boolean, swIn: boolean, amtMode: boolean, fewer: boolean, noPxSell: boolean): string => (pxGap
+    ? `Invested value does not reconcile to the base file. ${swIn ? 'The switch-in' : 'A purchase'} for this holding carries no price, so it was matched on invested value rather than units, and that does not reconcile either.`
+    : amtMode ? 'Invested value does not reconcile to the base file: the transaction history is incomplete for this holding.'
+      : fewer ? 'Units do not reconcile to the base file: the transaction history gives fewer units, so it is missing an event, such as a bonus or split, or a purchase made elsewhere.'
+        : noPxSell ? 'Units do not reconcile to the base file: the transaction history gives more units, and a sale, switch out or transfer out in it carries no price, so the units it sold could not be counted.'
+          : 'Units do not reconcile to the base file: the transaction history gives more units, so it is missing an event, such as a sale, a transfer out or a consolidation of units.'),
+  apportion: 'The IRR history of this scheme covers more than one holding and gives no folio that tells them apart, and not every one of those holdings has the units (or invested value) to apportion its lots by, so no split is shown (OD-15).',
+  noRow: (inst: string): string => `No row in the tax rules covers the class "${inst}".`,
+} as const;
+
+// ---------------------------------------------------------------------------------------------------------------
+// The computation
+
+/** A holding's source of lots: its own ledger, or a share of a ledger it shares with other holdings (OD-15). */
+type LotSource = { ledger: Ledger; group: readonly Holding[] | null };
+
+/** FIFO tax lots of the holdings to the as-on date. `fund` are the IRR fund flows (any order; file order breaks ties). */
+export function computeTaxLots(holdings: readonly Holding[], fund: readonly Transaction[], opts: TaxLotsOptions): TaxLotsResult {
+  const asOn = opts.asOn;
+  const table = opts.table ?? TAX_RULES_I21;
+  const byInst = i21ByInst(table);
+  const join = opts.join ?? matcherJoin(holdings, fund);
+  const counts: TaxLotsCounts = {
+    flows: fund.length, trades: 0, valuation: 0, later: 0, laterInstruments: [], noPrice: 0, untyped: 0, unrecognised: [],
+    unjoinedTrades: 0, holdingsWithoutValue: 0, apportioned: 0,
+  };
+
+  // 1. Counts over every flow (the live counts trades whether or not a holding joins them).
+  const sorted = fund.map((t, i) => ({ t, i })).sort((a, b) => byDay(a.t, b.t) || a.i - b.i).map((x) => x.t);
+  for (const t of sorted) {
+    if (t.direction === 'valuation') { counts.valuation++; continue; }
+    if (t.kind === 'untyped') { counts.untyped++; continue; }
+    if (t.kind === 'unrecognised') {
+      const label = t.typeLabel ?? '';
+      const e = counts.unrecognised.find((x) => x.label === label);
+      if (e) e.rows++; else counts.unrecognised.push({ label, rows: 1 });
+      continue;
+    }
+    if (!isTrade(t)) continue;
+    if (t.day > asOn) {
+      counts.later++;
+      const name = t.instrumentName ?? '';
+      if (!counts.laterInstruments.includes(name)) counts.laterInstruments.push(name);
+      continue;
+    }
+    counts.trades++;
+    if (priceOf(t) === null) counts.noPrice++;
+  }
+
+  // 2. The join: each instrument (client and name) to its holdings; instruments and holdings linked by the join form one
+  // group, whose trades run through one ledger (or one per holding, when folios tell the holdings apart).
+  const instrumentKey = (clientId: ClientId, name: string | null): string => keyOf([clientId, normaliseLabel(name)]);
+  const tradesOf = new Map<string, Transaction[]>();
+  const holdingsOf = new Map<string, HoldingId[]>();
+  for (const t of sorted) {
+    if (!isTrade(t)) continue;
+    const k = instrumentKey(t.clientId, t.instrumentName);
+    let l = tradesOf.get(k);
+    if (!l) { l = []; tradesOf.set(k, l); holdingsOf.set(k, join(t.clientId, t.instrumentName)); }
+    l.push(t);
+  }
+  const holdingById = new Map(holdings.map((h) => [h.id, h]));
+  // Union-find over holdings, keyed by holding id; each instrument links the holdings it joins.
+  const parent = new Map<HoldingId, HoldingId>();
+  const find = (x: HoldingId): HoldingId => { let r = x; while (parent.get(r) !== r) r = parent.get(r)!; parent.set(x, r); return r; };
+  for (const h of holdings) parent.set(h.id, h.id);
+  const instrumentsOfRoot = new Map<HoldingId, string[]>();
+  for (const [k, ids] of holdingsOf) {
+    const known = ids.filter((id) => holdingById.has(id));
+    if (!known.length) { counts.unjoinedTrades += tradesOf.get(k)!.filter((t) => t.day <= asOn).length; continue; }
+    for (const id of known.slice(1)) parent.set(find(id), find(known[0]!));
+  }
+  for (const [k, ids] of holdingsOf) {
+    const known = ids.filter((id) => holdingById.has(id));
+    if (!known.length) continue;
+    const r = find(known[0]!);
+    const l = instrumentsOfRoot.get(r) ?? [];
+    l.push(k);
+    instrumentsOfRoot.set(r, l);
+  }
+  const membersOfRoot = new Map<HoldingId, Holding[]>();
+  const valued = (h: Holding): boolean => h.cmv.kind === 'value' && h.cmv.v > 0;
+  for (const h of holdings) {
+    const r = find(h.id);
+    // A holding without a market value has no record, so it takes no share of a shared instrument.
+    if (!instrumentsOfRoot.has(r) || !valued(h)) continue;
+    const l = membersOfRoot.get(r) ?? [];
+    l.push(h);
+    membersOfRoot.set(r, l);
+  }
+  const sourceOf = new Map<HoldingId, LotSource>();
+  const order = new Map(sorted.map((t, i) => [t, i]));
+  for (const [r, keys] of instrumentsOfRoot) {
+    const members = membersOfRoot.get(r);
+    if (!members) continue;
+    const trades = keys.flatMap((k) => tradesOf.get(k)!);
+    trades.sort((a, b) => order.get(a)! - order.get(b)!);
+    if (members.length === 1) { sourceOf.set(members[0]!.id, { ledger: runLedger(trades, asOn), group: null }); continue; }
+    // Folios that tell the holdings apart: every trade's folio belongs to exactly one member.
+    const ownerOf = (t: Transaction): Holding | null => {
+      const f = folioKey(t.folio);
+      if (!f) return null;
+      const hits = members.filter((h) => h.folios.some((x) => folioKey(x) === f));
+      return hits.length === 1 ? hits[0]! : null;
+    };
+    const owners = trades.map(ownerOf);
+    if (owners.every((o) => o !== null)) {
+      for (const h of members) sourceOf.set(h.id, { ledger: runLedger(trades.filter((_, i) => owners[i] === h), asOn), group: null });
+    } else {
+      const ledger = runLedger(trades, asOn);
+      for (const h of members) sourceOf.set(h.id, { ledger, group: members });
+    }
+  }
+
+  // 3. Each holding with a market value.
+  const out: TaxLotsResult = { asOn, positions: [], unreconciled: [], unmapped: [], counts };
+  const unitsOf = (h: Holding): number | null => (h.units.kind === 'value' && Number.isFinite(h.units.v) ? h.units.v : null);
+  const investedOf = (h: Holding): number | null => (h.invested.kind === 'value' && Number.isFinite(h.invested.v) ? h.invested.v * RUPEES_PER.crore : null);
+  for (const h of holdings) {
+    const cmvCr = h.cmv.kind === 'value' ? h.cmv.v : null;
+    if (cmvCr === null || !(cmvCr > 0)) { counts.holdingsWithoutValue++; continue; }
+    const cmv = cmvCr * RUPEES_PER.crore;
+    const inv = investedOf(h);
+    const gl = inv !== null ? cmv - inv : null;
+    const cls: HoldingTaxClass = classifyHolding(h, { ...(opts.classifyContext ? opts.classifyContext(h) : {}), refDay: asOn });
+    const rule = cls.inst !== null ? byInst.get(cls.inst) ?? null : null;
+    const unitBase = unitsOf(h);
+    const unitsGap = h.mergeGaps.includes('units');
+    const src = sourceOf.get(h.id) ?? null;
+    const ledger = src?.ledger ?? null;
+    let amtMode = !(unitBase !== null && unitBase > 0) && !unitsGap;
+    let pxGap = false;
+    let apportionFailed = false;
+    let L: Array<{ day: DayNumber; u: number; px: number | null }> = [];
+    let fifoU = 0;
+    let baseU: number | null = unitBase;
+    const load = (): void => {
+      apportionFailed = false;
+      const raw = ledger ? (amtMode ? ledger.rupees.map((x) => ({ day: x.day, u: x.u, px: null })) : ledger.units.map((x) => ({ day: x.day, u: x.u, px: x.px as number | null }))) : [];
+      let share = 1;
+      if (src?.group) {
+        // OD-15: this holding's share of the shared instrument, by units (by invested value on the rupee ledger).
+        const basis = src.group.map((g) => (amtMode ? investedOf(g) : unitsOf(g)));
+        const total = basis.reduce<number>((s, x) => s + (x ?? 0), 0);
+        const mine = amtMode ? inv : unitBase;
+        if (basis.every((x) => x !== null && x > 0) && mine !== null && total > 0) share = mine / total;
+        else apportionFailed = true;
+      }
+      L = raw.filter((x) => x.u > EPS).map((x) => ({ ...x, u: x.u * share }));
+      fifoU = L.reduce((s, x) => s + x.u, 0);
+      baseU = amtMode ? inv : unitBase;
+    };
+    const drift = (): number => (baseU !== null && baseU !== 0 ? Math.abs(fifoU - baseU) / Math.abs(baseU) : fifoU > 0 ? 0 : 1);
+    load();
+    if (!amtMode && !unitsGap && ledger?.noPxBuy && (!L.length || drift() > 0.01)) { amtMode = true; pxGap = true; load(); }
+    const swIn = !!ledger?.swIn;
+    const later = ledger?.later ?? 0;
+
+    const rec: TaxPositionRecord = {
+      holdingId: h.id, clientId: h.clientId, splitPart: null, taxRule: cls.inst, status: 'ok', reason: null,
+      ledger: amtMode ? 'rupees' : 'units', apportioned: !!src?.group, cmv, gain: gl, lt: { cmv: 0, gain: null },
+      st: { cmv: 0, gain: null }, unclassified: { cmv, gain: gl }, unclassifiedGain: gl, lots: L.length,
+      instrumentName: h.instrumentName, locked: null, fundLevel: null, notSplit: null, unreconciledKind: null,
+      usual: !!cls.usual, catAssumed: !!cls.catAssumed, catRuled: !!cls.catRuled,
+      baseUnits: amtMode ? null : baseU, fifoUnits: amtMode ? null : fifoU, pxGap, viaSwitchIn: pxGap && swIn, gfLots: 0,
+      oldest: null, newest: null, laterTrades: later, lotDetail: [],
+    };
+    const unreconciled = (kind: UnreconciledKind, reason: string): void => {
+      rec.status = 'unreconciled';
+      rec.unreconciledKind = kind;
+      rec.reason = later ? withLater(reason, later, asOn) : reason;
+      out.unreconciled.push(rec);
+    };
+    const notSplit = (kind: NotSplitKind): void => {
+      const fl = kind === 'fund-level';
+      rec.status = fl ? 'fund-level' : 'not-split';
+      rec.notSplit = kind;
+      rec.taxRule = rule!.inst;
+      rec.unclassified = fl ? { cmv: 0, gain: null } : { cmv, gain: gl };
+      rec.unclassifiedGain = rec.unclassified.gain;
+      rec.fundLevel = fl ? { cmv, gain: gl } : null;
+      for (const x of L) {
+        if (rec.oldest === null || x.day < rec.oldest) rec.oldest = x.day;
+        if (rec.newest === null || x.day > rec.newest) rec.newest = x.day;
+      }
+      out.positions.push(rec);
+    };
+
+    if (cls.inst === null || rule === null) {
+      rec.status = 'unmapped';
+      rec.reason = cls.inst !== null ? REASON.noRow(cls.inst) : cls.why ?? '';
+      out.unmapped.push(rec);
+      continue;
+    }
+    if (rule.fundLevel || rule.passThrough) { notSplit(rule.fundLevel ? 'fund-level' : 'pass-through'); continue; }
+    if (unitsGap) { unreconciled('unitsGap', REASON.unitsGap); continue; }
+    if (apportionFailed) { unreconciled('apportion', REASON.apportion); continue; }
+    if (!L.length) { unreconciled('noLots', REASON.noLots(pxGap, swIn, amtMode)); continue; }
+    const rel = drift();
+    if (baseU !== null && rel > 0.01) {
+      const fewer = fifoU < baseU;
+      const kind: UnreconciledKind = amtMode ? 'value' : fewer ? 'short' : ledger?.noPxSell ? 'noPxSell' : 'excess';
+      unreconciled(kind, REASON.drift(pxGap, swIn, amtMode, fewer, !!ledger?.noPxSell));
+      continue;
+    }
+    if (rule.perSecurity) { notSplit('per-security'); continue; }
+    if (src?.group) counts.apportioned++;
+
+    // The split.
+    const scale = baseU !== null && fifoU > 0 ? baseU / fifoU : 1;
+    let preRule = rule.specifiedFrom && rule.before ? byInst.get(rule.before) ?? null : null;
+    const sfDay = preRule ? i21Day(rule.specifiedFrom) : null;
+    if (sfDay === null) preRule = null;
+    const etf = isListedEtf(h);
+    const gfCls = GRANDFATHER_CLASSES.has(cls.inst);
+    type B = { bucket: LotBucket; u: number; costRaw: number; day: DayNumber; part: 0 | 1; gf: boolean };
+    const buckets: B[] = L.map((x) => {
+      const u = x.u * scale;
+      const part: 0 | 1 = preRule && sfDay !== null && x.day < sfDay ? 1 : 0;
+      const lr = part ? preRule! : rule;
+      const term = lotTerm(lr, x.day, asOn, etf);
+      const bucket: LotBucket = term && lotLocked(lr, x.day, asOn) ? 'locked' : term ?? 'unknown';
+      return { bucket, u, costRaw: amtMode ? u : u * x.px!, day: x.day, part, gf: gfCls && x.day < GRANDFATHER_BEFORE };
+    });
+    const totU = buckets.reduce((s, x) => s + x.u, 0);
+    const per = totU > 0 ? cmv / totU : 0;
+    const costRawTot = buckets.reduce((s, x) => s + x.costRaw, 0);
+    const costScale = inv !== null && costRawTot > 0 ? inv / costRawTot : null;
+    const parts = ([0, 1] as const).filter((p) => buckets.some((x) => x.part === p));
+    const base0: TaxPositionRecord = { ...rec };
+    let cmvLeft = cmv;
+    let glLeft = gl;
+    let uLeft = baseU;
+    parts.forEach((p, pi) => {
+      const own = buckets.filter((x) => x.part === p);
+      const last = pi === parts.length - 1;
+      const rr = p ? preRule! : rule;
+      const r: TaxPositionRecord = pi ? { ...base0, lotDetail: [] } : rec;
+      let ltU = 0; let stU = 0; let unk = 0; let lockU = 0; let pu = 0;
+      let ltG: number | null = null; let stG: number | null = null; let unkG: number | null = null; let lockG: number | null = null;
+      if (costScale !== null) { ltG = 0; stG = 0; unkG = 0; lockG = 0; }
+      for (const x of own) {
+        const gain = costScale !== null ? x.u * per - x.costRaw * costScale : null;
+        if (x.bucket === 'long') { ltU += x.u; if (gain !== null) ltG! += gain; }
+        else if (x.bucket === 'short') { stU += x.u; if (gain !== null) stG! += gain; }
+        else { unk += x.u; if (gain !== null) unkG! += gain; if (x.bucket === 'locked') { lockU += x.u; if (gain !== null) lockG! += gain; } }
+        if (r.oldest === null || x.day < r.oldest) r.oldest = x.day;
+        if (r.newest === null || x.day > r.newest) r.newest = x.day;
+        if (x.gf) r.gfLots++;
+        pu += x.u;
+        r.lotDetail.push({ day: x.day, units: x.u, bucket: x.bucket, value: x.u * per, cost: costScale !== null ? x.costRaw * costScale : null, grandfathered: x.gf });
+      }
+      if (parts.length > 1) {
+        // TX-02: each part carries its own units, CMV and gain; the last takes the remainder.
+        r.splitPart = p ? 'pre-2023' : 'from-2023';
+        r.cmv = last ? cmvLeft : pu * per;
+        cmvLeft -= r.cmv;
+        if (gl !== null) { r.gain = last || ltG === null ? glLeft : ltG + stG! + unkG!; glLeft = glLeft! - r.gain!; }
+        if (!amtMode) { r.baseUnits = last ? uLeft : pu; uLeft = uLeft! - r.baseUnits!; r.fifoUnits = pu / scale; }
+        r.lots = own.length;
+      }
+      r.taxRule = rr.inst;
+      r.lt = { cmv: ltU * per, gain: ltG };
+      r.st = { cmv: stU * per, gain: stG };
+      r.unclassified = { cmv: unk * per, gain: unkG };
+      r.unclassifiedGain = unkG;
+      r.locked = rr.lockMonths ? { cmv: lockU * per, gain: lockG } : null;
+      if (own.length && own.every((x) => x.bucket === 'locked')) r.status = 'locked';
+      out.positions.push(r);
+    });
+  }
+  return out;
+}
+
+/** The contract's TaxPosition (model/tax.ts) for a record whose gains are all known; null otherwise. */
+export function toTaxPosition(r: TaxPositionRecord): TaxPosition | null {
+  if (r.gain === null || r.lt.gain === null || r.st.gain === null || r.unclassifiedGain === null) {
+    // An unsplit or unreconciled record carries its gain in `unclassified`; a fund-level record in `fundLevel`.
+    if (r.gain === null) return null;
+    if (r.status === 'ok' || r.status === 'locked') return null;
+  }
+  return {
+    holdingId: r.holdingId, clientId: r.clientId, splitPart: r.splitPart, taxRule: r.taxRule, status: r.status,
+    reason: r.reason, ledger: r.ledger, apportioned: r.apportioned, cmv: r.cmv, gain: r.gain,
+    lt: { cmv: r.lt.cmv, gain: r.lt.gain ?? 0 }, st: { cmv: r.st.cmv, gain: r.st.gain ?? 0 },
+    unclassifiedGain: r.unclassifiedGain ?? 0, lots: r.lots,
+  };
+}

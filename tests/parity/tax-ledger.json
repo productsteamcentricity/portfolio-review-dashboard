@@ -1,0 +1,50 @@
+{
+  "schema": "parity-ledger-v1",
+  "area": "tax",
+  "legacy": "computeTaxation and taxClassify in index.html (the TAXATION section as merged by PR #36, tax batches T1 to T5 and tax-6), run through tools/engine-host.js on the rows of parseBaseRows and the flows of parsers.parseIRR, with REFDATA.TAX_RULES",
+  "new": "app/src/engine/tax/lots.ts computeTaxLots and app/src/engine/tax/classify.ts classifyHolding on app/src/ingest/base-file.ts and app/src/ingest/irr-file.ts, with data/refdata/TAX_RULES.json (I-21)",
+  "test": "tests/parity/tax.parity.test.ts",
+  "notes": [
+    "Every difference between the two sides on the synthetic books of the test must match exactly one entry, and every entry must be used, under TZ=Asia/Kolkata and TZ=UTC.",
+    "A difference is written field|holding: the field is class, class-presence, record-presence, status (the list and kind: split, fundLevel, passThrough, pms, an unreconciled kind, unmapped), record-class, reason, lt, st, unc (CMV and gain, rupees, to Rs 0.005) or count (later, noPrice). The holding is its name, its CMV in whole rupees and, for a holding split at 1 Apr 2023, its part. A status difference is reported alone for its holding.",
+    "Classes follow 08-regression-test-plan.md section 5.4: correction (a known defect fixed, KI or OD named), improvement, regression (a defect of the new code; must be empty for a merge). Only corrections are recorded here."
+  ],
+  "entries": [
+    {
+      "id": "TX-01",
+      "book": "tax-od16",
+      "holding": "Sample Bluechip Fund - Regular Plan - Growth @18000",
+      "field": "status",
+      "class": "correction",
+      "reference": "OD-16; KI-070",
+      "description": "The history holds a Top-Up, an STP In and an SWP. The new reader's kinds (model/transactions.ts) make all three trades, so the holding has two open lots and is split (long 18,000, gain 3,000). The live TAX_BUY and TAX_SELL lists name none of the three labels, so it finds no purchase and lists the holding as unreconciled (noLots)."
+    },
+    {
+      "id": "TX-02",
+      "book": "tax-od16",
+      "holding": "Sample Flexi Cap Fund - Regular Plan - Growth @12500",
+      "field": "status",
+      "class": "correction",
+      "reference": "OD-16; KI-070",
+      "description": "Two purchases typed \"SIP\". The new reader reads SIP as a purchase (kind sip), so the holding is split. The live TAX_BUY knows \"Systematic Purchase\" but not \"SIP\", so it finds no purchase and lists the holding as unreconciled (noLots)."
+    },
+    {
+      "id": "TX-03",
+      "book": "tax-od15",
+      "holding": "Sample Midcap Opportunities Fund - Regular Plan - Growth @39000",
+      "field": "status",
+      "class": "correction",
+      "reference": "OD-15; KI-069",
+      "description": "One scheme held through two distributors (300 and 100 units) and an IRR file with no folio. The new engine apportions the instrument's 400 units of lots by units (0.75 here), labelled apportioned, and splits the holding. The live keys lots by client and instrument only, gives each holding all 400 units, and lists it as unreconciled (excess)."
+    },
+    {
+      "id": "TX-04",
+      "book": "tax-od15",
+      "holding": "Sample Midcap Opportunities Fund - Regular Plan - Growth @13000",
+      "field": "status",
+      "class": "correction",
+      "reference": "OD-15; KI-069",
+      "description": "The second holding of TX-03 (100 units, share 0.25): apportioned and split in the new engine; unreconciled (excess) in the live."
+    }
+  ]
+}
