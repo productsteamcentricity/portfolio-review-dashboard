@@ -88,7 +88,7 @@ function UploadSlot({ state, store }: { state: AppState; store: Store }) {
 
 export function S1Uploads({ store, state, logos }: { store: Store; state: AppState; logos: readonly LogoAsset[] }) {
   const loaded = state.upload.loaded;
-  const report = loaded ? buildImportReport(loaded.source, loaded.base) : null;
+  const report = loaded ? buildImportReport(loaded.source, loaded.base, state.match) : null;
   const sources: SourceFile[] = registerSources(state.upload, state.review ? state.review.sources : null);
   const issues = state.review ? state.review.issues : loaded ? loaded.base.issues : [];
   const panel = buildValidationPanel(issues);

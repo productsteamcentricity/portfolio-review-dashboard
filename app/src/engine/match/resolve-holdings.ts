@@ -13,6 +13,7 @@
 // route and the class label, for the import report's "matched to" section (E-19).
 
 import type { Holding } from '../../model/holding.ts';
+import type { LoadedBaseFile } from '../../model/review.ts';
 import type { HoldingId, InstrumentRef, ProductClass } from '../../model/ids.ts';
 import { buildCrosswalk, makeUniverse, resolveInstrument, type Crosswalk, type Universe } from './crosswalk.ts';
 import { NEW_BUILD_MATCHING, type MatchOptions } from './instrument.ts';
@@ -133,4 +134,11 @@ export function resolveHoldings(holdings: readonly Holding[], ctx: MatchContext)
   });
   const available = (['MF', 'SIF', 'AIF', 'PMS', 'STOCK'] as const).filter((k) => ctx.universes[k] !== undefined);
   return { holdings: out, report: { entries, available, aliasesApproved: ctx.aliasesApproved } };
+}
+
+/** Matches a loaded file's holdings with a context; the file is returned unchanged when there is none. */
+export function matchLoaded(loaded: LoadedBaseFile, ctx: MatchContext | null): { loaded: LoadedBaseFile; report: MatchReport | null } {
+  if (!ctx) return { loaded, report: null };
+  const r = resolveHoldings(loaded.base.holdings, ctx);
+  return { loaded: { ...loaded, base: { ...loaded.base, holdings: r.holdings } }, report: r.report };
 }

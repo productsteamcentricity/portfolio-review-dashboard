@@ -21,6 +21,8 @@ import { auditExport } from '../../app/src/services/audit-log.ts';
 import { deckFileName, workbookFileName } from '../../app/src/views/labels.ts';
 import { buildOverviewVM } from '../../app/src/views/overview.ts';
 import { loadSheetJS } from './sheetjs.ts';
+import { committedMatchContext } from './match-blocks.ts';
+import { matchLoaded } from '../../app/src/engine/match/resolve-holdings.ts';
 import { loadPptxGenJS } from './pptxgenjs.ts';
 import { slideInventory } from './slide-inventory.ts';
 import { NUM_FMT_CODES } from '../../app/src/exports/xlsx/styles.ts';
@@ -76,6 +78,7 @@ export function nodeWiring(build: BuildStamp = NODE_BUILD, nowIso: string = NODE
       return finish('xlsx', vm, bytes, fileName);
     },
     now,
+    matchHoldings: (loaded) => matchLoaded(loaded, committedMatchContext()),
   };
 }
 

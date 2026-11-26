@@ -84,7 +84,45 @@ export function ImportReport({ report, answers, onAnswer }: {
         </div>
       ))}
 
-      <p class="field-help">{report.matching}</p>
+      <h4 id="matching-heading">Matched to funds and shares</h4>
+      <p id="matching-summary">{report.matching.summary}</p>
+      {report.matching.counts.length > 0 ? (
+        <div class="table-scroll" tabIndex={0} role="region" aria-label="How the holdings were matched">
+          <table class="data">
+            <caption>How the holdings were matched</caption>
+            <tbody>
+              {report.matching.counts.map((c) => (
+                <tr key={c.id}><th scope="row">{c.label}</th><td class="num">{c.value}</td></tr>
+              ))}
+              {report.matching.otherClasses.map((o) => (
+                <tr key={`class-${o.label}`}><th scope="row">{o.label} (no fund data, not matched)</th><td class="num">{o.count}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {report.matching.matchedTo.length > 0 ? (
+        <div class="table-scroll" tabIndex={0} role="region" aria-label="Matched to a differently named fund">
+          <table class="data" id="matched-to">
+            <caption>Matched to a differently named fund: check each</caption>
+            <thead><tr><th scope="col">Holding</th><th scope="col">Matched to</th><th scope="col">How</th></tr></thead>
+            <tbody>
+              {report.matching.matchedTo.map((r, i) => (
+                <tr key={`${i}-${r.holding}`}><td>{r.holding}</td><td>{r.matchedTo}</td><td>{r.how}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {report.matching.unmatched.length > 0 ? (
+        <>
+          <h4>Unmatched holdings</h4>
+          <ul class="plain-list" id="unmatched-list">
+            {report.matching.unmatched.map((u, i) => <li key={`${i}-${u.holding}`}>{u.holding} ({u.kind})</li>)}
+          </ul>
+        </>
+      ) : null}
+      {report.matching.note ? <p class="field-help">{report.matching.note}</p> : null}
     </>
   );
 }

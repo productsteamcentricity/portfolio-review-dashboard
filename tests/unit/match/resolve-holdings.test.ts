@@ -5,25 +5,15 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
 import { isLoaded, loadBaseFile } from '../../../app/src/ingest/load-base.ts';
-import { buildMatchContext, resolveHoldings, type MatchBlocks } from '../../../app/src/engine/match/resolve-holdings.ts';
+import { resolveHoldings } from '../../../app/src/engine/match/resolve-holdings.ts';
 import { buildMatchingSection, MATCHING_NO_DATA } from '../../../app/src/views/matching.ts';
-import { loadSheetJS, REPO } from '../../helpers/sheetjs.ts';
+import { loadSheetJS } from '../../helpers/sheetjs.ts';
+import { committedMatchContext } from '../../helpers/match-blocks.ts';
 import { refdataBlock } from '../../helpers/legacy-engine.ts';
 
 const xlsx = loadSheetJS();
 const NOW = (): string => '2026-11-26T00:00:00.000Z';
-const owner = JSON.parse(fs.readFileSync(path.join(REPO, 'data/owner/fund-aliases.json'), 'utf8')) as unknown;
-
-export function committedBlocks(): MatchBlocks {
-  return {
-    MF_PERF: refdataBlock('MF_PERF'), SIF_PERF: refdataBlock('SIF_PERF'), AIF_PERF: refdataBlock('AIF_PERF'), PMS_PERF: refdataBlock('PMS_PERF'),
-    STOCK_RET: refdataBlock('STOCK_RET'), FUND_RANKS_CODES: refdataBlock('FUND_RANKS_CODES'),
-    PRODUCT_CLASS_RULES: refdataBlock('PRODUCT_CLASS_RULES') as unknown, OWNER_FUND_ALIASES: owner,
-  };
-}
 
 function base(rows: unknown[][]) {
   const wb = xlsx.utils.book_new();
@@ -47,7 +37,7 @@ const ROWS = [
 ];
 
 describe('resolveHoldings on the committed reference data', () => {
-  const ctx = buildMatchContext(committedBlocks());
+  const ctx = committedMatchContext();
   const b = base(ROWS);
   const { holdings, report } = resolveHoldings(b.holdings, ctx);
   const by = (n: string) => holdings.find((h) => h.instrumentName === n)!;

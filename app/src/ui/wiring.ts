@@ -18,6 +18,8 @@ import { systemClock } from '../services/clock.ts';
 import { auditExport } from '../services/audit-log.ts';
 import { downloadBytes, PPTX_MIME, XLSX_MIME } from '../services/download.ts';
 import { deckFileName, workbookFileName } from '../views/labels.ts';
+import { readBlock } from '../data/refdata.ts';
+import { buildMatchContext, matchLoaded, type MatchContext, type MatchReport } from '../engine/match/resolve-holdings.ts';
 
 export type LogoAsset = { id: string; label: string; dataUri: string; widthPx: number; heightPx: number };
 export type ExportResult = { kind: 'pptx' | 'xlsx'; fileName: string; bytes: number; sha256: string; audit: Omit<AuditEntry, 'id'> };
@@ -27,7 +29,23 @@ export type Wiring = {
   exportDeck(review: Review, vm: OverviewVM, logo: LogoAsset | null): Promise<ExportResult>;
   exportWorkbook(review: Review, vm: OverviewVM): Promise<ExportResult>;
   now(): string;
+  /** M2.1: the holdings matched to the reference data the page carries (E-19); absent in fakes that do not match. */
+  matchHoldings?(loaded: LoadedBaseFile): { loaded: LoadedBaseFile; report: MatchReport | null };
 };
+
+/** The match context from the page's refdata blocks, built once; null when the page carries no fund data. */
+let pageContext: MatchContext | null | undefined;
+function pageMatchContext(): MatchContext | null {
+  if (pageContext !== undefined) return pageContext;
+  const mf = readBlock('MF_PERF');
+  pageContext = mf === null ? null : buildMatchContext({
+    MF_PERF: mf, SIF_PERF: readBlock('SIF_PERF'), AIF_PERF: readBlock('AIF_PERF'), PMS_PERF: readBlock('PMS_PERF'),
+    STOCK_RET: readBlock('STOCK_RET'), FUND_RANKS_CODES: readBlock('FUND_RANKS_CODES'),
+    PRODUCT_CLASS_RULES: readBlock('PRODUCT_CLASS_RULES'), OWNER_FUND_ALIASES: readBlock('OWNER_FUND_ALIASES'),
+  });
+  return pageContext;
+}
+
 
 export function browserWiring(build: BuildStamp): Wiring {
   const now = systemClock;
@@ -43,5 +61,6 @@ export function browserWiring(build: BuildStamp): Wiring {
     exportDeck: async (_review, vm, logo) => finish('pptx', vm, await buildOverviewDeck(vm, { logo, now }, lib), deckFileName(vm)),
     exportWorkbook: async (review, vm) => finish('xlsx', vm, buildOverviewWorkbook(workbookInputFrom(review, vm)), workbookFileName(vm)),
     now,
+    matchHoldings: (loaded) => matchLoaded(loaded, pageMatchContext()),
   };
 }

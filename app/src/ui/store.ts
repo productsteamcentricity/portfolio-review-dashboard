@@ -14,6 +14,7 @@ import type { AuditEntry } from '../model/audit.ts';
 import type { OverviewVM } from '../views/overview-vm.ts';
 import type { Prefs } from '../services/storage.ts';
 import type { LogoAsset, Wiring } from './wiring.ts';
+import type { MatchReport } from '../engine/match/resolve-holdings.ts';
 import { buildOverviewVM } from '../views/overview.ts';
 import { DEFAULT_FAMILY_LABEL, checkLabel } from '../views/labels.ts';
 import { imageSize } from '../views/logo.ts';
@@ -26,6 +27,8 @@ export type AppState = {
    * exception of the reader or the engine while it was reviewed ('review-failed', never shown as unreadable: L15).
    */
   upload: UploadState;
+  /** M2.1: what each holding of the loaded file was matched to (E-19); null before a file loads or without fund data. */
+  match: MatchReport | null;
   asOn: number | null;
   labels: ReviewLabels;
   acknowledged: string[];
@@ -68,6 +71,7 @@ function emptyUpload(): AppState['upload'] {
 function initialState(logo: LogoAsset | null, inputKey: number): AppState {
   return {
     upload: emptyUpload(),
+    match: null,
     asOn: null,
     labels: { family: DEFAULT_FAMILY_LABEL, clients: {} },
     acknowledged: [],
@@ -141,8 +145,20 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
       // The reader refuses a file with a LoadError; an exception is the app's own failure, not the file's (L15).
       return { ...s, upload: { ...s.upload, stage: 'upload', loaded: null, error: { kind: 'review-failed', message: messageOf(err) } }, review: null, vm: null };
     }
-    if (isLoadError(result)) return { ...s, upload: { ...s.upload, stage: 'upload', loaded: null, error: result }, review: null, vm: null };
-    return { ...s, upload: { ...s.upload, stage: 'validate', loaded: result, error: null }, review: null, vm: null };
+    if (isLoadError(result)) return { ...s, upload: { ...s.upload, stage: 'upload', loaded: null, error: result }, match: null, review: null, vm: null };
+    let loaded = result;
+    let match: MatchReport | null = null;
+    if (deps.wiring.matchHoldings) {
+      try {
+        const m = deps.wiring.matchHoldings(result);
+        loaded = m.loaded;
+        match = m.report;
+      } catch {
+        /* matching never blocks a file: the holdings stay unmatched and the report says the data is not there */
+        match = null;
+      }
+    }
+    return { ...s, upload: { ...s.upload, stage: 'validate', loaded, error: null }, match, review: null, vm: null };
   };
 
   const compute = (s: AppState): AppState => {
