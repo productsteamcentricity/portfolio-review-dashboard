@@ -34,7 +34,7 @@ as in the other registers. "m14" means branch `feat/m1-4-overview` at `07a6460` 
 
 | Id | Interface | Owner | Consumers | File and line | Version on 28 Oct | Change rule (consult) |
 |---|---|---|---|---|---|---|
-| I-01 | Base-file columns, header and row rules | WS-A (live reader); WS-B (new reader, data dictionary) | analysts' real base files; `computeReview`; the new model; base-file parity test | block 07 `parseBaseRows` line 782; `app/src/ingest/base-file.ts:48` (`HEADER_SCAN_ROWS`), `:71` (`FIELD_PREDICATES`); DATA_DICTIONARY 5.3 and 8 | live scans 5 header rows, new reader 20; ISIN column read by neither (KI-184) | section 2.1; the other workstream, ARC-01, financial-domain-reviewer for any value change; owner for BF-19, BF-26, L7 |
+| I-01 | Base-file columns, header and row rules | WS-A (live reader); WS-B (new reader, data dictionary) | analysts' real base files; `computeReview`; the new model; base-file parity test | block 07 `parseBaseRows` line 782; `app/src/ingest/base-file.ts:48` (`HEADER_SCAN_ROWS`), `:71` (`FIELD_PREDICATES`); DATA_DICTIONARY 5.3 and 8 | live scans 5 header rows, new reader 20; ISIN column: not read by the live page (KI-184, not planned: owner, 25 Nov 2026), read by the new reader as a column headed "ISIN" (M2.3 sprint 3a, PR #31) | section 2.1; the other workstream, ARC-01, financial-domain-reviewer for any value change; owner for BF-19, BF-26, L7 |
 | I-02 | Money columns and text in number cells (D-041 point 4, D-039 point 1, D-042 planned) | WS-A (live); WS-B (new); owner (the rule) | both readers; every money figure; AG ledger | block 07 `parseBaseRows`; m14 `app/src/config/money-columns.ts:19` (`MONEY_COLUMN_RULE`) | builds differ today: live falls through, new marks invalid | section 2.2; owner (PD-09), ARC-01, WS-B, financial-domain-reviewer |
 | I-03 | Merged duplicate folios | WS-A (live); WS-B (new) | holdings, units, Taxation path, workbook "Base File" sheet | block 07 `parseBaseRows`; D-041 points 1-2; DATA_DICTIONARY 8 | differ: live takes earliest date (D-041), new first row (KI-148, fixed on G1 only) | section 2.3; owner (PD-08) |
 | I-04 | IRR / transactions workbook | WS-A (live); WS-B (new reader, M3) | `parseIRR` → IRR tree, Fund IRR, Taxation lots | block 09 `parseIRR` line 365; DATA_DICTIONARY 5.4 | alias lists as in the code; new reader not built | alias additions only; known-answer XIRR tests; financial-domain-reviewer |
@@ -54,13 +54,14 @@ as in the other registers. "m14" means branch `feat/m1-4-overview` at `07a6460` 
 | I-18 | Legacy XLSX output | WS-A | analysts; regression tests | block 08 `buildXLSX(model, XLSX)` | 14 fixed sheets + one per client; names cut to 31 chars; no Taxation sheet | section 2.10 |
 | I-19 | New-app PPTX and XLSX output | WS-B | `/next/` users (preview only) | m14 `app/src/exports/*`, `app/src/config/slide-manifest.json` | C-08 slide and overview workbook (branch only) | Office acceptance `npm run accept:office` with verdict PASS before merge |
 | I-20 | Four vendored libraries | frozen in the live page; WS-B vendors them | live page; new-app build; `check-next` allowances | blocks 00-03 (+ logos in 06); m14 `scripts/vendor-extract.mjs:49-70`; `app/vendor/MANIFEST.json` | Chart.js 4.4.0, datalabels 2.2.0, SheetJS CE 0.18.5, PptxGenJS 3.12.0 (+JSZip alias) | section 2.11 |
-| I-21 | Tax-rule tables (two) | WS-A (`REFDATA.TAX_RULES`); WS-B (TR-1..TR-21) | Taxation tab, slides, AI Analyst tax signal; M7 tax engine | `REFDATA.TAX_RULES`, `data/refdata/TAX_RULES.json`; [`capital-gains-upload.md`](../new-build/capital-gains-upload.md) section 10 | live 25 rows on `main`, 34 on the tax branch; new table v1 | section 2.12; financial-domain-reviewer; owner for rules |
+| I-21 | Tax-rule tables (two) | WS-A (`REFDATA.TAX_RULES`); WS-B (TR-1..TR-21) | Taxation tab, slides, AI Analyst tax signal; M7 tax engine | `REFDATA.TAX_RULES`, `data/refdata/TAX_RULES.json`; [`capital-gains-upload.md`](../new-build/capital-gains-upload.md) section 10 | live 34 rows on `main` since LP-01 (TA-03) merged in PR #36 on 26 Nov 2026 (registers-4); new table v1 | section 2.12; financial-domain-reviewer; owner for rules |
 | I-22 | Fund ranks: public page versus codes only | lead (D-026); owner (PD-26) | live AI Analyst and MF Analysis; new-app crosswalk (M2) | `REFDATA.FUND_RANKS`; `data/refdata/FUND_RANKS_CODES.json`; `data-extract.ts:36-38` | 1,262 entries; codes only in `data/refdata` | scores and ranks never in new files or public new pages |
 | I-23 | MF Screener link | lead (D-027) | the build (static anchor) | `app/src/config/links.json` | one URL | the only remote URL; no module imports it; `check-next` enforces |
 | I-24 | `PRD_PRIVACY_DENYLIST` contract | lead (D-033) | `privacy-scan.mjs`, `prepush-scan.mjs`, the pre-push hook | `scripts/validation/privacy-scan.mjs:17-19, 31, 106-129`; `scripts/hooks/pre-push`; `privacy-allowlist.json` | set per push; not set persistently (PD-40) | section 2.13 |
 | I-25 | D-020 merge message and method | lead (D-020) | GitHub PR state; history readers | `docs/DECISIONS.md` D-020; merge `6443826` | as in section 2.14 | unchanged unless a new decision |
 | I-26 | Branch names | lead | `release-check.mjs` | `scripts/validation/release-check.mjs:44` (`BRANCH_RE`), `:271` | `feature/ feat/ fix/ docs/ chore/ data/ test/`; others WARN | continuation and handover prefixes only WARN (TC-23) |
 | I-27 | Pages staging | lead (D-007, D-024, D-034) | the live link `/`, the preview `/next/` | `.github/workflows/pages.yml:72-106`; `tests/next/pages-workflow.test.mjs` | `/` byte copy; `/next/` build or notice | change with MOD-02's go and ARC-01 review; the workflow test pins it |
+| I-28 to I-45 | New-build engine module contracts (instrument resolution, product class, model types, exports registry, scope and others) | the Moderator (writes `app/src/model/**`) | new-build modules | [docs/coordination/INTERFACE_CONTRACTS.md](../coordination/INTERFACE_CONTRACTS.md) | pointer row (registers-4, 26 Nov 2026); I-31, I-32, I-44, I-45 types on main (PR #29), I-37 (PR #40) | the change rule in that file |
 
 ## 2. Details and change rules
 
@@ -74,7 +75,7 @@ as in the other registers. "m14" means branch `feat/m1-4-overview` at `07a6460` 
   Names are read as their class without regard to letter case or spacing on the live page (BF-26 is open with the
   owner); a blank Asset Name is Equity on the live page (BF-14) and Unknown in the new reader; an unrecognised name
   keeps its label (BF-19, open with the owner).
-- **Not read by either reader:** the ISIN column (KI-184, to be filed by EX-01 from its range).
+- **ISIN column:** the live page does not read it (KI-184); the owner decided on 25 Nov 2026 that the column headed "ISIN" belongs to the new build's base file template only and the live page stays as it is, so no live fix is planned (LP-03 dropped). The new reader reads it, read only, since M2.3 sprint 3a (PR #31).
 - **Change rule.** A change to either reader updates, in the same PR: the base-file parity ledger (retire or add the
   entry), `docs/DATA_DICTIONARY.md` (new reader) or `docs/legacy/ARCHITECTURE.md` (live reader), and a known-answer
   regression test. Consult ARC-01, the other workstream, and the financial-domain-reviewer for any value change.
@@ -226,7 +227,7 @@ unavoidable, update every copy in the same PR, with ARC-01's Gate B and WS-B tol
   (D-025, D-034, D-038) with ARC-01 and security review.
 
 ### 2.12 I-21 Two tax-rule tables
-- **Live:** `REFDATA.TAX_RULES`, 25 rows on `main`, 34 on the tax branch with new flags (`sec198`, `perSecurity`,
+- **Live:** `REFDATA.TAX_RULES`, 34 rows on `main` since TA-03 merged (PR #36, 26 Nov 2026; before it, 25 rows on `main` and 34 on the tax branch), with new flags (`sec198`, `perSecurity`,
   `passThrough`, `fundLevel`, `before`, `specifiedFrom`, `noSetOff`, `noSetOffSource`, `source`, `lockMonths`,
   `boughtBefore`, `listedEtfMonths`) and renamed `inst` labels. [VERIFIED: architecture investigation; VINTAGE records]
 - **New:** the dated table v1, TR-1..TR-21 with LD-1..LD-42 and KA-1..KA-22, in
