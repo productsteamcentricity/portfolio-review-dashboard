@@ -29,6 +29,10 @@ import { portfolioOverviewSheet } from './sheets/portfolio-overview.ts';
 import { entityAllocationSheet } from './sheets/entity-allocation.ts';
 import { auditLogSheet } from './sheets/audit-log.ts';
 import { manifestSheet } from './sheets/manifest-sheet.ts';
+// M3b (NB-02): the client holdings sheets, written only when the input carries the holdings view-model.
+import type { HoldingsVM } from '../../views/holdings.ts';
+import { clientHoldingsSheet } from './sheets/client-holdings.ts';
+import { clientSheetNames } from './sheet-names.ts';
 
 /** 'overview-workbook@1', written in the _manifest sheet. */
 export { OVERVIEW_WORKBOOK_SCHEMA } from './sheets/manifest-sheet.ts';
@@ -87,6 +91,8 @@ export type WorkbookInput = {
   results: Array<Pick<ValidationResult, 'id' | 'ruleId' | 'severity' | 'status' | 'decision' | 'count'>>;
   /** Client and distributor column ids to their keys (C01, D01, C00 and D00 for not given). */
   entityKeys: { client: EntityKey[]; distributor: EntityKey[] };
+  /** M3b (NB-02): the holdings view-model; one client holdings sheet per client is written only when it is present. */
+  clientHoldings?: HoldingsVM;
 };
 
 /** Where a figure of the view-model is written (the _manifest "figure" rows; the cross-output join). */
@@ -105,6 +111,8 @@ export type BuildContext = {
   sheets: string[];
   leftOut: Array<{ sheet: string; reason: string }>;
   figures: FigureCell[];
+  /** M3b (NB-02): the client holdings sheets' names, one per client of input.clientHoldings, in its order. */
+  clientSheets: string[];
   /** Records where a figure is written. */
   record(figure: Figure, sheet: SheetSpec, columnKeyName: string, dataRow: number): void;
 };
@@ -233,6 +241,8 @@ export function buildContext(input: WorkbookInput): BuildContext {
   else leftOut.push({ sheet: SHEETS.clients, reason: 'fewer than two clients hold included holdings (OD-21)' });
   if (vm.matrices.distributor.shown) sheets.push(SHEETS.distributors);
   else leftOut.push({ sheet: SHEETS.distributors, reason: 'fewer than two distributors hold included holdings (OD-21)' });
+  const clientSheets = input.clientHoldings ? clientSheetNames(input.clientHoldings.clients.map((c) => c.title)) : [];
+  sheets.push(...clientSheets); // M3b (NB-02): architecture §14 sheet 11, one per client
   sheets.push(SHEETS.audit, SHEETS.manifest);
   const figures: FigureCell[] = [];
   const seen = new Set<string>();
@@ -247,6 +257,7 @@ export function buildContext(input: WorkbookInput): BuildContext {
     sheets,
     leftOut,
     figures,
+    clientSheets,
     record(figure, sheet, key, dataRow) {
       if (seen.has(figure.key)) return;
       const i = sheet.columns.findIndex((c) => columnKey(c) === key);
@@ -264,6 +275,7 @@ export function overviewSheets(input: WorkbookInput): { ctx: BuildContext; sheet
   const sheets: SheetSpec[] = [readMeSheet(ctx), sourceRegisterSheet(ctx), holdingsSheet(ctx), portfolioOverviewSheet(ctx)];
   if (input.vm.matrices.client.shown) sheets.push(entityAllocationSheet(ctx, 'client'));
   if (input.vm.matrices.distributor.shown) sheets.push(entityAllocationSheet(ctx, 'distributor'));
+  if (input.clientHoldings) input.clientHoldings.clients.forEach((c, i) => sheets.push(clientHoldingsSheet(ctx, c, ctx.clientSheets[i]!))); // M3b (NB-02)
   sheets.push(auditLogSheet(ctx));
   return { ctx, sheets };
 }

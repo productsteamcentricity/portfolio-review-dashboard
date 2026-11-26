@@ -15,6 +15,7 @@ import { loadBaseFile, isLoaded } from '../../app/src/ingest/load-base.ts';
 import { computeReview } from '../../app/src/engine/review.ts';
 import { buildOverviewDeckDetailed, type DeckBuild } from '../../app/src/exports/pptx/deck.ts';
 import { buildOverviewWorkbook, workbookInputFrom } from '../../app/src/exports/xlsx/overview-workbook.ts';
+import { buildHoldingsVM } from '../../app/src/views/holdings.ts';
 import { sha256Hex } from '../../app/src/services/sha256.ts';
 import { fixedClock } from '../../app/src/services/clock.ts';
 import { auditExport } from '../../app/src/services/audit-log.ts';
@@ -74,7 +75,7 @@ export function nodeWiring(build: BuildStamp = NODE_BUILD, nowIso: string = NODE
       return finish('pptx', vm, deck.bytes, fileName);
     },
     exportWorkbook: async (review, vm) => {
-      const bytes = buildOverviewWorkbook(workbookInputFrom(review, vm));
+      const bytes = buildOverviewWorkbook({ ...workbookInputFrom(review, vm), clientHoldings: buildHoldingsVM(review) });
       const fileName = workbookFileName(vm);
       last.xlsx = { fileName, bytes };
       return finish('xlsx', vm, bytes, fileName);

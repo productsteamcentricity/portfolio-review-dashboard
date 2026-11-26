@@ -30,7 +30,8 @@ export type HoldingsRowVM = {
   markers: string[];
 };
 
-export type HoldingsClientVM = { key: string; title: string; caption: string; rows: HoldingsRowVM[]; notes: string[] };
+/** `sheet` is the engine's rows (Crore), for the workbook's client sheets (exports/xlsx/sheets/client-holdings.ts). */
+export type HoldingsClientVM = { key: string; title: string; caption: string; rows: HoldingsRowVM[]; notes: string[]; sheet: ClientHoldingsSheet };
 export type HoldingsVM = { columns: HoldingsColumn[]; clients: HoldingsClientVM[]; empty: string | null };
 
 const DAGGER = String.fromCharCode(0x2020);
@@ -93,7 +94,7 @@ function clientVM(s: ClientHoldingsSheet, review: Review, index: number): Holdin
     notes.push(`${DAGGER} Averages only holdings with a value: ${s.partial.withoutXirr} without XIRR (${f(s.partial.xirrCoveragePct)}% of CMV covered), ${s.partial.withoutBmXirr} without BMXIRR (${f(s.partial.bmXirrCoveragePct)}%).`);
   }
   if (s.irrGrandBlank) notes.push('The client\'s total XIRR or BMXIRR from the IRR file could not be computed, so it is left blank.');
-  return { key: s.clientId ?? `no-client-${index}`, title, caption, rows: s.rows.map((r) => rowVM(r, review.displayUnit)), notes };
+  return { key: s.clientId ?? `no-client-${index}`, title, caption, rows: s.rows.map((r) => rowVM(r, review.displayUnit)), notes, sheet: s };
 }
 
 export function buildHoldingsVM(review: Review, opts: { irr?: IrrAggregateHook } = {}): HoldingsVM {

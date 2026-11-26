@@ -469,5 +469,5 @@ table.data tr.row-product > th { padding-left: 1.6rem; }
 /* Section 5 holdings (M3b): holdings indented under their product; the column chips. */
 table.data tr.row-item > th { padding-left: 3rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0 0.8rem; }
-.chip-toggle { border: 1px solid var(--c-rule); background: transparent; color: var(--c-textLabel); border-radius: 999px; padding: 0.15rem 0.7rem; font: inherit; font-size: 0.85em; cursor: pointer; }
-.chip-toggle.on { background: var(--c-ink); color: var(--c-paper); border-color: var(--c-ink); }
+.chip-toggle { border: 1px solid var(--c-tan); background: transparent; color: var(--c-textBody); border-radius: 999px; padding: 0.15rem 0.7rem; font: inherit; font-size: 0.85em; cursor: pointer; }
+.chip-toggle.on { background: var(--c-tan); color: var(--c-ink); border-color: var(--c-tan); font-weight: bold; }

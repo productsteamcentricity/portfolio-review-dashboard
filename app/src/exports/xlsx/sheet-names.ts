@@ -18,6 +18,15 @@ export const SHEETS = {
   manifest: '_manifest',
 } as const;
 
+/**
+ * The client holdings sheets' names (E-80; KI-021): each client's title, sanitised, unique ignoring letter case among
+ * themselves and against every name in SHEETS (written or not), so a client called "Audit Log" gets "Audit Log (2)".
+ */
+export function clientSheetNames(titles: readonly string[]): string[] {
+  const reserved = Object.values(SHEETS);
+  return uniqueSheetNames([...reserved, ...titles]).slice(reserved.length);
+}
+
 /** True when Excel accepts the name as it is. */
 export function isValidSheetName(name: string): boolean {
   return name.length >= 1 && name.length <= MAX_SHEET_NAME && !/[[\]:*?/\\]/.test(name) && name.trim() !== ''

@@ -13,6 +13,7 @@ import { loadBaseFile } from '../ingest/load-base.ts';
 import { computeReview } from '../engine/review.ts';
 import { buildOverviewDeck, type PptxLib } from '../exports/pptx/deck.ts';
 import { buildOverviewWorkbook, workbookInputFrom } from '../exports/xlsx/overview-workbook.ts';
+import { buildHoldingsVM } from '../views/holdings.ts';
 import { sha256Hex } from '../services/sha256.ts';
 import { systemClock } from '../services/clock.ts';
 import { auditExport } from '../services/audit-log.ts';
@@ -66,7 +67,7 @@ export function browserWiring(build: BuildStamp): Wiring {
     loadBaseFile: (bytes, fileName, answers) => loadBaseFile(bytes, fileName, XLSX as SheetJSLike, { answers, now }),
     computeReview: (req) => computeReview(req, { now, build }),
     exportDeck: async (_review, vm, logo) => finish('pptx', vm, await buildOverviewDeck(vm, { logo, now }, lib), deckFileName(vm)),
-    exportWorkbook: async (review, vm) => finish('xlsx', vm, buildOverviewWorkbook(workbookInputFrom(review, vm)), workbookFileName(vm)),
+    exportWorkbook: async (review, vm) => finish('xlsx', vm, buildOverviewWorkbook({ ...workbookInputFrom(review, vm), clientHoldings: buildHoldingsVM(review) }), workbookFileName(vm)),
     now,
     matchHoldings: (loaded, overrides) => matchLoaded(loaded, pageMatchContext(overrides)),
     loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, XLSX as unknown as MonitorSheetJS, regular ?? readBlock('MF_PERF') ?? undefined),
