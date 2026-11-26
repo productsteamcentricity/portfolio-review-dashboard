@@ -198,6 +198,11 @@
    base file's ISIN column, read only) is on `feat/m2-3-vendor-parsers`; the upload buttons wait for the spreadsheet-reader
    decision. Sprint 2 (corrections and classification) follows, with the owner's alias list (PD-36) before it merges and
    the product-class table after the live page's LP-16.
+   Beside M2, the data-platform items (NB-04) are on their own branches: M10, the MF Screener data pack reader and
+   browser store (`feat/m10-datapack`); M11a, the monthly update engine core (`feat/m11a-monthly-engine`, after M10);
+   M12a, the drawdown engine on index data (`feat/m12a-drawdown`; the owner's answers of 25 Nov 2026 are its defaults;
+   which index stands for each asset class, the part-month recovery rule, flagging missing months and the tie rule
+   wait for the owner).
 
    **Claude: M3a**, the returns core (XIRR, the IRR file reader, the IRR tree, contributors and laggards, returns per
    family, client and advisor scope), is on `feat/m3a-returns-core`, not wired into the page yet. Open before it reaches

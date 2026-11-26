@@ -4,6 +4,25 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M10 Screener data pack: reader and browser store; not wired into the page yet)
+- **`app/src/ingest/screener-pack/`** reads an MF Screener data pack (contract `pr-datapack-v1`, D-026): the zip's central
+  directory is checked against archive limits before anything is inflated (path traversal, entry count, nesting,
+  encryption, declared sizes and ratio, local headers against the directory; inflation stops at the declared size);
+  then the manifest (contract version, cycle, every entry listed, required files),
+  each file's size, SHA-256, header cycle and record count, and a schema per file, including the contract's unit suffixes
+  on every field. A refused pack gets one reason naming the file. Extensions seen in real packs (extra fields,
+  off-contract status codes, the `equity_sleeve` basis, a provisional pack) are accepted with warnings. The backfill pack
+  is read with its month-ends and earlier cycles. The vendored JSZip is passed in; no new library.
+- **`app/src/services/screener-store.ts`** keeps an accepted pack in IndexedDB (`prd.next.v1.screener`): a newer cycle
+  replaces it as a whole, an older one is refused, the same SHA-256 is a no-op, month-end holdings of replaced packs and
+  the backfill stay as history (newest cycle wins per month-end), every read is SHA-256 checked, a quota error keeps
+  nothing. No score, rank or pack figure is written outside the pack's own files; nothing leaves the browser.
+- Tests on synthetic packs only (`tests/fixtures/make-screener-pack.ts`): `unit/ingest/screener-pack`,
+  `unit/ingest/screener-pack-zip`, `unit/services/screener-store`, `integration/screener-pack-reimport`.
+- **`scripts/validation/check-next.mjs`** fails the build on MF Screener pack content in any form (D-026): quoted or
+  unquoted keys (a pack JSON bundled by esbuild), escaped JSON, the summary CSV header, the fixture marker
+  (`tests/next/check-next-pack.test.mjs`).
+
 ### Fixed (fix batch 3: tax rules per the TY2026-27 reckoner, CR-0008)
 - **Tax batch, stage S12 (CR-0008): ARC-02's Gate B points on d7683a0, settled conservatively (MOD-04, 25 Nov 2026), and
   foreign bonds.** `index.html` MD5 `8A233F94CA795FFA26029DC7CE6C744F` → `5EA6990734AB65C1C243B3990C234198` (patch

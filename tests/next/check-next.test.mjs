@@ -1,7 +1,8 @@
-// covers: BR-0.3 U-53 U-55 D-024 D-027 D-029 D-034 D-038 M1.2-check-next M1.4
+// covers: BR-0.3 U-53 U-55 D-024 D-026 D-027 D-029 D-034 D-038 E-126 M1.2-check-next M1.4 M10
 // Tests of scripts/validation/check-next.mjs: the built shell passes, and each planted violation fails the check
 // that guards it (and, where the CSP is rehashed after the change, only that check); the pinned allowances of the
-// vendored libraries (D-038), the OOXML namespace names, and the pure layers that read no browser global (U-53).
+// vendored libraries (D-038), the OOXML namespace names, and the pure layers that read no browser global (U-53); no
+// MF Screener pack content in the build (D-026, M10).
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -13,6 +14,7 @@ import { buildNext, cspFor, cspHash } from '../../scripts/build.mjs';
 import {
   checkBuiltPage, checkSources, parseHtml, readScreenerUrl, NETWORK_APIS, NAMESPACE_URIS, OOXML_NAMESPACE_URIS,
   OOXML_SOURCE_FILE, PURE_LAYERS, SIZE_BUDGET_BYTES, findSchemeUrls, vendorAllowance, loadManifest, libraryAllowance,
+  findPackContent, PACK_CONTENT_PATTERNS,
 } from '../../scripts/validation/check-next.mjs';
 import { ROOT, NEEDS_BUILD, failures, readJson } from './helpers.mjs';
 
@@ -67,6 +69,24 @@ describe('check-next on the built page (needs npm ci)', { skip: NEEDS_BUILD }, (
       assertFails(rehash(plantInScript(html, `void (() => ${api});\n`)), /no network API/, { only: true });
     });
   }
+
+  // D-026: a synthetic pack's content planted in the app script fails only the pack check; the reader's own forms pass
+  for (const planted of [
+    'JSON.parse(\'{"contract_version": "pr-datapack-v1"}\')',
+    'JSON.parse(\'{"centricity_score_frac":0.81}\')',
+    'JSON.parse(\'{"centricity_rank_in_category": 3}\')',
+    'JSON.parse(\'{"parameter_scores": {"x": 1}}\')',
+    '["FIXTURE-SCREENER-PACK"]',
+  ]) {
+    test(`planted Screener pack content fails: ${planted}`, () => {
+      assertFails(rehash(plantInScript(html, `void (() => ${planted});\n`)), /MF Screener pack content \(D-026\)/, { only: true });
+    });
+  }
+
+  test('the pack reader\'s own forms (the contract version string, unquoted keys) pass the pack check', () => {
+    const code = "void ['pr-datapack-v1', { centricity_score_frac: { t: 'number' }, centricity_rank_in_category: { t: 'int' }, parameter_scores: { t: 'object' } }];\n";
+    assert.deepEqual(failures(run(rehash(plantInScript(html, code)))), []);
+  });
 
   test('every network API in the list is caught by its pattern', () => {
     assert.ok(NETWORK_APIS.length >= 6);
@@ -288,6 +308,16 @@ describe('check-next on vendored libraries and their pinned allowances (needs np
     const twice = rehash(alias.replace(lib, lib + lib));
     const f = failures(checkBuiltPage(Buffer.from(twice), { screenerUrl: SCREENER, manifest: FIXTURE_MANIFEST }));
     assert.ok(f.some((m) => /bundle inlined twice/.test(m)), f.join('\n'));
+  });
+});
+
+describe('the D-026 pack-content patterns', () => {
+  test('find each planted form and nothing in the reader\'s own forms', () => {
+    assert.equal(PACK_CONTENT_PATTERNS.length, 6);
+    assert.deepEqual(findPackContent('{"contract_version" : "pr-datapack-v1"}'), [PACK_CONTENT_PATTERNS[0].source]);
+    assert.deepEqual(findPackContent('{"centricity_score_frac":-0.1,"centricity_rank_in_category":12,"parameter_scores":{"a":1}}').length, 3);
+    assert.deepEqual(findPackContent('source_files: ["FIXTURE-SCREENER-PACK"]'), [PACK_CONTENT_PATTERNS[5].source]);
+    assert.deepEqual(findPackContent("const C = 'pr-datapack-v1'; const S = { centricity_score_frac: { t: 'number' } }; x = \"centricity_score_frac\";"), []);
   });
 });
 
