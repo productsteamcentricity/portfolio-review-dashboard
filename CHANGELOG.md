@@ -7,9 +7,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ### Added (new build, M3b data side: the reference data embedded in the page; not read by any screen yet)
 - **`scripts/build.mjs`** writes each file of its `REFDATA_BLOCKS` list whole as a data block
   `<script type="application/json" id="refdata-<NAME>">`: MF_PERF, MF_PERF_DIRECT, SIF_PERF, BENCH_RET, STOCK_RET and
-  VINTAGE (format agreed by NB-02 and NB-04, 26 Nov 2026; NB-02 adds the matcher's blocks). Data blocks are not hashed
+  VINTAGE (format agreed by NB-02 and NB-04, 26 Nov 2026; NB-02 adds the matcher's blocks); a block file must be a
+  .json file directly inside `data/refdata/` or `data/owner/`, else the build stops. Data blocks are not hashed
   into the build id or the CSP: the build id is unchanged, the page grows from 2,003,823 to 4,656,615 bytes (the
-  check-next budget is 25 MB). The data is what `index.html` already publishes (class P).
+  check-next budget is 25 MB). The build id names the code, not the data: the data's provenance is `VINTAGE.json`
+  (each file's SHA-256 and the data month), in the page as `refdata-VINTAGE`. The data is what `index.html` already
+  publishes (class P).
 - **`app/src/data/refdata.ts`**: `readBlock(name)` parses a block once and keeps it; `blockOf(name, overrides)` returns
   an uploaded MF or SIF Monitor in place of the embedded block (for the matcher and the views); `asOnOf(name)` dates a
   block from VINTAGE (STOCK_RET: NOT AVAILABLE IN SUPPLIED DATA). Not a pure layer: engines get blocks as arguments.

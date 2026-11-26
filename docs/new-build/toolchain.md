@@ -229,6 +229,7 @@ before the app script. The fixture page with all four libraries and no Preact
 | Inline rule: no `<!--` or `<script` in any script | the app script keeps it; a vendored file is refused for `</script`, or for `<!--` followed by `<script` (M1.4, D-038) | the libraries cannot be edited (A2), and that pair is exactly what breaks HTML parsing |
 | One manifest entry per library | aliases: `vendor:jszip` names the JSZip global of the PptxGenJS file (M1.4) | JSZip ships inside PptxGenJS |
 | build-info: channel and libraries | adds `buildId` (16 hex of SHA-256 over the executable scripts in page order, each followed by NUL) and a `sha256` per library (null for preact) (M1.4) | the deck and workbook can name the exact build |
+| (not in the brief) | reference data as `refdata-<NAME>` data blocks, from `REFDATA_BLOCKS` in `scripts/build.mjs`, only .json files directly inside `data/refdata/` or `data/owner/` (M3b, 26 Nov 2026) | data blocks are not hashed into `buildId` or the CSP, so the build id names the code, not the data: **the data's provenance is `VINTAGE.json`** (each file's SHA-256 and the data month), carried in the page as `refdata-VINTAGE` |
 
 Not done in M1.2 although the roadmap lists them: `scripts/vendor-extract.mjs` (built in M1.4, D-038); acceptance case `AC-22` (the git-process check); `npm run test:utc`
 (CI already runs the tests in both time zones); a review mode selector beyond the text in section 1 (M5). When

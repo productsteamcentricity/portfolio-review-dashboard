@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildNext, refdataBlocks, REFDATA_BLOCKS } from '../../scripts/build.mjs';
+import { buildNext, refdataBlocks, REFDATA_BLOCKS, REFDATA_DIRS } from '../../scripts/build.mjs';
 import { checkBuiltPage, parseHtml, readScreenerUrl } from '../../scripts/validation/check-next.mjs';
 import { ROOT, NEEDS_BUILD, failures } from './helpers.mjs';
 
@@ -29,6 +29,23 @@ describe('the block list', () => {
   test('the same names in the same order as BLOCK_NAMES in app/src/data/refdata.ts', async () => {
     const { BLOCK_NAMES } = await import('../../app/src/data/refdata.ts');
     assert.deepEqual(REFDATA_BLOCKS.map(([n]) => n), [...BLOCK_NAMES]);
+  });
+  test('R1: a file outside data/refdata and data/owner is refused, before it is read', () => {
+    assert.deepEqual([...REFDATA_DIRS], ['data/refdata', 'data/owner']);
+    for (const file of [
+      'package.json', // elsewhere in the repository
+      'data/other/x.json', // another data folder
+      'data/refdata/sub/x.json', // not directly inside
+      'data/refdata/../../package.json', // climbs out
+      'data/refdata/README.md', // not JSON
+      'data/refdata', // the folder itself
+      path.join(os.tmpdir(), 'x.json'), // absolute, outside
+    ]) {
+      assert.throws(() => refdataBlocks([['X', file]], ROOT), /is not a \.json file directly inside data\/refdata or data\/owner/, file);
+    }
+    // every listed file passes, and an owner table is allowed
+    assert.equal(refdataBlocks(REFDATA_BLOCKS, ROOT).length, REFDATA_BLOCKS.length);
+    assert.doesNotThrow(() => refdataBlocks([['X', 'data/refdata/SIF_PERF.json']], ROOT));
   });
   test('a repeated or unsafe name is refused', () => {
     assert.throws(() => refdataBlocks([['A', 'data/refdata/SIF_PERF.json'], ['A', 'data/refdata/SIF_PERF.json']], ROOT), /not a unique plain name/);
@@ -60,7 +77,8 @@ describe('the built page (needs npm ci)', { skip: NEEDS_BUILD }, () => {
     try {
       fs.writeFileSync(path.join(dir, 'X.json'), '{"a":{"r":{"3Y":1.5}},"b":"<\/script>"}\n');
       const rel = path.relative(ROOT, path.join(dir, 'X.json'));
-      const other = (await buildNext({ refdata: [['X', rel]] })).html;
+      assert.throws(() => refdataBlocks([['X', rel]], ROOT), /directly inside/);
+      const other = (await buildNext({ refdata: [['X', rel]], refdataDirs: [path.relative(ROOT, dir)] })).html;
       assert.equal(buildIdOf(other), buildIdOf(html));
       assert.equal(CSP_RE.exec(other)[1], CSP_RE.exec(html)[1]);
       const blocks = blocksOf(other);
