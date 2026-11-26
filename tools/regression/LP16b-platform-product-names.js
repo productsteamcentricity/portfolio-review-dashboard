@@ -100,10 +100,14 @@ const T = [
   ['Bonds', 'Synthetic Corp Bond 2030', 'Debt', 'Overseas Bonds', null, FB],       /* the category still names the route */
   ['Unlisted-Direct', 'Synthetic Tech Pvt Ltd', 'Equity', '', 'Unlisted Equity Shares', null],
   ['P2P Lending', 'Synthetic P2P Pool', 'Debt', '', null, 'peer-to-peer lending'],
-  /* the financial review of LP-16b: a bare "US" is not US$; a fund, AIF or PMS named "... Bond ..." keeps its own row
-     (the bond words are read from the product or category only); SGB and MLD keep their rows under "Bonds"; GIFT City
-     in a bond's name alone does not remove the row (owner question, today's rule kept) */
-  ['Bonds', 'Synthetic US Infra Bond 2030', 'Debt', '', 'Listed Bonds / NCDs', null],
+  /* a whole-word US in a bond's name counts (the owner's option read "USD, US or LRS"; MOD-04, 26 Nov 2026), but not
+     Plus or Bus; a fund, AIF or PMS named "... Bond ..." keeps its own row (the bond words are read from the product or
+     category only); SGB and MLD keep their rows under "Bonds"; GIFT City in a bond's name alone does not remove the row
+     (owner question, today's rule kept) */
+  ['Bonds', 'Synthetic US Infra Bond 2030', 'Debt', '', null, FB],
+  ['Bonds', 'Synthetic Plus Finance Bond 2030', 'Debt', '', 'Listed Bonds / NCDs', null],
+  ['Bonds', 'Synthetic Bus Finance NCD 2029', 'Debt', '', 'Listed Bonds / NCDs', null],
+  ['Bonds', 'Synthetic Corp US5 Bond 2030', 'Debt', '', null, FB],
   ['Global Exposure', 'Synthetic Global Bond Fund', 'Debt', '', 'Global Funds', null],
   ['AIF', 'Synthetic USD Bond Fund', 'Debt', '', 'Debt AIF – Cat I/II', null],
   ['Bonds', 'Synthetic Corp Bond 2030', 'Debt', 'Global Bonds', null, FB],
@@ -118,7 +122,9 @@ const T = [
   ok(pms.cls === null && String(pms.why || '').indexOf(FB) < 0, '4. tax PMS / "Synthetic Dollar Bond Strategy": the debt-PMS reason, not the foreign-bond one (got ' + pms.why + ')'); }
 /* the label of the same holdings (one description each; the category split is an owner question, the label follows
    the owner's words: product or name) */
-[['Bonds', 'Synthetic US Infra Bond 2030', '', RUPEE], ['Bonds', 'Synthetic Corp US$ 4.5% Notes Bond 2031', '', USD],
+[['Bonds', 'Synthetic US Infra Bond 2030', '', USD], ['Bonds', 'Synthetic Plus Finance Bond 2030', '', RUPEE],
+ ['Bonds', 'Synthetic Bus Finance NCD 2029', '', RUPEE], ['Bonds', 'Synthetic Corp US5 Bond 2030', '', USD],
+ ['Bonds', 'Synthetic Corp US$ 4.5% Notes Bond 2031', '', USD],
  /* delta review D1: a figure straight after the currency word */
  ['Bonds', 'Synthetic Corp US$4.5% Bond 2031', '', USD], ['Bonds', 'Synthetic Corp Bond US$500mn', '', USD], ['Bonds', 'Synthetic Corp USD5.25 Bond', '', USD],
  ['Bonds', 'Synthetic Corp Bond 2030 Series FD2027', '', RUPEE],

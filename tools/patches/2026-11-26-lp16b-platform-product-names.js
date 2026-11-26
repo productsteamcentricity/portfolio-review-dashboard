@@ -24,7 +24,8 @@
         Exposure as both Offshore Funds and Gift City Funds");
       - Offshore funds: "off-shore" (as before) and "global exposure";
       - US-dollar bonds (through LRS): a bond, NCD or debenture (or LRS) only
-        when the product or the name says USD, US$, dollar or LRS;
+        when the product or the name says USD, US$, US (a whole word), dollar or
+        LRS (the owner's option read "USD, US or LRS"; MOD-04, 26 Nov 2026);
       - Rupee bonds and NCDs: every other bond, NCD or debenture (the owner:
         "Rupee bonds and NCDs"); the same fund and SGB / MLD exclusions;
       - Fixed deposits, REITs and InvITs, Unlisted shares: as before;
@@ -64,7 +65,7 @@ const RULES = [
   { label: 'GIFT City funds', keywords: ['gift city', 'ifsc'], beforePmsAifSif: true, class: 'OTHER' },
   { label: 'GIFT City funds', keywords: ['global exposure'], nameAny: ['gift', 'ifsc'], beforePmsAifSif: true, class: 'OTHER' },
   { label: 'Offshore funds', keywords: ['off-shore', 'global exposure'], beforePmsAifSif: true, class: 'OTHER' },
-  { label: 'US-dollar bonds (through LRS)', keywords: BOND_WORDS.concat(['lrs']), andAny: ['usd', 'us$', 'dollar', 'dollars', 'lrs'],
+  { label: 'US-dollar bonds (through LRS)', keywords: BOND_WORDS.concat(['lrs']), andAny: ['usd', 'us$', 'us', 'dollar', 'dollars', 'lrs'],
     unlessAny: FUND_WORDS, notIf: NOT_BOND, class: 'BOND' },
   { label: 'Rupee bonds and NCDs', keywords: BOND_WORDS, unlessAny: FUND_WORDS, notIf: NOT_BOND, class: 'BOND' },
   { label: 'Fixed deposits', keywords: ['fixed deposit', 'fixed deposits', 'fd', 'fds'], unlessAny: FUND_WORDS, class: 'OTHER' },
@@ -85,7 +86,7 @@ applyPatch('LP-16b platform product names', [
 `,
     to: String.raw`        /* LP-16b: a keyword's "$" is kept; a currency word (usd, us$) may be followed by a figure ("US$500mn", "USD5.25") */
         var w=String(k).toLowerCase().replace(/[^a-z0-9\s$-]/g, "").replace(/\$/g, "\\$").replace(/[\s-]+/g, "[\\s-]*");
-        return w + ((/\\\$$/.test(w) || w === "usd") ? "(?![a-z])" : "(?![a-z0-9])"); }).join("|") + ")", "i");
+        return w + ((/\\\$$/.test(w) || w === "usd" || w === "us") ? "(?![a-z])" : "(?![a-z0-9])"); }).join("|") + ")", "i");
 `,
   },
   {
@@ -125,10 +126,10 @@ applyPatch('LP-16b platform product names', [
     label: 'tax: a bond named in US dollars or through the LRS has no tax row',
     from: String.raw`    if (!mfp && TAX_FOREIGN_BOND.test(p+" "+c) && /bond|ncd|debenture/.test(p+" "+c)) return N(TAX_WHY.foreignBond);
 `,
-    to: String.raw`    /* LP-16b: the name counts too, for USD, US$, dollar or LRS only (a "Global" company name is not a foreign route); the bond
+    to: String.raw`    /* LP-16b: the name counts too, for USD, US$, US (a whole word), dollar or LRS only (a "Global" company name is not a foreign route); the bond
        words are still read from the product or category only, so a fund, AIF or PMS named "... Bond ..." keeps its own row;
        a plain "Bonds" product keeps the listed bond rows below */
-    if (!mfp && (TAX_FOREIGN_BOND.test(p+" "+c) || /(^|[^a-z])(lrs|usd|us\$|dollars?)([^a-z]|$)/.test(n)) && /bond|ncd|debenture/.test(p+" "+c)) return N(TAX_WHY.foreignBond);
+    if (!mfp && (TAX_FOREIGN_BOND.test(p+" "+c) || /(^|[^a-z])(lrs|usd|us\$|us|dollars?)([^a-z]|$)/.test(n)) && /bond|ncd|debenture/.test(p+" "+c)) return N(TAX_WHY.foreignBond);
 `,
   },
   {
