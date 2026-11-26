@@ -4,6 +4,19 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (new build, model contracts-2: contract I-37 and the analyst question; types only, `/next/` build byte-identical)
+- **`app/src/model/tax.ts`** (contract I-37): the lot and roll-up types of the capital-gains and tax engine
+  (`RealisedGain`, `TaxInputs`, `Bucket`, `PersonYearTax`, `FamilyTaxYear`, `TaxPosition`, `HarvestResult` and their
+  parts; DATA_DICTIONARY §5.5 and the `tax.*` paths of §6). Its header names the sources of record (statement lots:
+  `data/owner/tax-rules.json` table v1; holdings, FIFO lots and harvesting: `data/refdata/TAX_RULES.json`, I-21; the
+  agreement test between them) and the known-answer file `tests/fixtures/cg-known-answers.json` with its schema.
+- **`app/src/model/value.ts`**: units `inr` (rupees, unrounded) and `inr-per-unit` (a price); Crore stays the basis of
+  every weight.
+- **`app/src/model/validation.ts`**: `AnalystQuestion` is a union on `kind` of `XirrUnitQuestion` and
+  `CapitalGainsRepeatsQuestion`; `CgRepeatAnswer` moves into the model, and `ingest/capital-gains.ts` re-exports it and
+  aliases `CgRepeatQuestion` to the model type. The base file's questions are typed `XirrUnitQuestion[]`, so the import
+  report can render only XIRR-unit questions. `tests/unit/model/contracts.test.ts` covers I-37 and the union (10 tests).
+
 ### Added (new build, M12a drawdown engine on index data; not wired yet; the index for each asset class awaits the owner)
 - **`app/src/engine/drawdown.ts`** (E-149, D-023 point 2): per index series the maximum peak-to-trough fall, its peak and
   trough days, the recovery day and the months to recover from the trough (or not yet recovered); a blend of series at

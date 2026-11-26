@@ -11,7 +11,7 @@ import type { SourceFileId, HoldingId } from './ids.ts';
 import type { SheetAttempt, SkipReason, SkippedRow } from './source.ts';
 import type { Holding } from './holding.ts';
 import type { Account, Client, Distributor, Folio, Ownership } from './ownership.ts';
-import type { AnalystQuestion, ValidationResult } from './validation.ts';
+import type { ValidationResult, XirrUnitQuestion } from './validation.ts';
 import type { AuditEntry } from './audit.ts';
 
 /** Base-file columns. The first 24 are the legacy aliases; the holder columns are new (proposal, Q-79); the ISIN column is
@@ -73,7 +73,8 @@ export type BaseFileImport = {
   folios: Folio[];
   ownership: Ownership[];
   skipped: SkippedRow[];
-  questions: AnalystQuestion[];
+  /** The base-file reader asks only the XIRR-unit question (OD-3); a review holds every kind (`Review.questions`). */
+  questions: XirrUnitQuestion[];
   issues: ValidationResult[];
   /** The KI-147 findings by holding, field and row (the notes of the overview count them). */
   moneyFindings: MoneyFinding[];
