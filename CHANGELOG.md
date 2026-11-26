@@ -30,6 +30,19 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ### Fixed (new build)
 - **S3-1:** a merged holding whose rows carry different ISINs keeps none, with the Warning `base-file.isin-disagree`.
 
+### Added (new build, M3b data side: the reference data embedded in the page; not read by any screen yet)
+- **`scripts/build.mjs`** writes each file of its `REFDATA_BLOCKS` list whole as a data block
+  `<script type="application/json" id="refdata-<NAME>">`: MF_PERF, MF_PERF_DIRECT, SIF_PERF, BENCH_RET, STOCK_RET and
+  VINTAGE (format agreed by NB-02 and NB-04, 26 Nov 2026; NB-02 adds the matcher's blocks). Data blocks are not hashed
+  into the build id or the CSP: the build id is unchanged, the page grows from 2,003,823 to 4,656,615 bytes (the
+  check-next budget is 25 MB). The data is what `index.html` already publishes (class P).
+- **`app/src/data/refdata.ts`**: `readBlock(name)` parses a block once and keeps it; `blockOf(name, overrides)` returns
+  an uploaded MF or SIF Monitor in place of the embedded block (for the matcher and the views); `asOnOf(name)` dates a
+  block from VINTAGE (STOCK_RET: NOT AVAILABLE IN SUPPLIED DATA). Not a pure layer: engines get blocks as arguments.
+- Tests: `tests/next/refdata-blocks.test.mjs` (each block equals its committed file, in list order, the same names as
+  `BLOCK_NAMES`; the page passes check-next; a data change leaves the build id and the CSP unchanged; deterministic),
+  `tests/unit/data/refdata.test.ts`.
+
 ### Added (new build, M11a monthly update engine core; the legacy refresh pipeline is unchanged)
 - **`scripts/monthly-update/`** reads a month's files from the private inbox and `monthly_updates/YYYY-MM/`, classifies
   each by content, then structure, then name (client material detected first and quarantined, never copied; a name and
