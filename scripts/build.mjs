@@ -16,8 +16,12 @@
 //      Screener link of app/src/config/links.json (D-027) at the right of the masthead (D-037), so the one remote URL
 //      sits in one static anchor.
 //   4. Data blocks are non-executable <script type="application/json"> elements with "<" escaped: build-info
-//      (channel, buildId, and every library with its version, licence and the SHA-256 of its vendored file) and
-//      third-party-licences (the licence texts).
+//      (channel, buildId, and every library with its version, licence and the SHA-256 of its vendored file),
+//      third-party-licences (the licence texts) and one refdata-<NAME> block per entry of REFDATA_BLOCKS (the
+//      generated reference data, whole, read by app/src/data/refdata.ts; architecture §17.2, §19). Data blocks are
+//      not hashed into the build id or the CSP, so a monthly data change leaves both unchanged: the build id names
+//      the code, not the data. The data's provenance is VINTAGE.json (each file's SHA-256 and the data month), carried
+//      in the page as the refdata-VINTAGE block.
 //   5. A Content-Security-Policy meta tag, the first element of <head>, allows exactly the inline scripts and the
 //      style element by their SHA-256 and forbids every connection (connect-src 'none').
 // The output is deterministic: the same inputs give a byte-identical file (no dates, no absolute paths, sorted
@@ -42,6 +46,45 @@ export const DEFAULTS = Object.freeze({
   vendorManifest: 'app/vendor/MANIFEST.json',
   out: 'app/dist/index.html',
 });
+
+/**
+ * The reference-data blocks embedded in the page, in page order: [block name, file]. The page carries each file
+ * whole as <script type="application/json" id="refdata-<NAME>">. Keep in step with BLOCK_NAMES in
+ * app/src/data/refdata.ts (tests/next/refdata-blocks.test.mjs checks both). Values: NB-04 (M3b); the matcher's blocks:
+ * NB-02 (format agreed 26 Nov 2026).
+ */
+export const REFDATA_BLOCKS = Object.freeze([
+  ['MF_PERF', 'data/refdata/MF_PERF.json'],
+  ['MF_PERF_DIRECT', 'data/refdata/MF_PERF_DIRECT.json'],
+  ['SIF_PERF', 'data/refdata/SIF_PERF.json'],
+  ['BENCH_RET', 'data/refdata/BENCH_RET.json'],
+  ['STOCK_RET', 'data/refdata/STOCK_RET.json'],
+  ['VINTAGE', 'data/refdata/VINTAGE.json'],
+]);
+
+/** The folders a refdata block file may come from (directly inside one of them), relative to the repository. */
+export const REFDATA_DIRS = Object.freeze(['data/refdata', 'data/owner']);
+
+/**
+ * The refdata-<NAME> data blocks for a list of [name, file]. Each file must be a .json file directly inside one of
+ * `dirs` (relative to `root`): the page carries only the generated reference data and the owner's tables, never a
+ * file from elsewhere in the repository (ARC-03 R1, 26 Nov 2026).
+ */
+export function refdataBlocks(list, root, dirs = REFDATA_DIRS) {
+  const seen = new Set();
+  return list.map(([name, file]) => {
+    if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(name) || seen.has(name)) throw new Error(`refdata block name "${name}" is not a unique plain name`);
+    seen.add(name);
+    const absFile = path.resolve(root, file);
+    const inside = dirs.some((d) => {
+      const rel = path.relative(path.resolve(root, d), absFile);
+      return rel !== '' && !path.isAbsolute(rel) && !rel.startsWith('..') && !rel.includes(path.sep) && !rel.includes('/') && rel.endsWith('.json');
+    });
+    if (!inside) throw new Error(`refdata block "${name}": ${file} is not a .json file directly inside ${dirs.join(' or ')}`);
+    const value = JSON.parse(fs.readFileSync(absFile, 'utf8'));
+    return jsonBlock(`refdata-${name}`, value);
+  });
+}
 
 /** The fixed policy; script-src and style-src are filled with the hashes of the inline elements. */
 export function cspFor(scriptHashes, styleHashes) {
@@ -353,7 +396,7 @@ export async function buildNext(options = {}) {
   html = replaceOnce(html, 'style', `<style>${css}</style>`);
   html = replaceOnce(html, 'nav', navHtml(sections));
   html = replaceOnce(html, 'screener', screenerHtml(link));
-  html = replaceOnce(html, 'data', [jsonBlock('build-info', buildInfo), jsonBlock('third-party-licences', licences)].join('\n'));
+  html = replaceOnce(html, 'data', [jsonBlock('build-info', buildInfo), jsonBlock('third-party-licences', licences), ...refdataBlocks(opt.refdata ?? REFDATA_BLOCKS, root, opt.refdataDirs ?? REFDATA_DIRS)].join('\n'));
   html = replaceOnce(html, 'scripts', scripts.map((s) => `<script>${s.text}</script>`).join('\n'));
 
   return {
