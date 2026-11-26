@@ -4,6 +4,22 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M3b data side: the weighted returns engines; not wired into the page yet)
+- **`app/src/engine/returns/portfolio-returns.ts`** (E-147, D-023 point 3): the MF portfolio's 1Y/3Y/5Y "weighted
+  average return of current holdings", weighted by share of the MF value. A fund without the tenor is left out of the
+  weights and counted in the coverage, never 0% (funds at 50/30/20% with 14%, 6% and none: 11.00% at 80% coverage,
+  not 8.80%). Sources in order: the uploaded MF Monitor, then the embedded monthly monitor (the pack joins in M10u); a
+  fund missing in the primary is filled from a later source only at the same as-on date. One coverage footnote text
+  for screen, slide and sheet ("3Y covers 80% of MF value; 1 fund without a 3Y return excluded", with the sources and
+  dates); `asOnDay()` reads the monitor's as-on text.
+- **`app/src/engine/returns/stock-cagr.ts`** (E-148, D-023 point 4): each stock's 1Y/3Y/5Y CAGR from split- and
+  bonus-adjusted prices at the exact anniversaries of the review's as-on date (29 Feb maps to 28 Feb), a price on that
+  date or up to 7 days earlier, else the tenor is missing (INSUFFICIENT EVIDENCE when the series starts later, never
+  0%); the direct-equity figure weighted by direct-equity value (60/40% at 10% and 20%: 14.00%; without the 40%
+  stock's 3Y: 10.00% at 60%). A stock takes the first price source that has it, labelled with that source.
+- Tests: `unit/returns/portfolio-returns.test.ts`, `unit/returns/stock-cagr.test.ts` (the known answers of
+  08-regression-test-plan). Parity rows E-147 and E-148: in progress.
+
 ### Changed (new build, model contracts-2: contract I-37 and the analyst question; types only, `/next/` build byte-identical)
 - **`app/src/model/tax.ts`** (contract I-37): the lot and roll-up types of the capital-gains and tax engine
   (`RealisedGain`, `TaxInputs`, `Bucket`, `PersonYearTax`, `FamilyTaxYear`, `TaxPosition`, `HarvestResult` and their
