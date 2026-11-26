@@ -167,34 +167,48 @@ Record each drift and its fix in the log.
 
 ### Step 3: Market Update slides
 
-> **NOT RUN until the TA-26 script is reviewed (CLAUDE.md rule 10; PD-49).** Do not run the snippet below as written:
-> it uses `New-Object -ComObject` and `$ppt.Quit()`, which rule 10 forbids (PowerPoint is open on the owner's PC and
-> COM attaches to it). Never open a vendor deck in PowerPoint by any other means either. Until the reviewed script
-> exists, skip this step and say so in the refresh log:
-> - build Step 5 **without** `--slides`, and splice Step 6 **without** `--label`. The splice applies `--label` only to
->   a blocks file that carries `MARKET_UPDATE_IMAGES`, which only a build with `--slides` writes, and it ignores the
->   label silently otherwise. The Market Update slot then keeps its previous slides and its caption "Embedded default ·
+> **Never open a vendor deck in PowerPoint** (CLAUDE.md rule 10): PowerPoint is open on the owner's PC and COM
+> attaches to it. If no slide source has arrived, or the scripts below are not reviewed, skip this step and say so in
+> the refresh log:
+> - build step 5 **without** `--slides`, and splice step 6 **without** `--label`. The splice applies `--label` only to
+>   a blocks file that carries `MARKET_UPDATE_IMAGES`, which only a build with `--slides` writes, and otherwise ignores
+>   the label silently. The Market Update slot then keeps its previous slides and its caption "Embedded default ·
 >   <previous label> (N)", and the log lists it under "Blocks left stale"; or
-> - the owner exports the slides by hand into a folder of `slideN.jpg` files (1920×1080) inside the inbox; Step 5 then
->   takes that folder with `--slides` and Step 6 uses `--label` as below (PD-49, option B).
+> - the owner exports the slides by hand into a folder of `slideN.jpg` files (1920×1080) inside the inbox. Step 5
+>   then takes that folder with `--slides`, and step 6 uses `--label` (PD-49, option B).
 
-The Outlook deck holds live charts, so it is rendered, not unzipped:
-1. Copy it to a short local path (OneDrive and long paths break the export).
-2. Export every slide at 1920×1080 with PowerPoint COM.
-3. **Look at every image.** A chart that failed to render comes out blank.
+**The route since 22 Nov 2026: render the Investment Reckoner PDF, with no Office.** This route was used for the
+"Nov 2026" slides (refresh log 2026-10, §4b). The owner names the pages (October used pages 5 to 10 of the November
+Reckoner).
+1. **Scripts.** Use `C:\dev\slide-tools\render-pdf.ps1` (SHA-256 `958b095ee2ef39ba4f4624a404683ffe491e0bec1e8cd816ec74e690a79f49e0`)
+   and `C:\dev\slide-tools\shrink.ps1` (`c9e076ed3a16a97cc533d3d9ccff38bcf2fe732031ca9f1a8039141eaf6b7cf3`).
+   - Run them only once ARC-02's review GO is recorded here for these hashes. **The review was requested on 26 Nov 2026
+     and is pending.**
+   - Check each script's hash just before it runs, and run each in its own `powershell.exe -NoProfile` process.
+   - They use Windows' built-in PDF renderer (Windows.Data.Pdf) and System.Drawing, with no Office, no COM, no network
+     and no deletes.
+2. **Copy.** Copy the PDF from `Outlook export` to a short folder of its own outside OneDrive, for example
+   `C:\Temp\slides_<M>`.
+3. **Render** the chosen pages at width 2880: `render-pdf.ps1 -Pdf <copy> -Pages 5,6,... -OutDir <folder> -Width 2880`.
+   It writes `page<N>.jpg` at the page's own aspect ratio. **Check that every page came out 2880×1620 (16:9).**
+   `shrink.ps1` stretches to 1920×1080 whatever the shape, so a page of another shape must be raised with the owner,
+   never stretched. Use an empty out-folder, because the script overwrites without asking.
+4. **Shrink** to 1920×1080 JPEG at quality 82: `shrink.ps1 -InDir <folder> -OutDir <folder2> -Pages 5,6,...` writes
+   `Slide<N>.jpg`.
+5. **Stage** them as `slide1.jpg` … `slideK.jpg`, in the owner's order, by byte copy (check each with `cmp`), and
+   record bytes and SHA-256 in the log.
+6. **Look at every image.** A page that failed to render comes out blank. Ship the pages as supplied. If the content
+   looks wrong (a wrong month in a title, the Reckoner's own page number in a corner), flag it to the owner; do not
+   correct it.
+7. **Build.** Build with `--slides <staging>` (step 5). If no other monthly file is being rebuilt, build from an empty
+   `--src` folder: only MARKET_UPDATE_IMAGES is written and DATA_DATES comes out unchanged. Rehearse that on the
+   current slides first; it should show no REFDATA change and the same length. Then splice with `--label "$LABEL"`
+   (step 6).
 
-```powershell
-# NOT RUN: do not paste this snippet (rule 10; see the banner above).
-$tmp = "$env:TEMP\cx_slides_2026-10"; New-Item -ItemType Directory -Force $tmp | Out-Null
-Copy-Item -LiteralPath "<IN>\Monthly Outlook Pagers_Nov 2026.pptx" "$tmp\deck.pptx"
-$ppt = New-Object -ComObject PowerPoint.Application
-$p = $ppt.Presentations.Open("$tmp\deck.pptx", $true, $false, $false)
-$i = 1; foreach ($s in $p.Slides) { $s.Export("$tmp\slide$i.jpg", "JPG", 1920, 1080); $i++ }
-$p.Close(); $ppt.Quit()
-```
-
-Expect ~140–530 KB per slide. Ship the slides as supplied. If the content looks wrong (a wrong month in a
-title, say), flag it to the owner; do not correct it.
+The pagers deck (`Invictus Market Outlook Pagers_…`) is not matched by the intake's `^Monthly Outlook Pagers` pattern.
+Its pages go in only when the owner asks, and by this same PDF route (a PDF of the deck from the owner), never by
+opening the deck. **PowerPoint COM stays forbidden** (rule 10): the old export snippet has been removed. Read a deck
+only as zip/XML.
 
 ### Step 4: risk-ratio workbook
 
