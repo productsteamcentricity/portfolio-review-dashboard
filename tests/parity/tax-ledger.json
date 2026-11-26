@@ -7,7 +7,8 @@
   "notes": [
     "Every difference between the two sides on the synthetic books of the test must match exactly one entry, and every entry must be used, under TZ=Asia/Kolkata and TZ=UTC.",
     "A difference is written field|holding: the field is class, class-presence, record-presence, status (the list and kind: split, fundLevel, passThrough, pms, an unreconciled kind, unmapped), record-class, reason, lt, st, unc (CMV and gain, rupees, to Rs 0.005) or count (later, noPrice). The holding is its name, its CMV in whole rupees and, for a holding split at 1 Apr 2023, its part. A status difference is reported alone for its holding.",
-    "Classes follow 08-regression-test-plan.md section 5.4: correction (a known defect fixed, KI or OD named), improvement, regression (a defect of the new code; must be empty for a merge). Only corrections are recorded here."
+    "Classes follow 08-regression-test-plan.md section 5.4: correction (a known defect fixed, KI or OD named), improvement, regression (a defect of the new code; must be empty for a merge). Only corrections are recorded here.",
+    "rollupEntries: the roll-up and harvest parity of NB-M7a S4b (holdings-rollup.ts rollupHoldings, harvest.ts buildHarvests against the live summarise, taxRollup and taxBuildHarvest inside computeTaxation, with equal inputs: slab 30% entered and the exemption confirmed unused). A difference is scope|field: the scope is family or a client label; the field is a totals, byClass, byProduct, byAsset or harvest path; an entry field ending in * matches a prefix. Every difference must match exactly one entry and every entry must be used."
   ],
   "entries": [
     {
@@ -45,6 +46,107 @@
       "class": "correction",
       "reference": "OD-15; KI-069",
       "description": "The second holding of TX-03 (100 units, share 0.25): apportioned and split in the new engine; unreconciled (excess) in the live."
+    }
+  ],
+  "rollupEntries": [
+    {
+      "id": "TXR-01",
+      "book": "tax-od16",
+      "scope": "*",
+      "field": "totals.*",
+      "class": "correction",
+      "reference": "OD-16; KI-070",
+      "description": "Follows from TX-01 and TX-02 (the two holdings the new reader splits (Top-Up, STP In, SWP; SIP) and the live lists as unreconciled (noLots)): in the new engine their lots are long or short term and enter the family and client totals (long, short and unclassified CMV and gain; nPos); in the live their CMV and gain stay unclassified. No difference in the roll-up or harvest arithmetic itself."
+    },
+    {
+      "id": "TXR-02",
+      "book": "tax-od16",
+      "scope": "*",
+      "field": "byClass*",
+      "class": "correction",
+      "reference": "OD-16; KI-070",
+      "description": "Follows from TX-01 and TX-02 (the two holdings the new reader splits (Top-Up, STP In, SWP; SIP) and the live lists as unreconciled (noLots)): in the new engine their lots are long or short term and enter byClass (the Equity Mutual Funds class and its pools exist only in the new engine; the class order); in the live their CMV and gain stay unclassified. No difference in the roll-up or harvest arithmetic itself."
+    },
+    {
+      "id": "TXR-03",
+      "book": "tax-od16",
+      "scope": "*",
+      "field": "byProduct[Mutual Funds].*",
+      "class": "correction",
+      "reference": "OD-16; KI-070",
+      "description": "Follows from TX-01 and TX-02 (the two holdings the new reader splits (Top-Up, STP In, SWP; SIP) and the live lists as unreconciled (noLots)): in the new engine their lots are long or short term and enter byProduct, Mutual Funds (long, short and unclassified CMV and gain); in the live their CMV and gain stay unclassified. No difference in the roll-up or harvest arithmetic itself."
+    },
+    {
+      "id": "TXR-04",
+      "book": "tax-od16",
+      "scope": "*",
+      "field": "byAsset[Equity].*",
+      "class": "correction",
+      "reference": "OD-16; KI-070",
+      "description": "Follows from TX-01 and TX-02 (the two holdings the new reader splits (Top-Up, STP In, SWP; SIP) and the live lists as unreconciled (noLots)): in the new engine their lots are long or short term and enter byAsset, Equity (long, short and unclassified CMV and gain); in the live their CMV and gain stay unclassified. No difference in the roll-up or harvest arithmetic itself."
+    },
+    {
+      "id": "TXR-05",
+      "book": "tax-od16",
+      "scope": "*",
+      "field": "harvest.*",
+      "class": "correction",
+      "reference": "OD-16; KI-070",
+      "description": "Follows from TX-01 and TX-02 (the two holdings the new reader splits (Top-Up, STP In, SWP; SIP) and the live lists as unreconciled (noLots)): in the new engine their lots are long or short term and enter the harvest (Sec 198 gains, exemption used, tax before and after); in the live their CMV and gain stay unclassified. No difference in the roll-up or harvest arithmetic itself."
+    },
+    {
+      "id": "TXR-06",
+      "book": "tax-od15",
+      "scope": "*",
+      "field": "totals.*",
+      "class": "correction",
+      "reference": "OD-15; KI-069",
+      "description": "Follows from TX-03 and TX-04 (the two holdings of one scheme apportioned by units and split in the new engine, unreconciled (excess) in the live): in the new engine their lots are long or short term and enter the family and client totals (long, short and unclassified CMV and gain; nPos); in the live their CMV and gain stay unclassified. No difference in the roll-up or harvest arithmetic itself."
+    },
+    {
+      "id": "TXR-07",
+      "book": "tax-od15",
+      "scope": "*",
+      "field": "byClass*",
+      "class": "correction",
+      "reference": "OD-15; KI-069",
+      "description": "Follows from TX-03 and TX-04 (the two holdings of one scheme apportioned by units and split in the new engine, unreconciled (excess) in the live): in the new engine their lots are long or short term and enter byClass (the Equity Mutual Funds class and its pools exist only in the new engine; the class order); in the live their CMV and gain stay unclassified. No difference in the roll-up or harvest arithmetic itself."
+    },
+    {
+      "id": "TXR-08",
+      "book": "tax-od15",
+      "scope": "*",
+      "field": "byProduct[Mutual Funds].*",
+      "class": "correction",
+      "reference": "OD-15; KI-069",
+      "description": "Follows from TX-03 and TX-04 (the two holdings of one scheme apportioned by units and split in the new engine, unreconciled (excess) in the live): in the new engine their lots are long or short term and enter byProduct, Mutual Funds (long, short and unclassified CMV and gain); in the live their CMV and gain stay unclassified. No difference in the roll-up or harvest arithmetic itself."
+    },
+    {
+      "id": "TXR-09",
+      "book": "tax-od15",
+      "scope": "*",
+      "field": "byAsset[Equity].*",
+      "class": "correction",
+      "reference": "OD-15; KI-069",
+      "description": "Follows from TX-03 and TX-04 (the two holdings of one scheme apportioned by units and split in the new engine, unreconciled (excess) in the live): in the new engine their lots are long or short term and enter byAsset, Equity (long, short and unclassified CMV and gain); in the live their CMV and gain stay unclassified. No difference in the roll-up or harvest arithmetic itself."
+    },
+    {
+      "id": "TXR-10",
+      "book": "tax-od15",
+      "scope": "*",
+      "field": "harvest.*",
+      "class": "correction",
+      "reference": "OD-15; KI-069",
+      "description": "Follows from TX-03 and TX-04 (the two holdings of one scheme apportioned by units and split in the new engine, unreconciled (excess) in the live): in the new engine their lots are long or short term and enter the harvest (Sec 198 gains, exemption used, tax before and after); in the live their CMV and gain stay unclassified. No difference in the roll-up or harvest arithmetic itself."
+    },
+    {
+      "id": "TXR-11",
+      "book": "tax-ki065",
+      "scope": "*",
+      "field": "byAsset*",
+      "class": "correction",
+      "reference": "OD-7",
+      "description": "One holding has a blank Asset Name. The new base-file reader leaves its class unknown (OD-7), so byAsset groups it under (unspecified); the live reads a blank asset as Equity and adds it to the Equity group."
     }
   ]
 }

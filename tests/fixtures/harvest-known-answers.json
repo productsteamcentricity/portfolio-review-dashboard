@@ -1,0 +1,168 @@
+{
+  "version": "harvest-ka-1",
+  "design": "No design section: PLAN-03 P6 (MOD-04), D-040 e, f, g; PD-03; PD-07; Q-52; KI-130. Port of the live taxBuildHarvest (index.html, PR #36).",
+  "origin": "NB-03",
+  "review": "synthetic",
+  "asOn": "2026-09-30",
+  "fy": 2026,
+  "tolerance": 0.01,
+  "note": "Hand-worked by NB-03 (CHAT-010) for the financial review; not the design's known answers. Each case lists holdings by client, name, I-21 class (the key of classify.ts INST) and the long-term (lt) or short-term (st) unrealised gain in rupees. As on 30 Sep 2026: tax year 2026-27, the Sec 198 exemption Rs 1,25,000 per person (table v1 section 10.2) at 12.5%. inputs.slab is the analyst's slab rate per client (percent; absent = not entered, PD-07); inputs.exemptionUsed is the analyst's entry per client (a rupee amount or \"unused-confirmed\"); inputs.statement is the statement person-year exemption.applied per client (Q-52). Expected figures are rupees, unrounded; null is the dash \"slab rate not set\".",
+  "cases": [
+    {
+      "id": "H-1",
+      "group": "harvest",
+      "origin": "NB-03",
+      "positions": [
+        { "client": "Sample Client A", "name": "Sample Large Cap Fund", "cls": "equityMf", "cmv": 1000000, "lt": 300000 },
+        { "client": "Sample Client A", "name": "Sample Mid Cap Fund", "cls": "equityMf", "cmv": 400000, "lt": -100000 }
+      ],
+      "inputs": { "exemptionUsed": { "Sample Client A": "unused-confirmed" } },
+      "expect": {
+        "clients": [
+          { "client": "Sample Client A", "exemptionApplied": "applied", "exemptionAvailable": 125000, "taxBefore": 21875, "taxAfter": 9375, "saving": 12500,
+            "ltLosses": 100000, "ltUsed": 100000, "ltUnused": 0, "stUsed": 0, "s198Gains": 300000, "s198Left": 200000, "candidates": ["Sample Mid Cap Fund"] }
+        ]
+      },
+      "note": "A losing LT holding inside a class that nets positive (ltPos 3,00,000, ltNeg 1,00,000), exemption confirmed unused. Sec 198 gains G = 3,00,000; unused exemption 1,25,000; slots: above the exemption 1,75,000 at 12.5%, inside it 1,25,000 at 0%. Before: 3,00,000 x 12.5% = 37,500 less 1,25,000 x 12.5% = 15,625, so 21,875. The LT loss 1,00,000 goes to the slot above the exemption first (rank 12.5% before 0%): left 2,00,000. After: 2,00,000 x 12.5% = 25,000 less 15,625 = 9,375. Saving 12,500 = 1,00,000 x 12.5%."
+    },
+    {
+      "id": "H-2",
+      "group": "harvest",
+      "origin": "NB-03",
+      "positions": [
+        { "client": "Sample Client A", "name": "Sample Large Cap Fund", "cls": "equityMf", "cmv": 1000000, "lt": 300000 },
+        { "client": "Sample Client A", "name": "Sample Mid Cap Fund", "cls": "equityMf", "cmv": 400000, "lt": -100000 }
+      ],
+      "inputs": {},
+      "expect": {
+        "clients": [
+          { "client": "Sample Client A", "exemptionApplied": "exemption not applied", "exemptionAvailable": 0, "taxBefore": 37500, "taxAfter": 25000, "saving": 12500,
+            "ltUsed": 100000, "ltUnused": 0, "s198Gains": 300000, "s198Left": 200000, "labels": ["exemption not applied"] }
+        ]
+      },
+      "variants": [
+        {
+          "id": "H-2 statement",
+          "inputs": { "statement": { "Sample Client A": 50000 } },
+          "expect": {
+            "clients": [
+              { "client": "Sample Client A", "exemptionApplied": "applied", "exemptionSource": "statement", "exemptionAvailable": 75000, "taxBefore": 28125, "taxAfter": 15625, "saving": 12500 }
+            ]
+          },
+          "note": "The statement's person-year exemption.applied for the client (its only person) is 50,000, so 75,000 is unused. Before: 37,500 less 75,000 x 12.5% = 9,375, so 28,125. The loss 1,00,000 goes above the exemption (slot 2,25,000): left 2,00,000; after 25,000 less 9,375 = 15,625. Saving 12,500."
+        }
+      ],
+      "note": "H-1 with nothing known about the exemption already used this year (no analyst entry, no statement): Q-52 labels the result \"exemption not applied\" and no exemption enters the figures (the live assumed Rs 0 used, giving H-1's figures). Before 3,00,000 x 12.5% = 37,500; after 2,00,000 x 12.5% = 25,000; saving 12,500."
+    },
+    {
+      "id": "H-3",
+      "group": "harvest",
+      "origin": "NB-03",
+      "positions": [
+        { "client": "Sample Client A", "name": "Sample Corporate Bond Fund", "cls": "debtMf", "cmv": 580000, "st": 80000 },
+        { "client": "Sample Client A", "name": "Sample Flexi Cap Fund", "cls": "equityMf", "cmv": 240000, "st": 40000 },
+        { "client": "Sample Client A", "name": "Sample Small Cap Fund", "cls": "equityMf", "cmv": 150000, "st": -50000 }
+      ],
+      "inputs": { "slab": { "Sample Client A": 30 }, "exemptionUsed": { "Sample Client A": "unused-confirmed" } },
+      "expect": {
+        "clients": [
+          { "client": "Sample Client A", "taxBefore": 8000, "taxAfter": 8000, "saving": 0, "stUsed": 50000, "stUnused": 0, "slabSheltered": 50000,
+            "unquantifiedGain": 80000, "unquantifiedPools": 1, "candidates": ["Sample Small Cap Fund"] }
+        ]
+      },
+      "variants": [
+        {
+          "id": "H-3 slab 10",
+          "inputs": { "slab": { "Sample Client A": 10 }, "exemptionUsed": { "Sample Client A": "unused-confirmed" } },
+          "expect": { "clients": [ { "client": "Sample Client A", "taxBefore": 8000, "taxAfter": 0, "saving": 8000, "stUsed": 50000, "slabSheltered": 10000 } ] },
+          "note": "Slab 10% ranks the slab gain below the 20% equity ST gain: the loss 50,000 takes the 40,000 equity gain first (saving 8,000), then 10,000 of the slab gain (sheltered, no tax figure). After 0."
+        },
+        {
+          "id": "H-3 no slab",
+          "inputs": { "exemptionUsed": { "Sample Client A": "unused-confirmed" } },
+          "expect": { "clients": [ { "client": "Sample Client A", "taxBefore": 8000, "taxAfter": null, "saving": null, "stUsed": null, "slabSheltered": null, "unquantifiedGain": 80000, "dash": "slab rate not set" } ] },
+          "note": "PD-07, no slab entered: at slab 0% the loss goes to the equity gain first (after 0), at 30% to the slab gain first (after 8,000). The two differ, so the after-set-off figures are the dash \"slab rate not set\"; the tax before (8,000, the slab gain unquantified) stands."
+        },
+        {
+          "id": "H-3 no slab, losses cover all",
+          "positions": [
+            { "client": "Sample Client A", "name": "Sample Corporate Bond Fund", "cls": "debtMf", "cmv": 580000, "st": 80000 },
+            { "client": "Sample Client A", "name": "Sample Flexi Cap Fund", "cls": "equityMf", "cmv": 240000, "st": 40000 },
+            { "client": "Sample Client A", "name": "Sample Small Cap Fund", "cls": "equityMf", "cmv": 300000, "st": -200000 }
+          ],
+          "inputs": { "exemptionUsed": { "Sample Client A": "unused-confirmed" } },
+          "expect": { "clients": [ { "client": "Sample Client A", "taxBefore": 8000, "taxAfter": 0, "saving": 8000, "stUsed": 120000, "stUnused": 80000, "slabSheltered": 80000, "dash": null } ] },
+          "note": "No slab entered, but the ST loss 2,00,000 exceeds every gain (1,20,000): any slab rate gives the same set-off, so the figures stand. After 0; saving 8,000; 80,000 of the loss unused."
+        }
+      ],
+      "note": "An ST loss against slab gains with the slab entered as 30%: the slab gain ranks at 30%, above the 20% equity ST gain, so the loss 50,000 goes to the slab gain (no tax figure; 50,000 slab-sheltered, 30,000 left). Before: 40,000 x 20% = 8,000; after 8,000; saving 0. The candidate is the losing holding."
+    },
+    {
+      "id": "H-4",
+      "group": "harvest",
+      "origin": "NB-03",
+      "positions": [
+        { "client": "Sample Client A", "name": "Sample Coin One", "cls": "crypto", "cmv": 40000, "st": -60000 },
+        { "client": "Sample Client A", "name": "Sample Coin Two", "cls": "crypto", "cmv": 90000, "st": 40000 },
+        { "client": "Sample Client A", "name": "Sample Large Cap Fund", "cls": "equityMf", "cmv": 900000, "lt": 200000 },
+        { "client": "Sample Client A", "name": "Sample Flexi Cap Fund", "cls": "equityMf", "cmv": 250000, "st": 50000 }
+      ],
+      "inputs": { "exemptionUsed": { "Sample Client A": "unused-confirmed" } },
+      "expect": {
+        "clients": [
+          { "client": "Sample Client A", "taxBefore": 31375, "taxAfter": 31375, "saving": 0, "stLosses": 0, "stUsed": 0, "noSetOffGain": 40000, "noSetOffLoss": 60000, "candidates": [] }
+        ]
+      },
+      "note": "PD-03 (D-043, TX-23): crypto kept out of set-off. The crypto gain 40,000 is taxed in full at 30% (12,000) before and after; the crypto loss 60,000 reduces no gain and the losing coin is not a candidate. Before: 2,00,000 x 12.5% = 25,000 + 50,000 x 20% = 10,000 + 12,000 = 47,000, less the exemption 1,25,000 x 12.5% = 15,625: 31,375. After the same; saving 0. Pooled (wrong): the 60,000 loss would take the 40,000 crypto gain (30%) and 20,000 of the equity ST gain (20%), a saving of 16,000."
+    },
+    {
+      "id": "H-5",
+      "group": "harvest",
+      "origin": "NB-03",
+      "positions": [
+        { "client": "Sample Client A", "name": "Sample Large Cap Fund", "cls": "equityMf", "cmv": 650000, "lt": 150000 },
+        { "client": "Sample Client B", "name": "Sample Mid Cap Fund", "cls": "equityMf", "cmv": 300000, "lt": -100000 }
+      ],
+      "inputs": { "exemptionUsed": { "Sample Client A": "unused-confirmed", "Sample Client B": "unused-confirmed" } },
+      "expect": {
+        "clients": [
+          { "client": "Sample Client A", "taxBefore": 3125, "taxAfter": 3125, "saving": 0, "ltLosses": 0, "candidates": [] },
+          { "client": "Sample Client B", "taxBefore": 0, "taxAfter": 0, "saving": 0, "ltLosses": 100000, "ltUsed": 0, "ltUnused": 100000, "candidates": ["Sample Mid Cap Fund"] }
+        ],
+        "family": { "label": "sum of separate computations", "taxBefore": 3125, "taxAfter": 3125, "saving": 0, "ltLosses": 100000, "ltUnused": 100000, "candidates": 1 }
+      },
+      "note": "Two clients, never pooled (D-040 f, TX-08). A: 1,50,000 LT gain, exemption 1,25,000: 25,000 x 12.5% = 3,125 before and after. B: a 1,00,000 LT loss and no gain: 0, the loss unused. Family = the sum: 3,125 / 3,125 / saving 0. Pooled (wrong): 50,000 net, inside one exemption, tax 0, a false saving of 3,125."
+    },
+    {
+      "id": "H-6",
+      "group": "harvest",
+      "origin": "NB-03",
+      "positions": [
+        { "client": "Sample Client A", "name": "Sample Large Cap Fund", "cls": "equityMf", "cmv": 900000, "lt": 200000 },
+        { "client": "Sample Client A", "name": "Sample Industries Limited", "cls": "listedShares", "cmv": 150000, "lt": 50000 },
+        { "client": "Sample Client A", "name": "Sample Mid Cap Fund", "cls": "equityMf", "cmv": 210000, "lt": -90000 }
+      ],
+      "inputs": { "exemptionUsed": { "Sample Client A": 25000 } },
+      "expect": {
+        "clients": [
+          { "client": "Sample Client A", "exemptionApplied": "applied", "exemptionSource": "analyst", "exemptionAvailable": 100000, "taxBefore": 18750, "taxAfter": 7500, "saving": 11250,
+            "s198Gains": 250000, "s198Left": 160000, "exAfter": 100000, "ltUsed": 90000 }
+        ]
+      },
+      "variants": [
+        {
+          "id": "H-6 loss reaches the exemption",
+          "positions": [
+            { "client": "Sample Client A", "name": "Sample Large Cap Fund", "cls": "equityMf", "cmv": 900000, "lt": 200000 },
+            { "client": "Sample Client A", "name": "Sample Industries Limited", "cls": "listedShares", "cmv": 150000, "lt": 50000 },
+            { "client": "Sample Client A", "name": "Sample Mid Cap Fund", "cls": "equityMf", "cmv": 300000, "lt": -200000 }
+          ],
+          "inputs": { "exemptionUsed": { "Sample Client A": 25000 } },
+          "expect": { "clients": [ { "client": "Sample Client A", "taxBefore": 18750, "taxAfter": 0, "saving": 18750, "s198Left": 50000, "exAfter": 50000, "ltUsed": 200000 } ] },
+          "note": "A loss of 2,00,000: 1,50,000 fills the slot above the exemption, the other 50,000 goes inside it (0%) and saves nothing. Left 50,000, all inside the exemption: after 50,000 x 12.5% less 50,000 x 12.5% = 0. Saving 18,750 = 1,50,000 x 12.5%, not 2,00,000 x 12.5%."
+        }
+      ],
+      "note": "The s.198 slot: two Sec 198 classes (Equity MF 2,00,000; listed shares 50,000; G = 2,50,000), 25,000 of the exemption already used (analyst entry), so 1,00,000 unused. Slots: 1,50,000 above the exemption at 12.5%, 1,00,000 inside at 0%. Before: 2,50,000 x 12.5% = 31,250 less 1,00,000 x 12.5% = 12,500: 18,750. The LT loss 90,000 is spent above the exemption first; left 1,60,000, of which 1,00,000 is inside: after 1,60,000 x 12.5% = 20,000 less 12,500 = 7,500. Saving 11,250 = 90,000 x 12.5%."
+    }
+  ]
+}

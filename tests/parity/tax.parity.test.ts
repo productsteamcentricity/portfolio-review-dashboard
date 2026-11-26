@@ -1,4 +1,4 @@
-// covers: E-41 E-42 KI-065 OD-12 OD-15 OD-16 OD-2 D-028
+// covers: E-41 E-42 E-43 KI-065 OD-12 OD-15 OD-16 OD-2 OD-7 PD-07 Q-52 D-028
 // Holdings tax parity (NB-M7a S4): the LIVE engine (index.html computeTaxation and taxClassify, run through
 // tools/engine-host.js by tests/fixtures/make-books.ts loadLegacyHost, read and call only) and the new
 // app/src/engine/tax/{classify,lots}.ts on the same synthetic base files and IRR files. Compared per holding: the class
@@ -17,6 +17,13 @@ import { parseIrrFile } from '../../app/src/ingest/irr-file.ts';
 import { computeTaxLots } from '../../app/src/engine/tax/lots.ts';
 import type { TaxPositionRecord } from '../../app/src/engine/tax/lots.ts';
 import { TAX_RULES_I21, classifyHolding } from '../../app/src/engine/tax/classify.ts';
+import { rollupHoldings } from '../../app/src/engine/tax/holdings-rollup.ts';
+import type { ClientTaxSummary, HoldingsTaxSummary } from '../../app/src/engine/tax/holdings-rollup.ts';
+import type { NotSplitKind } from '../../app/src/engine/tax/lots.ts';
+import { buildHarvests } from '../../app/src/engine/tax/harvest.ts';
+import type { HarvestCandidate, HarvestContext, HarvestFigures } from '../../app/src/engine/tax/harvest.ts';
+import { financialYearOf } from '../../app/src/engine/tax/rules.ts';
+import type { ClientId } from '../../app/src/model/ids.ts';
 import { ymdToDay } from '../../app/src/engine/dates.ts';
 import type { SourceFileId } from '../../app/src/model/ids.ts';
 import type { DayNumber } from '../../app/src/model/value.ts';
@@ -357,5 +364,235 @@ describe('holdings tax parity with the live computeTaxation and taxClassify (E-4
     const diffs = results.reduce((s, r) => s + r.diffs.length, 0);
     assert.ok(results.length === BOOKS.length, `${results.length} books compared`);
     assert.ok(rows >= 50 && diffs < rows / 4, `${rows} records, ${diffs} differences`);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// S4b: the roll-ups and the harvest (E-43, D-028). The live computeTaxation's own summarise, taxRollup and per-client
+// taxBuildHarvest (run by taxApplyAssumptions with the live defaults: slab 30%, exemption used Rs 0) against
+// app/src/engine/tax/holdings-rollup.ts rollupHoldings and harvest.ts buildHarvests with the slab ENTERED as 30% and the
+// exemption CONFIRMED unused for every client (equal inputs). Compared field by field, in rupees to Rs 0.005, per scope
+// (the family and each client by label): the totals, byClass (with the per-position pools), byProduct, byAsset and the
+// harvest (the live TAX_HARVEST_SUM fields and the candidates). Every difference must match exactly one entry of the
+// ledger's `rollupEntries` (a recorded correction), and every entry must be used.
+
+/** A book for the harvest: losses inside positive classes, a slab-rate gain, crypto, and two clients. */
+const HARVEST: Book = {
+  id: 'tax-harvest', asOn: day(2026, 9, 30),
+  book: [
+    hold(A, N.blue, 'Large Cap Fund', 'Equity', MF, 1000, 100000, 160000),
+    hold(A, N.small, 'Small Cap Fund', 'Equity', MF, 500, 100000, 70000),
+    hold(A, N.mid, 'Mid Cap Fund', 'Equity', MF, 400, 40000, 34000),
+    hold(A, N.bond, 'Corporate Bond Fund', 'Debt', MF, 1000, 10000, 12000),
+    hold(A, N.flexi, 'Flexi Cap Fund', 'Equity', MF, 100, 10000, 13000),
+    hold(A, 'Sample Crypto Basket', 'Crypto', 'Equity', 'Crypto', 10, 50000, 30000, { amc: '' }),
+    hold(A, 'Sample Crypto Index', 'Crypto', 'Equity', 'Crypto', 10, 20000, 35000, { amc: '' }),
+    hold(B, N.share, 'Direct Equity', 'Equity', 'Equity', 40, 40000, 250000, { amc: '' }),
+    hold(B, N.value, 'Contra Fund', 'Equity', MF, 150, 15000, 9000),
+    hold(B, N.focused, 'Focused Fund', 'Equity', MF, 300, 30000, 31000),
+  ],
+  flows: [
+    flow(A, N.blue, [2024, 1, 10], 'Purchase', 100, -100000),
+    flow(A, N.small, [2024, 3, 1], 'Purchase', 200, -100000),
+    flow(A, N.mid, [2026, 2, 1], 'Purchase', 100, -40000),
+    flow(A, N.bond, [2024, 5, 1], 'Purchase', 10, -10000),
+    flow(A, N.flexi, [2026, 1, 15], 'Purchase', 100, -10000),
+    flow(A, 'Sample Crypto Basket', [2025, 6, 1], 'Purchase', 5000, -50000),
+    flow(A, 'Sample Crypto Index', [2026, 1, 1], 'Purchase', 2000, -20000),
+    flow(B, N.share, [2023, 11, 20], 'Buy', 1000, -40000),
+    flow(B, N.value, [2026, 4, 1], 'Purchase', 100, -15000),
+    flow(B, N.focused, [2024, 6, 1], 'Purchase', 100, -20000), flow(B, N.focused, [2026, 6, 1], 'Purchase', 100, -10000),
+  ],
+};
+
+const ROLLUP_BOOKS: Book[] = [...BOOKS, HARVEST];
+const RLEDGER = (JSON.parse(fs.readFileSync(path.join(REPO, 'tests', 'parity', 'tax-ledger.json'), 'utf8')) as {
+  rollupEntries: Array<{ id: string; book: string; scope: string; field: string; class: string; reference: string; description: string }>;
+}).rollupEntries;
+
+type Flat = Map<string, number | string | null>;
+const CR = 1e7;
+const cr = (x: unknown): number | null => (x === null || x === undefined ? null : (x as number) * CR);
+const HARVEST_FIELDS = ['taxBefore', 'taxAfter', 'saving', 'ltGains', 'stGains', 'ltLosses', 'stLosses', 'ltUsed', 'stUsed', 'ltUnused', 'stUnused',
+  'unquantifiedGain', 'slabSheltered', 's198Gains', 's198Left', 'exBefore', 'exAfter', 'exBeforeTax', 'exAfterTax', 'noSetOffGain', 'noSetOffLoss'] as const;
+const NS_LIVE: Record<string, string> = { fundLevel: 'fund-level', passThrough: 'pass-through', pms: 'per-security' };
+const candKey = (name: string, cls: string, lt: number, st: number): string => `${name}|${cls}|${lt.toFixed(2)}|${st.toFixed(2)}`;
+
+function legacyFlat(b: Book, baseBytes: Uint8Array, irrBytes: Uint8Array): { flat: Flat; tx: Any } {
+  const { XLSX, E, REF } = host;
+  const rows = E.parseBaseRows(XLSX.utils.sheet_to_json(XLSX.read(baseBytes, { type: 'array', cellDates: true }).Sheets['Base File'], { header: 1, raw: true })) as Any[];
+  const iw = XLSX.read(irrBytes, { type: 'array', cellDates: true });
+  const irr = E.parsers.parseIRR(iw.SheetNames, (n: string) => XLSX.utils.sheet_to_json(iw.Sheets[n], { header: 1, raw: true }));
+  const tx = E.computeTaxation(rows, Object.assign({}, REF, { IRR: irr }), new Date(b.asOn * 86400000));
+  const f: Flat = new Map();
+  const summary = (s: Any, scope: string): void => {
+    const t = s.totals;
+    const put = (k: string, v: number | string | null): void => { f.set(`${scope}|${k}`, v); };
+    put('totals.cmv', cr(t.cmv)); put('totals.gl', cr(t.gl)); put('totals.glMissing', t.glMissing);
+    put('totals.ltCmv', cr(t.ltcgCmv)); put('totals.stCmv', cr(t.stcgCmv)); put('totals.unclassCmv', cr(t.unclassCmv));
+    put('totals.ltGain', cr(t.ltcgGain)); put('totals.stGain', cr(t.stcgGain)); put('totals.unclassGain', cr(t.unclassGain));
+    put('totals.lockedCmv', cr(t.lockedCmv)); put('totals.lockedGain', cr(t.lockedGain)); put('totals.lockedN', t.lockedN);
+    put('totals.fundLevelCmv', cr(t.fundLevelCmv)); put('totals.fundLevelGain', cr(t.fundLevelGain)); put('totals.fundLevelN', t.fundLevelN);
+    for (const [k, nk] of Object.entries(NS_LIVE)) {
+      const ns = t.notSplit[k];
+      put(`totals.notSplit.${nk}.n`, ns.n); put(`totals.notSplit.${nk}.cmv`, cr(ns.cmv)); put(`totals.notSplit.${nk}.gl`, cr(ns.gl));
+      put(`totals.notSplit.${nk}.assumedN`, ns.assumedN ?? 0); put(`totals.notSplit.${nk}.ruledN`, ns.ruledN ?? 0);
+    }
+    put('totals.nPos', t.nPos); put('totals.nHold', t.nHold);
+    put('byClass.order', (s.byClass as Any[]).map((g) => g.cls).join(' / '));
+    for (const g of s.byClass as Any[]) {
+      for (const k of ['cmv', 'ltCmv', 'stCmv', 'gl', 'ltGain', 'stGain', 'ltPos', 'ltNeg', 'stPos', 'stNeg']) put(`byClass[${g.cls}].${k}`, cr(g[k]));
+      put(`byClass[${g.cls}].n`, g.n);
+    }
+    for (const [area, list] of [['byProduct', s.byProduct], ['byAsset', s.byAsset]] as const) {
+      put(`${area}.order`, (list as Any[]).map((g) => g.key).join(' / '));
+      for (const g of list as Any[]) {
+        for (const k of ['cmv', 'gl', 'ltCmv', 'stCmv', 'ltGain', 'stGain', 'unclassGain', 'fundGain']) put(`${area}[${g.key}].${k}`, cr(g[k]));
+        put(`${area}[${g.key}].n`, g.n);
+      }
+    }
+  };
+  const harvest = (h: Any, scope: string): void => {
+    for (const k of HARVEST_FIELDS) f.set(`${scope}|harvest.${k}`, cr(h[k]));
+    f.set(`${scope}|harvest.unquantifiedPools`, h.unquantifiedPools);
+    f.set(`${scope}|harvest.candidates`, (h.candidates as Any[]).map((c) => candKey(c.name, c.cls, c.ltLoss * CR, c.stLoss * CR)).join(' / '));
+  };
+  summary(tx, 'family');
+  harvest(tx.harvest, 'family');
+  for (const c of tx.clients as Any[]) { summary(c, c.client); harvest(c.harvest, c.client); }
+  f.set('family|clients.order', (tx.clients as Any[]).map((c) => c.client).join(' / '));
+  return { flat: f, tx };
+}
+
+function newFlat(b: Book, baseBytes: Uint8Array, irrBytes: Uint8Array, ctxOf: (clients: Array<ClientId | null>) => HarvestContext): { flat: Flat; harvest: ReturnType<typeof buildHarvests> } {
+  const base = parseBaseFile(readWorkbook(xlsx, baseBytes), { sourceId: 'b'.repeat(64) as SourceFileId, now: NOW });
+  const irr = parseIrrFile(readWorkbook(xlsx, irrBytes), { sourceId: 'c'.repeat(64) as SourceFileId, now: NOW });
+  const res = computeTaxLots(base.holdings, irr.fund, { asOn: b.asOn });
+  const r = rollupHoldings(res, base.holdings);
+  const H = buildHarvests(r, ctxOf(r.clients.map((c) => c.clientId)));
+  const f: Flat = new Map();
+  const summary = (s: HoldingsTaxSummary, scope: string): void => {
+    const t = s.totals;
+    const put = (k: string, v: number | string | null): void => { f.set(`${scope}|${k}`, v); };
+    put('totals.cmv', t.cmv); put('totals.gl', t.gain.known); put('totals.glMissing', t.gainMissing);
+    put('totals.ltCmv', t.lt.cmv); put('totals.stCmv', t.st.cmv); put('totals.unclassCmv', t.unclassified.cmv);
+    put('totals.ltGain', t.lt.gain.known); put('totals.stGain', t.st.gain.known); put('totals.unclassGain', t.unclassified.gain.known);
+    put('totals.lockedCmv', t.locked.cmv); put('totals.lockedGain', t.locked.gain.known); put('totals.lockedN', t.locked.n);
+    put('totals.fundLevelCmv', t.fundLevel.cmv); put('totals.fundLevelGain', t.fundLevel.gain.known); put('totals.fundLevelN', t.fundLevel.n);
+    for (const nk of Object.values(NS_LIVE)) {
+      const ns = t.notSplit[nk as NotSplitKind];
+      put(`totals.notSplit.${nk}.n`, ns.n); put(`totals.notSplit.${nk}.cmv`, ns.cmv); put(`totals.notSplit.${nk}.gl`, ns.gain.known);
+      put(`totals.notSplit.${nk}.assumedN`, ns.assumedN); put(`totals.notSplit.${nk}.ruledN`, ns.ruledN);
+    }
+    put('totals.nPos', t.nPos); put('totals.nHold', t.nHold);
+    put('byClass.order', s.byClass.map((g) => g.cls).join(' / '));
+    for (const g of s.byClass) {
+      const v: Record<string, number> = { cmv: g.cmv, ltCmv: g.ltCmv, stCmv: g.stCmv, gl: g.gain.known, ltGain: g.ltGain.known, stGain: g.stGain.known,
+        ltPos: g.ltPos, ltNeg: g.ltNeg, stPos: g.stPos, stNeg: g.stNeg };
+      for (const [k, x] of Object.entries(v)) put(`byClass[${g.cls}].${k}`, x);
+      put(`byClass[${g.cls}].n`, g.n);
+    }
+    for (const [area, list] of [['byProduct', s.byProduct], ['byAsset', s.byAsset]] as const) {
+      put(`${area}.order`, list.map((g) => g.key).join(' / '));
+      for (const g of list) {
+        const v: Record<string, number> = { cmv: g.cmv, gl: g.gain.known, ltCmv: g.ltCmv, stCmv: g.stCmv, ltGain: g.ltGain.known, stGain: g.stGain.known,
+          unclassGain: g.unclassGain.known, fundGain: g.fundGain.known };
+        for (const [k, x] of Object.entries(v)) put(`${area}[${g.key}].${k}`, x);
+        put(`${area}[${g.key}].n`, g.n);
+      }
+    }
+  };
+  const harvest = (fig: { [K in keyof HarvestFigures]: number | null }, cands: HarvestCandidate[], scope: string): void => {
+    for (const k of HARVEST_FIELDS) f.set(`${scope}|harvest.${k}`, fig[k]);
+    f.set(`${scope}|harvest.unquantifiedPools`, fig.unquantifiedPools);
+    f.set(`${scope}|harvest.candidates`, cands.map((c) => candKey(c.name, c.cls, c.ltLoss, c.stLoss)).join(' / '));
+  };
+  const label = (c: ClientTaxSummary): string => c.clientLabel ?? '(unnamed)';
+  summary(r.family, 'family');
+  harvest(H.family.figures, H.family.candidates, 'family');
+  r.clients.forEach((c, i) => { summary(c, label(c)); harvest(H.clients[i]!.figures, H.clients[i]!.candidateDetail, label(c)); });
+  f.set('family|clients.order', r.clients.map(label).join(' / '));
+  return { flat: f, harvest: H };
+}
+
+function flatDiffs(l: Flat, o: Flat): string[] {
+  const d: string[] = [];
+  for (const k of new Set([...l.keys(), ...o.keys()])) {
+    const a = l.get(k); const b = o.get(k);
+    if (!l.has(k) || !o.has(k)) { d.push(`${k}|presence`); continue; }
+    if (typeof a === 'number' && typeof b === 'number') { if (Math.abs(a - b) > TOL) d.push(k); }
+    else if (a !== b) d.push(k);
+  }
+  return d;
+}
+
+/** A ledger field matches a difference's field exactly, or as a prefix when it ends with "*". */
+const fieldMatch = (pattern: string, field: string): boolean => (pattern.endsWith('*') ? field.startsWith(pattern.slice(0, -1)) : pattern === field);
+
+/** The live's inputs, entered: slab 30% and the exemption confirmed unused, for every client of the as-on year. */
+const enteredLikeLive = (asOn: DayNumber) => (clients: Array<ClientId | null>): HarvestContext => {
+  const fy = financialYearOf(asOn);
+  const ids = clients.filter((c): c is ClientId => c !== null);
+  return {
+    asOn,
+    inputs: {
+      personYear: ids.map((clientId) => ({ clientId, fy, slabPct: 30, surchargePct: null, regime: null, assesseeMark: null })),
+      exemptionUsed: ids.map((clientId) => ({ clientId, fy, amount: 'unused-confirmed' as const })),
+    },
+  };
+};
+
+describe('roll-ups and harvest parity with the live summarise, taxRollup and taxBuildHarvest (E-43), equal inputs', () => {
+  const used = new Set<string>();
+  const counts: Array<{ id: string; fields: number; diffs: number }> = [];
+  for (const b of ROLLUP_BOOKS) {
+    test(b.id, () => {
+      const baseBytes = bookBytes(xlsx, b.book, b.blankInvested ?? []);
+      const irrBytes = toWorkbook(xlsx, [{ name: 'Tax Xirr', rows: [FUND_HEADER, ...b.flows] }]);
+      const L = legacyFlat(b, baseBytes, irrBytes);
+      const O = newFlat(b, baseBytes, irrBytes, enteredLikeLive(b.asOn));
+      const diffs = flatDiffs(L.flat, O.flat);
+      counts.push({ id: b.id, fields: L.flat.size, diffs: diffs.length });
+      const unexplained: string[] = [];
+      for (const x of diffs) {
+        const [scope, field] = x.split('|') as [string, string];
+        const hit = RLEDGER.filter((e) => e.book === b.id && (e.scope === '*' || e.scope === scope) && fieldMatch(e.field, field));
+        if (hit.length !== 1) { unexplained.push(`${x}${hit.length > 1 ? ' (matches more than one entry)' : ''}`); continue; }
+        used.add(hit[0]!.id);
+      }
+      assert.deepEqual(unexplained, [], `${b.id}: roll-up or harvest differences not in tests/parity/tax-ledger.json rollupEntries`);
+    });
+  }
+  test('every rollupEntries entry is used, and each is a recorded correction', () => {
+    assert.deepEqual(RLEDGER.filter((e) => !used.has(e.id)).map((e) => e.id), []);
+    for (const e of RLEDGER) {
+      assert.equal(e.class, 'correction', e.id);
+      assert.match(e.reference, /\b(OD-12|OD-15|OD-16|OD-2|OD-7|KI-065|KI-099|KI-037|KI-069|KI-070)\b/, e.id);
+    }
+  });
+  test('the harvest book is compared in full and agrees (a guard against an empty comparison)', () => {
+    const h = counts.find((c) => c.id === 'tax-harvest');
+    assert.ok(h && h.fields >= 150 && h.diffs === 0, JSON.stringify(h));
+    assert.equal(counts.length, ROLLUP_BOOKS.length);
+  });
+});
+
+describe('the new-build rules where the inputs differ from the live defaults (PD-07, Q-52): improvements, not parity', () => {
+  test('nothing entered: "exemption not applied", tax before higher by exactly the live exemption; slab pools unquantified', () => {
+    const b = HARVEST;
+    const baseBytes = bookBytes(xlsx, b.book, []);
+    const irrBytes = toWorkbook(xlsx, [{ name: 'Tax Xirr', rows: [FUND_HEADER, ...b.flows] }]);
+    const L = legacyFlat(b, baseBytes, irrBytes);
+    const O = newFlat(b, baseBytes, irrBytes, () => ({ asOn: b.asOn }));
+    for (const h of O.harvest.clients) {
+      const live = (L.tx.clients as Any[]).find((c) => c.client === h.clientLabel).harvest;
+      assert.equal(h.exemptionApplied, 'exemption not applied');
+      assert.equal(h.slab.source, 'not set');
+      assert.ok(Math.abs(h.figures.taxBefore - (live.taxBefore * CR + live.exBeforeTax * CR)) <= TOL, `${h.clientLabel} taxBefore`);
+    }
+    // Client A holds a slab-rate gain (Sec 76) and short-term losses: without a slab the after-set-off is the dash.
+    const a = O.harvest.clients.find((c) => c.clientLabel === A)!;
+    assert.equal(a.afterSetOffDash, 'slab rate not set');
+    assert.equal(a.taxAfter.kind, 'missing');
   });
 });
