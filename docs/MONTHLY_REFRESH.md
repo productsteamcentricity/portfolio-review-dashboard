@@ -455,10 +455,28 @@ Record every result in the log.
 1. **Merge.** Merge the PR once CI is green, which republishes Pages.
 2. **Verify the live site.** Poll until `https://productsteamcentricity.github.io/portfolio-review-dashboard/` has
    the same size and SHA-256 as `index.html` on `main`. This takes 1–3 minutes.
-3. **Archive the month.**
-   - Move `01 Monthly Updates\YYYY-MM` to `02 Archive\YYYY-MM`.
-   - Copy the slide images actually embedded into its `Outlook slides - exported JPEGs` folder.
-   - Create the next month's inbox: `YYYY-MM`, with the `Analytics` and `Index TRI` subfolders.
+3. **Archive the month.** Do this only once every live change that read the month's inbox has merged. October's
+   folder waited for the tax batch, because the tax reckoner was in it. Nothing in the inbox is renamed, opened,
+   re-saved or deleted; superseded files go to `99 Superseded - safe to delete`.
+   - **Before:** check there are no `~$` lock files and nothing is open. Record a SHA-256 list of every file. Check
+     that every path will stay under 218 characters (Excel's limit): the folder's archive path plus the longest
+     file name.
+   - **Move** `01 Monthly Updates\YYYY-MM` to `02 Archive\YYYY-MM` as one folder. No shell may have its working
+     directory inside it, or the move fails with "busy". If that happens nothing has moved; re-check and retry.
+   - **After:** re-hash every file; the list must equal the one taken before. If anything differs, stop and report.
+   - **Our outputs:** copy the risk toolchain's two outputs (step 4) into the month folder under the September names,
+     `NAV Data as on <date>.xlsx` and `Fund Risk Ratios & 3Y Rolling - All Funds (as on <dd-Mon-yyyy>).xlsx`.
+     Byte copies, hash-checked; the originals in `C:\Temp\navwork` stay. The next month's risk step starts from that
+     NAV workbook.
+   - **Slides:** copy the slide images actually embedded into the month's `Outlook slides - exported JPEGs` folder,
+     checked against the hashes in the log.
+   - **Reference files:** a file not tied to one month (the current tax reckoner) goes to `02 Archive\Reference`.
+     Update `02 Archive\README.md`.
+   - **Next inbox:** create `01 Monthly Updates\<next YYYY-MM>` with the `Analytics`, `Benchmarks`, `Index TRI` and
+     `Outlook export` subfolders, and update the month named in `01 Monthly Updates\README - How to submit monthly
+     files.md`.
+   - **Record** the before/after hash lists (kept outside the repository), the copies and their hashes, and the
+     longest path in the log's §8.
 4. **Close the records.** Mark the log "published" with the live hash, and update `docs/PROJECT_STATE.md`.
    Then switch the local checkout back to `main`.
 
