@@ -56,6 +56,18 @@ describe('directTwin (KI-054) and lookThroughKey', () => {
     assert.equal(directTwin('Zeta Liquid Fund(G)', direct), null, 'the option must agree');
   });
 
+  test('B1 (Gate B of 10687a5): the answer never depends on the input order', () => {
+    const reg = 'Sample Long Name Equity Fund-Reg(G)';
+    const a = 'Sample Long Name Equity Fund(G)-Direct Plan (Adjusted)';
+    const b = '(Adjusted) Sample Long Name Equity Fund(G)-Direct Plan';
+    assert.equal(directTwin(reg, [a, b]), null);
+    assert.equal(directTwin(reg, [b, a]), null);
+    for (let i = 0; i < 3; i++) assert.equal(directTwin(reg, [a, b]), directTwin(reg, [b, a]), 'repeated calls agree');
+    const plain = 'Sample Long Name Equity Fund(G)-Direct Plan';
+    assert.equal(directTwin(reg, [a, plain, b]), plain);
+    assert.equal(directTwin(reg, [b, a, plain]), plain);
+  });
+
   test('a plain row beats its "(Adjusted)" duplicate', () => {
     assert.equal(directTwin('Zeta Value Fund-Reg(G)', [...direct, 'Zeta Value Fund(G)-Direct Plan']), 'Zeta Value Fund(G)-Direct Plan');
   });

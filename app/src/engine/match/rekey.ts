@@ -89,7 +89,10 @@ export function rekeyBlock(blockKeys: readonly string[], universeKeys: readonly 
   return { byUniverseKey, unresolved, conflicts };
 }
 
+/* Two patterns on purpose: the global one only removes "(Adjusted)" with replace(); the test uses the non-global one,
+ * since test() on a global pattern keeps lastIndex from one string to the next (Gate B of 10687a5, B1). */
 const ADJUSTED = /[(]adjusted[)]/gi;
+const HAS_ADJUSTED = /[(]adjusted[)]/i;
 
 /** KI-054: the Direct key of the same scheme as a Regular key, or null (no twin: a blank row, never a substitute). */
 export function directTwin(regularKey: string, directKeys: readonly string[]): string | null {
@@ -99,14 +102,15 @@ export function directTwin(regularKey: string, directKeys: readonly string[]): s
   if (hits.length === 1) return hits[0]!;
   if (hits.length > 1) {
     /* the plain row before an "(Adjusted)" duplicate of the same scheme */
-    const plain = hits.filter((d) => !ADJUSTED.test(d));
-    ADJUSTED.lastIndex = 0;
+    const plain = hits.filter((d) => !HAS_ADJUSTED.test(d));
     return plain.length === 1 ? plain[0]! : null;
   }
   return null;
 }
 
-/** Look-through: the analytics key for a fund key, its own row first, else its scheme's other option (one portfolio). */
+/** Look-through: the analytics key for a fund key, its own row first, else its scheme's other option (one portfolio).
+ * Not wired yet: whether an IDCW holding may take its scheme's Growth analytics needs the financial reviewer's
+ * confirmation when it is wired (Gate B of 10687a5, N3). */
 export function lookThroughKey(fundKey: string, analyticsKeys: readonly string[]): string | null {
   if (analyticsKeys.includes(fundKey)) return fundKey;
   const want = nameKey(fundKey);

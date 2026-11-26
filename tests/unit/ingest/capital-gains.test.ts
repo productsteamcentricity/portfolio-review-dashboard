@@ -1,4 +1,4 @@
-// covers: E-141 E-150 E-156 AC-21 D-036 (capital-gains statement reader, NB-M7a; design capital-gains-upload.md §2 to §4, §6, §7, §11)
+// covers: E-141 E-150 E-151 E-153 E-156 AC-21 D-036 (capital-gains statement reader, NB-M7a; design capital-gains-upload.md §2 to §4, §6, §7, §11)
 // The capital-gains reader on the synthetic statements of tests/fixtures/make-cg-statements.ts, against expectations
 // worked out by hand from the fixture rows (the case list in that file), never from the code under test. The tax
 // engine's ids (lot classes, tax class, rules, roll-up) are tested in the engine sprint.

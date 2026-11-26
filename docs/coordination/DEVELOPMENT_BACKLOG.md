@@ -70,7 +70,7 @@ Items marked **PA** need the owner's phase approval (or a yes to card question 1
 | NB-M11b publication of Reckoner content | D-0, D-2, D-8 | none | nothing published |
 | NB-M15 | REQ-021 sign-off, PD-26, PD-32 | parity hygiene (#9) | none |
 | LP-01 Gate E | PD-01, PD-04, PD-44 (default: accept as built) | Gates A-D | branch not merged |
-| LP-03 ISIN column (KI-184) | owner's ISIN answer; LP-01 merged (patch queue) | none | none |
+| LP-03 ISIN column (KI-184) | **dropped 25 Nov 2026** (owner: the "ISIN" column is for the new build's template only; the live page stays as it is) | none | none |
 | LP-04 grandfathering | PD-05 | none | none |
 | LP-05 owner requests C2..C6 | PD-28, PD-36 | file the CR only | none |
 | LP-07 IPS verdicts | PD-10 | none | none |

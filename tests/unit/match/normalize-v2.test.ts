@@ -51,6 +51,6 @@ describe('candidateWordGuard (with the stricter regime)', () => {
 
   test('needs the stricter regime; the preset has both', () => {
     assert.throws(() => matchInstrument('x', '', ['y'], undefined, { nullOnTies: true, candidateWordGuard: true }), /absentFundGuard/);
-    assert.deepEqual({ ...NEW_BUILD_MATCHING }, { nullOnTies: true, houseTokens: true, absentFundGuard: true, normaliserV2: true, candidateWordGuard: true });
+    assert.deepEqual({ ...NEW_BUILD_MATCHING }, { nullOnTies: true, identifierJoin: true, houseTokens: true, absentFundGuard: true, normaliserV2: true, candidateWordGuard: true });
   });
 });

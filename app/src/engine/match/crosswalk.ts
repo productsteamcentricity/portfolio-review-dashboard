@@ -104,6 +104,7 @@ export type Crosswalk = {
 
 const codeJoinCache = new WeakMap<Universe, { keyByCode: Map<string, string>; codeByKey: Map<string, string> }>();
 
+/* Cached on the Universe object's identity (makeUniverse builds a new one for new data; Gate B of 10687a5, N2). */
 /** AMFI code to this universe's key of the same scheme, built once per universe from two sources, each re-keyed
  * (rekeyBlock: the same key, the same normalised name, plan and option, or an owner alias): the FUND_RANKS_CODES names
  * and, when given, the official AMFI names. A key the two sources give different codes, or a code two keys claim, joins
@@ -202,12 +203,12 @@ export type ResolveQuery = { name: string; amc?: string; isin?: string; amfiCode
 
 type Hit = { key: string; method: ResolutionMethod; confidence: ResolutionConfidence };
 
-function identifierHit(q: ResolveQuery, u: Universe, cw: Crosswalk): Hit | null {
+function identifierHit(q: ResolveQuery, u: Universe, cw: Crosswalk, opts?: MatchOptions): Hit | null {
   const isin = q.isin?.trim().toUpperCase();
   if (isin && ISIN_RE.test(isin)) {
     const k = cw.stockKeyByIsin.get(isin);
     if (k !== undefined && u.keySet.has(k)) return { key: k, method: 'isin', confidence: 'exact' };
-    const fundCode = cw.codeByFundIsin.get(isin);
+    const fundCode = opts?.identifierJoin ? cw.codeByFundIsin.get(isin) : undefined;
     const fk = fundCode !== undefined && u.matcher === 'instrument' ? codeJoin(u, cw).keyByCode.get(fundCode) : undefined;
     if (fk !== undefined) return { key: fk, method: 'isin', confidence: 'exact' };
   }
@@ -215,7 +216,7 @@ function identifierHit(q: ResolveQuery, u: Universe, cw: Crosswalk): Hit | null 
   if (code && AMFI_RE.test(code)) {
     const k = cw.nameByAmfi.get(code);
     if (k !== undefined && u.keySet.has(k)) return { key: k, method: 'amfi', confidence: 'exact' };
-    const rk = u.matcher === 'instrument' ? codeJoin(u, cw).keyByCode.get(code) : undefined;
+    const rk = opts?.identifierJoin && u.matcher === 'instrument' ? codeJoin(u, cw).keyByCode.get(code) : undefined;
     if (rk !== undefined) return { key: rk, method: 'amfi', confidence: 'exact' };
   }
   return null;
@@ -238,7 +239,7 @@ function nameUnit(q: ResolveQuery, u: Universe, opts?: MatchOptions): Hit | null
 
 /** Resolves one holding name (and its identifiers, when a reader supplies them) against one universe of one class. */
 export function resolveInstrument(q: ResolveQuery, u: Universe, cw: Crosswalk, opts?: MatchOptions): InstrumentRef {
-  const id = identifierHit(q, u, cw);
+  const id = identifierHit(q, u, cw, opts);
   const byName = nameUnit(q, u, opts);
   const hit = id ?? byName;
   const ref: InstrumentRef = {
@@ -248,7 +249,7 @@ export function resolveInstrument(q: ResolveQuery, u: Universe, cw: Crosswalk, o
   };
   if (hit) {
     ref.vendorKey = hit.key;
-    const code = cw.amfiByName.get(hit.key) ?? (u.matcher === 'instrument' ? codeJoin(u, cw).codeByKey.get(hit.key) : undefined);
+    const code = cw.amfiByName.get(hit.key) ?? (opts?.identifierJoin && u.matcher === 'instrument' ? codeJoin(u, cw).codeByKey.get(hit.key) : undefined);
     if (code !== undefined) ref.amfiCode = code;
     const isin = cw.isinByStockKey.get(hit.key);
     if (isin !== undefined) ref.isin = isin;
