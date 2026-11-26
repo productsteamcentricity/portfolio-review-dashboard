@@ -4,6 +4,39 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (records, registers-4, 26 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **`docs/project-control/DECISION_LOG.md`**: the owner's answers of 17 to 26 Nov 2026. PD-01, PD-04 and PD-44 accepted
+  (25 Nov, "Accept all"); PD-16 answered except item 4, which stays with the tax adviser (26 Nov); PD-36 answered for
+  the renamed-scheme list (16 aliases approved, line 10 held; C4 and C5 covered); PD-54 confirmed; PD-56 changed; the
+  PD-30 publishes listed; PD-07 still open. PD-57 to PD-66 added with plain-language sections (PD-62 and PD-63 open).
+  New section 2.4: owner decisions without a PD number (Stage 0, the D-7 labels and the bond label, the "ISIN" column
+  for the new build only, the D-028 exception for matching corrections, the standing `/next/` rule, the M12a
+  defaults, Q-12, matching option B, the one-time item 6 run, the Gate E acceptances, the test build target).
+- **Chat registers**: CHAT-006 (MOD-03) handed over to CHAT-013 (MOD-04) on 25 Nov 2026, a planned early succession
+  under PD-65; CHAT-010 NB-03, CHAT-011 NB-04 and CHAT-012 ARC-03 opened 24 and 25 Nov; ARC-02 (CHAT-008) is ARC-01's
+  sole rule-10 successor; compactions from the transcripts' markers; next free number CHAT-014
+  (`CHAT_REGISTRY.md`, `docs/coordination/CHAT_SUCCESSION_REGISTER.md`, `CONTEXT_COMPACTION_TRACKER.md`).
+- **`docs/coordination/FILE_OWNERSHIP_MAP.md`**: `app/src/engine/scope.ts` to NB-03 (first consumer of I-45, decision
+  D8 of 25 Nov; NB-02's M4b imports it); `tests/side-by-side/` to EX-02.
+- **`docs/coordination/CODING_MAP.md`, both `INTERFACE_CONTRACTS.md`**: statuses for PRs #28 to #40; I-21 now 34
+  rows on main; I-31, I-32, I-44, I-45 and C-01 on main (PR #29), I-37 (PR #40); a pointer row for I-28 to I-45.
+- **KI-184 and TA-06**: no live fix planned; TA-06 and LP-03 dropped (the owner's "ISIN" column is for the new build's
+  template only, 25 Nov 2026).
+- **`docs/PROJECT_STATE.md`**: the records entry, the live page after PR #36, the data vintage, and the merged
+  M2.3 sprint 3a, M10 and M12a.
+
+### Changed (new build, model contracts-1: contracts I-31, I-32, I-44, I-45 and decision C-01; types only, `/next/` build byte-identical; merged 25 Nov 2026 in PR #29, entry added by registers-4)
+- **`app/src/model/returns.ts`** (I-31): `XirrResult` with its gap and status mapping, `ReturnsCoverage`, the IRR tree
+  nodes, the OD-4 reconciliation, unassigned flows, contributions, `ScopeReturns`, `WeightedReturn` (E-147, E-148).
+- **`app/src/model/transactions.ts`** (I-32): `Transaction`, `IrrFileImport` and the free-text date rule (KI-186): a
+  date written as text is that day in every time zone.
+- **`app/src/model/index-series.ts`** (I-44): `IndexId`, `IndexSeries`, `IndexSeriesImport`.
+- **`app/src/model/scope.ts`** (I-45): `Scope`, `ScopeKey`, `ScopeBasis` (the re-basing rule, Q-57).
+- **Decision C-01**: `BaseFileImport`, `MoneyFinding` and their parts move from `ingest/base-file.ts` to
+  `model/base-file.ts`, and `MoneyUnit` from `engine/units.ts` to `model/value.ts`; both old places re-export them, so
+  no importer changed, and `model/` imports nothing outside `model/`.
+- `tests/unit/model/contracts.test.ts`: the cycle broken, the re-exports intact, types only, contract ids cited, the
+  I-32 date rule in IST and UTC.
 ### Added (new build, M11a monthly update engine core; the legacy refresh pipeline is unchanged)
 - **`scripts/monthly-update/`** reads a month's files from the private inbox and `monthly_updates/YYYY-MM/`, classifies
   each by content, then structure, then name (client material detected first and quarantined, never copied; a name and
