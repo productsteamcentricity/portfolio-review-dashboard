@@ -267,9 +267,13 @@ D-036), else derived from IRR-file redemptions by FIFO.
 | statement | the stated Realized G/L, LTCG, STCG, acquisition date and price, holding days, principal repayment, interest and tax columns, as read | D-036 |
 | source | `statement` or `derived from transactions`, named in every output; when both exist they are reconciled per scheme and financial year, and a difference beyond tolerance raises a High validation result | `03` §6.7 |
 
-Types: dates are `DayNumber`; units, prices and money are numbers, money in rupees (§3); ids are the typed ids of §4;
-flags are booleans, except `listed`, a `Value<boolean>`; enumerations as listed; each `statement` cell is a `Value`
-that is missing when the cell is blank.
+Types (`app/src/model/tax.ts`, contract I-37): money is in rupees, unrounded. A figure that can be missing (units,
+sale and purchase values and prices, the realised and taxable gain, the cost for tax, the purchase date, `taxClass`,
+`listed` and `term`) is a `Value`, missing with its status when it cannot be read or computed; money uses the unit
+`inr`, prices `inr-per-unit`, units `units`. The sale date is a `DayNumber`; ids are the typed ids of §4; the other
+flags are booleans; enumerations as listed. `statement` holds the reader's cells as read: the model types it as
+unknown because the cells type belongs to the reader (`ingest/capital-gains.ts`), where each cell is a `Value` that is
+missing when the cell is blank.
 The field names follow the design ([new-build/capital-gains-upload.md](new-build/capital-gains-upload.md) §4, §5).
 
 ### 5.6 `Client`, `Account`, `Folio`, `Ownership`, `Distributor` (L2)

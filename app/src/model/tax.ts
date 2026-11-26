@@ -120,7 +120,10 @@ export type TaxInputs = {
   exemptionUsed: Array<{ clientId: ClientId; fy: FyStart; amount: number | 'unused-confirmed' }>;
 };
 
-/** One rate bucket of a person-year: the gain, the losses set off against it and what stays taxable. */
+/**
+ * One rate bucket of a person-year: the gain, the losses set off against it and what stays taxable (rupees).
+ * `rate` is a percent number (12.5 means 12.5 %), like `slabPct`, never a fraction; 'slab' means the person's slab rate.
+ */
 export type Bucket = { ruleId: string; rate: number | 'slab'; gain: number; setOff: number; taxable: number };
 
 /** One person's financial year (DATA_DICTIONARY §6: `tax.fy[y].person[p].*`). */
@@ -150,7 +153,13 @@ export type FamilyTaxYear = {
   fy: FyStart;
   rulesVersion: string;
   persons: PersonYearTax[];
-  familySum: Omit<PersonYearTax, 'clientId' | 'inReview' | 'buckets'> & { label: 'sum of separate computations' };
+  /**
+   * The persons' figures added up and labelled as such. It has no exemption limit: a family figure is never compared
+   * with a per-person limit (DATA_DICTIONARY §6).
+   */
+  familySum: Omit<PersonYearTax, 'clientId' | 'inReview' | 'buckets' | 'exemption'> & {
+    label: 'sum of separate computations';
+  };
 };
 
 /** Holdings path (E-41 to E-43): one record per base holding, or per part of a split Specified holding. */
