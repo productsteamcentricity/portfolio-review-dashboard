@@ -189,7 +189,13 @@ export type WeightedReturn = {
   /** Percent number ('pct'), with `coverage` below 1 when items were left out. */
   value: Value<number>;
   source: ReturnsSource;
-  /** The as-on date of the source's figures. */
+  /** The as-on date of the source's figures (of the primary source when `parts` lists several). */
   asOn: Value<DayNumber>;
   coverage: ReturnsCoverage;
+  /**
+   * Present when the figure is built from more than one source or as-on date (for example Regular and Direct plans
+   * read from monitors of different dates): every part with its source, its as-on date and the share of the weights
+   * it supplies (0 to 1). A rendering of such a figure names every part; `source` and `asOn` stay the primary one.
+   */
+  parts?: Array<{ source: ReturnsSource; asOn: Value<DayNumber>; share: number }>;
 };

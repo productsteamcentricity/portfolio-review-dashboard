@@ -4,6 +4,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (new build, model contracts-3: two additive type changes; types only, `/next/` build byte-identical)
+- **`app/src/model/tax.ts`** (I-37): `NotComputed` gains `'amount-missing'` (a lot whose Sell Amount is blank, the
+  reader's `required-cell-blank`; a blank Invested Value stays `'cost-input-missing'`). DATA_DICTIONARY §5.5 lists it.
+- **`app/src/model/returns.ts`** (I-31): `WeightedReturn` gains an optional `parts` list (source, as-on date and share of
+  the weights) for a figure built from more than one source or date, such as Regular and Direct plans read from
+  monitors of different dates; a rendering names every part. Asked for by NB-03 (M7a engine) and ARC-03's review of
+  NB-04's M3b data side.
+
 ### Added (new build, M10 pre-wiring tests: the zip directory defences; no change to the app, `/next/` or `/`)
 - **`tests/unit/ingest/screener-pack-zip.test.ts`** (ARC-03 R7 of M10's Gate B): each directory check of the Screener
   pack reader has a test that fails when that check alone is removed: a second archive appended (the end-record
