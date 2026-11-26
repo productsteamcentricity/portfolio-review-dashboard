@@ -19,11 +19,12 @@
 //   - Dates (PD-57, PD-58): a table's `asOn` is the data month's month-end label ("31 Oct 2026" also for a monitor
 //     whose prices are of Mon 2 Nov); its true price day, when known, goes only in the result's `notes`, never in the
 //     client footnote. `monitorAsOn()` turns a monitor's as-on text into the label and the price day.
-//   - The figure names what it used (ARC-03 B1, B2): its source is the first primary used, in the caller's order; its
-//     as-on date is the primary tables' label, the earliest when they differ, and missing when a primary used has none.
-//     When the figure is built from more than one (source, as-on) pair, `figure.parts` lists every part with its share
-//     of the base (MOD-04's contracts-3 rule for I-31), and `mixed` is true. coverageFootnote(figure, used,
-//     outsideBase) goes with every rendering. With no source at all there is no figure (null): no source is invented.
+//   - The figure names what it used (ARC-03 B1, B2; I-31 as of contracts-3): its source is the primary used, the
+//     first in the caller's order, and its as-on date is that primary table's label (missing when it has none). When
+//     the figure is built from more than one (source, as-on) pair, `figure.parts` lists every part with the share of
+//     the weights it supplies (summing to 1), and `mixed` is true; a single-source figure has no `parts`.
+//     coverageFootnote(figure, used, outsideBase) goes with every rendering and names every part. With no source at
+//     all there is no figure (null): no source is invented.
 //   - Label: "weighted average return of current holdings", never the portfolio's realised return.
 // Pure: no globals. A fund is looked up by its plan and the vendor scheme name the matcher resolved (the key of MF_PERF
 // for Regular plans and MF_PERF_DIRECT for Direct plans, and of the uploaded monitors' schemes).
@@ -97,14 +98,11 @@ export type WeightedItem = {
   excluded: ExclusionReason | null;
 };
 
-/** One part of a figure built from more than one source or date: the source, its as-on label, its share of the base. */
-export type ReturnPart = { source: ReturnsSource; asOn: Value<DayNumber>; coverage: number };
+/** One part of a figure built from more than one source or date (I-31 `WeightedReturn.parts`, contracts-3). */
+export type ReturnPart = NonNullable<WeightedReturn['parts']>[number];
 
-/**
- * TODO(contracts-3): MOD-04 adds the optional `parts` field to I-31's WeightedReturn in contracts-3; until it merges
- * the field is this engine-local extension, and then this type becomes WeightedReturn itself.
- */
-export type WeightedFigure = WeightedReturn & { parts?: ReturnPart[] };
+/** The figure of a weighted result: I-31's WeightedReturn (with `parts` since contracts-3). */
+export type WeightedFigure = WeightedReturn;
 
 export type WeightedResult = {
   /** Null only when no source was given at all (nothing to name as the figure's source). */
@@ -180,8 +178,9 @@ export function weightItems(
 }
 
 /**
- * The parts of a figure: the items' shares of the base grouped by (source, as-on label), in the order given. Returns
- * undefined when the figure has one part or none (contracts-3: parts are listed only for more than one).
+ * The parts of a figure: the weights of the items used, grouped by (source, as-on label) in the order met, each as its
+ * share of the weights used (the shares sum to 1). Undefined when the figure has one part or none (I-31: a
+ * single-source figure has no `parts`).
  */
 export function partsOf(items: readonly WeightedItem[], tagOf: (index: number) => { source: ReturnsSource; asOn: Value<DayNumber> } | null): ReturnPart[] | undefined {
   const parts: ReturnPart[] = [];
@@ -189,10 +188,13 @@ export function partsOf(items: readonly WeightedItem[], tagOf: (index: number) =
     const tag = it.excluded === null && it.weight !== null ? tagOf(i) : null;
     if (!tag) return;
     const p = parts.find((x) => x.source === tag.source && (sameDay(x.asOn, tag.asOn) || (x.asOn.kind === 'missing' && tag.asOn.kind === 'missing')));
-    if (p) p.coverage += it.weight!;
-    else parts.push({ source: tag.source, asOn: tag.asOn, coverage: it.weight! });
+    if (p) p.share += it.weight!;
+    else parts.push({ source: tag.source, asOn: tag.asOn, share: it.weight! });
   });
-  return parts.length > 1 ? parts : undefined;
+  if (parts.length < 2) return undefined;
+  const total = parts.reduce((a, p) => a + p.share, 0);
+  for (const p of parts) p.share /= total;
+  return parts;
 }
 
 /** A source table whose figures a result used, for the footnote (source, plan and as-on label). */
@@ -258,13 +260,13 @@ export function weightedFundReturn(
   let primary: ReturnsSource | null;
   let asOn: Value<DayNumber>;
   if (primaries.length) {
-    primary = primaries[0]!.src.source;
-    const undated = primaries.find((e) => e.table.asOn.kind === 'missing');
-    if (undated) {
-      asOn = missing(STATUS.NOT_AVAILABLE, `the ${PLAN_NAME[undated.plan]} table of the ${SOURCE_NAME[undated.src.source]} has no as-on date`);
-    } else {
-      asOn = primaries.map((e) => e.table.asOn).reduce((a, b) => (b.kind === 'value' && a.kind === 'value' && b.v < a.v ? b : a));
-    }
+    // the figure's source and date are the primary one's (I-31): the first primary table used, in the caller's order;
+    // every other source or date is a part
+    const first = primaries[0]!;
+    primary = first.src.source;
+    asOn = first.table.asOn.kind === 'value'
+      ? first.table.asOn
+      : missing(STATUS.NOT_AVAILABLE, `the ${PLAN_NAME[first.plan]} table of the ${SOURCE_NAME[first.src.source]} has no as-on date`);
   } else {
     // nothing used: the figure is missing; name the primary that was consulted, else the first source given
     const first = inOrder(consulted)[0];

@@ -214,7 +214,7 @@ describe('a short history falls through only to a source with the same as-on dat
     const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE1: longFile } };
     const file: PriceSource = { source: 'analyst-price-file', asOn: FILE_ON, series: { INE000SAMPLE2: longFile } };
     const r = directEquityCagr([sh2('s1', 'INE000SAMPLE1', 3), sh2('s2', 'INE000SAMPLE2', 1)], [pack, file], AS_ON, '3y', 'family');
-    assert.deepEqual(r.figure!.parts, [{ source: 'screener-pack', asOn: SRC_ON, coverage: 0.75 }, { source: 'analyst-price-file', asOn: FILE_ON, coverage: 0.25 }]);
+    assert.deepEqual(r.figure!.parts, [{ source: 'screener-pack', asOn: SRC_ON, share: 0.75 }, { source: 'analyst-price-file', asOn: FILE_ON, share: 0.25 }]);
     assert.deepEqual(r.used, [{ source: 'screener-pack', asOn: SRC_ON }, { source: 'analyst-price-file', asOn: FILE_ON }]);
     assert.equal(r.mixed, true);
   });

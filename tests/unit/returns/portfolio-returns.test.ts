@@ -242,12 +242,14 @@ describe('E-147: Regular and Direct plans are separate tables', () => {
     // the Direct primary is the upload's (31 Oct); the embedded Direct table fills at the same date
     assert.deepEqual(r.figure!.asOn, table(OCT, {}).asOn);
   });
-  test('primary tables with different dates: the figure is dated by the earliest; each date is listed', () => {
+  test('primary tables with different dates: the figure carries the primary date (I-31); each date is listed', () => {
     const SEP30 = ymdToDay(2026, 9, 30)!;
     const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { [both]: r3(12) }), direct: table(SEP30, { [both]: r3(13) }) } };
     const r = weightedFundReturn([fh('a', both, 1, 'regular'), fh('b', both, 1, 'direct')], [up], '3y', 'family');
-    assert.equal(v(r.figure!.asOn), SEP30);
+    // the primary is the first table used in the caller's order (the upload's Regular table, 31 Oct); Direct is a part
+    assert.equal(v(r.figure!.asOn), OCT);
     assert.deepEqual(r.used.map((u) => v(u.asOn)), [OCT, SEP30]);
+    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), p.share]), [['uploaded-mf-monitor', OCT, 0.5], ['uploaded-mf-monitor', SEP30, 0.5]]);
   });
 });
 
@@ -338,8 +340,8 @@ describe('MOD-04 rulings of 26 Nov 2026', () => {
     const r = weightedFundReturn([fh('a', twin, 3, 'regular'), fh('b', twin, 1, 'direct')], [up, emb], '3y', 'family');
     assert.equal(r.figure!.source, 'uploaded-mf-monitor');
     assert.deepEqual(r.figure!.parts, [
-      { source: 'uploaded-mf-monitor', asOn: table(OCT, {}).asOn, coverage: 0.75 },
-      { source: 'embedded-mf-monitor', asOn: table(OCT, {}).asOn, coverage: 0.25 },
+      { source: 'uploaded-mf-monitor', asOn: table(OCT, {}).asOn, share: 0.75 },
+      { source: 'embedded-mf-monitor', asOn: table(OCT, {}).asOn, share: 0.25 },
     ]);
     assert.equal(r.mixed, true);
   });
@@ -353,7 +355,7 @@ describe('MOD-04 rulings of 26 Nov 2026', () => {
     const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { [twin]: r3(12) }), direct: table(OCT30, { [twin]: r3(13) }) } };
     const r = weightedFundReturn([fh('a', twin, 1, 'regular'), fh('b', twin, 1, 'direct')], [up], '3y', 'family');
     assert.equal(r.figure!.parts?.length, 2);
-    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), p.coverage]), [['uploaded-mf-monitor', OCT, 0.5], ['uploaded-mf-monitor', OCT30, 0.5]]);
+    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), p.share]), [['uploaded-mf-monitor', OCT, 0.5], ['uploaded-mf-monitor', OCT30, 0.5]]);
   });
   test('PD-57: the month-end label of a price day; PD-58: the true day only in the notes', () => {
     assert.equal(monthEndLabel(ymdToDay(2026, 11, 2)!), OCT);
@@ -377,5 +379,28 @@ describe('MOD-04 rulings of 26 Nov 2026', () => {
     const foot = coverageFootnote(r.figure!, r.used, r.outsideBase);
     assert.ok(!foot.includes('2026-11-02'), 'the client footnote never shows the true price day');
     assert.match(foot, /as on 2026-10-31/);
+  });
+});
+
+describe('contracts-3 (I-31 WeightedReturn.parts)', () => {
+  const twin = 'Sample Twin Fund';
+  test('the shares are of the weights used and sum to 1, also below full coverage', () => {
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { [twin]: r3(12) }) } };
+    const emb: FundReturnSource = { source: 'embedded-mf-monitor', plans: { direct: table(SEP, { [twin]: r3(11) }) } };
+    // 2 Cr from the upload, 1 Cr from the embedded table, 1 Cr without a return: coverage 75%, parts 2/3 and 1/3
+    const r = weightedFundReturn([fh('a', twin, 2, 'regular'), fh('b', twin, 1, 'direct'), fh('c', 'Sample None', 1, 'regular')], [up, emb], '3y', 'family');
+    assert.equal(r.figure!.coverage.share, 0.75);
+    const shares = r.figure!.parts!.map((p) => p.share);
+    near(shares[0]!, 2 / 3);
+    near(shares[1]!, 1 / 3);
+    near(shares.reduce((a, b) => a + b, 0), 1);
+    assert.equal(r.figure!.source, 'uploaded-mf-monitor');
+    assert.equal(v(r.figure!.asOn), OCT);
+  });
+  test('a primary without a date: the figure date is missing (B1), and the other date is a part', () => {
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(null, { [twin]: r3(12) }), direct: table(OCT, { [twin]: r3(13) }) } };
+    const r = weightedFundReturn([fh('a', twin, 1, 'regular'), fh('b', twin, 1, 'direct')], [up], '3y', 'family');
+    assert.equal(r.figure!.asOn.kind, 'missing');
+    assert.deepEqual(r.figure!.parts!.map((p) => p.asOn.kind), ['missing', 'value']);
   });
 });
