@@ -9,7 +9,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  asOnDay, coverageFootnote, monitorAsOn, monthEndLabel, sharePct, weightItems, weightedFundReturn, WEIGHTED_RETURN_LABEL,
+  asOnDay, coverageFootnote, excludedBy, footnoteOf, monitorAsOn, monthEndLabel, sharePct, weightItems, weightedFundReturn, WEIGHTED_RETURN_LABEL,
   type FundHoldingInput, type FundPlan, type FundReturnSource, type FundReturnTable, type WeightInput,
 } from '../../../app/src/engine/returns/portfolio-returns.ts';
 import type { HoldingId } from '../../../app/src/model/ids.ts';
@@ -176,20 +176,20 @@ describe('the coverage footnote (one text for screen, slide and sheet)', () => {
   test('partial: the label, the coverage, the count excluded, the sources and dates', () => {
     const res = weightedFundReturn(book, [embedded], '3y', 'family');
     assert.equal(
-      coverageFootnote(res.figure, res.used),
+      footnoteOf(res),
       '3Y: weighted average return of current holdings. 3Y covers 80% of MF value; 1 fund without a 3Y return excluded. Source: MF Monitor (embedded monthly data), Regular plans, as on 2026-10-31.',
     );
   });
   test('stocks, plural, and an undated source', () => {
     const wi = (id: string, cmv: number, x: number | null): WeightInput => ({ holdingId: id as HoldingId, cmvCr: present(cmv, 'cr', P), pick: x === null ? { excluded: 'no-return' } : { returnPct: x, source: 'analyst-price-file' } });
     const r = weightItems([wi('s1', 6, 10), wi('s2', 3, null), wi('s3', 1, null)], { scope: 'family', tenor: '5y', basis: 'equity-value', primary: 'analyst-price-file', asOn: missing(STATUS.NOT_AVAILABLE, 'x'), sourceIds: [], method: 'test' });
-    const t = coverageFootnote(r.figure, [{ source: 'analyst-price-file', asOn: r.figure!.asOn }]);
+    const t = coverageFootnote(r.figure!, [{ source: 'analyst-price-file', asOn: r.figure!.asOn }], 0, excludedBy(r.items));
     assert.equal(t, "5Y: weighted average return of current holdings. 5Y covers 60% of direct-equity value; 2 stocks without a 5Y return excluded. Source: analyst's price file, as on date not available.");
     assert.ok(!/\b0(\.0+)?%/.test(t), 'no excluded item printed as 0%');
   });
   test('complete: no coverage clause', () => {
     const res = weightedFundReturn(book.slice(0, 2), [embedded], '3y', 'family');
-    assert.equal(coverageFootnote(res.figure, []), '3Y: weighted average return of current holdings.');
+    assert.equal(coverageFootnote(res.figure!, [], 0, {}), '3Y: weighted average return of current holdings.');
   });
 });
 
@@ -230,7 +230,7 @@ describe('E-147: Regular and Direct plans are separate tables', () => {
     assert.deepEqual(r.used.map((u) => [u.source, u.plan]), [['uploaded-mf-monitor', 'regular'], ['embedded-mf-monitor', 'direct']]);
     assert.deepEqual(r.figure!.value.kind === 'value' && r.figure!.value.prov.sources, ['sha-up', 'sha-emb']);
     assert.equal(
-      coverageFootnote(r.figure, r.used),
+      footnoteOf(r),
       '3Y: weighted average return of current holdings. Source: uploaded MF Monitor, Regular plans, as on 2026-10-31; MF Monitor (embedded monthly data), Direct plans, as on 2026-10-31.',
     );
   });
@@ -284,7 +284,7 @@ describe('ARC-03 Gate B fixes (B1 to B3, L2, L5)', () => {
     assert.equal(r.figure!.source, 'uploaded-mf-monitor');
     assert.equal(v(r.figure!.asOn), SEP30);
     assert.equal(
-      coverageFootnote(r.figure!, r.used, r.outsideBase),
+      footnoteOf(r),
       '3Y: weighted average return of current holdings. Source: uploaded MF Monitor, Regular plans, as on 2026-09-30; MF Monitor (embedded monthly data), Direct plans, as on 2026-10-31.',
     );
   });
@@ -310,7 +310,7 @@ describe('ARC-03 Gate B fixes (B1 to B3, L2, L5)', () => {
   test('L2: holdings outside the base are counted and named in the footnote', () => {
     const r = weightedFundReturn([fh('a', twin, 1, 'regular'), fh('z', twin, null, 'regular'), fh('y', twin, -1, 'regular')], [emb], '3y', 'family');
     assert.equal(r.outsideBase, 2);
-    assert.match(coverageFootnote(r.figure!, r.used, r.outsideBase), /2 holdings without a positive market value not counted/);
+    assert.match(footnoteOf(r)!, /2 holdings without a positive market value not counted/);
   });
   test('L5: coverage just below 100% never reads 100%, just above 0% never reads 0%', () => {
     assert.equal(sharePct(0.9999), '99.9%');
@@ -376,7 +376,7 @@ describe('MOD-04 rulings of 26 Nov 2026', () => {
     const r = weightedFundReturn([fh('a', twin, 1, 'regular')], [up], '3y', 'family');
     assert.equal(v(r.figure!.asOn), OCT);
     assert.deepEqual(r.notes, ['uploaded MF Monitor, Regular plans: prices of 2026-11-02 (shown as on 2026-10-31)']);
-    const foot = coverageFootnote(r.figure!, r.used, r.outsideBase);
+    const foot = footnoteOf(r)!;
     assert.ok(!foot.includes('2026-11-02'), 'the client footnote never shows the true price day');
     assert.match(foot, /as on 2026-10-31/);
   });
@@ -402,5 +402,51 @@ describe('contracts-3 (I-31 WeightedReturn.parts)', () => {
     const r = weightedFundReturn([fh('a', twin, 1, 'regular'), fh('b', twin, 1, 'direct')], [up], '3y', 'family');
     assert.equal(r.figure!.asOn.kind, 'missing');
     assert.deepEqual(r.figure!.parts!.map((p) => p.asOn.kind), ['missing', 'value']);
+  });
+});
+
+describe('ARC-03 delta review of 49e9a34 (H1, M3, L2, pinned boundaries)', () => {
+  test('H1: a chain head that supplied no fund is never the figure source', () => {
+    // the upload (Regular, 31 Oct) lists only A; the embedded monitor (31 Oct) lists B; the client holds only B
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { 'Sample A': r3(12) }) }, sourceIds: ['sha-up'] };
+    const emb = src('embedded-mf-monitor', OCT, { 'Sample B': r3(9) }, ['sha-emb']);
+    const r = weightedFundReturn([fh('b', 'Sample B', 1)], [up, emb], '3y', 'family');
+    near(v(r.figure!.value), 9);
+    assert.equal(r.figure!.source, 'embedded-mf-monitor');
+    assert.equal(r.figure!.parts, undefined);
+    assert.equal(r.mixed, false);
+    assert.deepEqual(r.used.map((u) => u.source), ['embedded-mf-monitor']);
+    assert.match(footnoteOf(r)!, /Source: MF Monitor \(embedded monthly data\), Regular plans, as on 2026-10-31\.$/);
+    // holding both A and B: two sources at one date are two parts, and the upload is the primary
+    const both = weightedFundReturn([fh('a', 'Sample A', 1), fh('b', 'Sample B', 1)], [up, emb], '3y', 'family');
+    assert.equal(both.figure!.source, 'uploaded-mf-monitor');
+    assert.deepEqual(both.figure!.parts!.map((p) => [p.source, p.share]), [['uploaded-mf-monitor', 0.5], ['embedded-mf-monitor', 0.5]]);
+  });
+  test('M3: the footnote counts each exclusion reason apart', () => {
+    const twin = 'Sample Twin Fund';
+    const emb: FundReturnSource = { source: 'embedded-mf-monitor', plans: { regular: table(OCT, { [twin]: r3(10), Short: r3(null) }), direct: table(OCT, { [twin]: r3(11) }) } };
+    const r = weightedFundReturn([
+      fh('a', twin, 4, 'regular'), fh('b', 'Short', 1, 'regular'), fh('c', null, 1, 'regular'),
+      fh('d', twin, 1, null), { ...fh('e', twin, 1, 'direct'), accountPlan: 'regular' }, fh('f', 'Short', 2, 'regular'),
+    ], [emb], '3y', 'family');
+    assert.deepEqual(excludedBy(r.items), { 'no-return': 2, unmatched: 1, 'no-plan': 1, 'plan-mismatch': 1 });
+    assert.equal(footnoteOf(r),
+      '3Y: weighted average return of current holdings. 3Y covers 40% of MF value; 2 funds without a 3Y return excluded; '
+      + '1 fund not matched to a fund excluded; 1 fund with no known plan excluded; 1 fund whose plan differs from the account excluded. '
+      + 'Source: MF Monitor (embedded monthly data), Regular plans, as on 2026-10-31.');
+  });
+  test('L2: a listed fund with no record is an explicit "no return", never filled', () => {
+    const emb = src('embedded-mf-monitor', OCT, { X: undefined });
+    const r = weightedFundReturn([fh('x', 'X', 1)], [emb, src('screener-pack', OCT, { X: r3(9) })], '3y', 'family');
+    assert.equal(r.items[0]!.excluded, 'no-return');
+  });
+  test('pinned: the month-end label boundaries ARC-03 verified', () => {
+    assert.equal(monthEndLabel(ymdToDay(2026, 10, 24)!), OCT);
+    assert.equal(monthEndLabel(ymdToDay(2026, 10, 23)!), null);
+    assert.equal(monthEndLabel(ymdToDay(2026, 11, 7)!), OCT);
+    assert.equal(monthEndLabel(ymdToDay(2026, 11, 8)!), null);
+    assert.equal(monthEndLabel(ymdToDay(2028, 3, 7)!), ymdToDay(2028, 2, 29));
+    assert.equal(monthEndLabel(ymdToDay(2028, 3, 8)!), null);
+    assert.equal(monthEndLabel(ymdToDay(2026, 10, 15)!), null);
   });
 });

@@ -118,7 +118,7 @@ type Lookup = { kind: 'absent' } | { kind: 'none' } | { kind: 'value'; v: number
 function fundLookup(table: FundReturnTable, scheme: string, tenor: ReturnTenor): Lookup {
   if (!Object.prototype.hasOwnProperty.call(table.funds, scheme)) return { kind: 'absent' };
   const rec = table.funds[scheme];
-  if (!rec) return { kind: 'absent' };
+  if (!rec) return { kind: 'none' }; // listed without a record: the table answers "no return" (ARC-03 delta L2)
   const x = rec.r?.[TENOR_KEY[tenor]];
   return typeof x === 'number' && Number.isFinite(x) ? { kind: 'value', v: x } : { kind: 'none' };
 }
@@ -250,11 +250,12 @@ export function weightedFundReturn(
   });
   const inOrder = (set: ReadonlySet<Entry>): Entry[] => sources.flatMap((src) => PLANS.flatMap((p) => [...set].filter((e) => e.src === src && e.plan === p)));
   const used = inOrder(usedEntries);
-  // the primary table of every plan that gave a fund in the base its return (directly or through a same-date fill)
+  // the primary table of every plan is the first table of its chain that gave a fund in the base its return: a chain
+  // head that supplied nothing is never named (ARC-03 delta H1)
   const primarySet = new Set<Entry>();
   for (const plan of PLANS) {
-    const c = chains.get(plan)!;
-    if (c.some((e) => usedEntries.has(e))) primarySet.add(c[0]!);
+    const firstUsed = chains.get(plan)!.find((e) => usedEntries.has(e));
+    if (firstUsed) primarySet.add(firstUsed);
   }
   const primaries = inOrder(primarySet);
   let primary: ReturnsSource | null;
@@ -368,22 +369,52 @@ export function sharePct(share: number): string {
   return `${pct}%`;
 }
 
+/** The excluded items of a result counted by reason (items outside the base are not excluded: `outsideBase`). */
+export type ExcludedBy = Partial<Record<Exclude<ExclusionReason, 'no-value'>, number>>;
+
+export function excludedBy(items: readonly WeightedItem[]): ExcludedBy {
+  const out: ExcludedBy = {};
+  for (const it of items) if (it.excluded && it.excluded !== 'no-value') out[it.excluded] = (out[it.excluded] ?? 0) + 1;
+  return out;
+}
+
+const REASON_ORDER: ReadonlyArray<Exclude<ExclusionReason, 'no-value'>> = ['no-return', 'unmatched', 'no-plan', 'plan-mismatch'];
+
+function reasonText(reason: Exclude<ExclusionReason, 'no-value'>, basis: ReturnsCoverage['basis'], t: string): string {
+  switch (reason) {
+    case 'no-return': return `without a ${t} return`;
+    case 'unmatched': return basis === 'equity-value' ? 'without an ISIN' : 'not matched to a fund';
+    case 'no-plan': return 'with no known plan';
+    case 'plan-mismatch': return 'whose plan differs from the account';
+  }
+}
+
 /**
  * The coverage footnote of a weighted figure, one text for screen, slide and sheet; it goes with every rendering of
- * the figure: the label; the coverage and the count excluded ("3Y covers 80% of MF value; 1 fund without a 3Y return
- * excluded"); the holdings outside the base; every table used with its plan and as-on label (`used` of the result).
- * Never prints an excluded item as 0%, and never the true price day (PD-58).
+ * the figure: the label; the coverage and the items excluded, each reason counted apart ("3Y covers 80% of MF value;
+ * 1 fund without a 3Y return excluded; 1 fund with no known plan excluded", ARC-03 delta M3); the holdings outside the
+ * base; every table used with its plan and as-on label (`used` of the result). Never prints an excluded item as 0%,
+ * and never the true price day (PD-58). `footnoteOf(result)` passes a result's own fields.
  */
-export function coverageFootnote(figure: WeightedReturn, used: readonly UsedTable[], outsideBase = 0): string {
+export function coverageFootnote(figure: WeightedReturn, used: readonly UsedTable[], outsideBase: number, excluded: ExcludedBy): string {
   const t = TENOR_KEY[figure.tenor];
   const c = figure.coverage;
   const [one, many] = ITEM_NAME[c.basis];
   const parts = [`${t}: ${WEIGHTED_RETURN_LABEL}`];
   if (c.excluded > 0 || c.share < 1) {
-    parts.push(`${t} covers ${sharePct(c.share)} of ${BASE_NAME[c.basis]}; ${c.excluded} ${c.excluded === 1 ? one : many} without a ${t} return excluded`);
+    const clauses = REASON_ORDER.filter((r) => (excluded[r] ?? 0) > 0).map((r) => {
+      const n = excluded[r]!;
+      return `${n} ${n === 1 ? one : many} ${reasonText(r, c.basis, t)} excluded`;
+    });
+    parts.push([`${t} covers ${sharePct(c.share)} of ${BASE_NAME[c.basis]}`, ...clauses].join('; '));
   }
   if (outsideBase > 0) parts.push(`${outsideBase} ${outsideBase === 1 ? 'holding' : 'holdings'} without a positive market value not counted`);
   const named = used.map((s) => `${SOURCE_NAME[s.source]}${s.plan ? (s.plan === 'regular' ? ', Regular plans' : ', Direct plans') : ''}, as on ${s.asOn.kind === 'value' ? dayToIso(s.asOn.v) : 'date not available'}`);
   if (named.length) parts.push(`Source: ${named.join('; ')}`);
   return parts.join('. ') + '.';
+}
+
+/** The footnote of a result (E-147 or E-148), or null when it has no figure (no source at all). */
+export function footnoteOf(res: WeightedResult & { used: readonly UsedTable[] }): string | null {
+  return res.figure ? coverageFootnote(res.figure, res.used, res.outsideBase, excludedBy(res.items)) : null;
 }

@@ -8,6 +8,7 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { footnoteOf } from '../../../app/src/engine/returns/portfolio-returns.ts';
 import { anniversary, directEquityCagr, isMonthEndSeries, priceOnOrBefore, stockCagr, PRICE_LOOKBACK_DAYS, type PricePoint, type PriceSource, type StockHoldingInput } from '../../../app/src/engine/returns/stock-cagr.ts';
 import type { HoldingId } from '../../../app/src/model/ids.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
@@ -214,8 +215,45 @@ describe('a short history falls through only to a source with the same as-on dat
     const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE1: longFile } };
     const file: PriceSource = { source: 'analyst-price-file', asOn: FILE_ON, series: { INE000SAMPLE2: longFile } };
     const r = directEquityCagr([sh2('s1', 'INE000SAMPLE1', 3), sh2('s2', 'INE000SAMPLE2', 1)], [pack, file], AS_ON, '3y', 'family');
-    assert.deepEqual(r.figure!.parts, [{ source: 'screener-pack', asOn: SRC_ON, share: 0.75 }, { source: 'analyst-price-file', asOn: FILE_ON, share: 0.25 }]);
-    assert.deepEqual(r.used, [{ source: 'screener-pack', asOn: SRC_ON }, { source: 'analyst-price-file', asOn: FILE_ON }]);
+    // both end prices are of 31 Oct: the parts and `used` carry that label, not the file's own date (ARC-03 delta M1)
+    assert.ok(FILE_ON.kind === 'value');
+    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), p.share]), [['screener-pack', AS_ON, 0.75], ['analyst-price-file', AS_ON, 0.25]]);
+    assert.deepEqual(r.used.map((u) => [u.source, v(u.asOn)]), [['screener-pack', AS_ON], ['analyst-price-file', AS_ON]]);
     assert.equal(r.mixed, true);
+  });
+});
+
+describe('ARC-03 delta review of 49e9a34 (M1, M2, pinned)', () => {
+  const P3 = { sources: [], method: 'test' };
+  const sh3 = (id: string, isin: string, cmv: number): StockHoldingInput => ({ holdingId: id as HoldingId, isin, cmvCr: present(cmv, 'cr', P3) });
+  test('M1: the figure is dated by the label of the prices used, not the raw as-on', () => {
+    const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE1: pts([D(2025, 10, 31), 100], [AS_ON, 110]) } };
+    const r = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [pack], D(2026, 10, 30), '1y', 'family');
+    near(v(r.figure!.value), 10);
+    assert.equal(v(r.figure!.asOn), AS_ON);
+  });
+  test('M1: a file dated 20 Nov whose prices end on 31 Oct is footnoted as on 31 Oct; the true day goes in the notes', () => {
+    const file: PriceSource = { source: 'analyst-price-file', asOn: present(D(2026, 11, 20), 'date', P3), series: { INE000SAMPLE1: pts([D(2025, 10, 29), 100], [D(2026, 10, 29), 110]) } };
+    const r = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [file], AS_ON, '1y', 'family');
+    assert.equal(v(r.figure!.asOn), AS_ON);
+    const foot = footnoteOf(r)!;
+    assert.match(foot, /as on 2026-10-31\.$/);
+    assert.ok(!foot.includes('2026-11-20') && !foot.includes('2026-10-29'));
+    assert.deepEqual(r.notes, ['analyst-price-file: end prices of 2026-10-29 (shown as on 2026-10-31)']);
+  });
+  test('M2: on month-end data an as-on far from a month end is refused; 2 Nov reads as 31 Oct', () => {
+    const s = pts([D(2025, 10, 31), 100], [AS_ON, 110]);
+    const mid = stockCagr(s, D(2026, 10, 15), '1y');
+    assert.equal(status(mid), STATUS.NOT_AVAILABLE);
+    assert.match((mid as { reason: string }).reason, /not within 7 days of a month end/);
+    near(v(stockCagr(s, D(2026, 11, 2), '1y')), 10);
+  });
+  test('pinned: 3Y on month-end data, 200 to 266.2 = 10.00%', () => {
+    near(v(stockCagr(pts([D(2023, 10, 31), 200], [D(2024, 10, 31), 230], [D(2025, 10, 31), 240], [AS_ON, 266.2]), AS_ON, '3y')), 10);
+  });
+  test('M3 for stocks: no ISIN and no price series are counted apart', () => {
+    const file: PriceSource = { source: 'analyst-price-file', asOn: SRC_ON, series: { INE000SAMPLE1: pts([D(2025, 10, 31), 100], [AS_ON, 110]) } };
+    const r = directEquityCagr([sh3('a', 'INE000SAMPLE1', 2), { holdingId: 'b' as HoldingId, isin: null, cmvCr: present(1, 'cr', P3) }, sh3('c', 'INE000NOPRICE', 1)], [file], AS_ON, '1y', 'family');
+    assert.match(footnoteOf(r)!, /1Y covers 50% of direct-equity value; 1 stock without a 1Y return excluded; 1 stock without an ISIN excluded\./);
   });
 });
