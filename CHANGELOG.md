@@ -36,6 +36,22 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Tests: `unit/returns/portfolio-returns.test.ts`, `unit/returns/stock-cagr.test.ts` (the known answers of
   08-regression-test-plan). Parity rows E-147 and E-148: in progress.
 
+### Added (new build, M3b data side: the reference data embedded in the page; not read by any screen yet)
+- **`scripts/build.mjs`** writes each file of its `REFDATA_BLOCKS` list whole as a data block
+  `<script type="application/json" id="refdata-<NAME>">`: MF_PERF, MF_PERF_DIRECT, SIF_PERF, BENCH_RET, STOCK_RET and
+  VINTAGE (format agreed by NB-02 and NB-04, 26 Nov 2026; NB-02 adds the matcher's blocks); a block file must be a
+  .json file directly inside `data/refdata/` or `data/owner/`, else the build stops. Data blocks are not hashed
+  into the build id or the CSP: the build id is unchanged, the page grows from 2,003,823 to 4,656,615 bytes (the
+  check-next budget is 25 MB). The build id names the code, not the data: the data's provenance is `VINTAGE.json`
+  (each file's SHA-256 and the data month), in the page as `refdata-VINTAGE`. The data is what `index.html` already
+  publishes (class P).
+- **`app/src/data/refdata.ts`**: `readBlock(name)` parses a block once and keeps it; `blockOf(name, overrides)` returns
+  an uploaded MF or SIF Monitor in place of the embedded block (for the matcher and the views); `asOnOf(name)` dates a
+  block from VINTAGE (STOCK_RET: NOT AVAILABLE IN SUPPLIED DATA). Not a pure layer: engines get blocks as arguments.
+- Tests: `tests/next/refdata-blocks.test.mjs` (each block equals its committed file, in list order, the same names as
+  `BLOCK_NAMES`; the page passes check-next; a data change leaves the build id and the CSP unchanged; deterministic),
+  `tests/unit/data/refdata.test.ts`.
+
 ### Fixed (live page, KI-032: the IRR client join; `index.html` `9C973F615E6601B08277F6F8227DB569`, 16,413,720 bytes)
 - **A client never takes another client's transaction figures** (CR-0011; the owner's "Careful variant match", 26 Nov
   2026). The IRR client join is now the exact name, else a unique name variant (a salutation, initials, one middle name or
@@ -67,6 +83,15 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `NEW_BUILD_MATCHING`, the preset the wiring will use): rejects a candidate that leaves a known rare word of the holding's
   name unmatched; measured 2,725 to 1,594 wrong matches for absent funds and 21 of 1,206 correct official names unmatched
   (mostly normaliser gaps; a measured follow-up aims to recover them).
+- **Second normaliser and candidate-side word guard** (`MatchOptions.normaliserV2`, `candidateWordGuard`; on in
+  `NEW_BUILD_MATCHING`): matching tokens drop "(Formerly Known as ...)" and "S&P" before "BSE", split letters from digits,
+  collapse spaces before the compounds and add a few synonyms; the guard also checks the candidate's own rare words.
+  A word of the holding's name the reference data knows elsewhere counts too (`knownWords`, `referenceVocabulary`: every set's words
+  less its fund-house words). The legacy normaliser, the alias keys and the name lists are unchanged. Full sweep against the
+  legacy: self regressions 0; leave-one-out wrong matches 3,932 to 1,094 (0 added); official AMFI names right 1,195 to 1,198,
+  wrong 8 to 1. Four official names now get no match (all to null, none to another fund): two were already among the
+  stricter regime's 22 losses (UTI Focused Fund (30 stocks), Navi Nifty Smallcap 250 Momentum Quality) and two are new
+  (Kotak Infrastructure & Economic Reform Fund, Standard Plan; Baroda BNP Paribas Best-in-Class Strategy Fund).
 - **KI-052, OD-23, KI-054** (`engine/match/rekey.ts`): FUND_RANKS_CODES and MF_RISK re-keyed onto MF_PERF keys by spelling
   and owner alias, never by fuzzy match (`tests/parity/rekey-ledger.json`, also the FUND_RANKS_CODES vintage record);
   the Direct twin only for the same scheme; the look-through key.

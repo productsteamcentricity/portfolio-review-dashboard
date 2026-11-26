@@ -25,7 +25,7 @@ const SET = [
 
 describe("option B: absentFundGuard (the new build's matching)", () => {
   test('on in NEW_BUILD_MATCHING; needs the corrected path', () => {
-    assert.deepEqual({ ...NEW_BUILD_MATCHING }, { nullOnTies: true, identifierJoin: true, houseTokens: true, absentFundGuard: true });
+    assert.equal(NEW_BUILD_MATCHING.absentFundGuard, true);
     assert.equal(ABSENT_FUND_SHARE, 0.05);
     assert.throws(() => matchInstrument('x', '', ['y'], undefined, { absentFundGuard: true }), /nullOnTies/);
   });

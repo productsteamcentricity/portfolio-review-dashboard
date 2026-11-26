@@ -20,7 +20,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { CANDIDATE_SETS, candidateKeys, refdataBlock } from '../helpers/legacy-engine.ts';
 import { firstWord, perturb } from './matching-queries.ts';
-import { matchInstrument, type MatchOptions, type TokenCache } from '../../app/src/engine/match/instrument.ts';
+import { matchInstrument, referenceVocabulary, type MatchOptions, type TokenCache } from '../../app/src/engine/match/instrument.ts';
 import { nameKey } from '../../app/src/engine/match/normalize.ts';
 import { AMFI_NAMES, type AmfiNames } from './amfi-names.ts';
 
@@ -101,17 +101,29 @@ export function measure(opts: MatchOptions, stride = 1): Report {
   return r;
 }
 
+/** The vocabulary of every instrument candidate set's names (normalizeV2 tokens), as the wiring builds it. In the
+ * leave-one-out measure it can include a removed fund's own words from another set (its Direct twin, its risk row): the
+ * guard then rejects more, never less, and the official-names measure is unaffected. */
+export function knownWordsOfReference(): ReadonlySet<string> {
+  const sets: string[][] = [];
+  for (const s of CANDIDATE_SETS) if (s.matcher === 'instrument') sets.push(candidateKeys(refdataBlock(s.universe), s));
+  return referenceVocabulary(sets);
+}
+
 /** The corrections in the order they land; each stage is measured with everything before it switched on. */
 export const STAGES: ReadonlyArray<{ id: string; opts: MatchOptions }> = [
   { id: 'KI-036 no answer decided by candidate order', opts: { nullOnTies: true } },
   { id: 'KI-101 fund-house words are not distinctive', opts: { nullOnTies: true, houseTokens: true } },
   { id: 'Option B, the stricter regime (the owner, 26 Nov 2026)', opts: { nullOnTies: true, houseTokens: true, absentFundGuard: true } },
+  { id: 'Normaliser v2 and the candidate-side word guard (follow-up, 26 Nov 2026)', opts: { nullOnTies: true, houseTokens: true, absentFundGuard: true, normaliserV2: true, candidateWordGuard: true, knownWords: knownWordsOfReference() } },
 ];
 
 export const LEDGER = path.join(path.dirname(fileURLToPath(import.meta.url)), 'matching-corrections-ledger.json');
 
 if (process.argv.includes('--write-ledger')) {
   const stages = STAGES.map((s) => ({ id: s.id, opts: s.opts, report: measure(s.opts, 1) }));
-  fs.writeFileSync(LEDGER, `${JSON.stringify({ written: 'full sweep (stride 1)', stages }, null, 1)}\n`);
+  /* a Set (knownWords) is recorded by its size: its words are the reference data's, rebuilt on every run */
+  const replacer = (_k: string, v: unknown): unknown => (v instanceof Set ? `${v.size} words (normalizeV2 tokens)` : v);
+  fs.writeFileSync(LEDGER, `${JSON.stringify({ written: 'full sweep (stride 1)', stages }, replacer, 1)}\n`);
   for (const s of stages) console.log(s.id, JSON.stringify({ self: s.report.self, loo: s.report.loo, amfi: s.report.amfi, changes: s.report.changes.length }));
 }
