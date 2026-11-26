@@ -176,7 +176,7 @@ async function runMode({ browser, mode, files, expect }) {
   await page.waitFor(READY);
   const tab = async (id) => {
     await page.click(await page.eval(TAB_CENTRE(id)));
-    await page.waitFor(`${HEADING} === '${id}-title'`, 5000);
+    await page.waitFor(`(${HEADING}) === '${id}-title'`, 5000);
   };
   const clean = async () => {
     const v = await page.eval(VIOLATIONS);
@@ -205,7 +205,7 @@ async function runMode({ browser, mode, files, expect }) {
   await sleep(400);
   await page.eval(FOCUS('#accept-file'));
   await page.press('Enter');
-  const baseChip = await page.waitFor(`${BASE_CHIP} === 'Accepted' && ${BASE_CHIP}`, 10000);
+  const baseChip = await page.waitFor(`(${BASE_CHIP}) === 'Accepted' && (${BASE_CHIP})`, 10000);
   await page.eval(SET_DATE('2026-09-30'));
   await sleep(300);
   const s1 = await page.eval(IRR);
