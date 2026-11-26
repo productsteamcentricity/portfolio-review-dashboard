@@ -223,6 +223,11 @@
    the matcher is wired into section 1 on `feat/m2-wiring` (stacked on 2a and NB-04's `feat/refdata-blocks`): holdings
    matched when the base file loads, the import report's matching section (E-19), and the monitor uploads (U-08, U-09,
    U-10).
+   M3b for test build 1 (section 5) is on `feat/m3b-views`, stacked on `feat/m2-wiring`: the holding sheets (E-25) and
+   their tables with column chips (U-23), the client holdings sheets of the workbook (E-80), the performance tables with
+   one benchmark table and the Direct list by the same scheme only (E-31, E-32, E-30), their section 5 view with one
+   Regular/Direct switch (U-41) and the Performance sheet (E-84); the weighted 3Y and 5Y returns (E-147, NB-04's
+   `feat/m3b-data`) and the slides C-21 and C-22 are not on it yet.
    Beside M2, the data-platform items (NB-04): M10, the MF Screener data pack reader and browser store, merged in
    PR #37 and accepted on 26 Nov 2026 (not wired); M11a, the monthly update engine core, on its own branch
    (`feat/m11a-monthly-engine`); M12a, the drawdown engine on index data, merged in PR #38, owner Gate E pending (the

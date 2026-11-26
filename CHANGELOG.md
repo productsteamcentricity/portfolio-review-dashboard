@@ -4,6 +4,28 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M3b for test build 1: section 5 holdings and performance)
+- **Holding sheets** (E-25, `engine/aggregate/holdings-sheet.ts`): per client, asset, product and holding rows with CMV-weighted
+  XIRR and coverage (KI-006), invested and gain only over holdings with an invested value (KI-007, OD-18), and a hook for
+  the IRR file's aggregates (KI-048, KI-100). At parity with the live page's client sheets except for the base-file and
+  aggregation decisions already recorded (`tests/parity/holdings-sheet-ledger.json`, HS-01 to HS-04).
+- **Section 5 holdings tables** (U-23, `views/holdings.ts`, `ui/sections/s5-holdings.tsx`): one table per client with column
+  chips, the double dagger and dagger markers with their notes, and the XIRR caption per client (KI-121).
+- **Client holdings sheets in the workbook** (E-80, `exports/xlsx/sheets/client-holdings.ts`): one per client, names sanitised
+  and unique against every sheet (KI-021); PARTIAL COVERAGE on a subtotal that leaves out a holding with no invested value
+  (KI-123).
+- **Performance tables** (E-31, E-32, E-30, `engine/returns/performance.ts`, `config/performance.json`): buckets by route and
+  class (KI-072); one benchmark table (OD-7); the brief's group order and no 2Y for Debt MF (Q-45); missing or empty series
+  recorded, never an all-dash row (KI-073); a data date per bucket (KI-083); a debt-like PMS or AIF without an equity
+  benchmark (KI-024); the Direct list by the same scheme only, an ETF as a single plan, no twin as a blank counted row
+  (KI-054). Parity ledger `tests/parity/performance-ledger.json` (PF-01 to PF-07).
+- **Section 5 performance** (U-41, `views/performance.ts`, `ui/sections/s5-performance.tsx`): one Regular/Direct switch
+  (OD-10); captions with plan and date (KI-034, KI-083); funds with no returns named under the table. The store computes the
+  tables with the review (`AppState.performance`), uploaded monitors standing in for their blocks
+  (`data/performance-sources.ts`).
+- **Performance sheet** (E-84, `exports/xlsx/sheets/performance.ts`): the Regular and Direct lists, every row with its plan and
+  data date, every fund kept, statuses in their own column.
+
 ### Added (new build, M2.1 wiring for test build 1: holdings matched in section 1)
 - **Section 1 matches the base file's holdings** when the file loads (`engine/match/resolve-holdings.ts`): each holding goes to one
   universe as the live page routes it (listed shares to STOCK_RET by ISIN or company name; LP-16's non-MF classes unmatched with
