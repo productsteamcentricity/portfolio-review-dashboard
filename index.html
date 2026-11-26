@@ -876,9 +876,10 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     }
     /* tax-6 (MOD-03, MOD-04 with LP-16; the financial review of S12): a bond whose Product or Category names a foreign or US-dollar
        route has no reckoner row, so it is left unclassified with its reason, before the MLD, G-Sec, unlisted and listed bond rows */
-    /* LP-16b: the name counts too, for USD, US$, dollar or LRS only (a "Global" company name is not a foreign route); a plain
-       "Bonds" product keeps the listed bond rows below */
-    if (!mfp && (TAX_FOREIGN_BOND.test(p+" "+c) || /(^|[^a-z])(lrs|usd|us\$|dollars?)([^a-z]|$)/.test(n)) && /bond|ncd|debenture/.test(p+" "+c+" "+n)) return N(TAX_WHY.foreignBond);
+    /* LP-16b: the name counts too, for USD, US$, dollar or LRS only (a "Global" company name is not a foreign route); the bond
+       words are still read from the product or category only, so a fund, AIF or PMS named "... Bond ..." keeps its own row;
+       a plain "Bonds" product keeps the listed bond rows below */
+    if (!mfp && (TAX_FOREIGN_BOND.test(p+" "+c) || /(^|[^a-z])(lrs|usd|us\$|dollars?)([^a-z]|$)/.test(n)) && /bond|ncd|debenture/.test(p+" "+c)) return N(TAX_WHY.foreignBond);
     if (/\bmld\b|market linked/.test(c+n)) return K("MLD");
     /* KI-065, KI-099: gilt / G-Sec / bond mutual funds, ETFs and FoFs are debt mutual funds, not
        directly held securities: these rows apply only when the product is not a fund */
@@ -2005,7 +2006,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     function _pcrRe(list){
       if (!list || !list.length) return null;
       return new RegExp("(^|[^a-z0-9])(" + list.map(function(k){
-        return String(k).toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/[\s-]+/g, "[\\s-]*"); }).join("|") + ")(?![a-z0-9])", "i");
+        return String(k).toLowerCase().replace(/[^a-z0-9\s$-]/g, "").replace(/\$/g, "\\$").replace(/[\s-]+/g, "[\\s-]*"); }).join("|") + ")(?![a-z0-9])", "i");   /* LP-16b: "$" kept */
     }
     var _pcr=(REF.PRODUCT_CLASS_RULES||[]).map(function(r){
       return { label:r.label, first:!!r.beforePmsAifSif, kw:_pcrRe(r.keywords), unless:_pcrRe(r.unlessAny), not:_pcrRe(r.notIf),

@@ -50,7 +50,8 @@ function matchSetup(): { u: Record<'MF' | 'PMS' | 'AIF' | 'SIF', Universe>; cw: 
 type Rule = { label: string; first: boolean; kw: RegExp | null; unless: RegExp | null; not: RegExp | null; name: RegExp | null; and: RegExp | null };
 const pcrRe = (list: unknown): RegExp | null => {
   if (!Array.isArray(list) || !list.length) return null;
-  return new RegExp('(^|[^a-z0-9])(' + list.map((k) => String(k).toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/[\s-]+/g, '[\\s-]*')).join('|') + ')(?![a-z0-9])', 'i');
+  // LP-16b: a "$" in a keyword is kept ("us$" is US$, never the word US)
+  return new RegExp('(^|[^a-z0-9])(' + list.map((k) => String(k).toLowerCase().replace(/[^a-z0-9\s$-]/g, '').replace(/\$/g, '\\$').replace(/[\s-]+/g, '[\\s-]*')).join('|') + ')(?![a-z0-9])', 'i');
 };
 let rules: Rule[] | null = null;
 function productRules(): Rule[] {

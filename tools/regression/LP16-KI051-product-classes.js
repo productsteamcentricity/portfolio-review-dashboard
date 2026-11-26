@@ -135,10 +135,10 @@ ok(RULES.filter(r => r.beforePmsAifSif).map(r => r.label).join('|') === 'GIFT Ci
 
 /* 9: the six labels are tested before the engine's bond|ncd|debenture and shares? rules */
 { const USD = 'US-dollar bonds (through LRS)', RUPEE = 'Rupee bonds and NCDs';   /* LP-16b: USD only when the product or name says so */
-  [['US-dollar bonds (through LRS)', 'Synthetic Corp 5.25% USD Bond 2030'], ['NCD', 'Tata Capital NCD 2027'], ['54EC Bonds', 'REC 54EC Bond 2029'],
-    ['Tax Free Bonds', 'NHAI Tax Free Bond 2031'], ['RBI Bonds', 'RBI Floating Rate Savings Bond 2031']].forEach(([p, n]) => {
+  [['US-dollar bonds (through LRS)', 'Synthetic Corp 5.25% USD Bond 2030', USD], ['NCD', 'Tata Capital NCD 2027', RUPEE],
+    ['54EC Bonds', 'REC 54EC Bond 2029', RUPEE], ['Tax Free Bonds', 'NHAI Tax Free Bond 2031', RUPEE],
+    ['RBI Bonds', 'RBI Floating Rate Savings Bond 2031', RUPEE]].forEach(([p, n, want]) => {   /* each answer stated (financial review of LP-16b, 8) */
     const h = run(p, n).h;
-    const want = /usd|us$|dollar|lrs/i.test(p + ' ' + n) ? USD : RUPEE;
     ok(h.pcls === want && !h.directEquity && !h.heldShare && !h.perfKey && !h.eqKey && !h.dbKey, '9. "' + p + '" (' + n + ') -> ' + want + ' (got ' + h.pcls + ')');
   });
   const u = run('Unlisted shares', 'Swiggy Ltd').h, l = run('Equity Shares', 'HDFC Bank Ltd.').h;

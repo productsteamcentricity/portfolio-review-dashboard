@@ -100,7 +100,26 @@ const T = [
   ['Bonds', 'Synthetic Corp Bond 2030', 'Debt', 'Overseas Bonds', null, FB],       /* the category still names the route */
   ['Unlisted-Direct', 'Synthetic Tech Pvt Ltd', 'Equity', '', 'Unlisted Equity Shares', null],
   ['P2P Lending', 'Synthetic P2P Pool', 'Debt', '', null, 'peer-to-peer lending'],
+  /* the financial review of LP-16b: a bare "US" is not US$; a fund, AIF or PMS named "... Bond ..." keeps its own row
+     (the bond words are read from the product or category only); SGB and MLD keep their rows under "Bonds"; GIFT City
+     in a bond's name alone does not remove the row (owner question, today's rule kept) */
+  ['Bonds', 'Synthetic US Infra Bond 2030', 'Debt', '', 'Listed Bonds / NCDs', null],
+  ['Global Exposure', 'Synthetic Global Bond Fund', 'Debt', '', 'Global Funds', null],
+  ['AIF', 'Synthetic USD Bond Fund', 'Debt', '', 'Debt AIF – Cat I/II', null],
+  ['Bonds', 'Synthetic Corp Bond 2030', 'Debt', 'Global Bonds', null, FB],
+  ['Bonds', 'Sovereign Gold Bond 2031 Series I', 'Debt', '', 'Sovereign Gold Bonds', null],
+  ['Bonds', 'Synthetic Market Linked Debenture 2027', 'Debt', '', 'MLD', null],
+  ['Bonds', 'Synthetic GIFT City Bond 2030', 'Debt', '', 'Listed Bonds / NCDs', null],
 ];
+{ const pms = tax('PMS', 'Synthetic Dollar Bond Strategy', 'Debt', '');
+  ok(pms.cls === null && String(pms.why || '').indexOf(FB) < 0, '4. tax PMS / "Synthetic Dollar Bond Strategy": the debt-PMS reason, not the foreign-bond one (got ' + pms.why + ')'); }
+/* the label of the same holdings (one description each; the category split is an owner question, the label follows
+   the owner's words: product or name) */
+[['Bonds', 'Synthetic US Infra Bond 2030', '', RUPEE], ['Bonds', 'Synthetic Corp US$ 4.5% Notes Bond 2031', '', USD],
+ ['Bonds', 'Synthetic Corp Bond 2030', 'Global Bonds', RUPEE], ['Bonds', 'Synthetic GIFT City Bond 2030', '', RUPEE]].forEach(([p, n, c, want]) => {
+  const h = run(p, n, 'Debt', c).h;
+  ok(h.pcls === want, '4. label "' + p + '" / "' + n + '"' + (c ? ' / category "' + c + '"' : '') + ' -> ' + want + ' (got ' + h.pcls + ')');
+});
 for (const [p, n, a, c, cls, why] of T) {
   const r = tax(p, n, a, c);
   ok(cls ? r.cls === cls : (r.cls === null && String(r.why || '').toLowerCase().indexOf(why.toLowerCase()) >= 0),

@@ -28,18 +28,25 @@ must read the platform's names in the same way.
 | P2P Lending | looked up as a mutual fund (unmatched); no tax row | its own class "P2P lending" (Debt), no lookup; no tax row |
 
 The rules stay data (`PRODUCT_CLASS_RULES`, contract I-40, one source for both builds), with two optional fields:
-`nameAny` (words the instrument name must contain) and `andAny` (words the product or the name must contain). The tax
-rule that publishes no row for a foreign bond keeps reading foreign, offshore, GIFT City and similar words in the product
-or category; it reads only USD, US$, dollar or LRS in the name, because an Indian issuer named "Global" or
-"International" is not a foreign route.
+`nameAny` (words the instrument name must contain) and `andAny` (words the product or the name must contain); a "$" in a
+keyword is kept ("us$" is US$, never the word US). The tax rule that publishes no row for a foreign bond applies to a
+product or category that says bond, NCD or debenture; it keeps reading foreign, offshore, GIFT City and similar words in
+the product or category, and reads only USD, US$, dollar or LRS in the name, because an Indian issuer named "Global" or
+"International" is not a foreign route (MOD-04 approved this reading, 26 Nov 2026). A fund, AIF or PMS named "... Bond
+..." keeps its own row.
+
+Open owner questions (today's behaviour kept; financial review of LP-16b): a bond whose category names a foreign route
+keeps the rupee label but has no tax row; GIFT or IFSC in a bond's name alone keeps the listed bond rows; a fund named
+under the product "Bonds" (for example a bond ETF) takes the rupee bond label and rows, as before LP-16b.
 
 ## Evidence
 
-- `tools/regression/LP16b-platform-product-names.js`: 74 known-answer checks in IST and UTC, covering:
+- `tools/regression/LP16b-platform-product-names.js`: 86 known-answer checks in IST and UTC, covering:
   - one holding per platform value, with its class, the performance lookup, the look-through listing, heldShare and
     directEquity, and the tax row or the reason;
   - the edge cases: GIFT or IFSC in the name, USD, US$, dollar and LRS, a "Global" issuer, a bond fund, an SGB, an MLD,
-    "AIF-Unlisted";
+    "AIF-Unlisted"; a bare "US" in a name; a fund, AIF or PMS named "... Bond ..."; a foreign category;
+    an SGB and an MLD under "Bonds"; a GIFT City bond name;
   - the rule fields read from the data.
 - `tools/regression/LP16-KI051-product-classes.js` follows the new bond rule (the 25 Nov rule it pinned is changed by the
   owner).

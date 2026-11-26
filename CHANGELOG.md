@@ -4,7 +4,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
-### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `760AF89501C3857EE7DDDE43E8C446CF`, 16,409,436 bytes)
+### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `47DFAF68D9206166FBBC2EC04CF3F66E`, 16,409,612 bytes)
 - **The platform's own Product Name values are classed as the owner decided** (CR-0012; 26 Nov 2026):
   - "Global Exposure" is a GIFT City fund when the instrument name says GIFT or IFSC, otherwise an Offshore fund (it was
     looked up as a mutual fund).
@@ -14,9 +14,11 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - "P2P Lending" is its own class, "P2P lending" (Debt), not looked up as a fund; still no tax row.
   - "Unlisted-Direct" is an unlisted share held directly (no fund fee), as "Unlisted Shares" is.
   - "AIF-Listed" is a Listed AIF: Category III with its note (D-043), as the category "Listed AIF" is.
+  - The tax rule reads USD, US$, dollar or LRS in the name only for a product or category that says bond, NCD or
+    debenture, so a fund, AIF or PMS named "... Bond ..." keeps its own row; "US$" is read as written, never the word US.
   - Mutual Funds, Direct Equity, PMS and SIF are unchanged.
 - `PRODUCT_CLASS_RULES` (contract I-40) gains two optional fields, `nameAny` and `andAny`; `data/refdata` is regenerated.
-- `tools/patches/2026-11-26-lp16b-platform-product-names.js`; `tools/regression/LP16b-platform-product-names.js` (74
+- `tools/patches/2026-11-26-lp16b-platform-product-names.js`; `tools/regression/LP16b-platform-product-names.js` (86
   known-answer checks); the LP-16 test follows the new bond rule; the side-by-side kit's routing copy reads the new fields.
 
 ### Changed (new build, model contracts-3: two additive type changes; types only, `/next/` build byte-identical)

@@ -33,10 +33,11 @@
       listed stock, listed with its class in the look-through box.
    2. "Unlisted-Direct" (or "Direct-Unlisted") is a share held directly, not
       listed: h.heldShare, as an "Unlisted Shares" product.
-   3. Tax (tax-6, narrowed for its label, widened for the name): a bond, NCD or
-      debenture has no tax figure when its product or category names a foreign
-      route (as before) or its NAME says USD, US$, dollar or LRS; a plain
-      "Bonds" product keeps the Listed Bonds / NCDs rows it had.
+   3. Tax (tax-6, narrowed for its label, widened for the name): a product or
+      category that says bond, NCD or debenture has no tax figure when the
+      product or category names a foreign route (as before) or the NAME says
+      USD, US$, dollar or LRS; a plain "Bonds" product keeps the Listed Bonds /
+      NCDs rows it had. A keyword's "$" is kept, so "us$" is US$, not "US".
    4. Tax: a product written "AIF-Listed" (or "Listed AIF") is a Listed AIF,
       Category III with its note (D-043), as the category "Listed AIF" is.
    Nothing else changes: Mutual Funds, Direct Equity, PMS and SIF route as
@@ -79,6 +80,13 @@ applyPatch('LP-16b platform product names', [
     to: 'window.REFDATA = {"PRODUCT_CLASS_RULES":' + JSON.stringify(RULES) + ',"FUND_RANKS":',
   },
   {
+    label: 'engine: a "$" in a keyword is kept, so "us$" means US$ and never the bare word US (financial review of LP-16b, 1)',
+    from: String.raw`        return String(k).toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/[\s-]+/g, "[\\s-]*"); }).join("|") + ")(?![a-z0-9])", "i");
+`,
+    to: String.raw`        return String(k).toLowerCase().replace(/[^a-z0-9\s$-]/g, "").replace(/\$/g, "\\$").replace(/[\s-]+/g, "[\\s-]*"); }).join("|") + ")(?![a-z0-9])", "i");   /* LP-16b: "$" kept */
+`,
+  },
+  {
     label: 'engine: the rules read nameAny and andAny',
     from: '      return { label:r.label, first:!!r.beforePmsAifSif, kw:_pcrRe(r.keywords), unless:_pcrRe(r.unlessAny), not:_pcrRe(r.notIf) }; });\n',
     to: '      return { label:r.label, first:!!r.beforePmsAifSif, kw:_pcrRe(r.keywords), unless:_pcrRe(r.unlessAny), not:_pcrRe(r.notIf),\n' +
@@ -115,9 +123,10 @@ applyPatch('LP-16b platform product names', [
     label: 'tax: a bond named in US dollars or through the LRS has no tax row',
     from: String.raw`    if (!mfp && TAX_FOREIGN_BOND.test(p+" "+c) && /bond|ncd|debenture/.test(p+" "+c)) return N(TAX_WHY.foreignBond);
 `,
-    to: String.raw`    /* LP-16b: the name counts too, for USD, US$, dollar or LRS only (a "Global" company name is not a foreign route); a plain
-       "Bonds" product keeps the listed bond rows below */
-    if (!mfp && (TAX_FOREIGN_BOND.test(p+" "+c) || /(^|[^a-z])(lrs|usd|us\$|dollars?)([^a-z]|$)/.test(n)) && /bond|ncd|debenture/.test(p+" "+c+" "+n)) return N(TAX_WHY.foreignBond);
+    to: String.raw`    /* LP-16b: the name counts too, for USD, US$, dollar or LRS only (a "Global" company name is not a foreign route); the bond
+       words are still read from the product or category only, so a fund, AIF or PMS named "... Bond ..." keeps its own row;
+       a plain "Bonds" product keeps the listed bond rows below */
+    if (!mfp && (TAX_FOREIGN_BOND.test(p+" "+c) || /(^|[^a-z])(lrs|usd|us\$|dollars?)([^a-z]|$)/.test(n)) && /bond|ncd|debenture/.test(p+" "+c)) return N(TAX_WHY.foreignBond);
 `,
   },
   {
