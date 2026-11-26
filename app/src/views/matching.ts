@@ -28,14 +28,24 @@ export type MatchingVM = {
   note: string;
   /** Product-class rules not applied, one sentence each. */
   warnings: string[];
+  /** Matching could not run: the sentence for the error card (CHAT-008 B1); null otherwise. */
+  error: string | null;
 };
+
+export const MATCHING_FAILED = 'Matching to reference data failed, so no holding is matched and no figure from reference data is used.';
 
 const ROUTE_TEXT: Readonly<Record<Exclude<MatchRoute, 'other'>, string>> = {
   MF: 'mutual fund', SIF: 'SIF', AIF: 'AIF', PMS: 'PMS', STOCK: 'listed share',
 };
 
 export function buildMatchingSection(report: MatchReport | null, holdings: readonly Holding[]): MatchingVM {
-  if (!report) return { summary: MATCHING_NO_DATA, counts: [], otherClasses: [], matchedTo: [], unmatched: [], note: '', warnings: [] };
+  if (!report) return { summary: MATCHING_NO_DATA, counts: [], otherClasses: [], matchedTo: [], unmatched: [], note: '', warnings: [], error: null };
+  if (report.failed !== undefined) {
+    return {
+      summary: MATCHING_FAILED, counts: [], otherClasses: [], matchedTo: [], unmatched: [], note: '', warnings: [],
+      error: `${MATCHING_FAILED} The reason: ${plainText(report.failed)}`,
+    };
+  }
   const byId = new Map(holdings.map((h) => [h.id, h]));
   let isin = 0, amfi = 0, exact = 0, alias = 0, name = 0, none = 0;
   const other = new Map<string, number>();
@@ -79,6 +89,7 @@ export function buildMatchingSection(report: MatchReport | null, holdings: reado
     matchedTo,
     unmatched,
     note: 'A tie between two funds, or a match that leaves a distinctive word of either name unmatched, is not taken: such a holding is shown as unmatched rather than given another fund\'s figures.',
+    error: null,
     warnings: (report.skippedRules ?? []).map((s) => `The product class rule "${plainText(s.label)}" was not applied: ${s.reason}. The holdings it would place are classed by the other rules, else as mutual funds.`),
   };
 }

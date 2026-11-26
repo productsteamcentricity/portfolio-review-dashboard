@@ -161,8 +161,10 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
     if (!deps.wiring.matchHoldings) return { loaded, report: null };
     try {
       return deps.wiring.matchHoldings(loaded, overridesOf(monitors));
-    } catch {
-      return { loaded, report: null };
+    } catch (err) {
+      /* CHAT-008 B1: the file still loads, unmatched, and the import report says matching failed and why, never a silent
+         "every holding unmatched" */
+      return { loaded, report: { entries: [], available: [], aliasesApproved: null, skippedRules: [], failed: messageOf(err) } };
     }
   };
   /** After a monitor changes: the loaded file matched again against the data now in use. */

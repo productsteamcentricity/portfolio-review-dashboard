@@ -65,7 +65,15 @@ export type MatchReport = {
   aliasesApproved: string | null;
   /** The product-class rules the page did not apply, with the reason (never applied loosely). */
   skippedRules: readonly SkippedRule[];
+  /** Set when matching could not run at all (CHAT-008 B1): the reason, shown as an error in the import report, so a
+   * failure never reads as "every holding unmatched". */
+  failed?: string;
 };
+
+/** The report of a matching run that failed before any holding was resolved. */
+export function failedMatchReport(reason: string): MatchReport {
+  return { entries: [], available: [], aliasesApproved: null, skippedRules: [], failed: reason };
+}
 
 /** The live page's normCo: a company name in lower case, punctuation and the words ltd, limited, the, inc, corp, co,
  * of and india dropped (07_engine.js:1054). */
@@ -99,7 +107,10 @@ export function buildMatchContext(b: MatchBlocks): MatchContext {
     sources.amfiNames = m.codeToName;
   }
   /* knownWords (the normaliser follow-up): the vocabulary of the names this context can answer with, its instrument
-     universes; tests/parity/matching-corrections.ts measures stage 4 with this same vocabulary */
+     universes; tests/parity/matching-corrections.ts measures stage 4 with this same vocabulary on the committed blocks.
+     An uploaded monitor (U-08 to U-10) replaces its universe, so the vocabulary is rebuilt from the uploaded names: a
+     vocabulary the ledger did not measure (CHAT-008's note N1 on the wiring); the next monthly data, embedded, is
+     measured again by the ledger. */
   const instrumentNames = Object.values(universes).filter((u) => u.matcher === 'instrument').map((u) => u.keys);
   const base: MatchOptions = { ...NEW_BUILD_MATCHING, knownWords: referenceVocabulary(instrumentNames) };
   const options: MatchOptions = aliases ? { ...base, ownerAliases: aliases } : base;

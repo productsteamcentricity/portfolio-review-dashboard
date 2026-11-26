@@ -5,32 +5,23 @@
 //     or IFSC, else an Offshore fund);
 //   - andAny: a word the product or the name must contain (a bond is US-dollar only with USD, US$, US, dollar or LRS,
 //     a figure allowed after a currency word), else a rupee bond;
-//   - the class DEBT (P2P lending) routes as a class with no fund data, its label kept;
+//   - P2P lending is class OTHER (MOD-04, 26 Nov 2026); a rule with the class DEBT is skipped, there being no DEBT class;
 //   - a rule with a field or class the reader does not know, or a malformed field, is skipped with its reason and never
 //     applied loosely; the skipped rules reach the import report's matching section.
-// The table below is LP-16b's (CHAT-014's branch fix/lp16b-platform-product-names, as regenerated), copied as synthetic
-// test data; every holding name is invented.
+// The table is LP-16b's (tests/fixtures/product-class-rules-lp16b.json, a copy of data/refdata/PRODUCT_CLASS_RULES.json
+// on CHAT-014's fix/lp16b-platform-product-names at 8eb4caa); every holding name is invented.
 
 import { describe, test } from 'node:test';
+import fs from 'node:fs';
+import path from 'node:path';
+import { REPO } from '../../helpers/sheetjs.ts';
 import assert from 'node:assert/strict';
 import { holdingClass, nonMfRule, parseProductClassRulesDetailed } from '../../../app/src/engine/match/product-class.ts';
 import { buildMatchContext, isDirectEquityProduct, resolveHoldings } from '../../../app/src/engine/match/resolve-holdings.ts';
 import { buildMatchingSection } from '../../../app/src/views/matching.ts';
 import type { Holding } from '../../../app/src/model/holding.ts';
 
-const FUNDS = ['etf', 'etfs', 'mf', 'mfs', 'mutual fund', 'mutual funds', 'fund', 'funds', 'fof', 'fofs'];
-const NOT_BOND = ['sovereign gold', 'sgb', 'sgbs', 'market linked', 'mld', 'mlds'];
-const LP16B = [
-  { beforePmsAifSif: true, class: 'OTHER', keywords: ['gift city', 'ifsc'], label: 'GIFT City funds' },
-  { beforePmsAifSif: true, class: 'OTHER', keywords: ['global exposure'], label: 'GIFT City funds', nameAny: ['gift', 'ifsc'] },
-  { beforePmsAifSif: true, class: 'OTHER', keywords: ['off-shore', 'global exposure'], label: 'Offshore funds' },
-  { andAny: ['usd', 'us$', 'us', 'dollar', 'dollars', 'lrs'], class: 'BOND', keywords: ['bond', 'bonds', 'ncd', 'ncds', 'debenture', 'debentures', 'lrs'], label: 'US-dollar bonds (through LRS)', notIf: NOT_BOND, unlessAny: FUNDS },
-  { class: 'BOND', keywords: ['bond', 'bonds', 'ncd', 'ncds', 'debenture', 'debentures'], label: 'Rupee bonds and NCDs', notIf: NOT_BOND, unlessAny: FUNDS },
-  { class: 'OTHER', keywords: ['fixed deposit', 'fixed deposits', 'fd', 'fds'], label: 'Fixed deposits', unlessAny: FUNDS },
-  { class: 'OTHER', keywords: ['reit', 'reits', 'invit', 'invits'], label: 'REITs and InvITs', unlessAny: FUNDS },
-  { class: 'EQUITY', keywords: ['unlisted'], label: 'Unlisted shares', unlessAny: FUNDS },
-  { class: 'DEBT', keywords: ['p2p', 'peer to peer'], label: 'P2P lending' },
-];
+const LP16B = JSON.parse(fs.readFileSync(path.join(REPO, 'tests', 'fixtures', 'product-class-rules-lp16b.json'), 'utf8')) as unknown[];
 const parsed = parseProductClassRulesDetailed(LP16B);
 const R = parsed.rules;
 
@@ -41,7 +32,7 @@ function cls(product: string, name: string): string {
 }
 
 describe('LP-16b rule fields', () => {
-  test('the table reads whole: nine rules, none skipped; P2P lending routes as a class with no fund data', () => {
+  test('the table reads whole: nine rules, none skipped; P2P lending is class OTHER', () => {
     assert.equal(R.length, 9);
     assert.deepEqual(parsed.skipped, []);
     const p2p = holdingClass('P2P Lending', R, 'Sample P2P Note');
@@ -85,13 +76,15 @@ describe('a rule the reader does not know is skipped, never applied loosely', ()
       { class: 'OTHER', keywords: ['art'] },
       { class: 'OTHER', keywords: [], label: 'Nothing' },
       { class: 'OTHER', keywords: ['fd'], label: 'Fixed deposits', beforePmsAifSif: 'yes' },
+      { class: 'DEBT', keywords: ['p2p'], label: 'P2P lending' },
       { class: 'OTHER', keywords: ['reit'], label: 'REITs and InvITs' },
     ]);
     assert.deepEqual(rules.map((r) => r.label), ['REITs and InvITs']);
-    assert.deepEqual(skipped.map((s) => [s.index, s.label]), [[0, 'Future bonds'], [1, 'Tokens'], [2, 'Gold'], [3, 'rule 4'], [4, 'Nothing'], [5, 'Fixed deposits']]);
+    assert.deepEqual(skipped.map((s) => [s.index, s.label]), [[0, 'Future bonds'], [1, 'Tokens'], [2, 'Gold'], [3, 'rule 4'], [4, 'Nothing'], [5, 'Fixed deposits'], [6, 'P2P lending']]);
     assert.match(skipped[0]!.reason, /field this application does not read [(]currencyAny[)]/);
     assert.match(skipped[1]!.reason, /class "CRYPTO"/);
     assert.match(skipped[2]!.reason, /not a list of words/);
+    assert.match(skipped[6]!.reason, /class "DEBT" is not one this application knows/);
     assert.equal(holdingClass('Bonds', rules, 'Sample EUR Bond').kind, 'fund', 'the skipped rule does not fire');
   });
 

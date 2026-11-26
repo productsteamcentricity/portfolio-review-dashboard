@@ -13,8 +13,8 @@
 // the product text or the instrument name. A "$" in a keyword is kept, and a currency word (usd, us, us$) may be
 // followed by a figure ("USD5.25").
 // A rule with a field or a class this reader does not know is never applied loosely: it is skipped and reported
-// (parseProductClassRulesDetailed), so a later table field can never widen a rule unnoticed. LP-16b's class DEBT
-// (P2P lending) is routed as a class with no fund data (OTHER) with its label kept; the asset class still comes from
+// (parseProductClassRulesDetailed), so a later table field can never widen a rule unnoticed. P2P lending is class
+// OTHER (MOD-04, 26 Nov 2026; no DEBT product class: a DEBT rule is skipped); its asset class Debt comes from
 // the base file.
 // A holding of a rule's class has no fund, PMS or AIF performance data (the live page gives it none), so the matcher
 // leaves it unmatched with its class shown.
@@ -47,9 +47,10 @@ function wordsPattern(list: unknown): RegExp | null {
   return new RegExp(`(^|[^a-z0-9])(${parts.join('|')})`, 'i');
 }
 
-/** A rule's class: the model's product classes, and LP-16b's DEBT routed as a class with no fund data. */
+/** A rule's class: the model's product classes only. MOD-04's decision of 26 Nov 2026: "P2P lending" is class OTHER
+ * (its asset class Debt comes from the base file); there is no DEBT product class, so a DEBT rule is skipped. */
 const CLASS_OF: Readonly<Record<string, ProductClass>> = {
-  MF: 'MF', SIF: 'SIF', PMS: 'PMS', AIF: 'AIF', ETF: 'ETF', EQUITY: 'EQUITY', BOND: 'BOND', OTHER: 'OTHER', DEBT: 'OTHER',
+  MF: 'MF', SIF: 'SIF', PMS: 'PMS', AIF: 'AIF', ETF: 'ETF', EQUITY: 'EQUITY', BOND: 'BOND', OTHER: 'OTHER',
 };
 /** Every field a rule may carry (LP-16 and LP-16b). */
 const RULE_FIELDS: ReadonlySet<string> = new Set(['label', 'class', 'keywords', 'beforePmsAifSif', 'unlessAny', 'notIf', 'nameAny', 'andAny']);

@@ -85,7 +85,9 @@ export function ImportReport({ report, answers, onAnswer }: {
       ))}
 
       <h4 id="matching-heading">Matched to funds and shares</h4>
-      <p id="matching-summary">{report.matching.summary}</p>
+      {report.matching.error
+        ? <p class="field-error" id="matching-error" role="alert">{report.matching.error}</p>
+        : <p id="matching-summary">{report.matching.summary}</p>}
       {report.matching.counts.length > 0 ? (
         <div class="table-scroll" tabIndex={0} role="region" aria-label="How the holdings were matched">
           <table class="data">

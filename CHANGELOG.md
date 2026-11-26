@@ -24,6 +24,16 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   the family changes.
 - The page carries five more refdata blocks through NB-04's loader (AIF_PERF, PMS_PERF, FUND_RANKS_CODES, PRODUCT_CLASS_RULES,
   OWNER_FUND_ALIASES); the alias evidence links move to `data/owner/fund-aliases-evidence.json` (the page carries no remote URL).
+- **Product classes read LP-16b's table** (`engine/match/product-class.ts`; CHAT-008's Gate B finding B1): `nameAny` (the
+  instrument name must say it: Global Exposure is a GIFT City fund only for GIFT or IFSC, else Offshore) and `andAny` (the
+  product or the name: a bond is US-dollar only with USD, US$, US, dollar or LRS, else a rupee bond or NCD), ported from the
+  live page; LP-16b's own known answers pass. A rule with a field or class the reader does not know is skipped and named in
+  the import report, never applied loosely and never taking matching down; P2P lending is class OTHER (MOD-04, 26 Nov
+  2026), so a DEBT rule is skipped.
+- **A matching failure is said, never silent:** the file still loads and the import report shows an error card with the
+  reason, instead of every holding reading as unmatched.
+- An uploaded monitor is refused before a sheet is expanded when the sheet's declared range exceeds the cell limit; an
+  uploaded monitor's names also rebuild the matcher's known words, a vocabulary the ledger has not measured.
 
 ### Added (new build, M2.1 sprint 2a: matcher corrections, opt-in; not wired into the page yet)
 - **Owner fund aliases** (`data/owner/fund-aliases.json`, `engine/match/owner-aliases.ts`; KI-050, PD-36): the 16 renames the

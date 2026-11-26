@@ -8,8 +8,10 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStore } from '../../app/src/ui/store.ts';
 import { buildImportReport } from '../../app/src/views/import-report.ts';
-import { MATCHING_NO_DATA } from '../../app/src/views/matching.ts';
+import { MATCHING_FAILED, MATCHING_NO_DATA } from '../../app/src/views/matching.ts';
 import { nodeWiring } from '../helpers/node-wiring.ts';
+import { committedBlocks } from '../helpers/match-blocks.ts';
+import { buildMatchContext, matchLoaded } from '../../app/src/engine/match/resolve-holdings.ts';
 import { memoryPrefs } from '../helpers/sample-review.ts';
 import { loadSheetJS } from '../helpers/sheetjs.ts';
 
@@ -52,7 +54,7 @@ describe('section 1: holdings matched when a base file is picked', () => {
     assert.equal(store.get().match, null);
   });
 
-  test('a wiring without matching, or a matcher that throws, never blocks the file', () => {
+  test('a wiring without matching, or a matcher that throws, never blocks the file; a failure is said, never silent (CHAT-008 B1)', () => {
     const plain = nodeWiring();
     delete (plain as { matchHoldings?: unknown }).matchHoldings;
     const a = createStore({ wiring: plain, prefs: memoryPrefs().prefs, logos: [] });
@@ -66,7 +68,30 @@ describe('section 1: holdings matched when a base file is picked', () => {
     const b = createStore({ wiring: broken, prefs: memoryPrefs().prefs, logos: [] });
     b.dispatch({ type: 'file-picked', fileName: 'b.xlsx', bytes: BYTES });
     assert.equal(b.get().upload.stage, 'validate');
-    assert.equal(b.get().match, null);
+    assert.equal(b.get().match?.failed, 'boom');
     assert.ok(b.get().upload.loaded!.base.holdings.every((h) => h.instrument === null));
+    const lb = b.get().upload.loaded!;
+    const m = buildImportReport(lb.source, lb.base, b.get().match).matching;
+    assert.equal(m.error, `${MATCHING_FAILED} The reason: boom`);
+    assert.deepEqual([m.counts.length, m.unmatched.length], [0, 0], 'never shown as every holding unmatched');
+    b.dispatch({ type: 'accept' });
+    assert.equal(b.get().upload.stage, 'review', 'the review still opens');
+  });
+
+  test('a product-class table the reader cannot fully read still matches, and names the rule it skipped', () => {
+    const blocks = committedBlocks();
+    const rules = [{ class: 'BOND', keywords: ['deposit'], label: 'Future deposits', currencyAny: ['eur'] }, ...(blocks.PRODUCT_CLASS_RULES as unknown[])];
+    const ctx = buildMatchContext({ ...blocks, PRODUCT_CLASS_RULES: rules });
+    const w = { ...nodeWiring(), matchHoldings: (loaded: Parameters<typeof matchLoaded>[0]) => matchLoaded(loaded, ctx) };
+    const s = createStore({ wiring: w, prefs: memoryPrefs().prefs, logos: [] });
+    s.dispatch({ type: 'file-picked', fileName: 'b.xlsx', bytes: BYTES });
+    const match = s.get().match!;
+    assert.equal(match.failed, undefined);
+    assert.deepEqual(match.skippedRules.map((r) => r.label), ['Future deposits']);
+    const l = s.get().upload.loaded!;
+    const vm = buildImportReport(l.source, l.base, match).matching;
+    assert.match(vm.summary, /^2 holdings are matched/, 'the other rules and the matcher still work');
+    assert.equal(match.entries.find((e) => e.classLabel !== null)?.classLabel, 'Fixed deposits', 'the skipped rule never fires: the deposit is still a fixed deposit');
+    assert.match(vm.warnings[0]!, /"Future deposits" was not applied: it has a field this application does not read [(]currencyAny[)]/);
   });
 });
