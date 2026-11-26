@@ -130,13 +130,22 @@ and folio number once the scheme is matched.
 - **The footer** is scanned for PAN-shaped tokens only to replace them; those tokens are counted separately, as footer
   removals, in the same Information result. The footer text itself is never kept (§2.4), so nothing it holds can
   leak.
-- **No use of the PAN.** The reader does not compare, number or group by PAN tokens: the person is the client label
-  (§9.3). Whether the reader may number distinct PANs within one file, in memory only, to group persons is an owner
-  item (§15, item 3); until the owner answers, it does not.
+- **Persons numbered by PAN, in memory only** (owner, PD-16 item 3, 26 Nov 2026). While the reader scrubs the rows, it
+  numbers the distinct PANs of the lot rows in order of first appearance in the file: Person 1, Person 2 and so on. A
+  row's PAN is the PAN-shaped token inside Account Name's `[PAN: ...]` tag, else a bare PAN-shaped token in Account
+  Name, else the first PAN-shaped token in another text cell of the row; letter case is ignored, and a tag without a
+  PAN-shaped token gives no PAN. The table from PAN to number lives only inside one reading of the file and is
+  discarded when the reading ends: the PAN itself is never stored, logged, exported, compared across files or put in a
+  message. Only the ordinal is kept: on each lot (`personNo`, empty when its row has no PAN) and in the import record
+  (the persons by ordinal with the client labels their lots carry, `panPersons`), beside the removal counts. The
+  ordinal is the order of first appearance and nothing else: it is never derived from the PAN's characters (no hash,
+  no part of the PAN), so two files whose PANs differ but appear in the same order give the same ordinals, and an
+  ordinal means nothing outside its file. The person for tax follows from it (§9.3).
 - **Names.** Account Name, Client Name and Family Name are client data, used only to join lots to the review's clients
   (§11 reports a statement whose clients match none of them, and labels that may name one person twice). Client labels
   follow the base file's rules (analyst-set display labels, never on slides unless the analyst labels them).
-- **Tests** prove that no PAN-shaped string reaches the import record, the model or the audit entries
+- **Tests** prove that no PAN-shaped string reaches the import record (the ordinals and the persons by ordinal
+  included), the model or the audit entries, and that the import record is the same whatever the PANs' characters
   (`unit/ingest/capital-gains.test.ts`, M7), the workbook (`exports/xlsx/tax-transactions.test.ts`, M7, when the Tax
   and Transactions sheet is built) or the deck (`acceptance/ac-20` "no stale client data", extended to no PAN-shaped
   string with `cg-statement` loaded, gate M9, when the deck builder exists), using fixtures whose PAN-shaped tokens are
@@ -258,19 +267,48 @@ Notes:
   of times k > 1, and **partly repeated** otherwise.
 - **What a real export showed.** Some sales appeared several times with all their lots, others with only some lots
   repeated, and the statement's own totals row **included** the repeats. A lot cannot be sold twice, so whole repeated
-  sales most likely duplicate one transaction; but the statement is the source of record, so the app does not decide
-  alone.
+  sales may duplicate one transaction; but they can also be genuine lots (the owner's answer below), and the statement
+  is the source of record, so the app does not decide alone.
 - **Behaviour.** The import report lists the repeated rows by sale event (wholly or partly repeated, with the
   realised gain they carry per financial year) and asks **one question per sale event** (an analyst question, kind
   `capital-gains-repeats`, like OD-3's): **count its repeated rows as stated, or once**. "Apply to all" answers every
   open event the same way in one step; each answer is still recorded per event, as an audit entry. Until an event is
   answered, the realised and taxable totals of its financial year are INSUFFICIENT EVIDENCE (High
   `capital-gains.repeats-question`); the other years are unaffected. Nothing is dropped silently: with "once", the
-  extra rows are kept in the import record, excluded and listed. When an IRR file is loaded, the units of each
-  repeated event are compared with the IRR redemptions of that folio, scheme and date, and the report says which
-  answer the IRR units support (a hint shown beside the question, never an answer).
-- **Owner item.** Whether the platform repeats rows by design is a question for the platform's support, raised by the
-  owner (§15, item 5).
+  extra rows are kept in the import record, excluded and listed. No repeated event gets an answer by default, wholly
+  repeated or not, and there is no one-step acceptance: the analyst decides every repeated event.
+- **The evidence check on units** (owner, PD-16 item 5, 26 Nov 2026; `engine/tax/repeat-evidence.ts`). It needs the
+  base file and the transactions file, which the reader never sees, so it runs at review time and its result is shown
+  beside the event's question; the reader does not change. An event has two readings: **once**, the units of its
+  distinct rows each counted once, and **as stated**, the units of all its rows. Units are compared rounded to 3
+  decimals (half away from zero), so two figures are equal when they differ by at most 0.0005 units; units are never
+  derived from money where a row states them.
+  - **Evidence 1, the transactions file:** the redemptions (kinds redemption, SWP, switch out, STP out and transfer
+    out) of the same client, scheme and folio on the sale date, summed. The scheme is found by the engine's name
+    matcher on the statement's scheme label against that client's instrument names in the transactions file (D9); the
+    folio must be equal after normalisation when both files give one, and otherwise the scheme alone is used, which
+    the text says. A row's units are its amount over its price, only when the row states a price: without a price
+    there is no units figure and no evidence.
+  - **Evidence 2, the holding report:** a units balance for the scheme and folio. Units bought in the transactions
+    file up to the review's as-on date (the purchase kinds, priced rows), less units sold, are compared with the base
+    file's units of the matched holding (client, scheme by the matcher, folio when present). Units sold are the
+    statement's sales of the scheme and folio under each reading, plus the transactions file's redemptions on days
+    with no statement sale of that scheme and folio; another repeated event of the same scheme and folio counts as the
+    analyst answered it, and while it is unanswered there is no balance. The reading whose balance leaves the units
+    held (to 3 decimals) is supported. This needs both files: with the base file alone the held units cannot tell the
+    readings apart.
+  - **Suggestion:** a reading is suggested only when every available piece of evidence supports it. Without evidence
+    there is no suggestion, and the text says why (no transactions file, no matching redemption, no price on the
+    redemption, no holding for this scheme and folio, and the like). Evidence that matches neither reading, or two
+    pieces that disagree, gives no suggestion and both readings are shown: the rows can be genuine lots.
+  - **Text** beside the question: units and dates only, never a folio, an amount or a PAN. For example: "The
+    transactions file shows 150.000 units redeemed on 12 Mar 2025 for this scheme. The statement's rows give 150.000
+    units counted once and 300.000 as stated. Suggested: count once. Please confirm." (synthetic).
+  - **Never an answer:** the question and the year's INSUFFICIENT EVIDENCE stay until the analyst answers, and the
+    answer is recorded per event, with the evidence text, as an audit entry.
+- **The owner's answers (PD-16 item 5, 26 Nov 2026).** "Can be genuine lots": no suggested answer without evidence,
+  and the analyst decides every repeated event. And "this issue can be clarified against the total number of units
+  from the holding report": the evidence check above (§15, item 5).
 
 ## 7. Reconciliation with the statement's totals
 
@@ -401,10 +439,22 @@ is an owner item (§15, item 2). A lot whose sale date is after the review's as-
 
 ### 9.3 From lots to tax for a financial year
 Tax is computed **per person**, never pooled across the family: losses, set-off and the annual exemption belong to one
-person (TR-15). **The person is the `clientId` of §2.3**: the normalised Client Name, else the name part of Account
-Name (`accountLabel`). The normalisation folds letter case and spacing, as for the base file, so labels that differ
-only in those are one person. Two different client labels in one file raise the Warning
-`capital-gains.person-ambiguous` ("possibly one person"), with counts only, for the analyst to check, by this test:
+person (TR-15). **The person is the lot's PAN ordinal (§3) when its row has a PAN, and otherwise the `clientId` of
+§2.3** (owner, PD-16 item 3, 26 Nov 2026), so that one person spelt two ways shares one exemption and two people with
+one name are kept apart:
+- one PAN ordinal under two or more client labels is one person: Warning `capital-gains.person-labels-differ`, naming
+  the labels and the ordinal ("Person 1"), never the PAN;
+- one client label under two or more PAN ordinals is as many persons: Warning `capital-gains.person-split`, naming the
+  label with "Person 1", "Person 2";
+- the review join (`clients-unmatched`, below) still uses the client labels.
+
+The `clientId` is the normalised Client Name, else the name part of Account Name (`accountLabel`). The normalisation
+folds letter case and spacing, as for the base file, so labels that differ only in those are one person. For lots
+without a PAN, two different client labels in one file raise the Warning `capital-gains.person-ambiguous` ("possibly
+one person"), with counts only, for the analyst to check: a pair is tested when at least one of its labels belongs to
+a lot without a PAN (two labels under PANs are decided by the PANs), and a label on lots without a PAN that is also
+the label of a PAN ordinal is such a pair too, computed separately until the analyst says otherwise. In a file
+without PANs every label is tested, as before. The test:
 after folding letter case and spacing and dropping a leading honorific (Mr, Mrs, Ms, Dr, Shri, Smt, with or without a
 full stop), they are possibly one person when their words pair up in order, a one-letter word (with or without a full
 stop) pairing with any word that starts with that letter, and one label may carry extra one-letter words; two
@@ -1019,7 +1069,9 @@ with a stated category reads that category without it; a crypto loss beside a ca
 | `required-cell-blank` | Warning | a lot row whose Purchase Date, Sale Unit, Sell Amount or Invested Value is blank: one result per column, naming the rows; the value is NOT AVAILABLE IN SUPPLIED DATA, never 0 (§4; MOD-04's decision R1 of 25 Nov 2026) |
 | `nonzero-principal-or-interest` | Warning | Principal Repayment or Interest Earned not 0 on a mutual-fund lot |
 | `tag-asset-differs` | Warning | the instrument tag's asset differs from Asset Name (§2.5) |
-| `person-ambiguous` | Warning | two different client labels are "possibly one person": after folding letter case and spacing and dropping a leading honorific (Mr, Mrs, Ms, Dr, Shri, Smt, with or without a full stop), their words pair up in order, a one-letter word (with or without a full stop) pairing with any word that starts with that letter, and one label may carry extra one-letter words; two different one-letter words never pair (§9.3) |
+| `person-labels-differ` | Warning | one PAN ordinal of the file (§3) appears under two or more client labels: its lots are one person; the labels and the ordinal ("Person 1") named, never the PAN (§9.3; owner, PD-16 item 3, 26 Nov 2026) |
+| `person-split` | Warning | one client label carries two or more PAN ordinals of the file: as many persons; the label named with "Person 1", "Person 2" (§9.3; owner, PD-16 item 3, 26 Nov 2026) |
+| `person-ambiguous` | Warning | for lots without a PAN (§9.3): two different client labels are "possibly one person", or a label on lots without a PAN is also the label of a PAN ordinal; the test: after folding letter case and spacing and dropping a leading honorific (Mr, Mrs, Ms, Dr, Shri, Smt, with or without a full stop), their words pair up in order, a one-letter word (with or without a full stop) pairing with any word that starts with that letter, and one label may carry extra one-letter words; two different one-letter words never pair (§9.3) |
 | `assessee-flagged` | Warning | a lot of a minor, an HUF, joint holders or a non-resident, computed as a resident individual's (§9.3, TR-13) |
 | `lot-class-other` | Warning | a lot of the `other` class (§5) |
 | `merger-taxable` | Warning | a merger event dated before the date gate, taxed as a sale by default, or a zero-gain merger row that fails TR-5 (a) or (b) (§5) |
@@ -1061,7 +1113,8 @@ with a stated category reads that category without it; a crypto loss beside a ca
 | `xirr-not-used` | Information | the lot XIRR column is not used (§2.3) |
 
 Every message is a plain sentence without an en or em dash (D-029) and carries no PAN, folio or amount of a single
-lot; counts and financial years only.
+lot; counts and financial years only, except that `person-labels-differ` and `person-split` name the client labels
+and the PAN ordinals they concern.
 
 ## 12. The blank template and its Read Me
 
@@ -1112,8 +1165,10 @@ recorded inputs applied.
 | `cg-statement-mismatch` | built from the redemptions of `irr-a` by FIFO when M3's IRR fixture exists, then one scheme's lots altered | reconciliation with IRR-derived gains (AC-18) |
 | `cg-statement-not-template` | a registrar-style layout (scheme, redemption date, amount, no units, no purchase date, no invested value) | refused, the missing required columns named (`no-header`) |
 | `cg-statement-footer-mismatch` | `cg-statement` with one total off by ₹100, a subtotal row reading "Total" above the "Grand Total" row, and a last lot row whose Sale Date is invalid text | High `totals-mismatch` naming the column and the excluded lots; the "Grand Total" row taken as the totals row; the subtotal and the invalid row reported as excluded lots (`row-without-sale-date`), never footer |
-| `cg-statement-bad-cells` | a text date and a text number (`invalid-cells`); a holding-days mismatch, a Sale Unit x Sale Price mismatch, a Sale Unit x Purchase Price mismatch, a Realized G/L off by ₹5, a purchase date after the sale date and a Sale Unit of 0 (`row-check-failed`, one count per check; no price derived on the Sale Unit 0 row); a non-zero Interest Earned and a non-zero Principal Repayment; a tag asset that differs; a row with amounts and no sale date between lot rows; a blank row and a repeated header between lots (`rows-skipped`); one lot of a client outside `family-a`, "Other Client Z" (Warning `clients-unmatched`; computed as its own person, listed under "clients not in the review", never in the family sum); the client labels "Sample Client A" and "S Client A" (`person-ambiguous`; "S Client A" is not a client of the review either, so it also counts towards `clients-unmatched`); a lot the test marks as held jointly (the analyst's mark of §9.3; `family-a` has no holder data and no shared folio) and a lot of a person the test marks as a minor (`assessee-flagged`); a lot whose acquisition columns match no class (`lot-class-other`); a Category Name not in the map (`category-unmapped`); a sale dated 2004-09-30 (`outside-rule-table`); a lot sold after the review's as-on date (`after-as-on-date`) | each Warning of §11 named here, with its count; valid rows unaffected |
+| `cg-statement-bad-cells` | a text date and a text number (`invalid-cells`); a holding-days mismatch, a Sale Unit x Sale Price mismatch, a Sale Unit x Purchase Price mismatch, a Realized G/L off by ₹5, a purchase date after the sale date and a Sale Unit of 0 (`row-check-failed`, one count per check; no price derived on the Sale Unit 0 row); a non-zero Interest Earned and a non-zero Principal Repayment; a tag asset that differs; a row with amounts and no sale date between lot rows; a blank row and a repeated header between lots (`rows-skipped`); one lot of a client outside `family-a`, "Other Client Z" (Warning `clients-unmatched`; computed as its own person, listed under "clients not in the review", never in the family sum); the client labels "Sample Client A" and "S Client A" with different PANs, so the PANs decide they are two persons and no `person-ambiguous` is raised ("S Client A" is not a client of the review either, so it counts towards `clients-unmatched`; `person-ambiguous` is proved by `cg-statement-no-pan`, PD-16 item 3); a lot the test marks as held jointly (the analyst's mark of §9.3; `family-a` has no holder data and no shared folio) and a lot of a person the test marks as a minor (`assessee-flagged`); a lot whose acquisition columns match no class (`lot-class-other`); a Category Name not in the map (`category-unmapped`); a sale dated 2004-09-30 (`outside-rule-table`); a lot sold after the review's as-on date (`after-as-on-date`) | each Warning of §11 named here, with its count; valid rows unaffected |
 | `cg-statement-other-family` | the clients "Other Client X" and "Other Client Y", which match none of `family-a`, and a Family Name other than the review's; no pair of labels in these fixtures is possibly one person except Sample Client A and S Client A | High `clients-unmatched`; Warning `family-differs` |
+| `cg-statement-pan-persons` | one PAN under two client labels and one client label with two PANs (PD-16 item 3, 26 Nov 2026) | Warnings `person-labels-differ` and `person-split`; persons numbered by first appearance |
+| `cg-statement-no-pan` | the same lots with no PAN: the client labels alone decide the person | Warning `person-ambiguous`; lots equal to the PAN file's apart from the person fields |
 
 ### 13.3 PAN-shaped tokens
 The pre-push privacy scan blocks PAN-shaped strings in the repository (AC-21), so the generator holds **no PAN-shaped
@@ -1346,7 +1401,12 @@ Answers are compared to ₹0.01 (§2.3) on the unrounded total: tax and cess are
   matching; the totals row, the excluded lots and the footer; tag parsing and the Account Name split; row checks;
   the repeated-rows questions per sale event (unanswered, as stated, once, "apply to all"); the PAN assertions on the
   import record, the model and the audit entries (§3); "Sample Client A" and "Sample Client B" never raise
-  `person-ambiguous`.
+  `person-ambiguous`; persons numbered by PAN in order of first appearance, the same ordinals for different PANs in the
+  same order, and `person-labels-differ` and `person-split` (`cg-statement-pan-persons`); `person-ambiguous` on lots
+  without a PAN (`cg-statement-no-pan`).
+- `tests/unit/tax/repeat-evidence.test.ts` (M7): the units evidence of §6: once and as stated supported by a redemption
+  and by the units balance, each no-evidence reason, evidence matching neither reading, conflicting evidence, the
+  3-decimal edge, a redemption without a price, and no folio or amount in any text.
 - `tests/unit/tax/rules.test.ts` (M7): every rate row of §10.1 by its boundary dates (the day before, the day, the
   day after); every valid key (§9.1) of tax class, listed flag and sub-type, for every date from 1 Oct 2004, maps to
   exactly one rate row, and the checks (EQ-ELSS-1) never count as one; the three listed-flag-missing cases (the
@@ -1433,7 +1493,9 @@ Answers are compared to ₹0.01 (§2.3) on the unrounded total: tax and cess are
 | `required-cell-blank` | `cg-statement-bad-cells` (a blank Sale Unit) | `ingest/capital-gains` |
 | `nonzero-principal-or-interest` | `cg-statement-bad-cells` | `ingest/capital-gains` |
 | `tag-asset-differs` | `cg-statement-bad-cells` | `ingest/capital-gains` |
-| `person-ambiguous` | `cg-statement-bad-cells` | `ingest/capital-gains` |
+| `person-ambiguous` | `cg-statement-no-pan` | `ingest/capital-gains` |
+| `person-labels-differ` | `cg-statement-pan-persons` | `ingest/capital-gains` |
+| `person-split` | `cg-statement-pan-persons` | `ingest/capital-gains` |
 | `assessee-flagged` | `cg-statement-bad-cells` | `tax/lots` |
 | `lot-class-other` | `cg-statement-bad-cells` | `tax/lots` |
 | `merger-taxable` | `cg-statement` (Mergers, before 1 Apr 2015) | `tax/lots` |
@@ -1477,18 +1539,19 @@ Answers are compared to ₹0.01 (§2.3) on the unrounded total: tax and cess are
 ## 15. Open items
 - **Approval.** §10 and the design, as revised on 27 Oct 2026, were approved by the financial-domain reviewer on 27 Oct 2026 (§10.10); M7 code may
   start on them. The items below stay open.
-- **Owner items.** Questions for the owner, with a recommendation: this design does not decide items 1 to 5, and
-  items 6 and 7 are lead decisions applied meanwhile, for the owner to confirm:
+- **Owner items.** Questions for the owner, with a recommendation: this design did not decide items 1 to 5, and
+  items 6 and 7 were lead decisions applied meanwhile, for the owner to confirm. The owner answered items 1, 2, 3, 5,
+  6 and 7 on 26 Nov 2026 (PD-16, relayed by MOD-04); item 4 stays open with the tax adviser:
 
-| # | Item | Recommendation |
+| # | Item | Recommendation and answer |
 |---|---|---|
-| 1 | OD-17 and OD-2 amendment: realised lots, and later the unrealised and harvesting views (E-41 to E-43, so that one scheme is never in two tax buckets on two screens), follow the dated statutory rule table of §10 (three buckets by year; 24 months for unlisted non-equity units; Specified units never long term) instead of OD-17's equity-share bands and OD-2's single 12-month test (`DATA_DICTIONARY.md` §7, "Long-term holding") | accept |
-| 2 | Anniversary-day sales: keep OD-2 (short term), with the long-term figure shown beside each such lot (TR-1), or follow the Delhi High Court (2012) and the ITAT Mumbai bench (2024), whose reading the platform's export also takes | keep OD-2 until the tax adviser answers |
-| 3 | PAN-based person grouping: may the reader number the distinct PANs within one file (Person 1..n) in memory only, the PAN itself discarded at once and never stored, logged or exported, so that one person spelt two ways shares one exemption and two people with one name are kept apart? | yes |
-| 4 | For the tax adviser: the gazette or department copy of the FY 2016-17 index in the 1981 series (secondary sources give 1125; until then FY 2016-17 NE-LT-2 sales show the dash); and whether the old-law choice between 20% with indexation and 10% without (NE-LT-1) is made per lot or on the year's total, and whether the choice is made before or after set-off (KA-20), and which gain then enters set-off (the app chooses per lot, on signed amounts, before set-off meanwhile, LD-15, LD-33, LD-40: the per-asset reading; the year's-total figure is shown beside it; which is lower depends on the year's losses, KA-19, KA-20, KA-22) | ask the tax adviser |
-| 5 | Ask the platform's support whether its export repeats lot rows by design (§6) | ask |
-| 6 | A lead decision for the owner to confirm (LD-10, LD-31): in FY 2024-25 the single ₹1,25,000 exemption is applied first to the 12.5% gains, the order more favourable to the client and consistent with set-off, with the other order's figure in a note and both labelled "order not set by the Act" (TR-2, KA-9) | confirm |
-| 7 | A lead decision for the owner to confirm (LD-11, LD-31): from tax year 2026-27, aggressive hybrid, arbitrage and equity savings funds default to equity-oriented, the usual bucket of the owner's reckoner, labelled "usual bucket per the owner's reckoner; confirm with the fund house" with the Warning `usual-bucket-default` (this changes their lots from "no default" to equity-oriented; TR-7) | confirm |
+| 1 | OD-17 and OD-2 amendment: realised lots, and later the unrealised and harvesting views (E-41 to E-43, so that one scheme is never in two tax buckets on two screens), follow the dated statutory rule table of §10 (three buckets by year; 24 months for unlisted non-equity units; Specified units never long term) instead of OD-17's equity-share bands and OD-2's single 12-month test (`DATA_DICTIONARY.md` §7, "Long-term holding") | accept. **Answered** (owner, PD-16 item 1, 26 Nov 2026): accepted; realised lots follow the dated rule table |
+| 2 | Anniversary-day sales: keep OD-2 (short term), with the long-term figure shown beside each such lot (TR-1), or follow the Delhi High Court (2012) and the ITAT Mumbai bench (2024), whose reading the platform's export also takes | keep OD-2 until the tax adviser answers. **Answered** (owner, PD-16 item 2, 26 Nov 2026): the anniversary-day sale stays short term, with the long-term figure shown beside it |
+| 3 | PAN-based person grouping: may the reader number the distinct PANs within one file (Person 1..n) in memory only, the PAN itself discarded at once and never stored, logged or exported, so that one person spelt two ways shares one exemption and two people with one name are kept apart? | yes. **Answered** (owner, PD-16 item 3, 26 Nov 2026): yes, in memory only; the PAN is discarded at once and the per-file ordinal is kept on the lot and in the import record, never derived from the PAN (§3, §9.3) |
+| 4 | For the tax adviser: the gazette or department copy of the FY 2016-17 index in the 1981 series (secondary sources give 1125; until then FY 2016-17 NE-LT-2 sales show the dash); and whether the old-law choice between 20% with indexation and 10% without (NE-LT-1) is made per lot or on the year's total, and whether the choice is made before or after set-off (KA-20), and which gain then enters set-off (the app chooses per lot, on signed amounts, before set-off meanwhile, LD-15, LD-33, LD-40: the per-asset reading; the year's-total figure is shown beside it; which is lower depends on the year's losses, KA-19, KA-20, KA-22) | ask the tax adviser. **Open** with the tax adviser: meanwhile FY 2016-17 NE-LT-2 sales show the dash and NE-LT-1 is chosen per lot, with the year's-total figure beside it |
+| 5 | Ask the platform's support whether its export repeats lot rows by design (§6) | ask. **Answered** (owner, PD-16 item 5, 26 Nov 2026): "Can be genuine lots", so the analyst decides every repeated event and none gets an answer by default; and "this issue can be clarified against the total number of units from the holding report", the evidence check on units of §6, which suggests a reading only when all available evidence supports it |
+| 6 | A lead decision for the owner to confirm (LD-10, LD-31): in FY 2024-25 the single ₹1,25,000 exemption is applied first to the 12.5% gains, the order more favourable to the client and consistent with set-off, with the other order's figure in a note and both labelled "order not set by the Act" (TR-2, KA-9) | confirm. **Answered** (owner, PD-16 item 6, 26 Nov 2026): confirmed |
+| 7 | A lead decision for the owner to confirm (LD-11, LD-31): from tax year 2026-27, aggressive hybrid, arbitrage and equity savings funds default to equity-oriented, the usual bucket of the owner's reckoner, labelled "usual bucket per the owner's reckoner; confirm with the fund house" with the Warning `usual-bucket-default` (this changes their lots from "no default" to equity-oriented; TR-7) | confirm. **Answered** (owner, PD-16 item 7, 26 Nov 2026): confirmed |
 
 - **The reviewer's open items of §10.9**, ranked: the FY 2016-17 index (item 4); the FY 2024-25 exemption order, now
   the taxpayer-favourable one with the other shown (TR-2); the reckoner states dividend stripping without the
@@ -1514,3 +1577,4 @@ Answers are compared to ₹0.01 (§2.3) on the unrounded total: tax and cess are
 | 2 Nov 2026 | The owner's answers PD-02 and PD-03 as M7 requirements (§10.12): a holding labelled "Listed AIF" defaults to Category III with the neutral caution "confirm against the AIF's statement", the file's own stated category winning; crypto stays "no set-off" |
 | 25 Nov 2026 | §12 and §14: the blank template's column formats are the house codes, written as column defaults (MOD-03, NB-M7a PLAN-01 D3) |
 | 25 Nov 2026 | §4, §11, §14: blank required cells reported (`required-cell-blank`, Warning) and a blank Sale Unit failing "Sale Unit above 0" (MOD-04 decision R1, after the Gate B review of the M7a reader) |
+| 26 Nov 2026 | The owner's PD-16 answers, relayed by MOD-04 (NB-M7a sprint S2b): §3 persons numbered by PAN per file in order of first appearance, in memory only, the PAN discarded at once and the ordinal kept, never derived from the PAN (item 3); §9.3 the person for tax is the PAN ordinal, else the client label, with the Warnings `person-labels-differ` and `person-split`, and `person-ambiguous` only for lots without a PAN; §11 the two new ids; §6 the evidence check on units replaces the IRR hint, with no suggestion without evidence and the analyst deciding every repeated event (item 5, both answers); §15 items 1, 2, 3, 5, 6 and 7 answered, item 4 open with the tax adviser |

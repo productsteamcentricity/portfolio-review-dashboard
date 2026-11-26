@@ -300,6 +300,35 @@ function badCellsSheet(): SheetDef {
   return { name: FAMILY, rows };
 }
 
+// --- Persons by PAN (owner, PD-16 item 3, 26 Nov 2026; design §3, §9.3): cg-statement-pan-persons, cg-statement-no-pan ---
+
+/** Account Name in the platform's form carrying the n-th assembled PAN-shaped token (not the client's usual one). */
+export function accountWithPan(client: string, n: number): string {
+  return `${client} - Held Away[PAN: ${panToken(n)}]`;
+}
+
+/**
+ * The lot rows of cg-statement-pan-persons, in file order (the expectations in tests/unit/ingest/capital-gains.test.ts
+ * follow this list): 0 Sample Client A (Person 1); 1 S Client A under Sample Client A's PAN (Person 1 again:
+ * person-labels-differ); 2 Sample Client B (Person 2); 3 Sample Client B under another PAN (Person 3: person-split);
+ * 4 Sample Client A again (Person 1: one PAN in several rows keeps one ordinal). Every folio differs, so no row repeats.
+ */
+export function panPersonLots(): LotSpec[] {
+  const base: LotSpec = { client: CLIENT_A, dist: D1, ...FLEXI, folio: '91000041', buy: [2022, 4, 4], sell: [2025, 5, 5], units: 20, buyNav: 50, sellNav: 64 };
+  return [
+    base,
+    { ...base, client: 'S Client A', accountName: accountWithPan('S Client A', CLIENT_PAN.get(CLIENT_A)!), folio: '91000042' },
+    { ...base, client: CLIENT_B, ...BOND, folio: '91000043', units: 300, buyNav: 20, sellNav: 23 },
+    { ...base, client: CLIENT_B, accountName: accountWithPan(CLIENT_B, 5), ...BOND, folio: '91000044', units: 150, buyNav: 21, sellNav: 23 },
+    { ...base, folio: '91000045', units: 35 },
+  ];
+}
+
+/** The lots of cg-statement-pan-persons with no PAN anywhere (Account Name without the tag): cg-statement-no-pan. */
+export function noPanLots(): LotSpec[] {
+  return panPersonLots().map((l) => ({ ...l, accountName: `${l.client} - Held Away` }));
+}
+
 // --- cg-template-filled: the app's blank template filled as its Read Me says ---
 
 /**
@@ -397,6 +426,12 @@ export function cgFixtures(xlsx: SheetJS = loadSheetJS()): CgFixture[] {
   ];
   add('cg-statement-other-family', 'two clients of another family (Other Client X and Y) with Family Name Family Z',
     toWorkbook(xlsx, [platformSheet('Family Z', EXPORT_HEADERS, statementBody(other))]));
+
+  // Added in S2b (PD-16 item 3): persons by PAN, and the same lots without any PAN.
+  add('cg-statement-pan-persons', 'persons by PAN ordinal: one PAN under two client labels (person-labels-differ) and one client label under two PANs (person-split)',
+    toWorkbook(xlsx, [platformSheet(FAMILY, EXPORT_HEADERS, statementBody(panPersonLots()))]));
+  add('cg-statement-no-pan', 'the lots of cg-statement-pan-persons with no PAN anywhere and no footer: the person is the client label (person-ambiguous)',
+    toWorkbook(xlsx, [platformSheet(FAMILY, EXPORT_HEADERS, statementBody(noPanLots()), false)]));
   return out;
 }
 
