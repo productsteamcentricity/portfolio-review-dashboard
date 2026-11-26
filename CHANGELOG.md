@@ -26,6 +26,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     show.
   - Owner of the folder: EX-02 (MOD-04, 26 Nov 2026).
 
+### Added (new build, M10 pre-wiring tests: the zip directory defences; no change to the app, `/next/` or `/`)
+- **`tests/unit/ingest/screener-pack-zip.test.ts`** (ARC-03 R7 of M10's Gate B): each directory check of the Screener
+  pack reader has a test that fails when that check alone is removed: a second archive appended (the end-record
+  refusal is now asserted, not only a refusal), a gap between the directory and the end record, a local header whose
+  name differs at the same length, two entries whose data overlap, and a second directory that only JSZip would read
+  (the entry-list comparison). Synthetic archives only; 24 cases in the file.
+
 ### Changed (records, registers-4, 26 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/project-control/DECISION_LOG.md`**: the owner's answers of 17 to 26 Nov 2026. PD-01, PD-04 and PD-44 accepted
   (25 Nov, "Accept all"); PD-16 answered except item 4, which stays with the tax adviser (26 Nov); PD-36 answered for
