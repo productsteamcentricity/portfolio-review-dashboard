@@ -30,6 +30,18 @@ Header rows, sheets and columns that moved, and what was changed in the pipeline
 - `splice_refresh.js --data-only --label "<Mon YYYY>"`: blocks replaced, labels, MD5.
 - Risk ratios (`build_risk.js`), stock returns (`build_stockret.js`), PMS (`refresh_pms_perf.js`), fund ranks
   and fund managers: each done or not done, and why.
+- **Market Update slides (step 3):**
+  - source PDF (name, bytes, SHA-256), the pages chosen by the owner;
+  - the scripts' hashes, checked before each run;
+  - for each staged slide: bytes and SHA-256, its size (1920×1080), and "looked at";
+  - the label.
+- **Risk chain (step 4):** for each script, its reviewed hash checked before the run, the time and the result
+  against its hard stop; the inputs' SHA-256; the label and the last trading day; the `build_risk.js --report`
+  counts.
+- **AmfiFetch ids file (step 4b):** SHA-256, rows, the console line (ISIN counts, changed, skipped); handed to the new
+  build.
+- **Other Funds analytics (step 7f):** keys carried at the previous vintage; done (keys replaced, known-answer
+  result) or not, and why.
 
 ## 5. Checks
 | Check | Result |
@@ -37,7 +49,11 @@ Header rows, sheets and columns that moved, and what was changed in the pipeline
 | `tools/check-invariants.js` | |
 | `tools/smoke-review.js` | |
 | `tools/test-ai-analyst.js` | |
+| `tools/run-regression.js` (IST and UTC) | |
+| `node --test` (IST and UTC) | |
+| `scripts/data-extract.ts --check` | |
 | Before / after snapshot of the check portfolio (`compare_snapshots.js`) | |
+| FUND_RANKS_CODES rename check (step 8): ranks, in MF_PERF, renamed?, gone? | |
 | Browser: load, data-date captions, console, network, exports | |
 | `tools/browser-checks/family-isolation.js` | |
 
@@ -47,4 +63,8 @@ Header rows, sheets and columns that moved, and what was changed in the pipeline
 
 ## 8. Publish and archive
 - PR merged (by owner approval), Pages deployment, live SHA-256 equal to `main`.
-- Inbox folder moved to `02 Archive\YYYY-MM`; next month's inbox folder created.
+- **Archive (step 10):**
+  - SHA-256 lists of the inbox before and after the move (equal; file count), and the longest path (under 218);
+  - the risk outputs and the embedded slides copied, each with its hash;
+  - reference files moved;
+  - the next month's inbox created with its four subfolders, and both OneDrive READMEs updated.
