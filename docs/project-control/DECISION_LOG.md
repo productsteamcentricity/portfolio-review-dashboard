@@ -256,7 +256,7 @@ that builds it (EX-01 or NB-01).
 | PD-13 | Ignore letter case in client and distributor names (L7) | Do not fold; warn | new build |
 | PD-14 | A market value of 0 | Exclude and list | both readers |
 | PD-15 | A blank Product Name | "Unknown" with a warning | new build |
-| PD-16 | Capital-gains design §15 items 1 to 7 | **ANSWERED IN PART 26 Nov 2026**: items 1, 2, 3, 5, 6 and 7 answered ("1 Accept; 2 Short term; 3 Yes; ... 6 Confirm; 7 Confirm"; item 5: the export does not repeat lot rows by design); **item 4 open** with the tax adviser | M7a engine merge (item 4 only for its two figures) |
+| PD-16 | Capital-gains design §15 items 1 to 7 | **ANSWERED IN PART 26 Nov 2026**: items 1, 2, 3, 5, 6 and 7 answered ("1 Accept", "2 Short term", "3 Yes", "5 Ask the platform's support - No", "6 Confirm", "7 Confirm"; item 5 clarified the same day: "Can be genuine lots"); **item 4 open** with the tax adviser | M7a engine merge (item 4 only for its two figures) |
 | PD-17 | Confirm the fix batch 2a details | Confirm | none |
 | PD-18 | (record fix) KI-006 still calls OD-26 open | No action; we correct the record | TC-15 |
 | PD-19 | Send the MF Screener feedback and requests | Send all three | TB-17, TB-19 |
@@ -573,7 +573,7 @@ is the question as asked on 2 Nov.
 - Item 1, "Accept": the dated rule table is adopted for M7 (in place of OD-17's bands and OD-2's single test).
 - Item 2, "Short term": a sale on the anniversary day is short term; the long-term figure is shown beside it.
 - Item 3, "Yes": the reader may number the distinct PANs in memory only.
-- Item 5, "No": the platform's export does not repeat lot rows by design, so repeated rows are duplicates, not separate lots.
+- Item 5: the owner first replied "Ask the platform's support - No". Asked what that meant, after MOD-04 explained that identical lot rows can be two genuine lots (for example two SIP instalments bought the same day for the same amount) or the export printing one lot twice, the owner answered "Can be genuine lots" (26 Nov 2026, about 16:00 IST). So identical rows get no suggested answer: the analyst decides each repeated group, and the year stays INSUFFICIENT EVIDENCE until then.
 - Item 6, "Confirm": the FY 2024-25 exemption order (12.5% gains first) is confirmed.
 - Item 7, "Confirm": the usual bucket for hybrid funds from tax year 2026-27 is confirmed.
 - Item 4 (open): the owner pasted a general explanation of the cost-inflation index and the old indexation formula. It does not settle the two specific points (the FY 2016-17 index value in the 1981 series, and whether the old-law choice applies per lot or on the year total, before or after set-off), so they stay with the tax adviser. Until then the engine shows a dash and reads per lot, with the year total shown.
@@ -1005,7 +1005,7 @@ Answers and instructions the owner gave in chat that have no PD number. Recorded
 | 25 Nov 2026 | M12a drawdown method, questions 1, 3, 4 and 5 | "Accept defaults (Recommended)" | Monthly rebalancing to today's weights; month-end points; one common period with its dates shown; months to recover counted from the trough. Question 2 (which index stands for each asset class) is still open |
 | 25 Nov 2026 | Gate E, M2.3a, M3a and M7a reader | "Accept all three on /next/" | Complete (PRs #31, #34, #35) |
 | 26 Nov 2026 | Gate E, M10 | "Accept M10 on /next/" | Complete (PR #37); wiring waits on its pre-wiring conditions |
-| 26 Nov 2026 | Item 6: one known-answer run of the month-parameterised risk scripts | "Yes, allow (Recommended)" | One offline run only, of the 11 Guardian-reviewed files, each hash-checked before it runs, with an execution-policy bypass per process, nothing persistent, no Office, no network, plus three negative tests; then the Guardian's final GO |
+| 26 Nov 2026 | Item 6: one known-answer run of the month-parameterised risk scripts | "Yes, allow (Recommended)" | One offline run only, of the 11 Guardian-reviewed files, each hash-checked before it runs, with an execution-policy bypass per process, nothing persistent, no Office, no network, plus three negative tests; then the Guardian's final GO. The run itself started under the owner's words typed in CHAT-007, "Yes, run it once", because that chat's permission check needs the owner's own words |
 | 26 Nov 2026 | Q-12: SheetJS 0.20.2 | "Yes, download it (Recommended)" | One download from the official site, its SHA-256 recorded in `app/vendor/MANIFEST.json`, Guardian review; the pinned-version change is recorded against D-025 and D-034. Fixes CVE-2023-30533 and CVE-2024-22363 and allows the monitor upload buttons |
 | 26 Nov 2026 | Fund-matching strictness (OD-5), option B | "Go ahead with the Stricter regime" (the owner also asked why 21 funds would show as not matched) | Option B on in the new build; a follow-up fix to name normalisation ("S&P", "(Formerly Known as ...)", "And" against "&") recovers the 21 correct names, measured |
 | 26 Nov 2026 | Test build target | "I want to start testing on the new build within 2 weeks maximum" | Test build 1 on `/next/` by Thu 10 Dec 2026: matched holdings and the import report (M2 wired), performance (M3b), returns and XIRR (M3a wired), and their sheets |

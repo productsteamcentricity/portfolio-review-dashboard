@@ -46,7 +46,7 @@ The chats opened since 17 Nov 2026 are listed with their numbers in the next sec
 
 Since the handover of 17 Nov 2026 every chat has a number (CHAT-nnn), never reused. Compactions are counted from the
 environment's compaction markers (CONTEXT_COMPACTION_TRACKER in `docs/coordination/`); successions are in
-CHAT_SUCCESSION_REGISTER there. **Next free number: CHAT-014.**
+CHAT_SUCCESSION_REGISTER there. **Next free number: CHAT-015.**
 
 | Number | Role | Status (26 Nov 2026) | Opened | Note |
 |---|---|---|---|---|
@@ -56,7 +56,8 @@ CHAT_SUCCESSION_REGISTER there. **Next free number: CHAT-014.**
 | CHAT-004 | ARC-01, Guardian | SUPERSEDED by CHAT-008 (three compactions) | 2 Nov 2026 | |
 | CHAT-005 | EX-01, live page | SUPERSEDED by CHAT-007 (five compactions) | 2 Nov 2026 | |
 | CHAT-006 | MOD-03, Moderator | historical record since 25 Nov 2026; forwards notes only | 17 Nov 2026 | handed over to CHAT-013 on 25 Nov 2026, a planned early succession under PD-65 §9.3 |
-| CHAT-007 | EX-02, live page (`index.html` patches, refresh, side-by-side test kit) | ACTIVE | 18 Nov 2026 | 3 compactions (see the row above) |
+| CHAT-007 | EX-02, live page (`index.html` patches, refresh, side-by-side test kit) | retired 26 Nov 2026 after its final handover | 18 Nov 2026 | 3 compactions; succeeded by CHAT-014 |
+| CHAT-014 | EX-03, live page (side-by-side test kit, the December refresh) | ACTIVE | 26 Nov 2026 | successor of CHAT-007 (three-compaction rule) |
 | CHAT-008 | ARC-02, Guardian (live page, M2, rule 10) | ACTIVE | 18 Nov 2026 | ARC-01's **sole rule-10 successor** |
 | CHAT-009 | NB-02, new build (identifiers, ingest, classification, then M3b) | ACTIVE | 22 Nov 2026 | |
 | CHAT-010 | NB-03, new build: financial engines (M3a, M7a) | ACTIVE | 24 Nov 2026 (late evening IST) | |
