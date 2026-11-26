@@ -35,7 +35,7 @@ Header rows, sheets and columns that moved, and what was changed in the pipeline
   - the scripts' hashes, checked before each run;
   - for each staged slide: bytes and SHA-256, its size (1920×1080), and "looked at";
   - the label.
-- **Risk chain (step 4):** for each script, its reviewed hash checked before the run, the time and the result
+- **Risk chain (step 4):** for each script, its hash checked before the run and what allowed the run (ARC-02's review or the owner's permission), the time and the result
   against its hard stop; the inputs' SHA-256; the label and the last trading day; the `build_risk.js --report`
   counts.
 - **AmfiFetch ids file (step 4b):** SHA-256, rows, the console line (ISIN counts, changed, skipped); handed to the new
