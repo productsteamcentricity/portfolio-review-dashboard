@@ -496,23 +496,25 @@ Record every result in the log.
 | STOCK_INFO | Analytics files (vote), Listed Direct Equity master, then back-fill | `build_refresh.js` |
 | STOCK_RET | Listed Direct Equity returns issue | `build_refresh.js` or `build_stockret.js` |
 | FUND_MGR | Fund Manager history (when supplied) | `build_refresh.js` |
-| MARKET_UPDATE_IMAGES | Outlook deck, exported to JPEG | `build_refresh.js --slides` |
+| MARKET_UPDATE_IMAGES | Investment Reckoner PDF pages, rendered without Office (step 3) | `build_refresh.js --slides` |
+| HYBRID_ANALYTICS keys carried forward | `Analytics\Other Funds Analytics.xlsx` (step 7f) | `build_other_funds.js` |
 | MF_RISK, `DATA_DATES.risk` | Risk-ratio workbook (in-house, step 4) | `build_risk.js` |
+| (new build) `data/identifiers/amfi-isin.json` | AmfiFetch ids file (step 4b) | NB-02's derivation |
 | PMS_PERF | PMS_Scheme Performance | `refresh_pms_perf.js` |
 | FUND_RANKS | Fund_Ranks | `tools/parse-fund-ranks.js` (+ wrapper) |
 | `DATA_DATES` | set by each build | — |
 
 `Exit Load` and `NAV Data` are archived only; the dashboard does not use them.
 
-### Blocks that stay old until their files arrive (state at 15 Oct 2026)
+### Blocks that stay old until their files arrive (state after the October refresh, 26 Nov 2026)
 
-- FUND_RANKS: 15 Aug 2026.
+- FUND_RANKS: 15 Aug 2026; FUND_RANKS_CODES follows it, so check renames (step 8).
 - FUND_MGR: 31 Aug 2026.
-- PMS_PERF: July data.
-- AIF_PERF: 30 Jun 2026.
+- PMS_PERF: 31 Jul 2026. AIF_PERF: 30 Jun 2026. The 15 PMS/AIF look-throughs: 31 Jul 2026.
+- MF_ER_TABLE: the September overlay (no Expense Ratio file in October).
+- STOCK_RET: its last returns issue (none in October; no date of its own, KI-083).
 - MF_BENCHMARKS.
-- The 15 PMS/AIF look-throughs: 31 Jul 2026.
-- MF_RISK: 30 Sep 2026, until the risk toolchain arrives.
+- MF_RISK: 31 Oct 2026, computed in-house (step 4).
 
 ### "Is this file new?" checklist
 
@@ -533,7 +535,8 @@ The same filename has been re-issued with different content at least four times.
 | `anchor found 0 times` from the splice | Splice run without `--data-only` | Add `--data-only`. The failure is safe; nothing was written. |
 | "DATA_DATES.* did not advance" | The builder re-ran after a splice and read the spliced file as "previous" | Expected on a re-gate |
 | Out of memory | 16 MB file plus JSON | `node --max-old-space-size=8192` |
-| PowerPoint "error while saving" | Export path too long | Export to `%TEMP%\cx_slides_<month>` |
+| A rendered page is not 2880×1620 | The PDF page is not 16:9 | Do not shrink it (it would be stretched); ask the owner (step 3) |
+| `mv` of the inbox says "busy" | A shell's working directory is inside the folder | Nothing moved; leave the folder in every shell and retry (step 10) |
 | Engine fails under `node -e` | The UMD bundles take their CommonJS path | Run engine code from a script file (KI-011) |
 | Re-issued file after the splice | Common (stock returns, the deck, the SOA workbook) | Rebuild only the affected block from the new file and splice it on the same branch |
 
@@ -550,3 +553,12 @@ The previous owner's monthly runs (Jun–Sep 2026) and their pitfalls are in
 - 13–14 Oct 2026;
 - 20 minutes from start to verified;
 - logged retrospectively in `refresh-log/2026-09.md`.
+
+The October run (`refresh-log/2026-10.md`) is the first in this repository end to end. It covers:
+- the performance and analytics (19 Nov);
+- the in-house risk ratios (19 Nov);
+- the slides from the Reckoner PDF (22 Nov);
+- the 40 carried look-throughs from the Other Funds file (22 Nov);
+- the archive move (26 Nov).
+
+LP-19 (26 Nov 2026) brought steps 3, 4, 4b, 7f, 8 and 10 up to that run.
