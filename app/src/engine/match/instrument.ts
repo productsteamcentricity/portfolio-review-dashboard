@@ -32,6 +32,11 @@
 //     distinctive. The thresholds are unchanged, so this only rejects more. The audit's idf weighting was measured
 //     and not adopted: as a guard it lost correct official AMFI names, as a ranking it added wrong matches
 //     (tests/parity/matching-corrections.ts).
+//   - absentFundGuard (OFF by default; the owner's open question on matching strictness, MOD-04 26 Nov 2026, option B):
+//     a candidate is rejected when the holding's name leaves unmatched a word the candidate set knows but that is in
+//     fewer than 5% of its names (a word the set does not know, such as a misspelling, never counts). Measured: about
+//     41% fewer wrong matches for funds absent from the vendor data, and 21 of 1,206 official AMFI names that match
+//     correctly today become unmatched. Turning it on is the one-line change the owner's answer needs.
 
 import { aliasFor, isExactOnlyKey } from './name-lists.ts';
 import { nameKey, normalize } from './normalize.ts';
@@ -48,7 +53,38 @@ export type MatchOptions = {
   nullOnTies?: boolean;
   /** KI-101: fund-house words (houseWords, and the holding's AMC words) never count as distinctive. Needs nullOnTies. */
   houseTokens?: boolean;
+  /** Option B, off by default: reject a candidate that leaves a known rare word of the holding's name unmatched (see
+   * above). Needs nullOnTies. */
+  absentFundGuard?: boolean;
 };
+
+/** Option B's bar: a known word in fewer than this share of a candidate set's names is informative. */
+export const ABSENT_FUND_SHARE = 0.05;
+const dfCache = new WeakMap<readonly string[], ReadonlyMap<string, number>>();
+
+/** In how many names of a candidate set each word appears. */
+function documentFrequency(candidates: readonly string[], cache?: TokenCache): ReadonlyMap<string, number> {
+  const hit = dfCache.get(candidates);
+  if (hit) return hit;
+  const df = new Map<string, number>();
+  for (const c of candidates) for (const t of new Set(tokensOf(c, cache))) df.set(t, (df.get(t) ?? 0) + 1);
+  dfCache.set(candidates, df);
+  return df;
+}
+
+/** Option B: true when the holding's name leaves unmatched a word the set knows and fewer than ABSENT_FUND_SHARE of
+ * its names carry ("fund" and house words never count). */
+function leavesKnownRareWord(nt: readonly string[], ct: readonly string[], isHouse: ((t: string) => boolean) | undefined, candidates: readonly string[], cache: TokenCache | undefined): boolean {
+  const df = documentFrequency(candidates, cache);
+  const bar = ABSENT_FUND_SHARE * candidates.length;
+  const cs = new Set(ct);
+  for (const t of new Set(nt)) {
+    if (cs.has(t) || t === 'fund' || (isHouse && isHouse(t))) continue;
+    const d = df.get(t) ?? 0;
+    if (d > 0 && d < bar) return true;
+  }
+  return false;
+}
 
 export type MatchStep =
   | 'block' | 'pin' | 'owner-alias' | 'exact' | 'exact-ambiguous' | 'exact-only-stop' | 'fuzzy' | 'fuzzy-tie' | 'none';
@@ -175,6 +211,7 @@ function correctedTail(name: unknown, nt: string[], key: string, amcTok: string,
     const isHouse = houses ? (t: string): boolean => amcWords!.has(t) || (own !== undefined && own.has(t)) : undefined;
     const s = fuzzyScore(nt, amcTok, ct, isHouse);
     if (!s) continue;
+    if (opts?.absentFundGuard && leavesKnownRareWord(nt, ct, isHouse, candidates, cache)) continue;
     if (s.shared > bestShared || (s.shared === bestShared && s.jaccard > bestJac)) {
       tied = [c];
       bestShared = s.shared;
@@ -206,6 +243,7 @@ export function matchInstrumentDetail(name: unknown, amc: unknown, candidates: r
     if (target !== undefined) return { key: target, step: 'owner-alias' };
   }
   const amcTok = normalize(amc)[0] ?? nt[0] ?? '';
+  if (opts?.absentFundGuard && !opts.nullOnTies) throw new Error('matchInstrument: absentFundGuard applies on the corrected path; set nullOnTies too');
   if (opts?.houseTokens && !opts.nullOnTies) throw new Error('matchInstrument: houseTokens applies on the corrected path; set nullOnTies too');
   if (opts?.nullOnTies) return correctedTail(name, nt, key, amcTok, candidates, cache, opts, amc);
   for (const c of candidates) {
