@@ -172,9 +172,11 @@ describe('month-end data (MOD-04, 26 Nov 2026; ARC-03 M4)', () => {
     assert.equal(isMonthEndSeries(pts([D(2025, 10, 30), 1], [D(2025, 10, 31), 1])), false, 'two points in one month');
     assert.equal(isMonthEndSeries([]), false);
   });
-  test('an as-on that is not a month end uses the month-end point of its month (30 Oct with 31 Oct points)', () => {
-    const s = pts([D(2025, 10, 31), 100], [D(2026, 10, 31), 110]);
+  test('PD-67: never a price after the as-on; 30 Oct with month-end points uses 30 Sep, not 31 Oct', () => {
+    const s = pts([D(2025, 9, 30), 100], [D(2025, 10, 31), 999], [D(2026, 9, 30), 110], [D(2026, 10, 31), 999]);
     near(v(stockCagr(s, D(2026, 10, 30), '1y')), 10);
+    // with no September point, the as-on has no month-end price on or before it in its month or the month before
+    assert.equal(status(stockCagr(pts([D(2025, 10, 31), 100], [D(2026, 10, 31), 110]), D(2026, 10, 30), '1y')), STATUS.NOT_AVAILABLE);
   });
   test('28 Feb 2025 uses the 29 Feb 2024 month-end point', () => {
     const s = pts([D(2024, 2, 29), 100], [D(2025, 2, 28), 110]);
@@ -226,27 +228,28 @@ describe('a short history falls through only to a source with the same as-on dat
 describe('ARC-03 delta review of 49e9a34 (M1, M2, pinned)', () => {
   const P3 = { sources: [], method: 'test' };
   const sh3 = (id: string, isin: string, cmv: number): StockHoldingInput => ({ holdingId: id as HoldingId, isin, cmvCr: present(cmv, 'cr', P3) });
-  test('M1: the figure is dated by the label of the prices used, not the raw as-on', () => {
-    const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE1: pts([D(2025, 10, 31), 100], [AS_ON, 110]) } };
-    const r = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [pack], D(2026, 10, 30), '1y', 'family');
+  test('M1 with PD-67: the figure is dated by the day of the prices used, not the raw as-on', () => {
+    const SEP30 = D(2026, 9, 30);
+    const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE1: pts([D(2025, 9, 30), 100], [SEP30, 110], [AS_ON, 999]) } };
+    const r = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [pack], D(2026, 10, 15), '1y', 'family');
     near(v(r.figure!.value), 10);
-    assert.equal(v(r.figure!.asOn), AS_ON);
+    assert.equal(v(r.figure!.asOn), SEP30);
+    assert.match(footnoteOf(r)!, /as on 2026-09-30\.$/);
   });
-  test('M1: a file dated 20 Nov whose prices end on 31 Oct is footnoted as on 31 Oct; the true day goes in the notes', () => {
+  test('M1: a file dated 20 Nov whose prices end on 29 Oct is footnoted as on 29 Oct, the day of the prices used', () => {
     const file: PriceSource = { source: 'analyst-price-file', asOn: present(D(2026, 11, 20), 'date', P3), series: { INE000SAMPLE1: pts([D(2025, 10, 29), 100], [D(2026, 10, 29), 110]) } };
     const r = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [file], AS_ON, '1y', 'family');
-    assert.equal(v(r.figure!.asOn), AS_ON);
+    assert.equal(v(r.figure!.asOn), D(2026, 10, 29));
     const foot = footnoteOf(r)!;
-    assert.match(foot, /as on 2026-10-31\.$/);
-    assert.ok(!foot.includes('2026-11-20') && !foot.includes('2026-10-29'));
-    assert.deepEqual(r.notes, ['analyst-price-file: end prices of 2026-10-29 (shown as on 2026-10-31)']);
+    assert.match(foot, /as on 2026-10-29\.$/);
+    assert.ok(!foot.includes('2026-11-20'));
   });
-  test('M2: on month-end data an as-on far from a month end is refused; 2 Nov reads as 31 Oct', () => {
-    const s = pts([D(2025, 10, 31), 100], [AS_ON, 110]);
-    const mid = stockCagr(s, D(2026, 10, 15), '1y');
-    assert.equal(status(mid), STATUS.NOT_AVAILABLE);
-    assert.match((mid as { reason: string }).reason, /not within 7 days of a month end/);
+  test('M2 (PD-67): as-on 15 Oct uses 30 Sep; 2 Nov uses 31 Oct; a later point is never used', () => {
+    const s = pts([D(2025, 9, 30), 100], [D(2025, 10, 31), 200], [D(2026, 9, 30), 110], [AS_ON, 220]);
+    near(v(stockCagr(s, D(2026, 10, 15), '1y')), 10);
     near(v(stockCagr(s, D(2026, 11, 2), '1y')), 10);
+    // an as-on two months past the last point has no month-end price: missing, never 0%
+    assert.equal(status(stockCagr(s, D(2026, 12, 15), '1y')), STATUS.NOT_AVAILABLE);
   });
   test('pinned: 3Y on month-end data, 200 to 266.2 = 10.00%', () => {
     near(v(stockCagr(pts([D(2023, 10, 31), 200], [D(2024, 10, 31), 230], [D(2025, 10, 31), 240], [AS_ON, 266.2]), AS_ON, '3y')), 10);
