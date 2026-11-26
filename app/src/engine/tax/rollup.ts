@@ -40,7 +40,8 @@ import { missing, present } from '../value.ts';
 import type { ExemptionLookup, RateLookup, Regime, TaxRule, TaxRuleTable } from './rules.ts';
 import { TAX_RULES_V1, cessRateFor, exemptionFor, surchargeCapFor, surchargeMaxFor } from './rules.ts';
 import type {
-  BucketLocal, EstimateLocal, FamilyTaxYearLocal, PersonYearInput, PersonYearTaxLocal, RollupResult, TaxIssue, TaxLot,
+  BucketLocal, BucketValues, EstimateLocal, FamilyTaxYearLocal, PersonYearInput, PersonYearInputSource, PersonYearTaxLocal,
+  Refusal, RollupResult, TaxIssue, TaxLot,
 } from './types.ts';
 
 /**
@@ -68,6 +69,8 @@ const EPS = 1e-9;
 const SLAB_NOT_SET = 'slab rate not set';
 const RATE_NOT_SET = 'before surcharge (rate not set)';
 const REGIME_NOT_SET = 'before surcharge (regime not set)';
+const EXEMPTION_OPEN = 'the annual exemption of the year is to be confirmed';
+const IE_REASON = 'an unanswered repeated-rows question in this financial year (design section 6)';
 const val = <T>(r: CgRead<T>): T | null => (r.kind === 'value' ? r.v : null);
 /** A fraction as a percent number, clean of binary noise (0.15 gives 15, not 15.000000000000002). */
 const pct = (frac: number): number => Math.round(frac * 1e8) / 1e6;
@@ -116,8 +119,11 @@ type CoreCtx = {
   cess: RateLookup;
 };
 
+/** A bucket as the core computes it; the person-year adds its `values` (BucketValues). */
+type CoreBucket = Omit<BucketLocal, 'values'>;
+
 type Core = {
-  buckets: BucketLocal[];
+  buckets: CoreBucket[];
   unabsorbed: { st: number; lt: number };
   exemptionApplied: number;
   dash: string | null;
@@ -137,11 +143,11 @@ function exemptionAmount(ex: ExemptionLookup): number {
 }
 
 /** The exemption-group buckets in the order the exemption is applied (PD-16 item 6 default, or the other order). */
-function exemptionOrder(buckets: readonly BucketLocal[], ctx: CoreCtx): number[] {
+function exemptionOrder(buckets: readonly CoreBucket[], ctx: CoreCtx): number[] {
   const idx = buckets.map((b, i) => [b, i] as const).filter(([b]) => b.exemptionGroup !== null);
   const alloc = ctx.exemption.status === 'ok' ? ctx.exemption.year.allocationOrder : null;
   const pos = (id: string): number => { const k = alloc?.indexOf(id) ?? -1; return k < 0 ? Number.MAX_SAFE_INTEGER : k; };
-  const rateOf = (b: BucketLocal): number => (typeof b.rate === 'number' ? b.rate : 0);
+  const rateOf = (b: CoreBucket): number => (typeof b.rate === 'number' ? b.rate : 0);
   idx.sort(([a, ia], [b, ib]) => ctx.order === 'default'
     ? (pos(a.ruleId) - pos(b.ruleId)) || (rateOf(b) - rateOf(a)) || (ia - ib)
     : (rateOf(a) - rateOf(b)) || (pos(a.ruleId) - pos(b.ruleId)) || (ia - ib));
@@ -150,7 +156,7 @@ function exemptionOrder(buckets: readonly BucketLocal[], ctx: CoreCtx): number[]
 
 function core(items: readonly Item[], ctx: CoreCtx): Core {
   // Step 2: buckets per rule and rate (NE-LT-1 has one per leg). Gross gains in the bucket, losses to the term's pool.
-  const byKey = new Map<string, BucketLocal & { order: number; frac: number | null }>();
+  const byKey = new Map<string, CoreBucket & { order: number; frac: number | null }>();
   for (const it of items) {
     const key = `${it.ruleId}|${it.rate}`;
     let b = byKey.get(key);
@@ -237,7 +243,7 @@ function core(items: readonly Item[], ctx: CoreCtx): Core {
   }
   out.exemptionApplied = E - room;
   const groupGains = all.some((b) => b.exemptionGroup !== null && b.gain - b.setOff > EPS);
-  if (groupGains && ctx.exemption.status !== 'ok') out.blocked = 'the annual exemption of the year is to be confirmed';
+  if (groupGains && ctx.exemption.status !== 'ok') out.blocked = EXEMPTION_OPEN;
 
   // Step 5: tax per bucket; step 6: surcharge per bucket, capped on the capped categories.
   let sur: number | null = ctx.surcharge.kind === 'rate' ? 0 : null;
@@ -318,18 +324,44 @@ function personLabelOf(imp: CgImport, key: string, lot: CgLot | undefined): stri
   return imp.persons.find((p) => p.clientId === key)?.label ?? lot?.accountLabel ?? key;
 }
 
+type InputPick =
+  | { kind: 'none' }
+  | { kind: 'applied'; input: PersonYearInput; source: PersonYearInputSource }
+  | { kind: 'refused'; refusal: Refusal };
+
 /**
  * The analyst's person-year entry: by the person key (TaxInputs.personYear.clientId holding "person:n" or the client
- * id), else by the person's single review client when no other person of the year has that client.
+ * id); else by the client labels of the person's review clients that no other person of the year carries. A PAN person
+ * can carry two review clients' labels (fin review S-1): their entries apply when they agree on the slab rate, the
+ * surcharge rate and the regime (or only one is given), recorded with the labels they came from; when they disagree
+ * none applies and the entry is refused, naming "Person n" and the labels, never the PAN.
  */
 // TODO(contracts-4): personKey joins TaxInputs.personYear
-function personYearInputFor(inputs: TaxInputs, fy: number, p: PersonInfo, clientsInYear: ReadonlyMap<string, number>): PersonYearInput | undefined {
+function personYearInputFor(inputs: TaxInputs, fy: number, fyLabel: string, p: PersonInfo,
+  clientsInYear: ReadonlyMap<string, number>, labelOf: (c: ClientId) => string): InputPick {
   const exact = inputs.personYear.find((e) => e.fy === fy && (e.clientId as string | null) === p.key);
-  if (exact) return exact;
-  if (p.reviewClients.size !== 1) return undefined;
-  const c = [...p.reviewClients][0]!;
-  if ((clientsInYear.get(c) ?? 0) !== 1) return undefined;
-  return inputs.personYear.find((e) => e.fy === fy && e.clientId === c);
+  if (exact) return { kind: 'applied', input: exact, source: { by: 'person' } };
+  const found: Array<[ClientId, PersonYearInput]> = [];
+  for (const c of p.reviewClients) {
+    if ((clientsInYear.get(c) ?? 0) !== 1) continue;
+    const e = inputs.personYear.find((x) => x.fy === fy && x.clientId === c);
+    if (e) found.push([c, e]);
+  }
+  if (found.length === 0) return { kind: 'none' };
+  const first = found[0]![1];
+  const source: PersonYearInputSource = { by: 'label', clientIds: found.map(([c]) => c), labels: found.map(([c]) => labelOf(c)) };
+  if (found.every(([, e]) => e.slabPct === first.slabPct && e.surchargePct === first.surchargePct && e.regime === first.regime)) {
+    return { kind: 'applied', input: first, source };
+  }
+  const n = /^person:(\d+)$/.exec(p.key)?.[1];
+  const who = n !== undefined ? `Person ${n}` : 'this person';
+  return {
+    kind: 'refused',
+    refusal: {
+      input: 'person-year', ref: `${p.key}|${fy}`,
+      reason: `The slab rate, surcharge rate or regime entered for ${who} in ${fyLabel} under the client labels ${source.labels.map((l) => `"${l}"`).join(' and ')} disagree, so none is applied; enter them once under ${who}.`,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -343,6 +375,7 @@ type PyCtx = {
   fy: number;
   person: PersonInfo;
   input: PersonYearInput | undefined;
+  inputSource: PersonYearInputSource | null;
   slabDefaultPct: number | null;
   insufficient: boolean;
 };
@@ -395,21 +428,25 @@ function personYear(lots: readonly TaxLot[], x: PyCtx): PersonYearTaxLocal {
   };
   const byLot = new Map(lots.map((g) => [g.lotIndex, g]));
   let anniversary: EstimateLocal | null = null;
-  const annLots = items.filter((it) => byLot.get(it.lotIndex)?.anniversaryLongTerm != null);
+  // A lot whose long-term figure is the dash (anniversaryLongTermDetail with a missing gain, fin review S-6) makes the
+  // alternative the dash with that reason.
+  const annLots = items.filter((it) => byLot.get(it.lotIndex)?.anniversaryLongTermDetail != null);
   if (annLots.length > 0) {
-    let computable = true;
+    let notComputable: string | null = null;
     const alt: Item[] = [];
     for (const it of items) {
       const g = byLot.get(it.lotIndex)!;
-      if (g.anniversaryLongTerm === null) { alt.push(it); continue; }
-      const rate = g.anniversaryLongTermDetail?.rate ?? null;
-      if (rate === 'exempt') continue;
-      if (rate === null) { computable = false; break; }
-      alt.push(itemOf(table, x.ruleIndex, it.lotIndex, g.anniversaryLongTerm.ruleId, rate, 'long', g.anniversaryLongTerm.taxableGain));
+      const d = g.anniversaryLongTermDetail;
+      if (d === null) { alt.push(it); continue; }
+      if (d.rate === 'exempt') continue;
+      if (d.taxableGain.kind === 'missing') { notComputable = d.taxableGain.reason; break; }
+      if (d.rate === null) { notComputable = 'the long-term rate of an anniversary lot is not set'; break; }
+      alt.push(itemOf(table, x.ruleIndex, it.lotIndex, d.ruleId, d.rate, 'long', d.taxableGain.v));
     }
-    anniversary = computable ? run(alt) : {
-      tax: missing(NA, 'the long-term figure of an anniversary lot is not computable', prov), surcharge: missing(NA, 'not computable', prov),
-      cess: missing(NA, 'not computable', prov), total: missing(NA, 'not computable', prov), beforeSurcharge: false, surchargeLabel: null,
+    const why = `the long-term figure of an anniversary lot is not computable (${notComputable ?? ''})`;
+    anniversary = notComputable === null ? run(alt) : {
+      tax: missing(NA, why, prov), surcharge: missing(NA, why, prov),
+      cess: missing(NA, why, prov), total: missing(NA, why, prov), beforeSurcharge: false, surchargeLabel: null,
     };
   }
   let otherOrder: EstimateLocal | null = null;
@@ -460,13 +497,37 @@ function personYear(lots: readonly TaxLot[], x: PyCtx): PersonYearTaxLocal {
   }
   const splitProv: Provenance = { sources: [x.imp.sourceId], method: "the statement's own LTCG and STCG of the year, summed (design section 9.3 step 7)" };
 
-  // INSUFFICIENT EVIDENCE: the year's totals wait for the repeats answers (design §6).
-  const ie = (r: Value<number> | null): Value<number> | null => (r === null ? null : x.insufficient
-    ? missing(IE, 'an unanswered repeated-rows question in this financial year (design section 6)', prov) : r);
-  const est: EstimateLocal = x.insufficient ? {
-    tax: ie(estimate.tax)!, surcharge: ie(estimate.surcharge)!, cess: ie(estimate.cess)!, total: ie(estimate.total)!,
-    beforeSurcharge: estimate.beforeSurcharge, surchargeLabel: estimate.surchargeLabel,
-  } : estimate;
+  // INSUFFICIENT EVIDENCE: the year's realised and taxable totals and every tax figure wait for the repeats answers
+  // (design §6; fin review S-3).
+  const ieV = (): Value<number> => missing(IE, IE_REASON, prov);
+  const ie = (r: Value<number> | null): Value<number> | null => (r === null ? null : x.insufficient ? ieV() : r);
+  const ieEst = <E extends EstimateLocal>(e: E): E => (x.insufficient
+    ? { ...e, tax: ieV(), surcharge: ieV(), cess: ieV(), total: ieV() } : e);
+  const ieEstOrNull = <E extends EstimateLocal>(e: E | null): E | null => (e === null ? null : ieEst(e));
+  const est: EstimateLocal = ieEst(estimate);
+
+  // The after-set-off figures as Values (fin review S-2, S-3): INSUFFICIENT EVIDENCE first, then the slab dash, then
+  // the exemption of the year still to be confirmed where exemption-group gains remain.
+  const exemptionOpen = exemption.status !== 'ok';
+  const groupLeft = (b: CoreBucket): boolean => b.exemptionGroup !== null && b.gain - b.setOff > EPS;
+  const after = (n: number, why: string | null = null): Value<number> => (x.insufficient ? ieV()
+    : main.dash !== null ? missing(NA, main.dash, prov) : why !== null ? missing(NA, why, prov) : present(n, 'inr', prov));
+  const bucketValues = (b: CoreBucket): BucketValues => {
+    const exWhy = exemptionOpen && groupLeft(b) ? EXEMPTION_OPEN : null;
+    const taxable = after(b.taxable, exWhy);
+    const tax: Value<number> = taxable.kind === 'missing' ? taxable
+      : b.tax === null ? missing(NA, SLAB_NOT_SET, prov) : present(b.tax, 'inr', prov);
+    const surWhy = surcharge.kind === 'before' ? surcharge.label : surcharge.kind === 'missing' ? surcharge.reason
+      : main.blocked ?? 'the surcharge cap of the year is to be confirmed';
+    const sur: Value<number> = tax.kind === 'missing' ? tax
+      : b.surcharge !== null ? present(b.surcharge, 'inr', prov) : missing(NA, surWhy, prov);
+    return { setOff: after(b.setOff), taxable, exemption: after(b.exemption, exWhy), tax, surcharge: sur };
+  };
+  const values: PersonYearTaxLocal['values'] = {
+    realised: x.insufficient ? ieV() : present(realised, 'inr', prov),
+    exemptionApplied: after(main.exemptionApplied, exemptionOpen && main.buckets.some(groupLeft) ? EXEMPTION_OPEN : null),
+    unabsorbed: { st: after(main.unabsorbed.st), lt: after(main.unabsorbed.lt) },
+  };
 
   const labels = ['resident individual assumed', 'indicative, not tax advice'];
   if (main.exemptionApplied > EPS) labels.push('the annual exemption is shared with listed shares, other equity-oriented units and business trust units outside this statement, so part of it may already be used');
@@ -484,6 +545,7 @@ function personYear(lots: readonly TaxLot[], x: PyCtx): PersonYearTaxLocal {
     personLabel: x.person.label,
     fy,
     inReview: x.person.reviewClients.size > 0,
+    // NOT MEANINGFUL in an INSUFFICIENT EVIDENCE year (every row counted): values.realised holds the status.
     realised,
     exempt,
     nonTaxable,
@@ -492,13 +554,16 @@ function personYear(lots: readonly TaxLot[], x: PyCtx): PersonYearTaxLocal {
         ? (exemption.year.kind === 'threshold' && exemption.year.amount !== null
           ? present(exemption.year.amount, 'inr', { sources: [], method: `${exemption.year.section} annual exemption of the year (design section 10.2)` })
           : missing(NAPP, `whole long-term gain exempt under ${exemption.year.section}, no threshold`))
-        : missing(NA, 'the annual exemption of the year is to be confirmed'),
+        : missing(NA, EXEMPTION_OPEN),
+      // NOT MEANINGFUL (0) under afterSetOffDash or INSUFFICIENT EVIDENCE: values.exemptionApplied holds the status.
       applied: main.exemptionApplied,
     },
+    // NOT MEANINGFUL ({0, 0}) under afterSetOffDash or INSUFFICIENT EVIDENCE: values.unabsorbed holds the status.
     unabsorbed: main.unabsorbed,
+    // Each bucket's setOff and taxable likewise; its `values` holds them as Values.
     buckets: main.buckets.map((b) => {
-      const { order: _o, frac: _f, ...rest } = b as BucketLocal & { order?: number; frac?: number | null };
-      return rest;
+      const { order: _o, frac: _f, ...rest } = b as CoreBucket & { order?: number; frac?: number | null };
+      return { ...rest, values: bucketValues(b) };
     }),
     estimate: est,
     alternatives: {
@@ -524,7 +589,12 @@ function personYear(lots: readonly TaxLot[], x: PyCtx): PersonYearTaxLocal {
     exemptLossIgnored,
     lots: lots.map((g) => g.lotIndex),
     statementDiffers: { term: termDiffers, gain: gainDiffers },
-    alternativesDetail: { anniversaryLongTerm: anniversary, fy2425OtherOrder: otherOrder, oldLawYearTotal: oldLaw, oldLawLegs },
+    values,
+    inputSource: x.input === undefined ? null : x.inputSource,
+    alternativesDetail: {
+      anniversaryLongTerm: ieEstOrNull(anniversary), fy2425OtherOrder: ieEstOrNull(otherOrder), oldLawYearTotal: ieEstOrNull(oldLaw),
+      oldLawLegs: oldLawLegs === null ? null : { indexed20: ieEst(oldLawLegs.indexed20), actual10: ieEst(oldLawLegs.actual10) },
+    },
     labels,
   };
 }
@@ -585,6 +655,16 @@ function familySumOf(fy: number, persons: readonly PersonYearTaxLocal[], prov: P
   };
 }
 
+/** The family sum's realised and unabsorbed totals as Values: the sum of the persons' `values` (fin review S-2, S-3). */
+function familySumValuesOf(persons: readonly PersonYearTaxLocal[], prov: Provenance): FamilyTaxYearLocal['familySumValues'] {
+  const w = persons.map((p) => Math.max(p.lots.length, 1));
+  const sum = (pick: (p: PersonYearTaxLocal) => Value<number>, what: string): Value<number> => sumValues(persons.map(pick), w, prov, what);
+  return {
+    realised: sum((p) => p.values.realised, 'family realised'),
+    unabsorbed: { st: sum((p) => p.values.unabsorbed.st, 'family unabsorbed short-term loss'), lt: sum((p) => p.values.unabsorbed.lt, 'family unabsorbed long-term loss') },
+  };
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // The roll-up over a statement
 
@@ -627,6 +707,8 @@ export function rollupPersonYears(gains: readonly TaxLot[], imp: CgImport, input
   };
 
   const years: FamilyTaxYearLocal[] = [];
+  const refusals: Refusal[] = [];
+  const labelOf = (c: ClientId): string => imp.persons.find((p) => p.clientId === c)?.label ?? c;
   for (const fy of [...byYear.keys()].sort((a, b) => a - b)) {
     const y = byYear.get(fy)!;
     const keys = [...y.keys()].sort((a, b) => persons.get(a)!.first - persons.get(b)!.first);
@@ -635,15 +717,19 @@ export function rollupPersonYears(gains: readonly TaxLot[], imp: CgImport, input
     const isInsufficient = insufficient.has(yearLabel.get(fy)!);
     const pys = keys.map((k) => {
       const person = persons.get(k)!;
-      const input = personYearInputFor(inputs, fy, person, clientsInYear);
+      const pick = personYearInputFor(inputs, fy, yearLabel.get(fy)!, person, clientsInYear, labelOf);
+      if (pick.kind === 'refused') refusals.push(pick.refusal);
+      const input = pick.kind === 'applied' ? pick.input : undefined;
+      const inputSource = pick.kind === 'applied' ? pick.source : null;
       const py = personYear(y.get(k)!, {
-        table, ruleIndex, imp, lotByIndex, fy, person, input, slabDefaultPct, insufficient: isInsufficient,
+        table, ruleIndex, imp, lotByIndex, fy, person, input, inputSource, slabDefaultPct, insufficient: isInsufficient,
       });
       if (input !== undefined) {
         entry('An analyst entry for a person and financial year was applied: slab rate, surcharge rate or regime (design section 9.3).', {
           person: k, fy, slabSet: input.slabPct !== null, surchargeSet: input.surchargePct !== null, regime: input.regime,
           surchargeLimited: py.labels.includes("the surcharge entry is limited to the year's maximum"),
           surchargeHeld: py.estimate.surchargeLabel === REGIME_NOT_SET,
+          enteredUnder: inputSource === null || inputSource.by === 'person' ? 'person key' : `client label: ${inputSource.labels.join(', ')}`,
         });
       }
       if (py.slab.source === 'default') {
@@ -656,6 +742,7 @@ export function rollupPersonYears(gains: readonly TaxLot[], imp: CgImport, input
     years.push({
       fy, rulesVersion: table.version, persons: pys, insufficientEvidence: isInsufficient,
       familyPersons: inFamily.map((p) => p.personKey), familySum: familySumOf(fy, inFamily, prov),
+      familySumValues: familySumValuesOf(inFamily, prov),
     });
   }
 
@@ -692,5 +779,5 @@ export function rollupPersonYears(gains: readonly TaxLot[], imp: CgImport, input
       });
     }
   }
-  return { years, issues, audit };
+  return { years, issues, refusals, audit };
 }

@@ -17,7 +17,7 @@
 // PAN, a folio, a name or the amount of a single lot (§11), and no en or em dash (D-029).
 
 import type { CgImport, CgLot, CgRead } from '../../ingest/capital-gains.ts';
-import { amountTolerance } from '../../ingest/capital-gains.ts';
+import { amountTolerance, taxPersonKey } from '../../ingest/capital-gains.ts';
 import type { DayNumber, Provenance, Unit, Value } from '../../model/value.ts';
 import type { MissingStatus } from '../../model/status.ts';
 import { STATUS } from '../../model/status.ts';
@@ -220,16 +220,25 @@ function longTermRowFor(table: TaxRuleTable, key: RuleKey): TaxRule | null {
   return hits.length === 1 ? hits[0]! : null;
 }
 
-type AnniversaryFigure = { ruleId: string; taxableGain: number; rate: LotRate; costForTax: number };
+type AnniversaryFigure =
+  | { kind: 'ok'; ruleId: string; taxableGain: number; rate: LotRate; costForTax: number }
+  | { kind: 'not-computed'; ruleId: string; rate: LotRate; reason: NotComputedReason };
 
+/**
+ * The long-term figure of an anniversary-day lot, under the long-term row with the lot's own gift, inheritance or
+ * first-held-before-2001 mark (fin review S-6): a grandfathered row then needs the s.55(2)(b) or s.90(9) cost input
+ * (TR-11), so the figure is not computed (`cost-input-missing`), never the grandfathered formula without the mark.
+ */
 function anniversaryLongTermFor(key: RuleKey, c: CostCtx): AnniversaryFigure | null {
   const row = longTermRowFor(c.table, key);
   if (row === null || row.toBeConfirmed) return null;
-  const r = costFor(row, { ...c, mark: undefined });
-  if (r.kind !== 'ok' || r.costForTax === null) {
-    return r.kind === 'ok' && r.exempt ? { ruleId: row.id, rate: 'exempt', costForTax: c.cost ?? 0, taxableGain: 0 } : null;
+  const r = costFor(row, c);
+  const rowRate: LotRate = row.rate === 'two-leg' ? null : row.rate;
+  if (r.kind === 'not-computed') return { kind: 'not-computed', ruleId: row.id, rate: rowRate, reason: r.reason };
+  if (r.costForTax === null) {
+    return r.exempt ? { kind: 'ok', ruleId: row.id, rate: 'exempt', costForTax: c.cost ?? 0, taxableGain: 0 } : null;
   }
-  return { ruleId: row.id, rate: r.rate, costForTax: r.costForTax, taxableGain: r.taxableGain };
+  return { kind: 'ok', ruleId: row.id, rate: r.rate, costForTax: r.costForTax, taxableGain: r.taxableGain };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -246,6 +255,8 @@ type LotCtx = {
   successor: SuccessorLink | null;
   mark: LotMark | undefined;
   assessee: string | null;
+  /** The person-year carries an assessee mark (personYearMarked). */
+  personYearMark: boolean;
   inputs: TaxInputs;
   asOnDay: DayNumber | undefined;
   bonusSchemes: ReadonlySet<string>;
@@ -305,8 +316,7 @@ function realiseOne(x: LotCtx): TaxLot {
     if (event.crossHouse) flags.push('cross-house-merger');
   }
   if (lotClass === 'other') flags.push('lot-class-other');
-  const py = x.inputs.personYear.find((p) => p.clientId === lot.clientId && p.fy === lot.financialYear.start);
-  if (x.assessee !== null || (py?.assesseeMark ?? null) !== null) flags.push('assessee-flagged');
+  if (x.assessee !== null || x.personYearMark) flags.push('assessee-flagged');
   if (x.asOnDay !== undefined && lot.saleDate > x.asOnDay) flags.push('after-as-on-date');
   const split = statementSplit(lot);
   const noRule = (): Value<never> => missing(NA, 'no rule applies');
@@ -399,8 +409,23 @@ function realiseOne(x: LotCtx): TaxLot {
   };
   if (onAnniversary && rr.term === 'short') {
     const a = anniversaryLongTermFor(key, ctx);
-    g.anniversaryLongTerm = a === null ? null : { ruleId: a.ruleId, taxableGain: a.taxableGain };
-    g.anniversaryLongTermDetail = a === null ? null : { rate: a.rate, costForTax: a.costForTax };
+    const altProv = prov(`the long-term figure of an anniversary-day lot (PD-16 item 2, rule ${a?.ruleId ?? 'none'})`);
+    if (a === null) {
+      g.anniversaryLongTerm = null;
+      g.anniversaryLongTermDetail = null;
+    } else if (a.kind === 'ok') {
+      g.anniversaryLongTerm = { ruleId: a.ruleId, taxableGain: a.taxableGain };
+      g.anniversaryLongTermDetail = { ruleId: a.ruleId, rate: a.rate, costForTax: a.costForTax, taxableGain: present(a.taxableGain, 'inr', altProv) };
+    } else {
+      // The contract's anniversaryLongTerm holds a plain-number gain, so a figure that is the dash stays null there;
+      // the dash and its reason are in anniversaryLongTermDetail (TODO(contracts-4) in types.ts).
+      const reason: NotComputed = a.reason === 'cost-missing' ? 'cost-input-missing' : a.reason;
+      g.anniversaryLongTerm = null;
+      g.anniversaryLongTermDetail = {
+        ruleId: a.ruleId, rate: a.rate, costForTax: null,
+        taxableGain: missing(NA, `the long-term figure is not computed: ${reason}`, altProv),
+      };
+    }
   }
 
   if (rule.toBeConfirmed) {
@@ -521,6 +546,33 @@ function buildIssues(gains: readonly RealisedGain[], events: readonly MergerEven
   return out;
 }
 
+/**
+ * Per lot: whether its person-year carries an assessee mark (TaxInputs.personYear.assesseeMark; fin review S-5). The
+ * entry is looked up as the roll-up looks up the person-year entry: by the tax person's key first ("person:n" for a
+ * PAN ordinal, else the client id; the contract's `clientId` field holds it until contracts-4); when the person has no
+ * entry under its key, by the client ids of the person's review lots in that year and the lot's own client id. A
+ * flag only, never a figure: raising it on any of these entries is the safe side.
+ */
+function personYearMarked(lots: readonly CgLot[], inputs: TaxInputs): boolean[] {
+  const reviewClients = new Map<string, Set<string>>();
+  for (const l of lots) {
+    const k = taxPersonKey(l.taxPerson);
+    if (k === null || !l.inReview || l.clientId === null) continue;
+    const at = `${l.financialYear.start}|${k}`;
+    reviewClients.set(at, (reviewClients.get(at) ?? new Set<string>()).add(l.clientId));
+  }
+  return lots.map((l) => {
+    const fy = l.financialYear.start;
+    const entries = inputs.personYear.filter((e) => e.fy === fy);
+    const k = taxPersonKey(l.taxPerson);
+    const exact = k === null ? undefined : entries.find((e) => (e.clientId as string | null) === k);
+    if (exact !== undefined) return exact.assesseeMark !== null;
+    const ids = new Set<string>(k === null ? [] : reviewClients.get(`${fy}|${k}`) ?? []);
+    if (l.clientId !== null) ids.add(l.clientId);
+    return entries.some((e) => e.clientId !== null && ids.has(e.clientId) && e.assesseeMark !== null);
+  });
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // The engine over a statement
 
@@ -538,11 +590,12 @@ export function realiseLots(imp: CgImport, inputs: TaxInputs, opts: RealiseOptio
   for (const m of inputs.lotMarks) marks.set(m.lotIndex, { ...(marks.get(m.lotIndex) ?? { lotIndex: m.lotIndex }), ...m });
   const bonusSchemes = new Set<string>();
   for (const l of lots) if (val(l.purchaseValue) === 0) bonusSchemes.add(`${l.accountId}|${schemeKeyOf(l.schemeLabel)}`);
+  const marked = personYearMarked(lots, inputs);
 
   const gains = lots.map((lot, i) => realiseOne({
     table, sourceId: imp.sourceId, lot, facts: facts[i]!, lotClass: classing.classes[i]!, successor: classing.successorOf[i] ?? null,
     event: classing.eventOf[i]! >= 0 ? classing.events[classing.eventOf[i]!]! : null, mark: marks.get(lot.index),
-    assessee: opts.assesseeOf?.(lot.index) ?? null, inputs, asOnDay: opts.asOnDay, bonusSchemes,
+    assessee: opts.assesseeOf?.(lot.index) ?? null, personYearMark: marked[i]!, inputs, asOnDay: opts.asOnDay, bonusSchemes,
   }));
 
   const refusals = [...classing.refusals];

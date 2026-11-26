@@ -459,10 +459,10 @@ after folding letter case and spacing and dropping a leading honorific (Mr, Mrs,
 full stop), they are possibly one person when their words pair up in order, a one-letter word (with or without a full
 stop) pairing with any word that starts with that letter, and one label may carry extra one-letter words; two
 different one-letter words never pair. So "Sample Client A" and "S Client A" are possibly one person; "Sample Client A" and "Sample Client B" are not.
-A lot whose client matches no client of the review is kept as its own person by its `clientId`, computed separately,
-listed under "clients not in the review", and never pooled with a review client or added to the family sum
-(`clients-unmatched`, §11). The family view shows the per-person results of the review's clients side by side and
-their sum, labelled "sum of separate computations"; the sum is PARTIAL COVERAGE when any person's figure is (step 2).
+A lot whose client matches no client of the review is kept as its own person (its PAN ordinal, else its `clientId`), computed separately, listed under "clients not in
+the review", and never pooled with a review client or added to the family sum (`clients-unmatched`, §11), unless its PAN is shared with a client of the review: a PAN
+person whose labels include a review client is in the review, and its lots under other labels join that person, one taxpayer with one annual exemption, in the family
+sum (PD-16 item 3 prevails). The family view shows the per-person results of the review's clients side by side and their sum, labelled "sum of separate computations"; the sum is PARTIAL COVERAGE when any person's figure is (step 2).
 
 **Rates and regime, per person and per financial year.** The analyst enters, for each person and each financial year,
 each value an audit entry: the **slab rate** (the person's marginal rate; no default); the **surcharge rate** (no
@@ -1061,7 +1061,7 @@ with a stated category reads that category without it; a crypto loss beside a ca
 | `repeats-question` | High | a sale event with repeated rows has no answer yet; its year is INSUFFICIENT EVIDENCE (§6) |
 | `totals-mismatch` | High | an amount column does not reconcile with the totals row within the tolerance; names the column, the difference and any excluded lots (§7) |
 | `non-taxable-transfers` | High | merger events to answer: non-taxable consolidation, taxable consolidation or investor switch (§5) |
-| `clients-unmatched` | High or Warning | High when no lot's client matches a client of the review (a statement of another family); Warning when only some do not. An unmatched lot is kept as its own person by its `clientId`, computed separately, listed under "clients not in the review", and never pooled with a review client or added to the family sum (§9.3) |
+| `clients-unmatched` | High or Warning | High when no lot's client matches a client of the review (a statement of another family); Warning when only some do not. An unmatched lot is kept as its own person (its PAN ordinal, else its `clientId`), computed separately, listed under "clients not in the review", and never pooled with a review client or added to the family sum, unless its PAN is shared with a client of the review: a PAN person whose labels include a review client is in the review, and its lots under other labels join that person, one taxpayer with one annual exemption, in the family sum (PD-16 item 3; §9.3) |
 | `family-differs` | Warning | the Family Name column names a family other than the review's: compared, after the base file's label normalisation, with the review's family label (`Family.label`); not compared while the label is unset (§2.3) |
 | `row-without-sale-date` | Warning | an excluded lot: a row other than the totals row with amounts but no date in Sale Date, between lot rows or after the last one (§2.4) |
 | `invalid-cells` | Warning | a date or number cell that is not one (INVALID SOURCE DATA) |
@@ -1578,3 +1578,4 @@ Answers are compared to ₹0.01 (§2.3) on the unrounded total: tax and cess are
 | 25 Nov 2026 | §12 and §14: the blank template's column formats are the house codes, written as column defaults (MOD-03, NB-M7a PLAN-01 D3) |
 | 25 Nov 2026 | §4, §11, §14: blank required cells reported (`required-cell-blank`, Warning) and a blank Sale Unit failing "Sale Unit above 0" (MOD-04 decision R1, after the Gate B review of the M7a reader) |
 | 26 Nov 2026 | The owner's PD-16 answers, relayed by MOD-04 (NB-M7a sprint S2b): §3 persons numbered by PAN per file in order of first appearance, in memory only, the PAN discarded at once and the ordinal kept, never derived from the PAN (item 3); §9.3 the person for tax is the PAN ordinal, else the client label, with the Warnings `person-labels-differ` and `person-split`, and `person-ambiguous` only for lots without a PAN; §11 the two new ids; §6 the evidence check on units replaces the IRR hint, with no suggestion without evidence and the analyst deciding every repeated event (item 5, both answers); §15 items 1, 2, 3, 5, 6 and 7 answered, item 4 open with the tax adviser |
+| 26 Nov 2026 | §9.3 and §11 (`clients-unmatched`): a PAN person whose labels include a review client is in the review, and its lots under other client labels join that person (one taxpayer, one annual exemption, in the family sum), as the engine computes; the text said such lots were never pooled with a review client (PD-16 item 3; financial-domain review of the tax engine, round 1, S-4) |

@@ -511,6 +511,156 @@ describe('repeats (§6): INSUFFICIENT EVIDENCE until answered; extra rows exclud
   });
 });
 
+// ---------------------------------------------------------------------------------------------------------------
+// The financial-domain review of the tax engine, round 1 (should-fix S-1 to S-6): the reviewer's failing inputs and
+// hand-worked figures (synthetic data only).
+
+describe('financial review round 1: analyst inputs applied, missing figures never read as 0 (S-1 to S-6)', () => {
+  const EQ2 = { scheme: 'Sample Flexi Cap Fund - Regular Plan - Growth', asset: 'Equity', category: 'Flexi Cap Funds' } as const;
+  const isMissing = (x: { kind: string; status?: string; reason?: string }, status: string, reason: string | RegExp, w: string): void => {
+    assert.equal(x.kind, 'missing', `${w}: expected missing`);
+    assert.equal(x.status, status, `${w}: status`);
+    if (typeof reason === 'string') assert.equal(x.reason, reason, `${w}: reason`);
+    else assert.match(x.reason!, reason, `${w}: reason`);
+  };
+  // S-1: one PAN under two review labels, each with an EQ-LT-7 gain of Rs 2,00,000 sold 11 Aug 2025.
+  const twoLabels: KaLot[] = [
+    { ...EQ, accountName: accountWithPan(CLIENT_A, 1), buy: [2021, 4, 5], sell: [2025, 8, 11], units: 1000, buyNav: 100, sellNav: 300 },
+    { ...EQ2, client: CLIENT_B, accountName: accountWithPan(CLIENT_B, 1), buy: [2021, 4, 5], sell: [2025, 8, 11], units: 1000, buyNav: 100, sellNav: 300 },
+  ];
+  const entry = (client: string, surchargePct: number | null): KaPersonYear => ({ client, fy: 2025, slabPct: null, surchargePct, regime: 'new' });
+
+  test('S-1: label entries that agree are applied to the PAN person, recorded with the labels (Rs 39,325.00)', () => {
+    const r = run(twoLabels, [entry(CLIENT_A, 10), entry(CLIENT_B, 10)]);
+    const p = year(r.roll, 2025).persons[0]!;
+    assert.equal(p.personKey, 'person:1');
+    // By hand: (4,00,000 - 1,25,000) x 12.5% = 34,375.00; surcharge 10% 3,437.50; cess 4% 1,512.50; total 39,325.00.
+    checkEstimate(p.estimate, { tax: 34375, surcharge: 3437.5, cess: 1512.5, total: 39325 }, 'S-1 agree');
+    assert.equal(p.estimate.beforeSurcharge, false);
+    assert.deepEqual(p.inputSource, { by: 'label', clientIds: [CLIENT_IDS[CLIENT_A], CLIENT_IDS[CLIENT_B]], labels: [CLIENT_A, CLIENT_B] });
+    assert.deepEqual(r.roll.refusals, []);
+    const a = r.roll.audit.find((x) => x.detail.person === 'person:1');
+    assert.equal(a?.detail.enteredUnder, `client label: ${CLIENT_A}, ${CLIENT_B}`);
+  });
+  test('S-1: one label entry alone is applied the same way', () => {
+    const r = run(twoLabels, [entry(CLIENT_B, 10)]);
+    const p = year(r.roll, 2025).persons[0]!;
+    near(v(p.estimate.total), 39325, 'S-1 one entry total');
+    assert.deepEqual(p.inputSource, { by: 'label', clientIds: [CLIENT_IDS[CLIENT_B]], labels: [CLIENT_B] });
+  });
+  test('S-1: label entries that disagree are refused, naming Person n and the labels, never the PAN; none applies', () => {
+    const r = run(twoLabels, [entry(CLIENT_A, 10), entry(CLIENT_B, 15)]);
+    const p = year(r.roll, 2025).persons[0]!;
+    // As if not entered: 34,375.00 before surcharge (rate not set), cess 1,375.00, total 35,750.00.
+    checkEstimate(p.estimate, { tax: 34375, cess: 1375, total: 35750 }, 'S-1 disagree');
+    assert.equal(p.estimate.surchargeLabel, 'before surcharge (rate not set)');
+    assert.equal(p.inputSource, null);
+    assert.equal(r.roll.refusals.length, 1);
+    const f = r.roll.refusals[0]!;
+    assert.equal(f.input, 'person-year');
+    assert.equal(f.ref, 'person:1|2025');
+    assert.match(f.reason, /Person 1/);
+    assert.ok(f.reason.includes(`"${CLIENT_A}"`) && f.reason.includes(`"${CLIENT_B}"`), f.reason);
+    assert.match(f.reason, /enter them once under Person 1/);
+    assert.equal(hasPanShape(f.reason), false);
+    assert.doesNotMatch(f.reason, new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));
+    assert.equal(r.roll.audit.some((x) => x.detail.person === 'person:1'), false, 'no audit entry for an entry not applied');
+  });
+
+  test('S-2: under the slab dash the after-set-off figures are missing (NOT AVAILABLE, slab rate not set), never 0 (KA-12)', () => {
+    const c = ka('KA-12');
+    const r = run(c.lots, [A_(2023)]);
+    const p = py(r.roll, 2023, CLIENT_A);
+    assert.equal(p.afterSetOffDash, 'slab rate not set');
+    const NA = STATUS.NOT_AVAILABLE;
+    isMissing(p.values.exemptionApplied, NA, 'slab rate not set', 'exemption applied');
+    isMissing(p.values.unabsorbed.st, NA, 'slab rate not set', 'unabsorbed st');
+    isMissing(p.values.unabsorbed.lt, NA, 'slab rate not set', 'unabsorbed lt');
+    assert.equal(p.buckets.length, 2);
+    for (const b of p.buckets) {
+      for (const k of ['setOff', 'taxable', 'exemption', 'tax', 'surcharge'] as const) isMissing(b.values[k], NA, 'slab rate not set', `${b.ruleId} ${k}`);
+    }
+    near(v(p.values.realised), 30000 - 50000 + 80000, 'realised is before set-off and stays a figure');
+    isMissing(year(r.roll, 2023).familySumValues.unabsorbed.st, NA, 'slab rate not set', 'family unabsorbed st');
+    // With the slab rate set, the same Values are figures equal to the contract's numbers (KA-12 at 30%).
+    const s = py(run(c.lots, [A_(2023, { slabPct: 30 })]).roll, 2023, CLIENT_A);
+    assert.equal(s.afterSetOffDash, null);
+    for (const b of s.buckets) {
+      near(v(b.values.taxable), b.taxable, `${b.ruleId} taxable`);
+      near(v(b.values.setOff), b.setOff, `${b.ruleId} set-off`);
+      near(v(b.values.tax), b.tax, `${b.ruleId} tax`);
+    }
+    near(v(s.values.unabsorbed.st), s.unabsorbed.st, 'unabsorbed st with the slab set');
+  });
+
+  test('S-3: in a year with an unanswered repeat, realised, exemption applied and every tax figure are INSUFFICIENT EVIDENCE', () => {
+    const lot: KaLot = { ...EQ, folio: '91500777', buy: [2021, 4, 5], sell: [2025, 8, 11], units: 2000, buyNav: 100, sellNav: 175 };
+    const ann: KaLot = { ...EQ2, folio: '91500779', buy: [2024, 9, 17], sell: [2025, 9, 17], units: 1000, buyNav: 50, sellNav: 60 };
+    const other: KaLot = { ...EQ, folio: '91500778', buy: [2021, 4, 5], sell: [2024, 8, 12], units: 10, buyNav: 100, sellNav: 175 };
+    const r = run([lot, lot, ann, other], [A_(2025), A_(2024)]);
+    const p = py(r.roll, 2025, CLIENT_A);
+    assert.equal(p.insufficientEvidence, true);
+    const IE = STATUS.INSUFFICIENT_EVIDENCE;
+    const why = /unanswered repeated-rows question/;
+    isMissing(p.values.realised, IE, why, 'realised');
+    isMissing(p.values.exemptionApplied, IE, why, 'exemption applied');
+    isMissing(p.values.unabsorbed.st, IE, why, 'unabsorbed st');
+    isMissing(p.values.unabsorbed.lt, IE, why, 'unabsorbed lt');
+    for (const k of ['tax', 'surcharge', 'cess', 'total'] as const) isMissing(p.estimate[k], IE, why, `estimate ${k}`);
+    for (const b of p.buckets) {
+      for (const k of ['setOff', 'taxable', 'exemption', 'tax', 'surcharge'] as const) isMissing(b.values[k], IE, why, `${b.ruleId} ${k}`);
+    }
+    isMissing(p.alternatives.anniversaryLongTerm!, IE, why, 'anniversary alternative');
+    for (const k of ['tax', 'surcharge', 'cess', 'total'] as const) isMissing(p.alternativesDetail.anniversaryLongTerm![k], IE, why, `anniversary detail ${k}`);
+    isMissing(year(r.roll, 2025).familySumValues.realised, IE, why, 'family realised');
+    // The other year is untouched: realised 10 x (175 - 100) = 750.00.
+    const o = py(r.roll, 2024, CLIENT_A);
+    assert.equal(o.insufficientEvidence, false);
+    near(v(o.values.realised), 750, 'the other year realised');
+    near(v(o.values.exemptionApplied), 750, 'the other year exemption applied');
+  });
+
+  test('S-5: a person-year assessee mark entered under the person key "person:n" flags the PAN person\'s lots', () => {
+    const lots: KaLot[] = [
+      { ...EQ, accountName: accountWithPan(CLIENT_A, 1), buy: [2021, 4, 5], sell: [2025, 8, 11], units: 100, buyNav: 100, sellNav: 175 },
+      { ...EQ2, client: 'S Client A', accountName: accountWithPan('S Client A', 1), buy: [2021, 4, 5], sell: [2025, 8, 11], units: 100, buyNav: 100, sellNav: 175 },
+    ];
+    const r = run(lots, [{ personKey: 'person:1', fy: 2025, slabPct: null, surchargePct: 0, regime: null, assesseeMark: 'minor' }]);
+    for (const g of r.g) assert.ok(g.flags.includes('assessee-flagged'), `lot ${g.lotIndex} flagged`);
+    assert.equal(r.res.issues.find((i) => i.ruleId === 'capital-gains.assessee-flagged')?.count, 2);
+    // Under a review label of a person with two review labels: the person's lots are flagged too (a flag only).
+    const two = run(twoLabels, [{ client: CLIENT_B, fy: 2025, slabPct: null, surchargePct: 0, regime: null, assesseeMark: 'huf' }]);
+    for (const g of two.g) assert.ok(g.flags.includes('assessee-flagged'), `two labels: lot ${g.lotIndex} flagged`);
+    // The person key decides first: an entry under it without a mark, beside a marked label entry, flags nothing.
+    const first = run(twoLabels, [
+      { personKey: 'person:1', fy: 2025, slabPct: null, surchargePct: 0, regime: null, assesseeMark: null },
+      { client: CLIENT_B, fy: 2025, slabPct: null, surchargePct: 0, regime: null, assesseeMark: 'huf' },
+    ]);
+    for (const g of first.g) assert.equal(g.flags.includes('assessee-flagged'), false, `person key first: lot ${g.lotIndex}`);
+  });
+
+  test('S-6: an anniversary-day lot marked gift, under a grandfathered long-term row, has the dash as its alternative', () => {
+    // Bought 1 Jun 2017, 100 units at Rs 100, 31 Jan 2018 price Rs 120, sold on the anniversary 1 Jun 2018 at Rs 150:
+    // EQ-ST-2 short term; EQ-LT-2 needs the s.55(2)(b) input for a gift (TR-11), so no Rs 3,000.00 figure.
+    const lot: KaLot = { ...EQ, buy: [2017, 6, 1], sell: [2018, 6, 1], units: 100, buyNav: 100, sellNav: 150, over: { acqDate: [2018, 1, 31], acqPrice: 120 } };
+    const lotIndex = parseLots([lot]).lots[0]!.index;
+    const r = run([lot], [A_(2018)], { inputs: { lotMarks: [{ lotIndex, giftOrInheritance: true }] } });
+    const g = r.g[0]!;
+    assert.equal(g.ruleId, 'EQ-ST-2');
+    assert.equal(g.anniversaryLongTerm, null, 'the contract field cannot hold the dash');
+    assert.equal(g.anniversaryLongTermDetail?.ruleId, 'EQ-LT-2');
+    assert.equal(g.anniversaryLongTermDetail?.costForTax, null);
+    isMissing(g.anniversaryLongTermDetail!.taxableGain, STATUS.NOT_AVAILABLE, /cost-input-missing/, 'the long-term gain');
+    const p = py(r.roll, 2018, CLIENT_A);
+    isMissing(p.alternatives.anniversaryLongTerm!, STATUS.NOT_AVAILABLE, /cost-input-missing/, 'the person-year alternative');
+    // Without the mark: the grandfathered figure, cost max(10,000, min(12,000, 15,000)) = 12,000, gain 3,000.00.
+    const u = run([lot], [A_(2018)]);
+    assert.equal(u.g[0]!.anniversaryLongTerm?.ruleId, 'EQ-LT-2');
+    near(u.g[0]!.anniversaryLongTerm!.taxableGain, 3000, 'unmarked long-term gain');
+    assert.notEqual(v(py(u.roll, 2018, CLIENT_A).alternatives.anniversaryLongTerm), null, 'unmarked: a figure');
+  });
+});
+
 describe('the contract shapes and the messages', () => {
   test('Bucket.rate is a percent number or slab; rulesVersion from the table; the family sum has no exemption', () => {
     const c = ka('KA-12');

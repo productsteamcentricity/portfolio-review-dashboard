@@ -83,8 +83,15 @@ export type TaxLot = RealisedGain & {
   notComputedDetail: 'amount-missing' | 'cost-missing' | null;
   /** NE-LT-1: each leg's cost, gain and tax, beside the contract's `legs`. */
   legDetail: LegDetail | null;
-  /** The rate and cost for tax of `anniversaryLongTerm` (PD-16 item 2), beside it. */
-  anniversaryLongTermDetail: { rate: LotRate; costForTax: number } | null;
+  /**
+   * The anniversary-day long-term figure (PD-16 item 2) in full: its rule, rate, cost for tax and taxable gain as a
+   * Value. The gain is missing (NOT AVAILABLE, with the reason, for example `cost-input-missing` for a grandfathered row
+   * whose lot is marked gift or inheritance or first held before 1 Apr 2001, TR-11) when the long-term row applies but
+   * its figure cannot be computed; the contract's `anniversaryLongTerm` is then null, since its `taxableGain` is a plain
+   * number (fin review S-6). Null when no long-term row applies (or the lot is not sold on its anniversary).
+   */
+  // TODO(contracts-4): anniversaryLongTerm becomes a Value
+  anniversaryLongTermDetail: { ruleId: string; rate: LotRate; costForTax: number | null; taxableGain: Value<number> } | null;
   /** The statement's LTCG plus STCG compared with the taxable gain (gain-differs), when stated. */
   statementGain: number | null;
   /** The statement's term by its split (LTCG or STCG not 0), or null when it shows neither. */
@@ -132,7 +139,7 @@ export const S2_ISSUE_SEVERITY: Readonly<Record<string, Severity>> = {
 };
 
 /** An analyst input the engine did not accept, with the reason named (§5, §9.1: "refused, with the reason named"). */
-export type Refusal = { input: 'scheme-class' | 'merger-answer' | 'lot-mark'; ref: string; reason: string };
+export type Refusal = { input: 'scheme-class' | 'merger-answer' | 'lot-mark' | 'person-year'; ref: string; reason: string };
 
 /** A merger event (§5): the merger-pattern rows of one sale event. */
 export type MergerEventResult = {
@@ -170,7 +177,14 @@ export type RealiseResult = {
  * lots' losses go to the term's loss pool (TR-10), so a loss and a gain at one rate are never netted before the
  * ranking (KA-13). `setOff` is the loss set against the gains; `taxable` is what stays after set-off and the bucket's
  * share of the annual exemption (the tax is taxable x rate).
+ *
+ * The contract's `setOff` and `taxable` are plain numbers, so they cannot say "missing": they are NOT MEANINGFUL (0)
+ * when the person-year's `afterSetOffDash` is set (step 3, "slab rate not set") or the year is INSUFFICIENT EVIDENCE
+ * (design §6), and while the year's annual exemption is to be confirmed `taxable` of an exemption-group bucket is
+ * before the exemption. `values` carries the precise figures (fin review S-2, S-3); a reader shows those.
  */
+// TODO(contracts-4): setOff becomes a Value
+// TODO(contracts-4): taxable becomes a Value
 export type BucketLocal = Bucket & {
   term: Term;
   /** The bucket's gross losses (positive), sent to the term's loss pool. */
@@ -184,7 +198,25 @@ export type BucketLocal = Bucket & {
   tax: number | null;
   /** Surcharge on `tax`, capped for capital gains (§10.7); null while not computed (before surcharge, slab not set). */
   surcharge: number | null;
+  /** The after-set-off figures as Values (see the type's note): the ones to show. */
+  values: BucketValues;
 };
+
+/**
+ * A bucket's figures after set-off as Values: present when computed; missing NOT AVAILABLE with the reason under the
+ * slab dash ("slab rate not set"), while the exemption, surcharge or cess of the year is to be confirmed, or before
+ * surcharge; missing INSUFFICIENT EVIDENCE in a year with an unanswered repeated-rows question (design §6).
+ */
+export type BucketValues = {
+  setOff: Value<number>;
+  taxable: Value<number>;
+  exemption: Value<number>;
+  tax: Value<number>;
+  surcharge: Value<number>;
+};
+
+/** Where a person-year entry came from: entered under the person key, or under the client label(s) of the person. */
+export type PersonYearInputSource = { by: 'person' } | { by: 'label'; clientIds: string[]; labels: string[] };
 
 /** One estimate (tax, surcharge, cess and total) as the person-year and each alternative show it. */
 export type EstimateLocal = PersonYearTax['estimate'] & {
@@ -206,8 +238,25 @@ export type PersonYearTaxLocal = Omit<PersonYearTax, 'buckets' | 'estimate'> & {
   estimate: EstimateLocal;
   /** The year's realised and taxable totals are INSUFFICIENT EVIDENCE (an unanswered repeat event, design §6). */
   insufficientEvidence: boolean;
-  /** Step 3: the taxable amounts after set-off and the tax are the dash ("slab rate not set"), else null. */
+  /**
+   * Step 3: the taxable amounts after set-off and the tax are the dash ("slab rate not set"), else null. While set, the
+   * contract's plain numbers `unabsorbed`, `exemption.applied` and each bucket's `setOff` and `taxable` are NOT
+   * MEANINGFUL (they read 0); `values` and each bucket's `values` hold them as missing (fin review S-2).
+   */
   afterSetOffDash: string | null;
+  /**
+   * The contract's plain-number totals as Values (fin review S-2, S-3): `realised` is INSUFFICIENT EVIDENCE in a year
+   * with an unanswered repeated-rows question (design §6), when the contract's `realised` still counts every row;
+   * `exemptionApplied` and `unabsorbed` are also missing NOT AVAILABLE under the slab dash, and `exemptionApplied`
+   * while the year's exemption is to be confirmed and exemption-group gains remain.
+   */
+  // TODO(contracts-4): realised becomes a Value
+  // TODO(contracts-4): exemption.applied becomes a Value
+  // TODO(contracts-4): unabsorbed.st becomes a Value
+  // TODO(contracts-4): unabsorbed.lt becomes a Value
+  values: { realised: Value<number>; exemptionApplied: Value<number>; unabsorbed: { st: Value<number>; lt: Value<number> } };
+  /** Where the analyst's slab, surcharge and regime entry came from (an audit entry records it too); null: none applied. */
+  inputSource: PersonYearInputSource | null;
   /** The slab rate used (the analyst's entry, or the named default slabDefaultPct), and where it came from. */
   slab: { pct: number | null; source: 'analyst' | 'default' | 'not set' };
   /** The surcharge rate applied (percent), after the year's maximum; null while before surcharge. */
@@ -238,6 +287,15 @@ export type FamilyTaxYearLocal = Omit<FamilyTaxYear, 'persons'> & {
   insufficientEvidence: boolean;
   /** The person keys added to the family sum (the review's clients); an unmatched person is never added. */
   familyPersons: string[];
+  /**
+   * The family sum's plain-number totals as Values, the sum of the persons' `values` (fin review S-2, S-3): the
+   * contract's `familySum.realised` and `familySum.unabsorbed` are NOT MEANINGFUL in an INSUFFICIENT EVIDENCE year,
+   * and `unabsorbed` leaves out a person under the slab dash; these say so.
+   */
+  // TODO(contracts-4): familySum.realised becomes a Value
+  // TODO(contracts-4): familySum.unabsorbed.st becomes a Value
+  // TODO(contracts-4): familySum.unabsorbed.lt becomes a Value
+  familySumValues: { realised: Value<number>; unabsorbed: { st: Value<number>; lt: Value<number> } };
 };
 
 /** The engine-side ids of design §11 that the roll-up (S3) raises, with their severity (High or Warning by case). */
@@ -246,5 +304,7 @@ export const S3_ISSUE_IDS: readonly string[] = ['clients-unmatched'];
 export type RollupResult = {
   years: FamilyTaxYearLocal[];
   issues: TaxIssue[];
+  /** Person-year entries not applied, with the reason named (input 'person-year'; fin review S-1). */
+  refusals: Refusal[];
   audit: AuditEntry[];
 };
