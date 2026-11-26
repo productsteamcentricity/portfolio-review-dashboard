@@ -4,6 +4,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (new build, model contracts-3: two additive type changes; types only, `/next/` build byte-identical)
+- **`app/src/model/tax.ts`** (I-37): `NotComputed` gains `'amount-missing'` (a lot whose Sell Amount is blank, the
+  reader's `required-cell-blank`; a blank Invested Value stays `'cost-input-missing'`). DATA_DICTIONARY §5.5 lists it.
+- **`app/src/model/returns.ts`** (I-31): `WeightedReturn` gains an optional `parts` list (source, as-on date and share of
+  the weights) for a figure built from more than one source or date, such as Regular and Direct plans read from
+  monitors of different dates; a rendering names every part. Asked for by NB-03 (M7a engine) and ARC-03's review of
+  NB-04's M3b data side.
 ### Added (side-by-side kit for test build 1: tests only; no change to `index.html`, `/next/` or `app/`)
 - **`tests/side-by-side/`** runs the same book through the legacy engine (`tools/engine-host.js`) and the new build
   (`app/src`: base file, matcher, IRR file, scope returns, contributions). It compares the holdings matches, the holding
