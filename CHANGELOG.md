@@ -517,6 +517,21 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **Tests:** `tests/unit/tax/{rules,lots,rollup,repeat-evidence,statement-engine}.test.ts` and the known answers KA-1
   to KA-22 (`tests/fixtures/cg-known-answers.json`), to Rs 0.01.
 
+### Added (new build, M7a tax engine, round 2: the holdings' tax, harvesting and the IRR reconciliation; not wired into the page yet)
+- **`engine/tax/classify.ts` and `lots.ts`** (E-41, E-42): the live tax classification and FIFO lots (TA-03) ported on
+  the I-21 table, at parity with the live on 10 synthetic books. Recorded corrections: the OD-16 trade kinds, and OD-15
+  (one instrument over several holdings split by folio, else apportioned by units).
+- **`engine/tax/holdings-rollup.ts` and `harvest.ts`** (E-43): the live roll-ups and per-client harvest, at parity with
+  equal inputs. New-build rules: the exemption only when the amount already used is known (Q-52), otherwise "exemption
+  not applied"; no slab default (PD-07, one named parameter). Hand-worked H-1 to H-6.
+- **`engine/tax/realised-irr.ts` and `reconcile.ts`** (E-141): realised gains derived from the IRR file by FIFO (a gap
+  is stated, never guessed), reconciled with the statement per scheme and financial year. The tolerance is the larger
+  of the amount tolerance on the sale value and Rs 1 plus Rs 0.005 per statement row (MOD-04, 26 Nov 2026). Beyond it,
+  a High result with both figures kept. The statement is the source of record for a year it covers.
+- **Tests:** `tests/unit/tax/{fifo-lots,holdings-rollup,harvest,realised-irr}.test.ts`,
+  `tests/parity/tax.parity.test.ts` with its ledger, `tests/regression/ki-065-debt-mf-tax.test.ts`,
+  `tests/integration/realised-gains-reconcile.test.ts`.
+
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
   funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.
