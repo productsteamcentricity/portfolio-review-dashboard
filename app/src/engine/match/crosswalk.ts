@@ -30,6 +30,8 @@ import { matchInstrumentDetail, type MatchOptions, type TokenCache } from './ins
 import { aliasFor } from './name-lists.ts';
 import { nameKey } from './normalize.ts';
 import { matchPMS, type PmsCache } from './pms.ts';
+import { rekeyBlock } from './rekey.ts';
+import type { OwnerAliasTable } from './owner-aliases.ts';
 
 /** The reference blocks whose keys are matched, by the legacy matcher each uses. */
 export type UniverseName =
@@ -75,6 +77,13 @@ export type CrosswalkSources = {
   fundRankCodes: Readonly<Record<string, unknown>>;
   /** STOCK_RET: stock key to a record carrying `isin`. */
   stocks: Readonly<Record<string, unknown>>;
+  /** Sprint 2a: fund ISIN to AMFI scheme code (data/identifiers/amfi-isin.json, parseAmfiIsinRecord). */
+  fundIsins?: ReadonlyMap<string, string>;
+  /** Sprint 2a: AMFI scheme code to its official name (amfi-isin.json codeToName): joins codes to keys FUND_RANKS_CODES
+   * does not list (Direct plans, schemes it does not rank). */
+  amfiNames?: ReadonlyMap<string, string>;
+  /** Sprint 2a: the owner's fund aliases, so a renamed scheme's code reaches its new name (OD-23). */
+  aliases?: OwnerAliasTable;
 };
 
 export type Crosswalk = {
@@ -85,7 +94,62 @@ export type Crosswalk = {
   /** AMFI codes or ISINs carried by more than one name; such an identifier resolves nothing and is attached to no
    * result (never a guess, rule 3). */
   ambiguous: ReadonlySet<string>;
+  /** Fund ISIN to AMFI scheme code (empty without fundIsins). */
+  codeByFundIsin: ReadonlyMap<string, string>;
+  /** The FUND_RANKS_CODES names, the official AMFI names and the aliases, for the per-universe code join. */
+  fundRankNames: readonly string[];
+  amfiNames: ReadonlyMap<string, string>;
+  aliases?: OwnerAliasTable;
 };
+
+const codeJoinCache = new WeakMap<Universe, { keyByCode: Map<string, string>; codeByKey: Map<string, string> }>();
+
+/** AMFI code to this universe's key of the same scheme, built once per universe from two sources, each re-keyed
+ * (rekeyBlock: the same key, the same normalised name, plan and option, or an owner alias): the FUND_RANKS_CODES names
+ * and, when given, the official AMFI names. A key the two sources give different codes, or a code two keys claim, joins
+ * nothing (never a guess). */
+export function codeJoin(u: Universe, cw: Crosswalk): { keyByCode: ReadonlyMap<string, string>; codeByKey: ReadonlyMap<string, string> } {
+  const hit = codeJoinCache.get(u);
+  if (hit) return hit;
+  const claims = new Map<string, Set<string>>();
+  const claim = (key: string, code: string): void => {
+    const s = claims.get(key);
+    if (s) s.add(code);
+    else claims.set(key, new Set([code]));
+  };
+  for (const [key, x] of rekeyBlock(cw.fundRankNames, u.keys, cw.aliases).byUniverseKey) {
+    const code = cw.amfiByName.get(x.blockKey);
+    if (code !== undefined) claim(key, code);
+  }
+  if (cw.amfiNames.size > 0) {
+    const codeOfName = new Map<string, string>();
+    const twice = new Set<string>();
+    for (const [code, name] of cw.amfiNames) {
+      if (codeOfName.has(name)) twice.add(name);
+      codeOfName.set(name, code);
+    }
+    const names = [...codeOfName.keys()].filter((n) => !twice.has(n));
+    for (const [key, x] of rekeyBlock(names, u.keys, cw.aliases).byUniverseKey) claim(key, codeOfName.get(x.blockKey)!);
+  }
+  const keysOfCode = new Map<string, string[]>();
+  for (const [key, codes] of claims) {
+    if (codes.size !== 1) continue;
+    const code = [...codes][0]!;
+    const list = keysOfCode.get(code);
+    if (list) list.push(key);
+    else keysOfCode.set(code, [key]);
+  }
+  const keyByCode = new Map<string, string>();
+  const codeByKey = new Map<string, string>();
+  for (const [code, keys] of keysOfCode) {
+    if (keys.length !== 1) continue;
+    keyByCode.set(code, keys[0]!);
+    codeByKey.set(keys[0]!, code);
+  }
+  const out = { keyByCode, codeByKey };
+  codeJoinCache.set(u, out);
+  return out;
+}
 
 const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
 const AMFI_RE = /^[0-9]{3,8}$/;
@@ -127,7 +191,11 @@ export function buildCrosswalk(src: CrosswalkSources): Crosswalk {
   }
   const amfi = uniqueIndex(codes, ambiguous);
   const stock = uniqueIndex(isins, ambiguous);
-  return { nameByAmfi: amfi.byId, amfiByName: amfi.byName, stockKeyByIsin: stock.byId, isinByStockKey: stock.byName, ambiguous };
+  const codeByFundIsin = new Map<string, string>();
+  for (const [isin, code] of src.fundIsins ?? []) if (ISIN_RE.test(isin) && AMFI_RE.test(code) && !stock.byId.has(isin)) codeByFundIsin.set(isin, code);
+  const out: Crosswalk = { nameByAmfi: amfi.byId, amfiByName: amfi.byName, stockKeyByIsin: stock.byId, isinByStockKey: stock.byName, ambiguous, codeByFundIsin, fundRankNames: [...amfi.byName.keys()], amfiNames: src.amfiNames ?? new Map() };
+  if (src.aliases) out.aliases = src.aliases;
+  return out;
 }
 
 export type ResolveQuery = { name: string; amc?: string; isin?: string; amfiCode?: string };
@@ -139,11 +207,16 @@ function identifierHit(q: ResolveQuery, u: Universe, cw: Crosswalk): Hit | null 
   if (isin && ISIN_RE.test(isin)) {
     const k = cw.stockKeyByIsin.get(isin);
     if (k !== undefined && u.keySet.has(k)) return { key: k, method: 'isin', confidence: 'exact' };
+    const fundCode = cw.codeByFundIsin.get(isin);
+    const fk = fundCode !== undefined && u.matcher === 'instrument' ? codeJoin(u, cw).keyByCode.get(fundCode) : undefined;
+    if (fk !== undefined) return { key: fk, method: 'isin', confidence: 'exact' };
   }
   const code = q.amfiCode?.trim();
   if (code && AMFI_RE.test(code)) {
     const k = cw.nameByAmfi.get(code);
     if (k !== undefined && u.keySet.has(k)) return { key: k, method: 'amfi', confidence: 'exact' };
+    const rk = u.matcher === 'instrument' ? codeJoin(u, cw).keyByCode.get(code) : undefined;
+    if (rk !== undefined) return { key: rk, method: 'amfi', confidence: 'exact' };
   }
   return null;
 }
@@ -175,7 +248,7 @@ export function resolveInstrument(q: ResolveQuery, u: Universe, cw: Crosswalk, o
   };
   if (hit) {
     ref.vendorKey = hit.key;
-    const code = cw.amfiByName.get(hit.key);
+    const code = cw.amfiByName.get(hit.key) ?? (u.matcher === 'instrument' ? codeJoin(u, cw).codeByKey.get(hit.key) : undefined);
     if (code !== undefined) ref.amfiCode = code;
     const isin = cw.isinByStockKey.get(hit.key);
     if (isin !== undefined) ref.isin = isin;
