@@ -27,12 +27,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   date or up to 7 days earlier, else the tenor is missing (INSUFFICIENT EVIDENCE when the series starts later, never
   0%); the direct-equity figure weighted by direct-equity value (60/40% at 10% and 20%: 14.00%; without the 40%
   stock's 3Y: 10.00% at 60%). A stock takes the first price source with a non-empty series for it, labelled with that
-  source; the figure names the source used, and with no price source at all there is no figure. On month-end data the
-  point of the anniversary's month is used (a 30 Oct as-on uses the 31 Oct point; 28 Feb 2025 uses 29 Feb 2024); a
-  series too short for the tenor is filled by a later source only at the same as-on date. The figure, its parts and
-  the footnote are dated by the month-end label of the end prices used (never a file's own date); on month-end data
-  an as-on with no month end within 7 days is refused. The footnote counts each exclusion reason apart (no return,
-  not matched or no ISIN, no known plan, plan differs; `footnoteOf(result)`).
+  source; the figure names the source used, and with no price source at all there is no figure. No look-ahead
+  (PD-67): a price after the review as-on is never used; the end price is the latest on or before the as-on (on
+  month-end data the latest month-end point in the as-on's month or the one before: 15 Oct and 30 Oct use 30 Sep,
+  2 Nov uses 31 Oct; the start is the point of the month of that point's anniversary, so 28 Feb 2025 uses 29 Feb 2024).
+  A series too short for the tenor is filled by a later source only at the same as-on date. The figure, its parts and
+  the footnote are dated by the day of the end prices used (never a file's own date). The footnote counts each
+  exclusion reason apart (no return, not matched or no ISIN, no known plan, plan differs; `footnoteOf(result)`).
 - Tests: `unit/returns/portfolio-returns.test.ts`, `unit/returns/stock-cagr.test.ts` (the known answers of
   08-regression-test-plan). Parity rows E-147 and E-148: in progress.
 
