@@ -35,6 +35,9 @@
 //     manifest (licenceUrls);
 //   - the persistent banner "Preview, not for client use" in static HTML (D-024);
 //   - no en or em dash in the static text, except a dash alone as the missing-value marker (D-029).
+//   - no MF Screener data pack content (D-026: Screener scores and ranks are never in a public page): no pack-shaped
+//     JSON (a quoted pack key followed by its value) and no synthetic fixture marker anywhere in the file. The pack
+//     reader's own code (unquoted keys, the contract version as a plain string) passes.
 // The sources must hold: no DOM sink or dynamic code, no network API, no remote URL except the Screener URL in
 // links.json (and the OOXML namespace names, only in app/src/exports/ooxml/namespaces.ts), and the pure layers
 // (model, ingest, engine, views, exports) read no browser global (U-53).
@@ -240,6 +243,28 @@ const isExecutableScript = (tag) => {
   const type = attr(tag, 'type');
   return type === null || type === '' || /^(?:text|application)\/(?:java|ecma)script$/i.test(type);
 };
+
+/**
+ * Pack-shaped content of the MF Screener data pack (D-026), in every form it could take in the built page: a JSON
+ * file (quoted keys), the same file bundled by esbuild (unquoted keys), single-quoted keys, JSON escaped inside a
+ * string (\"key\"), numbers written with a leading dot (:.81), the funds_summary.csv header, and the marker every
+ * synthetic fixture file carries (tests/fixtures/make-screener-pack.ts). A key counts only with a value of its own
+ * kind after it, so the reader's schema lines (`centricity_score_frac: { t: 'number' }`, `contract_version:
+ * { t: 'string' }`, `CONTRACT_VERSION = 'pr-datapack-v1'`) pass. Case-sensitive on purpose.
+ */
+export const PACK_CONTENT_PATTERNS = [
+  /\bcontract_version\\?['"]?\s*[:=]\s*\\?['"]pr-datapack-v1/,
+  /\bcentricity_score_frac\\?['"]?\s*:\s*-?\.?\d/,
+  /\bcentricity_rank_in_category\\?['"]?\s*:\s*\d/,
+  /\bparameter_scores\\?['"]?\s*:\s*\{[^{}]{0,400}?:\s*-?\.?\d/,
+  /centricity_score_frac,centricity_rank_in_category/,
+  /FIXTURE-SCREENER-PACK/,
+];
+
+/** The sources of the pack-content patterns found in `text`. */
+export function findPackContent(text) {
+  return PACK_CONTENT_PATTERNS.filter((re) => re.test(text)).map((re) => re.source);
+}
 
 /** Finds network APIs in a text; returns [{ id, line }]. */
 export function findNetworkApis(text, lineBase = 0) {
@@ -522,6 +547,8 @@ export function checkBuiltPage(bytes, { screenerUrl, manifest = DEFAULT_MANIFEST
     for (const h of findNetworkApis(s.content, base)) apiHits.push(`${h.id} (line ${h.line})`);
   }
   check(apiHits.length === 0, `no network API in the app script${apiHits.length ? ` (found ${apiHits.slice(0, 8).join(', ')})` : ''}`);
+  const packHits = findPackContent(html);
+  check(packHits.length === 0, `no MF Screener pack content (D-026)${packHits.length ? ` (found ${packHits.join(', ')})` : ''}`);
   const allowProblems = [];
   for (const [s, lib] of libraryOf) allowProblems.push(...allowanceDifferences(lib.name, libraryAllowance(s.content), lib.allow));
   check(allowProblems.length === 0,
