@@ -412,9 +412,10 @@ gone.forEach(([n, c]) => console.log(`GONE?\t${c}\t${n}`));
 EOF
 ```
 
-- **Known answer (26 Nov 2026, October data, the ids file of 23–24 Nov):** 1,262 ranks, 1,207 in MF_PERF, 55 renamed
-  (all codes still listed by AMFI: SEBI recategorisation renames such as "Equity Hybrid '95" → "Aggressive Hybrid" and
-  "Regular Savings" → "Conservative Hybrid"), 0 gone.
+- **Known answer (26 Nov 2026, October data, the ids file of 23–24 Nov):** 1,262 ranks, 1,207 in MF_PERF,
+  55 "renamed?", 0 "gone?". All 55 codes are still listed by AMFI. Most are renames, for example "Equity Hybrid '95" →
+  "Aggressive Hybrid" and "Regular Savings" → "Conservative Hybrid". Some only differ in spelling from the monitor's
+  name ("AlphaGrep Flexi Cap Fund - Regular - Growth"). Read every line.
 - **It is a check, not a fix.** Copy the counts and the list into the log under anomalies. The ranks are corrected
   only from a new Fund Ranks file (step 7d), and D-026 keeps ranks and scores off the public page and out of git.
 - A rise in "gone" is a stop-and-ask.
