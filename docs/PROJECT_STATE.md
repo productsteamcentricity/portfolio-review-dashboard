@@ -1,6 +1,17 @@
 # Project state
 
-**Last updated:** 9 Nov 2026.
+**Last updated:** 26 Nov 2026 (registers-4, MOD-04).
+- **Records (26 Nov 2026, registers-4, docs only):** the decision log carries the owner's answers of 17 to 26 Nov
+  (PD-01, PD-04, PD-44 accepted; PD-16 answered except item 4; PD-36 for the renamed-scheme list; PD-54 confirmed;
+  PD-56 changed; PD-57 to PD-66; and the decisions without a PD number: the D-7 labels, the "ISIN" column for the new
+  build only, the D-028 exception for matching corrections, the standing `/next/` rule, the M12a defaults, Q-12,
+  matching option B). The chat registers show CHAT-013 MOD-04 as the Moderator since 25 Nov 2026 (CHAT-006 MOD-03
+  handed over under PD-65); the next free chat number is CHAT-014. The coding map and interface contracts show what
+  merged in PRs #28 to #40. KI-184 stays filed with no live fix planned (TA-06, LP-03 dropped).
+- **Model contracts-1 (PR #29, 25 Nov 2026; types only, `/next/` build byte-identical):** I-31 `model/returns.ts`,
+  I-32 `model/transactions.ts` (with the free-text date rule of KI-186), I-44 `model/index-series.ts`, I-45
+  `model/scope.ts`, and decision C-01 (`BaseFileImport`, `MoneyFinding` and `MoneyUnit` moved into `model/`, the old
+  places re-export them). This entry was missing when the PR merged and is added by registers-4.
 - The full audit is done: 67 issues, see [`audits/`](audits/).
 - Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done. Fix batch 2a
   (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is merged (PR #9; `index.html` MD5
@@ -114,12 +125,13 @@
 ## Current state
 - **Live product.** https://productsteamcentricity.github.io/portfolio-review-dashboard/ is the permanent review
   link.
-  - It serves `index.html` on `main`. After PR #16: MD5 `12B5E5727FCA01EF2EA162C59913F01D`, 16,837,249 bytes, with
-    the KI-001 fix and fix batches 1a, 1b, 2a and 4. M1.4 leaves `index.html` unchanged.
+  - It serves `index.html` on `main`. After PR #36 (TA-03, 26 Nov 2026): MD5 `08CAC338E0F4468FDC82D032DACA7B5D`,
+    16,408,172 bytes, with the October 2026 refresh, CR-0010, LP-16, A5 and the tax batch. (After PR #16 it was
+    `12B5E5727FCA01EF2EA162C59913F01D`.) New-build merges leave `index.html` unchanged.
   - After every deploy the live page is downloaded and its MD5 compared with `main` (batch 1a verified 19 Oct
     2026).
-  - Data vintage: 30 Sep 2026, except ranks (15 Aug), fund managers (31 Aug), PMS returns (31 Jul) and AIF
-    (30 Jun).
+  - Data vintage: 31 Oct 2026 (October refresh: analytics, performance and risk), except ranks (15 Aug), fund managers
+    (31 Aug), PMS returns (31 Jul) and AIF (30 Jun).
 - **Repository.** `C:\dev\portfolio-review`; `origin` =
   https://github.com/productsteamcentricity/portfolio-review-dashboard (**public**, D-008).
   - Commits use Products Team Centricity with the GitHub no-reply address. Since 19 Oct this laptop's global git
@@ -200,24 +212,26 @@
 5. **Claude: M2**, instrument matching ([roadmap](new-build/07-implementation-roadmap.md)). Sprint 1 of M2.1 (identifiers and
    the matcher at parity, no output change) merged in PR #30 and was accepted on 25 Nov 2026. Sprint 3a (the vendor files
    read by header name: MF Monitor, its all-in expense ratio, SIF Monitor, PMS performance, the analytics files; and the
-   base file's ISIN column, read only) is on `feat/m2-3-vendor-parsers`; the upload buttons wait for the spreadsheet-reader
-   decision. Sprint 2 (corrections and classification) follows, with the owner's alias list (PD-36) before it merges and
+   base file's ISIN column, read only) merged in PR #31 and was accepted on 25 Nov 2026; the upload buttons wait for the
+   SheetJS 0.20.2 upgrade (Q-12, approved by the owner on 26 Nov 2026). Sprint 2 (corrections and classification) follows, with the owner's alias list (PD-36) before it merges and
    the product-class table after the live page's LP-16.
-   Beside M2, the data-platform items (NB-04) are on their own branches: M10, the MF Screener data pack reader and
-   browser store (`feat/m10-datapack`); M11a, the monthly update engine core (`feat/m11a-monthly-engine`, after M10);
-   M12a, the drawdown engine on index data (`feat/m12a-drawdown`; the owner's answers of 25 Nov 2026 are its defaults;
+   Beside M2, the data-platform items (NB-04): M10, the MF Screener data pack reader and browser store, merged in
+   PR #37 and accepted on 26 Nov 2026 (not wired); M11a, the monthly update engine core, on its own branch
+   (`feat/m11a-monthly-engine`); M12a, the drawdown engine on index data, merged in PR #38, owner Gate E pending (the
+   owner's answers of 25 Nov 2026 are its defaults;
    which index stands for each asset class, the part-month recovery rule, flagging missing months and the tie rule
    wait for the owner).
 
    **Claude: M3a**, the returns core (XIRR, the IRR file reader, the IRR tree, contributors and laggards, returns per
-   family, client and advisor scope), is on `feat/m3a-returns-core`, not wired into the page yet. Open before it reaches
+   family, client and advisor scope), is merged (PR #34) and accepted by the owner (Gate E), not wired into the page yet. Open before it reaches
    the page: the reconcile tolerance (D13), how an instrument split between distributors is shared, and the owner
    questions in its Gate A report. The IRR parity ledger waits for a real export (TA-03, KI-186).
 
    **Claude: M7a**, the capital-gains statement reader (PAN removed at read time, repeated lots reported, blank cells
-   reported) and the blank template, is on `feat/m7a-cg-reader` (PR #35), not wired into the page yet. Lot classes,
+   reported) and the blank template, is merged (PR #35) and accepted by the owner (Gate E), not wired into the page yet. Lot classes,
    the tax rules and the tax engine stay owner-gated (PD-16, LP-01).
-   Model contracts-2 (types only): contract I-37 (`app/src/model/tax.ts`) and the analyst question as a union on its kind.
+   Model contracts-1 (PR #29, types only): I-31, I-32, I-44, I-45 and decision C-01. Model contracts-2 (PR #40, types
+   only): contract I-37 (`app/src/model/tax.ts`) and the analyst question as a union on its kind.
 
    **Claude: M3a wiring** (test build 1, `feat/m3a-wiring`): the transactions (IRR) upload in section 1 and the returns
    view in section 4 (family, client and adviser scopes; fund and benchmark XIRR; the IRR tree; contributors and
