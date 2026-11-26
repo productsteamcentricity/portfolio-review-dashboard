@@ -228,8 +228,10 @@
    questions in its Gate A report. The IRR parity ledger waits for a real export (TA-03, KI-186).
 
    **Claude: M7a**, the capital-gains statement reader (PAN removed at read time, repeated lots reported, blank cells
-   reported) and the blank template, is merged (PR #35) and accepted by the owner (Gate E), not wired into the page yet. Lot classes,
-   the tax rules and the tax engine stay owner-gated (PD-16, LP-01).
+   reported) and the blank template, is merged (PR #35) and accepted by the owner (Gate E), not wired into the page yet. The
+   owner answered PD-16 on 26 Nov 2026 (item 4 stays with the tax adviser). **The M7a tax engine** is on
+   `feat/m7a-tax-engine`: round 1 (the statement lots: the dated rules, lot classes, per-lot tax and the tax per person
+   and year) is built; round 2 (the holdings: classification, FIFO lots, harvesting and the IRR reconciliation) follows.
    Model contracts-1 (PR #29, types only): I-31, I-32, I-44, I-45 and decision C-01. Model contracts-2 (PR #40, types
    only): contract I-37 (`app/src/model/tax.ts`) and the analyst question as a union on its kind.
 6. **When the second export arrives:**
