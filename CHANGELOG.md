@@ -13,12 +13,18 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   name: Regular and Direct are separate tables with their own dates (36 names of the October 2026 data are in both,
   with different returns); a plan the first source lacks is read from the next source that has it. One coverage
   footnote text for screen, slide and sheet ("3Y covers 80% of MF value; 1 fund without a 3Y return excluded", with
-  the sources and dates); `asOnDay()` reads the monitor's as-on text.
+  the sources and dates, and the holdings outside the base), which goes with every rendering of the figure; `asOnDay()`
+  reads the monitor's as-on text. The figure names what it used (ARC-03 Gate B): its source is the first primary
+  actually used, its date the primary tables' date (the earliest when they differ, missing when a primary used has
+  none), `mixed` flags tables of more than one source or date, and with no source at all there is no figure. A
+  holding's plan comes from the vendor table the match came from; an unknown plan is excluded and counted (`no-plan`),
+  as is an account plan that disagrees (`plan-mismatch`).
 - **`app/src/engine/returns/stock-cagr.ts`** (E-148, D-023 point 4): each stock's 1Y/3Y/5Y CAGR from split- and
   bonus-adjusted prices at the exact anniversaries of the review's as-on date (29 Feb maps to 28 Feb), a price on that
   date or up to 7 days earlier, else the tenor is missing (INSUFFICIENT EVIDENCE when the series starts later, never
   0%); the direct-equity figure weighted by direct-equity value (60/40% at 10% and 20%: 14.00%; without the 40%
-  stock's 3Y: 10.00% at 60%). A stock takes the first price source that has it, labelled with that source.
+  stock's 3Y: 10.00% at 60%). A stock takes the first price source with a non-empty series for it, labelled with that
+  source; the figure names the source used, and with no price source at all there is no figure.
 - Tests: `unit/returns/portfolio-returns.test.ts`, `unit/returns/stock-cagr.test.ts` (the known answers of
   08-regression-test-plan). Parity rows E-147 and E-148: in progress.
 
