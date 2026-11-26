@@ -195,7 +195,8 @@ export type WeightedReturn = {
   /**
    * Present when the figure is built from more than one source or as-on date (for example Regular and Direct plans
    * read from monitors of different dates): every part with its source, its as-on date and the share of the weights
-   * it supplies (0 to 1). A rendering of such a figure names every part; `source` and `asOn` stay the primary one.
+   * it supplies (0 to 1; the shares sum to 1 within 1e-9). A rendering of such a figure names every part; `source`
+   * and `asOn` stay the primary one. A single-source figure has no `parts` (absent, never a one-element list).
    */
   parts?: Array<{ source: ReturnsSource; asOn: Value<DayNumber>; share: number }>;
 };
