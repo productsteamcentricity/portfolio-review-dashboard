@@ -11,7 +11,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - Files: the vendor's benchmark exports (`Benchmarks`), the Investment Reckoner PDF (`Outlook export`), the pagers
     deck and Other Funds Analytics; niftyindices only as the fallback.
   - Step 3: Market Update slides from the Reckoner PDF with Windows' PDF renderer, no Office. The scripts are pinned
-    by SHA-256; ARC-02's review is pending. The PowerPoint COM snippet is removed.
+    by SHA-256 as ARC-02 reviewed them (render-pdf 958b095e GO on conditions C1 to C3; shrink
+    530357e6 GO after the one-line fix). The PowerPoint COM snippet is removed.
   - Step 4: the in-house risk chain (tools, launch rule, inputs, hard stops).
   - Step 4b: the AmfiFetch ids file for the new build.
   - Step 7f: Other Funds analytics for carried look-throughs.

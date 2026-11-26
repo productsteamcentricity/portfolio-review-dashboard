@@ -180,26 +180,39 @@ Record each drift and its fix in the log.
 **The route since 22 Nov 2026: render the Investment Reckoner PDF, with no Office.** This route was used for the
 "Nov 2026" slides (refresh log 2026-10, §4b). The owner names the pages (October used pages 5 to 10 of the November
 Reckoner).
-1. **Scripts.** Use `C:\dev\slide-tools\render-pdf.ps1` (SHA-256 `958b095ee2ef39ba4f4624a404683ffe491e0bec1e8cd816ec74e690a79f49e0`)
-   and `C:\dev\slide-tools\shrink.ps1` (`c9e076ed3a16a97cc533d3d9ccff38bcf2fe732031ca9f1a8039141eaf6b7cf3`).
-   - Run them only once ARC-02's review GO is recorded here for these hashes. **The review was requested on 26 Nov 2026
-     and is pending.**
-   - Check each script's hash just before it runs, and run each in its own `powershell.exe -NoProfile` process.
-   - They use Windows' built-in PDF renderer (Windows.Data.Pdf) and System.Drawing, with no Office, no COM, no network
-     and no deletes.
+1. **Scripts.** Both are reviewed by ARC-02 (26 Nov 2026; record in the Guardian's notes,
+   `lp19-slide-scripts-review-2026-11-26.md`). Run only these hashes, and check each just before its run:
+   - `C:\dev\slide-tools\render-pdf.ps1`, SHA-256 `958b095ee2ef39ba4f4624a404683ffe491e0bec1e8cd816ec74e690a79f49e0`:
+     GO on the conditions below.
+   - `C:\dev\slide-tools\shrink.ps1`, SHA-256 `530357e6ef16a302f5b5480f9fb469a4aae39bd95a39504e90596241776be3b4`
+     (997 B): GO. This is the reviewed fix: `$ErrorActionPreference='Stop'` added, so a missing `page<N>.jpg` now
+     stops the run instead of writing an all-black slide. The first version `c9e076ed…` was NO-GO; it is kept in
+     `C:\dev\slide-tools\superseded\` and is never run.
+   - They use Windows' built-in PDF renderer (Windows.Data.Pdf) and System.Drawing, with no Office, no COM, no
+     network, no process start and no deletes.
+   - **Conditions (ARC-02):**
+     - **C1, invocation.** Run them from inside PowerShell: `& 'C:\dev\slide-tools\render-pdf.ps1' -Pages 5,6 ...`,
+       or `powershell.exe -NoProfile -Command "& 'C:\dev\slide-tools\render-pdf.ps1' ... -Pages 5,6"`. **Never
+       `powershell -File` with a page list**: the list then arrives as the text "5,6" and becomes page 56, so with a
+       long PDF the wrong page is rendered silently.
+     - **C2, absolute paths** for `-Pdf`, `-InDir` and `-OutDir`. A relative `-Pdf` fails.
+     - **C3, a fresh, empty out-folder for each run**, because both scripts overwrite without asking. Afterwards,
+       check that the files are exactly the pages asked for.
 2. **Copy.** Copy the PDF from `Outlook export` to a short folder of its own outside OneDrive, for example
    `C:\Temp\slides_<M>`.
-3. **Render** the chosen pages at width 2880: `render-pdf.ps1 -Pdf <copy> -Pages 5,6,... -OutDir <folder> -Width 2880`.
-   It writes `page<N>.jpg` at the page's own aspect ratio. **Check that every page came out 2880×1620 (16:9).**
-   `shrink.ps1` stretches to 1920×1080 whatever the shape, so a page of another shape must be raised with the owner,
-   never stretched. Use an empty out-folder, because the script overwrites without asking.
-4. **Shrink** to 1920×1080 JPEG at quality 82: `shrink.ps1 -InDir <folder> -OutDir <folder2> -Pages 5,6,...` writes
-   `Slide<N>.jpg`.
+3. **Render** the chosen pages at width 2880: `& 'C:\dev\slide-tools\render-pdf.ps1' -Pdf <copy> -Pages 5,6,...
+   -OutDir <empty folder> -Width 2880`. It writes `page<N>.jpg` at the page's own aspect ratio.
+   - **Check the real pixel size of each file, not the size the script prints.** Read it from the JPEG header or from
+     `shrink.ps1`'s "source" line. With display scaling the output is larger: at 150%, `-Width 2880` gives 4320×2430.
+   - **Each page must be 16:9.** `shrink.ps1` stretches to 1920×1080 whatever the shape, so raise a page of another
+     shape with the owner; never stretch it.
+4. **Shrink** to 1920×1080 JPEG at quality 82: `& 'C:\dev\slide-tools\shrink.ps1' -InDir <folder> -OutDir <empty
+   folder2> -Pages 5,6,...` writes `Slide<N>.jpg`. Its "source" line gives each page's real size.
 5. **Stage** them as `slide1.jpg` … `slideK.jpg`, in the owner's order, by byte copy (check each with `cmp`), and
    record bytes and SHA-256 in the log.
-6. **Look at every image.** A page that failed to render comes out blank. Ship the pages as supplied. If the content
-   looks wrong (a wrong month in a title, the Reckoner's own page number in a corner), flag it to the owner; do not
-   correct it.
+6. **A person looks at every image before anything goes to the public repository.** The privacy scan cannot read
+   images. A page that failed to render comes out blank. Ship the pages as supplied. If the content looks wrong (a
+   wrong month in a title, the Reckoner's own page number in a corner), flag it to the owner; do not correct it.
 7. **Build.** Build with `--slides <staging>` (step 5). If no other monthly file is being rebuilt, build from an empty
    `--src` folder: only MARKET_UPDATE_IMAGES is written and DATA_DATES comes out unchanged. Rehearse that on the
    current slides first; it should show no REFDATA change and the same length. Then splice with `--label "$LABEL"`
@@ -535,7 +548,8 @@ The same filename has been re-issued with different content at least four times.
 | `anchor found 0 times` from the splice | Splice run without `--data-only` | Add `--data-only`. The failure is safe; nothing was written. |
 | "DATA_DATES.* did not advance" | The builder re-ran after a splice and read the spliced file as "previous" | Expected on a re-gate |
 | Out of memory | 16 MB file plus JSON | `node --max-old-space-size=8192` |
-| A rendered page is not 2880×1620 | The PDF page is not 16:9 | Do not shrink it (it would be stretched); ask the owner (step 3) |
+| A rendered page is not 16:9 | The PDF page has another shape | Do not shrink it (it would be stretched); ask the owner (step 3) |
+| The page files are not the pages asked for (for example page56 for 5,6) | The scripts were run with powershell -File and a page list | Run them from inside PowerShell (step 3, C1), in a fresh out-folder |
 | `mv` of the inbox says "busy" | A shell's working directory is inside the folder | Nothing moved; leave the folder in every shell and retry (step 10) |
 | Engine fails under `node -e` | The UMD bundles take their CommonJS path | Run engine code from a script file (KI-011) |
 | Re-issued file after the splice | Common (stock returns, the deck, the SOA workbook) | Rebuild only the affected block from the new file and splice it on the same branch |
