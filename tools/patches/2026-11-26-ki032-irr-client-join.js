@@ -25,8 +25,8 @@
       base client keys exactly: salutations dropped (MR, MRS, MS, MISS, DR, SHRI,
       SRI, SMT, SHRIMATI, KUM, MASTER); marker words must agree on both sides
       (HUF or KARTA; TRUST; LLP; PVT or PRIVATE; LTD or LIMITED; CO; FIRM;
-      FOUNDATION; MINOR; UG, GUARDIAN, THRU or THROUGH; JR or JUNIOR; SR or
-      SENIOR; LATE; AND, a joint name); every word of the shorter name is in the
+      FOUNDATION; MINOR or MNR; UG, GUARDIAN, THRU or THROUGH; JR or JUNIOR; SR
+      or SENIOR; LATE, DECEASED or DECD; AND, JOINT or JT, a joint name); every word of the shorter name is in the
       longer one, a single letter standing for a word with that initial, the
       shorter name keeping at least two full words; when the lengths differ,
       the first words agree (exactly or as an initial), the last words agree,
@@ -64,7 +64,7 @@ applyPatch('KI-032 IRR client join', [
     to: String.raw`      /* KI-032: the client key. Text in brackets is dropped except the marker words (an HUF, a minor, a guardian ...),
          which name a different holder; "&" reads as AND; the letters H U F read as HUF and U G as UG. A name with none
          of these keys exactly as before. */
-      var _MK={HUF:"HUF",KARTA:"HUF",TRUST:"TRUST",LLP:"LLP",PVT:"PVT",PRIVATE:"PVT",LTD:"LTD",LIMITED:"LTD",CO:"CO",FIRM:"FIRM",FOUNDATION:"FOUNDATION",MINOR:"MINOR",UG:"UG",GUARDIAN:"UG",THRU:"UG",THROUGH:"UG",JR:"JR",JUNIOR:"JR",SR:"SR",SENIOR:"SR",LATE:"LATE",AND:"AND"};
+      var _MK={HUF:"HUF",KARTA:"HUF",TRUST:"TRUST",LLP:"LLP",PVT:"PVT",PRIVATE:"PVT",LTD:"LTD",LIMITED:"LTD",CO:"CO",FIRM:"FIRM",FOUNDATION:"FOUNDATION",MINOR:"MINOR",MNR:"MINOR",UG:"UG",GUARDIAN:"UG",THRU:"UG",THROUGH:"UG",JR:"JR",JUNIOR:"JR",SR:"SR",SENIOR:"SR",LATE:"LATE",DECEASED:"LATE",DECD:"LATE",AND:"AND",JOINT:"AND",JT:"AND"};
       var _toks=function(s){ return s.replace(/[^A-Z0-9]+/g," ").trim().split(" ").filter(Boolean); };
       var _seq=function(w){ var o=[]; for(var i=0;i<w.length;i++){
           if(w[i]==="H"&&w[i+1]==="U"&&w[i+2]==="F"){ o.push("HUF"); i+=2; continue; }

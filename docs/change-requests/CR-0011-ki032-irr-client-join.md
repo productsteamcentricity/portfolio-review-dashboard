@@ -31,7 +31,8 @@ file's own client labels, is unchanged. No reference data, matcher threshold or 
 2. **Variant**, for a base client with no exact name, against the IRR clients that no base client names exactly:
    - salutations dropped: MR, MRS, MS, MISS, DR, SHRI, SRI, SMT, SHRIMATI, KUM, MASTER;
    - marker words equal on both sides: HUF or KARTA, TRUST, LLP, PVT or PRIVATE, LTD or LIMITED, CO, FIRM, FOUNDATION,
-     MINOR, U/G or GUARDIAN or THRU or THROUGH, JR or JUNIOR, SR or SENIOR, LATE, and AND (a joint name);
+     MINOR or MNR, U/G or GUARDIAN or THRU or THROUGH, JR or JUNIOR, SR or SENIOR, LATE or DECEASED or DECD, and AND or
+     JOINT or JT (a joint name);
    - every word of the shorter name is in the longer one, a single letter standing for a word with that initial, and
      the shorter name keeps at least two full words;
    - when the lengths differ, the first words agree (exactly or as an initial), the last words agree, and the longer
@@ -47,17 +48,19 @@ file's own client labels, is unchanged. No reference data, matcher threshold or 
 
 Round 2 followed the financial review of the first build (CHANGES NEEDED: bracketed "(HUF)" and "H.U.F." let an
 individual take an HUF's flows; Jr, Late, Karta, Thru and joint names joined; two notes were inexact). All are fixed
-and each has a known-answer case.
+and each has a known-answer case. The delta review of round 2 approved it with notes; its should-fix (Joint, Jt,
+Deceased, Decd and Mnr as markers) is in.
 
 ## Evidence
 
-- `tools/regression/KI-032-irr-client-join.js`: 135 known-answer checks in IST and UTC. Every joined client's Grand
+- `tools/regression/KI-032-irr-client-join.js`: 180 known-answer checks in IST and UTC. Every joined client's Grand
   Total and holdings equal an independent XIRR (actual/365, bisection) of the flows it must join; every client not
   joined keeps its base-file figures with the expected note. Cases: exact names; the reproduced family case; a family
   member only in the IRR file; an HUF; a salutation with an initial; a middle name; two candidates; one candidate
   shared by two clients; the synthetic book's own names (SB-03); no near name; the family tree unchanged; "(HUF)" in brackets; the
   individual and the HUF both in the IRR file (flows apart); H.U.F.; "(Minor)"; U/G and Thru; a joint name; Jr, Late
-  and Karta; the word order; Smt.; initials first; M/S; two middle names; punctuation (exact key unchanged).
+  and Karta; the word order; Smt.; initials first; M/S; two middle names; punctuation (exact key unchanged); Joint, Jt, Deceased, Decd and Mnr in brackets and
+  without; key equivalence with the old key for names without markers.
 - Side-by-side kit: SB-03 retired (the probe book agrees for the client without transactions); the new case
   `syn-standard-irr-variant` with SB-04 to SB-07 records the decided difference from the new build (D9, OD-4).
 - Measurement on the October files (read only, counts only, on the owner's permission): see the pull request.

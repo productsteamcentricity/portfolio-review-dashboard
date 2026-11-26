@@ -222,6 +222,18 @@ checkClient('punctuation', r, 'SAMPLE CLIENT-A.', A, A);
 r = runCase({ base: { [A]: 'Mr. Anil K. Mehta' }, irr: { [A]: 'ANIL KUMAR MEHTA' }, drop: [B] });
 ok(r.m.clients.find(c => c.name === 'Mr. Anil K. Mehta').irrJoin === 'variant' && r.m.clients.find(c => c.name === B).irrJoin === 'none', 'client sheets carry irrJoin (variant, none)');
 
+/* 25. delta review of cd0ff94: JOINT / JT, DECEASED / DECD and MNR are markers, in brackets and without */
+for (const w of ['(Joint)', '(Jt)', '(Deceased)', '(Decd)', '(Mnr)', 'Joint', 'Deceased', 'Mnr']) refusedEntity('marker ' + w, 'Rajesh Shah', 'Rajesh Shah ' + w);
+/* 26. a name without brackets, "&" or the letters H U F / U G keys as the old key did: spelling, case, spacing and
+   punctuation differences that the old key folded still join exactly */
+const oldNc = x => String(x || '').toUpperCase().replace(/\(.*?\)/g, ' ').replace(/[^A-Z0-9]+/g, ' ').trim();
+for (const [bn, ir] of [['sample client-a', 'SAMPLE CLIENT A'], ['Sample.Client.A', 'sample client a'], ['Sample / Client / A', 'Sample_Client_A'],
+                        ['Sample Client A (Folio 12)', 'Sample Client A'], ['Sample  Client  A', 'SAMPLE CLIENT A (old folio)']]) {
+  if (oldNc(bn) !== oldNc(ir)) { ok(false, 'key equivalence: test pair not equal under the old key'); continue; }
+  const rr = runCase({ base: { [A]: bn }, irr: { [A]: ir } });
+  ok(rr.m.irrJoin.exact === 2 && rr.m.irrJoin.variant === 0, 'key equivalence: "' + bn + '" and "' + ir + '" join exactly, as under the old key');
+}
+
 /* 10. the family Fund IRR tree groups by the IRR file's own labels: the same with and without the renames */
 const famXirr = (rr) => { const t = (rr.m.irr || []).find(x => x.level === 0); return t ? [t.fund, t.bench] : null; };
 const f0 = famXirr(runCase({ base: {}, irr: {} })), f1 = famXirr(runCase({ base: { [A]: 'Rajesh Shah' }, irr: { [A]: 'Rajesh Shah HUF' } }));
