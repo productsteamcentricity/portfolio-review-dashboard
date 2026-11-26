@@ -128,8 +128,11 @@
   - It serves `index.html` on `main`. After PR #36 (TA-03, 26 Nov 2026): MD5 `08CAC338E0F4468FDC82D032DACA7B5D`,
     16,408,172 bytes, with the October 2026 refresh, CR-0010, LP-16, A5 and the tax batch. (After PR #16 it was
     `12B5E5727FCA01EF2EA162C59913F01D`.) New-build merges leave `index.html` unchanged.
+  - KI-032, the IRR client join (CR-0011): merged in PR #47 (26 Nov 2026, the owner's "Publish now"); page
+    `9C973F615E6601B08277F6F8227DB569`, 16,413,720 bytes.
   - In review: LP-16b, the platform's Product Name values (CR-0012, branch `fix/lp16b-platform-product-names`): page
-    `5EFA338421B879D3C9A16F51A751AC5A`, 16,409,786 bytes; live on the owner's "publish", before 13 Dec 2026.
+    `27CEDA2DD41E5D8EBABED20F0B5F744A`, 16,415,375 bytes (on KI-032's page); live on the owner's "publish", before
+    13 Dec 2026.
   - After every deploy the live page is downloaded and its MD5 compared with `main` (batch 1a verified 19 Oct
     2026).
   - Data vintage: 31 Oct 2026 (October refresh: analytics, performance and risk), except ranks (15 Aug), fund managers

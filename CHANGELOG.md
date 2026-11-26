@@ -4,23 +4,38 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
-### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `5EFA338421B879D3C9A16F51A751AC5A`, 16,409,786 bytes)
+### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `27CEDA2DD41E5D8EBABED20F0B5F744A`, 16,415,375 bytes, on KI-032's page)
 - **The platform's own Product Name values are classed as the owner decided** (CR-0012; 26 Nov 2026):
   - "Global Exposure" is a GIFT City fund when the instrument name says GIFT or IFSC, otherwise an Offshore fund (it was
     looked up as a mutual fund).
-  - "Bonds", and every bond, NCD or debenture without USD, US$, dollar or LRS in its product or name, are "Rupee bonds and
+  - "Bonds", and every bond, NCD or debenture without USD, US$, US, dollar or LRS in its product or name, are "Rupee bonds and
     NCDs" on the listed bond tax rows. The label "US-dollar bonds (through LRS)" (and no tax row) is kept for those that
     say so. This changes the 25 Nov 2026 rule, which labelled every bond US-dollar.
   - "P2P Lending" is its own class, "P2P lending" (Debt), not looked up as a fund; still no tax row.
   - "Unlisted-Direct" is an unlisted share held directly (no fund fee), as "Unlisted Shares" is.
   - "AIF-Listed" is a Listed AIF: Category III with its note (D-043), as the category "Listed AIF" is.
-  - The tax rule reads USD, US$, dollar or LRS in the name only for a product or category that says bond, NCD or
-    debenture, so a fund, AIF or PMS named "... Bond ..." keeps its own row; "US$" is read as written, never the word US, and may be
-    followed by a figure ("US$500mn", "USD5.25").
+  - The tax rule reads USD, US$, US (a whole word: not "Plus" or "Bus"), dollar or LRS in the name only for a product or
+    category that says bond, NCD or debenture, so a fund, AIF or PMS named "... Bond ..." keeps its own row; a currency
+    word may be followed by a figure ("US$500mn", "USD5.25").
   - Mutual Funds, Direct Equity, PMS and SIF are unchanged.
 - `PRODUCT_CLASS_RULES` (contract I-40) gains two optional fields, `nameAny` and `andAny`; `data/refdata` is regenerated.
-- `tools/patches/2026-11-26-lp16b-platform-product-names.js`; `tools/regression/LP16b-platform-product-names.js` (93
+- `tools/patches/2026-11-26-lp16b-platform-product-names.js`; `tools/regression/LP16b-platform-product-names.js` (99
   known-answer checks); the LP-16 test follows the new bond rule; the side-by-side kit's routing copy reads the new fields.
+
+### Fixed (live page, KI-032: the IRR client join; `index.html` `9C973F615E6601B08277F6F8227DB569`, 16,413,720 bytes)
+- **A client never takes another client's transaction figures** (CR-0011; the owner's "Careful variant match", 26 Nov
+  2026). The IRR client join is now the exact name, else a unique name variant (a salutation, initials, one middle name or
+  the word order; marker words such as HUF, Karta, trust, company, minor, guardian, Jr, Late or Deceased, or a joint "&" or "Joint" equal on both
+  sides; the first and last words equal when the lengths differ; one candidate each way), else no join. The client key
+  keeps marker words written in brackets, so "X (HUF)" is no longer the individual X's key (an IRR file holding both
+  merged their flows on the client sheet). Before, a client without an exact name took whichever IRR client shared two
+  name words, so it could show a family member's or an HUF's Grand Total and holding XIRRs.
+  - A client not joined keeps the base file's CMV-weighted figures; its § note says why when a near name was refused,
+    and names no one. A variant join is named in the § note. The counts are in the review model (`irrJoin`).
+  - Clients whose names are in the IRR file exactly, and the family Fund IRR tree, are unchanged.
+  - `tools/patches/2026-11-26-ki032-irr-client-join.js`; `tools/regression/KI-032-irr-client-join.js` (180 known-answer
+    checks). Side-by-side kit: SB-03 retired; SB-04 to SB-07 for the client-name variant case (the new build keeps exact
+    client labels, D9); 16 tests.
 
 ### Added (new build, M2.1 sprint 2a: matcher corrections, opt-in; not wired into the page yet)
 - **Owner fund aliases** (`data/owner/fund-aliases.json`, `engine/match/owner-aliases.ts`; KI-050, PD-36): the 16 renames the
@@ -56,6 +71,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   the weights) for a figure built from more than one source or date, such as Regular and Direct plans read from
   monitors of different dates; a rendering names every part. Asked for by NB-03 (M7a engine) and ARC-03's review of
   NB-04's M3b data side.
+
 ### Added (side-by-side kit for test build 1: tests only; no change to `index.html`, `/next/` or `app/`)
 - **`tests/side-by-side/`** runs the same book through the legacy engine (`tools/engine-host.js`) and the new build
   (`app/src`: base file, matcher, IRR file, scope returns, contributions). It compares the holdings matches, the holding
