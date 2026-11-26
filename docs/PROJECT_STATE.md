@@ -217,6 +217,7 @@
    **Claude: M7a**, the capital-gains statement reader (PAN removed at read time, repeated lots reported, blank cells
    reported) and the blank template, is on `feat/m7a-cg-reader` (PR #35), not wired into the page yet. Lot classes,
    the tax rules and the tax engine stay owner-gated (PD-16, LP-01).
+   Model contracts-2 (types only): contract I-37 (`app/src/model/tax.ts`) and the analyst question as a union on its kind.
 6. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;

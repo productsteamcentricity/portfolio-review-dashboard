@@ -7,9 +7,13 @@ import type { MissingStatus } from './status.ts';
  * Units. Money is held in Crore ('cr'), unrounded. 'pct' is a **percent number**: 8.79 means 8.79 %
  * (decided in M1.3, DATA_DICTIONARY §8); a fraction is never stored with unit 'pct'. 'date' values are
  * DayNumbers. 'pp' percentage points, 'bp' basis points, 'count' a count, 'ratio' a ratio such as Sharpe,
- * 'years', 'days', 'units' (units of a fund held), 'label' a text label.
+ * 'years', 'days', 'units' (units of a fund held), 'label' a text label. 'inr' is money in rupees, unrounded, and
+ * 'inr-per-unit' a price in rupees per unit (the capital-gains and tax records, contract I-37); Crore stays the basis
+ * of every weight.
  */
-export type Unit = 'cr' | 'pct' | 'pp' | 'bp' | 'count' | 'ratio' | 'years' | 'days' | 'units' | 'date' | 'label';
+export type Unit =
+  | 'cr' | 'inr' | 'inr-per-unit' | 'pct' | 'pp' | 'bp' | 'count' | 'ratio' | 'years' | 'days' | 'units' | 'date'
+  | 'label';
 
 /**
  * The unit a money column of a source file is written in (Crore, Lakh or rupees). Declared here since decision C-01,
