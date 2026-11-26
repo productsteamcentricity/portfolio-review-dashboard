@@ -28,6 +28,69 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Tests: `unit/returns/portfolio-returns.test.ts`, `unit/returns/stock-cagr.test.ts` (the known answers of
   08-regression-test-plan). Parity rows E-147 and E-148: in progress.
 
+### Added (side-by-side kit for test build 1: tests only; no change to `index.html`, `/next/` or `app/`)
+- **`tests/side-by-side/`** runs the same book through the legacy engine (`tools/engine-host.js`) and the new build
+  (`app/src`: base file, matcher, IRR file, scope returns, contributions). It compares the holdings matches, the holding
+  and scope XIRRs and the contributions field by field. Each difference carries its parity-matrix row and an entry of the
+  new ledger `sbs-ledger.json` (`SB-nn`). An unclassified difference fails `side-by-side.test.ts` (14 tests, synthetic books
+  only).
+  - `node tests/side-by-side/run.ts` writes `report.json` and `report.html` to `test-data/side-by-side/`, which is
+    git-ignored. A real base and IRR file can be given locally, with `--out` and `--as-on` required; that report carries
+    a "LOCAL ONLY" banner and never leaves the PC. With a real file, an `--out` inside any working tree of the
+    repository (except its git-ignored `test-data/`) or in OneDrive is refused, after resolving links and junctions.
+  - The performance section lists the legacy rows only, as not compared (`SB-01`), until M3b's modules merge (E-31,
+    E-147). The adviser XIRR is new and has no reference (`SB-02`, E-142).
+  - The new build has no product-class routing yet (E-15), so the kit copies the live page's rule (direct equity and
+    the non-MF classes not looked up) on both sides; routing is not tested. Each holding's route is still compared: the
+    legacy side's comes from the engine's own fields, so a stale copy shows as an unclassified E-15 difference.
+  - Six synthetic cases, three with an IRR file, including a probe book: a fund through two distributors, a share, an FD,
+    an NCD, and a client without IRR flows. Every holding, match, holding XIRR and contribution agrees.
+  - One known legacy defect shows: a client without flows takes another client's flows by the fuzzy name match
+    (`SB-03`, KI-032; the new build keys clients by id, D9). The README lists the decided differences a real file can
+    show.
+  - Owner of the folder: EX-02 (MOD-04, 26 Nov 2026).
+
+### Added (new build, M10 pre-wiring tests: the zip directory defences; no change to the app, `/next/` or `/`)
+- **`tests/unit/ingest/screener-pack-zip.test.ts`** (ARC-03 R7 of M10's Gate B): each directory check of the Screener
+  pack reader has a test that fails when that check alone is removed: a second archive appended (the end-record
+  refusal is now asserted, not only a refusal), a gap between the directory and the end record, a local header whose
+  name differs at the same length, two entries whose data overlap, and a second directory that only JSZip would read
+  (the entry-list comparison). Synthetic archives only; 24 cases in the file.
+
+### Changed (records, registers-4, 26 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **`docs/project-control/DECISION_LOG.md`**: the owner's answers of 17 to 26 Nov 2026. PD-01, PD-04 and PD-44 accepted
+  (25 Nov, "Accept all"); PD-16 answered except item 4, which stays with the tax adviser (26 Nov); PD-36 answered for
+  the renamed-scheme list (16 aliases approved, line 10 held; C4 and C5 covered); PD-54 confirmed; PD-56 changed; the
+  PD-30 publishes listed; PD-07 still open. PD-57 to PD-66 added with plain-language sections (PD-62 and PD-63 open).
+  New section 2.4: owner decisions without a PD number (Stage 0, the D-7 labels and the bond label, the "ISIN" column
+  for the new build only, the D-028 exception for matching corrections, the standing `/next/` rule, the M12a
+  defaults, Q-12, matching option B, the one-time item 6 run, the Gate E acceptances, the test build target).
+- **Chat registers**: CHAT-006 (MOD-03) handed over to CHAT-013 (MOD-04) on 25 Nov 2026, a planned early succession
+  under PD-65; CHAT-010 NB-03, CHAT-011 NB-04 and CHAT-012 ARC-03 opened 24 and 25 Nov; ARC-02 (CHAT-008) is ARC-01's
+  sole rule-10 successor; compactions from the transcripts' markers; next free number CHAT-014
+  (`CHAT_REGISTRY.md`, `docs/coordination/CHAT_SUCCESSION_REGISTER.md`, `CONTEXT_COMPACTION_TRACKER.md`).
+- **`docs/coordination/FILE_OWNERSHIP_MAP.md`**: `app/src/engine/scope.ts` to NB-03 (first consumer of I-45, decision
+  D8 of 25 Nov; NB-02's M4b imports it); `tests/side-by-side/` to EX-02.
+- **`docs/coordination/CODING_MAP.md`, both `INTERFACE_CONTRACTS.md`**: statuses for PRs #28 to #40; I-21 now 34
+  rows on main; I-31, I-32, I-44, I-45 and C-01 on main (PR #29), I-37 (PR #40); a pointer row for I-28 to I-45.
+- **KI-184 and TA-06**: no live fix planned; TA-06 and LP-03 dropped (the owner's "ISIN" column is for the new build's
+  template only, 25 Nov 2026).
+- **`docs/PROJECT_STATE.md`**: the records entry, the live page after PR #36, the data vintage, and the merged
+  M2.3 sprint 3a, M10 and M12a.
+
+### Changed (new build, model contracts-1: contracts I-31, I-32, I-44, I-45 and decision C-01; types only, `/next/` build byte-identical; merged 25 Nov 2026 in PR #29, entry added by registers-4)
+- **`app/src/model/returns.ts`** (I-31): `XirrResult` with its gap and status mapping, `ReturnsCoverage`, the IRR tree
+  nodes, the OD-4 reconciliation, unassigned flows, contributions, `ScopeReturns`, `WeightedReturn` (E-147, E-148).
+- **`app/src/model/transactions.ts`** (I-32): `Transaction`, `IrrFileImport` and the free-text date rule (KI-186): a
+  date written as text is that day in every time zone.
+- **`app/src/model/index-series.ts`** (I-44): `IndexId`, `IndexSeries`, `IndexSeriesImport`.
+- **`app/src/model/scope.ts`** (I-45): `Scope`, `ScopeKey`, `ScopeBasis` (the re-basing rule, Q-57).
+- **Decision C-01**: `BaseFileImport`, `MoneyFinding` and their parts move from `ingest/base-file.ts` to
+  `model/base-file.ts`, and `MoneyUnit` from `engine/units.ts` to `model/value.ts`; both old places re-export them, so
+  no importer changed, and `model/` imports nothing outside `model/`.
+- `tests/unit/model/contracts.test.ts`: the cycle broken, the re-exports intact, types only, contract ids cited, the
+  I-32 date rule in IST and UTC.
+
 ### Added (new build, M11a monthly update engine core; the legacy refresh pipeline is unchanged)
 - **`scripts/monthly-update/`** reads a month's files from the private inbox and `monthly_updates/YYYY-MM/`, classifies
   each by content, then structure, then name (client material detected first and quarantined, never copied; a name and
