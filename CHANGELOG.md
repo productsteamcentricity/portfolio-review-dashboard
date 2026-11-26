@@ -4,6 +4,17 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Fixed (live page, IRR-SI: the cashflow file's since-inception sheets; `index.html` `6896AFEC8626BEB22357A258AB69508D`, 16,414,518 bytes, on 9C973F61)
+- **Transaction XIRRs come from the since-inception sheets** (CR-0013; found by CHAT-010, flagged by CHAT-012, MOD-04's
+  order, 26 Nov 2026). The platform's cashflow file holds SI Xirr, SI Bmxirr, YTD Xirr, YTD Bmxirr, QTD Xirr and QTD
+  Bmxirr, in that order. The IRR reader took the last matching sheet names, QTD Xirr and QTD Bmxirr, so every transaction
+  XIRR, the client sheets, the Fund IRR tree and the tax lots used quarter-to-date flows only, with no error.
+  - A sheet named YTD, QTD, MTD or FYTD is never taken, by name or by content. A sheet named SI or "Since Inception" is
+    preferred ("SIP Xirr" is not SI). Otherwise the last match wins, as before. A file with period sheets only gives no
+    fund rows, and the upload asks for an SI Xirr sheet.
+  - `tools/patches/2026-11-26-irr-si-sheets.js` (parsers script only); `tools/regression/IRR-SI-since-inception-sheets.js`
+    (15 known-answer checks: the six-sheet file's review equals the SI pair's; 7 of them fail on the page before the fix).
+
 ### Added (new build, M3b data side: the reference data embedded in the page; not read by any screen yet)
 - **`scripts/build.mjs`** writes each file of its `REFDATA_BLOCKS` list whole as a data block
   `<script type="application/json" id="refdata-<NAME>">`: MF_PERF, MF_PERF_DIRECT, SIF_PERF, BENCH_RET, STOCK_RET and

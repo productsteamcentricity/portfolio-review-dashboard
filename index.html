@@ -7126,14 +7126,22 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
           category:ci.cat!=null?String(r[ci.cat]||"").replace(/\s+/g," ").trim():""}); }
       return out;
     }
-    // 1) Detect sheets by NAME (original behaviour: "...Bmxirr" = benchmark, "...Xirr" = fund).
-    var benchSh=null,fSh=null;
-    sheetNames.forEach(function(sn){ var u=String(sn).toUpperCase(); if(u.indexOf("BMXIRR")>=0||u.indexOf("BM XIRR")>=0||u.indexOf("BMX")>=0) benchSh=sn; else if(u.indexOf("XIRR")>=0) fSh=sn; });
+    // 1) Detect sheets by NAME ("...Bmxirr" = benchmark, "...Xirr" = fund). IRR-SI (26 Nov 2026): the platform's cashflow
+    //    file holds SI, YTD and QTD pairs and the review is since inception, so a period sheet (YTD, QTD, MTD, FYTD) is
+    //    never taken, a sheet named SI or "Since Inception" is preferred (the first of each kind; "SIP" is not SI), and
+    //    otherwise the last match wins, as before.
+    var _per=function(sn){ return /(^|[^A-Z0-9])(YTD|QTD|MTD|FYTD)(?![A-Z0-9])/.test(String(sn).toUpperCase()); };
+    var _si=function(sn){ var u=String(sn).toUpperCase().trim(); return /^SI(?![A-Z0-9])/.test(u)||/^SINCE[\s_-]*INCEPTION/.test(u); };
+    var benchSh=null,fSh=null,benchSI=null,fSI=null;
+    sheetNames.forEach(function(sn){ if(_per(sn)) return; var u=String(sn).toUpperCase();
+      if(u.indexOf("BMXIRR")>=0||u.indexOf("BM XIRR")>=0||u.indexOf("BMX")>=0){ benchSh=sn; if(!benchSI&&_si(sn)) benchSI=sn; }
+      else if(u.indexOf("XIRR")>=0){ fSh=sn; if(!fSI&&_si(sn)) fSI=sn; } });
+    if(benchSI) benchSh=benchSI; if(fSI) fSh=fSI;
     // 2) Fallback: detect by CONTENT - a sheet whose header carries a benchmark-amount column is the
     //    bench sheet; one with a plain amount column is the fund sheet. Handles renamed tabs / title rows.
     if(!benchSh||!fSh){
       sheetNames.forEach(function(sn){
-        if(sn===benchSh||sn===fSh) return;
+        if(sn===benchSh||sn===fSh||_per(sn)) return;   /* IRR-SI: never a YTD / QTD / MTD sheet */
         var rows=getAOA(sn); if(!rows||!rows.length) return;
         if(!benchSh && headerRow(rows,A_BMAMT)>=0){ benchSh=sn; return; }
         if(!fSh && headerRow(rows,A_AMT)>=0){ fSh=sn; }
