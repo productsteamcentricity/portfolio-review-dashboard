@@ -10,7 +10,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   asOnDay, coverageFootnote, weightItems, weightedFundReturn, WEIGHTED_RETURN_LABEL,
-  type FundHoldingInput, type FundReturnSource, type WeightInput,
+  type FundHoldingInput, type FundPlan, type FundReturnSource, type FundReturnTable, type WeightInput,
 } from '../../../app/src/engine/returns/portfolio-returns.ts';
 import type { HoldingId } from '../../../app/src/model/ids.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
@@ -21,12 +21,15 @@ const P = { sources: [], method: 'test' };
 const OCT = ymdToDay(2026, 10, 31)!;
 const SEP = ymdToDay(2026, 9, 30)!;
 const day = (d: number) => present(d, 'date', P);
-const fh = (id: string, scheme: string | null, cmv: number | null): FundHoldingInput => ({
-  holdingId: id as HoldingId, schemeName: scheme, cmvCr: cmv === null ? missing(STATUS.NOT_AVAILABLE, 'no value') : present(cmv, 'cr', P),
+const fh = (id: string, scheme: string | null, cmv: number | null, plan: FundPlan = 'regular'): FundHoldingInput => ({
+  holdingId: id as HoldingId, schemeName: scheme, plan, cmvCr: cmv === null ? missing(STATUS.NOT_AVAILABLE, 'no value') : present(cmv, 'cr', P),
 });
 const r3 = (x: number | null, y5: number | null = null) => ({ r: { '1Y': null, '3Y': x, '5Y': y5 } });
-const src = (source: FundReturnSource['source'], asOn: number | null, funds: FundReturnSource['funds'], ids: string[] = []): FundReturnSource => ({
-  source, asOn: asOn === null ? missing(STATUS.NOT_AVAILABLE, 'no date') : day(asOn), funds, sourceIds: ids,
+type Funds = FundReturnTable['funds'];
+const table = (asOn: number | null, funds: Funds): FundReturnTable => ({ asOn: asOn === null ? missing(STATUS.NOT_AVAILABLE, 'no date') : day(asOn), funds });
+/** A source with a Regular table only (most cases below). */
+const src = (source: FundReturnSource['source'], asOn: number | null, funds: Funds, ids: string[] = []): FundReturnSource => ({
+  source, plans: { regular: table(asOn, funds) }, sourceIds: ids,
 });
 const v = (x: { kind: string; v?: number }): number | null => (x.kind === 'value' ? x.v! : null);
 const near = (a: number | null, b: number): void => assert.ok(a !== null && Math.abs(a - b) < 1e-12, `${a} != ${b}`);
@@ -48,7 +51,8 @@ describe('E-147: the MF portfolio 3Y (D-023 point 3)', () => {
     assert.equal(res.figure.source, 'embedded-mf-monitor');
     assert.equal(res.figure.tenor, '3y');
     assert.equal(res.figure.scope, 'family');
-    assert.deepEqual(res.figure.asOn, embedded.asOn);
+    assert.deepEqual(res.figure.asOn, embedded.plans.regular!.asOn);
+    assert.deepEqual(res.used, [{ source: 'embedded-mf-monitor', plan: 'regular', asOn: embedded.plans.regular!.asOn }]);
   });
   test('per fund: weight, return used, source, and the fund left out (not 0%)', () => {
     assert.deepEqual(res.items.map((i) => [i.holdingId, i.weight, i.returnPct, i.source, i.excluded]), [
@@ -170,8 +174,8 @@ describe('the coverage footnote (one text for screen, slide and sheet)', () => {
   test('partial: the label, the coverage, the count excluded, the sources and dates', () => {
     const res = weightedFundReturn(book, [embedded], '3y', 'family');
     assert.equal(
-      coverageFootnote(res.figure, [{ source: 'embedded-mf-monitor', asOn: embedded.asOn }]),
-      '3Y: weighted average return of current holdings. 3Y covers 80% of MF value; 1 fund without a 3Y return excluded. Source: MF Monitor (embedded monthly data), as on 2026-10-31.',
+      coverageFootnote(res.figure, res.used),
+      '3Y: weighted average return of current holdings. 3Y covers 80% of MF value; 1 fund without a 3Y return excluded. Source: MF Monitor (embedded monthly data), Regular plans, as on 2026-10-31.',
     );
   });
   test('stocks, plural, and an undated source', () => {
@@ -195,5 +199,52 @@ describe('asOnDay: the monitor as-on text', () => {
     assert.equal(asOnDay('').kind, 'missing');
     assert.equal(asOnDay(null).kind, 'missing');
     assert.equal(asOnDay('October').kind, 'missing');
+  });
+});
+
+describe('E-147: Regular and Direct plans are separate tables', () => {
+  // the same scheme name in both plans with different returns (as 36 names are in the October 2026 data)
+  const both = 'Sample Twin Fund';
+  const emb: FundReturnSource = {
+    source: 'embedded-mf-monitor',
+    plans: { regular: table(OCT, { [both]: r3(10) }), direct: table(OCT, { [both]: r3(11), 'Sample Solo Fund-Direct': r3(20) }) },
+    sourceIds: ['sha-emb'],
+  };
+  test('each holding takes the return of its own plan', () => {
+    const r = weightedFundReturn([fh('a', both, 1, 'regular'), fh('b', both, 1, 'direct')], [emb], '3y', 'family');
+    assert.deepEqual(r.items.map((i) => i.returnPct), [10, 11]);
+    near(v(r.figure.value), 10.5);
+    assert.deepEqual(r.used.map((u) => u.plan), ['regular', 'direct']);
+  });
+  test('a name only in the other plan is no return', () => {
+    const r = weightedFundReturn([fh('a', 'Sample Solo Fund-Direct', 1, 'regular')], [emb], '3y', 'family');
+    assert.deepEqual(r.items.map((i) => i.excluded), ['no-return']);
+  });
+  test('a Regular monitor uploaded alone: Direct funds are read from the next source with a Direct table', () => {
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { [both]: r3(12) }) }, sourceIds: ['sha-up'] };
+    const r = weightedFundReturn([fh('a', both, 1, 'regular'), fh('b', both, 1, 'direct')], [up, emb], '3y', 'family');
+    assert.deepEqual(r.items.map((i) => [i.returnPct, i.source]), [[12, 'uploaded-mf-monitor'], [11, 'embedded-mf-monitor']]);
+    assert.equal(r.figure.source, 'uploaded-mf-monitor');
+    assert.deepEqual(r.used.map((u) => [u.source, u.plan]), [['uploaded-mf-monitor', 'regular'], ['embedded-mf-monitor', 'direct']]);
+    assert.deepEqual(r.figure.value.kind === 'value' && r.figure.value.prov.sources, ['sha-up', 'sha-emb']);
+    assert.equal(
+      coverageFootnote(r.figure, r.used),
+      '3Y: weighted average return of current holdings. Source: uploaded MF Monitor, Regular plans, as on 2026-10-31; MF Monitor (embedded monthly data), Direct plans, as on 2026-10-31.',
+    );
+  });
+  test('the fill rule holds per plan: another date in the Regular table blocks Regular fills only', () => {
+    const NOV = ymdToDay(2026, 11, 20)!;
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(NOV, {}), direct: table(OCT, {}) } };
+    const r = weightedFundReturn([fh('a', both, 1, 'regular'), fh('b', both, 1, 'direct')], [up, emb], '3y', 'family');
+    assert.deepEqual(r.items.map((i) => [i.returnPct, i.source]), [[null, null], [11, 'embedded-mf-monitor']]);
+    // the Direct primary is the upload's (31 Oct); the embedded Direct table fills at the same date
+    assert.deepEqual(r.figure.asOn, table(OCT, {}).asOn);
+  });
+  test('primary tables with different dates: the figure is dated by the earliest; each date is listed', () => {
+    const SEP30 = ymdToDay(2026, 9, 30)!;
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { [both]: r3(12) }), direct: table(SEP30, { [both]: r3(13) }) } };
+    const r = weightedFundReturn([fh('a', both, 1, 'regular'), fh('b', both, 1, 'direct')], [up], '3y', 'family');
+    assert.equal(v(r.figure.asOn), SEP30);
+    assert.deepEqual(r.used.map((u) => v(u.asOn)), [OCT, SEP30]);
   });
 });

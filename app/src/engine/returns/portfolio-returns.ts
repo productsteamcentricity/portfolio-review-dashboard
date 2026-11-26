@@ -12,8 +12,8 @@
 //     and the figure's source. A fund missing in the primary is filled from a later source only when that source's
 //     as-on date equals the primary's; otherwise it is excluded and counted.
 //   - Label: "weighted average return of current holdings", never the portfolio's realised return.
-// Pure: no globals. Funds are looked up by the vendor scheme name the matcher resolved (the key of MF_PERF,
-// MF_PERF_DIRECT and of the uploaded monitor's schemes).
+// Pure: no globals. A fund is looked up by its plan and the vendor scheme name the matcher resolved (the key of MF_PERF
+// for Regular plans and MF_PERF_DIRECT for Direct plans, and of the uploaded monitors' schemes).
 
 import type { ReturnTenor, ReturnsCoverage, ReturnsSource, WeightedReturn } from '../../model/returns.ts';
 import type { HoldingId } from '../../model/ids.ts';
@@ -31,22 +31,35 @@ export const TENOR_KEY: Readonly<Record<ReturnTenor, '1Y' | '3Y' | '5Y'>> = { '1
 /** One fund's record as the monitor blocks hold it: trailing returns as percent numbers, or null. */
 export type FundReturnRecord = { r: Readonly<Partial<Record<string, number | null>>> };
 
-/** One source of fund returns: the uploaded MF Monitor, the embedded MF_PERF / MF_PERF_DIRECT, or the pack. */
+/**
+ * The plan a scheme name belongs to. The vendor keeps Regular and Direct plans in separate tables (MF_PERF and
+ * MF_PERF_DIRECT; the Regular and Direct MF Monitors), and a name can appear in both with different returns (36 names
+ * in the October 2026 data), so a fund is the pair (plan, scheme name).
+ */
+export type FundPlan = 'regular' | 'direct';
+
+/** One plan's table of a source: its as-on date and scheme name -> record. */
+export type FundReturnTable = {
+  /** The table's as-on date; a table without a date never fills another (and is never filled). */
+  asOn: Value<DayNumber>;
+  funds: Readonly<Record<string, FundReturnRecord | undefined>>;
+};
+
+/** One source of fund returns: the uploaded MF Monitors, the embedded MF_PERF / MF_PERF_DIRECT, or the pack. */
 export type FundReturnSource = {
   source: ReturnsSource;
-  /** The as-on date of the source's figures; a source without a date never fills another (and is never filled). */
-  asOn: Value<DayNumber>;
-  /** Scheme name -> record. */
-  funds: Readonly<Record<string, FundReturnRecord | undefined>>;
+  /** The source's table per plan (an uploaded Regular monitor alone has no Direct table). */
+  plans: Readonly<Partial<Record<FundPlan, FundReturnTable>>>;
   /** Register ids (file SHA-256) for provenance. */
   sourceIds?: readonly string[];
 };
 
-/** One mutual-fund holding of the scope: its market value (Crore) and the scheme name the matcher resolved. */
+/** One mutual-fund holding of the scope: its market value (Crore) and the fund the matcher resolved. */
 export type FundHoldingInput = {
   holdingId: HoldingId;
   /** The vendor scheme name (null when the holding is not matched to a fund). */
   schemeName: string | null;
+  plan: FundPlan;
   cmvCr: Value<number>;
 };
 
@@ -65,10 +78,10 @@ export type WeightedItem = {
 
 export type WeightedResult = { figure: WeightedReturn; items: WeightedItem[] };
 
-/** The return a source gives for a fund at the tenor, or null (null, absent, or not a finite number). */
-function fundReturn(src: FundReturnSource, scheme: string, tenor: ReturnTenor): number | null {
-  if (!Object.prototype.hasOwnProperty.call(src.funds, scheme)) return null;
-  const x = src.funds[scheme]?.r?.[TENOR_KEY[tenor]];
+/** The return a table gives for a fund at the tenor, or null (null, absent, or not a finite number). */
+function fundReturn(table: FundReturnTable, scheme: string, tenor: ReturnTenor): number | null {
+  if (!Object.prototype.hasOwnProperty.call(table.funds, scheme)) return null;
+  const x = table.funds[scheme]?.r?.[TENOR_KEY[tenor]];
   return typeof x === 'number' && Number.isFinite(x) ? x : null;
 }
 
@@ -125,38 +138,86 @@ export function weightItems(
   return { figure: { scope: ctx.scope, tenor: ctx.tenor, value, source: ctx.primary, asOn: ctx.asOn, coverage }, items };
 }
 
+/** A source table whose figures a result used, for the footnote (source, plan and as-on date). */
+export type UsedTable = { source: ReturnsSource; plan: FundPlan; asOn: Value<DayNumber> };
+
+export type FundWeightedResult = WeightedResult & { used: UsedTable[] };
+
 /**
  * E-147: the MF portfolio's weighted return at a tenor (D-023 point 3). `sources` in the order of preference (the
- * uploaded MF Monitor first when there is one); the first is the primary. With no source, every fund is excluded.
+ * uploaded MF Monitor first when there is one); the first is the figure's source.
+ *   - Per plan, the primary table is the first source's table for that plan; a plan the first source does not carry
+ *     (a Regular monitor uploaded alone) is read from the next source that has it.
+ *   - A fund missing in its plan's primary table is filled from a later source's table of the same plan only when
+ *     that table's as-on date equals the primary table's; otherwise it is excluded and counted.
+ *   - The figure's as-on date is the primary tables' date when they agree, else the earliest of them (each table used
+ *     is listed in `used`, with its date, for the footnote).
+ * With no source, every fund is excluded.
  */
 export function weightedFundReturn(
   holdings: readonly FundHoldingInput[],
   sources: readonly FundReturnSource[],
   tenor: ReturnTenor,
   scope: ScopeKey,
-): WeightedResult {
-  const primary = sources[0];
-  const fillers = primary ? sources.slice(1).filter((s) => sameDay(s.asOn, primary.asOn)) : [];
+): FundWeightedResult {
+  type Entry = { src: FundReturnSource; table: FundReturnTable };
+  const chains = new Map<FundPlan, Entry[]>();
+  const chainOf = (plan: FundPlan): Entry[] => {
+    let c = chains.get(plan);
+    if (!c) {
+      const all = sources.flatMap((src) => (src.plans[plan] ? [{ src, table: src.plans[plan]! }] : []));
+      c = all.length ? [all[0]!, ...all.slice(1).filter((e) => sameDay(e.table.asOn, all[0]!.table.asOn))] : [];
+      chains.set(plan, c);
+    }
+    return c;
+  };
+  const usedEntries = new Set<Entry>();
   const inputs: WeightInput[] = holdings.map((h) => {
     if (h.schemeName === null) return { holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { excluded: 'unmatched' } };
-    for (const src of primary ? [primary, ...fillers] : []) {
-      const r = fundReturn(src, h.schemeName, tenor);
-      if (r !== null) return { holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { returnPct: r, source: src.source } };
+    for (const e of chainOf(h.plan)) {
+      const r = fundReturn(e.table, h.schemeName, tenor);
+      if (r !== null) {
+        if (h.cmvCr.kind === 'value' && h.cmvCr.v > 0) usedEntries.add(e);
+        return { holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { returnPct: r, source: e.src.source } };
+      }
     }
     return { holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { excluded: 'no-return' } };
   });
-  const used = new Set<ReturnsSource>();
-  for (const it of inputs) if ('source' in it.pick) used.add(it.pick.source);
-  const sourceIds = (primary ? [primary, ...fillers] : []).filter((s) => used.has(s.source)).flatMap((s) => [...(s.sourceIds ?? [])]);
-  return weightItems(inputs, {
+  // the tables used, in source order then plan order
+  const used: Array<Entry & { plan: FundPlan }> = [];
+  for (const src of sources) {
+    for (const plan of ['regular', 'direct'] as const) {
+      const e = chains.get(plan)?.find((x) => x.src === src && usedEntries.has(x));
+      if (e) used.push({ ...e, plan });
+    }
+  }
+  // the primary table of every plan that gave a fund its return (directly or through a same-date fill)
+  const primaries = (['regular', 'direct'] as const)
+    .map((p) => chains.get(p) ?? [])
+    .filter((c) => c.some((e) => usedEntries.has(e)))
+    .map((c) => c[0]!);
+  const days = primaries.map((e) => e.table.asOn);
+  let asOn: Value<DayNumber>;
+  if (days.length === 0) {
+    const first = sources[0];
+    const t = first?.plans.regular ?? first?.plans.direct;
+    asOn = t ? t.asOn : missing(STATUS.NOT_AVAILABLE, 'no source of fund returns');
+  } else {
+    const dated = days.filter((d) => d.kind === 'value');
+    asOn = dated.length ? dated.reduce((a, b) => (b.kind === 'value' && a.kind === 'value' && b.v < a.v ? b : a)) : days[0]!;
+  }
+  const sourceIds: string[] = [];
+  for (const e of used) for (const id of e.src.sourceIds ?? []) if (!sourceIds.includes(id)) sourceIds.push(id);
+  const res = weightItems(inputs, {
     scope,
     tenor,
     basis: 'mf-value',
-    primary: primary ? primary.source : 'embedded-mf-monitor',
-    asOn: primary ? primary.asOn : missing(STATUS.NOT_AVAILABLE, 'no source of fund returns'),
+    primary: sources[0] ? sources[0].source : 'embedded-mf-monitor',
+    asOn,
     sourceIds,
     method: `${WEIGHTED_RETURN_LABEL} (${TENOR_KEY[tenor]}, D-023 point 3)`,
   });
+  return { ...res, used: used.map((e) => ({ source: e.src.source, plan: e.plan, asOn: e.table.asOn })) };
 }
 
 /** The as-on date of a monitor from its "As on" text (the MF Monitor parse keeps the text), or a missing value. */
@@ -191,7 +252,7 @@ const BASE_NAME: Readonly<Record<ReturnsCoverage['basis'], string>> = {
  * count excluded ("3Y covers 80% of MF value; 1 fund without a 3Y return excluded"), the sources and their dates.
  * `sources` lists every source whose figures were used, with its as-on date. Never prints an excluded item as 0%.
  */
-export function coverageFootnote(figure: WeightedReturn, sources: ReadonlyArray<{ source: ReturnsSource; asOn: Value<DayNumber> }>): string {
+export function coverageFootnote(figure: WeightedReturn, sources: ReadonlyArray<{ source: ReturnsSource; asOn: Value<DayNumber>; plan?: FundPlan }>): string {
   const t = TENOR_KEY[figure.tenor];
   const c = figure.coverage;
   const [one, many] = ITEM_NAME[c.basis];
@@ -200,7 +261,7 @@ export function coverageFootnote(figure: WeightedReturn, sources: ReadonlyArray<
     const pct = Math.round(c.share * 1000) / 10;
     parts.push(`${t} covers ${pct}% of ${BASE_NAME[c.basis]}; ${c.excluded} ${c.excluded === 1 ? one : many} without a ${t} return excluded`);
   }
-  const named = sources.map((s) => `${SOURCE_NAME[s.source]}, as on ${s.asOn.kind === 'value' ? dayToIso(s.asOn.v) : 'date not available'}`);
+  const named = sources.map((s) => `${SOURCE_NAME[s.source]}${s.plan ? (s.plan === 'regular' ? ', Regular plans' : ', Direct plans') : ''}, as on ${s.asOn.kind === 'value' ? dayToIso(s.asOn.v) : 'date not available'}`);
   if (named.length) parts.push(`Source: ${named.join('; ')}`);
   return parts.join('. ') + '.';
 }
