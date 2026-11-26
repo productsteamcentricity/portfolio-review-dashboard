@@ -50777,7 +50777,7 @@
     "absentFundGuard": true,
     "normaliserV2": true,
     "candidateWordGuard": true,
-    "knownWords": {}
+    "knownWords": "350 words (normalizeV2 tokens)"
    },
    "report": {
     "stride": 1,

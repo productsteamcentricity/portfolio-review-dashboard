@@ -125,6 +125,8 @@ export const LEDGER = path.join(path.dirname(fileURLToPath(import.meta.url)), 'm
 
 if (process.argv.includes('--write-ledger')) {
   const stages = STAGES.map((s) => ({ id: s.id, opts: s.opts, report: measure(s.opts, 1) }));
-  fs.writeFileSync(LEDGER, `${JSON.stringify({ written: 'full sweep (stride 1)', stages }, null, 1)}\n`);
+  /* a Set (knownWords) is recorded by its size: its words are the reference data's, rebuilt on every run */
+  const replacer = (_k: string, v: unknown): unknown => (v instanceof Set ? `${v.size} words (normalizeV2 tokens)` : v);
+  fs.writeFileSync(LEDGER, `${JSON.stringify({ written: 'full sweep (stride 1)', stages }, replacer, 1)}\n`);
   for (const s of stages) console.log(s.id, JSON.stringify({ self: s.report.self, loo: s.report.loo, amfi: s.report.amfi, changes: s.report.changes.length }));
 }

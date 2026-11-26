@@ -157,7 +157,7 @@ Each lot row becomes one `RealisedGain` (`DATA_DICTIONARY.md` §5.5) with `sourc
 | `duplicateOf` | the first row of its group, when the row repeats another exactly (§6) |
 | `statement` | the stated Realized G/L, LTCG, STCG, acquisition date and price, holding days, principal repayment, interest and tax columns, as read |
 | `taxClass`, `listed`, `subType` | the scheme's tax facts for the year of sale (§9.1), copied to the lot: computed or set by the analyst, never read from the statement alone; `listed` is missing for a close-ended non-equity scheme without the analyst's flag |
-| `term`, `costForTax`, `costBasis`, `taxableGain`, `ruleId` | computed by the engine (L4, §9), never read; `costBasis` is `none` for an exempt lot, a non-taxable transfer or a lot without a computable taxable gain (no valid key, tax class not set, listed flag missing, rule to be confirmed, cost input missing, or outside the rule table); a lot whose tax waits only for the slab or surcharge rate keeps its rule's basis, and an NE-LT-1 lot records the basis of its chosen leg (§9.3 step 1) |
+| `term`, `costForTax`, `costBasis`, `taxableGain`, `ruleId` | computed by the engine (L4, §9), never read; `costBasis` is `none` for an exempt lot, a non-taxable transfer or a lot without a computable taxable gain (no valid key, tax class not set, listed flag missing, rule to be confirmed, cost input missing, Sell Amount missing, or outside the rule table); a lot whose tax waits only for the slab or surcharge rate keeps its rule's basis, and an NE-LT-1 lot records the basis of its chosen leg (§9.3 step 1) |
 
 **Row checks** (each failure a Warning `capital-gains.row-check-failed` naming the check, with its count; the row is
 kept with its stated values and flagged):
@@ -441,7 +441,7 @@ analyst marks them (the analyst's mark is per person or per lot, an audit entry;
    figure is shown beside it (step 8); which is lower depends on the year's losses (KA-19, KA-20, KA-22). It is
    flagged for the tax adviser (Information `capital-gains.old-law-choice`; §15, item 4).
 2. Gains and losses are totalled per person and per rate bucket of the year. Lots whose tax is the dash because they
-   have no computable taxable gain (tax class not set, rule to be confirmed, listed flag missing, cost input missing,
+   have no computable taxable gain (tax class not set, rule to be confirmed, listed flag missing, cost input missing, Sell Amount missing,
    outside the rule table, no valid key) enter no rate bucket. The person-year's set-off, exemption and tax are
    computed over the other lots and are PARTIAL COVERAGE (`DATA_DICTIONARY.md` §2: the value with the "p" marker; the
    footnote names the count of lots left out and their economic gain, `realised`). Likewise, while the slab rate is

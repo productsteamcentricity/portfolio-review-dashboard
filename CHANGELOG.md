@@ -40,7 +40,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   A word of the holding's name the reference data knows elsewhere counts too (`knownWords`, `referenceVocabulary`: every set's words
   less its fund-house words). The legacy normaliser, the alias keys and the name lists are unchanged. Full sweep against the
   legacy: self regressions 0; leave-one-out wrong matches 3,932 to 1,094 (0 added); official AMFI names right 1,195 to 1,198,
-  wrong 8 to 1; 4 of the stricter regime's 22 losses remain.
+  wrong 8 to 1. Four official names now get no match (all to null, none to another fund): two were already among the
+  stricter regime's 22 losses (UTI Focused Fund (30 stocks), Navi Nifty Smallcap 250 Momentum Quality) and two are new
+  (Kotak Infrastructure & Economic Reform Fund, Standard Plan; Baroda BNP Paribas Best-in-Class Strategy Fund).
 - **KI-052, OD-23, KI-054** (`engine/match/rekey.ts`): FUND_RANKS_CODES and MF_RISK re-keyed onto MF_PERF keys by spelling
   and owner alias, never by fuzzy match (`tests/parity/rekey-ledger.json`, also the FUND_RANKS_CODES vintage record);
   the Direct twin only for the same scheme; the look-through key.
@@ -65,7 +67,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `BLOCK_NAMES`; the page passes check-next; a data change leaves the build id and the CSP unchanged; deterministic),
   `tests/unit/data/refdata.test.ts`.
 
-
+### Changed (new build, model contracts-3: two additive type changes; types only, `/next/` build byte-identical)
+- **`app/src/model/tax.ts`** (I-37): `NotComputed` gains `'amount-missing'` (a lot whose Sell Amount is blank, the
+  reader's `required-cell-blank`; a blank Invested Value stays `'cost-input-missing'`). DATA_DICTIONARY §5.5 lists it.
+- **`app/src/model/returns.ts`** (I-31): `WeightedReturn` gains an optional `parts` list (source, as-on date and share of
+  the weights) for a figure built from more than one source or date, such as Regular and Direct plans read from
+  monitors of different dates; a rendering names every part. Asked for by NB-03 (M7a engine) and ARC-03's review of
+  NB-04's M3b data side.
 ### Added (side-by-side kit for test build 1: tests only; no change to `index.html`, `/next/` or `app/`)
 - **`tests/side-by-side/`** runs the same book through the legacy engine (`tools/engine-host.js`) and the new build
   (`app/src`: base file, matcher, IRR file, scope returns, contributions). It compares the holdings matches, the holding
