@@ -17,7 +17,8 @@ import {
   fundTypeOfCategory, indexationSeriesFor, indexedCost, loadTaxRules, normaliseCategoryName, ruleFor, surchargeCapFor,
   surchargeMaxFor,
 } from '../../../app/src/engine/tax/rules.ts';
-import type { RuleKey, RuleResult, SubType, TaxClass, TaxRule } from '../../../app/src/engine/tax/rules.ts';
+import type { RuleKey, RuleResult, SubType, TaxRule } from '../../../app/src/engine/tax/rules.ts';
+import type { TaxClass } from '../../../app/src/model/tax.ts';
 import { dayToIso, ymdToDay } from '../../../app/src/engine/dates.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');

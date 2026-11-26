@@ -12,13 +12,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { realiseLots, lotTax, emptyTaxInputs } from '../../../app/src/engine/tax/realised.ts';
+import type { RealiseOptions } from '../../../app/src/engine/tax/realised.ts';
+import { successorRebase } from '../../../app/src/engine/tax/lot-class.ts';
 import { schemeKeyOf } from '../../../app/src/engine/tax/tax-class.ts';
 import { TAX_RULES_V1, cessRateFor } from '../../../app/src/engine/tax/rules.ts';
 import { S2_ISSUE_SEVERITY } from '../../../app/src/engine/tax/types.ts';
-import type { RealiseResult, RealisedGain, TaxInputs, TaxIssue } from '../../../app/src/engine/tax/types.ts';
+import type { RealiseResult, TaxIssue, TaxLot } from '../../../app/src/engine/tax/types.ts';
+import type { TaxInputs } from '../../../app/src/model/tax.ts';
+import { STATUS } from '../../../app/src/model/status.ts';
+import { missing, present } from '../../../app/src/engine/value.ts';
 import type { CgImport } from '../../../app/src/ingest/capital-gains.ts';
 import { ymdToDay } from '../../../app/src/engine/dates.ts';
-import { parseLots } from '../../fixtures/make-cg-tax-lots.ts';
+import { SRC, parseLots } from '../../fixtures/make-cg-tax-lots.ts';
 import type { KaLot } from '../../fixtures/make-cg-tax-lots.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -26,6 +31,8 @@ const KA = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/fixtures/cg-known-a
 const day = (y: number, m: number, d: number): number => ymdToDay(y, m, d)!;
 const AS_ON = day(2026, 9, 30);
 const TOL = KA.tolerance as number;
+/** The provenance of a test's own value. */
+const PROV = { sources: [SRC], method: 'test value' };
 
 /** Every issue raised in this file, for the §11 coverage check at the end. */
 const RAISED: TaxIssue[] = [];
@@ -39,29 +46,48 @@ type RawInputs = {
 
 const toDay = (v: unknown): unknown => (Array.isArray(v) && v.length === 3 ? day(v[0], v[1], v[2]) : v);
 
-/** The engine's inputs from the test's raw form: schemes by label, merger answers by a lot of the event, dates as [y, m, d]. */
-function inputsFrom(imp: CgImport, raw: RawInputs = {}): TaxInputs {
+/**
+ * The engine's inputs from the test's raw form: schemes by label, merger answers by a lot of the event, dates as
+ * [y, m, d]. The engine options take what the contract's TaxInputs does not hold: a scheme's fundHouse (scheme data,
+ * M2) becomes opts.fundHouseOf and a lot mark's assessee becomes opts.assesseeOf; a lot mark's rebase 'formula' (the
+ * known-answer file's word) becomes the explicit date and cost that successorRebase gives.
+ */
+function inputsFrom(imp: CgImport, raw: RawInputs = {}): { inputs: TaxInputs; opts: RealiseOptions } {
   const inputs = emptyTaxInputs();
+  const houses = new Map<string, string>();
+  const assessees = new Map<number, string>();
   for (const s of raw.scheme ?? []) {
-    const { scheme, ...rest } = s;
-    inputs.scheme.push({ schemeKey: schemeKeyOf(scheme), fy: null, ...rest } as TaxInputs['scheme'][number]);
+    const { scheme, fundHouse, ...rest } = s;
+    if (typeof fundHouse === 'string') houses.set(schemeKeyOf(scheme), fundHouse);
+    if (Object.keys(rest).length > 0) inputs.scheme.push({ schemeKey: schemeKeyOf(scheme), fy: null, ...rest } as TaxInputs['scheme'][number]);
   }
   for (const a of raw.mergerAnswers ?? []) inputs.mergerAnswers.push({ eventId: imp.lots[a.lot]!.eventId, answer: a.answer as 'non-taxable' });
   for (const m of raw.lotMarks ?? []) {
-    const mark: Record<string, unknown> = { ...m };
-    for (const k of ['resetOriginal', 'rebase']) {
-      const x = mark[k];
-      if (x !== null && typeof x === 'object') mark[k] = { ...(x as object), purchaseDate: toDay((x as { purchaseDate: unknown }).purchaseDate) };
+    const { assessee, ...mark } = m as Record<string, unknown> & { lotIndex: number };
+    if (typeof assessee === 'string') assessees.set(mark.lotIndex, assessee);
+    if (mark.rebase === 'formula') {
+      const rb = successorRebase(imp.lots, mark.lotIndex, inputs.mergerAnswers);
+      if (rb === null) throw new Error(`lot ${mark.lotIndex}: no re-base by the formula`);
+      mark.rebase = rb;
+    } else {
+      for (const k of ['resetOriginal', 'rebase']) {
+        const x = mark[k];
+        if (x !== null && typeof x === 'object') mark[k] = { ...(x as object), purchaseDate: toDay((x as { purchaseDate: unknown }).purchaseDate) };
+      }
     }
-    inputs.lotMarks.push(mark as unknown as TaxInputs['lotMarks'][number]);
+    if (Object.keys(mark).length > 1) inputs.lotMarks.push(mark as unknown as TaxInputs['lotMarks'][number]);
   }
   inputs.personYear.push(...(raw.personYear ?? []));
-  return inputs;
+  return {
+    inputs,
+    opts: { fundHouseOf: (key) => houses.get(key) ?? null, assesseeOf: (lotIndex) => assessees.get(lotIndex) ?? null },
+  };
 }
 
-function run(lots: readonly KaLot[], raw: RawInputs = {}, extra: Parameters<typeof parseLots>[1] = {}): { imp: CgImport; res: RealiseResult; g: RealisedGain[] } {
+function run(lots: readonly KaLot[], raw: RawInputs = {}, extra: Parameters<typeof parseLots>[1] = {}): { imp: CgImport; res: RealiseResult; g: TaxLot[] } {
   const imp = parseLots(lots, extra);
-  const res = realiseLots(imp, inputsFrom(imp, raw), { asOnDay: AS_ON, now: () => '2026-11-26T00:00:00.000Z' });
+  const { inputs, opts } = inputsFrom(imp, raw);
+  const res = realiseLots(imp, inputs, { ...opts, asOnDay: AS_ON, now: () => '2026-11-26T00:00:00.000Z' });
   RAISED.push(...res.issues);
   return { imp, res, g: res.gains };
 }
@@ -80,7 +106,7 @@ const cessRate = (fy: number): number => {
 const issue = (res: RealiseResult, id: string): TaxIssue | undefined => res.issues.find((i) => i.ruleId === `capital-gains.${id}`);
 
 /** Compares one lot with its expected fields (only the fields the known answer gives). */
-function checkLot(g: RealisedGain, e: Record<string, unknown>, slabPct: number | null, tag: string): void {
+function checkLot(g: TaxLot, e: Record<string, unknown>, slabPct: number | null, tag: string): void {
   const w = `${tag} lot ${e.lot}`;
   for (const [k, x] of Object.entries(e)) {
     switch (k) {
@@ -102,7 +128,8 @@ function checkLot(g: RealisedGain, e: Record<string, unknown>, slabPct: number |
         for (const leg of ['indexed20', 'actual10'] as const) {
           const want = le[leg] as Record<string, number> | undefined;
           if (!want) continue;
-          for (const f of Object.keys(want)) near(g.legs![leg][f as 'cost'], want[f]!, `${w} ${leg}.${f}`);
+          for (const f of Object.keys(want)) near(g.legDetail![leg][f as 'cost'], want[f]!, `${w} ${leg}.${f}`);
+          near(v(g.legs![leg]), g.legDetail![leg].gain, `${w} ${leg}: the contract's leg is the leg's gain`);
         }
         break;
       }
@@ -112,7 +139,7 @@ function checkLot(g: RealisedGain, e: Record<string, unknown>, slabPct: number |
         assert.ok(g.anniversaryLongTerm, `${w} long-term figure`);
         assert.equal(g.anniversaryLongTerm!.ruleId, a.ruleId, `${w} long-term rule`);
         near(g.anniversaryLongTerm!.taxableGain, a.taxableGain, `${w} long-term gain`);
-        if (a.tax !== undefined) near(v(lotTax({ kind: 'value', v: g.anniversaryLongTerm!.taxableGain }, g.anniversaryLongTerm!, slabPct)), a.tax, `${w} long-term tax`);
+        if (a.tax !== undefined) near(v(lotTax(present(g.anniversaryLongTerm!.taxableGain, 'inr', PROV), g.anniversaryLongTermDetail!, slabPct)), a.tax, `${w} long-term tax`);
         break;
       }
       case 'flags': for (const f of x as string[]) assert.ok(g.flags.includes(f), `${w} flag ${f} in [${g.flags}]`); break;
@@ -166,13 +193,15 @@ const scheme = (name: string, base: Base = EQ): Base => ({ ...base, scheme: `Sam
 
 describe('lotTax (per-lot tax before exemption, surcharge and cess)', () => {
   test('gain x rate; slab needs the slab rate; exempt 0; a rule to be confirmed or a missing gain is missing', () => {
-    assert.deepEqual(lotTax({ kind: 'value', v: 1000 }, { rate: 0.125 }, null), { kind: 'value', v: 125 });
-    assert.equal(lotTax({ kind: 'value', v: 1000 }, { rate: 'slab' }, null).kind, 'missing');
-    assert.deepEqual(lotTax({ kind: 'value', v: 1000 }, { rate: 'slab' }, 30), { kind: 'value', v: 300 });
-    assert.deepEqual(lotTax({ kind: 'value', v: 1000 }, { rate: 'exempt' }, null), { kind: 'value', v: 0 });
-    assert.equal(lotTax({ kind: 'value', v: 1000 }, { rate: null }, 30).kind, 'missing');
-    assert.equal(lotTax({ kind: 'value', v: 1000 }, { rate: 'two-leg' }, 30).kind, 'missing');
-    assert.equal(lotTax({ kind: 'missing', status: 'NOT AVAILABLE IN SUPPLIED DATA' }, { rate: 0.1 }, 30).kind, 'missing');
+    const g1000 = present(1000, 'inr', PROV);
+    const t = lotTax(g1000, { rate: 0.125 }, null);
+    assert.deepEqual([t.kind, v(t), t.kind === 'value' ? t.unit : null, t.prov?.sources], ['value', 125, 'inr', PROV.sources]);
+    assert.equal(lotTax(g1000, { rate: 'slab' }, null).kind, 'missing');
+    assert.deepEqual([lotTax(g1000, { rate: 'slab' }, 30).kind, v(lotTax(g1000, { rate: 'slab' }, 30))], ['value', 300]);
+    assert.deepEqual([lotTax(g1000, { rate: 'exempt' }, null).kind, v(lotTax(g1000, { rate: 'exempt' }, null))], ['value', 0]);
+    assert.equal(lotTax(g1000, { rate: null }, 30).kind, 'missing');
+    assert.equal(lotTax(g1000, { rate: 'two-leg' }, 30).kind, 'missing');
+    assert.equal(lotTax(missing(STATUS.NOT_AVAILABLE, 'test'), { rate: 0.1 }, 30).kind, 'missing');
   });
 });
 
@@ -276,7 +305,7 @@ describe('successor lots (§5, TR-5, LD-25, LD-37)', () => {
     assert.deepEqual(res.events[0]!.successors, [{ schemeLabel: N.scheme, lots: [1] }]);
   });
   test('analyst marks on lots they do not fit are refused, with the reason named', () => {
-    const { res, g } = run([L(EQ, [2021, 1, 4], [2023, 1, 5])], { lotMarks: [{ lotIndex: 0, rebase: 'formula' }, { lotIndex: 0, resetOriginal: { purchaseDate: [2020, 1, 1], cost: 5000 } }] });
+    const { res, g } = run([L(EQ, [2021, 1, 4], [2023, 1, 5])], { lotMarks: [{ lotIndex: 0, rebase: { purchaseDate: [2022, 1, 5], cost: 11000 } }, { lotIndex: 0, resetOriginal: { purchaseDate: [2020, 1, 1], cost: 5000 } }] });
     assert.equal(res.refusals.filter((r) => r.input === 'lot-mark').length, 2);
     near(v(g[0]!.costForTax), 10000, 'cost unchanged');
   });
@@ -455,8 +484,8 @@ describe('non-equity dates, indexation and the cost basis (§10.1, §10.3, TR-3)
   test('an NE-LT-1 lot with an indexed loss takes the 20% leg (KA-20 lot B)', () => {
     const { g } = run([L(DEBT, [2005, 8, 1], [2012, 9, 3], { units: 1000, buyNav: 10, sellNav: 9 })]);
     assert.equal(g[0]!.legs!.chosen, 'indexed20');
-    near(g[0]!.legs!.indexed20.tax, -1628.57, '20% leg');
-    near(g[0]!.legs!.actual10.tax, -100, '10% leg');
+    near(g[0]!.legDetail!.indexed20.tax, -1628.57, '20% leg');
+    near(g[0]!.legDetail!.actual10.tax, -100, '10% leg');
     near(v(g[0]!.taxableGain), -8142.86, 'the indexed loss to set-off');
   });
 });
@@ -501,6 +530,33 @@ describe('dates, the statement split and the other engine ids (§9.2, §10.4, §
     assert.equal(g[1]!.ruleId, 'EQ-LT-7');
     assert.equal(issue(res, 'anniversary-sale')!.count, 1);
     assert.equal(issue(res, 'lot-classes')!.count, 1);
+  });
+});
+
+describe('the contract shape (model/tax.ts RealisedGain, I-37): Value fields, provenance, amount reasons', () => {
+  test('money as Value with unit inr or inr-per-unit and the statement as source; the tag asset as Equity or Debt', () => {
+    const { g } = run([L(EQ, [2021, 1, 4], [2023, 1, 5]), L(EQ, [2021, 1, 4], [2023, 1, 5], { tagAsset: 'Hybrid' })]);
+    const x = g[0]!;
+    assert.deepEqual([x.tagAsset, x.tagAssetText, g[1]!.tagAsset, g[1]!.tagAssetText], ['Equity', 'Equity', null, 'Hybrid']);
+    for (const [k, unit] of [['saleValue', 'inr'], ['purchaseValue', 'inr'], ['realised', 'inr'], ['costForTax', 'inr'],
+      ['taxableGain', 'inr'], ['salePrice', 'inr-per-unit'], ['purchasePrice', 'inr-per-unit'], ['units', 'units'],
+      ['purchaseDate', 'date']] as const) {
+      const f = x[k];
+      assert.equal(f.kind, 'value', k);
+      if (f.kind === 'value') assert.deepEqual([f.unit, f.prov.sources], [unit, [SRC]], k);
+    }
+    near(v(x.taxableGain), 1000, 'taxable gain');
+    assert.deepEqual([x.notComputed, x.notComputedDetail], [null, null]);
+  });
+  test('a blank Sell Amount: no-valid-key with detail amount-missing; a blank Invested Value: cost-input-missing with detail cost-missing', () => {
+    const { g } = run([
+      L(EQ, [2021, 1, 4], [2023, 1, 5], { over: { sell: null } }),
+      L(EQ, [2021, 1, 4], [2023, 1, 5], { over: { invested: null } }),
+    ]);
+    assert.deepEqual([g[0]!.ruleId, g[0]!.notComputed, g[0]!.notComputedDetail, v(g[0]!.taxableGain)], ['EQ-LT-3', 'no-valid-key', 'amount-missing', null]);
+    assert.deepEqual([g[1]!.ruleId, g[1]!.notComputed, g[1]!.notComputedDetail, v(g[1]!.taxableGain)], ['EQ-LT-3', 'cost-input-missing', 'cost-missing', null]);
+    assert.ok(!g[1]!.flags.includes('cost-input-missing'), 'the cost-input-missing issue stays the grandfathered cost input only');
+    assert.deepEqual([g[0]!.taxableGain.kind, g[1]!.costForTax.kind], ['missing', 'missing']);
   });
 });
 

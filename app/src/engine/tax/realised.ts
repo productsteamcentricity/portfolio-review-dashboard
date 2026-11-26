@@ -18,20 +18,22 @@
 
 import type { CgImport, CgLot, CgRead } from '../../ingest/capital-gains.ts';
 import { amountTolerance } from '../../ingest/capital-gains.ts';
-import type { DayNumber } from '../../model/value.ts';
+import type { DayNumber, Provenance, Unit, Value } from '../../model/value.ts';
 import type { MissingStatus } from '../../model/status.ts';
 import { STATUS } from '../../model/status.ts';
 import type { AuditEntry } from '../../model/audit.ts';
 import type { ValidationScope } from '../../model/validation.ts';
+import type { CostBasis, LotClass, NotComputed, RealisedGain, TaxInputs, Term } from '../../model/tax.ts';
 import { ymdToDay } from '../dates.ts';
+import { normaliseLabel } from '../ids.ts';
+import { missing, present } from '../value.ts';
 import type { RuleKey, TaxRule, TaxRuleTable } from './rules.ts';
 import { TAX_RULES_V1, anniversaryOf, checksFor, indexedCost, ruleFor } from './rules.ts';
 import { schemeKeyOf, taxFactsFor } from './tax-class.ts';
 import type { TaxFacts } from './tax-class.ts';
 import { classifyLots } from './lot-class.ts';
 import type {
-  CostBasis, LotClass, LotMark, LotRate, MergerEventResult, Money, NotComputed, Read, RealiseResult, RealisedGain,
-  SuccessorLink, TaxInputs, TaxIssue, Term,
+  LegDetail, LotMark, LotRate, MergerEventResult, RealiseResult, SuccessorLink, TaxIssue, TaxLot,
 } from './types.ts';
 import { S2_ISSUE_SEVERITY } from './types.ts';
 
@@ -54,6 +56,16 @@ export type RealiseOptions = {
   asOnDay?: DayNumber;
   /** Clock for the audit entries (ISO 8601); defaults to the system clock. */
   now?: () => string;
+  /**
+   * The fund house of a scheme by its key (schemeKeyOf), from the scheme data (M2); used only for cross-house-merger,
+   * which is raised only when it names the fund house of the event's scheme and of a linked scheme.
+   */
+  fundHouseOf?: (schemeKey: string) => string | null;
+  /**
+   * A per-lot assessee mark (a minor, an HUF, joint holders or a non-resident) by the reader's lot index, an audit
+   * entry like the person-year's `assesseeMark`: the lot is flagged (assessee-flagged), not computed differently.
+   */
+  assesseeOf?: (lotIndex: number) => string | null;
 };
 
 export function emptyTaxInputs(): TaxInputs {
@@ -61,22 +73,28 @@ export function emptyTaxInputs(): TaxInputs {
 }
 
 const val = <T>(r: CgRead<T>): T | null => (r.kind === 'value' ? r.v : null);
-const value = (v: number): Money => ({ kind: 'value', v });
-const missing = <T = number>(status: MissingStatus): Read<T> => ({ kind: 'missing', status });
-const NA: Money = missing(STATUS.NOT_AVAILABLE);
-const NAPP: Money = missing(STATUS.NOT_APPLICABLE);
+const NA: MissingStatus = STATUS.NOT_AVAILABLE;
+const NAPP: MissingStatus = STATUS.NOT_APPLICABLE;
+
+/**
+ * Why the engine computed no taxable gain: the contract's reasons, and the engine's precise amount reasons
+ * (types.ts TaxLot.notComputedDetail): 'amount-missing' (Sell Amount, or for the grandfathered formula Sale Unit or the
+ * 31 Jan 2018 price, blank or invalid) and 'cost-missing' (Invested Value blank or invalid).
+ */
+type NotComputedReason = NotComputed | 'amount-missing' | 'cost-missing';
 
 /**
  * The per-lot tax "before exemption, surcharge and cess" that the known answers quote (TR-9): gain x rate. A slab-rate
  * lot needs the person's slab rate (a percent, for example 30): without it the tax is missing ("slab rate not set").
  * An exempt lot's tax is 0. A rule to be confirmed (rate null) or a missing gain gives a missing tax.
  */
-export function lotTax(gain: Money, rule: { rate: LotRate | 'two-leg' } | null, slabPct: number | null): Money {
+export function lotTax(gain: Value<number>, rule: { rate: LotRate | 'two-leg' } | null, slabPct: number | null): Value<number> {
   if (gain.kind === 'missing') return gain;
-  if (rule === null || rule.rate === null || rule.rate === 'two-leg') return NA;
-  if (rule.rate === 'exempt') return value(0);
-  if (rule.rate === 'slab') return slabPct === null ? NA : value((gain.v * slabPct) / 100);
-  return value(gain.v * rule.rate);
+  const prov: Provenance = { sources: [...gain.prov.sources], method: 'taxable gain x rate, before exemption, surcharge and cess (TR-9)' };
+  if (rule === null || rule.rate === null || rule.rate === 'two-leg') return missing(NA, 'no single rate: rule to be confirmed', prov);
+  if (rule.rate === 'exempt') return present(0, 'inr', prov);
+  if (rule.rate === 'slab') return slabPct === null ? missing(NA, 'slab rate not set', prov) : present((gain.v * slabPct) / 100, 'inr', prov);
+  return present(gain.v * rule.rate, 'inr', prov);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -94,17 +112,18 @@ type CostCtx = {
   mark: LotMark | undefined;
 };
 
+/** The cost for tax is a number, or null where it does not apply (the s.10(38) exempt line, costBasis none). */
 type CostResult =
   | {
-    kind: 'ok'; costForTax: Money; costBasis: CostBasis; taxableGain: number; rate: LotRate; exempt: boolean;
-    legs: RealisedGain['legs']; flags: string[]; labels: string[];
+    kind: 'ok'; costForTax: number | null; costBasis: CostBasis; taxableGain: number; rate: LotRate; exempt: boolean;
+    legs: LegDetail | null; flags: string[]; labels: string[];
   }
-  | { kind: 'not-computed'; reason: NotComputed; flags: string[] };
+  | { kind: 'not-computed'; reason: NotComputedReason; flags: string[] };
 
 const GRANDFATHERING_LABEL = '31 Jan 2018 value not supplied; actual cost used; gain may be overstated';
 
 /** NE-LT-1 (PD-16 item 4 default): both legs on signed amounts, the lower tax chosen; the 20% leg on a tie or an indexed loss. */
-export function neLt1Legs(rule: TaxRule, indexed: number, actual: number, sale: number): NonNullable<RealisedGain['legs']> {
+export function neLt1Legs(rule: TaxRule, indexed: number, actual: number, sale: number): LegDetail {
   const [l20, l10] = rule.legs!;
   const g20 = sale - indexed;
   const g10 = sale - actual;
@@ -117,11 +136,12 @@ export function neLt1Legs(rule: TaxRule, indexed: number, actual: number, sale: 
 function costFor(rule: TaxRule, c: CostCtx): CostResult {
   const flags: string[] = [];
   const labels: string[] = [];
-  if (c.sale === null || c.cost === null) return { kind: 'not-computed', reason: 'amount-missing', flags };
+  if (c.sale === null) return { kind: 'not-computed', reason: 'amount-missing', flags };
+  if (c.cost === null) return { kind: 'not-computed', reason: 'cost-missing', flags };
   const sale = c.sale;
   const cost = c.cost;
-  const ok = (costForTax: Money, costBasis: CostBasis, taxableGain: number, rate: LotRate, exempt = false,
-    legs: RealisedGain['legs'] = null): CostResult => ({ kind: 'ok', costForTax, costBasis, taxableGain, rate, exempt, legs, flags, labels });
+  const ok = (costForTax: number | null, costBasis: CostBasis, taxableGain: number, rate: LotRate, exempt = false,
+    legs: LegDetail | null = null): CostResult => ({ kind: 'ok', costForTax, costBasis, taxableGain, rate, exempt, legs, flags, labels });
   const basis = rule.costBasis;
   if (basis !== 'grandfathered' && c.lotClass === 'grandfathered') flags.push('grandfathered-value-ignored');
   if (basis !== 'indexed-1981' && basis !== 'indexed-2001' && basis !== 'per-leg' && c.lotClass === 'indexed-cost-shown') {
@@ -130,9 +150,9 @@ function costFor(rule: TaxRule, c: CostCtx): CostResult {
   switch (basis) {
     case 'none':
       // EQ-LT-1: the s.10(38) exempt line; costBasis none (§4), taxable gain 0, a loss on it ignored in set-off.
-      return ok(NAPP, 'none', 0, 'exempt', true);
+      return ok(null, 'none', 0, 'exempt', true);
     case 'actual':
-      return ok(value(cost), 'actual', sale - cost, rule.rate === 'two-leg' ? null : rule.rate);
+      return ok(cost, 'actual', sale - cost, rule.rate === 'two-leg' ? null : rule.rate);
     case 'grandfathered': {
       const rate = rule.rate === 'two-leg' ? null : rule.rate;
       if (c.purchaseDay < COST_INPUT_BEFORE || c.mark?.firstHeldBefore2001 === true || c.mark?.giftOrInheritance === true) {
@@ -143,11 +163,11 @@ function costFor(rule: TaxRule, c: CostCtx): CostResult {
         if (c.units === null || c.acquisitionPrice === null) return { kind: 'not-computed', reason: 'amount-missing', flags };
         const fmv = c.units * c.acquisitionPrice;
         const cft = Math.max(cost, Math.min(fmv, sale));
-        return ok(value(cft), 'grandfathered', sale - cft, rate);
+        return ok(cft, 'grandfathered', sale - cft, rate);
       }
       flags.push('grandfathering-value-not-supplied');
       labels.push(GRANDFATHERING_LABEL);
-      return ok(value(cost), 'actual', sale - cost, rate);
+      return ok(cost, 'actual', sale - cost, rate);
     }
     case 'indexed-1981':
     case 'indexed-2001': {
@@ -157,7 +177,7 @@ function costFor(rule: TaxRule, c: CostCtx): CostResult {
         return { kind: 'not-computed', reason: ic.reason === 'to-be-confirmed' ? 'rule-to-be-confirmed' : 'no-valid-key', flags };
       }
       if (ic.preBaseYear) flags.push('pre-base-year-cost');
-      return ok(value(ic.cost), 'indexed', sale - ic.cost, rule.rate === 'two-leg' ? null : rule.rate);
+      return ok(ic.cost, 'indexed', sale - ic.cost, rule.rate === 'two-leg' ? null : rule.rate);
     }
     case 'per-leg': {
       const leg20 = rule.legs![0]!;
@@ -170,9 +190,9 @@ function costFor(rule: TaxRule, c: CostCtx): CostResult {
       flags.push('old-law-choice');
       if (legs.chosen === 'indexed20') {
         if (ic.preBaseYear) flags.push('pre-base-year-cost');
-        return ok(value(legs.indexed20.cost), 'indexed', legs.indexed20.gain, leg20.rate, false, legs);
+        return ok(legs.indexed20.cost, 'indexed', legs.indexed20.gain, leg20.rate, false, legs);
       }
-      return ok(value(legs.actual10.cost), 'actual', legs.actual10.gain, rule.legs![1]!.rate, false, legs);
+      return ok(legs.actual10.cost, 'actual', legs.actual10.gain, rule.legs![1]!.rate, false, legs);
     }
     default:
       return { kind: 'not-computed', reason: 'rule-to-be-confirmed', flags: ['rule-to-be-confirmed'] };
@@ -200,14 +220,16 @@ function longTermRowFor(table: TaxRuleTable, key: RuleKey): TaxRule | null {
   return hits.length === 1 ? hits[0]! : null;
 }
 
-function anniversaryLongTermFor(key: RuleKey, c: CostCtx): RealisedGain['anniversaryLongTerm'] {
+type AnniversaryFigure = { ruleId: string; taxableGain: number; rate: LotRate; costForTax: number };
+
+function anniversaryLongTermFor(key: RuleKey, c: CostCtx): AnniversaryFigure | null {
   const row = longTermRowFor(c.table, key);
   if (row === null || row.toBeConfirmed) return null;
   const r = costFor(row, { ...c, mark: undefined });
-  if (r.kind !== 'ok' || r.costForTax.kind !== 'value') {
+  if (r.kind !== 'ok' || r.costForTax === null) {
     return r.kind === 'ok' && r.exempt ? { ruleId: row.id, rate: 'exempt', costForTax: c.cost ?? 0, taxableGain: 0 } : null;
   }
-  return { ruleId: row.id, rate: r.rate, costForTax: r.costForTax.v, taxableGain: r.taxableGain };
+  return { ruleId: row.id, rate: r.rate, costForTax: r.costForTax, taxableGain: r.taxableGain };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -215,12 +237,15 @@ function anniversaryLongTermFor(key: RuleKey, c: CostCtx): RealisedGain['anniver
 
 type LotCtx = {
   table: TaxRuleTable;
+  /** The statement's source id (its SHA-256): the provenance of every value of the lot. */
+  sourceId: string;
   lot: CgLot;
   facts: TaxFacts;
   lotClass: LotClass;
   event: MergerEventResult | null;
   successor: SuccessorLink | null;
   mark: LotMark | undefined;
+  assessee: string | null;
   inputs: TaxInputs;
   asOnDay: DayNumber | undefined;
   bonusSchemes: ReadonlySet<string>;
@@ -234,21 +259,34 @@ function statementSplit(lot: CgLot): { gain: number | null; term: Term | null } 
   return { gain: (lt ?? 0) + (st ?? 0), term };
 }
 
-function realiseOne(x: LotCtx): RealisedGain {
+/** The Instrument Name tag's asset as the contract's tagAsset: Equity or Debt by its normalised text, else null. */
+function tagAssetOf(text: string | null): RealisedGain['tagAsset'] {
+  const t = normaliseLabel(text);
+  return t === 'equity' ? 'Equity' : t === 'debt' ? 'Debt' : null;
+}
+
+function realiseOne(x: LotCtx): TaxLot {
   const { table, lot, facts, lotClass, event, successor, mark } = x;
   const flags: string[] = [...facts.flags];
   const labels: string[] = [...facts.labels];
+  const prov = (method: string): Provenance => ({ sources: [x.sourceId], method });
+  /** A cell as the reader read it, as a Value: present with its unit, or missing with the reader's status. */
+  const cell = <T>(r: CgRead<T>, unit: Unit, name: string): Value<T> => (r.kind === 'value'
+    ? present(r.v, unit, prov(`${name} as read from the capital-gains statement`))
+    : missing(r.status, `${name} blank or invalid in the statement`, prov(`${name} as read from the capital-gains statement`)));
 
   // The purchase as stated, or as the analyst set it (an audit entry).
-  let purchaseDate: Read<DayNumber> = lot.purchaseDate;
-  let purchaseValue: Money = lot.purchaseValue;
+  let purchaseDate: Value<DayNumber> = cell(lot.purchaseDate, 'date', 'Purchase Date');
+  let purchaseValue: Value<number> = cell(lot.purchaseValue, 'inr', 'Invested Value');
   if (successor !== null) {
     if (successor.analystApplied) {
-      const set = successor.kind === 'reset' ? mark?.resetOriginal
-        : mark?.rebase === 'formula' ? successor.rebase ?? undefined : mark?.rebase;
+      const set = successor.kind === 'reset' ? mark?.resetOriginal : mark?.rebase;
       if (set !== undefined) {
-        purchaseDate = { kind: 'value', v: set.purchaseDate };
-        purchaseValue = value(set.cost);
+        const how = successor.kind === 'reset'
+          ? 'set by the analyst: the original purchase of a successor-reset lot (audit entry, design section 5)'
+          : 'set by the analyst: the re-base of a successor-not-reset lot to the event date (audit entry, design section 5)';
+        purchaseDate = present(set.purchaseDate, 'date', prov(`purchase date ${how}`));
+        purchaseValue = present(set.cost, 'inr', prov(`cost ${how}`));
       }
     } else {
       flags.push(successor.kind === 'reset' ? 'successor-reset' : 'successor-not-reset');
@@ -257,7 +295,9 @@ function realiseOne(x: LotCtx): RealisedGain {
   const pd = val(purchaseDate);
   const cost = val(purchaseValue);
   const sale = val(lot.saleValue);
-  const realised: Money = sale !== null && cost !== null ? value(sale - cost) : NA;
+  const realised: Value<number> = sale !== null && cost !== null
+    ? present(sale - cost, 'inr', prov('sale value minus cost'))
+    : missing(NA, 'Sell Amount or cost blank or invalid', prov('sale value minus cost'));
 
   if (event !== null) {
     if (event.answer === null) flags.push('non-taxable-transfers');
@@ -266,29 +306,48 @@ function realiseOne(x: LotCtx): RealisedGain {
   }
   if (lotClass === 'other') flags.push('lot-class-other');
   const py = x.inputs.personYear.find((p) => p.clientId === lot.clientId && p.fy === lot.financialYear.start);
-  if ((mark?.assessee ?? null) !== null || (py?.assesseeMark ?? null) !== null) flags.push('assessee-flagged');
+  if (x.assessee !== null || (py?.assesseeMark ?? null) !== null) flags.push('assessee-flagged');
   if (x.asOnDay !== undefined && lot.saleDate > x.asOnDay) flags.push('after-as-on-date');
   const split = statementSplit(lot);
+  const noRule = (): Value<never> => missing(NA, 'no rule applies');
 
-  const g: RealisedGain = {
+  const g: TaxLot = {
     source: 'statement', lotIndex: lot.index, at: lot.at, scheme: null, schemeLabel: lot.schemeLabel, folio: lot.folio,
-    tagAsset: lot.tagAsset, category: lot.category, statementAsset: lot.statementAsset, clientId: lot.clientId,
-    inReview: lot.inReview, accountId: lot.accountId, distributorId: lot.distributorId, accountLabel: lot.accountLabel,
-    accountNote: lot.accountNote, eventId: lot.eventId, saleDate: lot.saleDate, units: lot.units, saleValue: lot.saleValue,
-    salePrice: lot.salePrice, salePriceDerived: lot.salePriceDerived, purchasePrice: lot.purchasePrice,
+    tagAsset: tagAssetOf(lot.tagAsset), tagAssetText: lot.tagAsset, category: lot.category,
+    statementAsset: lot.statementAsset, clientId: lot.clientId, inReview: lot.inReview, accountId: lot.accountId,
+    distributorId: lot.distributorId, accountLabel: lot.accountLabel, accountNote: lot.accountNote, eventId: lot.eventId,
+    saleDate: lot.saleDate, units: cell(lot.units, 'units', 'Sale Unit'), saleValue: cell(lot.saleValue, 'inr', 'Sell Amount'),
+    salePrice: cell(lot.salePrice, 'inr-per-unit', lot.salePriceDerived ? 'Sale Price (derived by the reader)' : 'Sale Price'),
+    salePriceDerived: lot.salePriceDerived,
+    purchasePrice: cell(lot.purchasePrice, 'inr-per-unit', lot.purchasePriceDerived ? 'Purchase Price (derived by the reader)' : 'Purchase Price'),
     purchasePriceDerived: lot.purchasePriceDerived, purchaseValue, purchaseDate, realised, realisedCounted: realised,
     nonTaxable: 0, financialYear: lot.financialYear.start, financialYearLabel: lot.financialYear.label,
-    taxClass: facts.taxClass === null ? NA_CLASS : { kind: 'value', v: facts.taxClass }, taxClassSource: facts.source,
-    listed: facts.listed === null ? NA_BOOL : { kind: 'value', v: facts.listed }, listedSource: facts.listedSource,
-    subType: facts.subType, lotClass, term: NA_TERM, deemedShort: false, anniversary: null, ruleId: null, rate: null,
-    exempt: false, costForTax: NA, costBasis: 'none', taxableGain: NA, notComputed: null, legs: null,
-    anniversaryLongTerm: null, statementGain: split.gain, statementTerm: split.term, successor,
-    duplicateOf: lot.duplicateOf, excludedAsRepeat: lot.excludedAsRepeat, statement: lot.statement, flags, labels,
+    taxClass: facts.taxClass === null ? missing(NA, 'tax class not set')
+      : present(facts.taxClass, 'label', prov(`tax class (${facts.source ?? 'none'}, design section 9.1)`)),
+    taxClassSource: facts.source,
+    listed: facts.listed === null ? missing(NA, 'listed flag missing for a close-ended non-equity scheme')
+      : present(facts.listed, 'label', prov(`listed flag (${facts.listedSource}, TR-16)`)),
+    listedSource: facts.listedSource,
+    subType: facts.subType, lotClass, term: noRule(), deemedShort: false, anniversary: null, ruleId: null, rate: null,
+    exempt: false, costForTax: noRule(), costBasis: 'none', taxableGain: noRule(), notComputed: null,
+    notComputedDetail: null, legs: null, legDetail: null, anniversaryLongTerm: null, anniversaryLongTermDetail: null,
+    statementGain: split.gain, statementTerm: split.term, successor, duplicateOf: lot.duplicateOf,
+    excludedAsRepeat: lot.excludedAsRepeat, statement: lot.statement, flags, labels,
   };
-  const notComputed = (reason: NotComputed, status: MissingStatus = STATUS.NOT_AVAILABLE): RealisedGain => {
-    g.notComputed = reason;
-    g.taxableGain = missing(status);
-    g.costForTax = missing(status);
+  const notComputed = (reason: NotComputedReason, status: MissingStatus = NA): TaxLot => {
+    if (reason === 'amount-missing') {
+      // TODO(contracts-3): 'amount-missing' joins NotComputed
+      g.notComputed = 'no-valid-key';
+      g.notComputedDetail = 'amount-missing';
+    } else if (reason === 'cost-missing') {
+      g.notComputed = 'cost-input-missing';
+      g.notComputedDetail = 'cost-missing';
+    } else {
+      g.notComputed = reason;
+    }
+    const why = `tax not computed: ${reason}`;
+    g.taxableGain = missing(status, why);
+    g.costForTax = missing(status, why);
     g.costBasis = 'none';
     return finish(g, x);
   };
@@ -296,12 +355,12 @@ function realiseOne(x: LotCtx): RealisedGain {
   if (lotClass === 'non-taxable-transfer') {
     // Not a transfer: taxable gain nil; the economic gain goes to the non-taxable line, except the share kept for
     // units that went to lots still reset (§4).
-    g.taxableGain = value(0);
-    g.costForTax = NAPP;
-    g.term = missing<Term>(STATUS.NOT_APPLICABLE);
+    g.taxableGain = present(0, 'inr', prov('a non-taxable transfer: taxable gain nil (design section 4)'));
+    g.costForTax = missing(NAPP, 'not applicable: a non-taxable transfer');
+    g.term = missing(NAPP, 'not applicable: a non-taxable transfer');
     const share = event?.keptShare ?? 0;
     if (realised.kind === 'value') {
-      g.realisedCounted = value(realised.v * share);
+      g.realisedCounted = present(realised.v * share, 'inr', prov('realised gain x the share kept for lots still reset (design section 4)'));
       g.nonTaxable = realised.v * (1 - share);
     }
     return finish(g, x);
@@ -309,7 +368,7 @@ function realiseOne(x: LotCtx): RealisedGain {
 
   if (lot.saleDate < table.coverageFrom) {
     flags.push('outside-rule-table');
-    return notComputed('outside-rule-table', STATUS.NOT_APPLICABLE);
+    return notComputed('outside-rule-table', NAPP);
   }
   if (pd === null || pd > lot.saleDate) return notComputed('no-valid-key');
   if (facts.taxClass === null) return notComputed('tax-class-not-set');
@@ -318,12 +377,14 @@ function realiseOne(x: LotCtx): RealisedGain {
   const rr = ruleFor(table, key);
   if (rr.kind === 'none') {
     if (rr.reason === 'listed-flag-missing') { flags.push('listed-flag-missing'); return notComputed('listed-flag-missing'); }
-    if (rr.reason === 'outside-rule-table') { flags.push('outside-rule-table'); return notComputed('outside-rule-table', STATUS.NOT_APPLICABLE); }
+    if (rr.reason === 'outside-rule-table') { flags.push('outside-rule-table'); return notComputed('outside-rule-table', NAPP); }
     return notComputed('no-valid-key');
   }
   const rule = rr.rule;
   g.ruleId = rule.id;
-  g.term = { kind: 'value', v: rr.term };
+  g.term = present(rr.term, 'label', prov(rr.deemedShort
+    ? `deemed short term whatever the holding (rule ${rule.id})`
+    : `term to the sale date, long only strictly after the anniversary (OD-2, rule ${rule.id})`));
   g.deemedShort = rr.deemedShort;
   g.anniversary = rr.anniversary;
   if (rr.listedFlag === 'missing-same-either-way') labels.push(table.keyValidity.listedFlagMissingLabel);
@@ -336,7 +397,11 @@ function realiseOne(x: LotCtx): RealisedGain {
     table, lotClass, purchaseDay: pd, saleDay: lot.saleDate, cost, sale, units: val(lot.units),
     acquisitionPrice: val(lot.statement.acquisitionPrice), mark,
   };
-  if (onAnniversary && rr.term === 'short') g.anniversaryLongTerm = anniversaryLongTermFor(key, ctx);
+  if (onAnniversary && rr.term === 'short') {
+    const a = anniversaryLongTermFor(key, ctx);
+    g.anniversaryLongTerm = a === null ? null : { ruleId: a.ruleId, taxableGain: a.taxableGain };
+    g.anniversaryLongTermDetail = a === null ? null : { rate: a.rate, costForTax: a.costForTax };
+  }
 
   if (rule.toBeConfirmed) {
     flags.push('rule-to-be-confirmed');
@@ -346,12 +411,21 @@ function realiseOne(x: LotCtx): RealisedGain {
   flags.push(...r.flags);
   if (r.kind === 'not-computed') return notComputed(r.reason);
   labels.push(...r.labels);
-  g.costForTax = r.costForTax;
+  g.costForTax = r.costForTax === null
+    ? missing(NAPP, 'not applicable: the s.10(38) exempt line')
+    : present(r.costForTax, 'inr', prov(`cost for tax on the ${r.costBasis} basis (rule ${rule.id})`));
   g.costBasis = r.costBasis;
-  g.taxableGain = value(r.taxableGain);
+  g.taxableGain = present(r.taxableGain, 'inr', prov(r.exempt
+    ? `the s.10(38) exempt line: taxable gain 0 (rule ${rule.id})`
+    : `sale value minus cost for tax (rule ${rule.id})`));
   g.rate = r.rate;
   g.exempt = r.exempt;
-  g.legs = r.legs;
+  g.legDetail = r.legs;
+  g.legs = r.legs === null ? null : {
+    indexed20: present(r.legs.indexed20.gain, 'inr', prov(`NE-LT-1 20% leg: sale value minus indexed cost (rule ${rule.id})`)),
+    actual10: present(r.legs.actual10.gain, 'inr', prov(`NE-LT-1 10% leg: sale value minus actual cost (rule ${rule.id})`)),
+    chosen: r.legs.chosen,
+  };
   // gain-differs: the taxable gain (NE-LT-1: the chosen leg's) against the statement's LTCG plus STCG. Not on an
   // exempt lot, and not on a merger row taxed as a sale (merger-taxable explains its stated 0).
   if (!r.exempt && lotClass !== 'taxable-transfer' && split.gain !== null && sale !== null
@@ -359,12 +433,8 @@ function realiseOne(x: LotCtx): RealisedGain {
   return finish(g, x);
 }
 
-const NA_CLASS = { kind: 'missing', status: STATUS.NOT_AVAILABLE } as const;
-const NA_BOOL = { kind: 'missing', status: STATUS.NOT_AVAILABLE } as const;
-const NA_TERM = { kind: 'missing', status: STATUS.NOT_AVAILABLE } as const;
-
 /** TR-21 stripping candidates, then the flags de-duplicated in order. */
-function finish(g: RealisedGain, x: LotCtx): RealisedGain {
+function finish(g: TaxLot, x: LotCtx): TaxLot {
   const pd = val(g.purchaseDate);
   if (g.realised.kind === 'value' && g.realised.v < 0 && pd !== null && g.saleDate <= anniversaryOf(pd, STRIPPING_HOLDING_MONTHS)) {
     const dividend = IDCW_RE.test(g.schemeLabel) && g.saleDate <= DIVIDEND_STRIPPING_SOLD_BY;
@@ -454,7 +524,7 @@ function buildIssues(gains: readonly RealisedGain[], events: readonly MergerEven
 // ---------------------------------------------------------------------------------------------------------------
 // The engine over a statement
 
-/** Every lot of a statement (repeats excluded as "once" are carried, flagged `excludedAsRepeat`) as a RealisedGain. */
+/** Every lot of a statement (repeats excluded as "once" are carried, flagged `excludedAsRepeat`) as a TaxLot (the contract's RealisedGain and the S2 lines). */
 export function realiseLots(imp: CgImport, inputs: TaxInputs, opts: RealiseOptions = {}): RealiseResult {
   const table = opts.table ?? TAX_RULES_V1;
   const now = opts.now ?? ((): string => new Date().toISOString());
@@ -463,16 +533,16 @@ export function realiseLots(imp: CgImport, inputs: TaxInputs, opts: RealiseOptio
     schemeLabel: l.schemeLabel, category: l.category, statementAsset: l.statementAsset, tagAsset: l.tagAsset,
     purchaseDay: val(l.purchaseDate), saleDay: l.saleDate,
   }, inputs.scheme));
-  const classing = classifyLots(table, lots, facts.map((f) => f.taxClass), inputs);
+  const classing = classifyLots(table, lots, facts.map((f) => f.taxClass), inputs, { fundHouseOf: opts.fundHouseOf });
   const marks = new Map<number, LotMark>();
   for (const m of inputs.lotMarks) marks.set(m.lotIndex, { ...(marks.get(m.lotIndex) ?? { lotIndex: m.lotIndex }), ...m });
   const bonusSchemes = new Set<string>();
   for (const l of lots) if (val(l.purchaseValue) === 0) bonusSchemes.add(`${l.accountId}|${schemeKeyOf(l.schemeLabel)}`);
 
   const gains = lots.map((lot, i) => realiseOne({
-    table, lot, facts: facts[i]!, lotClass: classing.classes[i]!, successor: classing.successorOf[i] ?? null,
-    event: classing.eventOf[i]! >= 0 ? classing.events[classing.eventOf[i]!]! : null, mark: marks.get(lot.index), inputs,
-    asOnDay: opts.asOnDay, bonusSchemes,
+    table, sourceId: imp.sourceId, lot, facts: facts[i]!, lotClass: classing.classes[i]!, successor: classing.successorOf[i] ?? null,
+    event: classing.eventOf[i]! >= 0 ? classing.events[classing.eventOf[i]!]! : null, mark: marks.get(lot.index),
+    assessee: opts.assesseeOf?.(lot.index) ?? null, inputs, asOnDay: opts.asOnDay, bonusSchemes,
   }));
 
   const refusals = [...classing.refusals];

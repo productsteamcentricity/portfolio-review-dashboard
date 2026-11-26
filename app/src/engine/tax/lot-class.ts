@@ -19,12 +19,11 @@
 import type { CgLot, CgRead } from '../../ingest/capital-gains.ts';
 import type { DayNumber } from '../../model/value.ts';
 import { ymdToDay } from '../dates.ts';
+import type { LotClass, TaxClass } from '../../model/tax.ts';
 import type { TaxRuleTable } from './rules.ts';
-import { financialYearOf } from './rules.ts';
-import { schemeInputFor, schemeKeyOf } from './tax-class.ts';
-import type {
-  LotClass, LotMark, MergerAnswer, MergerEventResult, Refusal, SchemeInput, SuccessorLink, TaxClass,
-} from './types.ts';
+import { TAX_RULES_V1 } from './rules.ts';
+import { schemeKeyOf } from './tax-class.ts';
+import type { LotMark, MergerAnswer, MergerEventResult, Refusal, SuccessorLink } from './types.ts';
 
 /** TR-5 (a): a scheme consolidation is not a transfer from this sale date (s.47(xviii); 2025 Act s.70(1)(zj)). */
 export const SCHEME_CONSOLIDATION_FROM: DayNumber = ymdToDay(2015, 4, 1)!;
@@ -90,14 +89,21 @@ export type LotClassing = {
 };
 
 export type LotClassInputs = {
-  scheme: readonly SchemeInput[];
   mergerAnswers: ReadonlyArray<{ eventId: string; answer: MergerAnswer }>;
   lotMarks: readonly LotMark[];
 };
 
+export type LotClassOptions = {
+  /**
+   * The fund house of a scheme by its key (schemeKeyOf), from the scheme data (M2); used only for cross-house-merger.
+   * Without it, or when it returns null for either scheme, cross-house-merger is not raised.
+   */
+  fundHouseOf?: (schemeKey: string) => string | null;
+};
+
 /** §5 over every lot of a statement: classes, merger events and successor lots. */
 export function classifyLots(table: TaxRuleTable, lots: readonly CgLot[], taxClasses: ReadonlyArray<TaxClass | null>,
-  inputs: LotClassInputs): LotClassing {
+  inputs: LotClassInputs, opts: LotClassOptions = {}): LotClassing {
   const refusals: Refusal[] = [];
   const merger = lots.map((l) => isMergerPattern(l));
   const order: string[] = [];
@@ -179,14 +185,7 @@ export function classifyLots(table: TaxRuleTable, lots: readonly CgLot[], taxCla
           rebase: ok ? { purchaseDate: ev.date, cost: (sw.s! * v!) / sw.w! } : null,
           analystApplied: false,
         };
-        const rb = marks.get(l.index)?.rebase;
-        if (rb !== undefined) {
-          if (rb === 'formula' && link.rebase === null) {
-            refusals.push({ input: 'lot-mark', ref: String(l.index), reason: 'the re-base needs the Sell Amount and Invested Value of the event and of the lot' });
-          } else {
-            link.analystApplied = true;
-          }
-        }
+        if (marks.get(l.index)?.rebase !== undefined) link.analystApplied = true;
       }
       if (link === null || successorOf[i] !== null) return;
       successorOf[i] = link;
@@ -227,11 +226,26 @@ export function classifyLots(table: TaxRuleTable, lots: readonly CgLot[], taxCla
   // cross-house-merger: only when the scheme data (M2) names the fund house of the event's scheme and of a linked
   // scheme (a successor, reset or carrying the original dates); otherwise it is not raised.
   events.forEach((ev, k) => {
-    const fy = financialYearOf(ev.date);
-    const house = (key: string): string | null => schemeInputFor(inputs.scheme, key, fy).fundHouse ?? null;
+    const house = (key: string): string | null => opts.fundHouseOf?.(key) ?? null;
     const own = house(schemeKeyOf(ev.schemeLabel));
     ev.crossHouse = own !== null && linkedSchemes[k]!.some((s) => { const h = house(s); return h !== null && h !== own; });
   });
 
   return { classes, events, eventOf, successorOf, refusals };
+}
+
+/**
+ * The re-base of a successor-not-reset lot (§5): the explicit purchase date and cost that the formula gives, the event
+ * date and S x V / W (S and W: the Sell Amount and Invested Value of the event's merger rows with the lot's purchase
+ * date; V: the lot's Invested Value). The analyst's lot mark carries the result (TaxInputs.lotMarks[].rebase, I-37).
+ * Null when the lot (by its reader index) is not a successor-not-reset lot under these merger answers, or when the
+ * re-base needs a Sell Amount or Invested Value that is blank or invalid (of the event or of the lot), or W is 0.
+ */
+export function successorRebase(lots: readonly CgLot[], lotIndex: number,
+  mergerAnswers: LotClassInputs['mergerAnswers'] = [], table: TaxRuleTable = TAX_RULES_V1): { purchaseDate: DayNumber; cost: number } | null {
+  const i = lots.findIndex((l) => l.index === lotIndex);
+  if (i < 0) return null;
+  const link = classifyLots(table, lots, lots.map(() => null), { mergerAnswers, lotMarks: [] }).successorOf[i] ?? null;
+  if (link === null || link.kind !== 'not-reset' || link.rebase === null) return null;
+  return { purchaseDate: link.rebase.purchaseDate, cost: link.rebase.cost };
 }

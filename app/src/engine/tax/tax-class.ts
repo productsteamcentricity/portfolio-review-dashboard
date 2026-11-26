@@ -19,7 +19,8 @@ import type { DayNumber } from '../../model/value.ts';
 import { normaliseLabel } from '../ids.ts';
 import type { CategoryMatch, TaxRuleTable } from './rules.ts';
 import { categoryDefaultClass, financialYearOf, fundTypeOfCategory, invalidKeyReason } from './rules.ts';
-import type { ListedSource, SchemeInput, TaxClass, TaxClassSource, TaxSubType } from './types.ts';
+import type { TaxClass, TaxSubType } from '../../model/tax.ts';
+import type { ListedSource, SchemeInput, TaxClassSource } from './types.ts';
 
 /** The key of a scheme's analyst inputs: its statement label, spaces collapsed, lower case. */
 export function schemeKeyOf(schemeLabel: string): string {
@@ -36,7 +37,6 @@ export function schemeInputFor(inputs: readonly SchemeInput[], schemeKey: string
     if (e.listed !== undefined) out.listed = e.listed;
     if (e.etfFof9090 !== undefined) out.etfFof9090 = e.etfFof9090;
     if (e.closeEnded !== undefined) out.closeEnded = e.closeEnded;
-    if (e.fundHouse !== undefined) out.fundHouse = e.fundHouse;
   };
   for (const e of inputs) if (e.schemeKey === schemeKey && e.fy === null) apply(e);
   for (const e of inputs) if (e.schemeKey === schemeKey && e.fy === fy) apply(e);
@@ -91,7 +91,6 @@ export type TaxFacts = {
   listedSource: ListedSource;
   closeEnded: boolean;
   fundOfFunds: boolean;
-  fundHouse: string | null;
   /** Validation ids raised (without the `capital-gains.` prefix). */
   flags: string[];
   labels: string[];
@@ -217,7 +216,6 @@ export function taxFactsFor(table: TaxRuleTable, lot: TaxClassLot, schemeInputs:
   }
 
   return {
-    taxClass, source, subType, listed, listedSource, closeEnded, fundOfFunds: fof, fundHouse: input.fundHouse ?? null,
-    flags, labels, refusal,
+    taxClass, source, subType, listed, listedSource, closeEnded, fundOfFunds: fof, flags, labels, refusal,
   };
 }

@@ -13,14 +13,15 @@
 // 28 February of a common year). A sale on the anniversary itself is short term.
 
 import type { DayNumber } from '../../model/value.ts';
+import type { TaxClass, TaxSubType } from '../../model/tax.ts';
 import { dayToYmd, ymdToDay } from '../dates.ts';
 import rawTaxRules from '../../../../data/owner/tax-rules.json' with { type: 'json' };
 
 // ---------------------------------------------------------------------------------------------------------------
 // Types
 
-export type TaxClass = 'equity-oriented' | 'specified-mf' | 'other-non-equity';
-export type SubType = 'none' | 'elss' | 'etf-fof-90-90';
+/** The sub-type of a rule key: the contract's TaxSubType (model/tax.ts, I-37). */
+export type SubType = TaxSubType;
 export type ListedCondition = 'listed' | 'unlisted' | 'any';
 export type TermSide = 'short' | 'long' | 'deemed-short';
 export type CostBasis = 'actual' | 'grandfathered' | 'indexed-1981' | 'indexed-2001' | 'none' | 'per-leg';
