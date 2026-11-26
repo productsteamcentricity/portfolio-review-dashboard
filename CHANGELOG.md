@@ -500,6 +500,23 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **Tests:** `tests/unit/ingest/capital-gains.test.ts`, `tests/exports/xlsx/cg-template.test.ts` and
   `tests/exports/xlsx/column-default-style.test.ts`, on synthetic statements only (`tests/fixtures/make-cg-statements.ts`).
 
+### Added (new build, M7a tax engine, round 1: the indicative tax of capital-gains statement lots; not wired into the page yet)
+- **`data/owner/tax-rules.json` and `engine/tax/rules.ts`** (E-154, E-106, E-144): the dated rule table v1 of the design
+  (§10, approved 27 Oct 2026) as data, from 1 Oct 2004: the rate rows, exemptions, both Cost Inflation Index series,
+  cess, surcharge maxima and caps, and the category map; the rule key to exactly one rate row.
+- **`engine/tax/tax-class.ts`, `lot-class.ts` and `realised.ts`** (E-152): per lot, the tax class, lot class (mergers
+  and successors), term, cost for tax, taxable gain and rule; NE-LT-1 both legs per lot.
+- **`engine/tax/rollup.ts`** (E-155): per person and financial year, never pooled: set-off, the exemption, tax,
+  surcharge, cess, the statement's split and the alternatives; the family sum as the sum of separate computations.
+- **The owner's PD-16 answers of 26 Nov 2026:** the dated table (item 1); an anniversary-day sale short term with the
+  long-term figure beside it (item 2); persons numbered by PAN per file in memory only, never from the PAN itself
+  (item 3); repeated rows decided by the analyst, with the units evidence beside each question (item 5); the FY 2024-25
+  exemption on the 12.5% gains first (item 6); the usual buckets from tax year 2026-27 (item 7). Item 4 stays with the
+  tax adviser.
+- **The slab rate** is the analyst's per person and year; the default is one named parameter while PD-07 is open.
+- **Tests:** `tests/unit/tax/{rules,lots,rollup,repeat-evidence,statement-engine}.test.ts` and the known answers KA-1
+  to KA-22 (`tests/fixtures/cg-known-answers.json`), to Rs 0.01.
+
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
   funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.
