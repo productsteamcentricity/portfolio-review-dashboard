@@ -1,7 +1,9 @@
 # Chat registry
 
-Last verified: **2 Nov 2026 (IST)**, by MOD-02 (validation of the MOD-01 to MOD-02 handover; see "Handover validation record" below).
-Maintained by: **MOD-02**.
+Last verified: **26 Nov 2026 (IST)**, by MOD-04 (registers-4; see "Chat numbers and status, 26 Nov 2026" below). The
+detail sections further down are the record of 2 Nov 2026 (MOD-02's validation of the MOD-01 to MOD-02 handover) and are
+kept as history.
+Maintained by: **MOD-04** (CHAT-013) since 25 Nov 2026; MOD-03 (CHAT-006) from 17 to 25 Nov; MOD-02 before.
 
 This register lists every Claude chat that works on the project, what each one owns and where its work is.
 It is one of the project-control registers; [README.md](README.md) maps all of them.
@@ -34,10 +36,33 @@ They are in the private supplement `C:\dev\private\handover\PRIVATE_SUPPLEMENT_2
 | `MOD-02 \| Project-Wide \| Master Project Moderator \| ACTIVE` | owner asked to rename the chat to the chat line itself (2 Nov) | 2 Nov 2026 (successor prompt dated 28 Oct) | 1 [VERIFIED: transcript metadata scan, 9 Nov: one entry, 9 Nov 08:37 UTC] |
 | `EX-01 \| Workstream A (existing dashboard) \| Existing-dashboard implementation \| HANDOVER REQUIRED` | "EX-01 \| Workstream A (existing dashboard) \| Existing-dashboard implementation \| ACTIVE" | 2 Nov 2026, 08:00 UTC [VERIFIED: session metadata] | **5** [VERIFIED: transcript metadata scan, 9 Nov: 2 Nov 09:28, 12:25, 14:58 and 17:08 UTC; 9 Nov 08:36 UTC] |
 | `ARC-01 \| Project-Wide \| Codebase Integrity & Integration Guardian \| HANDOVER REQUIRED` | "ARC-01 \| Project-Wide \| Codebase Integrity & Integration Guardian \| ACTIVE" (confirmed baseline part 1 on 2 Nov) | 2 Nov 2026, 07:58 UTC [VERIFIED: session metadata] | **3** [VERIFIED: transcript metadata scan, 9 Nov: 2 Nov 10:12 and 12:39 UTC; 9 Nov 08:38 UTC] |
-| `ARC-02 \| Project-Wide \| Codebase Integrity & Integration Guardian \| QUEUED` | to be given by the owner when the chat is opened (paste file ready, 9 Nov) | not yet created | n/a |
-| `EX-02 \| Workstream A (existing dashboard) \| Existing-dashboard implementation \| QUEUED` | to be given by the owner when the chat is opened (after EX-01\'s handover is validated) | not yet created | n/a |
+| `CHAT-008 \| ARC-02 \| Project-Wide \| Codebase Integrity & Integration Guardian \| ACTIVE` | the chat line itself | 18 Nov 2026 | 1 [VERIFIED: transcript marker scan, 26 Nov: 25 Nov 18:50 UTC] |
+| `CHAT-007 \| EX-02 \| Workstream A (existing dashboard) \| Existing-dashboard implementation \| ACTIVE` | the chat line itself | 18 Nov 2026 | **3** [VERIFIED: transcript marker scan, 26 Nov: 19 Nov 11:50, 24 Nov 19:50, 25 Nov 09:07 UTC]; succession trigger reached, MOD-04 decides |
 
-When a chat is created, the owner gives it the title above with its live status, and MOD-02 updates this table.
+When a chat is created, the owner gives it the title above with its live status, and the Moderator updates this table.
+The chats opened since 17 Nov 2026 are listed with their numbers in the next section.
+
+## Chat numbers and status, 26 Nov 2026
+
+Since the handover of 17 Nov 2026 every chat has a number (CHAT-nnn), never reused. Compactions are counted from the
+environment's compaction markers (CONTEXT_COMPACTION_TRACKER in `docs/coordination/`); successions are in
+CHAT_SUCCESSION_REGISTER there. **Next free number: CHAT-014.**
+
+| Number | Role | Status (26 Nov 2026) | Opened | Note |
+|---|---|---|---|---|
+| CHAT-001 | MOD-01, first Moderator | RETIRED | 14 Oct 2026 | 4 compactions |
+| CHAT-002 | NB-01, new build | SUPERSEDED by CHAT-009 (account change, old chat unreachable) | 22 Oct 2026 | |
+| CHAT-003 | MOD-02, Moderator | SUPERSEDED by CHAT-006 (account change and handover, 17 Nov) | 2 Nov 2026 | |
+| CHAT-004 | ARC-01, Guardian | SUPERSEDED by CHAT-008 (three compactions) | 2 Nov 2026 | |
+| CHAT-005 | EX-01, live page | SUPERSEDED by CHAT-007 (five compactions) | 2 Nov 2026 | |
+| CHAT-006 | MOD-03, Moderator | historical record since 25 Nov 2026; forwards notes only | 17 Nov 2026 | handed over to CHAT-013 on 25 Nov 2026, a planned early succession under PD-65 §9.3 |
+| CHAT-007 | EX-02, live page (`index.html` patches, refresh, side-by-side test kit) | ACTIVE | 18 Nov 2026 | 3 compactions (see the row above) |
+| CHAT-008 | ARC-02, Guardian (live page, M2, rule 10) | ACTIVE | 18 Nov 2026 | ARC-01's **sole rule-10 successor** |
+| CHAT-009 | NB-02, new build (identifiers, ingest, classification, then M3b) | ACTIVE | 22 Nov 2026 | |
+| CHAT-010 | NB-03, new build: financial engines (M3a, M7a) | ACTIVE | 24 Nov 2026 (late evening IST) | |
+| CHAT-011 | NB-04, new build: data platform (M10, M11a, M12a) | ACTIVE | 24 Nov 2026 (late evening IST) | |
+| CHAT-012 | ARC-03, new-build reviewer | ACTIVE | 24 Nov 2026 (late evening IST) | not the rule-10 Guardian |
+| CHAT-013 | MOD-04, Master Project Moderator | ACTIVE, the only active Moderator | 25 Nov 2026 (about 01:00 IST) | took over from CHAT-006 on 25 Nov 2026 about 01:20 IST |
 
 **Not chats.** Subagent workflow runs (the `.claude/worktrees/wf_*` worktrees and `worktree-wf_*` branches) belong to the chat
 that started them. They are listed under that chat below.
@@ -208,3 +233,4 @@ The full procedure is in the owner's 27 Oct handover prompt (sections 14 to 21),
 | 2 Nov 2026 | MOD-02 | PD-02 and PD-03 answered by the owner (recorded in DECISION_LOG); EX-01 dependencies and blocker updated; NB-01 relay list extended |
 | 2 Nov 2026 | MOD-02 | NB-01 ACTIVE (TB-08 done, contract accepted, "continue" given); relay list updated |
 | 9 Nov 2026 | MOD-02 | Compactions scanned from the transcript metadata (MOD-02 1, ARC-01 3, EX-01 5, NB-01 1); ARC-01 and EX-01 HANDOVER REQUIRED; ARC-02 and EX-02 QUEUED |
+| 26 Nov 2026 | MOD-04 | registers-4: chat numbers CHAT-001 to CHAT-013 and their status; CHAT-006 (MOD-03) handed over to CHAT-013 (MOD-04) on 25 Nov 2026 (PD-65 §9.3); ARC-02 (CHAT-008) and EX-02 (CHAT-007) ACTIVE since 18 Nov, ARC-02 as ARC-01's sole rule-10 successor; CHAT-010 NB-03, CHAT-011 NB-04, CHAT-012 ARC-03 opened 24 and 25 Nov; compactions from the marker scan (CHAT-007 at 3); next free number CHAT-014 |
