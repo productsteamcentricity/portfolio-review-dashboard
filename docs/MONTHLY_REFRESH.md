@@ -22,7 +22,7 @@ Terms used below:
 
 | # | Step | Who | When |
 |---|---|---|---|
-| 1 | Put the month's files in `01 Monthly Updates\YYYY-MM` and the five index files in its `Index TRI` subfolder | Owner | 13th–17th of month M+1 |
+| 1 | Put the month's files in `01 Monthly Updates\YYYY-MM`, the vendor's benchmark exports in its `Benchmarks` subfolder and the Investment Reckoner PDF in `Outlook export` | Owner | 13th–17th of month M+1 |
 | 2 | Tell Claude the files are in | Owner | When step 1 is done |
 | 3 | Check the files, build and validate the new data, splice it into `index.html` on a branch, run every check, write the log and a summary | Claude | Same day, about an hour |
 | 4 | Review the refreshed dashboard and the summary, then reply **"publish"** or ask questions | Owner | Within a day or two |
@@ -34,8 +34,8 @@ Terms used below:
 ## Part 1: the owner's part
 
 ### 1. Collect the files
-Put each file in `01 Monthly Updates\YYYY-MM`, or in its `Analytics` or `Index TRI` subfolder, exactly as it
-arrived. The checklist with every file name is in `01 Monthly Updates\README - How to submit monthly files.md`.
+Put each file in `01 Monthly Updates\YYYY-MM`, or in its `Analytics`, `Benchmarks`, `Index TRI` or `Outlook export`
+subfolder, exactly as it arrived. The checklist with every file name is in `01 Monthly Updates\README - How to submit monthly files.md`.
 The tracked list of every file you supply, with who sends it, where it goes, whether it is public and what it feeds
 (including the new build's additions), is in
 [MONTHLY_UPDATE_GUIDE.md](MONTHLY_UPDATE_GUIDE.md#files-the-owner-supplies-each-month).
@@ -47,10 +47,17 @@ The monthly items:
   - Expense Ratio;
   - Equity, Hybrid and Debt Analytics;
   - Listed Direct Equity master;
-  - Listed Direct Equity returns issue, which often comes a day or two later.
-- **From the research team:** the Monthly Outlook deck.
-- **From niftyindices.com, downloaded by you:** five Total Return Index files (Nifty 50, Nifty 100, Nifty 500,
-  Nifty Midcap 150 and Nifty Smallcap 250).
+  - Listed Direct Equity returns issue, which often comes a day or two later;
+  - the benchmark exports `NSE Data_…`, `BSE Data_…` and `world Data_…` into `Benchmarks`, from the 1st of the
+    previous month to the data month's last day (the risk step reads the NSE file's five TRI columns, step 4);
+  - `Other Funds Analytics.xlsx` into `Analytics`, when sent (step 7f).
+- **From the Products team:** the next month's Investment Reckoner, the PDF into `Outlook export` (the Market Update
+  pages are rendered from it, step 3; say which pages) and the PPTX into the month folder.
+- **From the research team:** the pagers deck, when there is one (`Monthly Outlook Pagers_…` or
+  `Invictus Market Outlook Pagers_…`).
+- **Fallback, from niftyindices.com, downloaded by you:** five Total Return Index files (Nifty 50, Nifty 100,
+  Nifty 500, Nifty Midcap 150 and Nifty Smallcap 250) into `Index TRI`, only when the NSE export is missing or has a
+  gap.
 
 When available, also send:
 - Fund Manager history;
@@ -108,7 +115,7 @@ Session setup (Git Bash). Replace the month values:
 ```bash
 cd /c/dev/portfolio-review
 export PATH="/c/dev/tools/node:/c/dev/tools/git/cmd:/c/dev/tools/gh/bin:$PATH"
-M=2026-10; PREVM=2026-09; ASON="31 Oct 2026"; PREVASON="30 Sep 2026"; LABEL="Nov 2026"
+M=2026-11; PREVM=2026-10; ASON="30 Nov 2026"; PREVASON="31 Oct 2026"; LABEL="Dec 2026"
 P="$OneDriveCommercial/Desktop/Claude Code-Portfolio Review Dashboard"
 IN="$P/01 Monthly Updates/$M"; PREV="$P/02 Archive/$PREVM"; OUT="buildtools/out/$M"
 mkdir -p "$OUT"
