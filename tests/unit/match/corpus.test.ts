@@ -1,9 +1,10 @@
-// covers: E-13 KI-036 OD-5 M2.1
+// covers: E-13 KI-036 KI-101 OD-5 M2.1
 // The sprint 2a matcher corrections, measured both ways over the real universes (CLAUDE.md rule 4; roadmap M2.1
 // acceptance). tests/parity/matching-corrections.ts measures; tests/parity/matching-corrections-ledger.json records the
 // full sweep (every changed answer, with whether it fixed or regressed). Here a sample (every 5th name) is measured
 // again for each stage:
-//   - no regression either way: no self query the legacy answered correctly is lost, no wrong match is added;
+//   - no regression either way: no self query the legacy answered correctly is lost, no wrong match is added, and no
+//     official AMFI name the legacy resolved correctly is lost, except the reviewed ones below;
 //   - every changed answer in the sample is in the ledger, so no change goes unrecorded.
 // Refresh-proof (the coupling rule): when the reference names differ from the ledger's basis, the test reports instead
 // of failing; NB-02 then rewrites the ledger (--write-ledger) and reviews the differences.
@@ -15,6 +16,12 @@ import { LEDGER, STAGES, measure, namesBasis, type Change, type Report } from '.
 
 type Ledger = { written: string; stages: Array<{ id: string; report: Report }> };
 const ledger = JSON.parse(fs.readFileSync(LEDGER, 'utf8')) as Ledger;
+/** Regressions reviewed and accepted, with the reason (measure|query). */
+const ACCEPTED_REGRESSIONS: Readonly<Record<string, string>> = {
+  'amfi|Sundaram Focused Fund (Formerly Known as Principal Focused Multicap Fund)-Growth Option':
+    'a score tie between two funds: the legacy was right only by candidate order; no match is the KI-036 answer',
+};
+const unaccepted = (r: Report): Change[] => r.changes.filter((c) => c.correct === 'regressed' && !(`${c.measure}|${c.query}` in ACCEPTED_REGRESSIONS));
 const sig = (c: Change): string => [c.set, c.measure, c.query, c.amc, c.legacy, c.corrected].join(String.fromCharCode(1));
 
 describe('matcher corrections: corpus, both ways', () => {
@@ -24,6 +31,7 @@ describe('matcher corrections: corpus, both ways', () => {
       assert.equal(s.report.stride, 1, s.id);
       assert.equal(s.report.self.regressed, 0, `${s.id}: self regressions in the full sweep`);
       assert.equal(s.report.loo.wrongAdded, 0, `${s.id}: wrong matches added in the full sweep`);
+      assert.deepEqual(unaccepted(s.report), [], `${s.id}: unreviewed regressions in the full sweep`);
     }
   });
 
@@ -36,9 +44,10 @@ describe('matcher corrections: corpus, both ways', () => {
         return;
       }
       const r = measure(stage.opts, 5);
-      t.diagnostic(`sample: self ${JSON.stringify(r.self)}; loo ${JSON.stringify(r.loo)}; changes ${r.changes.length}`);
+      t.diagnostic(`sample: self ${JSON.stringify(r.self)}; loo ${JSON.stringify(r.loo)}; amfi ${JSON.stringify(r.amfi)}; changes ${r.changes.length}`);
       assert.equal(r.self.regressed, 0);
       assert.equal(r.loo.wrongAdded, 0);
+      assert.deepEqual(unaccepted(r), []);
       assert.ok(r.loo.wrongCorrected <= r.loo.wrongLegacy);
       const known = new Set(recorded.changes.map(sig));
       const missing = r.changes.filter((c) => !known.has(sig(c)));

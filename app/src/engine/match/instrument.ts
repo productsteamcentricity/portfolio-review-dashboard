@@ -27,6 +27,11 @@
 //     wins first. When several candidates share the normalised name, or several tie on the fuzzy score, the holding's
 //     own option decides if the tied candidates are option variants of one scheme (G against IDCW: the tied keys share
 //     one normalised name); otherwise there is no match (steps 'exact-ambiguous', 'fuzzy-tie').
+//   - houseTokens (KI-101; the house-word half of the audit's NEW-4 fix; with nullOnTies): a fund house's words
+//     (houseWords: the leading words at least 90% of its names share) and the holding's own AMC words never count as
+//     distinctive. The thresholds are unchanged, so this only rejects more. The audit's idf weighting was measured
+//     and not adopted: as a guard it lost correct official AMFI names, as a ranking it added wrong matches
+//     (tests/parity/matching-corrections.ts).
 
 import { aliasFor, isExactOnlyKey } from './name-lists.ts';
 import { nameKey, normalize } from './normalize.ts';
@@ -41,6 +46,8 @@ export type MatchOptions = {
   ownerAliases?: OwnerAliasTable;
   /** KI-036: no answer decided by candidate order. */
   nullOnTies?: boolean;
+  /** KI-101: fund-house words (houseWords, and the holding's AMC words) never count as distinctive. Needs nullOnTies. */
+  houseTokens?: boolean;
 };
 
 export type MatchStep =
@@ -84,8 +91,10 @@ function tokensOf(candidate: string, cache: TokenCache | undefined): string[] {
   return t;
 }
 
-/** The fuzzy score of one candidate, or null when it does not clear the bar (07_engine.js:206-226). */
-export function fuzzyScore(nameTokens: readonly string[], amcTok: string, candTokens: readonly string[]): { shared: number; jaccard: number } | null {
+/** The fuzzy score of one candidate, or null when it does not clear the bar (07_engine.js:206-226). With isHouse
+ * (KI-101), a fund-house word never counts as distinctive; the thresholds themselves are unchanged (CLAUDE.md rule 4),
+ * so this only ever rejects more. */
+export function fuzzyScore(nameTokens: readonly string[], amcTok: string, candTokens: readonly string[], isHouse?: (t: string) => boolean): { shared: number; jaccard: number } | null {
   if (amcTok && !candTokens.includes(amcTok)) return null;
   const ctset = new Set(candTokens);
   const uni = new Set<string>();
@@ -97,7 +106,7 @@ export function fuzzyScore(nameTokens: readonly string[], amcTok: string, candTo
     if (ctset.has(t)) {
       shared++;
       if (t.length >= 2) sharedSig++;
-      if (t !== amcTok && t !== 'fund') distinct++;
+      if (t !== amcTok && t !== 'fund' && !(isHouse && isHouse(t))) distinct++;
     }
   }
   for (const t of candTokens) uni.add(t);
@@ -106,8 +115,46 @@ export function fuzzyScore(nameTokens: readonly string[], amcTok: string, candTo
   return { shared, jaccard: shared / uni.size };
 }
 
+/** KI-101 (the audit's NEW-4 fix): a house's words are the leading words that at least this share of its names have. */
+export const HOUSE_SHARE = 0.9;
+const houseCache = new WeakMap<readonly string[], ReadonlyMap<string, ReadonlySet<string>>>();
+
+/** The fund-house words of a candidate set, by first word: the first word, then each next leading word that at least
+ * HOUSE_SHARE of the names starting with that prefix carry ("aditya birla sl", "icici pru", "franklin india"). A house
+ * with fewer than 3 names keeps only its first word, so one fund's whole name never becomes house words. */
+export function houseWords(candidates: readonly string[], cache?: TokenCache): ReadonlyMap<string, ReadonlySet<string>> {
+  const hit = houseCache.get(candidates);
+  if (hit) return hit;
+  const groups = new Map<string, string[][]>();
+  for (const c of candidates) {
+    const t = tokensOf(c, cache);
+    if (t.length === 0) continue;
+    const g = groups.get(t[0]!);
+    if (g) g.push(t);
+    else groups.set(t[0]!, [t]);
+  }
+  const out = new Map<string, ReadonlySet<string>>();
+  for (const [first, names] of groups) {
+    const prefix = [first];
+    if (names.length >= 3) {
+      for (let i = 1; i < 6; i++) {
+        const counts = new Map<string, number>();
+        for (const t of names) if (t.length > i && prefix.every((w, j) => t[j] === w)) counts.set(t[i]!, (counts.get(t[i]!) ?? 0) + 1);
+        let top = '';
+        let n = 0;
+        for (const [w, k] of counts) if (k > n) { top = w; n = k; }
+        if (n === 0 || n / names.length < HOUSE_SHARE) break;
+        prefix.push(top);
+      }
+    }
+    out.set(first, new Set(prefix));
+  }
+  houseCache.set(candidates, out);
+  return out;
+}
+
 /** The exact and fuzzy steps with KI-036's correction: raw name first, then no answer that candidate order decides. */
-function correctedTail(name: unknown, nt: string[], key: string, amcTok: string, candidates: readonly string[], cache?: TokenCache): MatchDetail {
+function correctedTail(name: unknown, nt: string[], key: string, amcTok: string, candidates: readonly string[], cache?: TokenCache, opts?: MatchOptions, amc?: unknown): MatchDetail {
   const raw = String(name ?? '').trim();
   if (raw !== '' && candidates.includes(raw)) return { key: raw, step: 'exact' };
   const exact = candidates.filter((c) => tokensOf(c, cache).join(' ') === key);
@@ -117,11 +164,16 @@ function correctedTail(name: unknown, nt: string[], key: string, amcTok: string,
     return k === null ? { key: null, step: 'exact-ambiguous' } : { key: k, step: 'exact' };
   }
   if (isExactOnlyKey(key)) return { key: null, step: 'exact-only-stop' };
+  const houses = opts?.houseTokens ? houseWords(candidates, cache) : undefined;
+  const amcWords = opts?.houseTokens ? new Set(normalize(amc)) : undefined;
   let tied: string[] = [];
   let bestShared = 0;
   let bestJac = 0;
   for (const c of candidates) {
-    const s = fuzzyScore(nt, amcTok, tokensOf(c, cache));
+    const ct = tokensOf(c, cache);
+    const own = houses ? houses.get(ct[0] ?? '') : undefined;
+    const isHouse = houses ? (t: string): boolean => amcWords!.has(t) || (own !== undefined && own.has(t)) : undefined;
+    const s = fuzzyScore(nt, amcTok, ct, isHouse);
     if (!s) continue;
     if (s.shared > bestShared || (s.shared === bestShared && s.jaccard > bestJac)) {
       tied = [c];
@@ -154,7 +206,8 @@ export function matchInstrumentDetail(name: unknown, amc: unknown, candidates: r
     if (target !== undefined) return { key: target, step: 'owner-alias' };
   }
   const amcTok = normalize(amc)[0] ?? nt[0] ?? '';
-  if (opts?.nullOnTies) return correctedTail(name, nt, key, amcTok, candidates, cache);
+  if (opts?.houseTokens && !opts.nullOnTies) throw new Error('matchInstrument: houseTokens applies on the corrected path; set nullOnTies too');
+  if (opts?.nullOnTies) return correctedTail(name, nt, key, amcTok, candidates, cache, opts, amc);
   for (const c of candidates) {
     if (tokensOf(c, cache).join(' ') === key) return { key: c, step: 'exact' };
   }
