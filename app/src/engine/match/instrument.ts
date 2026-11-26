@@ -37,9 +37,15 @@
 //     fewer than 5% of its names (a word the set does not know, such as a misspelling, never counts). Measured: about
 //     41% fewer wrong matches for funds absent from the vendor data, and 21 of 1,206 official AMFI names that match
 //     correctly today become unmatched (mostly normaliser gaps, a measured follow-up of sprint 2a).
+//   - normaliserV2 and candidateWordGuard (the follow-up, NEW_BUILD_MATCHING has both): matching tokens come from
+//     normalizeV2 (normalize.ts: "(Formerly Known as ...)" dropped, "S&P" before "BSE" dropped, letters and digits
+//     split, a few compounds and synonyms), while the alias and name lists keep their legacy keys; and the
+//     stricter regime's guard also checks the candidate's own extra words, so a short name never sits inside a longer,
+//     different fund ("Sundaram Services Fund" inside "Sundaram Fin Serv Opp Fund"). Measured in
+//     tests/parity/matching-corrections.ts.
 
 import { aliasFor, isExactOnlyKey } from './name-lists.ts';
-import { nameKey, normalize } from './normalize.ts';
+import { nameKey, normalize, normalizeV2 } from './normalize.ts';
 import { ownerAliasOf, ownerAliasTarget, wordsOf, type OwnerAliasTable } from './owner-aliases.ts';
 
 /** Normalised tokens of candidate names, kept between calls (the legacy candNormCache). */
@@ -56,33 +62,43 @@ export type MatchOptions = {
   /** Option B: reject a candidate that leaves a known rare word of the holding's name unmatched (see above). Needs
    * nullOnTies. */
   absentFundGuard?: boolean;
+  /** Matching tokens from normalizeV2 (the alias and name lists keep their legacy keys). */
+  normaliserV2?: boolean;
+  /** With absentFundGuard: also reject a candidate whose own known rare words are left unmatched. */
+  candidateWordGuard?: boolean;
 };
 
 /** The new build's matching (the owner's answers of 25 and 26 Nov 2026): KI-036, KI-101 and the stricter regime (B).
  * The caller adds the owner's aliases. The parity tests call the matcher without options, as the legacy. */
-export const NEW_BUILD_MATCHING: Readonly<Pick<MatchOptions, 'nullOnTies' | 'houseTokens' | 'absentFundGuard'>> = Object.freeze({
+export const NEW_BUILD_MATCHING: Readonly<Pick<MatchOptions, 'nullOnTies' | 'houseTokens' | 'absentFundGuard' | 'normaliserV2' | 'candidateWordGuard'>> = Object.freeze({
   nullOnTies: true,
   houseTokens: true,
   absentFundGuard: true,
+  normaliserV2: true,
+  candidateWordGuard: true,
 });
 
 /** Option B's bar: a known word in fewer than this share of a candidate set's names is informative. */
 export const ABSENT_FUND_SHARE = 0.05;
-const dfCache = new WeakMap<readonly string[], ReadonlyMap<string, number>>();
+/* Per candidate set and per normaliser (the token cache passed in decides which). */
+const dfCache = new WeakMap<TokenCache, WeakMap<readonly string[], ReadonlyMap<string, number>>>();
+const NO_CACHE: TokenCache = new Map();
 
 /** In how many names of a candidate set each word appears. */
 function documentFrequency(candidates: readonly string[], cache?: TokenCache): ReadonlyMap<string, number> {
-  const hit = dfCache.get(candidates);
+  let byCands = dfCache.get(cache ?? NO_CACHE);
+  if (!byCands) dfCache.set(cache ?? NO_CACHE, (byCands = new WeakMap()));
+  const hit = byCands.get(candidates);
   if (hit) return hit;
   const df = new Map<string, number>();
   for (const c of candidates) for (const t of new Set(tokensOf(c, cache))) df.set(t, (df.get(t) ?? 0) + 1);
-  dfCache.set(candidates, df);
+  byCands.set(candidates, df);
   return df;
 }
 
 /** Option B: true when the holding's name leaves unmatched a word the set knows and fewer than ABSENT_FUND_SHARE of
  * its names carry ("fund" and house words never count). */
-function leavesKnownRareWord(nt: readonly string[], ct: readonly string[], isHouse: ((t: string) => boolean) | undefined, candidates: readonly string[], cache: TokenCache | undefined): boolean {
+function leavesKnownRareWord(nt: readonly string[], ct: readonly string[], isHouse: ((t: string) => boolean) | undefined, candidates: readonly string[], cache: TokenCache | undefined, bothSides = false): boolean {
   const df = documentFrequency(candidates, cache);
   const bar = ABSENT_FUND_SHARE * candidates.length;
   const cs = new Set(ct);
@@ -90,6 +106,14 @@ function leavesKnownRareWord(nt: readonly string[], ct: readonly string[], isHou
     if (cs.has(t) || t === 'fund' || (isHouse && isHouse(t))) continue;
     const d = df.get(t) ?? 0;
     if (d > 0 && d < bar) return true;
+  }
+  if (bothSides) {
+    const qs = new Set(nt);
+    for (const t of cs) {
+      if (qs.has(t) || t === 'fund' || (isHouse && isHouse(t))) continue;
+      const d = df.get(t) ?? 0;
+      if (d > 0 && d < bar) return true;
+    }
   }
   return false;
 }
@@ -161,13 +185,15 @@ export function fuzzyScore(nameTokens: readonly string[], amcTok: string, candTo
 
 /** KI-101 (the audit's NEW-4 fix): a house's words are the leading words that at least this share of its names have. */
 export const HOUSE_SHARE = 0.9;
-const houseCache = new WeakMap<readonly string[], ReadonlyMap<string, ReadonlySet<string>>>();
+const houseCache = new WeakMap<TokenCache, WeakMap<readonly string[], ReadonlyMap<string, ReadonlySet<string>>>>();
 
 /** The fund-house words of a candidate set, by first word: the first word, then each next leading word that at least
  * HOUSE_SHARE of the names starting with that prefix carry ("aditya birla sl", "icici pru", "franklin india"). A house
  * with fewer than 3 names keeps only its first word, so one fund's whole name never becomes house words. */
 export function houseWords(candidates: readonly string[], cache?: TokenCache): ReadonlyMap<string, ReadonlySet<string>> {
-  const hit = houseCache.get(candidates);
+  let byCands = houseCache.get(cache ?? NO_CACHE);
+  if (!byCands) houseCache.set(cache ?? NO_CACHE, (byCands = new WeakMap()));
+  const hit = byCands.get(candidates);
   if (hit) return hit;
   const groups = new Map<string, string[][]>();
   for (const c of candidates) {
@@ -193,12 +219,12 @@ export function houseWords(candidates: readonly string[], cache?: TokenCache): R
     }
     out.set(first, new Set(prefix));
   }
-  houseCache.set(candidates, out);
+  byCands.set(candidates, out);
   return out;
 }
 
 /** The exact and fuzzy steps with KI-036's correction: raw name first, then no answer that candidate order decides. */
-function correctedTail(name: unknown, nt: string[], key: string, amcTok: string, candidates: readonly string[], cache?: TokenCache, opts?: MatchOptions, amc?: unknown): MatchDetail {
+function correctedTail(name: unknown, nt: string[], key: string, amcTok: string, candidates: readonly string[], cache?: TokenCache, opts?: MatchOptions, amc?: unknown, legacyKey?: string): MatchDetail {
   const raw = String(name ?? '').trim();
   if (raw !== '' && candidates.includes(raw)) return { key: raw, step: 'exact' };
   const exact = candidates.filter((c) => tokensOf(c, cache).join(' ') === key);
@@ -207,9 +233,9 @@ function correctedTail(name: unknown, nt: string[], key: string, amcTok: string,
     const k = byOption(name, exact);
     return k === null ? { key: null, step: 'exact-ambiguous' } : { key: k, step: 'exact' };
   }
-  if (isExactOnlyKey(key)) return { key: null, step: 'exact-only-stop' };
+  if (isExactOnlyKey(legacyKey ?? key)) return { key: null, step: 'exact-only-stop' };
   const houses = opts?.houseTokens ? houseWords(candidates, cache) : undefined;
-  const amcWords = opts?.houseTokens ? new Set(normalize(amc)) : undefined;
+  const amcWords = opts?.houseTokens ? new Set(opts.normaliserV2 ? normalizeV2(amc) : normalize(amc)) : undefined;
   let tied: string[] = [];
   let bestShared = 0;
   let bestJac = 0;
@@ -219,7 +245,7 @@ function correctedTail(name: unknown, nt: string[], key: string, amcTok: string,
     const isHouse = houses ? (t: string): boolean => amcWords!.has(t) || (own !== undefined && own.has(t)) : undefined;
     const s = fuzzyScore(nt, amcTok, ct, isHouse);
     if (!s) continue;
-    if (opts?.absentFundGuard && leavesKnownRareWord(nt, ct, isHouse, candidates, cache)) continue;
+    if (opts?.absentFundGuard && leavesKnownRareWord(nt, ct, isHouse, candidates, cache, !!opts.candidateWordGuard)) continue;
     if (s.shared > bestShared || (s.shared === bestShared && s.jaccard > bestJac)) {
       tied = [c];
       bestShared = s.shared;
@@ -237,23 +263,34 @@ function correctedTail(name: unknown, nt: string[], key: string, amcTok: string,
 }
 
 /** matchInstrument with the step that decided it. */
+/* normalizeV2 tokens of candidates, kept beside each legacy token cache (or one shared map without a cache). */
+const v2Caches = new WeakMap<TokenCache, TokenCache>();
+const v2Default: TokenCache = new Map();
 export function matchInstrumentDetail(name: unknown, amc: unknown, candidates: readonly string[], cache?: TokenCache, opts?: MatchOptions): MatchDetail {
-  const nt = normalize(name);
+  if (opts?.normaliserV2) {
+    let c2 = cache ? v2Caches.get(cache) : v2Default;
+    if (!c2) v2Caches.set(cache!, (c2 = new Map()));
+    for (const c of candidates) if (!c2.has(c)) c2.set(c, normalizeV2(c));
+    cache = c2;
+  }
+  const legacyKey = nameKey(name);
+  const nt = opts?.normaliserV2 ? normalizeV2(name) : normalize(name);
   const key = nt.join(' ');
-  const alias = aliasFor(key);
+  const alias = aliasFor(legacyKey);
   if (alias !== undefined) {
     if (alias === '') return { key: null, step: 'block' };
     for (const c of candidates) if (c === alias) return { key: alias, step: 'pin' };
   }
   if (opts?.ownerAliases) {
-    const own = ownerAliasOf(name, key, opts.ownerAliases);
+    const own = ownerAliasOf(name, legacyKey, opts.ownerAliases);
     const target = own ? ownerAliasTarget(name, own, candidates) : undefined;
     if (target !== undefined) return { key: target, step: 'owner-alias' };
   }
-  const amcTok = normalize(amc)[0] ?? nt[0] ?? '';
+  const amcTok = (opts?.normaliserV2 ? normalizeV2(amc) : normalize(amc))[0] ?? nt[0] ?? '';
+  if (opts?.candidateWordGuard && !opts.absentFundGuard) throw new Error('matchInstrument: candidateWordGuard extends absentFundGuard; set it too');
   if (opts?.absentFundGuard && !opts.nullOnTies) throw new Error('matchInstrument: absentFundGuard applies on the corrected path; set nullOnTies too');
   if (opts?.houseTokens && !opts.nullOnTies) throw new Error('matchInstrument: houseTokens applies on the corrected path; set nullOnTies too');
-  if (opts?.nullOnTies) return correctedTail(name, nt, key, amcTok, candidates, cache, opts, amc);
+  if (opts?.nullOnTies) return correctedTail(name, nt, key, amcTok, candidates, cache, opts, amc, legacyKey);
   for (const c of candidates) {
     if (tokensOf(c, cache).join(' ') === key) return { key: c, step: 'exact' };
   }
