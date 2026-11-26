@@ -11,7 +11,8 @@
 //
 // This sprint (NB-M7a reader) builds the reader cases of §13.4 (sheet and family, accounts, PAN, repeats, units and
 // rounding, year boundaries, the totals row and the footer) and the reader fixtures of §13.2. The tax cases of §13.4
-// join `cg-statement` in the engine sprint, with `cg-known-answers.json`.
+// are in their own fixture, `cg-tax-cases` (engine sprint S3, PLAN-03 P4), so that `cg-statement` and the reader's
+// hand-worked counts stay unchanged; their known answers are in `cg-known-answers.json`.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -329,6 +330,172 @@ export function noPanLots(): LotSpec[] {
   return panPersonLots().map((l) => ({ ...l, accountName: `${l.client} - Held Away` }));
 }
 
+// --- cg-tax-cases: the tax cases of §13.4 (NB-M7a S3, PLAN-03 P4; cg-statement keeps the reader cases unchanged) ---
+
+/**
+ * The lot rows of cg-tax-cases, in file order: one account per group of cases, so that the merger and successor rules
+ * (same account, other scheme) link only the lots meant to link. The known answers' lots are written as in
+ * tests/fixtures/cg-known-answers.json; the other figures are synthetic and checked only through the validation
+ * results (tests/unit/tax/statement-engine.test.ts). Indexes:
+ *  Sample Client A, Sample Distributor 1 (equity):
+ *   0 short term (EQ-ST-3); 1 long term sold in FY 2019-20 (EQ-LT-3); 2 long term after 23 Jul 2024 (EQ-LT-7);
+ *   3, 4 KA-9 (EQ-LT-5, EQ-LT-7); 5 KA-1; 6 KA-2a; 7 KA-2b; 8 bought before 1 Feb 2018, no 31 Jan 2018 value
+ *   (grandfathering-value-not-supplied); 9 bought Jan 2018 with the 31 Jan 2018 value, sold short term
+ *   (grandfathered-value-ignored); 10 bought Mar 2000, sold FY 2019-20 (cost-input-missing); 11 KA-14 EQ-ST-1;
+ *   12, 13 EQ-LT-1 gain and loss; 14 FY 2008-09 short term; 15, 16 sold 22 and 23 Jul 2024; 17 to 20 KA-7
+ *   (the anniversary with the statement's LTCG, the day after, the 29 Feb purchase on 28 Feb and 1 Mar);
+ *   21 bought and sold on one day; 22 to 25 KA-8 (merger M, successor N, merger M2, successor N2 reset);
+ *   26 an IDCW-option loss held under 12 months in FY 2019-20 (stripping-candidate); 27, 28 ELSS after and inside the
+ *   lock-in; 29 a Thematic Funds lot (category-default-to-confirm; the analyst sets other non-equity for FY 2023-24);
+ *   30, 31 sold 31 Mar and 1 Apr 2026 (EQ-LT-7, EQ-LT-9); 32 tax year 2026-27 short term (EQ-ST-4);
+ *   33 units with three decimals and a 3-paise offset.
+ *  Sample Client A, Sample Distributor 2 (debt):
+ *   34 KA-3a; 35 KA-3b; 36, 37 sold 10 and 11 Jul 2014 (NE-LT-1, NE-ST-2); 38 held 13 to 36 months (NE-ST-2);
+ *   39 held 25 to 36 months, sold before 23 Jul 2024 (NE-ST-2); 40 KA-4; 41 KA-16; 42 NE-LT-2 sold in FY 2015-16;
+ *   43 NE-LT-2 sold in FY 2016-17 (rule-to-be-confirmed); 44 sold 1 Apr 2017 (NE-LT-3); 45 bought FY 1999-2000
+ *   (pre-base-year-cost); 46 after 23 Jul 2024 (NE-LT-4); 47 to 49 KA-5 (i) to (iii); 50 NE-50AA-1; 51 an indexed
+ *   cost shown on a short-term lot (indexed-cost-ignored); 52, 53 Specified sold 31 Mar and 1 Apr 2026 (NE-50AA-2,
+ *   NE-50AA-3); 54, 55 equity sold 31 Mar and 1 Apr 2025.
+ *  Sample Client A, Sample Distributor 3 (KA-17, funds of funds, hybrids):
+ *   56, 57 KA-17 (the pre-gate merger and its successor); 58, 59 KA-6 (a), (b); 60 international fund of funds bought
+ *   before 1 Apr 2023 (NE-LT-4); 61 a gold ETF (NE-LT-4L); 62 a gold fund of funds (NE-ST-3); 63 a close-ended debt
+ *   scheme (listed-flag-missing once marked close-ended); 64 a close-ended Specified scheme (NE-50AA-1); 65 an
+ *   aggressive hybrid sold in FY 2024-25 (tax-class-from-statement); 66 a balanced advantage fund, the same; 67 a
+ *   conservative hybrid bought from 1 Apr 2023 (tax-class-differs); 68 a hybrid scheme the analyst classes; 69 an
+ *   aggressive hybrid sold in tax year 2026-27 (usual-bucket-default); 70 a multi-asset fund labelled Debt bought from
+ *   1 Apr 2023 (tax-class-not-set, specified-test-missing); 71 to 73 a fund of funds the analyst flags 90/90 (FY 2018-19
+ *   short and long term, FY 2017-18); 74 a domestic fund of funds labelled Equity (tax-class-not-set);
+ *   75 a Category Name not in the map (category-unmapped); 76 acquisition columns matching no class (lot-class-other).
+ *  Sample Client B, Sample Distributor 1: 77 KA-10 Client B; 78 to 80 KA-12; 81 to 83 KA-13; 84 to 87 KA-18.
+ *  Sample Client B, Sample Distributor 2: 88 a merger event dated 3 Aug 2015 (answered a taxable consolidation);
+ *   89 a merger event answered an investor switch.
+ *  Sample Client B, Sample Distributor 3: 90, 91 a merger event and its reset successor of another fund house
+ *   (cross-house-merger with the scheme data).
+ */
+export function taxCaseLots(): LotSpec[] {
+  let folio = 91000100;
+  type Spec = Omit<LotSpec, 'client' | 'dist' | 'folio'>;
+  const L = (client: string, dist: string, x: Spec): LotSpec => ({ client, dist, folio: String(++folio), ...x });
+  const A1 = (x: Spec): LotSpec => L(CLIENT_A, D1, x);
+  const A2 = (x: Spec): LotSpec => L(CLIENT_A, D2, x);
+  const A3 = (x: Spec): LotSpec => L(CLIENT_A, D3, x);
+  const B1 = (x: Spec): LotSpec => L(CLIENT_B, D1, x);
+  const B2 = (x: Spec): LotSpec => L(CLIENT_B, D2, x);
+  const B3 = (x: Spec): LotSpec => L(CLIENT_B, D3, x);
+  const eq = (scheme: string, category = 'Large Cap Funds') => ({ scheme: `Sample ${scheme} - Regular Plan - Growth`, asset: 'Equity' as const, category });
+  const debt = (scheme: string, category = 'Corporate Bond Funds') => ({ scheme: `Sample ${scheme} - Regular Plan - Growth`, asset: 'Debt' as const, category });
+  const merger = (sell: Ymd, price: number): Partial<Record<CellName, Cell>> => ({ acqDate: dateCell(sell), acqPrice: price, ltcg: 0, stcg: 0 });
+  const LC = eq('Large Cap Fund');
+  const MC = eq('Mid Cap Fund', 'Mid Cap Funds');
+  const FC = eq('Flexi Cap Fund', 'Flexi Cap Funds');
+  const CB = debt('Corporate Bond Fund');
+  const SD = debt('Short Duration Fund', 'Short Duration Funds');
+  const LMC = eq('Large and Mid Cap Fund', 'Large and Mid Cap Funds');
+  const FOF9090 = { scheme: 'Sample Equity ETF Fund of Funds - Regular Plan - Growth', asset: 'Equity' as const, category: 'FoFs Domestic' };
+  const GLOBAL = { scheme: 'Sample Global Equity Fund of Funds - Regular Plan - Growth', asset: 'Equity' as const, category: 'Fund of Funds Overseas' };
+  const HYB = eq('Aggressive Hybrid Fund', 'Aggressive Hybrid Funds');
+  return [
+    // Sample Client A, Sample Distributor 1 (0 to 33)
+    A1({ ...FC, buy: [2025, 1, 6], sell: [2025, 6, 2], units: 200, buyNav: 80, sellNav: 86 }),
+    A1({ ...LC, buy: [2018, 4, 2], sell: [2019, 8, 1], units: 300, buyNav: 40, sellNav: 47 }),
+    A1({ ...LC, buy: [2022, 3, 1], sell: [2024, 10, 1], units: 150, buyNav: 60, sellNav: 92 }),
+    A1({ ...LC, buy: [2022, 5, 10], sell: [2024, 6, 14], units: 1000, buyNav: 100, sellNav: 180 }),
+    A1({ ...LC, buy: [2022, 5, 10], sell: [2024, 12, 16], units: 1000, buyNav: 100, sellNav: 190 }),
+    A1({ ...LC, buy: [2016, 6, 15], sell: [2025, 6, 16], units: 1000, buyNav: 40, sellNav: 80, over: { acqDate: dateCell([2018, 1, 31]), acqPrice: 50 } }),
+    A1({ ...LC, buy: [2017, 3, 10], sell: [2019, 5, 20], units: 500, buyNav: 30, sellNav: 42, over: { acqDate: dateCell([2018, 1, 31]), acqPrice: 45 } }),
+    A1({ ...LC, buy: [2017, 3, 10], sell: [2020, 6, 22], units: 500, buyNav: 30, sellNav: 25, over: { acqDate: dateCell([2018, 1, 31]), acqPrice: 45 } }),
+    A1({ ...LC, buy: [2017, 6, 1], sell: [2021, 7, 1], units: 100, buyNav: 55, sellNav: 70 }),
+    A1({ ...LC, buy: [2018, 1, 10], sell: [2018, 11, 1], units: 100, buyNav: 48, sellNav: 52, over: { acqDate: dateCell([2018, 1, 31]), acqPrice: 49 } }),
+    A1({ ...LC, buy: [2000, 3, 1], sell: [2019, 8, 1], units: 100, buyNav: 12, sellNav: 60 }),
+    A1({ ...LC, buy: [2005, 5, 2], sell: [2005, 12, 1], units: 1000, buyNav: 20, sellNav: 25 }),
+    A1({ ...LC, buy: [2017, 1, 2], sell: [2018, 3, 15], units: 1000, buyNav: 30, sellNav: 36 }),
+    A1({ ...LC, buy: [2017, 1, 2], sell: [2018, 3, 15], units: 1000, buyNav: 30, sellNav: 25 }),
+    A1({ ...MC, buy: [2008, 5, 5], sell: [2008, 12, 1], units: 100, buyNav: 100, sellNav: 110 }),
+    A1({ ...MC, buy: [2024, 2, 2], sell: [2024, 7, 22], units: 100, buyNav: 100, sellNav: 110 }),
+    A1({ ...MC, buy: [2024, 2, 2], sell: [2024, 7, 23], units: 100, buyNav: 100, sellNav: 110 }),
+    A1({ ...FC, buy: [2024, 9, 17], sell: [2025, 9, 17], units: 1000, buyNav: 50, sellNav: 60, over: { ltcg: 10000, stcg: 0 } }),
+    A1({ ...FC, buy: [2024, 9, 17], sell: [2025, 9, 18], units: 1000, buyNav: 50, sellNav: 60 }),
+    A1({ ...FC, buy: [2024, 2, 29], sell: [2025, 2, 28], units: 100, buyNav: 100, sellNav: 120 }),
+    A1({ ...FC, buy: [2024, 2, 29], sell: [2025, 3, 1], units: 100, buyNav: 100, sellNav: 120 }),
+    A1({ ...LC, buy: [2025, 7, 1], sell: [2025, 7, 1], units: 50, buyNav: 90, sellNav: 90.5 }),
+    A1({ ...MC, buy: [2019, 7, 1], sell: [2023, 11, 10], units: 2000, buyNav: 15, sellNav: 22, over: merger([2023, 11, 10], 22) }),
+    A1({ ...eq('Multi Cap Fund', 'Multi Cap Funds'), buy: [2019, 7, 1], sell: [2026, 5, 4], units: 1000, buyNav: 30, sellNav: 50 }),
+    A1({ ...eq('Focused Fund', 'Focused Funds'), buy: [2019, 7, 1], sell: [2023, 11, 13], units: 2000, buyNav: 15, sellNav: 22, over: merger([2023, 11, 13], 22) }),
+    A1({ ...eq('Value Fund', 'Value Funds'), buy: [2023, 11, 13], sell: [2024, 6, 3], units: 1000, buyNav: 44, sellNav: 50 }),
+    A1({ scheme: 'Sample Large Cap Fund - Regular Plan - IDCW', asset: 'Equity', category: 'Large Cap Funds', buy: [2019, 5, 2], sell: [2019, 9, 2], units: 400, buyNav: 25, sellNav: 22 }),
+    A1({ ...eq('ELSS Tax Saver Fund', 'ELSS'), buy: [2019, 1, 10], sell: [2023, 2, 1], units: 100, buyNav: 45, sellNav: 70 }),
+    A1({ ...eq('ELSS Tax Saver Fund', 'ELSS'), buy: [2022, 6, 1], sell: [2024, 1, 2], units: 100, buyNav: 60, sellNav: 72 }),
+    A1({ ...eq('Infrastructure Fund', 'Thematic Funds'), buy: [2022, 1, 3], sell: [2024, 2, 1], units: 300, buyNav: 30, sellNav: 41 }),
+    A1({ ...LC, buy: [2023, 1, 2], sell: [2026, 3, 31], units: 120, buyNav: 70, sellNav: 95 }),
+    A1({ ...LC, buy: [2023, 1, 2], sell: [2026, 4, 1], units: 120, buyNav: 70, sellNav: 95.5 }),
+    A1({ ...LC, buy: [2026, 1, 5], sell: [2026, 6, 1], units: 80, buyNav: 100, sellNav: 104 }),
+    A1({ ...LC, buy: [2022, 8, 1], sell: [2025, 8, 1], units: 12.345, buyNav: 81.25, sellNav: 99.75, sellOffset: 0.03 }),
+    // Sample Client A, Sample Distributor 2 (34 to 55)
+    A2({ ...CB, buy: [2005, 8, 1], sell: [2012, 9, 3], units: 1000, buyNav: 10, sellNav: 25 }),
+    A2({ ...CB, buy: [2009, 4, 15], sell: [2013, 5, 15], units: 1000, buyNav: 10, sellNav: 16 }),
+    A2({ ...CB, buy: [2013, 3, 1], sell: [2014, 7, 10], units: 1000, buyNav: 10, sellNav: 11 }),
+    A2({ ...CB, buy: [2013, 3, 1], sell: [2014, 7, 11], units: 1000, buyNav: 10, sellNav: 11 }),
+    A2({ ...CB, buy: [2016, 1, 4], sell: [2017, 6, 1], units: 500, buyNav: 14, sellNav: 15 }),
+    A2({ ...CB, buy: [2022, 1, 3], sell: [2024, 3, 1], units: 500, buyNav: 20, sellNav: 22 }),
+    A2({ ...CB, buy: [2018, 6, 11], sell: [2022, 8, 16], units: 1500, buyNav: 20, sellNav: 26, over: { acqPrice: 23.6429, ltcg: 3535.65 } }),
+    A2({ ...CB, buy: [2009, 4, 15], sell: [2013, 5, 15], units: 1000, buyNav: 10, sellNav: 16, over: { acqPrice: 14.8649, ltcg: 1135.14 } }),
+    A2({ ...CB, buy: [2010, 6, 1], sell: [2015, 9, 1], units: 1000, buyNav: 12, sellNav: 17 }),
+    A2({ ...CB, buy: [2010, 6, 1], sell: [2016, 9, 1], units: 1000, buyNav: 12, sellNav: 18 }),
+    A2({ ...CB, buy: [2010, 6, 1], sell: [2017, 4, 1], units: 1000, buyNav: 12, sellNav: 19 }),
+    A2({ ...CB, buy: [1999, 7, 1], sell: [2018, 7, 2], units: 1000, buyNav: 8, sellNav: 30 }),
+    A2({ ...CB, buy: [2022, 2, 1], sell: [2024, 9, 2], units: 800, buyNav: 25, sellNav: 28 }),
+    A2({ ...SD, buy: [2023, 4, 1], sell: [2025, 4, 15], units: 1000, buyNav: 100, sellNav: 116 }),
+    A2({ ...SD, buy: [2023, 3, 31], sell: [2025, 4, 15], units: 1000, buyNav: 100, sellNav: 116 }),
+    A2({ ...SD, buy: [2023, 3, 31], sell: [2025, 3, 31], units: 1000, buyNav: 100, sellNav: 116 }),
+    A2({ ...SD, buy: [2023, 5, 2], sell: [2024, 11, 4], units: 400, buyNav: 50, sellNav: 54 }),
+    A2({ ...CB, buy: [2023, 1, 2], sell: [2024, 2, 1], units: 400, buyNav: 20, sellNav: 21.5, over: { acqPrice: 21 } }),
+    A2({ ...SD, buy: [2023, 6, 1], sell: [2026, 3, 31], units: 300, buyNav: 40, sellNav: 47 }),
+    A2({ ...SD, buy: [2023, 6, 1], sell: [2026, 4, 1], units: 300, buyNav: 40, sellNav: 47.1 }),
+    A2({ ...LMC, buy: [2023, 1, 2], sell: [2025, 3, 31], units: 100, buyNav: 50, sellNav: 66 }),
+    A2({ ...LMC, buy: [2023, 1, 2], sell: [2025, 4, 1], units: 100, buyNav: 50, sellNav: 65 }),
+    // Sample Client A, Sample Distributor 3 (56 to 76)
+    A3({ ...debt('Banking and PSU Fund', 'Banking and PSU Funds'), buy: [2012, 6, 1], sell: [2015, 1, 15], units: 1000, buyNav: 10, sellNav: 12, over: merger([2015, 1, 15], 12) }),
+    A3({ ...debt('Gilt Fund', 'Gilt Funds'), buy: [2012, 6, 1], sell: [2025, 6, 2], units: 1000, buyNav: 10, sellNav: 15 }),
+    A3({ ...GLOBAL, buy: [2023, 4, 10], sell: [2025, 3, 28], units: 400, buyNav: 25, sellNav: 30 }),
+    A3({ ...GLOBAL, buy: [2023, 4, 10], sell: [2025, 5, 12], units: 400, buyNav: 25, sellNav: 32 }),
+    A3({ ...GLOBAL, buy: [2022, 3, 1], sell: [2024, 9, 2], units: 200, buyNav: 22, sellNav: 29 }),
+    A3({ scheme: 'Sample Gold ETF', asset: 'Debt', category: 'Gold ETFs', buy: [2023, 1, 2], sell: [2024, 9, 2], units: 100, buyNav: 50, sellNav: 61 }),
+    A3({ scheme: 'Sample Gold Fund of Fund - Regular Plan - Growth', asset: 'Debt', category: 'FoFs Domestic', buy: [2023, 1, 2], sell: [2024, 9, 2], units: 100, buyNav: 15, sellNav: 18 }),
+    A3({ scheme: 'Sample Fixed Maturity Plan Series 7 - Regular Plan - Growth', asset: 'Debt', category: 'Corporate Bond Funds', buy: [2023, 1, 2], sell: [2024, 9, 2], units: 1000, buyNav: 10, sellNav: 10.9 }),
+    A3({ scheme: 'Sample Fixed Maturity Plan Series 9 - Regular Plan - Growth', asset: 'Debt', category: 'Corporate Bond Funds', buy: [2023, 5, 2], sell: [2024, 10, 1], units: 1000, buyNav: 10, sellNav: 10.8 }),
+    A3({ ...HYB, buy: [2022, 1, 3], sell: [2024, 11, 4], units: 200, buyNav: 30, sellNav: 39 }),
+    A3({ ...eq('Balanced Advantage Fund', 'Balanced Advantage Funds'), buy: [2022, 1, 3], sell: [2024, 11, 4], units: 200, buyNav: 30, sellNav: 37 }),
+    A3({ ...eq('Conservative Hybrid Fund', 'Conservative Hybrid Funds'), buy: [2023, 6, 1], sell: [2024, 12, 2], units: 200, buyNav: 30, sellNav: 32 }),
+    A3({ ...eq('Equity Hybrid Fund', 'Aggressive Hybrid Funds'), buy: [2022, 1, 3], sell: [2024, 11, 5], units: 200, buyNav: 30, sellNav: 38 }),
+    A3({ ...HYB, buy: [2024, 1, 2], sell: [2026, 6, 1], units: 200, buyNav: 35, sellNav: 44 }),
+    A3({ ...debt('Multi Asset Allocation Fund', 'Multi Asset Allocation Funds'), buy: [2023, 6, 1], sell: [2025, 1, 6], units: 300, buyNav: 20, sellNav: 23 }),
+    A3({ ...FOF9090, buy: [2018, 1, 2], sell: [2018, 9, 3], units: 100, buyNav: 50, sellNav: 53 }),
+    A3({ ...FOF9090, buy: [2017, 6, 1], sell: [2018, 9, 3], units: 100, buyNav: 45, sellNav: 53 }),
+    A3({ ...FOF9090, buy: [2016, 6, 1], sell: [2017, 9, 1], units: 100, buyNav: 40, sellNav: 46 }),
+    A3({ scheme: 'Sample Multi Manager Fund of Funds - Regular Plan - Growth', asset: 'Equity', category: 'FoFs Domestic', buy: [2022, 1, 3], sell: [2024, 11, 4], units: 100, buyNav: 20, sellNav: 26 }),
+    A3({ ...eq('Special Situations Fund', 'Special Opportunities Funds'), buy: [2022, 1, 3], sell: [2024, 11, 4], units: 100, buyNav: 20, sellNav: 27 }),
+    A3({ ...LC, buy: [2021, 1, 4], sell: [2023, 6, 1], units: 100, buyNav: 50, sellNav: 61, over: { acqDate: dateCell([2020, 2, 3]), acqPrice: 55 } }),
+    // Sample Client B, Sample Distributor 1 (77 to 87)
+    B1({ ...LC, buy: [2021, 4, 5], sell: [2025, 8, 11], units: 1000, buyNav: 100, sellNav: 240 }),
+    B1({ ...LC, buy: [2023, 5, 2], sell: [2023, 11, 1], units: 1000, buyNav: 150, sellNav: 100 }),
+    B1({ ...SD, buy: [2023, 4, 3], sell: [2024, 2, 1], units: 8000, buyNav: 100, sellNav: 110 }),
+    B1({ ...MC, buy: [2023, 5, 2], sell: [2023, 11, 1], units: 1000, buyNav: 100, sellNav: 130 }),
+    B1({ ...LC, buy: [2022, 6, 1], sell: [2024, 9, 2], units: 1000, buyNav: 200, sellNav: 100 }),
+    B1({ ...CB, buy: [2021, 6, 1], sell: [2024, 9, 2], units: 10000, buyNav: 10, sellNav: 20 }),
+    B1({ ...MC, buy: [2022, 6, 1], sell: [2024, 9, 2], units: 1000, buyNav: 100, sellNav: 200 }),
+    B1({ ...LC, buy: [2023, 5, 2], sell: [2023, 11, 1], units: 1000, buyNav: 150, sellNav: 100 }),
+    B1({ ...FC, buy: [2021, 6, 1], sell: [2023, 12, 1], units: 1000, buyNav: 200, sellNav: 150 }),
+    B1({ ...CB, buy: [2020, 6, 1], sell: [2023, 12, 1], units: 301, buyNav: 100, sellNav: 281.7276, over: { sell: 84800, realised: 54700, ltcg: 54700 } }),
+    B1({ ...MC, buy: [2023, 5, 2], sell: [2023, 11, 1], units: 1000, buyNav: 100, sellNav: 150 }),
+    // Sample Client B, Sample Distributor 2 (88, 89)
+    B2({ ...debt('Dynamic Bond Fund', 'Dynamic Bond Funds'), buy: [2013, 2, 1], sell: [2015, 8, 3], units: 500, buyNav: 20, sellNav: 23, over: merger([2015, 8, 3], 23) }),
+    B2({ ...eq('Bluechip Fund'), buy: [2020, 2, 3], sell: [2021, 3, 1], units: 400, buyNav: 30, sellNav: 34, over: merger([2021, 3, 1], 34) }),
+    // Sample Client B, Sample Distributor 3 (90, 91)
+    B3({ ...eq('Contra Fund', 'Contra Funds'), buy: [2019, 2, 1], sell: [2022, 5, 2], units: 300, buyNav: 40, sellNav: 52, over: merger([2022, 5, 2], 52) }),
+    B3({ ...eq('Other House Value Fund', 'Value Funds'), buy: [2022, 5, 2], sell: [2023, 1, 3], units: 300, buyNav: 52, sellNav: 55 }),
+  ];
+}
+
 // --- cg-template-filled: the app's blank template filled as its Read Me says ---
 
 /**
@@ -432,6 +599,9 @@ export function cgFixtures(xlsx: SheetJS = loadSheetJS()): CgFixture[] {
     toWorkbook(xlsx, [platformSheet(FAMILY, EXPORT_HEADERS, statementBody(panPersonLots()))]));
   add('cg-statement-no-pan', 'the lots of cg-statement-pan-persons with no PAN anywhere and no footer: the person is the client label (person-ambiguous)',
     toWorkbook(xlsx, [platformSheet(FAMILY, EXPORT_HEADERS, statementBody(noPanLots()), false)]));
+  // Added in S3 (PLAN-03 P4): the tax cases of §13.4, in their own fixture so the reader cases keep their counts.
+  add('cg-tax-cases', 'the tax cases of design §13.4 (classes, rules, mergers, losses, persons) in the platform layout, a Grand Total row and a footer',
+    toWorkbook(xlsx, [platformSheet(FAMILY, EXPORT_HEADERS, statementBody(taxCaseLots()))]));
   return out;
 }
 

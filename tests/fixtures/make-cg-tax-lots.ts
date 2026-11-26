@@ -2,6 +2,7 @@
 // test's own) into a platform-layout workbook through the cg-statement generator's row writer (make-cg-statements.ts
 // lotRow and totalsRow), then reads it back with the real workbook reader and parseCapitalGains, end to end.
 // Synthetic data only: clients "Sample Client A" and "Sample Client B", schemes "Sample ... Fund", folios from 91500000.
+// S3 adds the person-year inputs by client label and one call through the reader, the lot engine and the roll-up.
 
 import type { SheetJS } from '../helpers/sheetjs.ts';
 import { loadSheetJS, writeXlsx } from '../helpers/sheetjs.ts';
@@ -10,6 +11,13 @@ import { parseCapitalGains } from '../../app/src/ingest/capital-gains.ts';
 import type { CgImport, CgOptions } from '../../app/src/ingest/capital-gains.ts';
 import type { ClientId, SourceFileId } from '../../app/src/model/ids.ts';
 import { CLIENT_A, CLIENT_B, EXPORT_HEADERS, FAMILY, dateCell, lotRow, totalsRow } from './make-cg-statements.ts';
+import { ymdToDay } from '../../app/src/engine/dates.ts';
+import { realiseLots } from '../../app/src/engine/tax/realised.ts';
+import type { RealiseOptions } from '../../app/src/engine/tax/realised.ts';
+import { rollupPersonYears } from '../../app/src/engine/tax/rollup.ts';
+import type { RollupOptions } from '../../app/src/engine/tax/rollup.ts';
+import type { RealiseResult, RollupResult } from '../../app/src/engine/tax/types.ts';
+import type { TaxInputs } from '../../app/src/model/tax.ts';
 import type { Cell, CellName, LotSpec, Ymd } from './make-cg-statements.ts';
 
 /** A lot as the known-answer file writes it: client, distributor and folio may be left to the defaults; a date cell override is [y, m, d]. */
@@ -67,3 +75,37 @@ export function parseLots(lots: ReadonlyArray<KaLot | LotSpec>, extra: Partial<C
   const wb = readWorkbook(xlsx, statementBytes(specs, xlsx));
   return parseCapitalGains(wb, { sourceId: SRC, now: NOW, review: REVIEW, ...extra });
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// The roll-up (NB-M7a S3): person-year inputs by client label, and the reader, the lot engine and the roll-up in one call.
+
+/** The review's client ids by label (REVIEW above). */
+export const CLIENT_IDS: Readonly<Record<string, ClientId>> = { [CLIENT_A]: 'cl_review_a' as ClientId, [CLIENT_B]: 'cl_review_b' as ClientId };
+
+/** A person-year entry as the known-answer file writes it: the person by client label, or by its person key. */
+export type KaPersonYear = {
+  client?: string; personKey?: string; fy: number; slabPct: number | null; surchargePct: number | null;
+  regime: 'old' | 'new' | null; assesseeMark?: string | null;
+};
+
+/**
+ * The contract's person-year entries: a client label becomes the review's client id (the roll-up applies it to the
+ * person whose single review client it is), a person key ("person:n") is passed as written.
+ */
+export function personYearInputs(rows: readonly KaPersonYear[] = []): TaxInputs['personYear'] {
+  return rows.map((r) => ({
+    clientId: (r.personKey ?? (r.client !== undefined ? CLIENT_IDS[r.client] ?? r.client : null)) as ClientId | null,
+    fy: r.fy, slabPct: r.slabPct, surchargePct: r.surchargePct, regime: r.regime, assesseeMark: r.assesseeMark ?? null,
+  }));
+}
+
+/** The reader, realiseLots and rollupPersonYears over one import, with the review's as-on date (30 Sep 2026). */
+export function realiseAndRoll(imp: CgImport, inputs: TaxInputs, opts: { realise?: RealiseOptions; rollup?: RollupOptions } = {}):
+  { res: RealiseResult; roll: RollupResult } {
+  const res = realiseLots(imp, inputs, { asOnDay: AS_ON_DAY, now: NOW, ...opts.realise });
+  const roll = rollupPersonYears(res.gains, imp, inputs, { now: NOW, ...opts.rollup });
+  return { res, roll };
+}
+
+/** The review's as-on date (design §13.1: 30 Sep 2026). */
+export const AS_ON_DAY = ymdToDay(2026, 9, 30)!;

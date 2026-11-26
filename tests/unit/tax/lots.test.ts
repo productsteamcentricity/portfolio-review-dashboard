@@ -160,7 +160,8 @@ describe('known answers KA-1 to KA-8, KA-14 to KA-17, NE-LT-1 equal legs (cg-kno
     for (const id of ['KA-1', 'KA-2a', 'KA-2b', 'KA-3a', 'KA-3b', 'KA-4', 'KA-5', 'KA-6', 'KA-7', 'KA-8', 'KA-14', 'KA-15',
       'KA-15-reset', 'KA-16', 'KA-17', 'KA-17-two-lots', 'NE-LT-1-equal-legs']) assert.ok(ids.includes(id), id);
     assert.ok((KA.cases as Array<{ group: string }>).every((c) => c.group === 'lots'));
-    assert.deepEqual(KA.rollup, []);
+    // The roll-up cases (S3) live in their own section, never among the lot cases.
+    assert.ok((KA.rollup as Array<{ group: string }>).length > 0 && (KA.rollup as Array<{ group: string }>).every((c) => c.group === 'rollup'));
   });
   for (const c of KA.cases as Array<Record<string, any>>) {
     const variants = [{ id: c.id, inputs: {}, slabPct: c.slabPct ?? null, expect: c.expect }, ...((c.variants ?? []) as Array<Record<string, any>>)];
