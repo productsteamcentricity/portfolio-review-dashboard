@@ -122,6 +122,15 @@ account, scheme label and folio number until its scheme is matched (the statemen
 (client, instrument, product, distributor); an excluded holding by its sheet and row. `InstrumentRef` is as in §5.2
 and is null on a holding until engine/match resolves it (M2).
 
+M2.1 sprint 2a (opt-in, not wired into the page yet): the owner's fund aliases (`data/owner/fund-aliases.json`, PD-36;
+an old scheme name to the renamed fund's Regular and Direct keys, each line with evidence) resolve after the stable
+identifiers and the exact vendor key; the fund ISIN map (`data/identifiers/amfi-isin.json`: ISIN to AMFI scheme code,
+code to official name) resolves a fund ISIN to its scheme code; and a code reaches a universe's key of the same scheme
+through FUND_RANKS_CODES and the official AMFI names, each re-keyed (`engine/match/rekey.ts`: the same key, the same
+normalised name, plan and option, or an owner alias; a disagreement joins nothing). The same re-key joins
+FUND_RANKS_CODES and MF_RISK to MF_PERF keys (KI-052, OD-23), and `directTwin` accepts a Direct key only for the same
+scheme (KI-054).
+
 ## 5. Entities
 
 ### 5.1 `SourceFile` (L1)
@@ -375,7 +384,11 @@ holdings with a market value below 0, read as written, decision D-039); the Info
 holdings whose folios' holding days do not count to one date, decision D-041) and `holder-case-variant` (a
 joint-holder label that differs from a keyed client only in letter case, not linked to it, decision D-039).
 `entity-case-variant` now considers only the labels that key a holding's client or distributor. None of these four
-makes a note. The overview's fixed notes gain `pie-left-out` ("Asset classes with a market value of 0 or less are
+makes a note.
+
+Added in M2.1 sprint 2a (CHAT-008's S3-1): the base-file Warning `isin-disagree` (auto-resolved, resolved): a merged
+holding whose rows carry different ISINs keeps no ISIN (never guessed, rule 3; its name decides the match). Scoped to
+those holdings; no note. The overview's fixed notes gain `pie-left-out` ("Asset classes with a market value of 0 or less are
 left out of the pie: ...", while the total CMV is above 0) and `liquidity-left-out` ("Liquidity lines with a market
 value of 0 or less are left out: ..."), after `unknown`, carried by the pies' share figures.
 

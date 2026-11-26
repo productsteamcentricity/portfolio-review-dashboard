@@ -4,6 +4,28 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M2.1 sprint 2a: matcher corrections, opt-in; not wired into the page yet)
+- **Owner fund aliases** (`data/owner/fund-aliases.json`, `engine/match/owner-aliases.ts`; KI-050, PD-36): the 16 renames the
+  owner approved on 25 Nov 2026, each with public evidence and Regular and Direct targets; line 17 applies only to names
+  saying "regular savings" (ICICI Pru Savings Fund shares its normalised key). Line 10 is on hold.
+- **KI-036** (`MatchOptions.nullOnTies`): a candidate equal to the raw name wins first; Growth and IDCW of one scheme are told
+  apart by the holding's own option ("Dividend Yield" is a category); any other tie gives no match.
+- **KI-101** (`MatchOptions.houseTokens`): a fund house's words (the leading words at least 90% of its names share) and the
+  holding's AMC words never count as distinctive; the thresholds are unchanged. The audit's idf weighting was measured and
+  not adopted (it lost correct official AMFI names or added wrong matches).
+- Measured both ways over the real universes (`tests/parity/matching-corrections.ts`, ledger with every changed answer;
+  official AMFI names as a real-world recall corpus, `tests/parity/amfi-names.json`): self regressions 0; leave-one-out
+  wrong matches 3,932 to 2,725; official names right 1,195 to 1,194 (one score tie the legacy won by candidate order).
+- **KI-052, OD-23, KI-054** (`engine/match/rekey.ts`): FUND_RANKS_CODES and MF_RISK re-keyed onto MF_PERF keys by spelling
+  and owner alias, never by fuzzy match (`tests/parity/rekey-ledger.json`, also the FUND_RANKS_CODES vintage record);
+  the Direct twin only for the same scheme; the look-through key.
+- **Fund ISIN map** (`engine/match/amfi-isin.ts`, `scripts/amfi-isin.ts`): from the monthly NAV fetch's ids file, ISINs of the
+  form only, ambiguous ones left out; the crosswalk resolves a fund ISIN or AMFI code through FUND_RANKS_CODES and the
+  official AMFI names, each re-keyed. The first real file comes from the December refresh.
+
+### Fixed (new build)
+- **S3-1:** a merged holding whose rows carry different ISINs keeps none, with the Warning `base-file.isin-disagree`.
+
 ### Added (new build, M10 Screener data pack: reader and browser store; not wired into the page yet)
 - **`app/src/ingest/screener-pack/`** reads an MF Screener data pack (contract `pr-datapack-v1`, D-026): the zip's central
   directory is checked against archive limits before anything is inflated (path traversal, entry count, nesting,

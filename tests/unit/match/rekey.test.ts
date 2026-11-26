@@ -1,4 +1,4 @@
-// covers: E-103 E-104 E-13 KI-052 OD-23 KI-054 M2.1
+// covers: E-103 E-104 E-13 E-32 KI-052 OD-23 KI-054 M2.1
 // Deterministic joins between reference blocks (app/src/engine/match/rekey.ts): the re-key of FUND_RANKS / MF_RISK onto
 // MF_PERF keys (KI-052, OD-23), the Direct twin (KI-054) and the look-through key. Synthetic known answers.
 

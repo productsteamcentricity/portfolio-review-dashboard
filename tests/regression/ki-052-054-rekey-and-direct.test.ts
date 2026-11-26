@@ -1,4 +1,4 @@
-// covers: E-103 E-104 E-13 KI-052 OD-23 KI-054 M2.1
+// covers: E-103 E-104 E-13 E-32 KI-052 OD-23 KI-054 M2.1
 // KI-052 (P0, the audit's NEW-6) and KI-054 (P0, NEW-8) on the real reference data.
 //   - KI-052: FUND_RANKS_CODES and MF_RISK re-keyed onto MF_PERF keys by spelling (no fuzzy match) and, for the renamed
 //     schemes, through the owner's aliases (OD-23). The audit's examples resolve; the full result equals

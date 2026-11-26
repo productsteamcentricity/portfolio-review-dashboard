@@ -195,9 +195,13 @@
 5. **Claude: M2**, instrument matching ([roadmap](new-build/07-implementation-roadmap.md)). Sprint 1 of M2.1 (identifiers and
    the matcher at parity, no output change) merged in PR #30 and was accepted on 25 Nov 2026. Sprint 3a (the vendor files
    read by header name: MF Monitor, its all-in expense ratio, SIF Monitor, PMS performance, the analytics files; and the
-   base file's ISIN column, read only) is on `feat/m2-3-vendor-parsers`; the upload buttons wait for the spreadsheet-reader
-   decision. Sprint 2 (corrections and classification) follows, with the owner's alias list (PD-36) before it merges and
-   the product-class table after the live page's LP-16.
+   base file's ISIN column, read only) merged in PR #31 on 25 Nov 2026; the upload buttons wait for the spreadsheet-reader
+   decision. Sprint 2a (matcher corrections, under the owner's "new build first" exception to D-028 of 25 Nov 2026) is on
+   `feat/m2-2a-match-corrections`: the owner's 16 fund aliases (PD-36), no answer decided by candidate order (KI-036),
+   fund-house words never distinctive (KI-101), the re-key of ranks and risk ratios (KI-052, OD-23), the same-scheme
+   Direct twin (KI-054), the fund ISIN map and code join, and merged rows with different ISINs (S3-1); all opt-in,
+   measured both ways (`tests/parity/matching-corrections-ledger.json`), not wired into the page yet. Sprint 2b (the
+   product-class table, after the live page's LP-16, now merged) follows.
    Beside M2, the data-platform items (NB-04) are on their own branches: M10, the MF Screener data pack reader and
    browser store (`feat/m10-datapack`); M11a, the monthly update engine core (`feat/m11a-monthly-engine`, after M10);
    M12a, the drawdown engine on index data (`feat/m12a-drawdown`; the owner's answers of 25 Nov 2026 are its defaults;
