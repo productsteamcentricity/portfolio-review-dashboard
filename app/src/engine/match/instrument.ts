@@ -51,6 +51,9 @@ export type MatchOptions = {
   ownerAliases?: OwnerAliasTable;
   /** KI-036: no answer decided by candidate order. */
   nullOnTies?: boolean;
+  /** The crosswalk's sprint 2a identifier steps: a fund ISIN through the AMFI ISIN map, and an AMFI code through the
+   * re-keyed code join (crosswalk.ts codeJoin). Without it the crosswalk is sprint 1's. */
+  identifierJoin?: boolean;
   /** KI-101: fund-house words (houseWords, and the holding's AMC words) never count as distinctive. Needs nullOnTies. */
   houseTokens?: boolean;
   /** Option B: reject a candidate that leaves a known rare word of the holding's name unmatched (see above). Needs
@@ -60,8 +63,9 @@ export type MatchOptions = {
 
 /** The new build's matching (the owner's answers of 25 and 26 Nov 2026): KI-036, KI-101 and the stricter regime (B).
  * The caller adds the owner's aliases. The parity tests call the matcher without options, as the legacy. */
-export const NEW_BUILD_MATCHING: Readonly<Pick<MatchOptions, 'nullOnTies' | 'houseTokens' | 'absentFundGuard'>> = Object.freeze({
+export const NEW_BUILD_MATCHING: Readonly<Pick<MatchOptions, 'nullOnTies' | 'houseTokens' | 'absentFundGuard' | 'identifierJoin'>> = Object.freeze({
   nullOnTies: true,
+  identifierJoin: true,
   houseTokens: true,
   absentFundGuard: true,
 });
@@ -161,6 +165,8 @@ export function fuzzyScore(nameTokens: readonly string[], amcTok: string, candTo
 
 /** KI-101 (the audit's NEW-4 fix): a house's words are the leading words that at least this share of its names have. */
 export const HOUSE_SHARE = 0.9;
+/* Keyed on the candidate array's identity: a caller must not change an array after passing it (pass a new array for new
+ * data, as makeUniverse does); a changed array would get the old house words (Gate B of 10687a5, N2). */
 const houseCache = new WeakMap<readonly string[], ReadonlyMap<string, ReadonlySet<string>>>();
 
 /** The fund-house words of a candidate set, by first word: the first word, then each next leading word that at least

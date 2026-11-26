@@ -25,7 +25,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   the Direct twin only for the same scheme; the look-through key.
 - **Fund ISIN map** (`engine/match/amfi-isin.ts`, `scripts/amfi-isin.ts`): from the monthly NAV fetch's ids file, ISINs of the
   form only, ambiguous ones left out; the crosswalk resolves a fund ISIN or AMFI code through FUND_RANKS_CODES and the
-  official AMFI names, each re-keyed. The first real file comes from the December refresh.
+  official AMFI names, each re-keyed (opt-in: `MatchOptions.identifierJoin`, in `NEW_BUILD_MATCHING`). The first real file comes
+  from the December refresh.
 
 ### Fixed (new build)
 - **S3-1:** a merged holding whose rows carry different ISINs keeps none, with the Warning `base-file.isin-disagree`.
