@@ -128,6 +128,8 @@
   - It serves `index.html` on `main`. After PR #36 (TA-03, 26 Nov 2026): MD5 `08CAC338E0F4468FDC82D032DACA7B5D`,
     16,408,172 bytes, with the October 2026 refresh, CR-0010, LP-16, A5 and the tax batch. (After PR #16 it was
     `12B5E5727FCA01EF2EA162C59913F01D`.) New-build merges leave `index.html` unchanged.
+  - In review: LP-16b, the platform's Product Name values (CR-0012, branch `fix/lp16b-platform-product-names`): page
+    `760AF89501C3857EE7DDDE43E8C446CF`, 16,409,436 bytes; live on the owner's "publish", before 13 Dec 2026.
   - After every deploy the live page is downloaded and its MD5 compared with `main` (batch 1a verified 19 Oct
     2026).
   - Data vintage: 31 Oct 2026 (October refresh: analytics, performance and risk), except ranks (15 Aug), fund managers

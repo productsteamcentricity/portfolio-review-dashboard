@@ -4,6 +4,21 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `760AF89501C3857EE7DDDE43E8C446CF`, 16,409,436 bytes)
+- **The platform's own Product Name values are classed as the owner decided** (CR-0012; 26 Nov 2026):
+  - "Global Exposure" is a GIFT City fund when the instrument name says GIFT or IFSC, otherwise an Offshore fund (it was
+    looked up as a mutual fund).
+  - "Bonds", and every bond, NCD or debenture without USD, US$, dollar or LRS in its product or name, are "Rupee bonds and
+    NCDs" on the listed bond tax rows. The label "US-dollar bonds (through LRS)" (and no tax row) is kept for those that
+    say so. This changes the 25 Nov 2026 rule, which labelled every bond US-dollar.
+  - "P2P Lending" is its own class, "P2P lending" (Debt), not looked up as a fund; still no tax row.
+  - "Unlisted-Direct" is an unlisted share held directly (no fund fee), as "Unlisted Shares" is.
+  - "AIF-Listed" is a Listed AIF: Category III with its note (D-043), as the category "Listed AIF" is.
+  - Mutual Funds, Direct Equity, PMS and SIF are unchanged.
+- `PRODUCT_CLASS_RULES` (contract I-40) gains two optional fields, `nameAny` and `andAny`; `data/refdata` is regenerated.
+- `tools/patches/2026-11-26-lp16b-platform-product-names.js`; `tools/regression/LP16b-platform-product-names.js` (74
+  known-answer checks); the LP-16 test follows the new bond rule; the side-by-side kit's routing copy reads the new fields.
+
 ### Changed (new build, model contracts-3: two additive type changes; types only, `/next/` build byte-identical)
 - **`app/src/model/tax.ts`** (I-37): `NotComputed` gains `'amount-missing'` (a lot whose Sell Amount is blank, the
   reader's `required-cell-blank`; a blank Invested Value stays `'cost-input-missing'`). DATA_DICTIONARY §5.5 lists it.
