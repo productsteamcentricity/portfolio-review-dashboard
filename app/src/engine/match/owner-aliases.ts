@@ -71,7 +71,9 @@ export function parseOwnerAliases(json: unknown): OwnerAliasTable {
     const regular = str(a.regular, `line ${line} regular`);
     const direct = str(a.direct, `line ${line} direct`);
     if (nameKey(regular) === key || nameKey(direct) === key) throw new Error(`fund-aliases: line ${line} points to its own old name`);
-    if (!Array.isArray(a.evidence) || a.evidence.length === 0) throw new Error(`fund-aliases: line ${line} has no evidence`);
+    /* the evidence links live in data/owner/fund-aliases-evidence.json (the page never carries a remote URL); a line
+     * that still lists its own evidence must list some */
+    if (a.evidence !== undefined && (!Array.isArray(a.evidence) || a.evidence.length === 0)) throw new Error(`fund-aliases: line ${line} has no evidence`);
     let requiresPhrase: string | undefined;
     if (a.requiresPhrase !== undefined) {
       requiresPhrase = str(a.requiresPhrase, `line ${line} requiresPhrase`);

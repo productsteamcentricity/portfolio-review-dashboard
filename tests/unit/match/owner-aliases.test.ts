@@ -40,6 +40,17 @@ describe('owner fund aliases: the file', () => {
     assert.deepEqual(lines, [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17]);
   });
 
+  test('every line has public evidence in the evidence file; the table itself carries no remote URL', () => {
+    const ev = readJson('data/owner/fund-aliases-evidence.json') as { table: string; lines: Record<string, unknown> };
+    assert.equal(ev.table, 'fund-aliases-evidence');
+    for (const a of table.byKey.values()) {
+      const urls = ev.lines[String(a.line)];
+      assert.ok(Array.isArray(urls) && urls.length > 0 && urls.every((u) => typeof u === 'string' && u.startsWith('https://')), `line ${a.line}`);
+    }
+    assert.deepEqual(Object.keys(ev.lines).map(Number).sort((x, y) => x - y), [...table.byKey.values()].map((a) => a.line).sort((x, y) => x - y));
+    assert.equal(/https?:/.test(JSON.stringify(FILE)), false);
+  });
+
   test('the parser refuses malformed or inconsistent lines', () => {
     assert.doesNotThrow(() => parseOwnerAliases(one()));
     assert.throws(() => parseOwnerAliases(one({}, { table: 'other' })), /table/);

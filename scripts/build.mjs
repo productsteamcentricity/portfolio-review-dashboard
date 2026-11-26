@@ -58,6 +58,12 @@ export const REFDATA_BLOCKS = Object.freeze([
   ['BENCH_RET', 'data/refdata/BENCH_RET.json'],
   ['STOCK_RET', 'data/refdata/STOCK_RET.json'],
   ['VINTAGE', 'data/refdata/VINTAGE.json'],
+  // the matcher's (NB-02, M2.1 wiring)
+  ['AIF_PERF', 'data/refdata/AIF_PERF.json'],
+  ['PMS_PERF', 'data/refdata/PMS_PERF.json'],
+  ['FUND_RANKS_CODES', 'data/refdata/FUND_RANKS_CODES.json'],
+  ['PRODUCT_CLASS_RULES', 'data/refdata/PRODUCT_CLASS_RULES.json'],
+  ['OWNER_FUND_ALIASES', 'data/owner/fund-aliases.json'],
 ]);
 
 /** The refdata-<NAME> data blocks for a list of [name, file] (files read relative to `root`). */
