@@ -15,13 +15,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   footnote text for screen, slide and sheet ("3Y covers 80% of MF value; 1 fund without a 3Y return excluded", with
   the sources and dates, and the holdings outside the base), which goes with every rendering of the figure; `asOnDay()`
   reads the monitor's as-on text. The figure names what it used (ARC-03 Gate B): its source is the first primary
-  actually used, its date the primary tables' date (the earliest when they differ, missing when a primary used has
-  none), `mixed` flags tables of more than one source or date, and with no source at all there is no figure. A
+  actually used and its date that primary table's date (missing when it has none; I-31), `mixed` flags tables of
+  more than one source or date, and with no source at all there is no figure. A
   holding's plan comes from the vendor table the match came from; an unknown plan is excluded and counted (`no-plan`),
   as is an account plan that disagrees (`plan-mismatch`). MOD-04's rulings of 26 Nov 2026: a figure from more than one
-  (source, as-on) pair lists each part with its share (`parts`, the I-31 field of contracts-3); a table's date is the
-  month-end label, its true price day only in the notes (PD-57, PD-58; `monitorAsOn()`); an explicit "no 3Y" in the
-  primary is never overridden by another source.
+  (source, as-on) pair lists each part with its share of the weights used (`parts`, I-31 since contracts-3); a
+  table's date is the month-end label, its true price day only in the notes (PD-57, PD-58; `monitorAsOn()`); an
+  explicit "no 3Y" in the primary is never overridden by another source.
 - **`app/src/engine/returns/stock-cagr.ts`** (E-148, D-023 point 4): each stock's 1Y/3Y/5Y CAGR from split- and
   bonus-adjusted prices at the exact anniversaries of the review's as-on date (29 Feb maps to 28 Feb), a price on that
   date or up to 7 days earlier, else the tenor is missing (INSUFFICIENT EVIDENCE when the series starts later, never
