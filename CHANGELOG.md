@@ -4,6 +4,33 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M2.1 sprint 2a: matcher corrections, opt-in; not wired into the page yet)
+- **Owner fund aliases** (`data/owner/fund-aliases.json`, `engine/match/owner-aliases.ts`; KI-050, PD-36): the 16 renames the
+  owner approved on 25 Nov 2026, each with public evidence and Regular and Direct targets; line 17 applies only to names
+  saying "regular savings" (ICICI Pru Savings Fund shares its normalised key). Line 10 is on hold.
+- **KI-036** (`MatchOptions.nullOnTies`): a candidate equal to the raw name wins first; Growth and IDCW of one scheme are told
+  apart by the holding's own option ("Dividend Yield" is a category); any other tie gives no match.
+- **KI-101** (`MatchOptions.houseTokens`): a fund house's words (the leading words at least 90% of its names share) and the
+  holding's AMC words never count as distinctive; the thresholds are unchanged. The audit's idf weighting was measured and
+  not adopted (it lost correct official AMFI names or added wrong matches).
+- Measured both ways over the real universes (`tests/parity/matching-corrections.ts`, ledger with every changed answer;
+  official AMFI names as a real-world recall corpus, `tests/parity/amfi-names.json`): self regressions 0; leave-one-out
+  wrong matches 3,932 to 2,725; official names right 1,195 to 1,194 (one score tie the legacy won by candidate order).
+- **Option B, the stricter regime** (`MatchOptions.absentFundGuard`; the owner chose it on 26 Nov 2026, on in
+  `NEW_BUILD_MATCHING`, the preset the wiring will use): rejects a candidate that leaves a known rare word of the holding's
+  name unmatched; measured 2,725 to 1,594 wrong matches for absent funds and 21 of 1,206 correct official names unmatched
+  (mostly normaliser gaps; a measured follow-up aims to recover them).
+- **KI-052, OD-23, KI-054** (`engine/match/rekey.ts`): FUND_RANKS_CODES and MF_RISK re-keyed onto MF_PERF keys by spelling
+  and owner alias, never by fuzzy match (`tests/parity/rekey-ledger.json`, also the FUND_RANKS_CODES vintage record);
+  the Direct twin only for the same scheme; the look-through key.
+- **Fund ISIN map** (`engine/match/amfi-isin.ts`, `scripts/amfi-isin.ts`): from the monthly NAV fetch's ids file, ISINs of the
+  form only, ambiguous ones left out; the crosswalk resolves a fund ISIN or AMFI code through FUND_RANKS_CODES and the
+  official AMFI names, each re-keyed (opt-in: `MatchOptions.identifierJoin`, in `NEW_BUILD_MATCHING`). The first real file comes
+  from the December refresh.
+
+### Fixed (new build)
+- **S3-1:** a merged holding whose rows carry different ISINs keeps none, with the Warning `base-file.isin-disagree`.
+
 ### Changed (new build, model contracts-3: two additive type changes; types only, `/next/` build byte-identical)
 - **`app/src/model/tax.ts`** (I-37): `NotComputed` gains `'amount-missing'` (a lot whose Sell Amount is blank, the
   reader's `required-cell-blank`; a blank Invested Value stays `'cost-input-missing'`). DATA_DICTIONARY §5.5 lists it.
