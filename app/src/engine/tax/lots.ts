@@ -182,12 +182,32 @@ const EPS = 1e-9;
 const priceOf = (t: Transaction): number | null => (t.price.kind === 'value' && t.price.v > 0 ? t.price.v : null);
 const isTrade = (t: Transaction): boolean => t.direction === 'in' || t.direction === 'out';
 
-function consume(lots: Array<{ u: number }>, need: number): void {
+/** The trade price the ledgers use: the flow's price when present and above 0, else null (S5, realised-irr.ts, reuses it). */
+export const tradePriceOf = priceOf;
+/** A trade is a flow whose direction is 'in' or 'out' (OD-16); S5 (realised-irr.ts) reuses it. */
+export const isTradeFlow = isTrade;
+
+/** One take of a FIFO consumption: the position of the lot in the list and the amount taken from it (above 0). */
+export type FifoTake = { index: number; take: number };
+
+/**
+ * Takes `need` from the lots oldest first, in place (the ledgers' FIFO step), and returns each take and the part of
+ * `need` no lot could meet (0 when met). Added for S5 (realised gains derived from the IRR file, realised-irr.ts); the
+ * ledgers above call it through `consume`, so their behaviour is unchanged.
+ */
+export function consumeFifo(lots: Array<{ u: number }>, need: number): { takes: FifoTake[]; short: number } {
+  const takes: FifoTake[] = [];
   for (let i = 0; i < lots.length && need > EPS; i++) {
     const take = Math.min(lots[i]!.u, need);
     lots[i]!.u -= take;
     need -= take;
+    if (take > 0) takes.push({ index: i, take });
   }
+  return { takes, short: need > EPS ? need : 0 };
+}
+
+function consume(lots: Array<{ u: number }>, need: number): void {
+  consumeFifo(lots, need);
 }
 
 /** One pass over trades sorted by day (file order within a day): both FIFO ledgers. */
