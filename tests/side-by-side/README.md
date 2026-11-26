@@ -24,6 +24,8 @@ With `--base`, both `--out` and `--as-on` are required: the command refuses to g
   working tree of the repository, the main checkout or a worktree (except under its git-ignored `test-data/`), and any
   path through OneDrive. Links and junctions are resolved first. The synthetic run writes to
   `test-data/side-by-side/<time>/`, which is git-ignored.
+- Known limit: the guard knows only the kit's own repository and its worktrees. Run from an independent clone that sits
+  inside another checkout's folder, it does not refuse that enclosing checkout. Choose `--out` with care there.
 - The console output and the report name the base file. Keep them local too.
 - With a real file, the report holds client data and carries a red "LOCAL ONLY" banner. Never commit, attach or send it.
 - The kit reads the files and makes no network request.
