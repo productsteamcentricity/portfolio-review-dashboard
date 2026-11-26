@@ -2,6 +2,8 @@
 // (pick, validate, preview, accept, remove), disabled with the reason until a base file is accepted, and the import
 // notes of the file read: rows skipped by reason, unrecognised types and the reader's results, with the notice that
 // these issues do not block the workbook download yet (MOD-04). Words and state come from views/returns.ts.
+// PLAN-05: a "Download a blank transactions (IRR) file template" button, shown at every stage (exports/xlsx/irr-template.ts
+// through the store and the wiring's download path).
 
 import { useEffect, useRef } from 'preact/hooks';
 import type { AppState, Store } from '../store.ts';
@@ -50,6 +52,12 @@ export function IrrSlot({ state, store }: { state: AppState; store: Store }) {
       <p class="field-help">
         The fund and benchmark flows of the same family, read in this browser only. Picking another base file clears it.
       </p>
+      {/* PLAN-05: the blank template, at every stage (no base file needed); its Read Me holds the exact-name rule. */}
+      <div class="actions">
+        <button type="button" id="download-irr-template" class="btn" onClick={() => store.downloadIrrTemplate()}>
+          Download a blank transactions (IRR) file template
+        </button>
+      </div>
       {slot.disabledReason ? <p class="muted" id="irr-file-disabled">{slot.disabledReason}</p> : null}
       <input key={`${state.inputKey}:${u.inputKey}`} ref={input} id="irr-file-input" class="file-input" type="file" accept={IRR_FILE_ACCEPT}
         disabled={slot.disabled} aria-describedby={slot.disabledReason ? 'irr-file-disabled irr-file-status' : 'irr-file-status'}

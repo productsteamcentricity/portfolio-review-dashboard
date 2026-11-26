@@ -21,6 +21,7 @@ import { deckFileName, workbookFileName } from '../views/labels.ts';
 // M3a returns (NB-03): the transactions (IRR) file reader and the returns view-model the workbook takes.
 import type { ReturnsVM } from '../views/returns-vm.ts';
 import { loadIrrFile, type LoadedIrrFile } from '../ingest/load-irr.ts';
+import { buildIrrTemplate, IRR_TEMPLATE_FILE_NAME } from '../exports/xlsx/irr-template.ts'; // PLAN-05: the blank IRR file template (NB-03)
 
 export type LogoAsset = { id: string; label: string; dataUri: string; widthPx: number; heightPx: number };
 export type ExportResult = { kind: 'pptx' | 'xlsx'; fileName: string; bytes: number; sha256: string; audit: Omit<AuditEntry, 'id'> };
@@ -32,6 +33,8 @@ export type Wiring = {
   now(): string;
   /** M3a returns (NB-03): reads a transactions (IRR) file; optional, so the test fakes stay valid. TODO(I-41): the IRR file joins ReviewRequest. */
   loadIrrFile?(bytes: Uint8Array, fileName: string): LoadedIrrFile | LoadError;
+  /** PLAN-05 (NB-03): saves the blank transactions (IRR) file template; optional, so the test fakes stay valid. */
+  downloadIrrTemplate?(): void;
 };
 
 export function browserWiring(build: BuildStamp): Wiring {
@@ -50,5 +53,6 @@ export function browserWiring(build: BuildStamp): Wiring {
     now,
     // M3a returns (NB-03). TODO(I-41): the loaded IRR file becomes ReviewRequest.irr, and its returns Review.returns (computeReview)
     loadIrrFile: (bytes, fileName) => loadIrrFile(bytes, fileName, XLSX as SheetJSLike, { now }),
+    downloadIrrTemplate: () => downloadBytes(buildIrrTemplate(), IRR_TEMPLATE_FILE_NAME, XLSX_MIME), // PLAN-05 (NB-03): no client data, no audit entry
   };
 }
