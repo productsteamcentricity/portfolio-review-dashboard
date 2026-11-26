@@ -14,17 +14,20 @@ chats can code at once.
 
 | Chat | Role | Status |
 |---|---|---|
-| CHAT-006 MOD-03 | Moderator, integrator, writes every `app/src/model/**` file, codes contract types and wiring | active |
-| CHAT-007 EX-02 | Live page (`index.html` patches) | active |
-| CHAT-008 ARC-02 | Guardian: Gate B and Gate D reviews; the rule-10 successor of ARC-01 once registers-4 names it in CHAT_REGISTRY (on main it still shows QUEUED [V CHAT_REGISTRY.md:37]); writes no product code | active |
+| CHAT-013 MOD-04 | Moderator, integrator, writes every `app/src/model/**` file, codes contract types and wiring (from CHAT-006 MOD-03, 25 Nov 2026) | active |
+| CHAT-007 EX-02 | Live page (`index.html` patches), refresh, the side-by-side test kit | active |
+| CHAT-008 ARC-02 | Guardian: Gate B and Gate D reviews; ARC-01's sole rule-10 successor (CHAT_REGISTRY, registers-4); writes no product code | active |
 | CHAT-009 NB-02 | New build: identifiers, ingest, classification, then M3b and M4 | active |
-| CHAT-010 EX-03 | Live-page records, runbook, monthly PRD, refresh tooling | PROPOSED |
-| CHAT-011 NB-03 | New build: financial engines (returns core, capital gains and tax) | PROPOSED; needs phase approval for M3/M7 |
-| CHAT-012 NB-04 | New build: data platform (Screener pack, monthly engine, drawdown, FoF) | PROPOSED; needs phase approval |
-| CHAT-013 ARC-03 | Second Guardian for the new build, same definition files, SHA-bound verdicts. **Not** the rule-10 Guardian (CLAUDE.md:83-84) | PROPOSED |
+| CHAT-010 NB-03 | New build: financial engines (returns core, capital gains and tax); also `app/src/engine/scope.ts` | active (opened 24 Nov 2026) |
+| CHAT-011 NB-04 | New build: data platform (Screener pack, monthly engine, drawdown, FoF) | active (opened 24 Nov 2026) |
+| CHAT-012 ARC-03 | Second Guardian for the new build, same definition files, SHA-bound verdicts. **Not** the rule-10 Guardian (CLAUDE.md:83-84) | active (opened 24 Nov 2026) |
+| EX-03 | Live-page records, runbook, monthly PRD, refresh tooling | PROPOSED, not opened; its items stay with the Moderator or EX-02 |
 
-Chat numbers are the next free ones at the time of writing and are never reused; MOD-03 confirms each number when the
-chat opens [I]. If MOD-03 cannot open a chat, it prepares the title and prompt and asks the owner to open it [V charter:27-28];
+**Correction (registers-4, 26 Nov 2026).** The draft of 24 Nov proposed CHAT-010 to CHAT-013 for EX-03, NB-03, NB-04
+and ARC-03. The chats actually opened as CHAT-010 NB-03, CHAT-011 NB-04, CHAT-012 ARC-03 and CHAT-013 MOD-04; EX-03 has
+no number yet. Next free number: CHAT-014. Read "MOD-03" below as the Moderator (MOD-04 since 25 Nov 2026).
+
+Chat numbers are never reused; the Moderator confirms each number when the chat opens. If MOD-03 cannot open a chat, it prepares the title and prompt and asks the owner to open it [V charter:27-28];
 until a PROPOSED chat opens, its paths stay with MOD-03 and its items show "waits on CHAT-0xx opening".
 
 ## 2. Path globs to owning chat
@@ -41,7 +44,8 @@ Unlisted paths keep the owner given in FILE_OWNERSHIP_AND_CHANGE_CONTROL.md.
 | `app/src/ingest/vendor/**` | NB-02 | contract I-30 |
 | `app/src/engine/classify/<new files>`, `data/owner/fund-aliases.json`, `data/owner/amc-aliases.json` | NB-02 | alias rows need PD-36 per alias. Existing classify files (`liquidity.ts`, `asset.ts`, on main and wired into the M1.4 overview [V ls-tree; engine/review.ts:18]) change only as wiring (Class C, MOD-03 integrates) |
 | `data/owner/category-benchmarks.json` | NB-02 | owner-governed: rows need the named approver [V M2-PLAN-v2:212] |
-| `app/src/engine/lookthrough/**` except `fof.ts`, `app/src/engine/overlap.ts`, `app/src/engine/scope.ts`, `app/src/engine/aggregate/amc.ts`, `data/owner/rating-map.json` | NB-02 (M4) | contracts I-33, I-45 (types written by MOD-03) |
+| `app/src/engine/lookthrough/**` except `fof.ts`, `app/src/engine/overlap.ts`, `app/src/engine/aggregate/amc.ts`, `data/owner/rating-map.json` | NB-02 (M4) | contract I-33 (types written by MOD-03) |
+| `app/src/engine/scope.ts` | NB-03 | first consumer of I-45 (decision D8, 25 Nov 2026, on NB-03's M3a plan); NB-02's M4b imports it and does not edit it |
 | `app/src/engine/lookthrough/fof.ts`, `app/src/engine/history.ts` | NB-04 (M12b) | contract I-33 |
 | `app/src/engine/returns/{performance,portfolio-returns,stock-cagr}.ts`, `app/src/ingest/price-file.ts` | NB-02 (M3b) | NB-02 also makes M10's third-source edits in these files (M10u) |
 | `app/src/engine/returns/{xirr,irr-tree,contributions,scope}.ts`, `app/src/ingest/irr-file.ts` | NB-03 (M3a) | contracts I-31, I-32, I-45 |
@@ -56,6 +60,7 @@ Unlisted paths keep the owner given in FILE_OWNERSHIP_AND_CHANGE_CONTROL.md.
 | `app/src/exports/xlsx/sheets/<new>.ts`, `app/src/exports/pptx/components/<new>.ts` | the milestone's chat | one new file per sheet or component |
 | `app/src/ui/sections/s<N>-*.tsx` (new sections 3 to 9) | the milestone's chat that first fills the section | a second chat adding to a section asks MOD-03 |
 | `app/src/ui/{App,store}.tsx?`, `app/src/ui/wiring.ts`, `app/src/ui/sections/s1-uploads.tsx`, `app/src/ui/components/**`, `app/src/views/overview*.ts` | MOD-03 integrates (hotspots) | rule: one new component file plus one appended line per slot. `s1-uploads.tsx` exists [V] and will get slots from M2.3 (NB-02), M3a and M7a (NB-03), M10 (NB-04), M6 (MOD-03). `wiring.ts` is the only file that may import SheetJS or PptxGenJS [V CLAUDE.md:229]. Existing components (`upload-stages`, `import-report`, `validation-panel`, `source-register`, `disclaimer` and others [V ls-tree]) change only through MOD-03 |
+| `tests/side-by-side/**` | EX-02 | the side-by-side test kit (live page against `/next/`); other chats read and call it only |
 | `tests/<kind>/<area>/**` | the chat owning `<area>` | every test starts with its `// covers:` line. `tests/exports/xlsx/office-scripts.test.ts` is M1.4's (exports owner) [V on main]; the TA-26 guard test (LP-10) gets its own new path outside `tests/exports/`, owned by EX-03 |
 | `.github/workflows/**`, `CLAUDE.md`, `.claude/agents/**`, `package.json`, `package-lock.json`, `scripts/build.mjs`, `scripts/check-next.mjs`, `scripts/validation/**` | MOD-03 | Guardian review for any change. Known cross-area change: LP-01's head `d7683a0` already edits `CLAUDE.md`, `data/refdata/TAX_RULES.json`, `data/refdata/VINTAGE.json` and `docs/TESTING.md` [V git diff 0e483b6 d7683a0]; accepted as part of LP-01 |
 | `docs/coordination/**`, `docs/project-control/**`, `docs/new-build/07-implementation-roadmap.md` | MOD-03 | EX-03 may draft. Exception: NB-02's in-flight roadmap edit on `aa9c943` [V] is accepted |

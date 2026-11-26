@@ -9,6 +9,9 @@ import { AMFI_ISIN_FORM, buildAmfiIsinRecord, parseAmfiIds, parseAmfiIsinRecord 
 import { buildCrosswalk, makeUniverse, resolveInstrument } from '../../../app/src/engine/match/crosswalk.ts';
 import { parseOwnerAliases } from '../../../app/src/engine/match/owner-aliases.ts';
 
+/** The crosswalk's sprint 2a identifier steps are opt-in (Gate B of 10687a5, N1). */
+const J = { identifierJoin: true };
+
 const T = String.fromCharCode(9);
 const CRLF = String.fromCharCode(13, 10);
 const row = (...c: string[]): string => c.join(T);
@@ -66,26 +69,31 @@ describe('crosswalk: fund ISIN to scheme code to the universe key of the same sc
   const funds = makeUniverse('MF_PERF', { 'Zeta Flexi Cap Fund-Reg(G)': {}, 'Zeta Aggressive Hybrid Fund(G)': {}, 'Zeta Liquid Fund(G)': {} }, 'MF', 'instrument', 'MF');
 
   test('an ISIN resolves through the re-keyed spelling', () => {
-    const r = resolveInstrument({ name: 'Something else', isin: 'INF000A01AB9' }, funds, cw);
+    const r = resolveInstrument({ name: 'Something else', isin: 'INF000A01AB9' }, funds, cw, J);
     assert.equal(r.vendorKey, 'Zeta Flexi Cap Fund-Reg(G)');
     assert.deepEqual(r.resolution, { method: 'isin', confidence: 'exact' });
     assert.equal(r.amfiCode, '100001');
   });
 
   test('a renamed scheme\'s ISIN reaches its new name through the owner\'s alias (OD-23)', () => {
-    const r = resolveInstrument({ name: 'Zeta Equity & Debt Fund - Growth', isin: 'INF000A01AE3' }, funds, cw);
+    const r = resolveInstrument({ name: 'Zeta Equity & Debt Fund - Growth', isin: 'INF000A01AE3' }, funds, cw, J);
     assert.equal(r.vendorKey, 'Zeta Aggressive Hybrid Fund(G)');
     assert.equal(r.resolution.method, 'isin');
   });
 
   test('an ISIN with no map entry, or an ambiguous one, falls back to the name', () => {
-    const r = resolveInstrument({ name: 'Zeta Liquid Fund - Growth', isin: 'INF000A01AD5' }, funds, cw, { nullOnTies: true });
+    const r = resolveInstrument({ name: 'Zeta Liquid Fund - Growth', isin: 'INF000A01AD5' }, funds, cw, { ...J, nullOnTies: true });
     assert.equal(r.vendorKey, 'Zeta Liquid Fund(G)');
     assert.equal(r.resolution.method, 'name-match');
   });
 
+  test("without identifierJoin the crosswalk is sprint 1's: no fund ISIN step, no re-keyed code", () => {
+    assert.equal(resolveInstrument({ name: 'x', isin: 'INF000A01AB9' }, funds, cw).resolution.method, 'none');
+    assert.equal(resolveInstrument({ name: 'x', amfiCode: '100001' }, funds, cw).resolution.method, 'none');
+  });
+
   test('an AMFI code resolves through the re-keyed spelling too', () => {
-    const r = resolveInstrument({ name: 'x', amfiCode: '100001' }, funds, cw);
+    const r = resolveInstrument({ name: 'x', amfiCode: '100001' }, funds, cw, J);
     assert.equal(r.vendorKey, 'Zeta Flexi Cap Fund-Reg(G)');
     assert.equal(r.resolution.method, 'amfi');
   });
@@ -102,16 +110,16 @@ describe('crosswalk: codes joined through the official AMFI names', () => {
     const cw = buildCrosswalk({ fundRankCodes: {}, stocks: {}, fundIsins: ids.byIsin, amfiNames: names });
     const direct = makeUniverse('MF_PERF_DIRECT', { 'Zeta Flexi Cap Fund(G)-Direct Plan': {} }, 'MF', 'instrument', 'MF');
     const regular = makeUniverse('MF_PERF', { 'Zeta Small Cap Fund-Reg(G)': {}, 'Zeta Flexi Cap Fund-Reg(G)': {} }, 'MF', 'instrument', 'MF');
-    assert.equal(resolveInstrument({ name: 'x', isin: 'INF000B01AA1' }, direct, cw).vendorKey, 'Zeta Flexi Cap Fund(G)-Direct Plan');
-    assert.equal(resolveInstrument({ name: 'x', isin: 'INF000B01AA1' }, regular, cw).vendorKey, undefined, 'never the other plan');
-    assert.equal(resolveInstrument({ name: 'x', isin: 'INF000B01AB9' }, regular, cw).vendorKey, 'Zeta Small Cap Fund-Reg(G)');
+    assert.equal(resolveInstrument({ name: 'x', isin: 'INF000B01AA1' }, direct, cw, J).vendorKey, 'Zeta Flexi Cap Fund(G)-Direct Plan');
+    assert.equal(resolveInstrument({ name: 'x', isin: 'INF000B01AA1' }, regular, cw, J).vendorKey, undefined, 'never the other plan');
+    assert.equal(resolveInstrument({ name: 'x', isin: 'INF000B01AB9' }, regular, cw, J).vendorKey, 'Zeta Small Cap Fund-Reg(G)');
   });
 
   test('FUND_RANKS_CODES and the AMFI names giving one key different codes: no join', () => {
     const names = new Map([['300001', 'Zeta Mid Cap Fund - Regular Plan - Growth']]);
     const cw = buildCrosswalk({ fundRankCodes: { 'Zeta Midcap Fund-Reg(G)': '399999' }, stocks: {}, fundIsins: new Map([['INF000C01AA1', '300001']]), amfiNames: names });
     const u = makeUniverse('MF_PERF', { 'Zeta Mid Cap Fund-Reg(G)': {} }, 'MF', 'instrument', 'MF');
-    assert.equal(resolveInstrument({ name: 'x', isin: 'INF000C01AA1' }, u, cw).vendorKey, undefined);
-    assert.equal(resolveInstrument({ name: 'x', amfiCode: '399999' }, u, cw).vendorKey, undefined);
+    assert.equal(resolveInstrument({ name: 'x', isin: 'INF000C01AA1' }, u, cw, J).vendorKey, undefined);
+    assert.equal(resolveInstrument({ name: 'x', amfiCode: '399999' }, u, cw, J).vendorKey, undefined);
   });
 });
