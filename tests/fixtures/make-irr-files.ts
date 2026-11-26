@@ -106,6 +106,55 @@ export function matchedSheets(): SheetDef[] {
 }
 
 /**
+ * The platform's cashflow file layout (the owner's layout of 26 Nov 2026, headings only; invented names): six sheets,
+ * header in row 1, the headings exactly as the export writes them (the rupee sign and a trailing space on the money
+ * columns, TRANSACTIONTYPE without a space, INDEXNAME on the benchmark sheets). The since-inception pair carries the
+ * matched flows (as `matchedSheets`); the YTD and QTD pairs carry one different pair of flows each, so a reader that
+ * took them in place of SI would show other figures.
+ */
+export const CASHFLOW_FUND_HEADER = ['CLIENT', 'ACCOUNT', 'INSTRUMENT', 'FOLIO_NO', 'AMOUNT (₹) ', 'PRICE (₹) ', 'TRXN_DATE', 'TRANSACTIONTYPE', 'CATEGORY', 'ASSET', 'PRODUCT', 'DISTRIBUTOR', 'TYPE'];
+export const CASHFLOW_BENCH_HEADER = ['CLIENT', 'ACCOUNT', 'INSTRUMENT', 'FOLIO_NO', 'BM_AMOUNT (₹) ', 'PRICE (₹) ', 'TRXN_DATE', 'TRANSACTIONTYPE', 'CATEGORY', 'ASSET', 'PRODUCT', 'DISTRIBUTOR', 'TYPE', 'INDEXNAME'];
+export function cashflowSheets(): SheetDef[] {
+  const C = BOOK_DISTRIBUTORS.d1;
+  const O = BOOK_DISTRIBUTORS.d2;
+  const f = (client: string, account: string, instrument: string, folio: Cell, amount: number, price: Cell, date: Cell, type: string | null, category: string, asset: string, dist: string | null, rowType: string | null): Cell[] =>
+    [client, account, instrument, folio, amount, price, date, type, category, asset, 'Mutual Funds', dist, rowType];
+  const b = (client: string, account: string, instrument: string, folio: Cell, amount: number, date: Cell, category: string, asset: string, dist: string | null, index: string): Cell[] =>
+    [client, account, instrument, folio, amount, null, date, null, category, asset, 'Mutual Funds', dist, null, index];
+  const si: Cell[][] = [CASHFLOW_FUND_HEADER,
+    f(A, 'Sample Client A - Joint', BLUE, 'SYN-1001', -10000, 50, dateCell(2023, 4, 1), 'Purchase', 'Large Cap Fund', 'Equity', C, null),
+    f(A, 'Sample Client A - Joint', BLUE, 'SYN-1001', -5000, 55, dateCell(2024, 4, 1), 'Systematic Purchase', 'Large Cap Fund', 'Equity', C, null),
+    f(A, 'Sample Client A - Joint', BLUE, 'SYN-1001', 17000, null, dateCell(2025, 3, 31), null, 'Large Cap Fund', 'Equity', C, 'Closing'),
+    f(A, 'Sample Client A', BOND, 1003, -20000, 20, dateCell(2023, 6, 15), 'SIP', 'Corporate Bond Fund', 'Debt', O, null),
+    f(A, 'Sample Client A', BOND, 1003, 22000, 22, dateCell(2024, 6, 15), 'Redemption', 'Corporate Bond Fund', 'Debt', O, null),
+    f(B, 'Sample Client B', BAL, 'SYN-2001/01', -8000, 40, dateCell(2024, 1, 1), 'Switch In', 'Balanced Advantage Fund', 'Hybrid', null, null),
+    f(B, 'Sample Client B', BAL, 'SYN-2001/01', 8800, null, dateCell(2024, 12, 31), 'Valuation', 'Balanced Advantage Fund', 'Hybrid', null, 'Closing'),
+  ];
+  const siBm: Cell[][] = [CASHFLOW_BENCH_HEADER,
+    b(A, 'Sample Client A - Joint', BLUE, 'SYN-1001', -10000, dateCell(2023, 4, 1), 'Large Cap Fund', 'Equity', C, 'Sample Index 1'),
+    b(A, 'Sample Client A - Joint', BLUE, 'SYN-1001', -5000, dateCell(2024, 4, 1), 'Large Cap Fund', 'Equity', C, 'Sample Index 1'),
+    b(A, 'Sample Client A - Joint', BLUE, 'SYN-1001', 16500, dateCell(2025, 3, 31), 'Large Cap Fund', 'Equity', C, 'Sample Index 1'),
+    b(B, 'Sample Client B', BAL, 'SYN-2001/01', -8000, dateCell(2024, 1, 1), 'Balanced Advantage Fund', 'Hybrid', null, 'Sample Index 2'),
+    b(B, 'Sample Client B', BAL, 'SYN-2001/01', 8600, dateCell(2024, 12, 31), 'Balanced Advantage Fund', 'Hybrid', null, 'Sample Index 2'),
+  ];
+  const period = (amountOut: number): [Cell[][], Cell[][]] => [
+    [CASHFLOW_FUND_HEADER,
+      f(A, 'Sample Client A - Joint', BLUE, 'SYN-1001', -1000, 60, dateCell(2025, 1, 1), 'Purchase', 'Large Cap Fund', 'Equity', C, null),
+      f(A, 'Sample Client A - Joint', BLUE, 'SYN-1001', amountOut, null, dateCell(2025, 3, 31), null, 'Large Cap Fund', 'Equity', C, 'Closing')],
+    [CASHFLOW_BENCH_HEADER,
+      b(A, 'Sample Client A - Joint', BLUE, 'SYN-1001', -1000, dateCell(2025, 1, 1), 'Large Cap Fund', 'Equity', C, 'Sample Index 1'),
+      b(A, 'Sample Client A - Joint', BLUE, 'SYN-1001', amountOut, dateCell(2025, 3, 31), 'Large Cap Fund', 'Equity', C, 'Sample Index 1')],
+  ];
+  const [ytd, ytdBm] = period(1100);
+  const [qtd, qtdBm] = period(900);
+  return [
+    { name: 'SI Xirr', rows: si }, { name: 'SI Bmxirr', rows: siBm },
+    { name: 'YTD Xirr', rows: ytd }, { name: 'YTD Bmxirr', rows: ytdBm },
+    { name: 'QTD Xirr', rows: qtd }, { name: 'QTD Bmxirr', rows: qtdBm },
+  ];
+}
+
+/**
  * Known answers (Gate B C2, NB-03), worked on paper. Every pair of flows is 365 days apart (1 Jan 2023 to 1 Jan 2024,
  * no 29 February between), so each XIRR is the plain growth over the year:
  *  rows 2-3  A, Bluechip, Centricity: -10,000 then +11,000 (Closing): fund 10.00%; benchmark -10,000 then +10,500: 5.00%;
@@ -209,6 +258,7 @@ export function irrFixtures(xlsx: SheetJS = loadSheetJS()): IrrFixture[] {
     ]) },
     { id: 'irr-matched', description: 'the standard flows with the base book\'s distributors (Centricity, Other Distributor): non-empty adviser scopes', bytes: toWorkbook(xlsx, matchedSheets()) },
     { id: 'irr-known', description: 'hand-worked known answers: 10.00%, -10.00%, a 44.44% unassigned share (Gate B C2)', bytes: toWorkbook(xlsx, knownSheets()) },
+    { id: 'irr-cashflow', description: 'the platform\'s six-sheet cashflow layout (SI, YTD, QTD pairs; the export\'s exact headings): the SI pair is read', bytes: toWorkbook(xlsx, cashflowSheets()) },
   ];
 }
 

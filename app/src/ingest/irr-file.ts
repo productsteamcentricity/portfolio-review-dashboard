@@ -1,8 +1,9 @@
 // IRR / transactions file reader (milestone M3a, NB-M3a; parity row E-05, E-142; interface I-04; contract I-32
 // model/transactions.ts; OD-16; KI-075, KI-186, KI-211). A port of the legacy parseIRR (index.html, 09_parsers.js:365)
 // with the accepted decisions applied:
-//   - sheets: the legacy name test ("BMXIRR", "BM XIRR" or "BMX" in the name: benchmark; else "XIRR": fund; the last
-//     sheet that matches wins, as in the legacy), then the legacy content test (a header with a benchmark-amount
+//   - sheets: the legacy name test ("BMXIRR", "BM XIRR" or "BMX" in the name: benchmark; else "XIRR": fund), a
+//     since-inception sheet ("SI Xirr", "SI Bmxirr" of the platform's six-sheet cashflow file) preferred over YTD and
+//     QTD sheets, else the last sheet that matches, as in the legacy; then the legacy content test (a header with a benchmark-amount
 //     column: benchmark; with an amount column: fund); the header in the first 20 rows with a client, an amount and a
 //     date column (the I-04 aliases, matched on the upper-cased header and on the header with its parenthesised unit
 //     and currency signs removed, as the legacy hmap does);
@@ -198,15 +199,25 @@ export function parseIrrFile(wb: Workbook, opts: IrrFileOptions): IrrFileImport 
   const issues = new Issues();
   const fileScope: ValidationScope = { kind: 'file', sourceId };
 
-  // 1. Sheets: by name (the last match wins, as in the legacy), then by content.
+  // 1. Sheets: by name, then by content. The platform's cashflow file (owner's layout of 26 Nov 2026) has six sheets:
+  // SI Xirr and SI Bmxirr (since inception, the review's flows) and YTD and QTD pairs. A since-inception sheet ("SI"
+  // as the name's first word) is preferred whatever the order; without one, the last match wins, as in the legacy.
   let benchSh: Sheet | null = null;
   let fundSh: Sheet | null = null;
+  let benchSi = false;
+  let fundSi = false;
   const found = new Map<Sheet, 'by-name' | 'by-content'>();
   const nameMatched = new Set<Sheet>();
+  const isSi = (u: string): boolean => /^SI\b/.test(u.trim());
   for (const s of wb.sheets) {
     const u = s.name.toUpperCase();
-    if (u.includes('BMXIRR') || u.includes('BM XIRR') || u.includes('BMX')) { benchSh = s; nameMatched.add(s); }
-    else if (u.includes('XIRR')) { fundSh = s; nameMatched.add(s); }
+    if (u.includes('BMXIRR') || u.includes('BM XIRR') || u.includes('BMX')) {
+      nameMatched.add(s);
+      if (!benchSi || isSi(u)) { benchSh = s; benchSi = isSi(u); }
+    } else if (u.includes('XIRR')) {
+      nameMatched.add(s);
+      if (!fundSi || isSi(u)) { fundSh = s; fundSi = isSi(u); }
+    }
   }
   if (benchSh) found.set(benchSh, 'by-name');
   if (fundSh) found.set(fundSh, 'by-name');
