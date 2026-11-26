@@ -10,7 +10,8 @@
      - each of the 13 script blocks is found by its marker, exactly once
      - no network API and no remote URL in the application code or the page
        shell (compliance: client holdings never leave the browser)
-     - the engine loads headlessly and exposes the documented ENGINE surface
+     - the engine loads headlessly and exposes exactly the documented ENGINE surface
+       (every name in ENGINE_KEYS, and no export that ENGINE_KEYS does not list: KI-185)
      - every REFDATA block is present and non-empty; DATA_DATES has 7 dates
      - a market-cap / sector / rating look-through is off 100 by more than 0.5
    WARN (reported, exit 0)
@@ -44,9 +45,10 @@ const MARKERS = [                                   /* the same markers tools/en
 const APP_BLOCKS = ['engine', 'exporters', 'parsers', 'app_ui', 'boot'];
 const NETWORK = [/\bfetch\s*\(/, /XMLHttpRequest/, /\bWebSocket\b/, /\bEventSource\b/, /sendBeacon/, /\bimport\s*\(/,
   /https?:\/\//, /navigator\.serviceWorker/, /\bnew\s+Worker\s*\(/];
-const ENGINE_KEYS = ['palette', 'FONT', 'amcDisplay', 'normalize', 'matchInstrument', 'matchPMS', 'resolveBench',
-  'benchmarkFor', 'bucketDefs', 'parseBaseRows', 'assetLabel', 'computeReview', 'computeTaxation', 'taxClassOf', 'aiaCompute',
-  'aiaWeights', 'aiaAmcCap', 'aiaOvBands', 'fmt', 'buildPPTX', 'buildXLSX', 'parsers'];
+const ENGINE_KEYS = ['palette', 'FONT', 'amcDisplay', 'amcKey', 'normalize', 'matchInstrument', 'matchPMS', 'resolveBench',
+  'benchmarkFor', 'bucketDefs', 'parseBaseRows', 'assetLabel', 'computeReview', 'computeTaxation', 'taxClassOf', 'taxClassify',
+  'taxApplyAssumptions', 'taxAssumeFor', 'taxDefaults', 'xirr', 'aiaCompute', 'aiaWeights', 'aiaAmcCap', 'aiaOvBands', 'fmt',
+  'buildPPTX', 'buildXLSX', 'parsers'];
 const PARSER_KEYS = ['parseEquitySide', 'parseDebtSide', 'parseMonitor', 'parseSIF', 'parsePMS', 'parseIRR', 'fmtDate',
   'parseAdditionalDebt', 'parseSOA'];
 const REF_KEYS = ['FUND_RANKS', 'FUND_RANKS_META', 'FUND_MGR', 'FUND_MGR_META', 'TAX_RULES', 'DATA_DATES',
@@ -109,7 +111,10 @@ try { H = require('./engine-host.js').load(); pass('engine loads headlessly from
 catch (e) { fail('engine loads headlessly: ' + (e && e.message)); }
 if (H) {
   const miss = ENGINE_KEYS.filter(k => !(k in H.E));
-  check(miss.length === 0, 'ENGINE exposes the documented surface' + (miss.length ? ' — missing ' + miss.join(', ') : ''));
+  /* KI-185: the check used to run one way only, so an export could be added without being listed (six went unlisted); an export that ENGINE_KEYS does not name fails too */
+  const extra = Object.keys(H.E).filter(k => ENGINE_KEYS.indexOf(k) < 0);
+  check(miss.length === 0 && extra.length === 0, 'ENGINE exposes the documented surface, no more and no less (' + ENGINE_KEYS.length + ' names)' +
+    (miss.length ? ' — missing ' + miss.join(', ') : '') + (extra.length ? ' — exported but not in ENGINE_KEYS (list them above, and in the interface contract): ' + extra.join(', ') : ''));
   const pmiss = PARSER_KEYS.filter(k => typeof (H.E.parsers || {})[k] !== 'function');
   check(pmiss.length === 0, 'ENGINE.parsers exposes the documented parsers' + (pmiss.length ? ' — missing ' + pmiss.join(', ') : ''));
   check(H.E.aiaAmcCap === 20, 'AI Analyst AMC cap is 20 (got ' + H.E.aiaAmcCap + ')');

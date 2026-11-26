@@ -1,22 +1,58 @@
 # Project state
 
-**Last updated:** 2 Nov 2026.
+**Last updated:** 9 Nov 2026.
 - The full audit is done: 67 issues, see [`audits/`](audits/).
 - Fixes are shipping in batches (CR-0005): batches 1a and 1b (the audit's whole batch 1) are done. Fix batch 2a
   (KI-124, OD-32 renamed fund houses, OD-34 "AMC not given", CR-0007) is merged (PR #9; `index.html` MD5
   `911A04659CB34383E478416B54E9C306`); its browser acceptance passed on 22 Oct 2026, and the QA found KI-127 and
   KI-128 (both also on main before the batch).
-- **Fix batch 4, base-file reading (CR-0009, D-041), is accepted** (27 Oct 2026: financial review, browser
-  acceptance and security gate passed) on `fix/legacy-batch-4-basefile-r2`: KI-140 to KI-146, the
+- **Fix batch 4, base-file reading (CR-0009, D-041), is accepted and merged** (PR #16; 27 Oct 2026: financial review, browser
+  acceptance and security gate passed; branch `fix/legacy-batch-4-basefile-r2`): KI-140 to KI-146, the
   reading defects the new build's parity work found, fixed on the live page (merged units and purchase dates, total
   rows, text in number cells, impossible dates, Asset Name variants, and the P1 IPS actuals), each with a known-answer
   regression test; the review added the skip of a repeated header row (no false warning); `index.html` MD5
-  `12B5E5727FCA01EF2EA162C59913F01D` once merged. A private census of the 32 real base files on the laptop found none
+  `12B5E5727FCA01EF2EA162C59913F01D` on `main`. A private census of the 32 real base files on the laptop found none
   of these cases except merged folios: 18 merged holdings take an earlier purchase date and 6 lose their "Avg.
   Holding Days". Open for the owner: question 1 of D-041 (holding days of merged folios) and the other choices in
   CR-0009 (total rows skipped, letter case folded); KI-066 (the IPS hybrid remainder, which KI-146's sums make larger
   on books with split labels). For the new build: KI-148 (M1.4: fixture cases for D-041 points 2 and 3; align
   `DATA_DICTIONARY.md` §5.3 and §8, whose "as the legacy" wording is stale once this merges).
+- **Tax batch (CR-0008, 27 Oct 2026):** the owner's TY 2026-27 Tax Reckoner is the source of record for the live
+  page's taxation. The review found 23 discrepancies (KI-160 to KI-182); the lead's defaults are D-040, each open to the
+  owner's confirmation. Part T1 (classification and the TAX_RULES rows: KI-162 to KI-165, KI-170, KI-172 to KI-174,
+  KI-178 to KI-180) is committed on `fix/legacy-batch-3-tax` (`index.html` MD5 `5717A796…`, not pushed). Part T2
+  (holding periods and lots: KI-160, KI-161, KI-176 and the disclosure step of KI-177) is committed on
+  `fix/legacy-batch-3-tax-p2`, on top of T1 (`index.html` MD5 `AE70F78B…`, not pushed). Part T3 (the harvest per
+  client, the Rs 1.25 lakh Sec 198 exemption with the analyst's "already used" input, the set-off order with the
+  analyst's slab rate, AIF Category III at fund level, AIF Category I and II and PMS not split, the carry-forward
+  wording and the crypto source: KI-166 to KI-169, KI-171, KI-175, KI-181, KI-182, with KI-130) and part T4 (the
+  financial re-review of T3: crypto kept out of set-off until the owner rules, CR-0008 question 18 (answered 2 Nov 2026:
+  keep no set-off, D-043); two figures in the records corrected) are committed on `fix/legacy-batch-3-tax-p3-r2`, on top
+  of T2 (`index.html` MD5 `61FC0FB2…`).
+  The branch then merged `main` with fix batch 4 (PR #16) and its page was rebuilt from main's page with the four
+  tax patches, two anchors of part T2 revised where the batches meet (CR-0008, "Rebased on fix batch 4"; `index.html` MD5
+  `0713C6BE…`). Part T5 (2 Nov 2026: the follow-ups to T1 to T4, the owner's answers to questions 17, 18 and 24, and the
+  corrections from an independent review; D-043) is committed on `fix/legacy-batch-3-tax-cr-0008`, the branch that
+  carries the whole batch (`index.html` MD5 `32CE9C58…`): the usual bucket of aggressive hybrid, arbitrage and equity
+  savings funds applies only from 1 Apr 2026 (KI-170), a Listed AIF is Category III with a safe note (question 17; since
+  the owner's answer to question 24 on 9 Nov 2026, only for a fund of the performance entry's own name), crypto
+  stays out of set-off (question 18), an IRR date with an explicit zone is the day written (KI-186), the harvest inputs
+  read digit grouping and currency marks, and KI-184 to KI-186 and KI-200 to KI-214 are filed. 22 of the 23 findings
+  are fixed and KI-177 in part; KI-177's step-up waits for the owner's rulings. The five-reviewer review of the
+  committed head (62 findings, 2 Nov 2026) is answered in CR-0008: the corrections were in the records and the tests
+  only (page `391E722F…`); on 9 Nov 2026 the owner answered question 24 ("Restrict it (Recommended)") and stage S10
+  changed the page for it; stage S11 (ARC-01's pre-check of stage S10) then applied the same name equality to the
+  performance entry's stated category (`32CE9C58…`). The regression suite is 47 files and 1,649 checks. Open for the owner:
+  question 23 (IRR dates); for the tax adviser: questions 25 and 26. The final head's check results go into the pull
+  request. The batch merges as one pull request after the gate reviews and the browser acceptance (with
+  `family-isolation.js`'s assumption-reset check); the slide geometry for a table of 13 or more classes in PowerPoint
+  has not been run.
+  **25 Nov 2026:**
+  - Stage S12 (ARC-02's Gate B points T1 to T3, foreign bonds and offshore shares; ARC-02 GO on 153ccb2) is done.
+  - The owner signed off the batch: PD-01, PD-04, PD-44 and PD-54 accepted; "Publish when green". The tax-adviser
+    questions are 2, 3, 13, 14, 15 and 27 (D-043, CR-0008).
+  - The branch took main 9c43e4f, with LP-16 and A5 live: `index.html` MD5 `08CAC338E0F4468FDC82D032DACA7B5D`.
+  - MOD-04 publishes on a green Step 8 and ARC-02's delta GO.
 - **New build (CR-0006):** the owner's brief of 21 Oct 2026 asks for a clean new application with feature parity.
   - **Phase 0 is done.** The record is in [`new-build/`](new-build/README.md) (audit, capability inventory,
     architecture, reuse plan, parity matrix, data sources, roadmap, test plan, repository structure, rule bank, deck
@@ -112,7 +148,20 @@
    (a degraded Exit falls back to Retain).
 3. **Owner:**
    - send your own list of issues;
-   - ask the tax adviser about OD-28;
+   - confirm the tax defaults of D-040 and answer CR-0008's questions (ELSS unlock day, the 29 Feb clamp, the marker
+     of foreign shares in real base files, the 90/90 status of equity ETF FoFs, the AMC year-end classifications, the
+     Valuation Date column of real base files, how the IRR sheet records a scheme merger, and the rulings the 31 Jan
+     2018 grandfathering needs; from part T3: whether a base-file client is one assessee, the default slab rate and
+     exemption already used; questions 17 ("Listed AIF" is Category III) and 18 (crypto stays out of set-off) were
+     answered on 2 Nov 2026, D-043, and questions 21 (the AI Analyst keeps following the class, PD-50) and 22 (the
+     fund's own AIF category wins, PD-47) the same day, and question 24 (the Listed AIF ruling counts only for the fund
+     of the performance entry's own name: "Restrict it (Recommended)", D-043) on 9 Nov 2026; from part T5 one is open
+     for the owner: whether real IRR exports name a zone in their dates (question 23), and two are for the tax adviser:
+     whether the Income-tax Act 2025 keeps the four rules the page applies to virtual digital assets (30 percent, no
+     set-off of a loss against a gain on them, no set-off or carry-forward of their loss, no netting of one asset's gain
+     against another's loss; question 25), and whether the Category III AIF sentence should carry the reckoner's clause
+     on determinate trusts (question 26));
+     OD-28 is answered by the reckoner (Sec. 76, old 50AA);
    - answer M1.3's questions in [`DATA_DICTIONARY.md`](DATA_DICTIONARY.md) §8: unrecognised Asset Names such as
      "Gold" (BF-19), letter case of Asset Names (BF-26) and a market value of 0 (M1.4 runs on the M1.3 defaults;
      KI-147 was answered on 24 Oct 2026, D-039), and, from M1.4, whether to fold letter case for client and
@@ -159,6 +208,10 @@
    family, client and advisor scope), is on `feat/m3a-returns-core`, not wired into the page yet. Open before it reaches
    the page: the reconcile tolerance (D13), how an instrument split between distributors is shared, and the owner
    questions in its Gate A report. The IRR parity ledger waits for a real export (TA-03, KI-186).
+
+   **Claude: M7a**, the capital-gains statement reader (PAN removed at read time, repeated lots reported, blank cells
+   reported) and the blank template, is on `feat/m7a-cg-reader` (PR #35), not wired into the page yet. Lot classes,
+   the tax rules and the tax engine stay owner-gated (PD-16, LP-01).
 6. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;
