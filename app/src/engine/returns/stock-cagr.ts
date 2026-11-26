@@ -3,22 +3,26 @@
 //
 //   - Per stock, CAGR(n) = (P(as-on) / P(as-on minus n years))^(1/n) - 1, for n = 1, 3, 5, as a percent number, on
 //     split- and bonus-adjusted prices (the Screener pack's month-end prices in M10u; else the analyst's price file).
-//   - Dates: the exact anniversaries of the review's as-on date; 29 Feb maps to 28 Feb in a year without it. A price
-//     is taken on that date or on the nearest earlier date in the series within 7 calendar days; otherwise the tenor
-//     is missing for the stock: INSUFFICIENT EVIDENCE when the series starts after that date (not enough history),
-//     NOT AVAILABLE IN SUPPLIED DATA when the series has a gap there. Never 0%.
-//   - Method note (ARC-03 L6): the start and the end price are each looked up on their own (each may be up to 7 days
-//     before its date), and the CAGR is annualised over n whole years regardless: at most about 0.07 percentage points
-//     at 3Y and 10%. Owner question (ARC-03 M4, before wiring): on month-end prices an as-on that is not a month end
-//     (30 Oct for a 31 Oct series) loses whole tenors; should the anniversary then be the month end of its month?
+//   - Dates: the exact anniversaries of the review's as-on date; 29 Feb maps to 28 Feb in a year without it.
+//     - Month-end data (one point per month, each in its month's last 7 days, as the pack's month-end prices): the
+//       point of the anniversary's month is used, and of the as-on's month for P(as-on) (MOD-04, 26 Nov 2026; owner
+//       list item (b)). So a 30 Oct as-on uses the 31 Oct point, and 28 Feb 2025 uses 29 Feb 2024 (ARC-03 M4).
+//     - Other data: the price on that date or the nearest earlier date within 7 calendar days.
+//     Otherwise the tenor is missing for the stock: INSUFFICIENT EVIDENCE when the series starts after that date (not
+//     enough history), NOT AVAILABLE IN SUPPLIED DATA when the series has a gap there. Never 0%.
+//   - Method note (ARC-03 L6): the start and the end price are each looked up on their own, and the CAGR is annualised
+//     over n whole years regardless (on daily data each price may be up to 7 days before its date: at most about 0.07
+//     percentage points at 3Y and 10%).
 //   - Portfolio figure: weighted by the stock's share of the direct-equity value over the stocks that have the tenor
 //     (the shared core in portfolio-returns.ts); the rest are excluded and footnoted with the coverage (the calculator
 //     workbook's IFERROR-to-0% is not copied).
 //   - Sources in order (the pack first in M10u, then the analyst's price file): a stock takes the first source that has
-//     a non-empty series for it, and is labelled with that source (an empty series falls through, ARC-03 L3; a short
-//     history does not: owner question). The figure's source is the first source used by a stock in the base; with
-//     no source at all there is no figure (null). `used` and `mixed` as for E-147: coverageFootnote(figure, used,
-//     outsideBase) goes with every rendering.
+//     a non-empty series for it, and is labelled with that source (an empty series counts as none, ARC-03 L3). When
+//     that series is too short for the tenor (INSUFFICIENT EVIDENCE), a later source fills the stock only when its
+//     as-on date equals the first source's (I-31's rule; MOD-04, 26 Nov 2026); otherwise the stock's figure is
+//     missing. The figure's source is the first source used by a stock in the base; with no source at all there is no
+//     figure (null). `parts`, `used` and `mixed` as for E-147: coverageFootnote(figure, used, outsideBase) goes with
+//     every rendering.
 // Replaces the vendor return columns of STOCK_RET for these tenors; differences go to the parity ledger (E-148).
 // Pure: no globals.
 
@@ -29,7 +33,7 @@ import type { DayNumber, Value } from '../../model/value.ts';
 import { STATUS } from '../../model/status.ts';
 import { missing, present } from '../value.ts';
 import { dayToIso, dayToYmd, ymdToDay } from '../dates.ts';
-import { weightItems, TENOR_KEY, WEIGHTED_RETURN_LABEL, type UsedTable, type WeightInput, type WeightedResult } from './portfolio-returns.ts';
+import { partsOf, weightItems, TENOR_KEY, WEIGHTED_RETURN_LABEL, type UsedTable, type WeightInput, type WeightedResult } from './portfolio-returns.ts';
 
 /** How far back from a wanted date a price may be taken (calendar days). */
 export const PRICE_LOOKBACK_DAYS = 7;
@@ -42,6 +46,8 @@ export type PricePoint = { day: DayNumber; price: number };
 /** The adjusted price series of each stock, by ISIN, from one source. Points in any order. */
 export type PriceSource = {
   source: ReturnsSource;
+  /** The as-on date of the source's prices (the pack's month end, the file's last price day): the fill rule compares it. */
+  asOn: Value<DayNumber>;
   series: Readonly<Record<string, readonly PricePoint[] | undefined>>;
   /** Register ids (file SHA-256) for provenance. */
   sourceIds?: readonly string[];
@@ -70,6 +76,35 @@ export function priceOnOrBefore(sorted: readonly PricePoint[], day: DayNumber): 
   return day - p.day <= PRICE_LOOKBACK_DAYS ? p : null;
 }
 
+/** True when a sorted series is month-end data: at most one point per month, each within its month's last 7 days. */
+export function isMonthEndSeries(sorted: readonly PricePoint[]): boolean {
+  if (sorted.length === 0) return false;
+  let lastMonth = -1;
+  for (const p of sorted) {
+    const mi = monthIndex(p.day);
+    if (mi === lastMonth) return false;
+    lastMonth = mi;
+    if (monthEnd(p.day) - p.day >= PRICE_LOOKBACK_DAYS) return false;
+  }
+  return true;
+}
+
+function monthEnd(day: DayNumber): DayNumber {
+  const { y, m } = dayToYmd(day);
+  return ymdToDay(m === 12 ? y + 1 : y, m === 12 ? 1 : m + 1, 1)! - 1;
+}
+
+function monthIndex(day: DayNumber): number {
+  const { y, m } = dayToYmd(day);
+  return y * 12 + m;
+}
+
+/** The point of a day's month in month-end data, or null. */
+function pointOfMonth(sorted: readonly PricePoint[], day: DayNumber): PricePoint | null {
+  const want = monthIndex(day);
+  return sorted.find((p) => monthIndex(p.day) === want) ?? null;
+}
+
 /** The points sorted by day, or the reason the series cannot be used (a price that is not a positive number, a day twice). */
 function sortedSeries(points: readonly PricePoint[]): PricePoint[] | string {
   const s = [...points].sort((a, b) => a.day - b.day);
@@ -90,14 +125,18 @@ export function stockCagr(points: readonly PricePoint[], asOn: DayNumber, tenor:
   const s = sortedSeries(points);
   if (typeof s === 'string') return missing(STATUS.INVALID_SOURCE, s, prov);
   if (s.length === 0) return missing(STATUS.NOT_AVAILABLE, 'no price series', prov);
-  const end = priceOnOrBefore(s, asOn);
-  if (!end) return missing(STATUS.NOT_AVAILABLE, `no price within ${PRICE_LOOKBACK_DAYS} days up to the as-on date ${dayToIso(asOn)}`, prov);
+  const monthly = isMonthEndSeries(s);
+  const at = (day: DayNumber): PricePoint | null => (monthly ? pointOfMonth(s, day) : priceOnOrBefore(s, day));
+  const where = (day: DayNumber): string => (monthly ? `in the month of ${dayToIso(day)}` : `within ${PRICE_LOOKBACK_DAYS} days up to ${dayToIso(day)}`);
+  const end = at(asOn);
+  if (!end) return missing(STATUS.NOT_AVAILABLE, `no price ${where(asOn)} (the as-on date)`, prov);
   const startDay = anniversary(asOn, n);
-  const start = priceOnOrBefore(s, startDay);
+  const start = at(startDay);
   if (!start) {
-    return s[0]!.day > startDay
+    const tooLate = monthly ? monthIndex(s[0]!.day) > monthIndex(startDay) : s[0]!.day > startDay;
+    return tooLate
       ? missing(STATUS.INSUFFICIENT_EVIDENCE, `prices start on ${dayToIso(s[0]!.day)}, after ${dayToIso(startDay)}: not enough history for ${t}`, prov)
-      : missing(STATUS.NOT_AVAILABLE, `no price within ${PRICE_LOOKBACK_DAYS} days up to ${dayToIso(startDay)}`, prov);
+      : missing(STATUS.NOT_AVAILABLE, `no price ${where(startDay)}`, prov);
   }
   return present((Math.pow(end.price / start.price, 1 / n) - 1) * 100, 'pct', prov);
 }
@@ -120,35 +159,57 @@ export function directEquityCagr(
 ): StockCagrResult {
   const lines: StockCagrLine[] = [];
   const inputs: WeightInput[] = [];
+  const srcOfInput: Array<PriceSource | null> = [];
   const used = new Set<PriceSource>();
+  const consulted = new Set<PriceSource>();
+  const has = (x: PriceSource, isin: string): boolean => Object.prototype.hasOwnProperty.call(x.series, isin) && (x.series[isin]?.length ?? 0) > 0;
+  const sameDay = (a: Value<DayNumber>, b: Value<DayNumber>): boolean => a.kind === 'value' && b.kind === 'value' && a.v === b.v;
   for (const h of holdings) {
-    const src = h.isin === null ? undefined : sources.find((x) => Object.prototype.hasOwnProperty.call(x.series, h.isin!) && (x.series[h.isin!]?.length ?? 0) > 0);
-    if (!src || h.isin === null) {
+    const chain = h.isin === null ? [] : sources.filter((x) => has(x, h.isin!));
+    const first = chain[0];
+    if (!first || h.isin === null) {
       const why = h.isin === null ? 'the holding has no ISIN' : 'no price series for this ISIN';
       lines.push({ holdingId: h.holdingId, isin: h.isin, cagr: missing(STATUS.NOT_AVAILABLE, why), source: null });
       inputs.push({ holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { excluded: h.isin === null ? 'unmatched' : 'no-return' } });
+      srcOfInput.push(null);
       continue;
     }
-    const cagr = stockCagr(src.series[h.isin]!, asOn, tenor, src.sourceIds ?? []);
+    consulted.add(first);
+    let src = first;
+    let cagr = stockCagr(first.series[h.isin]!, asOn, tenor, first.sourceIds ?? []);
+    // a series too short for the tenor is filled only by a later source with the same as-on date (I-31)
+    if (cagr.kind === 'missing' && cagr.status === STATUS.INSUFFICIENT_EVIDENCE) {
+      for (const next of chain.slice(1)) {
+        if (!sameDay(next.asOn, first.asOn)) continue;
+        const c = stockCagr(next.series[h.isin]!, asOn, tenor, next.sourceIds ?? []);
+        if (c.kind === 'value') { src = next; cagr = c; break; }
+      }
+    }
     lines.push({ holdingId: h.holdingId, isin: h.isin, cagr, source: src.source });
     if (cagr.kind === 'value') {
       inputs.push({ holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { returnPct: cagr.v, source: src.source } });
+      srcOfInput.push(src);
       if (h.cmvCr.kind === 'value' && h.cmvCr.v > 0) used.add(src);
     } else {
       inputs.push({ holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { excluded: 'no-return' } });
+      srcOfInput.push(null);
     }
   }
   const usedInOrder = sources.filter((s) => used.has(s));
-  const consulted = sources.find((s) => lines.some((l) => l.source === s.source));
-  const day = present(asOn, 'date', { sources: [], method: 'review as-on date' });
+  const firstConsulted = sources.find((s) => consulted.has(s));
   const res = weightItems(inputs, {
     scope,
     tenor,
     basis: 'equity-value',
-    primary: usedInOrder[0]?.source ?? consulted?.source ?? sources[0]?.source ?? null,
-    asOn: day,
+    primary: usedInOrder[0]?.source ?? firstConsulted?.source ?? sources[0]?.source ?? null,
+    asOn: present(asOn, 'date', { sources: [], method: 'review as-on date' }),
     sourceIds: usedInOrder.flatMap((s) => [...(s.sourceIds ?? [])]),
     method: `${WEIGHTED_RETURN_LABEL} (${TENOR_KEY[tenor]} CAGR, D-023 point 4)`,
   });
-  return { ...res, lines, used: usedInOrder.map((s) => ({ source: s.source, asOn: day })), mixed: usedInOrder.length > 1 };
+  const parts = partsOf(res.items, (i) => {
+    const s = srcOfInput[i];
+    return s ? { source: s.source, asOn: s.asOn } : null;
+  });
+  if (res.figure && parts) res.figure.parts = parts;
+  return { ...res, lines, used: usedInOrder.map((s) => ({ source: s.source, asOn: s.asOn })), mixed: parts !== undefined };
 }

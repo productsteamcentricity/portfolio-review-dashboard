@@ -9,7 +9,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  asOnDay, coverageFootnote, sharePct, weightItems, weightedFundReturn, WEIGHTED_RETURN_LABEL,
+  asOnDay, coverageFootnote, monitorAsOn, monthEndLabel, sharePct, weightItems, weightedFundReturn, WEIGHTED_RETURN_LABEL,
   type FundHoldingInput, type FundPlan, type FundReturnSource, type FundReturnTable, type WeightInput,
 } from '../../../app/src/engine/returns/portfolio-returns.ts';
 import type { HoldingId } from '../../../app/src/model/ids.ts';
@@ -111,9 +111,10 @@ describe('E-147: the source order', () => {
     const up = src('uploaded-mf-monitor', null, { 'Sample Alpha Fund-Reg(G)': r3(20) });
     const r = weightedFundReturn(book, [up, embedded], '3y', 'family');
     near(v(r.figure!.value), 20);
-    const old = src('embedded-mf-monitor', SEP, { 'Sample Beta Fund-Reg(G)': r3(6) });
-    const r2 = weightedFundReturn(book, [embedded, old, src('screener-pack', OCT, { 'Sample Gamma Fund-Reg(G)': r3(4) })], '3y', 'family');
-    // the pack has the primary's date, so it fills Gamma; the September monitor is skipped
+    // Delta is absent from the primary: the pack (same date) fills it, the September monitor (another date) cannot
+    const old = src('embedded-mf-monitor', SEP, { 'Sample Delta Fund-Reg(G)': r3(6) });
+    const book2 = [...book.slice(0, 2), fh('h4', 'Sample Delta Fund-Reg(G)', 2)];
+    const r2 = weightedFundReturn(book2, [embedded, old, src('screener-pack', OCT, { 'Sample Delta Fund-Reg(G)': r3(4) })], '3y', 'family');
     near(v(r2.figure!.value), (5 * 14 + 3 * 6 + 2 * 4) / 10);
     assert.deepEqual(r2.items.map((i) => i.source), ['embedded-mf-monitor', 'embedded-mf-monitor', 'screener-pack']);
   });
@@ -315,5 +316,66 @@ describe('ARC-03 Gate B fixes (B1 to B3, L2, L5)', () => {
     assert.equal(sharePct(0.8), '80%');
     assert.equal(sharePct(1), '100%');
     assert.equal(sharePct(0), '0%');
+  });
+});
+
+describe('MOD-04 rulings of 26 Nov 2026', () => {
+  const twin = 'Sample Twin Fund';
+  test('an explicit "no 3Y" in the primary is never overridden, even by a same-date source', () => {
+    const pack = src('screener-pack', OCT, { 'Sample Gamma Fund-Reg(G)': r3(4) });
+    const r = weightedFundReturn(book, [embedded, pack], '3y', 'family');
+    // Gamma is listed by the embedded monitor without a 3Y return: it keeps that answer
+    assert.deepEqual(r.items.map((i) => [i.source, i.excluded]), [['embedded-mf-monitor', null], ['embedded-mf-monitor', null], [null, 'no-return']]);
+    near(v(r.figure!.value), 11);
+    // a record with no `r` entry for the tenor is also an explicit "no return"
+    const bare = src('embedded-mf-monitor', OCT, { X: { r: { '1Y': 5 } } });
+    const r2 = weightedFundReturn([fh('x', 'X', 1)], [bare, src('screener-pack', OCT, { X: r3(9) })], '3y', 'family');
+    assert.equal(r2.items[0]!.excluded, 'no-return');
+  });
+  test('parts: a figure from two sources lists each with its share; figure.source stays the primary', () => {
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { [twin]: r3(12) }) } };
+    const emb: FundReturnSource = { source: 'embedded-mf-monitor', plans: { regular: table(OCT, {}), direct: table(OCT, { [twin]: r3(11) }) } };
+    const r = weightedFundReturn([fh('a', twin, 3, 'regular'), fh('b', twin, 1, 'direct')], [up, emb], '3y', 'family');
+    assert.equal(r.figure!.source, 'uploaded-mf-monitor');
+    assert.deepEqual(r.figure!.parts, [
+      { source: 'uploaded-mf-monitor', asOn: table(OCT, {}).asOn, coverage: 0.75 },
+      { source: 'embedded-mf-monitor', asOn: table(OCT, {}).asOn, coverage: 0.25 },
+    ]);
+    assert.equal(r.mixed, true);
+  });
+  test('parts: one source and one date gives no parts; a same-source fill at the same date is one part', () => {
+    const r = weightedFundReturn(book, [embedded], '3y', 'family');
+    assert.equal(r.figure!.parts, undefined);
+    assert.equal(r.mixed, false);
+  });
+  test('parts: one source with two dates (Regular and Direct tables) is two parts', () => {
+    const OCT30 = ymdToDay(2026, 10, 30)!;
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { [twin]: r3(12) }), direct: table(OCT30, { [twin]: r3(13) }) } };
+    const r = weightedFundReturn([fh('a', twin, 1, 'regular'), fh('b', twin, 1, 'direct')], [up], '3y', 'family');
+    assert.equal(r.figure!.parts?.length, 2);
+    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), p.coverage]), [['uploaded-mf-monitor', OCT, 0.5], ['uploaded-mf-monitor', OCT30, 0.5]]);
+  });
+  test('PD-57: the month-end label of a price day; PD-58: the true day only in the notes', () => {
+    assert.equal(monthEndLabel(ymdToDay(2026, 11, 2)!), OCT);
+    assert.equal(monthEndLabel(ymdToDay(2026, 10, 30)!), OCT);
+    assert.equal(monthEndLabel(ymdToDay(2026, 10, 29)!), OCT);
+    assert.equal(monthEndLabel(OCT), OCT);
+    assert.equal(monthEndLabel(ymdToDay(2026, 10, 24)!), OCT);
+    assert.equal(monthEndLabel(ymdToDay(2026, 11, 7)!), OCT);
+    assert.equal(monthEndLabel(ymdToDay(2026, 11, 8)!), null);
+    assert.equal(monthEndLabel(ymdToDay(2026, 10, 15)!), null);
+    assert.equal(monthEndLabel(ymdToDay(2028, 3, 3)!), ymdToDay(2028, 2, 29));
+    const m = monitorAsOn('02-Nov-2026');
+    assert.equal(v(m.asOn), OCT);
+    assert.equal(v(m.priceDay), ymdToDay(2026, 11, 2));
+    assert.equal(monitorAsOn('15-Nov-2026').asOn.kind, 'missing');
+    assert.equal(monitorAsOn('soon').asOn.kind, 'missing');
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: { ...table(OCT, { [twin]: r3(12) }), priceDay: m.priceDay } } };
+    const r = weightedFundReturn([fh('a', twin, 1, 'regular')], [up], '3y', 'family');
+    assert.equal(v(r.figure!.asOn), OCT);
+    assert.deepEqual(r.notes, ['uploaded MF Monitor, Regular plans: prices of 2026-11-02 (shown as on 2026-10-31)']);
+    const foot = coverageFootnote(r.figure!, r.used, r.outsideBase);
+    assert.ok(!foot.includes('2026-11-02'), 'the client footnote never shows the true price day');
+    assert.match(foot, /as on 2026-10-31/);
   });
 });

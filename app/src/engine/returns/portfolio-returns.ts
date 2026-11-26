@@ -10,17 +10,20 @@
 //     coverage, never 8.80%.
 //   - Source order (E-147): the MF Monitor the analyst uploads for the review, else the embedded monthly MF Monitor,
 //     else the MF Screener data pack (M10u); the caller passes the sources in that order. A fund is its plan and
-//     scheme name (Regular and Direct are separate vendor tables with their own as-on dates). Per plan the first
-//     source with a table for that plan is the primary; a fund with no return for the tenor in its primary table
-//     (absent, or the field empty) is filled from a later table of the same plan only when that table's as-on date
-//     equals the primary's; otherwise it is excluded and counted. (Owner question, ARC-03 L1: whether an explicit
-//     "no 3Y" in the primary may be filled at all.)
-//   - The figure names the source and the date of what it actually used (ARC-03 B1, B2): its source is the first
-//     primary used, in the caller's order; its as-on date is the primary tables' date, the earliest when they differ,
-//     and missing when a primary used has no date. When the tables used differ in source or date (`mixed`), only the
-//     footnote with `used` tells the whole truth: coverageFootnote(figure, used, outsideBase) goes with every
-//     rendering of the figure (ARC-03's default for its B2 decision; MOD-04 to confirm in I-31). With no source at all
-//     there is no figure (null): no source is invented.
+//     scheme name (Regular and Direct are separate vendor tables with their own dates). Per plan the first source with
+//     a table for that plan is the primary (a Regular monitor uploaded alone leaves Direct funds to the next source:
+//     accepted by MOD-04 on 26 Nov 2026, both dates shown; owner list item (a)). A fund ABSENT from its primary table
+//     is filled from a later table of the same plan only when that table's as-on date equals the primary's; a fund the
+//     primary lists without the tenor's return keeps that answer: an explicit "no 3Y" means the fund lacks the
+//     history and is never overridden by another source (MOD-04, 26 Nov 2026; CLAUDE.md rule 3).
+//   - Dates (PD-57, PD-58): a table's `asOn` is the data month's month-end label ("31 Oct 2026" also for a monitor
+//     whose prices are of Mon 2 Nov); its true price day, when known, goes only in the result's `notes`, never in the
+//     client footnote. `monitorAsOn()` turns a monitor's as-on text into the label and the price day.
+//   - The figure names what it used (ARC-03 B1, B2): its source is the first primary used, in the caller's order; its
+//     as-on date is the primary tables' label, the earliest when they differ, and missing when a primary used has none.
+//     When the figure is built from more than one (source, as-on) pair, `figure.parts` lists every part with its share
+//     of the base (MOD-04's contracts-3 rule for I-31), and `mixed` is true. coverageFootnote(figure, used,
+//     outsideBase) goes with every rendering. With no source at all there is no figure (null): no source is invented.
 //   - Label: "weighted average return of current holdings", never the portfolio's realised return.
 // Pure: no globals. A fund is looked up by its plan and the vendor scheme name the matcher resolved (the key of MF_PERF
 // for Regular plans and MF_PERF_DIRECT for Direct plans, and of the uploaded monitors' schemes).
@@ -31,7 +34,7 @@ import type { ScopeKey } from '../../model/scope.ts';
 import type { DayNumber, Value } from '../../model/value.ts';
 import { STATUS } from '../../model/status.ts';
 import { missing, present } from '../value.ts';
-import { dayToIso, parseDayText } from '../dates.ts';
+import { dayToIso, dayToYmd, parseDayText, ymdToDay } from '../dates.ts';
 
 export const WEIGHTED_RETURN_LABEL = 'weighted average return of current holdings';
 
@@ -48,10 +51,12 @@ export type FundReturnRecord = { r: Readonly<Partial<Record<string, number | nul
  */
 export type FundPlan = 'regular' | 'direct';
 
-/** One plan's table of a source: its as-on date and scheme name -> record. */
+/** One plan's table of a source: its as-on label, its true price day, and scheme name -> record. */
 export type FundReturnTable = {
-  /** The table's as-on date; a table without a date never fills another (and is never filled). */
+  /** The month-end label of the table's data (PD-57); a table without one never fills another (and is never filled). */
   asOn: Value<DayNumber>;
+  /** The true price day of the figures, when known (notes only, PD-58). */
+  priceDay?: Value<DayNumber>;
   funds: Readonly<Record<string, FundReturnRecord | undefined>>;
 };
 
@@ -92,19 +97,32 @@ export type WeightedItem = {
   excluded: ExclusionReason | null;
 };
 
+/** One part of a figure built from more than one source or date: the source, its as-on label, its share of the base. */
+export type ReturnPart = { source: ReturnsSource; asOn: Value<DayNumber>; coverage: number };
+
+/**
+ * TODO(contracts-3): MOD-04 adds the optional `parts` field to I-31's WeightedReturn in contracts-3; until it merges
+ * the field is this engine-local extension, and then this type becomes WeightedReturn itself.
+ */
+export type WeightedFigure = WeightedReturn & { parts?: ReturnPart[] };
+
 export type WeightedResult = {
   /** Null only when no source was given at all (nothing to name as the figure's source). */
-  figure: WeightedReturn | null;
+  figure: WeightedFigure | null;
   items: WeightedItem[];
   /** Holdings without a positive market value: outside the base, neither weighted nor in the coverage (ARC-03 L2). */
   outsideBase: number;
 };
 
-/** The return a table gives for a fund at the tenor, or null (null, absent, or not a finite number). */
-function fundReturn(table: FundReturnTable, scheme: string, tenor: ReturnTenor): number | null {
-  if (!Object.prototype.hasOwnProperty.call(table.funds, scheme)) return null;
-  const x = table.funds[scheme]?.r?.[TENOR_KEY[tenor]];
-  return typeof x === 'number' && Number.isFinite(x) ? x : null;
+/** What a table says about a fund at a tenor: not listed, listed without the return, or the return. */
+type Lookup = { kind: 'absent' } | { kind: 'none' } | { kind: 'value'; v: number };
+
+function fundLookup(table: FundReturnTable, scheme: string, tenor: ReturnTenor): Lookup {
+  if (!Object.prototype.hasOwnProperty.call(table.funds, scheme)) return { kind: 'absent' };
+  const rec = table.funds[scheme];
+  if (!rec) return { kind: 'absent' };
+  const x = rec.r?.[TENOR_KEY[tenor]];
+  return typeof x === 'number' && Number.isFinite(x) ? { kind: 'value', v: x } : { kind: 'none' };
 }
 
 const sameDay = (a: Value<DayNumber>, b: Value<DayNumber>): boolean => a.kind === 'value' && b.kind === 'value' && a.v === b.v;
@@ -161,16 +179,35 @@ export function weightItems(
   return { figure: { scope: ctx.scope, tenor: ctx.tenor, value, source: ctx.primary, asOn: ctx.asOn, coverage }, items, outsideBase };
 }
 
-/** A source table whose figures a result used, for the footnote (source, plan and as-on date). */
+/**
+ * The parts of a figure: the items' shares of the base grouped by (source, as-on label), in the order given. Returns
+ * undefined when the figure has one part or none (contracts-3: parts are listed only for more than one).
+ */
+export function partsOf(items: readonly WeightedItem[], tagOf: (index: number) => { source: ReturnsSource; asOn: Value<DayNumber> } | null): ReturnPart[] | undefined {
+  const parts: ReturnPart[] = [];
+  items.forEach((it, i) => {
+    const tag = it.excluded === null && it.weight !== null ? tagOf(i) : null;
+    if (!tag) return;
+    const p = parts.find((x) => x.source === tag.source && (sameDay(x.asOn, tag.asOn) || (x.asOn.kind === 'missing' && tag.asOn.kind === 'missing')));
+    if (p) p.coverage += it.weight!;
+    else parts.push({ source: tag.source, asOn: tag.asOn, coverage: it.weight! });
+  });
+  return parts.length > 1 ? parts : undefined;
+}
+
+/** A source table whose figures a result used, for the footnote (source, plan and as-on label). */
 export type UsedTable = { source: ReturnsSource; plan?: FundPlan; asOn: Value<DayNumber> };
 
 export type FundWeightedResult = WeightedResult & {
   used: UsedTable[];
-  /** The tables used differ in source or date: the footnote with `used` must go with the figure. */
+  /** The figure has more than one part (source or as-on label): the footnote with `used` must go with it. */
   mixed: boolean;
+  /** Notes for the refresh log and the method sheet, never the client footnote: the true price days (PD-58). */
+  notes: string[];
 };
 
 const PLANS: readonly FundPlan[] = ['regular', 'direct'];
+const PLAN_NAME: Readonly<Record<FundPlan, string>> = { regular: 'Regular', direct: 'Direct' };
 
 /**
  * E-147: the MF portfolio's weighted return at a tenor (D-023 point 3). `sources` in the order of preference (the
@@ -190,19 +227,22 @@ export function weightedFundReturn(
   }
   const usedEntries = new Set<Entry>();
   const consulted = new Set<Entry>();
+  const entryOfInput: Array<Entry | null> = [];
   const inputs: WeightInput[] = holdings.map((h) => {
     const at = { holdingId: h.holdingId, cmvCr: h.cmvCr };
+    entryOfInput.push(null);
     if (h.schemeName === null) return { ...at, pick: { excluded: 'unmatched' } };
     if (h.plan === null) return { ...at, pick: { excluded: 'no-plan' } };
     if (h.accountPlan != null && h.accountPlan !== h.plan) return { ...at, pick: { excluded: 'plan-mismatch' } };
     const chain = chains.get(h.plan)!;
     if (chain[0]) consulted.add(chain[0]);
     for (const e of chain) {
-      const r = fundReturn(e.table, h.schemeName, tenor);
-      if (r !== null) {
-        if (h.cmvCr.kind === 'value' && h.cmvCr.v > 0) usedEntries.add(e);
-        return { ...at, pick: { returnPct: r, source: e.src.source } };
-      }
+      const found = fundLookup(e.table, h.schemeName, tenor);
+      if (found.kind === 'absent') continue; // only a fund the table does not list is filled from the next table
+      if (found.kind === 'none') break; // an explicit "no return" is the answer: never overridden
+      if (h.cmvCr.kind === 'value' && h.cmvCr.v > 0) usedEntries.add(e);
+      entryOfInput[entryOfInput.length - 1] = e;
+      return { ...at, pick: { returnPct: found.v, source: e.src.source } };
     }
     return { ...at, pick: { excluded: 'no-return' } };
   });
@@ -221,7 +261,7 @@ export function weightedFundReturn(
     primary = primaries[0]!.src.source;
     const undated = primaries.find((e) => e.table.asOn.kind === 'missing');
     if (undated) {
-      asOn = missing(STATUS.NOT_AVAILABLE, `the ${undated.plan === 'regular' ? 'Regular' : 'Direct'} table of the ${SOURCE_NAME[undated.src.source]} has no as-on date`);
+      asOn = missing(STATUS.NOT_AVAILABLE, `the ${PLAN_NAME[undated.plan]} table of the ${SOURCE_NAME[undated.src.source]} has no as-on date`);
     } else {
       asOn = primaries.map((e) => e.table.asOn).reduce((a, b) => (b.kind === 'value' && a.kind === 'value' && b.v < a.v ? b : a));
     }
@@ -243,15 +283,58 @@ export function weightedFundReturn(
     sourceIds,
     method: `${WEIGHTED_RETURN_LABEL} (${TENOR_KEY[tenor]}, D-023 point 3)`,
   });
-  const days = new Set(used.map((e) => (e.table.asOn.kind === 'value' ? String(e.table.asOn.v) : 'undated')));
-  const mixed = new Set(used.map((e) => e.src.source)).size > 1 || days.size > 1;
-  return { ...res, used: used.map((e) => ({ source: e.src.source, plan: e.plan, asOn: e.table.asOn })), mixed };
+  const parts = partsOf(res.items, (i) => {
+    const e = entryOfInput[i];
+    return e ? { source: e.src.source, asOn: e.table.asOn } : null;
+  });
+  if (res.figure && parts) res.figure.parts = parts;
+  const notes = used.flatMap((e) => {
+    const pd = e.table.priceDay;
+    if (!pd || pd.kind !== 'value') return [];
+    const label = e.table.asOn.kind === 'value' ? dayToIso(e.table.asOn.v) : 'no label';
+    return [`${SOURCE_NAME[e.src.source]}, ${PLAN_NAME[e.plan]} plans: prices of ${dayToIso(pd.v)} (shown as on ${label})`];
+  });
+  return { ...res, used: used.map((e) => ({ source: e.src.source, plan: e.plan, asOn: e.table.asOn })), mixed: parts !== undefined, notes };
 }
 
 /** The as-on date of a monitor from its "As on" text (the MF Monitor parse keeps the text), or a missing value. */
 export function asOnDay(text: string | null | undefined): Value<DayNumber> {
   const d = text ? parseDayText(text) : null;
   return d === null ? missing(STATUS.NOT_AVAILABLE, `the as-on date "${text ?? ''}" is not a date`) : present(d, 'date', { sources: [], method: 'as-on text' });
+}
+
+/** The last day of a day's month. */
+export function monthEndOf(day: DayNumber): DayNumber {
+  const { y, m } = dayToYmd(day);
+  return ymdToDay(m === 12 ? y + 1 : y, m === 12 ? 1 : m + 1, 1)! - 1;
+}
+
+/** How far from a month end a price day may lie and still carry that month end's label. */
+export const LABEL_WINDOW_DAYS = 7;
+
+/**
+ * The month-end label of a price day (PD-57): the nearest month end within 7 days before or after it (Thu 29 Oct,
+ * Fri 30 Oct and Mon 2 Nov 2026 all give 31 Oct 2026), or null when no month end is that near (a mid-month file).
+ */
+export function monthEndLabel(day: DayNumber): DayNumber | null {
+  const after = monthEndOf(day);
+  const before = monthEndOf(day) === day ? day : monthEndOf(ymdToDay(dayToYmd(day).y, dayToYmd(day).m, 1)! - 1);
+  const best = after - day <= day - before ? after : before;
+  return Math.abs(best - day) <= LABEL_WINDOW_DAYS ? best : null;
+}
+
+/**
+ * A monitor's as-on text as the engine takes it: `asOn` the month-end label (PD-57), `priceDay` the true day (notes
+ * only, PD-58). A day with no month end within 7 days keeps no label (missing, with the reason).
+ */
+export function monitorAsOn(text: string | null | undefined): { asOn: Value<DayNumber>; priceDay: Value<DayNumber> } {
+  const priceDay = asOnDay(text);
+  if (priceDay.kind === 'missing') return { asOn: priceDay, priceDay };
+  const label = monthEndLabel(priceDay.v);
+  const asOn = label === null
+    ? missing(STATUS.NOT_AVAILABLE, `the price day ${dayToIso(priceDay.v)} is not within ${LABEL_WINDOW_DAYS} days of a month end`)
+    : present(label, 'date', { sources: [], method: 'month-end label of the as-on text (PD-57)' });
+  return { asOn, priceDay };
 }
 
 const SOURCE_NAME: Readonly<Record<ReturnsSource, string>> = {
@@ -286,8 +369,8 @@ export function sharePct(share: number): string {
 /**
  * The coverage footnote of a weighted figure, one text for screen, slide and sheet; it goes with every rendering of
  * the figure: the label; the coverage and the count excluded ("3Y covers 80% of MF value; 1 fund without a 3Y return
- * excluded"); the holdings outside the base; every table used with its plan and date (`used` of the result). Never
- * prints an excluded item as 0%.
+ * excluded"); the holdings outside the base; every table used with its plan and as-on label (`used` of the result).
+ * Never prints an excluded item as 0%, and never the true price day (PD-58).
  */
 export function coverageFootnote(figure: WeightedReturn, used: readonly UsedTable[], outsideBase = 0): string {
   const t = TENOR_KEY[figure.tenor];

@@ -8,7 +8,7 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { anniversary, directEquityCagr, priceOnOrBefore, stockCagr, PRICE_LOOKBACK_DAYS, type PricePoint, type PriceSource, type StockHoldingInput } from '../../../app/src/engine/returns/stock-cagr.ts';
+import { anniversary, directEquityCagr, isMonthEndSeries, priceOnOrBefore, stockCagr, PRICE_LOOKBACK_DAYS, type PricePoint, type PriceSource, type StockHoldingInput } from '../../../app/src/engine/returns/stock-cagr.ts';
 import type { HoldingId } from '../../../app/src/model/ids.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
 import { missing, present } from '../../../app/src/engine/value.ts';
@@ -16,6 +16,7 @@ import { dayToIso, ymdToDay } from '../../../app/src/engine/dates.ts';
 
 const D = (y: number, m: number, d: number) => ymdToDay(y, m, d)!;
 const AS_ON = D(2026, 10, 31);
+const SRC_ON = present(AS_ON, 'date', { sources: [], method: 'test' });
 const v = (x: { kind: string; v?: number }): number | null => (x.kind === 'value' ? x.v! : null);
 const near = (a: number | null, b: number): void => assert.ok(a !== null && Math.abs(a - b) < 1e-9, `${a} != ${b}`);
 const status = (x: { kind: string; status?: string }) => (x.kind === 'missing' ? x.status : null);
@@ -93,7 +94,7 @@ describe('the direct-equity portfolio (E-148)', () => {
   const sh = (id: string, isin: string | null, cmv: number): StockHoldingInput => ({ holdingId: id as HoldingId, isin, cmvCr: present(cmv, 'cr', P) });
   const tenPct3y = pts([D(2023, 10, 31), 100], [AS_ON, 133.1]);
   const twentyPct3y = pts([D(2023, 10, 31), 100], [AS_ON, 172.8]);
-  const file: PriceSource = { source: 'analyst-price-file', series: { INE000SAMPLE1: tenPct3y, INE000SAMPLE2: twentyPct3y }, sourceIds: ['sha-file'] };
+  const file: PriceSource = { source: 'analyst-price-file', asOn: SRC_ON, series: { INE000SAMPLE1: tenPct3y, INE000SAMPLE2: twentyPct3y }, sourceIds: ['sha-file'] };
 
   test('stocks at 60% and 40% with 3Y 10% and 20%: 14.00%', () => {
     const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6), sh('s2', 'INE000SAMPLE2', 4)], [file], AS_ON, '3y', 'family');
@@ -111,7 +112,7 @@ describe('the direct-equity portfolio (E-148)', () => {
     assert.deepEqual(r.items.map((i) => i.excluded), [null, 'no-return']);
   });
   test('the analyst file fills a stock the pack lacks, labelled with its source', () => {
-    const pack: PriceSource = { source: 'screener-pack', series: { INE000SAMPLE1: tenPct3y }, sourceIds: ['sha-pack'] };
+    const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE1: tenPct3y }, sourceIds: ['sha-pack'] };
     const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6), sh('s2', 'INE000SAMPLE2', 4)], [pack, file], AS_ON, '3y', 'family');
     near(v(r.figure!.value), 14);
     assert.deepEqual(r.lines.map((l) => l.source), ['screener-pack', 'analyst-price-file']);
@@ -132,7 +133,7 @@ describe('the direct-equity portfolio (E-148)', () => {
     assert.deepEqual(r.used, []);
   });
   test('B2: the figure names the source a stock in the base used; L3: an empty series falls through', () => {
-    const pack: PriceSource = { source: 'screener-pack', series: { INE000SAMPLE1: [] }, sourceIds: ['sha-pack'] };
+    const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE1: [] }, sourceIds: ['sha-pack'] };
     const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6)], [pack, file], AS_ON, '3y', 'family');
     near(v(r.figure!.value), 10);
     assert.equal(r.figure!.source, 'analyst-price-file');
@@ -141,7 +142,7 @@ describe('the direct-equity portfolio (E-148)', () => {
     assert.equal(r.mixed, false);
   });
   test('two sources used: mixed', () => {
-    const pack: PriceSource = { source: 'screener-pack', series: { INE000SAMPLE1: tenPct3y }, sourceIds: ['sha-pack'] };
+    const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE1: tenPct3y }, sourceIds: ['sha-pack'] };
     const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6), sh('s2', 'INE000SAMPLE2', 4)], [pack, file], AS_ON, '3y', 'family');
     assert.equal(r.mixed, true);
     assert.equal(r.figure!.source, 'screener-pack');
@@ -154,10 +155,67 @@ describe('the direct-equity portfolio (E-148)', () => {
     assert.deepEqual(r.figure!.value.kind === 'value' && r.figure!.value.prov.sources, ['sha-file']);
   });
   test('a source used only by a stock outside the base is not in the figure\'s provenance', () => {
-    const pack: PriceSource = { source: 'screener-pack', series: { INE000SAMPLE2: twentyPct3y }, sourceIds: ['sha-pack'] };
+    const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE2: twentyPct3y }, sourceIds: ['sha-pack'] };
     const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6), { holdingId: 's2' as HoldingId, isin: 'INE000SAMPLE2', cmvCr: present(0, 'cr', P) }], [pack, file], AS_ON, '3y', 'family');
     near(v(r.figure!.value), 10);
     assert.deepEqual(r.lines.map((l) => l.source), ['analyst-price-file', 'screener-pack']);
     assert.deepEqual(r.figure!.value.kind === 'value' && r.figure!.value.prov.sources, ['sha-file']);
+  });
+});
+
+describe('month-end data (MOD-04, 26 Nov 2026; ARC-03 M4)', () => {
+  test('what counts as month-end data', () => {
+    assert.equal(isMonthEndSeries(pts([D(2025, 10, 31), 1], [D(2026, 10, 30), 1])), true);
+    assert.equal(isMonthEndSeries(pts([D(2024, 2, 29), 1], [D(2025, 2, 28), 1])), true);
+    assert.equal(isMonthEndSeries(pts([D(2025, 10, 23), 1])), false, 'not in the last 7 days of its month');
+    assert.equal(isMonthEndSeries(pts([D(2025, 10, 30), 1], [D(2025, 10, 31), 1])), false, 'two points in one month');
+    assert.equal(isMonthEndSeries([]), false);
+  });
+  test('an as-on that is not a month end uses the month-end point of its month (30 Oct with 31 Oct points)', () => {
+    const s = pts([D(2025, 10, 31), 100], [D(2026, 10, 31), 110]);
+    near(v(stockCagr(s, D(2026, 10, 30), '1y')), 10);
+  });
+  test('28 Feb 2025 uses the 29 Feb 2024 month-end point', () => {
+    const s = pts([D(2024, 2, 29), 100], [D(2025, 2, 28), 110]);
+    near(v(stockCagr(s, D(2025, 2, 28), '1y')), 10);
+  });
+  test('a month without a point is missing; a series starting later is INSUFFICIENT EVIDENCE', () => {
+    const gap = pts([D(2023, 9, 30), 90], [D(2024, 10, 31), 95], [AS_ON, 110]);
+    assert.equal(status(stockCagr(gap, AS_ON, '3y')), STATUS.NOT_AVAILABLE);
+    const late = pts([D(2024, 1, 31), 95], [AS_ON, 110]);
+    assert.equal(status(stockCagr(late, AS_ON, '3y')), STATUS.INSUFFICIENT_EVIDENCE);
+  });
+});
+
+describe('a short history falls through only to a source with the same as-on date (MOD-04, I-31)', () => {
+  const P2 = { sources: [], method: 'test' };
+  const sh2 = (id: string, isin: string, cmv: number): StockHoldingInput => ({ holdingId: id as HoldingId, isin, cmvCr: present(cmv, 'cr', P2) });
+  const shortPack = pts([D(2025, 1, 31), 100], [AS_ON, 120]);
+  const longFile = pts([D(2023, 10, 31), 100], [AS_ON, 133.1]);
+  test('same date: the file fills the stock, labelled with the file', () => {
+    const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE9: shortPack } };
+    const file: PriceSource = { source: 'analyst-price-file', asOn: SRC_ON, series: { INE000SAMPLE9: longFile } };
+    const r = directEquityCagr([sh2('s', 'INE000SAMPLE9', 1)], [pack, file], AS_ON, '3y', 'family');
+    near(v(r.lines[0]!.cagr), 10);
+    assert.equal(r.lines[0]!.source, 'analyst-price-file');
+    assert.equal(r.figure!.source, 'analyst-price-file');
+  });
+  test('another date: the stock stays missing (INSUFFICIENT EVIDENCE from the pack)', () => {
+    const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE9: shortPack } };
+    const file: PriceSource = { source: 'analyst-price-file', asOn: present(D(2026, 11, 20), 'date', P2), series: { INE000SAMPLE9: longFile } };
+    const r = directEquityCagr([sh2('s', 'INE000SAMPLE9', 1)], [pack, file], AS_ON, '3y', 'family');
+    assert.equal(status(r.lines[0]!.cagr), STATUS.INSUFFICIENT_EVIDENCE);
+    assert.equal(r.lines[0]!.source, 'screener-pack');
+    assert.equal(r.figure!.value.kind, 'missing');
+    assert.equal(r.figure!.source, 'screener-pack');
+  });
+  test('parts: stocks from two sources list both with their shares and dates', () => {
+    const FILE_ON = present(D(2026, 11, 20), 'date', P2);
+    const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE1: longFile } };
+    const file: PriceSource = { source: 'analyst-price-file', asOn: FILE_ON, series: { INE000SAMPLE2: longFile } };
+    const r = directEquityCagr([sh2('s1', 'INE000SAMPLE1', 3), sh2('s2', 'INE000SAMPLE2', 1)], [pack, file], AS_ON, '3y', 'family');
+    assert.deepEqual(r.figure!.parts, [{ source: 'screener-pack', asOn: SRC_ON, coverage: 0.75 }, { source: 'analyst-price-file', asOn: FILE_ON, coverage: 0.25 }]);
+    assert.deepEqual(r.used, [{ source: 'screener-pack', asOn: SRC_ON }, { source: 'analyst-price-file', asOn: FILE_ON }]);
+    assert.equal(r.mixed, true);
   });
 });
