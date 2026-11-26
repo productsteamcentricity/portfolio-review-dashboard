@@ -16,7 +16,7 @@ import type { Holding } from '../../model/holding.ts';
 import type { LoadedBaseFile } from '../../model/review.ts';
 import type { HoldingId, InstrumentRef, ProductClass } from '../../model/ids.ts';
 import { buildCrosswalk, makeUniverse, resolveInstrument, type Crosswalk, type Universe } from './crosswalk.ts';
-import { NEW_BUILD_MATCHING, type MatchOptions } from './instrument.ts';
+import { NEW_BUILD_MATCHING, referenceVocabulary, type MatchOptions } from './instrument.ts';
 import { nameKey } from './normalize.ts';
 import { parseOwnerAliases, type OwnerAliasTable } from './owner-aliases.ts';
 import { holdingClass, nonMfRule, parseProductClassRules, type ProductClassRule } from './product-class.ts';
@@ -94,7 +94,11 @@ export function buildMatchContext(b: MatchBlocks): MatchContext {
     sources.fundIsins = m.isinToCode;
     sources.amfiNames = m.codeToName;
   }
-  const options: MatchOptions = aliases ? { ...NEW_BUILD_MATCHING, ownerAliases: aliases } : { ...NEW_BUILD_MATCHING };
+  /* knownWords (the normaliser follow-up): the vocabulary of the names this context can answer with, its instrument
+     universes; tests/parity/matching-corrections.ts measures stage 4 with this same vocabulary */
+  const instrumentNames = Object.values(universes).filter((u) => u.matcher === 'instrument').map((u) => u.keys);
+  const base: MatchOptions = { ...NEW_BUILD_MATCHING, knownWords: referenceVocabulary(instrumentNames) };
+  const options: MatchOptions = aliases ? { ...base, ownerAliases: aliases } : base;
   const rules = b.PRODUCT_CLASS_RULES === undefined || b.PRODUCT_CLASS_RULES === null ? [] : parseProductClassRules(b.PRODUCT_CLASS_RULES);
   return { universes, crosswalk: buildCrosswalk(sources), options, rules, aliasesApproved: aliases ? aliases.approved : null };
 }
