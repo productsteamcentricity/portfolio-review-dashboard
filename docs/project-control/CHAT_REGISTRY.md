@@ -15,7 +15,7 @@ Tasks (TA-, TB-, TC-) are defined in [TASK_REGISTER.md](TASK_REGISTER.md).
 [INFERRED] means reasoned from verified facts. [UNCERTAIN] and [UNKNOWN] mean what they say.
 
 **Private details.** Session ids, transcript file names and local scratch locations are kept out of this public file.
-They are in the private supplement `C:\dev\private\handover\PRIVATE_SUPPLEMENT_2026-10-28.md` on the owner's laptop.
+They are in a private supplement kept on the owner's computer, outside the repository.
 
 ## Status words
 
