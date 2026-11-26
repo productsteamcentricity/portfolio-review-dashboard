@@ -33,6 +33,14 @@ test `tests/parity/refdata.parity.test.ts` proves each file deep-equal to the ob
 through `tools/engine-host.js`), and the files byte-equal to the extractor's output. The legacy key order is not kept
 (keys are sorted), so code must never depend on the order of an object's keys.
 
+## In the new application's page
+
+`scripts/build.mjs` embeds the files named in its `REFDATA_BLOCKS` list whole, each as a non-executable
+`<script type="application/json" id="refdata-<NAME>">` data block (architecture §17.2, §19). `app/src/data/refdata.ts`
+reads a block once (`readBlock`), lets an uploaded MF or SIF Monitor stand in for the embedded block (`blockOf`), and
+dates a block from the `VINTAGE` block (`asOnOf`). Data blocks are not hashed into the build id or the CSP, so a monthly
+data change changes only the blocks. `tests/next/refdata-blocks.test.mjs` proves each block equals its file.
+
 ## As-on dates
 
 A block's `asOn` in `VINTAGE.json` comes from the `DATA_DATES` key the legacy refresh pipeline advances when it
