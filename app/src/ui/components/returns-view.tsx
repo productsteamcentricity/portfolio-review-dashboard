@@ -33,6 +33,11 @@ export function ReturnsView({ vm, scope, onScope }: { vm: ReturnsVM; scope: Retu
           </li>
         </ul>
         <p class="muted" id="returns-flows">{h.flowsText}. {vm.basisText}</p>
+        {h.benchCoverageText ? <p class="muted" id="returns-bench-coverage">{h.benchCoverageText}</p> : null}
+        <p class="muted" id="returns-dates">{vm.datesText}</p>
+        {vm.datesNotes.length > 0 ? (
+          <ul class="plain-list" id="returns-dates-notes">{vm.datesNotes.map((t) => <li key={t}>{t}</li>)}</ul>
+        ) : null}
       </Group>
 
       <Group id="group-returns-tree" title="IRR tree" note="Portfolio, client, asset class, product, instrument">

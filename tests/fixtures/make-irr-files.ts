@@ -1,6 +1,7 @@
 // Synthetic IRR / transactions workbooks for the M3a tests (interface I-04; contract I-32). Nothing here is real:
 // clients "Sample Client A" and "Sample Client B" (the labels of make-books.ts SYNTHETIC_BOOK), distributors
-// "Sample Distributor 1" and "2", schemes "Sample ... Fund", folios SYN-nnnn, invented dates and amounts.
+// "Sample Distributor 1" and "2" (in irr-matched, the base book's "Centricity" and "Other Distributor"), schemes
+// "Sample ... Fund", folios SYN-nnnn, invented dates and amounts.
 // Deterministic (no clock, no randomness); dates are whole Excel serials with a date format unless a case writes text.
 // Generated at test time, never committed as binaries.
 //
@@ -83,6 +84,57 @@ export function standardSheets(): SheetDef[] {
   ];
 }
 
+/** The distributors of make-books.ts SYNTHETIC_BOOK, for the matched file below. */
+export const BOOK_DISTRIBUTORS = { d1: 'Centricity', d2: 'Other Distributor' } as const;
+
+/**
+ * The matched file (M3a wiring gap 1, NB-03): the standard file's flows, row for row, with the distributors renamed to
+ * those of the synthetic base book (make-books.ts SYNTHETIC_BOOK): "Sample Distributor 1" becomes "Centricity" and
+ * "Sample Distributor 2" becomes "Other Distributor"; B's Balanced flows keep no distributor (the unassigned line). The
+ * client and instrument names are already those of the base book's holdings (A's Bluechip and Corporate Bond, B's
+ * Balanced Advantage), so each instrument joins its holding and the adviser scopes of a review of that book hold flows:
+ *  Centricity: A's Bluechip (rows 2-4) only, the one instrument whose rows all carry it;
+ *  Other Distributor: A's Corporate Bond (rows 5-6) only.
+ */
+export function matchedSheets(): SheetDef[] {
+  const rename = (c: Cell): Cell => (c === D1 ? BOOK_DISTRIBUTORS.d1 : c === D2 ? BOOK_DISTRIBUTORS.d2 : c);
+  const [fund, bench] = standardSheets();
+  return [
+    { name: fund!.name, rows: fund!.rows.map((r, i) => (i === 0 ? r : r.map((c, ci) => (ci === FUND_HEADER.length - 1 ? rename(c) : c)))) },
+    bench!,
+  ];
+}
+
+/**
+ * Known answers (Gate B C2, NB-03), worked on paper. Every pair of flows is 365 days apart (1 Jan 2023 to 1 Jan 2024,
+ * no 29 February between), so each XIRR is the plain growth over the year:
+ *  rows 2-3  A, Bluechip, Centricity: -10,000 then +11,000 (Closing): fund 10.00%; benchmark -10,000 then +10,500: 5.00%;
+ *  rows 4-5  B, Balanced Advantage, no distributor: -8,000 then +7,200 (Closing): fund -10.00%; benchmark -8,000 then
+ *            +7,600: -5.00%.
+ * The family: -18,000 then +18,200, so 200 / 18,000 = 1.1111% (shown 1.11%); benchmark -18,000 then +18,100, 0.5556%
+ * (0.56%). The unassigned line: 8,000 of the 18,000 paid in has no distributor, 44.4444% (44.44%); its XIRRs are B's,
+ * -10.00% and -5.00%. Both instruments are named as the base book's holdings, so they join them.
+ */
+export function knownSheets(): SheetDef[] {
+  const C = BOOK_DISTRIBUTORS.d1;
+  return [
+    { name: 'SI Xirr', rows: [
+      FUND_HEADER,
+      fundRow(A, BLUE, 'SYN-1001', 'Equity', dateCell(2023, 1, 1), 'Purchase', null, 50, -10000, C),
+      fundRow(A, BLUE, 'SYN-1001', 'Equity', dateCell(2024, 1, 1), null, 'Closing', null, 11000, C),
+      fundRow(B, BAL, 'SYN-2001', 'Hybrid', dateCell(2023, 1, 1), 'Purchase', null, 40, -8000, null),
+      fundRow(B, BAL, 'SYN-2001', 'Hybrid', dateCell(2024, 1, 1), null, 'Closing', null, 7200, null),
+    ] },
+    { name: 'SI Bmxirr', rows: [
+      BENCH_HEADER,
+      [A, BLUE, 'Equity', 'Mutual Funds', dateCell(2023, 1, 1), 'Sample Index 1', -10000],
+      [A, BLUE, 'Equity', 'Mutual Funds', dateCell(2024, 1, 1), 'Sample Index 1', 10500],
+      [B, BAL, 'Hybrid', 'Mutual Funds', dateCell(2023, 1, 1), 'Sample Index 2', -8000],
+      [B, BAL, 'Hybrid', 'Mutual Funds', dateCell(2024, 1, 1), 'Sample Index 2', 7600],
+    ] },
+  ];
+}
+
 /**
  * Dates (KI-186 rule, model/transactions.ts): one row per form, all for client A, amount -1 each, so the reader keeps
  * or skips each row on its date alone. Expected days, the same in every time zone:
@@ -155,6 +207,8 @@ export function irrFixtures(xlsx: SheetJS = loadSheetJS()): IrrFixture[] {
       { name: 'Old Xirr', rows: [FUND_HEADER, fundRow(B, BAL, 'SYN-2001', 'Hybrid', dateCell(2022, 1, 1), 'Purchase', null, 1, -1, D1)] },
       standardSheets()[0]!,
     ]) },
+    { id: 'irr-matched', description: 'the standard flows with the base book\'s distributors (Centricity, Other Distributor): non-empty adviser scopes', bytes: toWorkbook(xlsx, matchedSheets()) },
+    { id: 'irr-known', description: 'hand-worked known answers: 10.00%, -10.00%, a 44.44% unassigned share (Gate B C2)', bytes: toWorkbook(xlsx, knownSheets()) },
   ];
 }
 

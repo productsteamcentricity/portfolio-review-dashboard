@@ -50,7 +50,7 @@
       "title": "Analytics and overlap",
       "summary": "What the portfolio holds underneath its funds, and where the funds overlap.",
       "arriving": [
-        { "milestone": "M4", "what": "Equity and debt look-through and fund overlap with its controls, per family, client and advisor scope" },
+        { "milestone": "M4", "what": "Equity and debt look-through and fund overlap with its controls, per family, client and adviser scope" },
         { "milestone": "M5", "what": "Index overlap and active share" },
         { "milestone": "M12", "what": "Historical analytics and the drawdown comparison on index data" }
       ]

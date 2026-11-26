@@ -20,6 +20,11 @@ export type ReturnsHeadline = {
   flowsText: string;
   /** "1 Apr 2023 to 31 Mar 2025"; null without a flow. */
   periodText: string | null;
+  /**
+   * The benchmark XIRR's coverage when partial (R2): "The benchmark XIRR covers 2 of the 3 instruments with fund flows;
+   * ..."; null when every instrument with fund flows has benchmark flows.
+   */
+  benchCoverageText: string | null;
 };
 
 /** One row of the IRR tree (portfolio > client > asset > product > instrument). */
@@ -64,6 +69,16 @@ export type ReturnsList = {
   emptyText: string;
 };
 
+/**
+ * One line of the contributions, once, with every list it is in (R4): the Fund IRR sheet writes these, so no line is
+ * written twice and a sum of the Contribution (pp) column counts each line once.
+ */
+export type ReturnsContributionLine = ReturnsContributionRow & {
+  roles: ReturnsListId[];
+  /** "Contributor", "Laggard", "Laggard; drag", "Contributor; drag". */
+  roleText: string;
+};
+
 /** The unassigned line (E-142): flows without a distributor, on their own line with their share. */
 export type ReturnsUnassigned = {
   flows: number;
@@ -85,6 +100,8 @@ export type ReturnsScopeVM = {
   headline: ReturnsHeadline;
   tree: ReturnsTreeRow[];
   lists: ReturnsList[];
+  /** The lines of the lists, each once, largest contribution first (R4). */
+  lines: ReturnsContributionLine[];
   /** "allocation x XIRR (an approximation, not an attribution)". */
   method: string;
   /** "Contributions cover 5 holdings; 1 holding is left out (no XIRR, or no positive market value)." */
@@ -101,6 +118,10 @@ export type ReturnsVM = {
   basisText: string;
   /** Why the adviser scopes are not listed; null when they are. */
   advisorText: string | null;
+  /** "Last fund flow in the transactions file: 31 Mar 2025. As-on date of the review: 30 Sep 2026." (R3) */
+  datesText: string;
+  /** When the two dates differ, and how many fund flows are dated after the as-on date (R3); empty when equal. */
+  datesNotes: string[];
   /** The IRR file's source register record (the workbook's Source Register lists it); null when not given. */
   source: SourceFile | null;
 };

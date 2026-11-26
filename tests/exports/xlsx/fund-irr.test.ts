@@ -2,15 +2,16 @@
 // The overview workbook of the synthetic base book (syn-standard) with and without the returns of a synthetic IRR file:
 // the Fund IRR sheet only with returns, just before Audit Log; its first row says the XIRR is computed by the app
 // (MOD-04 condition 3; Q-60); each headline figure as the engine's value (a missing one blank, with its status) and
-// recorded in _manifest; the IRR file in the Source Register; and a workbook without returns as before (no sheet, no
-// "Sheet left out" row; the golden hashes of column-default-style.test.ts pin its bytes).
+// recorded in _manifest; the IRR file in the Source Register and named in the Read Me (as the base file is); and a
+// workbook without returns as before (no sheet, no "Sheet left out" row, no IRR file row in the Read Me; the golden
+// hashes of column-default-style.test.ts pin its bytes).
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { LoadedIrrFile } from '../../../app/src/ingest/load-irr.ts';
 import { buildOverviewWorkbook, workbookInputFrom } from '../../../app/src/exports/xlsx/overview-workbook.ts';
 import { returnsForReview } from '../../../app/src/engine/returns/review-returns.ts';
-import { buildReturnsVM, XIRR_BASIS_TEXT } from '../../../app/src/views/returns.ts';
+import { buildReturnsVM, SCREEN_MISSING_LEAD, SHEET_MISSING_LEAD, XIRR_BASIS_TEXT } from '../../../app/src/views/returns.ts';
 import { readXlsx, sheetByName, sheetTable } from '../../helpers/xlsx-read.ts';
 import { fixtureById, nodeWiring, reviewOf } from '../../helpers/node-wiring.ts';
 import { irrFixtures } from '../../fixtures/make-irr-files.ts';
@@ -37,6 +38,12 @@ describe('without returns', () => {
     const readMe = sheetTable(sheetByName(readXlsx(plain), 'Read Me and Controls')).map((r) => r.join(' ')).join('\n');
     assert.ok(!readMe.includes('Fund IRR'));
     assert.deepEqual(buildOverviewWorkbook(workbookInputFrom(review, vm, null)), plain);
+  });
+
+  test('the Read Me names no transactions (IRR) file', () => {
+    const readMe = sheetTable(sheetByName(readXlsx(plain), 'Read Me and Controls'));
+    assert.ok(!readMe.some((r) => String(r[0]).startsWith('Transactions (IRR) file')));
+    assert.ok(readMe.some((r) => r[0] === 'Base file' && r[1] === 'syn-standard.xlsx'), 'the base file is named as before');
   });
 });
 
@@ -98,20 +105,61 @@ describe('with returns', () => {
       assert.equal(treeRows[i]![col('Level')], t.levelText);
       assert.equal(treeRows[i]![col('Fund XIRR (%)')], t.fund.shown.kind === 'value' ? t.fund.shown.v : null);
     });
-    const contributors = table.filter((r) => r[col('Scope')] === 'Family' && r[col('Part')] === 'Contributor');
-    assert.equal(contributors.length, family.lists[0]!.rows.length);
-    family.lists[0]!.rows.forEach((c, i) => {
-      assert.equal(contributors[i]![col('Contribution (pp)')], c.contribution.shown.kind === 'value' ? c.contribution.shown.v : null);
-      assert.equal(contributors[i]![col('Note')], 'allocation x XIRR (an approximation, not an attribution)');
+    // R4: one row per line (Part "Contribution"), with its Role; the contributors among them in the list's order.
+    const lines = table.filter((r) => r[col('Scope')] === 'Family' && r[col('Part')] === 'Contribution');
+    assert.equal(lines.length, family.lines.length);
+    family.lines.forEach((c, i) => {
+      assert.equal(lines[i]![col('Label')], c.label);
+      assert.equal(lines[i]![col('Role')], c.roleText);
+      assert.equal(lines[i]![col('Contribution (pp)')], c.contribution.shown.kind === 'value' ? c.contribution.shown.v : null);
+      assert.equal(lines[i]![col('Note')], 'allocation x XIRR (an approximation, not an attribution)');
     });
+    assert.deepEqual(lines.filter((r) => String(r[col('Role')]).startsWith('Contributor')).map((r) => r[col('Label')]), family.lists[0]!.rows.map((c) => c.label));
+    // R5: the unassigned share sits under its own header, never under Allocation.
     const unassigned = table.find((r) => r[col('Scope')] === 'Family' && r[col('Part')] === 'Unassigned')!;
-    assert.equal(unassigned[col('Allocation (%)')], family.unassigned!.share.shown.kind === 'value' ? family.unassigned!.share.shown.v : null);
+    assert.equal(unassigned[col('Share of Money Paid In (%)')], family.unassigned!.share.shown.kind === 'value' ? family.unassigned!.share.shown.v : null);
+    assert.equal(unassigned[col('Allocation (%)')], null);
     for (const r of table.slice(1)) {
-      for (const name of ['Fund XIRR (%)', 'Benchmark XIRR (%)', 'Allocation (%)', 'Contribution (pp)']) {
+      for (const name of ['Fund XIRR (%)', 'Benchmark XIRR (%)', 'Allocation (%)', 'Share of Money Paid In (%)', 'Contribution (pp)']) {
         const v = r[col(name)];
         assert.ok(v === null || typeof v === 'number', `${name}: ${String(v)}`);
       }
     }
+  });
+
+  test('C4: a missing figure is described in the sheet\'s own words (a blank cell with its status), on screen with the dash', () => {
+    const labels = table.map((r) => String(r[col('Label')] ?? ''));
+    assert.ok(!labels.some((t) => t.includes('A dash marks a missing figure')), 'no dash wording in the sheet');
+    assert.ok(labels.some((t) => t.startsWith(SHEET_MISSING_LEAD)), 'the sheet wording is used');
+    const screen = returns.scopes.flatMap((s) => s.notes.map((n) => n.text));
+    assert.ok(screen.some((t) => t.startsWith(SCREEN_MISSING_LEAD)), 'the screen keeps the dash wording');
+    assert.equal(SCREEN_MISSING_LEAD, 'A dash marks a missing figure: ');
+    assert.equal(SHEET_MISSING_LEAD, 'A missing figure is a blank cell with its status beside it: ');
+    // Every other note is written as on screen.
+    const sheetNotes = new Set(labels);
+    for (const t of screen.filter((x) => !x.startsWith(SCREEN_MISSING_LEAD))) assert.ok(sheetNotes.has(t), t);
+  });
+
+  test('R2 and R3: the dates note and the benchmark coverage note are on the sheet as on screen', () => {
+    const labels = table.map((r) => String(r[col('Label')] ?? ''));
+    assert.ok(labels.includes(returns.datesText), returns.datesText);
+    for (const n of returns.datesNotes) assert.ok(labels.includes(n), n);
+    const family = returns.scopes[0]!;
+    assert.ok(family.headline.benchCoverageText !== null, 'irr-standard: the Bond has no benchmark flow');
+    const at = table.findIndex((r) => r[col('Part')] === 'Headline' && r[col('Label')] === 'Family');
+    assert.deepEqual([table[at + 1]![col('Part')], table[at + 1]![col('Label')]], ['Note', family.headline.benchCoverageText]);
+  });
+
+  test('the Read Me names the IRR file and its SHA-256 just after the base file, as it names the base file', () => {
+    const readMe = sheetTable(sheetByName(wb, 'Read Me and Controls'));
+    const at = readMe.findIndex((r) => r[0] === 'Transactions (IRR) file');
+    assert.ok(at > 0, 'a "Transactions (IRR) file" row');
+    assert.deepEqual(readMe[at], ['Transactions (IRR) file', 'irr-standard.xlsx', null]);
+    assert.deepEqual(readMe[at + 1], ['Transactions (IRR) file SHA-256', returns.source!.id, null]);
+    assert.match(String(returns.source!.id), /^[0-9a-f]{64}$/);
+    assert.equal(readMe[at - 1]![0], 'Base file SHA-256');
+    assert.equal(readMe[at - 2]![0], 'Base file');
+    assert.equal(readMe.filter((r) => String(r[0]).startsWith('Transactions (IRR) file')).length, 2);
   });
 
   test('the Source Register lists the IRR file', () => {

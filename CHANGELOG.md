@@ -312,6 +312,23 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `Review.returns` will hold once I-41 is written.
 - **Tests:** `unit/views/returns`, `unit/engine/review-returns`, `exports/xlsx/fund-irr`, `workflows/w-02-irr`,
   `integration/returns-cross-output`.
+- **After the Gate B review and MOD-04's answers:**
+  - **Benchmark coverage:** the benchmark XIRR shows its coverage when it is partial.
+  - **Dates:** the IRR file's last flow date is shown beside the as-on date, with a count of any flows after it. No
+    figure changes.
+  - **One row per line:** the Fund IRR sheet writes each contributor, laggard and drag once, with a Role column, so no
+    percentage-point sum counts a line twice.
+  - **Unassigned share:** it has its own column, "Share of Money Paid In".
+  - **Missing figures:** the sheet's note says a missing figure is a blank cell with its status, where the screen
+    shows the dash.
+  - **Read Me:** it names the transactions file.
+  - **Spelling:** "Adviser" in user text.
+  - **New tests:**
+    - hand-worked known answers on screen and in the sheet (`integration/returns-known-answers`);
+    - cross-output for every figure cell;
+    - a refused IRR file;
+    - a synthetic IRR file whose distributors match the base book, so adviser scopes have flows;
+    - the browser check `tests/browser/irr-slot.cdp.mjs`.
 
 ### Added (new build, M7a: the capital-gains statement reader and the blank template; not wired into the page yet)
 - **`app/src/ingest/capital-gains.ts`** (E-150, D-036, design `docs/new-build/capital-gains-upload.md` §2 to §4, §6, §7,

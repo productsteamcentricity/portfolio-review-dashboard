@@ -9,16 +9,17 @@
 import type { Review } from '../model/review.ts';
 import type { Value } from '../model/value.ts';
 import type { MissingStatus } from '../model/status.ts';
-import type { IrrLevel, ScopeReturns } from '../model/returns.ts';
+import type { IrrLevel, ReturnsCoverage, ScopeReturns } from '../model/returns.ts';
 import type { IrrSkipReason } from '../model/transactions.ts';
 import type { Severity } from '../model/validation.ts';
 import type { SourceFile, UploadStage } from '../model/source.ts';
 import type { ClientId, HoldingId } from '../model/ids.ts';
-import type { ReviewReturns, ReviewScopeReturns } from '../engine/returns/review-returns.ts';
+import type { ReturnsDates, ReviewReturns, ReviewScopeReturns } from '../engine/returns/review-returns.ts';
 import type { LoadedIrrFile } from '../ingest/load-irr.ts';
 import type { Figure, Note } from './overview-vm.ts';
 import type {
-  IrrImportVM, IrrSlotVM, ReturnsContributionRow, ReturnsList, ReturnsScopeVM, ReturnsTreeRow, ReturnsUnassigned, ReturnsVM,
+  IrrImportVM, IrrSlotVM, ReturnsContributionLine, ReturnsContributionRow, ReturnsList, ReturnsListId, ReturnsScopeVM, ReturnsTreeRow,
+  ReturnsUnassigned, ReturnsVM,
 } from './returns-vm.ts';
 import { BLANK_LABEL } from '../engine/returns/irr-tree.ts';
 import { formatDay } from '../engine/dates.ts';
@@ -67,9 +68,19 @@ function withStop(s: string): string {
 /** The notes of one scope, with one note per distinct reason of a missing figure. */
 type NoteBook = { notes: Note[]; reasons: Map<string, string> };
 
+/** How a missing-figure note opens on screen, where a missing figure is the dash alone. */
+export const SCREEN_MISSING_LEAD = 'A dash marks a missing figure: ';
+/** How the same note opens in the Fund IRR sheet, where a missing figure is a blank cell with its status (Gate B C4). */
+export const SHEET_MISSING_LEAD = 'A missing figure is a blank cell with its status beside it: ';
+
+/** A note's text as the Fund IRR sheet writes it: the missing-figure notes in the sheet's own words, the rest as on screen. */
+export function sheetNoteText(n: Note): string {
+  return n.id.startsWith('missing-') && n.text.startsWith(SCREEN_MISSING_LEAD) ? SHEET_MISSING_LEAD + n.text.slice(SCREEN_MISSING_LEAD.length) : n.text;
+}
+
 function reasonNote(book: NoteBook, x: Value<number>): string[] {
   if (x.kind !== 'missing') return [];
-  const text = `A dash marks a missing figure: ${STATUS_PHRASE[x.status as MissingStatus]} (${plainText(x.reason)}).`;
+  const text = `${SCREEN_MISSING_LEAD}${STATUS_PHRASE[x.status as MissingStatus]} (${plainText(x.reason)}).`;
   let id = book.reasons.get(text);
   if (id === undefined) {
     id = `missing-${book.reasons.size + 1}`;
@@ -93,6 +104,26 @@ function pickerLabel(s: ReviewScopeReturns): string {
   return `${s.scope.kind === 'client' ? 'Client' : 'Adviser'}: ${plainText(s.label)}`;
 }
 
+/**
+ * The headline benchmark's coverage (R2), worded as the contributions' coverage: null when every instrument with fund
+ * flows has benchmark flows (or the scope has none); otherwise how many are covered and how many are left out.
+ */
+export function benchCoverageText(c: ReturnsCoverage): string | null {
+  if (c.excluded === 0) return null;
+  const all = c.included + c.excluded;
+  if (c.included === 0) {
+    return `The benchmark XIRR covers no instrument: ${all === 1 ? 'the one instrument with fund flows has no benchmark flow' : `none of the ${all} instruments with fund flows has a benchmark flow`}.`;
+  }
+  return `The benchmark XIRR covers ${c.included} of the ${all} instruments with fund flows; ${plural(c.excluded, 'instrument has', 'instruments have')} no benchmark flow and ${c.excluded === 1 ? 'is' : 'are'} left out, so the benchmark covers less of the money paid in than the fund XIRR.`;
+}
+
+/** The role words of a contributions line (R4): "Contributor", "Laggard", "Drag" joined, the first capitalised. */
+const ROLE_WORD: Readonly<Record<ReturnsListId, string>> = { contributors: 'contributor', laggards: 'laggard', drags: 'drag' };
+function roleText(roles: readonly ReturnsListId[]): string {
+  const t = roles.map((r) => ROLE_WORD[r]).join('; ');
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 function scopeVM(s: ReviewScopeReturns, review: Pick<Review, 'clients' | 'holdings'>): ReturnsScopeVM {
   const r = s.result;
   const key = s.key;
@@ -107,6 +138,7 @@ function scopeVM(s: ReviewScopeReturns, review: Pick<Review, 'clients' | 'holdin
     flows: r.fund.flows,
     flowsText: r.fund.flows === 0 ? 'No fund flow' : `${plural(r.fund.flows, 'fund flow', 'fund flows')}${period ? ` from ${period}` : ''}`,
     periodText: period,
+    benchCoverageText: benchCoverageText(s.benchCoverage),
   };
 
   const tree: ReturnsTreeRow[] = r.tree.map((n, i) => ({
@@ -143,6 +175,12 @@ function scopeVM(s: ReviewScopeReturns, review: Pick<Review, 'clients' | 'holdin
     listOf('laggards', c.laggards, 'No other line.'),
     listOf('drags', c.drags, 'No line has a negative contribution.'),
   ];
+  // R4: each line once, in the engine's order (largest contribution first), with every list it is in.
+  const lines: ReturnsContributionLine[] = [];
+  for (const row of c.rows) {
+    const roles = lists.filter((l) => l.rows.some((x) => x.key === row.key)).map((l) => l.id);
+    if (roles.length > 0) lines.push({ ...rowByKey.get(row.key)!, roles, roleText: roleText(roles) });
+  }
   const coverageText = `Contributions cover ${plural(c.coverage.included, 'holding', 'holdings')}; ${c.coverage.excluded === 0
     ? 'none is left out'
     : `${plural(c.coverage.excluded, 'holding is', 'holdings are')} left out (no XIRR, or no positive market value)`}.`;
@@ -214,6 +252,7 @@ function scopeVM(s: ReviewScopeReturns, review: Pick<Review, 'clients' | 'holdin
     headline,
     tree,
     lists,
+    lines,
     method: CONTRIBUTION_METHOD_TEXT[c.method],
     coverageText,
     unassigned,
@@ -230,8 +269,29 @@ export function buildReturnsVM(returns: ReviewReturns, review: Pick<Review, 'cli
     advisorText: returns.advisorScopes === 'no-distributor-column'
       ? 'The transactions (IRR) file has no DISTRIBUTOR column, so returns are not shown per adviser.'
       : null,
+    ...datesWords(returns.dates),
     source: opts.source ?? null,
   };
+}
+
+/**
+ * The IRR file's last fund-flow date beside the review's as-on date (R3), with a plain note when they differ and the
+ * count of fund flows dated after the as-on date. Words only: no figure changes.
+ */
+export function datesWords(d: ReturnsDates): { datesText: string; datesNotes: string[] } {
+  const last = d.lastFlowDay === null ? 'none' : formatDay(d.lastFlowDay);
+  const asOn = d.asOnDay === null ? 'not set' : formatDay(d.asOnDay);
+  const notes: string[] = [];
+  if (d.lastFlowDay !== null) {
+    if (d.asOnDay === null) notes.push('The as-on date is not set, so the last fund flow is not compared with it.');
+    else if (d.lastFlowDay !== d.asOnDay) {
+      notes.push(`The last fund flow (${last}) is not on the as-on date (${asOn}): the XIRR figures run to the last fund flow, while the holdings and their allocation are as on the as-on date.`);
+    }
+    if (d.flowsAfterAsOn !== null && d.flowsAfterAsOn > 0) {
+      notes.push(`${plural(d.flowsAfterAsOn, 'fund flow is', 'fund flows are')} dated after the as-on date (${asOn}); ${d.flowsAfterAsOn === 1 ? 'it is' : 'they are'} included in every figure.`);
+    }
+  }
+  return { datesText: `Last fund flow in the transactions file: ${last}. As-on date of the review: ${asOn}.`, datesNotes: notes };
 }
 
 /** The scope a key names, else the family scope (the first). */

@@ -12,8 +12,10 @@ import type { LoadedIrrFile } from '../../../app/src/ingest/load-irr.ts';
 import type { ReturnsVM } from '../../../app/src/views/returns-vm.ts';
 import { returnsForReview } from '../../../app/src/engine/returns/review-returns.ts';
 import {
-  buildIrrImportVM, buildReturnsVM, canAcceptIrr, IRR_ISSUES_NOTICE, irrSlotView, RECONCILE_D13_TEXT, returnsHeadlineFigures, scopeOf, XIRR_BASIS_TEXT,
+  benchCoverageText, buildIrrImportVM, buildReturnsVM, canAcceptIrr, datesWords, IRR_ISSUES_NOTICE, irrSlotView, RECONCILE_D13_TEXT,
+  returnsHeadlineFigures, scopeOf, XIRR_BASIS_TEXT,
 } from '../../../app/src/views/returns.ts';
+import { ymdToDay } from '../../../app/src/engine/dates.ts';
 import { displayPct, formatIndian } from '../../../app/src/views/format.ts';
 import { MISSING_MARKER } from '../../../app/src/config/formats.ts';
 import { fixtureById, nodeWiring, reviewOf } from '../../helpers/node-wiring.ts';
@@ -245,5 +247,58 @@ describe('the IRR slot (U-13)', () => {
     assert.equal(refused.stage, 'validate');
     assert.match(refused.refusal!, /^Refused: no sheet holds fund flows/);
     assert.equal(refused.canAccept, false);
+  });
+});
+
+// MOD-04's answers to Gate B: the words of the benchmark coverage (R2), the dates (R3) and the contribution lines (R4),
+// on irr-matched (family partial, Centricity full, Other Distributor none; see tests/unit/engine/review-returns.test.ts).
+describe('benchmark coverage, dates and contribution lines (R2, R3, R4)', () => {
+  const matched = vmOf(load(files.get('irr-matched')!, 'irr-matched.xlsx'));
+  const byPicker = (p: string) => matched.scopes.find((s) => s.pickerLabel === p)!;
+
+  test('R2: partial and none are said beside the headline benchmark; full says nothing', () => {
+    assert.equal(byPicker('Family').headline.benchCoverageText,
+      'The benchmark XIRR covers 2 of the 3 instruments with fund flows; 1 instrument has no benchmark flow and is left out, so the benchmark covers less of the money paid in than the fund XIRR.');
+    assert.equal(byPicker('Adviser: Centricity').headline.benchCoverageText, null);
+    assert.equal(byPicker('Adviser: Other Distributor').headline.benchCoverageText,
+      'The benchmark XIRR covers no instrument: the one instrument with fund flows has no benchmark flow.');
+    assert.equal(benchCoverageText({ share: 0, basis: 'flows-in', included: 0, excluded: 3 }),
+      'The benchmark XIRR covers no instrument: none of the 3 instruments with fund flows has a benchmark flow.');
+  });
+
+  test('R3: the dates line always; a note when the dates differ, and the count of flows after the as-on date', () => {
+    assert.equal(matched.datesText, 'Last fund flow in the transactions file: 31 Mar 2025. As-on date of the review: 30 Sep 2026.');
+    assert.deepEqual(matched.datesNotes, [
+      'The last fund flow (31 Mar 2025) is not on the as-on date (30 Sep 2026): the XIRR figures run to the last fund flow, while the holdings and their allocation are as on the as-on date.',
+    ]);
+    const last = ymdToDay(2025, 3, 31)!;
+    assert.deepEqual(datesWords({ lastFlowDay: last, asOnDay: last, flowsAfterAsOn: 0 }).datesNotes, [], 'equal: no note');
+    const after = datesWords({ lastFlowDay: last, asOnDay: ymdToDay(2024, 1, 1)!, flowsAfterAsOn: 4 });
+    assert.equal(after.datesText, 'Last fund flow in the transactions file: 31 Mar 2025. As-on date of the review: 1 Jan 2024.');
+    assert.equal(after.datesNotes.length, 2);
+    assert.equal(after.datesNotes[1], '4 fund flows are dated after the as-on date (1 Jan 2024); they are included in every figure.');
+    assert.equal(datesWords({ lastFlowDay: last, asOnDay: last, flowsAfterAsOn: 1 }).datesNotes[0], '1 fund flow is dated after the as-on date (31 Mar 2025); it is included in every figure.');
+    assert.deepEqual(datesWords({ lastFlowDay: last, asOnDay: null, flowsAfterAsOn: null }).datesNotes, ['The as-on date is not set, so the last fund flow is not compared with it.']);
+    for (const t of [matched.datesText, ...matched.datesNotes, ...after.datesNotes]) assert.ok(!DASHES.test(t), t);
+  });
+
+  test('R4: each line once with its roles; the lines are exactly the lines of the three lists', () => {
+    for (const s of matched.scopes) {
+      const keys = s.lines.map((l) => l.key);
+      assert.equal(new Set(keys).size, keys.length, `${s.key}: no line twice`);
+      const inLists = new Set(s.lists.flatMap((l) => l.rows.map((r) => r.key)));
+      assert.deepEqual(new Set(keys), inLists, s.key);
+      for (const line of s.lines) {
+        assert.deepEqual(line.roles, s.lists.filter((l) => l.rows.some((r) => r.key === line.key)).map((l) => l.id), line.key);
+        assert.match(line.roleText, /^(Contributor|Laggard|Drag)(; (laggard|drag))*$/);
+      }
+    }
+  });
+
+  test('the screen keeps its words; no user-facing text says "advisor"', () => {
+    const texts = matched.scopes.flatMap((s) => [s.pickerLabel, ...s.notes.map((n) => n.text), s.headline.benchCoverageText ?? '']);
+    for (const t of [...texts, matched.datesText, buildReturnsVM(returnsForReview(run.review, load(files.get('irr-by-content')!, 'x.xlsx').irr), run.review).advisorText ?? '']) {
+      assert.ok(!/advisor/i.test(t), t);
+    }
   });
 });
