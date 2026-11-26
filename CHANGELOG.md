@@ -35,6 +35,15 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `NEW_BUILD_MATCHING`, the preset the wiring will use): rejects a candidate that leaves a known rare word of the holding's
   name unmatched; measured 2,725 to 1,594 wrong matches for absent funds and 21 of 1,206 correct official names unmatched
   (mostly normaliser gaps; a measured follow-up aims to recover them).
+- **Second normaliser and candidate-side word guard** (`MatchOptions.normaliserV2`, `candidateWordGuard`; on in
+  `NEW_BUILD_MATCHING`): matching tokens drop "(Formerly Known as ...)" and "S&P" before "BSE", split letters from digits,
+  collapse spaces before the compounds and add a few synonyms; the guard also checks the candidate's own rare words.
+  A word of the holding's name the reference data knows elsewhere counts too (`knownWords`, `referenceVocabulary`: every set's words
+  less its fund-house words). The legacy normaliser, the alias keys and the name lists are unchanged. Full sweep against the
+  legacy: self regressions 0; leave-one-out wrong matches 3,932 to 1,094 (0 added); official AMFI names right 1,195 to 1,198,
+  wrong 8 to 1. Four official names now get no match (all to null, none to another fund): two were already among the
+  stricter regime's 22 losses (UTI Focused Fund (30 stocks), Navi Nifty Smallcap 250 Momentum Quality) and two are new
+  (Kotak Infrastructure & Economic Reform Fund, Standard Plan; Baroda BNP Paribas Best-in-Class Strategy Fund).
 - **KI-052, OD-23, KI-054** (`engine/match/rekey.ts`): FUND_RANKS_CODES and MF_RISK re-keyed onto MF_PERF keys by spelling
   and owner alias, never by fuzzy match (`tests/parity/rekey-ledger.json`, also the FUND_RANKS_CODES vintage record);
   the Direct twin only for the same scheme; the look-through key.

@@ -73,6 +73,38 @@ export function normalize(s: unknown): string[] {
   return out;
 }
 
+/** Extra compounds of the second normaliser, after the legacy ones. */
+export const COMPOUNDS_V2: ReadonlyArray<readonly [string, string]> = [
+  ['exchange traded funds', 'etf'], ['exchange traded fund', 'etf'],
+];
+/** Extra synonyms of the second normaliser (spellings the vendor and AMFI use for one word). */
+export const SYN_V2: ReadonlyMap<string, string> = new Map([
+  ['serv', 'svc'], ['financials', 'fin'], ['resources', 'res'], ['private', 'pvt'], ['sectors', 'sector'],
+  ['midsmallcap', 'midsmall'],
+]);
+const FORMERLY = /[(]\s*(?:formerly known as|formerly|erstwhile|earlier known as)[^)]*[)]?/g;
+
+/** The second normaliser (sprint 2a follow-up): the legacy steps, plus "(Formerly Known as ...)" and "(erstwhile ...)"
+ * dropped, "S&P" dropped before "BSE" only (the retired prefix; "S&P 500" is another index), letters and
+ * digits split ("nifty200" to "nifty 200"), spaces collapsed before the compounds, and a few extra compounds and
+ * synonyms. The legacy normalize() is unchanged: the parity tests and the alias and name lists use it. */
+export function normalizeV2(s: unknown): string[] {
+  let t = legacyString(s).toLowerCase().replace(FORMERLY, ' ').replace(/s&p(?= *bse)/g, ' ');
+  t = t.replace(/&/g, ' ').replace(/-/g, ' ').replace(/\//g, ' ').replace(/[^a-z0-9 ]/g, ' ');
+  t = t.replace(/([a-z])([0-9])/g, '$1 $2').replace(/\s+/g, ' ');
+  t = ' ' + t.trim() + ' ';
+  for (const [from, to] of [...COMPOUNDS, ...COMPOUNDS_V2]) t = t.split(' ' + from + ' ').join(' ' + to + ' ');
+  const toks = t.split(' ').filter((w) => w !== '' && !JUNK.has(w) && !LEGACY_PROTOTYPE_TOKENS.has(w));
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const tok of toks) {
+    const w0 = SYN_V2.get(tok) ?? tok;
+    const w = SYN.get(w0) ?? w0;
+    if (!seen.has(w)) { seen.add(w); out.push(w); }
+  }
+  return out;
+}
+
 /** The normalised key of a name: its tokens joined by one space (the legacy `normalize(name).join(" ")`). */
 export function nameKey(s: unknown): string {
   return normalize(s).join(' ');
