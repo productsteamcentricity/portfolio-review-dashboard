@@ -3,11 +3,15 @@
 **Snapshot:** 28 Oct 2026 (IST), written by MOD-01 for the handover to MOD-02 on branch
 `handover/mod-01-to-mod-02-20261028` (base `main` 6443826, PR #16).
 **Owner of this log from now on:** MOD-02.
+**Updated:** 26 Nov 2026 (IST), written by MOD-04 (CHAT-013) on branch `docs/registers-4` (base `main` 142a91d).
+PD-57 to PD-66 added; the owner's answers given between 17 and 26 Nov 2026 recorded (PD-01, PD-04, PD-16 in part,
+PD-30, PD-36, PD-44, PD-54 confirmed, PD-56 changed); owner decisions without a PD number in section 2.4. Of the 66
+PDs, 26 have an answer on record (PD-16 only in part: item 4 is open) and 40 stay open. **Owner of this log from now on:** MOD-04.
 
 This log has three parts, kept apart on purpose:
 1. **Approved decisions.** An index of D-001 to D-042 and the lead's handover rulings. The full text of every D
    entry is in [docs/DECISIONS.md](../DECISIONS.md), which stays authoritative. This index never replaces it.
-2. **Pending owner decisions** (PD-01 to PD-56): each has a table row; PD-01 to PD-49 are also explained in plain language below, and the sections for PD-50 to PD-56 follow in the next docs PR.
+2. **Pending owner decisions** (PD-01 to PD-66): each has a table row; PD-01 to PD-49 and PD-57 to PD-66 are also explained in plain language below; the sections for PD-50 to PD-56 are still to be written (their table rows are complete). Section 2.4 lists the owner's decisions that have no PD number.
 3. **Recommendations not yet approved.**
 
 Evidence labels: [VERIFIED] (with the evidence), [INFERRED], [UNCERTAIN], [UNKNOWN]. Related registers:
@@ -221,6 +225,8 @@ that builds it (EX-01 or NB-01).
 
 ### 2.1 What to answer first
 
+**As of 26 Nov 2026 (MOD-04).** The open owner items that hold up work: PD-16 item 4 (with the tax adviser; the M7a engine shows a dash until then), M12a question 2 (which index stands for each asset class; section 2.4), PD-07 (consistency of the slab-rate default), PD-62 (LP-14) and PD-63 (LP-11). The table below is the order of 9 Nov 2026, kept as history.
+
 | Order | PD | Why first |
 |---|---|---|
 | done | PD-02, PD-03 | Answered by the owner on 2 Nov 2026 (see PD-02 and PD-03 below); they no longer block the TA-03 merge |
@@ -235,13 +241,13 @@ that builds it (EX-01 or NB-01).
 
 | PD | Short question | Recommendation | Blocks |
 |---|---|---|---|
-| PD-01 | Accept the live tax defaults D-040 (a) to (h)? | Accept as built | TA-03 sign-off |
+| PD-01 | Accept the live tax defaults D-040 (a) to (h)? | **ANSWERED 25 Nov 2026**: "Accept all eight (Recommended)": (a) to (h) accepted as built (D-043, sign-off paragraph) | none (TA-03 merged, PR #36) |
 | PD-02 | Are the "Listed AIF" funds Category III? (Q17) | **ANSWERED 2 Nov 2026:** yes, Category III, and keep a safe note | none (the Q17 change is part of TA-03) |
 | PD-03 | Can crypto gains or losses be set off? (Q18) | **ANSWERED 2 Nov 2026:** keep "no set-off" | none |
-| PD-04 | The other CR-0008 questions (Q2 to Q11, Q13 to Q16, Q19, Q20) | Accept the built defaults; send Q2, Q3, Q13 to Q15 to the tax adviser | none |
+| PD-04 | The other CR-0008 questions (Q2 to Q11, Q13 to Q16, Q19, Q20) | **ANSWERED 25 Nov 2026** (with PD-44): "Accept all": the built defaults stand; questions 2, 3, 13, 14, 15 and 27 go to the tax adviser (D-043) | none (adviser answers become later fixes) |
 | PD-05 | Grandfathering rule for lots bought before 1 Feb 2018 (Q12) | Ask the tax adviser; until then disclose only | TA-07 |
 | PD-06 | A fund holding one equity ETF: assume 90/90 on the live page? | Live: keep the default with a note; new build: analyst choice | consistency |
-| PD-07 | Slab rate used to order set-off | Live: 30% labelled "assumed"; new build: no default | consistency |
+| PD-07 | Slab rate used to order set-off | Live: 30% labelled "assumed"; new build: no default. **Still open (26 Nov 2026):** the live page keeps its built 30% "assumed" (part of the tax batch accepted on 25 Nov); the new build keeps no default; the consistency question goes to the owner with the M7a engine | consistency; M7a engine |
 | PD-08 | Holding days of one fund held in several folios (D-041 question 1) | (a) as built | KI-148 alignment |
 | PD-09 | KI-147: do placeholders like "NA" count as empty? | **ANSWERED 2 Nov 2026** (typed in the app): "Yes, count as empty (Recommended)"; both builds match | none now (D-042 in TA-05; M1.4 PR wording) |
 | PD-10 | KI-066: change the IPS check now on the live page? | Please choose; if no answer, keep current and build it in the new build | TA-19 |
@@ -250,7 +256,7 @@ that builds it (EX-01 or NB-01).
 | PD-13 | Ignore letter case in client and distributor names (L7) | Do not fold; warn | new build |
 | PD-14 | A market value of 0 | Exclude and list | both readers |
 | PD-15 | A blank Product Name | "Unknown" with a warning | new build |
-| PD-16 | Capital-gains design §15 items 1 to 7 | 1 accept; 2 keep OD-2 for now; 3 yes; 4, 5 ask; 6, 7 confirm | TB-14 |
+| PD-16 | Capital-gains design §15 items 1 to 7 | **ANSWERED IN PART 26 Nov 2026**: items 1, 2, 3, 5, 6 and 7 answered ("1 Accept; 2 Short term; 3 Yes; ... 6 Confirm; 7 Confirm"; item 5: the export does not repeat lot rows by design); **item 4 open** with the tax adviser | M7a engine merge (item 4 only for its two figures) |
 | PD-17 | Confirm the fix batch 2a details | Confirm | none |
 | PD-18 | (record fix) KI-006 still calls OD-26 open | No action; we correct the record | TC-15 |
 | PD-19 | Send the MF Screener feedback and requests | Send all three | TB-17, TB-19 |
@@ -264,13 +270,13 @@ that builds it (EX-01 or NB-01).
 | PD-27 | Approve the new-build blueprint | Review after it is republished | TC-10 |
 | PD-28 | Your requests C2 to C6: live page or new build? | Calculation items live; presentation items new build | TA-09 |
 | PD-29 | Other second-export decisions | Answer before the October refresh | TA-10 |
-| PD-30 | Confirm the "publish" gate | **ANSWERED 9 Nov 2026**: "Confirm (Recommended)": nothing goes live before the owner replies "publish" | none |
+| PD-30 | Confirm the "publish" gate | **ANSWERED 9 Nov 2026**: "Confirm (Recommended)": nothing goes live before the owner replies "publish". Publishes given since: see PD-30 below (PRs #20 to #25, #28, #32, #33, #36); new-build sprints reach `/next/` under the standing rule of 25 Nov (section 2.4) | none |
 | PD-31 | Live page: dashes in sentences and the overlap threshold | Leave both to the new build | TA-25 |
 | PD-32 | Which of the previous owner's 15 promised features you still want | Owner chooses | REQ-018 |
 | PD-33 | Use the Investment Reckoner as the product-bank source | Yes | TB-18 |
 | PD-34 | Will you still send your own issues list? | Owner says | TC-21 |
 | PD-35 | Optional: hide your e-mail address on GitHub | Optional | none |
-| PD-36 | Approve each new fund or AMC alias | Per alias | TA-09 |
+| PD-36 | Approve each new fund or AMC alias | **ANSWERED 25 Nov 2026** for the renamed-scheme list (KI-050): "All 16, hold line 10 (Recommended)": 16 of 17 aliases approved for the new build, line 10 on hold; C4 and C5 are covered ("Those four cover it"). Later aliases still need approval one by one | M2 sprint 2a (line 10 only) |
 | PD-37 | Record the AI Analyst weights as in force for now | Yes | none |
 | PD-38 | Is the live deck order intended? | Leave as is on the live page | none |
 | PD-39 | Deletions only you may approve | See the private supplement | TC-13 |
@@ -278,7 +284,7 @@ that builds it (EX-01 or NB-01).
 | PD-41 | An optional security step for a credential you hold | See the private supplement | none |
 | PD-42 | Confirm the fix batch 4 choices | Confirm (a) to (d) | none |
 | PD-43 | Tax adviser to confirm OD-28 (the debt section) | Confirm | none |
-| PD-44 | The other tax defaults settled while building | Accept as built | TA-03 sign-off |
+| PD-44 | The other tax defaults settled while building | **ANSWERED 25 Nov 2026** (with PD-04): "Accept all" (24 items as summarised by MOD-04, D-043) | none (TA-03 merged, PR #36) |
 | PD-45 | The 26 "to be confirmed" research items of the capital-gains design | Send the top five to the tax adviser | M7 accuracy |
 | PD-46 | Did you ask for anything outside these chats between 24 and 27 Oct? | Tell MOD-02 | none |
 | PD-47 | A fund whose own statement gives a category: keep that, even if the performance data calls it "Listed AIF"? (follows PD-02) | **ANSWERED 2 Nov 2026**: "The fund's own statement wins and second order win is my ruling." | none (D-043 in TA-03) |
@@ -288,9 +294,19 @@ that builds it (EX-01 or NB-01).
 | PD-51 | Wider placeholder spellings ("n.a.", "n.a", "none", "not available", "--", a lone dash) count as an empty Crore cell? | **ANSWERED 9 Nov 2026**: "Yes, count as empty (Recommended)" | none (no code change; M1.4 PR) |
 | PD-52 | Tax adviser: does the Income-tax Act 2025 keep the rule that a loss on virtual digital assets cannot be set off or carried forward (CR-0008 question 25)? | Ask the tax adviser; the page keeps "no set-off" (PD-03) | none |
 | PD-53 | Tax adviser: should the Category III AIF sentence carry the reckoner's clause on determinate trusts (CR-0008 question 26)? | Ask the tax adviser | wording only (TA-03 stage S10 left it out) |
-| PD-54 | CR-0008 question 24: does the Listed AIF ruling reach a fund linked to a Listed AIF entry only by a loose name? | **ANSWERED 9 Nov 2026**: "Restrict it (Recommended)": only the fund's own words or an exact name (ignoring "AIF" and brackets) | none (stage S10 in TA-03) |
+| PD-54 | CR-0008 question 24: does the Listed AIF ruling reach a fund linked to a Listed AIF entry only by a loose name? | **ANSWERED 9 Nov 2026**: "Restrict it (Recommended)": only the fund's own words or an exact name (ignoring "AIF" and brackets). **Confirmed 25 Nov 2026**: stage S12's word-for-word key (letter case, punctuation, brackets and "AIF" ignored) is within that answer: "Yes, that's fine (Recommended)" (D-043) | none (stage S10 in TA-03) |
 | PD-55 | The Outlook deck's charts: in last cycle's deck (October 2026) 4 of the 9 charts are linked to workbooks outside the deck, so the copy check of rule 10 would say NOT RUN on it every month (tested offline on 9 Nov, no Office used). Should the Step 3 script remove those links in its own copy before opening it, or will you export the slides yourself each month? | The script removes the links in its own copy only, never in the original (rule 10 then needs one more sentence, and ARC-01 and the security reviewer review it); until then you export by hand (PD-49 option B) | TA-26, TA-10 Step 3 |
-| PD-56 | Which day should the October fund performance be as on? The three monitors supplied are three different trading days: the Regular "2 November" file is Mon 2 Nov, the Direct "31 Oct" file is Fri 30 Oct, the older Regular "29 Oct" file is Thu 29 Oct. EX-01's number test over 581 funds and the NSE holiday list for 2026 (October holidays: 2 Oct and 20 Oct only) show that Fri 30 Oct was a trading day, so the last October NAV day is 30 Oct, not 29 Oct | **ANSWERED 9 Nov 2026**: "Yes, 31 Oct": the Regular and SIF monitors are downloaded again "as on 31 Oct 2026", like the Direct file (NAV day 30 Oct); the notes keep the owner's words "Performance as on 31st October"; direct-equity returns use the 30 Oct close; the true NAV day goes in the refresh log and the PR body | TA-10 (the final build waits for the two files) |
+| PD-56 | Which day should the October fund performance be as on? The three monitors supplied are three different trading days: the Regular "2 November" file is Mon 2 Nov, the Direct "31 Oct" file is Fri 30 Oct, the older Regular "29 Oct" file is Thu 29 Oct. EX-01's number test over 581 funds and the NSE holiday list for 2026 (October holidays: 2 Oct and 20 Oct only) show that Fri 30 Oct was a trading day, so the last October NAV day is 30 Oct, not 29 Oct | **ANSWERED 9 Nov 2026**: "Yes, 31 Oct": the Regular and SIF monitors are downloaded again "as on 31 Oct 2026", like the Direct file (NAV day 30 Oct); the notes keep the owner's words "Performance as on 31st October"; direct-equity returns use the 30 Oct close; the true NAV day goes in the refresh log and the PR body. **CHANGED 19 Nov 2026**: "Use the 2 Nov files": Regular and SIF performance from the 2 Nov files (prices Mon 2 Nov), Direct from the 31 Oct file (prices Fri 30 Oct); the label is PD-57 | none (October refresh published, PR #21) |
+| PD-57 | The October performance label: with the 2 Nov Regular and SIF files, show their true date or "31 Oct 2026"? | **ANSWERED 9 Nov 2026**: "Yes, 31 Oct 2026"; **confirmed 19 Nov 2026** for the 2 Nov files: "Show 31 Oct" (not MOD-03's default): one label, "Performance as on 31 Oct 2026" and "SIF (as on 31 Oct 2026)"; the true price days go only in the refresh log, the commit message and the PR body | none (published, PR #21) |
+| PD-58 | Should clients also see the true price date (Fri 30 Oct)? | **ANSWERED 18 Nov 2026**: "No, label only" | none |
+| PD-59 | PMS and AIF figures: which Investment Reckoner? | **ANSWERED 18 Nov 2026**: "Use October's" (not the recommendation); **CHANGED 19 Nov 2026**: "Yes, use November": the November Reckoner is the source for the PMS and AIF figures (P02-S02) and the product list (P02-S04); read only as zip and XML, never committed | LP-13, LP-15 (Stage 2 work: a new reader, Gates A to D) |
+| PD-60 | What does "update the products" mean? | **ANSWERED 18 Nov 2026** in the owner's own words: a product database built from the Investment Reckoner, so that the full product list is available and "matched with the client file when uploaded" (REQ-083, P02-S04) | LP-15, NB-M11b (scope note, CR, Gates A to D); GIFT City (Offshore deck) still open |
+| PD-61 | Risk figures: in-house from AMFI prices and the TRI files, or the Screener file? | **ANSWERED 19 Nov 2026** (final): in-house, as before ("calculate and update the MF Analysis like you were doing earlier"); it replaces the answer of 18 Nov ("Use the Screener file"), which conflicted with D-026. D-026 unchanged | none (October risk ratios published, PR #22) |
+| PD-62 | Direct equity: resend the attachment, and which prices are used each month? | Resend; settle the scope | LP-14 (REQ-085) |
+| PD-63 | AI Analyst footnote: wording of the data dates (the footnote and method panel borrow the performance date for analytics and risk) | Accept this month, fix later | LP-11 |
+| PD-64 | Do TA-03 and M1.4 pause until Stage 0 and Stage 1 are approved, or keep their review gates moving without merging? | **ANSWERED 17 Nov 2026**: "Yes, gates only". Its approval style for routine items is superseded by PD-65 (24 Nov) | none |
+| PD-65 | The owner's operating charter: autonomous full-stack development, parallel execution and project continuity | **GIVEN 24 Nov 2026** (owner instruction): the Moderator is project manager, principal architect, lead full-stack developer and integration owner; routine technical decisions are the Moderator's; the owner is asked only for business and financial logic, scope, data integrity, security and privacy, irreversible actions, spend and sprint output approvals; three-compaction succession for every chat, the Moderator too; `docs/coordination/` | none |
+| PD-66 | Delegation while the owner was away | **GIVEN 25 Nov 2026, 00:57 IST** (owner instruction, about 12 hours, ended about 13:00 IST): the Moderator approves decisions on the owner's behalf ("approve all the decisions on my behalf"), recorded as "MOD-04 under PD-66", within fixed limits | none (ended) |
 
 ### 2.3 Each decision explained
 
@@ -299,6 +315,8 @@ changes, the good and the bad, the impact, whether it can be undone, our recomme
 blocks.
 
 #### PD-01. The live page's tax defaults (CR-0008 question 1)
+
+**ANSWERED 25 Nov 2026** (about 19:15 IST, relayed by MOD-04): "Accept all eight (Recommended)". D-040 (a) to (h) stand as built; recorded in D-043 (the sign-off paragraph). TA-03 merged in PR #36 (live page `08CAC338…`). Point (c) below: the live page keeps not reading the base file's ISIN column; KI-184's fix (TA-06, LP-03) is no longer planned, because the owner's "ISIN" column belongs to the new build's template only (section 2.4, 25 Nov 2026).
 
 - **Problem.** The Taxation tab needed rules that the tax reckoner does not spell out. Claude chose a careful
   default for each of eight gaps: (a) count holding time up to the date of the base file's values; (b) a holding is
@@ -369,6 +387,8 @@ is the question as asked on 2 Nov.
 
 #### PD-04. The other CR-0008 questions, each with a built default
 
+**ANSWERED 25 Nov 2026** (about 19:30 IST, with PD-44): "Accept all". The owner first replied "I'll go through them"; MOD-04 sent a plain list of the 24 built defaults, and the owner accepted all of them. Questions 2, 3, 13, 14, 15 and 27 go to the tax adviser; their answers become later fixes (D-043).
+
 - **Problem.** The tax review left questions where Claude built a default. In short: Q2 ELSS units can be sold from
   the day after the third anniversary; Q3 a 29 Feb purchase turns long term on 1 Mar; Q4 which marker real base
   files carry for foreign shares; Q5 which equity ETF fund-of-funds are 90/90 (see PD-06); Q6 US treasury and US
@@ -421,6 +441,8 @@ is the question as asked on 2 Nov.
 - **Blocks.** Consistency between the builds only.
 
 #### PD-07. The slab rate used to order set-off
+
+**Still open (26 Nov 2026).** The live page keeps its built 30% "assumed" (part of the tax batch the owner accepted on 25 Nov 2026 under PD-01 and PD-44). The new build keeps no default (D-036 point 3). The two builds still differ; MOD-04 puts the consistency question to the owner with the M7a engine work.
 
 - **Problem.** To decide which gains a loss is used against first, the page needs the client's slab rate. The live
   page assumes 30% and labels it. The new build shows a dash until the analyst sets it (D-036 point 3).
@@ -546,6 +568,15 @@ is the question as asked on 2 Nov.
 - **Recommendation.** A [INFERRED]. **Blocks.** The new build only.
 
 #### PD-16. Capital-gains design, the seven open items (capital-gains-upload.md §15)
+
+**ANSWERED IN PART 26 Nov 2026** (about 13:40 IST, the owner's table reply to MOD-04). Items 1, 2, 3, 5, 6 and 7 are answered; item 4 stays open.
+- Item 1, "Accept": the dated rule table is adopted for M7 (in place of OD-17's bands and OD-2's single test).
+- Item 2, "Short term": a sale on the anniversary day is short term; the long-term figure is shown beside it.
+- Item 3, "Yes": the reader may number the distinct PANs in memory only.
+- Item 5, "No": the platform's export does not repeat lot rows by design, so repeated rows are duplicates, not separate lots.
+- Item 6, "Confirm": the FY 2024-25 exemption order (12.5% gains first) is confirmed.
+- Item 7, "Confirm": the usual bucket for hybrid funds from tax year 2026-27 is confirmed.
+- Item 4 (open): the owner pasted a general explanation of the cost-inflation index and the old indexation formula. It does not settle the two specific points (the FY 2016-17 index value in the 1981 series, and whether the old-law choice applies per lot or on the year total, before or after set-off), so they stay with the tax adviser. Until then the engine shows a dash and reads per lot, with the year total shown.
 
 - **Problem.** The approved design for the new build's capital-gains upload leaves seven items: (1) use a dated
   table of the law instead of the older OD-17 bands and OD-2's single test; (2) is a sale exactly on the anniversary
@@ -689,6 +720,23 @@ See the private supplement. **Blocks:** TC-20.
 
 #### PD-30. Confirm the "publish" gate
 
+**ANSWERED 9 Nov 2026** (see the table). **Publishes the owner gave since** (each merged by the Moderator under D-020 after the Guardian's Gate D, the live page checked against `main` afterwards):
+
+| Date | Owner's words | What went live | PR |
+|---|---|---|---|
+| 19 Nov 2026 | "Publish" | October refresh (analytics and performance) | #21 |
+| 21 Nov 2026 | "Publish October Fugures" (as typed) | October risk ratios | #22 |
+| 22 Nov 2026 | "Publish 40 funds now" | CR-0010 A1, 40 funds' analytics | #23 |
+| 23 Nov 2026 | "Publish slides now" | 6 October Market Update slides | #24 |
+| 23 Nov 2026 | "Publish fixes" | CR-0010 A2, A3, A2b | #25 |
+| 23 Nov 2026 | "Publish" | M1.4 portfolio overview to `/next/` | #20 |
+| 25 Nov 2026 | none: MOD-04 under PD-66 | CR-0010 A4 (SWOT international terms) | #28 |
+| 25 Nov 2026 | "Publish when green (Recommended)" | LP-16, KI-051 non-MF classifier | #32 |
+| 25 Nov 2026 | "Publish after LP-16 (Recommended)" | CR-0010 A5 (Indian-ISIN shares domestic) | #33 |
+| 25 Nov 2026 | "Publish when green (Recommended)" | TA-03 tax batch | #36 |
+
+From 25 Nov 2026 new-build sprint outputs reach `/next/` under the owner's standing rule (section 2.4) without a separate "publish"; the live page still needs the owner's word each time.
+
 - **Problem.** Claude proposed that a monthly data refresh reaches the live link only after you review it and reply
   "publish". You never objected, but you never typed it either.
 - **Options.** A: confirm. B: change (for example, merge after checks without asking).
@@ -741,6 +789,8 @@ See the private supplement. **Blocks:** TC-20.
 - **Recommendation.** Optional; turning it on is harmless. **Blocks.** Nothing.
 
 #### PD-36. Approve each new fund or AMC alias (OD-5)
+
+**ANSWERED 25 Nov 2026** (about 15:05 IST) for the 17-line list of renamed schemes (KI-050): "All 16, hold line 10 (Recommended)". Lines 1 to 9 and 11 to 17 are approved for the new build (`data/owner/fund-aliases.json`, M2 sprint 2a, one test per line); each alias covers the Regular and Direct plans of the same scheme. Line 10 is on hold. The owner also confirmed that the 23 Oct requests C4 and C5 are lines 1, 4, 15 and 17, four ICICI schemes: "Those four cover it". The live page keeps today's matching (the D-028 exception of 25 Nov, section 2.4). Any later alias still needs its own approval.
 
 - **Problem.** An alias tells the page that two names mean the same fund. A wrong alias matches the wrong fund.
 - **Options.** Approve or reject each alias as it is proposed (for example the ICICI aliases in C4 and C5).
@@ -805,6 +855,8 @@ See the private supplement. **Blocks:** nothing.
 
 #### PD-44. The other tax defaults settled while building
 
+**ANSWERED 25 Nov 2026** (with PD-04): "Accept all" (D-043). Also on 25 Nov: every bond carries the label "US-dollar bonds (through LRS)" (section 2.4), so every bond shows no tax figure, with its reason, until tax-adviser question 27 is answered: "Yes, for now".
+
 - **Problem.** Besides PD-01 and PD-04, D-040 lists defaults Claude settled while building, for you to confirm:
   usual buckets for hybrid funds and SIFs (dated from 1 Apr 2026 by part T5); the 90/90 single-ETF fund-of-funds
   (PD-06); SIF rows; the ELSS lock-in to the third anniversary; how REIT funds are recognised; the order for finding
@@ -865,6 +917,98 @@ See the private supplement. **Blocks:** nothing.
   window, closes only that copy, never Quit. B: you export the slides yourself and put them in the inbox folder. C: skip the check.
 - **Recommendation / default.** B (not chosen). Until the amendment of rule 10 is on main, ARC-01 has reviewed the Step 3 script and its SHA-256 is in its D entry, Step 3 is NOT RUN.
 - **Blocks.** TA-10 Step 3 and TA-26.
+- **Later (22 Nov 2026).** For the October Market Update slides the owner chose a render of the Reckoner PDF by Windows' built-in PDF renderer ("Yes, 6 now", section 2.4); no PowerPoint was used. The December runbook (LP-19, PR #39) uses the same route.
+
+PD-50 to PD-56: the plain-language sections are still to be written; their table rows in section 2.2 are complete.
+
+#### PD-57. The October performance label
+
+**ANSWERED 9 Nov 2026**: "Yes, 31 Oct 2026". **Confirmed 19 Nov 2026** for the 2 Nov files: "Show 31 Oct".
+- **Problem.** After PD-56 changed (the Regular and SIF files are as on Mon 2 Nov, the Direct file as on Fri 30 Oct), the page could show each block's true date or one label for the month.
+- **Answer.** One label for all: "Performance as on 31 Oct 2026" and "SIF (as on 31 Oct 2026)" (MOD-03's default was the true date per block; the owner chose otherwise). The true price days go only in the refresh log, the commit message and the PR body, as PD-58 says.
+- **Effect.** The October refresh went live with this label (PR #21, 19 Nov 2026).
+
+#### PD-58. The true price date for clients
+
+**ANSWERED 18 Nov 2026**: "No, label only". Clients see the label only (PD-57); the true price days are recorded in the refresh log, the commit message and the PR body.
+
+#### PD-59. The source of the PMS and AIF figures
+
+**ANSWERED 18 Nov 2026**: "Use October's" (not the recommendation). **CHANGED 19 Nov 2026**: "Yes, use November" (the original recommendation).
+- **Effect.** The November Investment Reckoner is the source for the PMS and AIF figures (P02-S02, LP-13) and for the product list (P02-S04, LP-15). It is read only as zip and XML and never enters the repository. A new reader is Stage 2 work through Gates A to D.
+
+#### PD-60. What "update the products" means
+
+**ANSWERED 18 Nov 2026** in the owner's own words (not the recommendation, which was to change nothing now).
+- **Meaning.** Build a database of products from the Investment Reckoner, so that the full product list is in the dashboard and client holdings are "matched with the client file when uploaded" (REQ-083, P02-S04).
+- **Effect.** Stage 2 work: a scope note, a CR, a new reader reviewed by the Guardian, Gates A to D (LP-15 on the live page; NB-M11b in the new build). GIFT City products (the Offshore deck) were not named and stay open.
+
+#### PD-61. The source of the risk figures
+
+**ANSWERED 19 Nov 2026** (final): in-house, as before.
+- **History.** On 18 Nov the owner answered "Use the Screener file". That conflicted with D-026 point 2 (the owner's own rule ND-1), so it was held as pending confirmation and nothing changed. On 19 Nov the owner sent the October benchmark data and asked to "calculate and update the MF Analysis like you were doing earlier". MOD-03 read this as the in-house toolchain, which replaces the 18 Nov answer.
+- **Effect.** D-026 unchanged. The October risk ratios were computed in-house and went live on 21 Nov 2026 (PR #22).
+
+#### PD-62. Direct-equity returns: the price source
+
+**Open.** The owner is asked to resend the direct-equity attachment and to settle which prices are used each month (REQ-085). Recommendation: resend; settle the scope. **Blocks.** LP-14.
+
+#### PD-63. The AI Analyst footnote dates
+
+**Open.** The AI Analyst footnote and method panel borrow the performance date for analytics and risk. Recommendation: accept this month, fix later. **Blocks.** LP-11.
+
+#### PD-64. Pause or gates only before Stage 0 and Stage 1
+
+**ANSWERED 17 Nov 2026**: "Yes, gates only". Finished work (TA-03, M1.4) kept moving through its review gates without merging, and no new development started before Stage 0 and Stage 1 were approved. On 23 Nov the owner's "Yes, merge it" for registers-3 (PR #26) also allowed a docs-only records PR to merge with the gates. PD-65 (24 Nov) replaced this approval style for routine items.
+
+#### PD-65. The operating charter
+
+**GIVEN 24 Nov 2026** (owner instruction: a pasted charter of 19 sections, "Autonomous full-stack development, parallel execution and project continuity").
+- **What it changes.** How the work is run, not what is built. The Moderator becomes project manager, principal architect, lead full-stack developer, integration owner and model and agent orchestrator, and codes directly. Routine technical decisions are the Moderator's and need no owner question.
+- **What still goes to the owner.** Business and financial logic, scope, data integrity, security and privacy, irreversible actions, spend, and sprint output approvals (demonstrated, explicit).
+- **How.** A coding map, dependency classes A, B and C, interface contracts and file ownership before substantial new module work (`docs/coordination/`); parallel workstreams; continuous execution; three-compaction succession for every chat, the Moderator included.
+- **Unchanged.** Rule 10, the privacy and deny-list rules, the public-repository rules, no force-push, live-page publishes only on the owner's word, and the approved financial methods.
+- **First use of the succession rule.** On 25 Nov 2026 CHAT-006 (MOD-03) handed over early to CHAT-013 (MOD-04) under its §9.3 (CHAT_SUCCESSION_REGISTER).
+
+#### PD-66. The 12-hour delegation of 25 Nov 2026
+
+**GIVEN 25 Nov 2026, 00:57 IST** (owner instruction): while away, the owner handed approvals to the Moderator chat for the next 12 hours ("approve all the decisions on my behalf"), asked that the build not stop, and asked for a realistic timeline of the full build in the morning. It ended about 13:00 IST.
+- **Limits recorded with it.** Nothing prohibited (credentials, untrusted downloads, force-push, history rewrite, data deletion); no owner-only account settings; no Office runs (rule 10: owner-run only); live-page publishes only with every gate passed and low client risk; new-build outputs could merge to `/next/` but Gate E stayed with the owner; anything material and irreversible waited.
+- **Decisions taken under it** (recorded as "MOD-04 under PD-66"): the CR-0010 A4 publish (PR #28; one SWOT statement, low client risk); M2.1 sprint 1 to `/next/` (PR #30; the owner accepted it at Gate E later that morning); one privacy allow-list entry for LP-16's generated `data/refdata/PRODUCT_CLASS_RULES.json`, of the same class as the existing generated refdata entries, checked by the security reviewer at Gate B. The tax batch was not published under it: PD-01, PD-04, PD-44 and PD-54 were kept for the owner.
+
+### 2.4 Owner decisions without a PD number (17 to 26 Nov 2026)
+
+Answers and instructions the owner gave in chat that have no PD number. Recorded from the Moderator's owner-decision record (MOD-03, then MOD-04). Quotes are the owner's words or the answer card chosen.
+
+| Date | Decision | Owner's words | Effect |
+|---|---|---|---|
+| 17 Nov 2026 | Stage 0 plan | "Approve Stage 0 plan" | Plan approved |
+| 18 Nov 2026 | Stage 0 baseline | "Approve baseline" | `3e7f977` (PR #19) is the Stage 0 baseline, local tag `stage0-baseline-3e7f977`; D-046 is reserved for it and not yet written |
+| 18 Nov 2026 | Stage 1 start (TA-10) | "Update the performance for the review dashboard as of October, 2026" | The October refresh started; not a "publish" |
+| 19 Nov 2026 | Priority | "Update the analytics to October as a first priority task", then "Update the analytics and performance as of October" (first priority) | Analytics first, then performance (published 19 Nov, PR #21) |
+| 19 Nov 2026 | One-time script runs for the October risk ratios | "Yes, allow", then "Yes, allow it" | Only the six Guardian-reviewed risk scripts, then one run of the risk workbook writer, each hash-checked just before its run, with an execution-policy bypass for that one process; no persistent policy change; no Office |
+| 19 Nov 2026 | Market Update slides | "The 2 new plus 6"; **changed 22 Nov**: "Yes, 6 now" | 6 slides (label "Nov 2026") rendered from the Reckoner PDF by Windows' PDF renderer, no PowerPoint; the 2 pager pages wait for a PDF or pictures; published 23 Nov (PR #24) |
+| 22 Nov 2026 | Other Funds analytics (CR-0010, option A revised) | "Yes, go ahead" | Sprint approval for A1 to A3; published in PRs #23 and #25 |
+| 22 Nov 2026 | New build | "Start working on the new build on the side" | Read as approval of sprint P03-S01 (finish M1.4) and CHAT-009 NB-02 |
+| 23 Nov 2026 | registers-3 | "Yes, merge it" | PR #26 merged |
+| 23 Nov 2026 | One Office rule in CLAUDE.md (M1.4 fix 1) | "Yes, allow it" | The duplicate new-build Office paragraph replaced by a pointer to rule 10; rule 10 unchanged |
+| 23 Nov 2026 | Gate E, M1.4 | "Accept it" | Sprint P03-S01 complete |
+| 23 Nov 2026 | M2 | "Yes, start M2" | M2 (P03-S02) approved, split into sprints, each through Gates A to E |
+| 25 Nov 2026 | ISIN in the client base file | "Yes, heading below" (ISIN first, name fallback); then "No ISIN column"; then, replacing that: the client file's column "will be ISIN", and the owner offered to update the template | The new build reads a column headed "ISIN" (letter case ignored), ISIN first, name fallback. Reference ISINs come from the AMFI NAV file (funds) and the stock-returns file (shares) |
+| 25 Nov 2026 | Scope of the revamped base file template | "Template only" (after: "Let the current dashboard stay as is as its soon going to be replaced") | The revamped Client Base File Template, with its "ISIN" column, is for the **new build only**; the live page and its template download stay as they are. LP-03 (TA-06, live-page ISIN reading, KI-184) is dropped. Live-page fixes already queued continue (A4, TA-03, LP-16, A5) |
+| 25 Nov 2026 | Labels for non-MF products (D-7) | "Use type you used to describe the funds above as Labels" | Six labels: "GIFT City funds", "Offshore funds", "US-dollar bonds (through LRS)", "Fixed deposits", "REITs and InvITs", "Unlisted shares"; never classed as MF. Live first (LP-16, PR #32), the new build ports the same answers (M2.2) |
+| 25 Nov 2026 | Rupee bonds and NCDs: a separate "Bonds and NCDs" label? | "No, keep as recorded" (not the recommendation) | Every bond, NCD and debenture keeps "US-dollar bonds (through LRS)"; the template proposal drops a separate "Bonds" value |
+| 25 Nov 2026 | Bonds and tax | "Yes, for now" | Bonds show no tax figure, with the reason, until tax-adviser question 27 (D-043) |
+| 25 Nov 2026 | Gate E, M2.1 sprint 1 | "Accept it" | Complete on `/next/` (PR #30) |
+| 25 Nov 2026 | Order of the fund-matching corrections: an exception to D-028 | "New build first (Recommended)" | The new build makes the matching corrections first (ties left unmatched, KI-036; approved aliases, KI-050; KI-051 as ported); the live page keeps today's matching until switch-over. KI-051 stays on the live page through LP-16 |
+| 25 Nov 2026 | Standing rule for `/next/` | "Yes, standing (Recommended)" | The Moderator merges each new-build sprint to `/next/` once Gates A to D have passed (Guardian GO, Gate C, Gate D, CI), without a separate "publish"; Gate E stays the owner's, reviewed weekly; the live page still needs the owner's word each time |
+| 25 Nov 2026 | M12a drawdown method, questions 1, 3, 4 and 5 | "Accept defaults (Recommended)" | Monthly rebalancing to today's weights; month-end points; one common period with its dates shown; months to recover counted from the trough. Question 2 (which index stands for each asset class) is still open |
+| 25 Nov 2026 | Gate E, M2.3a, M3a and M7a reader | "Accept all three on /next/" | Complete (PRs #31, #34, #35) |
+| 26 Nov 2026 | Gate E, M10 | "Accept M10 on /next/" | Complete (PR #37); wiring waits on its pre-wiring conditions |
+| 26 Nov 2026 | Item 6: one known-answer run of the month-parameterised risk scripts | "Yes, allow (Recommended)" | One offline run only, of the 11 Guardian-reviewed files, each hash-checked before it runs, with an execution-policy bypass per process, nothing persistent, no Office, no network, plus three negative tests; then the Guardian's final GO |
+| 26 Nov 2026 | Q-12: SheetJS 0.20.2 | "Yes, download it (Recommended)" | One download from the official site, its SHA-256 recorded in `app/vendor/MANIFEST.json`, Guardian review; the pinned-version change is recorded against D-025 and D-034. Fixes CVE-2023-30533 and CVE-2024-22363 and allows the monitor upload buttons |
+| 26 Nov 2026 | Fund-matching strictness (OD-5), option B | "Go ahead with the Stricter regime" (the owner also asked why 21 funds would show as not matched) | Option B on in the new build; a follow-up fix to name normalisation ("S&P", "(Formerly Known as ...)", "And" against "&") recovers the 21 correct names, measured |
+| 26 Nov 2026 | Test build target | "I want to start testing on the new build within 2 weeks maximum" | Test build 1 on `/next/` by Thu 10 Dec 2026: matched holdings and the import report (M2 wired), performance (M3b), returns and XIRR (M3a wired), and their sheets |
 
 ## 3. Recommendations not yet approved
 
@@ -902,3 +1046,4 @@ These are Claude's recommendations. None is a decision until the named approver 
 | 2 Nov 2026 | MOD-02 | R-12 (Office rule), R-13 (TB-08); PD-47 to PD-49 queued; PD-02 impact line corrected; "planned, not in git yet" tags |
 | 2 Nov 2026 | MOD-02 | Rule 10 of CLAUDE.md sharpened after the security review (synthetic defined, Excel window, NOT RUN is never a pass); residual "planned, not in git yet" tags; TA-26 priority |
 | 9 Nov 2026 | MOD-02 | Owner answers PD-09, PD-20, PD-21, PD-30, PD-47 to PD-51 and PD-54 recorded; PD-52 and PD-53 (tax adviser) queued; R-14 (numbers) and R-15 (rule 10 amended, then reworded after the security review: Git Bash `//FI`, one pre-flight list, the copy folder, freshness, SHA-256 pin; then the Get-Process existence check and ARC-01's guard and script requirements); PD-55 (linked charts in the Outlook deck) queued; PD-56 (the day of the October performance) answered |
+| 26 Nov 2026 | MOD-04 (registers-4) | Owner answers of 17 to 26 Nov recorded: PD-01, PD-04 and PD-44 answered; PD-16 answered except item 4; PD-30 publishes listed; PD-36 answered for the renamed-scheme list; PD-54 confirmed; PD-56 changed; PD-07 still open. PD-57 to PD-66 added (PD-62 and PD-63 open). Section 2.4: owner decisions without a PD number (Stage 0, D-7 labels, the ISIN column for the new build only, the D-028 exception for matching corrections, the standing `/next/` rule, M12a defaults, Q-12, matching option B, the item 6 run, Gate E acceptances, the test build target). Owner of this log: MOD-04 |
