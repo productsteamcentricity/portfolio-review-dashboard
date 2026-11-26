@@ -200,6 +200,9 @@ describe('through the reader', () => {
     const two = new Uint8Array([...makeScreenerPack(), ...makeScreenerPack({ cycle: '2026-11-15' })]);
     const r = await readScreenerPack(two, 'x.zip', deps);
     assert.equal(r.ok, false);
+    // ARC-03 R7: the end record's directory offset is the second archive's own, so the directory does not end where
+    // the end record starts; that check, not a later one, refuses it
+    if (!r.ok) assert.equal(r.refusal.reason, 'the zip central directory is damaged');
   });
 
   test('changed data inside a zip entry is refused by its SHA-256', async () => {
@@ -223,5 +226,73 @@ describe('through the reader', () => {
     const r = await readScreenerPack(zip, 'x.zip', deps);
     assert.equal(r.ok, false);
     if (!r.ok) assert.match(r.refusal.reason, /more than one manifest\.json|outside the pack folder/);
+  });
+});
+
+// ARC-03 R7 (Gate B of M10): each directory defence has a test of its own that fails when that check alone is removed
+// (the per-file SHA-256 would still catch most of these later; these tests pin the earlier, cheaper refusal).
+describe('directory defences, one test each', () => {
+  /** The bytes of central directory entry `i` of `zip`. */
+  function cdEntry(zip: Uint8Array, i: number): Uint8Array {
+    const offs = cdOffsets(zip);
+    const end = i + 1 < offs.length ? offs[i + 1]! : zip.length - 22;
+    return zip.slice(offs[i]!, end);
+  }
+  /** `locals` (local headers and data) followed by a directory of `cds` and an end record with no comment. */
+  function withDirectory(locals: Uint8Array, cds: Uint8Array[], gap = 0): Uint8Array {
+    const cd = new Uint8Array(cds.reduce((n, c) => n + c.length, 0));
+    let at = 0;
+    for (const c of cds) { cd.set(c, at); at += c.length; }
+    const end = new Uint8Array(22);
+    setU32(end, 0, 0x06054b50); setU16(end, 8, cds.length); setU16(end, 10, cds.length);
+    setU32(end, 12, cd.length); setU32(end, 16, locals.length);
+    return new Uint8Array([...locals, ...cd, ...new Uint8Array(gap), ...end]);
+  }
+  const localsOf = (zip: Uint8Array): Uint8Array => zip.slice(0, cdOffsets(zip)[0]!);
+
+  test('a gap between the directory and the end record', () => {
+    const zip = storeZip([{ name: 'p/a.json', data: one }, { name: 'p/b.json', data: one }]);
+    const ok = withDirectory(localsOf(zip), [cdEntry(zip, 0), cdEntry(zip, 1)]);
+    assert.ok(readZipDirectory(ok).ok, 'the same archive without a gap is accepted');
+    assert.equal(refusedDir(withDirectory(localsOf(zip), [cdEntry(zip, 0), cdEntry(zip, 1)], 4)), 'the zip central directory is damaged');
+  });
+
+  test('a local header whose name differs from the directory at the same length', () => {
+    const zip = storeZip([{ name: 'p/a.json', data: one }, { name: 'p/b.json', data: one }]);
+    const bad = zip.slice();
+    bad.set(new TextEncoder().encode('p/c.json'), 30); // entry 1's local name; its directory entry still says p/a.json
+    assert.equal(refusedDir(bad), 'the local header of "p/a.json" does not match the zip directory');
+  });
+
+  test('two entries whose data overlap', () => {
+    // b's local header and data are stored as a's data; the directory points b into the middle of a
+    const zb = storeZip([{ name: 'p/b.json', data: one }]);
+    const za = storeZip([{ name: 'p/a.json', data: localsOf(zb) }]);
+    const b = cdEntry(zb, 0);
+    setU32(b, 42, 30 + 'p/a.json'.length);
+    const zip = withDirectory(localsOf(za), [cdEntry(za, 0), b]);
+    assert.equal(refusedDir(zip), 'two zip entries overlap');
+  });
+
+  test('a second directory that only the zip library would read', async () => {
+    // A valid pack whose end record carries a comment holding a second directory (one file fewer) and a second end
+    // record. This reader takes the end record whose comment reaches the end of the file; JSZip takes the last end
+    // signature it finds. The entry lists differ, so the pack is refused before anything is inflated.
+    const pack = makeScreenerPack();
+    const eocd = pack.length - 22;
+    const cdStart = new DataView(pack.buffer, pack.byteOffset).getUint32(eocd + 16, true);
+    const count = cdOffsets(pack).length;
+    const fakeCd = new Uint8Array([...Array.from({ length: count - 1 }, (_, i) => [...cdEntry(pack, i)]).flat()]);
+    const fakeEnd = new Uint8Array(22);
+    setU32(fakeEnd, 0, 0x06054b50); setU16(fakeEnd, 8, count - 1); setU16(fakeEnd, 10, count - 1);
+    setU32(fakeEnd, 12, fakeCd.length); setU32(fakeEnd, 16, pack.length);
+    const comment = new Uint8Array([...fakeCd, ...fakeEnd, 0x20]); // a trailing byte: the second end record does not end the file
+    const zip = new Uint8Array([...pack.subarray(0, eocd + 22), ...comment]);
+    setU16(zip, eocd + 20, comment.length);
+    assert.ok(cdStart < eocd);
+    assert.ok(readZipDirectory(zip).ok, 'this reader approves the first directory');
+    const r = await readScreenerPack(zip, 'x.zip', deps);
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.equal(r.refusal.reason, 'the zip holds more than one directory, or its directory is ambiguous');
   });
 });
