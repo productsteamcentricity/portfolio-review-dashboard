@@ -7,22 +7,29 @@
 //     is taken on that date or on the nearest earlier date in the series within 7 calendar days; otherwise the tenor
 //     is missing for the stock: INSUFFICIENT EVIDENCE when the series starts after that date (not enough history),
 //     NOT AVAILABLE IN SUPPLIED DATA when the series has a gap there. Never 0%.
+//   - Method note (ARC-03 L6): the start and the end price are each looked up on their own (each may be up to 7 days
+//     before its date), and the CAGR is annualised over n whole years regardless: at most about 0.07 percentage points
+//     at 3Y and 10%. Owner question (ARC-03 M4, before wiring): on month-end prices an as-on that is not a month end
+//     (30 Oct for a 31 Oct series) loses whole tenors; should the anniversary then be the month end of its month?
 //   - Portfolio figure: weighted by the stock's share of the direct-equity value over the stocks that have the tenor
 //     (the shared core in portfolio-returns.ts); the rest are excluded and footnoted with the coverage (the calculator
 //     workbook's IFERROR-to-0% is not copied).
 //   - Sources in order (the pack first in M10u, then the analyst's price file): a stock takes the first source that has
-//     a series for it, and is labelled with that source.
+//     a non-empty series for it, and is labelled with that source (an empty series falls through, ARC-03 L3; a short
+//     history does not: owner question). The figure's source is the first source used by a stock in the base; with
+//     no source at all there is no figure (null). `used` and `mixed` as for E-147: coverageFootnote(figure, used,
+//     outsideBase) goes with every rendering.
 // Replaces the vendor return columns of STOCK_RET for these tenors; differences go to the parity ledger (E-148).
 // Pure: no globals.
 
-import type { ReturnTenor, ReturnsSource, WeightedReturn } from '../../model/returns.ts';
+import type { ReturnTenor, ReturnsSource } from '../../model/returns.ts';
 import type { HoldingId } from '../../model/ids.ts';
 import type { ScopeKey } from '../../model/scope.ts';
 import type { DayNumber, Value } from '../../model/value.ts';
 import { STATUS } from '../../model/status.ts';
 import { missing, present } from '../value.ts';
 import { dayToIso, dayToYmd, ymdToDay } from '../dates.ts';
-import { weightItems, TENOR_KEY, WEIGHTED_RETURN_LABEL, type WeightInput, type WeightedItem } from './portfolio-returns.ts';
+import { weightItems, TENOR_KEY, WEIGHTED_RETURN_LABEL, type UsedTable, type WeightInput, type WeightedResult } from './portfolio-returns.ts';
 
 /** How far back from a wanted date a price may be taken (calendar days). */
 export const PRICE_LOOKBACK_DAYS = 7;
@@ -98,7 +105,7 @@ export function stockCagr(points: readonly PricePoint[], asOn: DayNumber, tenor:
 /** One stock's line: the CAGR used (or why it is missing) and the source of its prices. */
 export type StockCagrLine = { holdingId: HoldingId; isin: string | null; cagr: Value<number>; source: ReturnsSource | null };
 
-export type StockCagrResult = { figure: WeightedReturn; items: WeightedItem[]; lines: StockCagrLine[] };
+export type StockCagrResult = WeightedResult & { lines: StockCagrLine[]; used: UsedTable[]; mixed: boolean };
 
 /**
  * E-148: each stock's CAGR and the direct-equity portfolio figure at a tenor (D-023 point 4). `sources` in order of
@@ -115,7 +122,7 @@ export function directEquityCagr(
   const inputs: WeightInput[] = [];
   const used = new Set<PriceSource>();
   for (const h of holdings) {
-    const src = h.isin === null ? undefined : sources.find((x) => Object.prototype.hasOwnProperty.call(x.series, h.isin!) && x.series[h.isin!]);
+    const src = h.isin === null ? undefined : sources.find((x) => Object.prototype.hasOwnProperty.call(x.series, h.isin!) && (x.series[h.isin!]?.length ?? 0) > 0);
     if (!src || h.isin === null) {
       const why = h.isin === null ? 'the holding has no ISIN' : 'no price series for this ISIN';
       lines.push({ holdingId: h.holdingId, isin: h.isin, cagr: missing(STATUS.NOT_AVAILABLE, why), source: null });
@@ -131,14 +138,17 @@ export function directEquityCagr(
       inputs.push({ holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { excluded: 'no-return' } });
     }
   }
-  const { figure, items } = weightItems(inputs, {
+  const usedInOrder = sources.filter((s) => used.has(s));
+  const consulted = sources.find((s) => lines.some((l) => l.source === s.source));
+  const day = present(asOn, 'date', { sources: [], method: 'review as-on date' });
+  const res = weightItems(inputs, {
     scope,
     tenor,
     basis: 'equity-value',
-    primary: sources[0]?.source ?? 'analyst-price-file',
-    asOn: present(asOn, 'date', { sources: [], method: 'review as-on date' }),
-    sourceIds: sources.filter((s) => used.has(s)).flatMap((s) => [...(s.sourceIds ?? [])]),
+    primary: usedInOrder[0]?.source ?? consulted?.source ?? sources[0]?.source ?? null,
+    asOn: day,
+    sourceIds: usedInOrder.flatMap((s) => [...(s.sourceIds ?? [])]),
     method: `${WEIGHTED_RETURN_LABEL} (${TENOR_KEY[tenor]} CAGR, D-023 point 4)`,
   });
-  return { figure, items, lines };
+  return { ...res, lines, used: usedInOrder.map((s) => ({ source: s.source, asOn: day })), mixed: usedInOrder.length > 1 };
 }

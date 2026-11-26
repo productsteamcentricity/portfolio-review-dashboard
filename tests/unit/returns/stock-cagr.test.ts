@@ -97,51 +97,67 @@ describe('the direct-equity portfolio (E-148)', () => {
 
   test('stocks at 60% and 40% with 3Y 10% and 20%: 14.00%', () => {
     const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6), sh('s2', 'INE000SAMPLE2', 4)], [file], AS_ON, '3y', 'family');
-    near(v(r.figure.value), 14);
-    assert.deepEqual(r.figure.coverage, { share: 1, basis: 'equity-value', included: 2, excluded: 0 });
-    assert.equal(r.figure.source, 'analyst-price-file');
+    near(v(r.figure!.value), 14);
+    assert.deepEqual(r.figure!.coverage, { share: 1, basis: 'equity-value', included: 2, excluded: 0 });
+    assert.equal(r.figure!.source, 'analyst-price-file');
     near(v(r.lines[1]!.cagr), 20);
   });
   test('the 40% stock without 3Y history: 10.00% at 60% coverage, not 6.00%', () => {
     const young = pts([D(2025, 1, 31), 100], [AS_ON, 120]);
     const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6), sh('s2', 'INE000SAMPLE3', 4)], [{ ...file, series: { ...file.series, INE000SAMPLE3: young } }], AS_ON, '3y', 'family');
-    near(v(r.figure.value), 10);
-    assert.deepEqual(r.figure.coverage, { share: 0.6, basis: 'equity-value', included: 1, excluded: 1 });
+    near(v(r.figure!.value), 10);
+    assert.deepEqual(r.figure!.coverage, { share: 0.6, basis: 'equity-value', included: 1, excluded: 1 });
     assert.equal(status(r.lines[1]!.cagr), STATUS.INSUFFICIENT_EVIDENCE);
     assert.deepEqual(r.items.map((i) => i.excluded), [null, 'no-return']);
   });
   test('the analyst file fills a stock the pack lacks, labelled with its source', () => {
     const pack: PriceSource = { source: 'screener-pack', series: { INE000SAMPLE1: tenPct3y }, sourceIds: ['sha-pack'] };
     const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6), sh('s2', 'INE000SAMPLE2', 4)], [pack, file], AS_ON, '3y', 'family');
-    near(v(r.figure.value), 14);
+    near(v(r.figure!.value), 14);
     assert.deepEqual(r.lines.map((l) => l.source), ['screener-pack', 'analyst-price-file']);
-    assert.equal(r.figure.source, 'screener-pack');
-    assert.deepEqual(r.figure.value.kind === 'value' && r.figure.value.prov.sources, ['sha-pack', 'sha-file']);
+    assert.equal(r.figure!.source, 'screener-pack');
+    assert.deepEqual(r.figure!.value.kind === 'value' && r.figure!.value.prov.sources, ['sha-pack', 'sha-file']);
   });
   test('a stock without an ISIN or without a series is excluded and counted, never 0%', () => {
     const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6), sh('s2', null, 2), sh('s3', 'INE000NOPRICE', 2)], [file], AS_ON, '3y', 'family');
-    near(v(r.figure.value), 10);
-    assert.deepEqual(r.figure.coverage, { share: 0.6, basis: 'equity-value', included: 1, excluded: 2 });
+    near(v(r.figure!.value), 10);
+    assert.deepEqual(r.figure!.coverage, { share: 0.6, basis: 'equity-value', included: 1, excluded: 2 });
     assert.deepEqual(r.items.map((i) => i.excluded), [null, 'unmatched', 'no-return']);
     assert.deepEqual(r.lines.map((l) => status(l.cagr)), [null, STATUS.NOT_AVAILABLE, STATUS.NOT_AVAILABLE]);
   });
-  test('no price source at all: every stock excluded, the figure missing', () => {
+  test('no price source at all: no figure (no source invented), every stock listed as missing', () => {
     const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6)], [], AS_ON, '1y', 'family');
-    assert.equal(status(r.figure.value), STATUS.NOT_AVAILABLE);
-    assert.equal(r.figure.coverage.share, 0);
+    assert.equal(r.figure, null);
+    assert.deepEqual(r.lines.map((l) => status(l.cagr)), [STATUS.NOT_AVAILABLE]);
+    assert.deepEqual(r.used, []);
+  });
+  test('B2: the figure names the source a stock in the base used; L3: an empty series falls through', () => {
+    const pack: PriceSource = { source: 'screener-pack', series: { INE000SAMPLE1: [] }, sourceIds: ['sha-pack'] };
+    const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6)], [pack, file], AS_ON, '3y', 'family');
+    near(v(r.figure!.value), 10);
+    assert.equal(r.figure!.source, 'analyst-price-file');
+    assert.deepEqual(r.lines.map((l) => l.source), ['analyst-price-file']);
+    assert.deepEqual(r.used.map((u) => u.source), ['analyst-price-file']);
+    assert.equal(r.mixed, false);
+  });
+  test('two sources used: mixed', () => {
+    const pack: PriceSource = { source: 'screener-pack', series: { INE000SAMPLE1: tenPct3y }, sourceIds: ['sha-pack'] };
+    const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6), sh('s2', 'INE000SAMPLE2', 4)], [pack, file], AS_ON, '3y', 'family');
+    assert.equal(r.mixed, true);
+    assert.equal(r.figure!.source, 'screener-pack');
   });
   test('a holding without a value keeps its line but stays out of the base', () => {
     const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6), { holdingId: 's2' as HoldingId, isin: 'INE000SAMPLE2', cmvCr: missing(STATUS.NOT_AVAILABLE, 'x') }], [file], AS_ON, '3y', 'family');
-    near(v(r.figure.value), 10);
-    assert.deepEqual(r.figure.coverage, { share: 1, basis: 'equity-value', included: 1, excluded: 0 });
+    near(v(r.figure!.value), 10);
+    assert.deepEqual(r.figure!.coverage, { share: 1, basis: 'equity-value', included: 1, excluded: 0 });
     near(v(r.lines[1]!.cagr), 20);
-    assert.deepEqual(r.figure.value.kind === 'value' && r.figure.value.prov.sources, ['sha-file']);
+    assert.deepEqual(r.figure!.value.kind === 'value' && r.figure!.value.prov.sources, ['sha-file']);
   });
   test('a source used only by a stock outside the base is not in the figure\'s provenance', () => {
     const pack: PriceSource = { source: 'screener-pack', series: { INE000SAMPLE2: twentyPct3y }, sourceIds: ['sha-pack'] };
     const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6), { holdingId: 's2' as HoldingId, isin: 'INE000SAMPLE2', cmvCr: present(0, 'cr', P) }], [pack, file], AS_ON, '3y', 'family');
-    near(v(r.figure.value), 10);
+    near(v(r.figure!.value), 10);
     assert.deepEqual(r.lines.map((l) => l.source), ['analyst-price-file', 'screener-pack']);
-    assert.deepEqual(r.figure.value.kind === 'value' && r.figure.value.prov.sources, ['sha-file']);
+    assert.deepEqual(r.figure!.value.kind === 'value' && r.figure!.value.prov.sources, ['sha-file']);
   });
 });

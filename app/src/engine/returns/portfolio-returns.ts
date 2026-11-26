@@ -3,14 +3,24 @@
 // ReturnsCoverage; DATA_DICTIONARY §6 `perf.portfolio.*`, `de.portfolio.*` and §7; KI-006).
 //
 //   - Weight = the item's share of the base: the mutual-fund value (basis 'mf-value') for E-147, the direct-equity
-//     value ('equity-value') for E-148. Only items with a positive market value are in the base.
+//     value ('equity-value') for E-148. Only items with a positive market value are in the base; the others are
+//     neither weighted nor in the coverage, and are counted apart (`outsideBase`) and named in the footnote.
 //   - An item without the tenor's return is left out of the weights and counted in the coverage, never counted as 0%:
 //     funds at 50%, 30% and 20% with 3Y returns 14%, 6% and none give (0.5 x 14 + 0.3 x 6) / 0.8 = 11.00% at 80%
 //     coverage, never 8.80%.
 //   - Source order (E-147): the MF Monitor the analyst uploads for the review, else the embedded monthly MF Monitor,
-//     else the MF Screener data pack (M10u). The caller passes the sources in that order; the first one is the primary
-//     and the figure's source. A fund missing in the primary is filled from a later source only when that source's
-//     as-on date equals the primary's; otherwise it is excluded and counted.
+//     else the MF Screener data pack (M10u); the caller passes the sources in that order. A fund is its plan and
+//     scheme name (Regular and Direct are separate vendor tables with their own as-on dates). Per plan the first
+//     source with a table for that plan is the primary; a fund with no return for the tenor in its primary table
+//     (absent, or the field empty) is filled from a later table of the same plan only when that table's as-on date
+//     equals the primary's; otherwise it is excluded and counted. (Owner question, ARC-03 L1: whether an explicit
+//     "no 3Y" in the primary may be filled at all.)
+//   - The figure names the source and the date of what it actually used (ARC-03 B1, B2): its source is the first
+//     primary used, in the caller's order; its as-on date is the primary tables' date, the earliest when they differ,
+//     and missing when a primary used has no date. When the tables used differ in source or date (`mixed`), only the
+//     footnote with `used` tells the whole truth: coverageFootnote(figure, used, outsideBase) goes with every
+//     rendering of the figure (ARC-03's default for its B2 decision; MOD-04 to confirm in I-31). With no source at all
+//     there is no figure (null): no source is invented.
 //   - Label: "weighted average return of current holdings", never the portfolio's realised return.
 // Pure: no globals. A fund is looked up by its plan and the vendor scheme name the matcher resolved (the key of MF_PERF
 // for Regular plans and MF_PERF_DIRECT for Direct plans, and of the uploaded monitors' schemes).
@@ -59,12 +69,18 @@ export type FundHoldingInput = {
   holdingId: HoldingId;
   /** The vendor scheme name (null when the holding is not matched to a fund). */
   schemeName: string | null;
-  plan: FundPlan;
+  /**
+   * The plan of the vendor table the matcher resolved the fund in (MF_PERF: Regular, MF_PERF_DIRECT: Direct), never a
+   * guess: null when it is not known, and the fund is then excluded ('no-plan').
+   */
+  plan: FundPlan | null;
+  /** The plan the base file records for the account, when known: a different plan excludes the fund ('plan-mismatch'). */
+  accountPlan?: FundPlan | null;
   cmvCr: Value<number>;
 };
 
-/** Why an item is not in the weights. */
-export type ExclusionReason = 'no-value' | 'unmatched' | 'no-return';
+/** Why an item is not in the weights ('no-value': outside the base; the others are excluded and counted). */
+export type ExclusionReason = 'no-value' | 'unmatched' | 'no-plan' | 'plan-mismatch' | 'no-return';
 
 /** One item of a weighted figure: the return used and where it came from, or why it was left out. */
 export type WeightedItem = {
@@ -76,7 +92,13 @@ export type WeightedItem = {
   excluded: ExclusionReason | null;
 };
 
-export type WeightedResult = { figure: WeightedReturn; items: WeightedItem[] };
+export type WeightedResult = {
+  /** Null only when no source was given at all (nothing to name as the figure's source). */
+  figure: WeightedReturn | null;
+  items: WeightedItem[];
+  /** Holdings without a positive market value: outside the base, neither weighted nor in the coverage (ARC-03 L2). */
+  outsideBase: number;
+};
 
 /** The return a table gives for a fund at the tenor, or null (null, absent, or not a finite number). */
 function fundReturn(table: FundReturnTable, scheme: string, tenor: ReturnTenor): number | null {
@@ -92,16 +114,16 @@ export type WeightInput = {
   holdingId: HoldingId;
   cmvCr: Value<number>;
   /** The return to use, or the reason it is missing (when the item has a positive value). */
-  pick: { returnPct: number; source: ReturnsSource } | { excluded: 'unmatched' | 'no-return' };
+  pick: { returnPct: number; source: ReturnsSource } | { excluded: Exclude<ExclusionReason, 'no-value'> };
 };
 
 /**
  * The weighting core shared by E-147 and E-148: the value-weighted return over the items that have one, with the
- * coverage of the base. `primary` names the figure's source and as-on date.
+ * coverage of the base. `primary` names the figure's source (null: no source at all, so no figure).
  */
 export function weightItems(
   inputs: readonly WeightInput[],
-  ctx: { scope: ScopeKey; tenor: ReturnTenor; basis: ReturnsCoverage['basis']; primary: ReturnsSource; asOn: Value<DayNumber>; sourceIds: readonly string[]; method: string },
+  ctx: { scope: ScopeKey; tenor: ReturnTenor; basis: ReturnsCoverage['basis']; primary: ReturnsSource | null; asOn: Value<DayNumber>; sourceIds: readonly string[]; method: string },
 ): WeightedResult {
   let base = 0;
   for (const it of inputs) if (it.cmvCr.kind === 'value' && it.cmvCr.v > 0) base += it.cmvCr.v;
@@ -125,34 +147,34 @@ export function weightItems(
     sum += cmv * it.pick.returnPct;
     included++;
   }
+  const outsideBase = items.filter((i) => i.excluded === 'no-value').length;
+  if (ctx.primary === null) return { figure: null, items, outsideBase };
   const share = base > 0 ? covered / base : 0;
-  // excluded counts the items of the base left out (no return, or not matched); an item with no positive value is not
-  // in the base, so it is neither weighted nor counted
-  const excluded = items.filter((i) => i.excluded === 'unmatched' || i.excluded === 'no-return').length;
+  // excluded counts the items of the base left out; an item with no positive value is outside the base
+  const excluded = items.length - included - outsideBase;
   const coverage: ReturnsCoverage = { share, basis: ctx.basis, included, excluded };
   const prov = { sources: [...ctx.sourceIds], method: ctx.method, ...(ctx.asOn.kind === 'value' ? { asOf: dayToIso(ctx.asOn.v) } : {}) };
   let value: Value<number>;
   if (base <= 0) value = missing(STATUS.NOT_APPLICABLE, 'no holding with a positive market value in the base', prov);
   else if (included === 0) value = missing(STATUS.NOT_AVAILABLE, `no holding in the base has a ${TENOR_KEY[ctx.tenor]} return`, prov);
   else value = present(sum / covered, 'pct', prov, share < 1 ? { coverage: share } : undefined);
-  return { figure: { scope: ctx.scope, tenor: ctx.tenor, value, source: ctx.primary, asOn: ctx.asOn, coverage }, items };
+  return { figure: { scope: ctx.scope, tenor: ctx.tenor, value, source: ctx.primary, asOn: ctx.asOn, coverage }, items, outsideBase };
 }
 
 /** A source table whose figures a result used, for the footnote (source, plan and as-on date). */
-export type UsedTable = { source: ReturnsSource; plan: FundPlan; asOn: Value<DayNumber> };
+export type UsedTable = { source: ReturnsSource; plan?: FundPlan; asOn: Value<DayNumber> };
 
-export type FundWeightedResult = WeightedResult & { used: UsedTable[] };
+export type FundWeightedResult = WeightedResult & {
+  used: UsedTable[];
+  /** The tables used differ in source or date: the footnote with `used` must go with the figure. */
+  mixed: boolean;
+};
+
+const PLANS: readonly FundPlan[] = ['regular', 'direct'];
 
 /**
  * E-147: the MF portfolio's weighted return at a tenor (D-023 point 3). `sources` in the order of preference (the
- * uploaded MF Monitor first when there is one); the first is the figure's source.
- *   - Per plan, the primary table is the first source's table for that plan; a plan the first source does not carry
- *     (a Regular monitor uploaded alone) is read from the next source that has it.
- *   - A fund missing in its plan's primary table is filled from a later source's table of the same plan only when
- *     that table's as-on date equals the primary table's; otherwise it is excluded and counted.
- *   - The figure's as-on date is the primary tables' date when they agree, else the earliest of them (each table used
- *     is listed in `used`, with its date, for the footnote).
- * With no source, every fund is excluded.
+ * uploaded MF Monitor first when there is one). See the rules at the top of this file.
  */
 export function weightedFundReturn(
   holdings: readonly FundHoldingInput[],
@@ -160,51 +182,55 @@ export function weightedFundReturn(
   tenor: ReturnTenor,
   scope: ScopeKey,
 ): FundWeightedResult {
-  type Entry = { src: FundReturnSource; table: FundReturnTable };
+  type Entry = { src: FundReturnSource; plan: FundPlan; table: FundReturnTable };
   const chains = new Map<FundPlan, Entry[]>();
-  const chainOf = (plan: FundPlan): Entry[] => {
-    let c = chains.get(plan);
-    if (!c) {
-      const all = sources.flatMap((src) => (src.plans[plan] ? [{ src, table: src.plans[plan]! }] : []));
-      c = all.length ? [all[0]!, ...all.slice(1).filter((e) => sameDay(e.table.asOn, all[0]!.table.asOn))] : [];
-      chains.set(plan, c);
-    }
-    return c;
-  };
+  for (const plan of PLANS) {
+    const all: Entry[] = sources.flatMap((src) => (src.plans[plan] ? [{ src, plan, table: src.plans[plan]! }] : []));
+    chains.set(plan, all.length ? [all[0]!, ...all.slice(1).filter((e) => sameDay(e.table.asOn, all[0]!.table.asOn))] : []);
+  }
   const usedEntries = new Set<Entry>();
+  const consulted = new Set<Entry>();
   const inputs: WeightInput[] = holdings.map((h) => {
-    if (h.schemeName === null) return { holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { excluded: 'unmatched' } };
-    for (const e of chainOf(h.plan)) {
+    const at = { holdingId: h.holdingId, cmvCr: h.cmvCr };
+    if (h.schemeName === null) return { ...at, pick: { excluded: 'unmatched' } };
+    if (h.plan === null) return { ...at, pick: { excluded: 'no-plan' } };
+    if (h.accountPlan != null && h.accountPlan !== h.plan) return { ...at, pick: { excluded: 'plan-mismatch' } };
+    const chain = chains.get(h.plan)!;
+    if (chain[0]) consulted.add(chain[0]);
+    for (const e of chain) {
       const r = fundReturn(e.table, h.schemeName, tenor);
       if (r !== null) {
         if (h.cmvCr.kind === 'value' && h.cmvCr.v > 0) usedEntries.add(e);
-        return { holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { returnPct: r, source: e.src.source } };
+        return { ...at, pick: { returnPct: r, source: e.src.source } };
       }
     }
-    return { holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { excluded: 'no-return' } };
+    return { ...at, pick: { excluded: 'no-return' } };
   });
-  // the tables used, in source order then plan order
-  const used: Array<Entry & { plan: FundPlan }> = [];
-  for (const src of sources) {
-    for (const plan of ['regular', 'direct'] as const) {
-      const e = chains.get(plan)?.find((x) => x.src === src && usedEntries.has(x));
-      if (e) used.push({ ...e, plan });
-    }
+  const inOrder = (set: ReadonlySet<Entry>): Entry[] => sources.flatMap((src) => PLANS.flatMap((p) => [...set].filter((e) => e.src === src && e.plan === p)));
+  const used = inOrder(usedEntries);
+  // the primary table of every plan that gave a fund in the base its return (directly or through a same-date fill)
+  const primarySet = new Set<Entry>();
+  for (const plan of PLANS) {
+    const c = chains.get(plan)!;
+    if (c.some((e) => usedEntries.has(e))) primarySet.add(c[0]!);
   }
-  // the primary table of every plan that gave a fund its return (directly or through a same-date fill)
-  const primaries = (['regular', 'direct'] as const)
-    .map((p) => chains.get(p) ?? [])
-    .filter((c) => c.some((e) => usedEntries.has(e)))
-    .map((c) => c[0]!);
-  const days = primaries.map((e) => e.table.asOn);
+  const primaries = inOrder(primarySet);
+  let primary: ReturnsSource | null;
   let asOn: Value<DayNumber>;
-  if (days.length === 0) {
-    const first = sources[0];
-    const t = first?.plans.regular ?? first?.plans.direct;
-    asOn = t ? t.asOn : missing(STATUS.NOT_AVAILABLE, 'no source of fund returns');
+  if (primaries.length) {
+    primary = primaries[0]!.src.source;
+    const undated = primaries.find((e) => e.table.asOn.kind === 'missing');
+    if (undated) {
+      asOn = missing(STATUS.NOT_AVAILABLE, `the ${undated.plan === 'regular' ? 'Regular' : 'Direct'} table of the ${SOURCE_NAME[undated.src.source]} has no as-on date`);
+    } else {
+      asOn = primaries.map((e) => e.table.asOn).reduce((a, b) => (b.kind === 'value' && a.kind === 'value' && b.v < a.v ? b : a));
+    }
   } else {
-    const dated = days.filter((d) => d.kind === 'value');
-    asOn = dated.length ? dated.reduce((a, b) => (b.kind === 'value' && a.kind === 'value' && b.v < a.v ? b : a)) : days[0]!;
+    // nothing used: the figure is missing; name the primary that was consulted, else the first source given
+    const first = inOrder(consulted)[0];
+    primary = first ? first.src.source : sources[0] ? sources[0].source : null;
+    const t = first ? first.table : sources[0] ? (sources[0].plans.regular ?? sources[0].plans.direct) : undefined;
+    asOn = t ? t.asOn : missing(STATUS.NOT_AVAILABLE, 'no source of fund returns');
   }
   const sourceIds: string[] = [];
   for (const e of used) for (const id of e.src.sourceIds ?? []) if (!sourceIds.includes(id)) sourceIds.push(id);
@@ -212,12 +238,14 @@ export function weightedFundReturn(
     scope,
     tenor,
     basis: 'mf-value',
-    primary: sources[0] ? sources[0].source : 'embedded-mf-monitor',
+    primary,
     asOn,
     sourceIds,
     method: `${WEIGHTED_RETURN_LABEL} (${TENOR_KEY[tenor]}, D-023 point 3)`,
   });
-  return { ...res, used: used.map((e) => ({ source: e.src.source, plan: e.plan, asOn: e.table.asOn })) };
+  const days = new Set(used.map((e) => (e.table.asOn.kind === 'value' ? String(e.table.asOn.v) : 'undated')));
+  const mixed = new Set(used.map((e) => e.src.source)).size > 1 || days.size > 1;
+  return { ...res, used: used.map((e) => ({ source: e.src.source, plan: e.plan, asOn: e.table.asOn })), mixed };
 }
 
 /** The as-on date of a monitor from its "As on" text (the MF Monitor parse keeps the text), or a missing value. */
@@ -247,21 +275,30 @@ const BASE_NAME: Readonly<Record<ReturnsCoverage['basis'], string>> = {
   'flows-in': 'money paid in',
 };
 
+/** A share as a percent with one decimal that never reads 100% below 1, nor 0% above 0 (ARC-03 L5). */
+export function sharePct(share: number): string {
+  let pct = Math.round(share * 1000) / 10;
+  if (share < 1 && pct >= 100) pct = 99.9;
+  if (share > 0 && pct <= 0) pct = 0.1;
+  return `${pct}%`;
+}
+
 /**
- * The coverage footnote of a weighted figure, one text for screen, slide and sheet: the label, the coverage and the
- * count excluded ("3Y covers 80% of MF value; 1 fund without a 3Y return excluded"), the sources and their dates.
- * `sources` lists every source whose figures were used, with its as-on date. Never prints an excluded item as 0%.
+ * The coverage footnote of a weighted figure, one text for screen, slide and sheet; it goes with every rendering of
+ * the figure: the label; the coverage and the count excluded ("3Y covers 80% of MF value; 1 fund without a 3Y return
+ * excluded"); the holdings outside the base; every table used with its plan and date (`used` of the result). Never
+ * prints an excluded item as 0%.
  */
-export function coverageFootnote(figure: WeightedReturn, sources: ReadonlyArray<{ source: ReturnsSource; asOn: Value<DayNumber>; plan?: FundPlan }>): string {
+export function coverageFootnote(figure: WeightedReturn, used: readonly UsedTable[], outsideBase = 0): string {
   const t = TENOR_KEY[figure.tenor];
   const c = figure.coverage;
   const [one, many] = ITEM_NAME[c.basis];
   const parts = [`${t}: ${WEIGHTED_RETURN_LABEL}`];
   if (c.excluded > 0 || c.share < 1) {
-    const pct = Math.round(c.share * 1000) / 10;
-    parts.push(`${t} covers ${pct}% of ${BASE_NAME[c.basis]}; ${c.excluded} ${c.excluded === 1 ? one : many} without a ${t} return excluded`);
+    parts.push(`${t} covers ${sharePct(c.share)} of ${BASE_NAME[c.basis]}; ${c.excluded} ${c.excluded === 1 ? one : many} without a ${t} return excluded`);
   }
-  const named = sources.map((s) => `${SOURCE_NAME[s.source]}${s.plan ? (s.plan === 'regular' ? ', Regular plans' : ', Direct plans') : ''}, as on ${s.asOn.kind === 'value' ? dayToIso(s.asOn.v) : 'date not available'}`);
+  if (outsideBase > 0) parts.push(`${outsideBase} ${outsideBase === 1 ? 'holding' : 'holdings'} without a positive market value not counted`);
+  const named = used.map((s) => `${SOURCE_NAME[s.source]}${s.plan ? (s.plan === 'regular' ? ', Regular plans' : ', Direct plans') : ''}, as on ${s.asOn.kind === 'value' ? dayToIso(s.asOn.v) : 'date not available'}`);
   if (named.length) parts.push(`Source: ${named.join('; ')}`);
   return parts.join('. ') + '.';
 }
