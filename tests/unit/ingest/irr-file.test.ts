@@ -26,6 +26,42 @@ const day = (y: number, m: number, d: number): number => ymdToDay(y, m, d)!;
 const rules = (imp: IrrFileImport) => imp.issues.map((i) => [i.ruleId.replace('irr-file.', ''), i.severity, i.count] as const);
 const issue = (imp: IrrFileImport, r: string) => imp.issues.find((i) => i.ruleId === `irr-file.${r}`);
 
+describe('irr-cashflow: the platform\'s six-sheet cashflow layout (the owner\'s layout of 26 Nov 2026)', () => {
+  const imp = parse('irr-cashflow');
+  test('the since-inception pair is read, whatever the YTD and QTD sheets after it', () => {
+    assert.deepEqual([imp.fundSheet?.name, imp.fundSheet?.found, imp.fundSheet?.headerRow], ['SI Xirr', 'by-name', 1]);
+    assert.deepEqual([imp.benchSheet?.name, imp.benchSheet?.found], ['SI Bmxirr', 'by-name']);
+    assert.deepEqual(imp.sheets.map((s) => [s.sheet, s.outcome]), [
+      ['SI Xirr', 'used'], ['SI Bmxirr', 'used'], ['YTD Xirr', 'not-needed'], ['YTD Bmxirr', 'not-needed'],
+      ['QTD Xirr', 'not-needed'], ['QTD Bmxirr', 'not-needed'],
+    ]);
+  });
+  test('every heading of the export is recognised: the rupee sign and trailing spaces, TRANSACTIONTYPE, INDEXNAME', () => {
+    assert.deepEqual(imp.fundSheet!.columns.map((c) => c.field).sort(),
+      ['account', 'amount', 'asset', 'category', 'client', 'date', 'distributor', 'folio', 'instrument', 'price', 'product', 'rowType', 'type']);
+    // The export writes "AMOUNT (₹) " with a trailing space; the reader keeps the heading as text, trimmed.
+    assert.equal(imp.fundSheet!.columns.find((c) => c.field === 'amount')!.header, 'AMOUNT (₹)');
+    assert.equal(imp.fundSheet!.columns.find((c) => c.field === 'price')!.header, 'PRICE (₹)');
+    assert.ok(imp.fundSheet!.columns.some((c) => c.field === 'type' && c.header === 'TRANSACTIONTYPE'));
+    assert.ok(imp.benchSheet!.columns.some((c) => c.field === 'benchmark' && c.header === 'INDEXNAME'));
+    assert.equal(imp.benchSheet!.columns.find((c) => c.field === 'amount')!.header, 'BM_AMOUNT (₹)');
+    assert.equal(imp.hasDistributor, true);
+  });
+  test('the SI flows, hand listed: 7 fund and 5 benchmark flows; account, folio as number or text, price, category, index', () => {
+    // Worked from the fixture rows: the SI fund sheet has 7 rows, the SI benchmark sheet 5; the YTD and QTD rows (Jan
+    // to Mar 2025, one pair each) are not among them.
+    assert.deepEqual([imp.fund.length, imp.bench.length, imp.skipped.length], [7, 5, 0]);
+    assert.ok(!imp.fund.some((t) => t.day === day(2025, 1, 1)), 'no YTD or QTD flow');
+    const blue = imp.fund[0]!;
+    assert.deepEqual([blue.accountLabel, blue.folio, blue.categoryLabel, blue.amountRupees, blue.distributorLabel, blue.day],
+      ['Sample Client A - Joint', 'SYN-1001', 'Large Cap Fund', -10000, 'Centricity', day(2023, 4, 1)]);
+    assert.ok(blue.price.kind === 'value' && blue.price.v === 50);
+    assert.equal(imp.fund[3]!.folio, '1003', 'a folio written as a number reads as its text');
+    assert.equal(imp.bench[0]!.benchmarkLabel, 'Sample Index 1');
+    assert.equal(imp.fund.filter((t) => t.direction === 'valuation').length, 2);
+  });
+});
+
 describe('irr-standard: sheets by name, columns, flows (I-04, E-142)', () => {
   const imp = parse('irr-standard');
   test('sheets and columns', () => {

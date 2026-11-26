@@ -152,7 +152,7 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | E-82 | Debt Analytics sheet | Debt Analytics | `exports/xlsx/debt-analytics.test.ts` | correction (KI-085, N-1) | not started |
 | E-83 | Overlap sheet | Overlap | `exports/xlsx/overlap.test.ts` | none | not started |
 | E-84 | Performance sheet | Performance | `exports/xlsx/performance.test.ts` | correction (KI-072) | not started |
-| E-85 | Fund IRR sheet | Fund IRR | `exports/xlsx/fund-irr.test.ts` | correction (KI-049) | not started |
+| E-85 | Fund IRR sheet | Fund IRR | `exports/xlsx/fund-irr.test.ts`; `integration/returns-cross-output.test.ts` | correction (KI-049). M3a wiring (test build 1): per scope, the headline XIRRs, the tree and contributors as values computed by the app; the Excel XIRR check column (Q-60) waits for formula.ts | in progress |
 | E-86 | Observations sheet | Observations | `exports/xlsx/observations.test.ts` | improvement | not started |
 | E-87 | Portfolio Rebalancing sheet | Rebalancing | `exports/xlsx/rebalancing.test.ts` | improvement (editable inputs; Q-73) | not started |
 | E-88 | AI Analyst sheet | Rebalancing (draft) | same | correction (KI-079) | not started |
@@ -173,7 +173,7 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | U-10 | SIF Monitor upload | section 1 | same | correction (KI-026) | not started |
 | U-11 | SOA upload | section 1 | `integration/client-uploads.test.ts` | correction (KI-077) | not started |
 | U-12 | Bonds upload | section 1 | same | correction (KI-056) | not started |
-| U-13 | IRR upload | section 1 | same | correction (KI-075, KI-032) | not started |
+| U-13 | IRR upload | section 1 | `workflows/w-02-irr.test.ts`; `unit/views/returns.test.ts` | correction (KI-075, KI-032). M3a wiring: after the base file is accepted; its issues do not block the workbook download yet, as the slot says (I-41 later) | in progress |
 | U-14 | Market Update upload | section 8 | `integration/market-update.test.ts` | correction (KI-009); improvement (preview) | not started |
 | U-15 | Data dates | source register panel | `unit/views/source-register.test.ts`; `unit/ui/upload-slot.test.ts` | improvement | in progress |
 | U-16 | Home | overview landing | `exports/pptx/manifest.test.ts` (no empty download) | correction (KI-124) | in progress |
@@ -185,10 +185,10 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | U-22 | Observations and SWOT | section 3 | `unit/observations/*.test.ts` | improvement | not started |
 | U-23 | Holdings and chips | section 5 | `unit/views/holdings.test.ts` | correction (button kept, per-review choice) | not started |
 | U-24 | Analytics tab | section 4 | `integration/cross-output.test.ts` | improvement (coverage) | not started |
-| U-25 | Analytics scope | section 4 | `acceptance/ac-02` | improvement (advisor scope, exports scoped) | not started |
+| U-25 | Analytics scope | section 4 | `unit/engine/review-returns.test.ts`; `workflows/w-02-irr.test.ts`; `acceptance/ac-02` to come | improvement (advisor scope, exports scoped). M3a wiring: the scope picker of the returns view (family, each client, each adviser when the file has a DISTRIBUTOR column) | in progress |
 | U-26 | Overlap tab | section 4 | `exports/pptx/c17-overlap.test.ts` (selection reaches the slide); `unit/views/overlap-controls.test.ts` (fund checkboxes; the "pairs at or above x%" slider; quick-select chips by asset class, product class, category, client and distributor; counts and legend; PNG download equal to the slide; independent post panel) | correction (KI-002, KI-095) | not started |
 | U-27 | Cost tab | section 9 | `parity/cost.parity.test.ts` (golden); `unit/views/cost-controls.test.ts` (distributor filter re-bases weights, KPIs and slide; per-scheme ER override, double-click reset, 350 bps round-trip, per review) | correction (KI-059, KI-060, KI-012, KI-088) | not started |
-| U-28 | Fund IRR tab | contributors in section 4, tree in section 5 (Q-77) | `unit/views/fund-irr.test.ts` | improvement (tree; contributors per scope) | not started |
+| U-28 | Fund IRR tab | contributors in section 4, tree in section 5 (Q-77); test build 1: both in section 4 (agreed with NB-02) | `unit/views/returns.test.ts`; `integration/returns-cross-output.test.ts` | improvement (tree; contributors per scope) | in progress |
 | U-29 | Current vs Sample tab | section 6 | `parity/cvs.parity.test.ts` (golden); `regression/ki-114` ported as a view test; `unit/views/cvs-controls.test.ts` ("Reset to Actual", "Re-seed from rebalancing plan", edited cells marked and kept across a recompute) | correction (KI-086); per Q-80 (d) | not started |
 | U-30 | MF Analysis tab | section 5 | `parity/mfanalysis.parity.test.ts` (golden); `unit/views/mfa-rationale.test.ts` (rationale modal paragraphs and verdict); `unit/engine/rationale-draft.test.ts` (hand-off to the rebalancing rationale drafts, formerly `__MFA_DATA`) | correction (KI-053) | not started |
 | U-31 | Taxation tab | section 7 | `parity/tax.parity.test.ts` | correction (KI-064 and others) | not started |
@@ -266,7 +266,7 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | E-155 | Indicative tax per person and financial year from the statement: taxable gain per lot, set-off with long-term losses first, the exemption ranked at 0% and the tie rule, the annual exemption (FY 2024-25 in the taxpayer-favourable order, the other in a note), the slab rate, surcharge rate and regime entered per person and year (no defaults; "before surcharge" until entered, and while the regime is not entered for an entry above 25%), cess; NE-LT-1 per lot before set-off, the year's-total figure beside; a person-year with lots not computed, or with the slab rate not set, and a family sum over such a person shown as PARTIAL COVERAGE, never as a complete total; the statement's own split, the alternatives and the rule set shown beside; resident individual assumed | `engine/tax/rollup.ts`; C-34, C-35, C-37; Tax and Transactions sheet | `unit/tax/rollup.test.ts` (`cg-known-answers.json`, KA-9 to KA-13, KA-15 and KA-18 to KA-22; NE-LT-1 per lot with the year's-total figure beside it, both figures in KA-19, KA-20 and KA-22; slab rate unset gives the dash; surcharge not entered; the regime not entered with an entry above 25%; a new-regime entry limited to 25%; the 15% cap; FY 2024-25 order); `exports/xlsx/tax-transactions.test.ts` (the rule set and its date on the sheet) | new | not started |
 | E-156 | The blank capital-gains template (the export's headers and a Read Me, with how to enter a merger), generated by the app | `exports/xlsx/cg-template.ts` | `exports/xlsx/cg-template.test.ts` (the 29 headers in export order, the date, money and unit formats, the frozen header, the Read Me rows, no data rows); `unit/ingest/capital-gains.test.ts` (`cg-template-filled` round trip loads without loss, with its merger row) | new | in progress |
 | U-57 | MF Screener link | `ui/nav.tsx`, `config/links.json` | `unit/views/nav.test.ts`; `scripts/check-next.mjs` allow-list | new | not started |
-| U-58 | Advisor scope | `engine/scope.ts` | `acceptance/ac-02` | new | not started |
+| U-58 | Advisor scope | `engine/scope.ts`, `engine/returns/review-returns.ts` | `unit/engine/review-returns.test.ts`; `acceptance/ac-02` to come | new | in progress |
 | U-59 | Mode selector and Snapshot section | section 3 | `acceptance/ac-03`, `ac-04`, `ac-05` | new | not started |
 | U-60 | Import status and source register | section 1 | `unit/views/import-report.test.ts`; `unit/ui/upload-slot.test.ts`; `integration/upload.test.ts`; `workflows/w-01-load-family.test.ts` | new | in progress |
 | U-61 | Observation editor | section 3 | `unit/observations/edit.test.ts` | new | not started |
@@ -277,7 +277,7 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | U-66 | Historical view | section 4 | `acceptance/ac-06` | new | not started |
 | U-67 | Validation panel | section 1 | `unit/views/validation-panel.test.ts` (the basic panel); `acceptance/ac-19` in M13 | new | in progress |
 | U-68 | Manifest preview | right panel | `exports/pptx/manifest.test.ts` | new | not started |
-| U-69 | IRR tree on screen | section 5 | `unit/views/fund-irr.test.ts` | new | not started |
+| U-69 | IRR tree on screen | section 5; test build 1: section 4 (agreed with NB-02; the tree component can move) | `unit/views/returns.test.ts` | new | in progress |
 | U-70 | Quants view | section 5 | `unit/views/quants.test.ts` | new | not started |
 | U-71 | Capital-gains slot (D-036): Upload, Validate, Preview, Review; the import report (columns used and ignored, PAN removals, footer, reconciliation, lot classes); the repeated-rows questions per sale event, with "apply to all"; merger events given one of three answers; the blank template download | section 1 | `unit/views/cg-import.test.ts` (each part of the report; the repeats answered both ways with audit entries; each merger answer; the download) | new | not started |
 | U-72 | Tax view by financial year and person: the year picker (the as-on year and the one before by default; any year selectable), the slab rate, surcharge rate and regime per person and year, the per-scheme tax class, listed flag and 90/90 flag set by the analyst, the analyst's marks (per lot, gift or inheritance and a successor lot's original or re-based date and cost; per scheme, close-ended; per person or lot, minor, HUF, joint holders or non-resident), the rule set and its date, the statement's split beside the app's, the alternatives, PARTIAL figures marked | section 7 | `unit/views/tax-view.test.ts` (the defaults and the picker; the inputs per person and year, with the regime, and a surcharge entry above 25% held while the regime is not entered; overrides and marks as audit entries; INSUFFICIENT EVIDENCE for a year with an unanswered repeat event; a PARTIAL person-year and family sum, KA-21) | new | not started |
@@ -457,7 +457,7 @@ parity only when its workflow test passes and the M15 browser drill confirms it.
 | Id | Workflow | Capabilities | Test | Status |
 |---|---|---|---|---|
 | W-1 | Open the page, upload the base file, set the as-on date and logo, read the load message and unmatched list | U-04, U-05, U-07, U-03, U-60 | `workflows/w-01-load-family.test.ts`; M15 drill | in progress |
-| W-2 | Add the IRR sheet for transaction XIRR, Fund IRR and Taxation | U-13, U-28, U-31 | `integration/workflows/w-02-irr.test.ts`; M15 drill | not started |
+| W-2 | Add the IRR sheet for transaction XIRR, Fund IRR and Taxation | U-13, U-28, U-31 | `workflows/w-02-irr.test.ts` (the returns part; Taxation with M7); M15 drill | in progress |
 | W-3 | Add PMS/AIF statement look-through and direct bonds | U-11, U-12 | `integration/workflows/w-03-client-lookthrough.test.ts`; M15 drill | not started |
 | W-4 | Upload a newer MF, Direct or SIF Monitor | U-08, U-09, U-10 | `integration/workflows/w-04-monitor-upload.test.ts`; M15 drill | not started |
 | W-5 | Review the sections: switch, scope, overlap selection and threshold, IPS profile, ER overrides, Current vs Sample edits | U-17 to U-31, U-41 | `integration/workflows/w-05-review-sections.test.ts`; M15 drill | not started |

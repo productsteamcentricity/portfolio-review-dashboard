@@ -447,6 +447,39 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `tests/parity/contributions.parity.test.ts` against the legacy contribLag. The IRR parity ledger waits for a real
   export (TA-03, KI-186).
 
+### Added (new build, M3a wiring for test build 1: the IRR upload and the returns view on `/next/`)
+- **Section 1:** a "Transactions (IRR) file" upload with the base file's stages, usable once a base file is accepted
+  and cleared when a new base file is picked. It shows the file's import notes and says plainly that issues in the
+  transactions file do not block the workbook download yet.
+- **Section 4 (Analytics):** the returns view with a scope picker (the family, each client, and each adviser when the
+  file has a DISTRIBUTOR column). It shows fund XIRR against benchmark XIRR, the IRR tree, and contributors, laggards
+  and drags labelled "allocation x XIRR (an approximation, not an attribution)". The reconciliation notes cover
+  IRR-only clients, redeemed instruments, invalid benchmarks, holdings without flows, the unassigned line, and the
+  reconcile rule not yet set (D13).
+- **Workbook:** a "Fund IRR" sheet before the Audit Log, only when an IRR file is accepted. Its values are labelled as
+  computed by the app; the Excel XIRR check column waits (Q-60). Workbooks without an IRR file are byte-identical.
+- **Without a model change** (PLAN-04 option B): `engine/returns/review-returns.ts` gives the output that
+  `Review.returns` will hold once I-41 is written.
+- **Tests:** `unit/views/returns`, `unit/engine/review-returns`, `exports/xlsx/fund-irr`, `workflows/w-02-irr`,
+  `integration/returns-cross-output`.
+- **After the Gate B review and MOD-04's answers:**
+  - **Benchmark coverage:** the benchmark XIRR shows its coverage when it is partial.
+  - **Dates:** the IRR file's last flow date is shown beside the as-on date, with a count of any flows after it. No
+    figure changes.
+  - **One row per line:** the Fund IRR sheet writes each contributor, laggard and drag once, with a Role column, so no
+    percentage-point sum counts a line twice.
+  - **Unassigned share:** it has its own column, "Share of Money Paid In".
+  - **Missing figures:** the sheet's note says a missing figure is a blank cell with its status, where the screen
+    shows the dash.
+  - **Read Me:** it names the transactions file.
+  - **Spelling:** "Adviser" in user text.
+  - **New tests:**
+    - hand-worked known answers on screen and in the sheet (`integration/returns-known-answers`);
+    - cross-output for every figure cell;
+    - a refused IRR file;
+    - a synthetic IRR file whose distributors match the base book, so adviser scopes have flows;
+    - the browser check `tests/browser/irr-slot.cdp.mjs`.
+
 ### Added (new build, M7a: the capital-gains statement reader and the blank template; not wired into the page yet)
 - **`app/src/ingest/capital-gains.ts`** (E-150, D-036, design `docs/new-build/capital-gains-upload.md` §2 to §4, §6, §7,
   §11): the wealth platform's capital-gains export read as produced. Columns are found by header name in any order, and
