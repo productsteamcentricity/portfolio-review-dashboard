@@ -1,0 +1,371 @@
+{
+ "aliasesApproved": "2026-11-25",
+ "blocks": [
+  {
+   "block": "FUND_RANKS_CODES",
+   "asOn": "2026-08-15",
+   "sha256": "d98d9eafac028900b07e480e03ee4c2e54df7a1cadf40469e68af21905256a03",
+   "universe": {
+    "block": "MF_PERF",
+    "asOn": "2026-10-31",
+    "sha256": "8e31c46a30010df58edde79f30c7e44beaca0450438782a9c0ca3a5c714b8d17"
+   },
+   "keys": 1262,
+   "exact": 1207,
+   "derived": [
+    {
+     "blockKey": "Aditya Birla SL Equity Hybrid '95 Fund(G)",
+     "universeKey": "Aditya Birla SL Aggressive Hybrid Fund(G)",
+     "via": "alias"
+    },
+    {
+     "blockKey": "AlphaGrep Flexi Cap Fund - Regular - Growth",
+     "universeKey": "AlphaGrep Flexi Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Axis ELSS Tax Saver Fund-Reg(G)",
+     "universeKey": "Axis ELSS-Tax Saver Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Bajaj Finserv ELSS Tax Saver Fund-Reg(G)",
+     "universeKey": "Bajaj Finserv ELSS-Tax Saver Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Bajaj Finserv Large and Mid Cap Fund-Reg(G)",
+     "universeKey": "Bajaj Finserv Large & Mid Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Bandhan ELSS Tax Saver Fund-Reg(G)",
+     "universeKey": "Bandhan ELSS-Tax Saver Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Bandhan Midcap Fund-Reg(G)",
+     "universeKey": "Bandhan Mid Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Bank of India ELSS Tax Saver-Reg(G)",
+     "universeKey": "Bank of India ELSS Tax Saver Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Canara Rob ELSS Tax Saver-Reg(G)",
+     "universeKey": "Canara Rob ELSS-Tax Saver Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Canara Rob Equity Hybrid Fund-Reg(G)",
+     "universeKey": "Canara Rob Aggressive Hybrid Fund-Reg(G)",
+     "via": "alias"
+    },
+    {
+     "blockKey": "DSP Multicap Fund-Reg(G)",
+     "universeKey": "DSP Multi Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "HDFC ELSS Tax saver(G)",
+     "universeKey": "HDFC ELSS-Tax Saver Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "HDFC Large and Mid Cap Fund-Reg(G)",
+     "universeKey": "HDFC Large & Mid Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "HDFC Multi-Asset Allocation Fund(G)",
+     "universeKey": "HDFC Multi Asset Allocation Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "ICICI Pru ELSS Tax Saver Fund(G)",
+     "universeKey": "ICICI Pru ELSS-Tax Saver Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "ICICI Pru Equity & Debt Fund(G)",
+     "universeKey": "ICICI Pru Aggressive Hybrid Fund(G)",
+     "via": "alias"
+    },
+    {
+     "blockKey": "ICICI Pru Flexicap Fund(G)",
+     "universeKey": "ICICI Pru Flexi Cap Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "ICICI Pru Midcap Fund(G)",
+     "universeKey": "ICICI Pru Mid Cap Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "ICICI Pru Multicap Fund(G)",
+     "universeKey": "ICICI Pru Multi Cap Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "ICICI Pru Regular Savings Fund-Reg(G)",
+     "universeKey": "ICICI Pru Conservative Hybrid Fund-Reg(G)",
+     "via": "alias"
+    },
+    {
+     "blockKey": "ICICI Pru Smallcap Fund(G)",
+     "universeKey": "ICICI Pru Small Cap Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "JM ELSS Tax Saver Fund(G)",
+     "universeKey": "JM ELSS-Tax Saver Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "JM Flexicap Fund-Reg(G)",
+     "universeKey": "JM Flexi Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "JM Midcap Fund-Reg(G)",
+     "universeKey": "JM Mid Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Kotak Flexicap Fund(G)",
+     "universeKey": "Kotak Flexi Cap Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Kotak Large & Midcap Fund(G)",
+     "universeKey": "Kotak Large & Mid Cap Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Kotak Midcap Fund-Reg(G)",
+     "universeKey": "Kotak Mid Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Kotak Multicap Fund-Reg(G)",
+     "universeKey": "Kotak Multi Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "LIC MF ELSS Tax Saver-Reg(G)",
+     "universeKey": "LIC MF ELSS Tax Saver Fund-Reg(G)",
+     "via": "normalised"
+    }
+   ],
+   "unresolved": [
+    "360 ONE Balanced Hybrid Fund-Reg(G)",
+    "Aditya Birla SL Regular Savings Fund(G)",
+    "Bank of India Mid & Small Cap Equity & Debt Fund-Reg(G)",
+    "DSP Regular Savings Fund-Reg(G)",
+    "HDFC Arbitrage-WP(G)",
+    "HDFC Hybrid Debt Fund(G)",
+    "HDFC Hybrid Equity Fund(G)",
+    "ICICI Pru Dividend Yield Equity Fund(G)",
+    "ICICI Pru Focused Equity Fund(G)",
+    "ICICI Pru Multi-Asset Fund(G)",
+    "ICICI Pru Pharma Healthcare & Diagnostics (P.H.D) Fund-(G)",
+    "JioBlackRock Arbitrage Fund(G)-Direct Plan",
+    "JioBlackRock Flexi Cap Fund(G)-Direct Plan",
+    "JioBlackRock Large Cap Fund(G)-Direct Plan",
+    "JioBlackRock Nifty 50 Index Fund(G)-Direct Plan",
+    "JioBlackRock Nifty Next 50 Index Fund(G)-Direct Plan",
+    "JioBlackRock Nifty Smallcap 250 Index Fund(G)-Direct Plan",
+    "JioBlackRock Sector Rotation Fund(G)-Direct Plan",
+    "Kotak Aggressive Hybrid Fund-Reg(IDCW)",
+    "Kotak Debt Hybrid Fund(G)",
+    "NJ ELSS Tax Saver Scheme-Reg(G)",
+    "SBI Arbitrage Opportunities Fund-Reg(G)",
+    "SBI Equity Hybrid Fund-Reg(IDCW)",
+    "Sundaram Balanced Advantage Fund(G)",
+    "Tata ELSS Fund-Reg(G)",
+    "WOC Balanced Hybrid Fund-Reg(G)"
+   ],
+   "conflicts": []
+  },
+  {
+   "block": "MF_RISK",
+   "asOn": "2026-10-31",
+   "sha256": "e67070ca98e8e1e98796ab2d51a40325c20af59efa0c4ee7de3db208b3d7446b",
+   "universe": {
+    "block": "MF_PERF",
+    "asOn": "2026-10-31",
+    "sha256": "8e31c46a30010df58edde79f30c7e44beaca0450438782a9c0ca3a5c714b8d17"
+   },
+   "keys": 1088,
+   "exact": 1015,
+   "derived": [
+    {
+     "blockKey": "Axis ELSS Tax Saver Fund-Reg(G)",
+     "universeKey": "Axis ELSS-Tax Saver Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Bajaj Finserv ELSS Tax Saver Fund-Reg(G)",
+     "universeKey": "Bajaj Finserv ELSS-Tax Saver Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Bajaj Finserv Large and Mid Cap Fund-Reg(G)",
+     "universeKey": "Bajaj Finserv Large & Mid Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Bandhan ELSS Tax Saver Fund-Reg(G)",
+     "universeKey": "Bandhan ELSS-Tax Saver Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Bandhan Midcap Fund-Reg(G)",
+     "universeKey": "Bandhan Mid Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Bank of India ELSS Tax Saver-Reg(G)",
+     "universeKey": "Bank of India ELSS Tax Saver Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "DSP Multicap Fund-Reg(G)",
+     "universeKey": "DSP Multi Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "HDFC ELSS Tax saver(G)",
+     "universeKey": "HDFC ELSS-Tax Saver Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "HDFC Large and Mid Cap Fund-Reg(G)",
+     "universeKey": "HDFC Large & Mid Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "ICICI Pru ELSS Tax Saver Fund(G)",
+     "universeKey": "ICICI Pru ELSS-Tax Saver Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "ICICI Pru Flexicap Fund(G)",
+     "universeKey": "ICICI Pru Flexi Cap Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "ICICI Pru Midcap Fund(G)",
+     "universeKey": "ICICI Pru Mid Cap Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "ICICI Pru Multicap Fund(G)",
+     "universeKey": "ICICI Pru Multi Cap Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "ICICI Pru Smallcap Fund(G)",
+     "universeKey": "ICICI Pru Small Cap Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "JM ELSS Tax Saver Fund(G)",
+     "universeKey": "JM ELSS-Tax Saver Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "JM Flexicap Fund-Reg(G)",
+     "universeKey": "JM Flexi Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "JM Midcap Fund-Reg(G)",
+     "universeKey": "JM Mid Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Kotak Flexicap Fund(G)",
+     "universeKey": "Kotak Flexi Cap Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Kotak Large & Midcap Fund(G)",
+     "universeKey": "Kotak Large & Mid Cap Fund(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Kotak Midcap Fund-Reg(G)",
+     "universeKey": "Kotak Mid Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "Kotak Multicap Fund-Reg(G)",
+     "universeKey": "Kotak Multi Cap Fund-Reg(G)",
+     "via": "normalised"
+    },
+    {
+     "blockKey": "LIC MF ELSS Tax Saver-Reg(G)",
+     "universeKey": "LIC MF ELSS Tax Saver Fund-Reg(G)",
+     "via": "normalised"
+    }
+   ],
+   "unresolved": [
+    "Aditya Birla SL ELSS Tax Saver Fund(IDCW)",
+    "Aditya Birla SL Large & Mid Cap Fund-Reg(IDCW)",
+    "Arthaya Equity Long Short Fund-Reg(G)",
+    "Arudha Equity Long-Short Fund-Reg(G)",
+    "Canara Rob ELSS Tax Saver-Reg(IDCW)",
+    "DSP Flexi Cap Fund-Reg(IDCW)",
+    "Diviniti Equity Long Short Fund-Reg(G)",
+    "DynaSIF Equity Long-Short Fund-Reg(G)",
+    "ICICI Pru Dividend Yield Equity Fund(G)",
+    "ICICI Pru Focused Equity Fund(G)",
+    "ICICI Pru Pharma Healthcare & Diagnostics (P.H.D) Fund-(G)",
+    "JioBlackRock Flexi Cap Fund(G)-Direct Plan",
+    "JioBlackRock Large Cap Fund(G)-Direct Plan",
+    "JioBlackRock Nifty 50 Index Fund(G)-Direct Plan",
+    "JioBlackRock Nifty Next 50 Index Fund(G)-Direct Plan",
+    "JioBlackRock Nifty Smallcap 250 Index Fund(G)-Direct Plan",
+    "JioBlackRock Sector Rotation Fund(G)-Direct Plan",
+    "Kotak Large Cap Fund(IDCW)",
+    "NJ ELSS Tax Saver Scheme-Reg(G)",
+    "Qsif Equity Ex-Top 100 Long-Short Fund-Reg(G)",
+    "Qsif Equity Long-Short Fund-Reg(G)",
+    "Qsif Sector Rotation Long-Short Fund-Reg(G)",
+    "Quantum ELSS Tax Saver Fund(G)-Direct Plan",
+    "Quantum ESG Best In Class Strategy Fund(G)-Direct Plan",
+    "Quantum Value Fund(G)-Direct Plan",
+    "SBI Consumption Opp Fund-Reg(IDCW)",
+    "SBI Contra Fund-Reg(IDCW)",
+    "SBI ELSS Tax Saver Fund-Reg(IDCW)",
+    "SBI ESG Exclusionary Strategy Fund-Reg(IDCW)",
+    "SBI Healthcare Opp Fund-Reg(IDCW)",
+    "SBI Large & Midcap Fund-Reg(IDCW)",
+    "SBI MNC Fund-Reg(IDCW)",
+    "SBI Technology Opp Fund-Reg(IDCW)",
+    "Sapphire Equity Long-Short SIF-Reg(G)",
+    "Sundaram Value Fund-Reg(IDCW)",
+    "Tata ELSS Fund-Reg(IDCW Payout)",
+    "Templeton India Value Fund(IDCW)",
+    "Titanium Equity Long-Short Fund-Reg(G)",
+    "UTI Banking and Financial Services Fund-Reg(IDCW)",
+    "UTI ELSS Tax Saver Fund-Reg(IDCW)",
+    "UTI Flexi Cap Fund-Reg(IDCW)",
+    "UTI Healthcare Fund-Reg(IDCW)",
+    "UTI Infrastructure Fund-Reg(IDCW)",
+    "UTI Large Cap Fund-Reg(IDCW)",
+    "UTI MNC Fund-Reg(IDCW)",
+    "UTI Mid Cap Fund-Reg(IDCW)",
+    "UTI Nifty 50 Index Fund-Reg(IDCW)",
+    "UTI Transportation & Logistics Fund-Reg(IDCW)",
+    "WSIF Equity Ex-Top 100 Long-Short Fund-Reg(G)",
+    "WSIF Equity Long-Short Fund-Reg(G)",
+    "iSIF Equity Ex-Top 100 Long-Short Fund-Reg(G)"
+   ],
+   "conflicts": []
+  }
+ ]
+}
