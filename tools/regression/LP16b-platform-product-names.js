@@ -110,12 +110,18 @@ const T = [
   ['Bonds', 'Sovereign Gold Bond 2031 Series I', 'Debt', '', 'Sovereign Gold Bonds', null],
   ['Bonds', 'Synthetic Market Linked Debenture 2027', 'Debt', '', 'MLD', null],
   ['Bonds', 'Synthetic GIFT City Bond 2030', 'Debt', '', 'Listed Bonds / NCDs', null],
+  ['Bonds', 'Synthetic Corp US$4.5% Bond 2031', 'Debt', '', null, FB],
+  ['Bonds', 'Synthetic Corp Bond US$500mn', 'Debt', '', null, FB],
+  ['Bonds', 'Synthetic Corp USD5.25 Bond', 'Debt', '', null, FB],
 ];
 { const pms = tax('PMS', 'Synthetic Dollar Bond Strategy', 'Debt', '');
   ok(pms.cls === null && String(pms.why || '').indexOf(FB) < 0, '4. tax PMS / "Synthetic Dollar Bond Strategy": the debt-PMS reason, not the foreign-bond one (got ' + pms.why + ')'); }
 /* the label of the same holdings (one description each; the category split is an owner question, the label follows
    the owner's words: product or name) */
 [['Bonds', 'Synthetic US Infra Bond 2030', '', RUPEE], ['Bonds', 'Synthetic Corp US$ 4.5% Notes Bond 2031', '', USD],
+ /* delta review D1: a figure straight after the currency word */
+ ['Bonds', 'Synthetic Corp US$4.5% Bond 2031', '', USD], ['Bonds', 'Synthetic Corp Bond US$500mn', '', USD], ['Bonds', 'Synthetic Corp USD5.25 Bond', '', USD],
+ ['Bonds', 'Synthetic Corp Bond 2030 Series FD2027', '', RUPEE],
  ['Bonds', 'Synthetic Corp Bond 2030', 'Global Bonds', RUPEE], ['Bonds', 'Synthetic GIFT City Bond 2030', '', RUPEE]].forEach(([p, n, c, want]) => {
   const h = run(p, n, 'Debt', c).h;
   ok(h.pcls === want, '4. label "' + p + '" / "' + n + '"' + (c ? ' / category "' + c + '"' : '') + ' -> ' + want + ' (got ' + h.pcls + ')');

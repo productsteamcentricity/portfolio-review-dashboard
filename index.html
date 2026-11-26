@@ -2006,7 +2006,9 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     function _pcrRe(list){
       if (!list || !list.length) return null;
       return new RegExp("(^|[^a-z0-9])(" + list.map(function(k){
-        return String(k).toLowerCase().replace(/[^a-z0-9\s$-]/g, "").replace(/\$/g, "\\$").replace(/[\s-]+/g, "[\\s-]*"); }).join("|") + ")(?![a-z0-9])", "i");   /* LP-16b: "$" kept */
+        /* LP-16b: a keyword's "$" is kept; a currency word (usd, us$) may be followed by a figure ("US$500mn", "USD5.25") */
+        var w=String(k).toLowerCase().replace(/[^a-z0-9\s$-]/g, "").replace(/\$/g, "\\$").replace(/[\s-]+/g, "[\\s-]*");
+        return w + ((/\\\$$/.test(w) || w === "usd") ? "(?![a-z])" : "(?![a-z0-9])"); }).join("|") + ")", "i");
     }
     var _pcr=(REF.PRODUCT_CLASS_RULES||[]).map(function(r){
       return { label:r.label, first:!!r.beforePmsAifSif, kw:_pcrRe(r.keywords), unless:_pcrRe(r.unlessAny), not:_pcrRe(r.notIf),

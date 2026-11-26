@@ -29,7 +29,8 @@ must read the platform's names in the same way.
 
 The rules stay data (`PRODUCT_CLASS_RULES`, contract I-40, one source for both builds), with two optional fields:
 `nameAny` (words the instrument name must contain) and `andAny` (words the product or the name must contain); a "$" in a
-keyword is kept ("us$" is US$, never the word US). The tax rule that publishes no row for a foreign bond applies to a
+keyword is kept ("us$" is US$, never the word US), and a currency word (usd, us$) may be followed by a figure
+("US$500mn", "USD5.25"). The tax rule that publishes no row for a foreign bond applies to a
 product or category that says bond, NCD or debenture; it keeps reading foreign, offshore, GIFT City and similar words in
 the product or category, and reads only USD, US$, dollar or LRS in the name, because an Indian issuer named "Global" or
 "International" is not a foreign route (MOD-04 approved this reading, 26 Nov 2026). A fund, AIF or PMS named "... Bond
@@ -41,7 +42,7 @@ under the product "Bonds" (for example a bond ETF) takes the rupee bond label an
 
 ## Evidence
 
-- `tools/regression/LP16b-platform-product-names.js`: 86 known-answer checks in IST and UTC, covering:
+- `tools/regression/LP16b-platform-product-names.js`: 93 known-answer checks in IST and UTC, covering:
   - one holding per platform value, with its class, the performance lookup, the look-through listing, heldShare and
     directEquity, and the tax row or the reason;
   - the edge cases: GIFT or IFSC in the name, USD, US$, dollar and LRS, a "Global" issuer, a bond fund, an SGB, an MLD,

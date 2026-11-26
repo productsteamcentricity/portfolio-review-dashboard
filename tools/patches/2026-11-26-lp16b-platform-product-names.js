@@ -83,7 +83,9 @@ applyPatch('LP-16b platform product names', [
     label: 'engine: a "$" in a keyword is kept, so "us$" means US$ and never the bare word US (financial review of LP-16b, 1)',
     from: String.raw`        return String(k).toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/[\s-]+/g, "[\\s-]*"); }).join("|") + ")(?![a-z0-9])", "i");
 `,
-    to: String.raw`        return String(k).toLowerCase().replace(/[^a-z0-9\s$-]/g, "").replace(/\$/g, "\\$").replace(/[\s-]+/g, "[\\s-]*"); }).join("|") + ")(?![a-z0-9])", "i");   /* LP-16b: "$" kept */
+    to: String.raw`        /* LP-16b: a keyword's "$" is kept; a currency word (usd, us$) may be followed by a figure ("US$500mn", "USD5.25") */
+        var w=String(k).toLowerCase().replace(/[^a-z0-9\s$-]/g, "").replace(/\$/g, "\\$").replace(/[\s-]+/g, "[\\s-]*");
+        return w + ((/\\\$$/.test(w) || w === "usd") ? "(?![a-z])" : "(?![a-z0-9])"); }).join("|") + ")", "i");
 `,
   },
   {
