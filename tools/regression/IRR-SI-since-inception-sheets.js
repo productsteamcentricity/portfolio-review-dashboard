@@ -96,6 +96,14 @@ function flows(rows, inst) {
   }
   ok(n > 5 && good === n, '1b. every holding with flows: XIRR / BMXIRR from the six-sheet file = an independent XIRR of its SI flows (' + good + '/' + n + ')'); }
 
+/* 1c. MOD-04's list: an SI-only file and the legacy two-sheet file keep their output. The sample book's own IRR file (SI
+   Xirr, SI Bmxirr) is read whole, and a file naming the same flows "Xirr" / "Bmxirr" gives the same review, figure for
+   figure, which is the independent known answer above */
+{ const own = parse(wbI), legacy = book([['Xirr', SI_F], ['Bmxirr', SI_B]]);
+  ok(own.fund.length === SI_F.length - 1 && own.bench.length === SI_B.length - 1, '1c. SI only (the sample IRR file): every SI row is read (' + own.fund.length + ' fund, ' + own.bench.length + ' benchmark)');
+  ok(sig(review(own)) === sig(mSi), '1c. SI only: the same review as before (the SI pair)');
+  ok(sig(review(parse(legacy))) === sig(mSi), '1c. the legacy two-sheet file ("Xirr", "Bmxirr"): the same review, unchanged'); }
+
 /* 2. sheet choice by name: which sheet each kind came from, by its row count (each sheet below holds a distinct count) */
 const mk = n => [SI_F[0]].concat(SI_F.slice(1, 1 + n));
 const mkB = n => [SI_B[0]].concat(SI_B.slice(1, 1 + n));

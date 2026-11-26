@@ -26,4 +26,4 @@ Monthly data refreshes are recorded separately in [`../refresh-log/`](../refresh
 | [CR-0009](CR-0009-live-base-file-reading.md) | 27 Oct 2026 | Fix batch 4: how the live page reads the base file (KI-140 to KI-146: merged units and dates, total rows, text in number cells, impossible dates, Asset Name variants, IPS actuals) | Accepted (27 Oct 2026) |
 | [CR-0010](CR-0010-other-funds-october.md) | 22 Nov 2026 | Other Funds October update: the 40 carried children's and retirement funds to 31 Oct 2026 (A1); three wrong matches (A2) and the SWOT "international" test (A3) fixed | In review |
 | [CR-0011](CR-0011-ki032-irr-client-join.md) | 26 Nov 2026 | KI-032: the IRR client join, exact or a unique name variant, never a family member's or an HUF's flows | In review |
-| [CR-0013](CR-0013-irr-si-sheets.md) | 26 Nov 2026 | IRR-SI: the IRR cashflow file's since-inception sheets, never its YTD or QTD sheets | In review |
+| [CR-0013](CR-0013-irr-si-sheets.md) | 26 Nov 2026 | KI-301 (IRR-SI): the IRR cashflow file's since-inception sheets, never its YTD or QTD sheets | In review |

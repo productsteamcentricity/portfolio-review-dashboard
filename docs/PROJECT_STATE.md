@@ -130,7 +130,7 @@
     `12B5E5727FCA01EF2EA162C59913F01D`.) New-build merges leave `index.html` unchanged.
   - In review: KI-032, the IRR client join (CR-0011, branch `fix/ki032-irr-client-join`): page
     `9C973F615E6601B08277F6F8227DB569`, 16,413,720 bytes; live on the owner's "publish", before 13 Dec 2026.
-  - In review: IRR-SI, the cashflow file's since-inception sheets (CR-0013, branch `fix/irr-si-sheets`): page
+  - In review: KI-301 (IRR-SI), the cashflow file's since-inception sheets (CR-0013, branch `fix/irr-si-sheets`): page
     `6896AFEC8626BEB22357A258AB69508D`, 16,414,518 bytes (on 9C973F61); live under PD-67 when every gate passes.
   - After every deploy the live page is downloaded and its MD5 compared with `main` (batch 1a verified 19 Oct
     2026).

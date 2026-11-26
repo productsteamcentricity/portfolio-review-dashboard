@@ -1,4 +1,4 @@
-# CR-0013: IRR-SI, the IRR cashflow file's since-inception sheets
+# CR-0013: KI-301 (IRR-SI), the IRR cashflow file's since-inception sheets
 
 - **Requested:** 26 Nov 2026 by the project moderator (MOD-04), urgent. Found by CHAT-010 (inferred from the code),
   flagged by CHAT-012, confirmed at runtime by EX-03 with a synthetic six-sheet file. Publish under the owner's
@@ -25,11 +25,12 @@ Bmxirr". Workaround until live: keep only the SI pair in the uploaded file.
 
 ## Evidence
 
-`tools/regression/IRR-SI-since-inception-sheets.js`, 16 known-answer checks in IST and UTC:
+`tools/regression/IRR-SI-since-inception-sheets.js`, 19 known-answer checks in IST and UTC:
 - The six-sheet file gives the same holding XIRRs, client Grand Totals and Fund IRR tree as a file with only the SI
   pair: the sample book's exact flows from `tools/make-sample-base.js`. A QTD-only file gives different figures. Each
   holding's XIRR and BMXIRR equal an independent XIRR (actual/365, bisection) of its own SI flows.
-- The sheet choice for the platform order and its reverse, SI- / SI_ / "Since Inception" names, "SIP Xirr", legacy
+- An SI-only file and the legacy two-sheet file ("Xirr", "Bmxirr") give the same review as before.
+- The sheet choice for the platform order and its reverse (SI last), SI- / SI_ / "Since Inception" names, "SIP Xirr", legacy
   names, MTD and FYTD, and period sheets only.
 - The content fallback, with QTD tabs first.
 - Run against the page before the fix, 7 of the checks fail.
