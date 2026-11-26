@@ -14,6 +14,8 @@ export const SHEETS = {
   overview: 'Portfolio Overview',
   clients: 'Client Allocation',
   distributors: 'Distributor Allocation',
+  // M3b (NB-02): architecture §14 sheet 12, written only when the performance tables are passed.
+  performance: 'Performance',
   audit: 'Audit Log',
   manifest: '_manifest',
 } as const;

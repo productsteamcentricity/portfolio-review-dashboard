@@ -33,6 +33,8 @@ import { manifestSheet } from './sheets/manifest-sheet.ts';
 import type { HoldingsVM } from '../../views/holdings.ts';
 import { clientHoldingsSheet } from './sheets/client-holdings.ts';
 import { clientSheetNames } from './sheet-names.ts';
+import type { PerformanceResult } from '../../engine/returns/performance.ts';
+import { performanceSheet } from './sheets/performance.ts';
 
 /** 'overview-workbook@1', written in the _manifest sheet. */
 export { OVERVIEW_WORKBOOK_SCHEMA } from './sheets/manifest-sheet.ts';
@@ -93,6 +95,8 @@ export type WorkbookInput = {
   entityKeys: { client: EntityKey[]; distributor: EntityKey[] };
   /** M3b (NB-02): the holdings view-model; one client holdings sheet per client is written only when it is present. */
   clientHoldings?: HoldingsVM;
+  /** M3b (NB-02): the performance tables (the store's); the Performance sheet is written only when they are present. */
+  performance?: PerformanceResult;
 };
 
 /** Where a figure of the view-model is written (the _manifest "figure" rows; the cross-output join). */
@@ -243,6 +247,7 @@ export function buildContext(input: WorkbookInput): BuildContext {
   else leftOut.push({ sheet: SHEETS.distributors, reason: 'fewer than two distributors hold included holdings (OD-21)' });
   const clientSheets = input.clientHoldings ? clientSheetNames(input.clientHoldings.clients.map((c) => c.title)) : [];
   sheets.push(...clientSheets); // M3b (NB-02): architecture §14 sheet 11, one per client
+  if (input.performance) sheets.push(SHEETS.performance); // M3b (NB-02): sheet 12
   sheets.push(SHEETS.audit, SHEETS.manifest);
   const figures: FigureCell[] = [];
   const seen = new Set<string>();
@@ -276,6 +281,7 @@ export function overviewSheets(input: WorkbookInput): { ctx: BuildContext; sheet
   if (input.vm.matrices.client.shown) sheets.push(entityAllocationSheet(ctx, 'client'));
   if (input.vm.matrices.distributor.shown) sheets.push(entityAllocationSheet(ctx, 'distributor'));
   if (input.clientHoldings) input.clientHoldings.clients.forEach((c, i) => sheets.push(clientHoldingsSheet(ctx, c, ctx.clientSheets[i]!))); // M3b (NB-02)
+  if (input.performance) sheets.push(performanceSheet(input.performance)); // M3b (NB-02)
   sheets.push(auditLogSheet(ctx));
   return { ctx, sheets };
 }

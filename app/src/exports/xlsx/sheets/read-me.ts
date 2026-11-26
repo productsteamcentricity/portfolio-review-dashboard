@@ -47,6 +47,10 @@ export function readMeSheet(ctx: BuildContext): SheetSpec {
       + 'Grand Total. A missing value is a blank cell with its status beside it; PARTIAL COVERAGE on a subtotal means it '
       + 'counts only the holdings that have that value, and the notes under the table give the counts.');
   }
+  if (ctx.input.performance) {
+    add('Performance sheet', 'The performance tables of section 5: the Regular list, then the Direct list for the mutual-fund buckets, every row '
+      + 'labelled with its plan and the as-on date of its data. Every fund is listed, with or without returns in the data.');
+  }
   add('Sheets in this workbook', ctx.sheets.filter((s) => s !== SHEETS.manifest).join(', '));
   for (const l of ctx.leftOut) add('Sheet left out', `${l.sheet}: ${l.reason}.`);
   for (const n of vm.notes) add('Note', n.text);

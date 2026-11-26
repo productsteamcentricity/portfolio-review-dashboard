@@ -86,8 +86,8 @@ export function nodeWiring(build: BuildStamp = NODE_BUILD, nowIso: string = NODE
       last.pptx = { fileName, bytes: deck.bytes, deck };
       return finish('pptx', vm, deck.bytes, fileName);
     },
-    exportWorkbook: async (review, vm) => {
-      const bytes = buildOverviewWorkbook({ ...workbookInputFrom(review, vm), clientHoldings: buildHoldingsVM(review) });
+    exportWorkbook: async (review, vm, extra) => {
+      const bytes = buildOverviewWorkbook({ ...workbookInputFrom(review, vm), clientHoldings: buildHoldingsVM(review), ...(extra?.performance ? { performance: extra.performance } : {}) });
       const fileName = workbookFileName(vm);
       last.xlsx = { fileName, bytes };
       return finish('xlsx', vm, bytes, fileName);

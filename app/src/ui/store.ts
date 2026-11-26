@@ -342,7 +342,7 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
     try {
       const result = kind === 'pptx'
         ? await deps.wiring.exportDeck(review, s.vm, s.logo)
-        : await deps.wiring.exportWorkbook(review, s.vm);
+        : await deps.wiring.exportWorkbook(review, s.vm, { performance: s.performance });
       if (session === mySession) {
         const entry: AuditEntry = { ...result.audit, id: `export:${state.exportLog.length + 1}` };
         set({ ...state, exportLog: [...state.exportLog, entry], busy: null });

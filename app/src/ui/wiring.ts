@@ -33,7 +33,8 @@ export type Wiring = {
   loadBaseFile(bytes: Uint8Array, fileName: string, answers: Partial<Record<'xirr' | 'bmXirr', XirrUnitChoice>>): LoadedBaseFile | LoadError;
   computeReview(req: ReviewRequest): Review;
   exportDeck(review: Review, vm: OverviewVM, logo: LogoAsset | null): Promise<ExportResult>;
-  exportWorkbook(review: Review, vm: OverviewVM): Promise<ExportResult>;
+  /** `extra.performance`: the store's performance tables (M3b), written as the Performance sheet. */
+  exportWorkbook(review: Review, vm: OverviewVM, extra?: { performance?: PerformanceResult | null }): Promise<ExportResult>;
   now(): string;
   /** M2.1: the holdings matched to the reference data the page carries (E-19); absent in fakes that do not match. */
   matchHoldings?(loaded: LoadedBaseFile, overrides?: MonitorBlocks): { loaded: LoadedBaseFile; report: MatchReport | null };
@@ -72,7 +73,9 @@ export function browserWiring(build: BuildStamp): Wiring {
     loadBaseFile: (bytes, fileName, answers) => loadBaseFile(bytes, fileName, XLSX as SheetJSLike, { answers, now }),
     computeReview: (req) => computeReview(req, { now, build }),
     exportDeck: async (_review, vm, logo) => finish('pptx', vm, await buildOverviewDeck(vm, { logo, now }, lib), deckFileName(vm)),
-    exportWorkbook: async (review, vm) => finish('xlsx', vm, buildOverviewWorkbook({ ...workbookInputFrom(review, vm), clientHoldings: buildHoldingsVM(review) }), workbookFileName(vm)),
+    exportWorkbook: async (review, vm, extra) => finish('xlsx', vm, buildOverviewWorkbook({
+      ...workbookInputFrom(review, vm), clientHoldings: buildHoldingsVM(review), ...(extra?.performance ? { performance: extra.performance } : {}),
+    }), workbookFileName(vm)),
     now,
     matchHoldings: (loaded, overrides) => matchLoaded(loaded, pageMatchContext(overrides)),
     loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, XLSX as unknown as MonitorSheetJS, regular ?? readBlock('MF_PERF') ?? undefined),
