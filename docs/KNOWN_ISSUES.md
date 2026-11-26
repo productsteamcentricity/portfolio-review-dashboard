@@ -190,11 +190,12 @@ resolves to Sample Client A on two shared tokens, and takes A's Grand Total and 
 § note shows that none of B's holdings matches an instrument, but the join itself still needs its own fix.
 **Fixed** on branch `fix/ki032-irr-client-join` (CR-0011; patch `tools/patches/2026-11-26-ki032-irr-client-join.js`;
 the owner's "Careful variant match", 26 Nov 2026). The join is decided once per review: the exact normalised name;
-else a unique name variant (salutations dropped, entity words such as HUF, trust, company, minor or guardian equal on
-both sides, every word of the shorter name in the longer one with initials, the first words equal when the lengths
-differ, one candidate each way); else no join. A client not joined keeps the base file's CMV-weighted figures, and its
+else a unique name variant (salutations dropped; marker words such as HUF or Karta, trust, company, minor, guardian
+or Thru, Jr or Sr, Late, or a joint "&" equal on both sides; every word of the shorter name in the longer one with
+initials; when the lengths differ, the first and last words equal and at most one more full word; one candidate each
+way); else no join. The client key keeps marker words written in brackets ("X (HUF)" was the individual X's key). A client not joined keeps the base file's CMV-weighted figures, and its
 § note says why when a near name was refused. A variant join is named in the § note. The counts are in the review
-model (`irrJoin`). Known-answer test: `tools/regression/KI-032-irr-client-join.js` (58 checks). The new build keeps
+model (`irrJoin`). Known-answer test: `tools/regression/KI-032-irr-client-join.js` (135 checks). The new build keeps
 exact client labels (D9); the side-by-side kit classifies the difference (SB-04 to SB-07) and retired SB-03.
 
 ## Low

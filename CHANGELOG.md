@@ -4,16 +4,18 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
-### Fixed (live page, KI-032: the IRR client join; `index.html` `59DD4C9220DDADA4295EB93909B6A591`, 16,412,282 bytes)
+### Fixed (live page, KI-032: the IRR client join; `index.html` `97BCF616AE69701CCD14204118084B56`, 16,413,659 bytes)
 - **A client never takes another client's transaction figures** (CR-0011; the owner's "Careful variant match", 26 Nov
-  2026). The IRR client join is now the exact name, else a unique name variant (a salutation, initials or a middle name;
-  entity words such as HUF, trust, company or minor equal on both sides; the first words equal when the lengths differ;
-  one candidate each way), else no join. Before, a client without an exact name took whichever IRR client shared two
+  2026). The IRR client join is now the exact name, else a unique name variant (a salutation, initials, one middle name or
+  the word order; marker words such as HUF, Karta, trust, company, minor, guardian, Jr, Late or a joint "&" equal on both
+  sides; the first and last words equal when the lengths differ; one candidate each way), else no join. The client key
+  keeps marker words written in brackets, so "X (HUF)" is no longer the individual X's key (an IRR file holding both
+  merged their flows on the client sheet). Before, a client without an exact name took whichever IRR client shared two
   name words, so it could show a family member's or an HUF's Grand Total and holding XIRRs.
   - A client not joined keeps the base file's CMV-weighted figures; its § note says why when a near name was refused,
     and names no one. A variant join is named in the § note. The counts are in the review model (`irrJoin`).
   - Clients whose names are in the IRR file exactly, and the family Fund IRR tree, are unchanged.
-  - `tools/patches/2026-11-26-ki032-irr-client-join.js`; `tools/regression/KI-032-irr-client-join.js` (58 known-answer
+  - `tools/patches/2026-11-26-ki032-irr-client-join.js`; `tools/regression/KI-032-irr-client-join.js` (135 known-answer
     checks). Side-by-side kit: SB-03 retired; SB-04 to SB-07 for the client-name variant case (the new build keeps exact
     client labels, D9); 16 tests.
 
