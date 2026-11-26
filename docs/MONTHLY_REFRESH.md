@@ -337,6 +337,30 @@ a different fund is a stop-and-investigate.
 | 7c | PMS_PERF | `refresh_pms_perf.js --src "<PMS_Scheme Performance … .xlsx>"`, then splice its output. **Read the STALENESS line**, and check the workbook's creator and created date (Part 3). |
 | 7d | FUND_RANKS | `tools/parse-fund-ranks.js` plus the wrapper in `previous-owner/knowledge/KNOWLEDGE_DUMP.md` §3.4. This has never been done; plan it with the owner first. |
 | 7e | AIF_PERF, the PMS/AIF look-throughs, tax rules, IPS profiles, topic slides | No scripted path yet. Agree each one with the owner as a change request. |
+| 7f | HYBRID_ANALYTICS keys carried forward (Other Funds analytics) | `build_other_funds.js --src "$IN/Analytics/Other Funds Analytics.xlsx" --out "$OUT/other-funds/blocks.json" --vintage "$PREVASON" --expect <N> --report "$OUT/other-funds/report.json"`, then `splice_refresh.js "$OUT/other-funds/blocks.json" --data-only` (see below) |
+
+**Step 7f, when it applies.** The main build carries a scheme's previous look-through forward, tagged
+`vintage: "<previous as-on>"`, when the month's Hybrid file has left the scheme out (`carryForwardLookThroughs`;
+October carried 40 children's and retirement funds). After the main splice:
+1. Count the HYBRID_ANALYTICS keys tagged with `$PREVASON`. If there are none, skip 7f and say so in the log.
+2. If `Other Funds Analytics.xlsx` arrived, run 7f with `--expect` set to that count. It replaces exactly the carried
+   keys in place, drops the tag, writes HYBRID_ANALYTICS only (DATA_DATES stays as embedded), and loads no other
+   scheme.
+3. **Hard stops, nothing written:**
+   - the sheet layout (the new month in columns 3..7, the previous month in 19..23);
+   - the count;
+   - a carried key missing by exact name;
+   - equity plus debt not 100 ± 0.5;
+   - any other key changing;
+   - the known-answer check (the previous month's columns must reproduce the embedded carried entries).
+4. **Month-specific parts of the tool:** the known-answer exception list `SEP_EQ_EXCEPTIONS` names October's one
+   exception (a stock the vendor renamed between issues), and the column layout is October's file. If either does not
+   fit the new file, **stop**: the change is a pipeline commit of its own, with its test, and Gate B before use. Never
+   edit the vendor file.
+5. **Record:** the keys replaced, the largest moves, and `data/refdata` regenerated (step 8). October's run is the
+   worked example (refresh log 2026-10, §10; test `tools/regression/CR0010-a1-other-funds-hybrid.js`).
+
+If the file did not arrive, the carried keys stay at the previous vintage; list them under "Blocks left stale".
 
 **One file at a time, in the order of the table.** Every blocks file carries a full copy of `DATA_DATES`,
 and the splice replaces it wholesale. A file built before another splice would therefore put the other dates
