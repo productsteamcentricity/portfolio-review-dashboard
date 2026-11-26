@@ -15,7 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { emptyTaxInputs } from '../../../app/src/engine/tax/realised.ts';
 import { NO_PERSON, SLAB_DEFAULT_PCT, rollupPersonYears } from '../../../app/src/engine/tax/rollup.ts';
-import type { RollupOptions } from '../../../app/src/engine/tax/rollup.ts';
+import type { RollupFamilyYear, RollupOptions, RollupPersonYear } from '../../../app/src/engine/tax/rollup.ts';
 import { TAX_RULES_V1 } from '../../../app/src/engine/tax/rules.ts';
 import { S3_ISSUE_IDS } from '../../../app/src/engine/tax/types.ts';
 import type { EstimateLocal, FamilyTaxYearLocal, PersonYearTaxLocal, RealiseResult, RollupResult, TaxIssue, TaxLot } from '../../../app/src/engine/tax/types.ts';
@@ -658,6 +658,161 @@ describe('financial review round 1: analyst inputs applied, missing figures neve
     assert.equal(u.g[0]!.anniversaryLongTerm?.ruleId, 'EQ-LT-2');
     near(u.g[0]!.anniversaryLongTerm!.taxableGain, 3000, 'unmarked long-term gain');
     assert.notEqual(v(py(u.roll, 2018, CLIENT_A).alternatives.anniversaryLongTerm), null, 'unmarked: a figure');
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Gate B of the tax engine, round 1 (ARC-03, f65cda6): B1 (financial F-1), B2 (financial F-2) and the three surviving
+// mutants of B3 (T3, T8, T9). The reviewer's probes and hand-worked figures (synthetic data only).
+
+describe('Gate B round 1: unknown gains never read as 0 (B1), the anniversary dash (B2), the mutants T3, T8, T9 (B3)', () => {
+  const NA = STATUS.NOT_AVAILABLE;
+  const MC = { scheme: 'Sample Mid Cap Fund - Regular Plan - Growth', asset: 'Equity', category: 'Mid Cap Funds' } as const;
+  const FX = { scheme: 'Sample Flexi Cap Fund - Regular Plan - Growth', asset: 'Equity', category: 'Flexi Cap Funds' } as const;
+  const isMissing = (x: { kind: string; status?: string; reason?: string } | null | undefined, status: string, reason: string | RegExp, w: string): void => {
+    assert.ok(x, `${w}: expected a missing value, got null`);
+    assert.equal(x!.kind, 'missing', `${w}: expected missing`);
+    assert.equal(x!.status, status, `${w}: status`);
+    if (typeof reason === 'string') assert.equal(x!.reason, reason, `${w}: reason`);
+    else assert.match(x!.reason!, reason, `${w}: reason`);
+  };
+  /** The person-year with the realised coverage Values (RollupPersonYear, rollup.ts). */
+  const pyR = (r: Run, fy: number, who: string): RollupPersonYear => py(r.roll, fy, who) as unknown as RollupPersonYear;
+  const famR = (r: Run, fy: number): RollupFamilyYear => year(r.roll, fy) as unknown as RollupFamilyYear;
+
+  // B1, the reviewer's probe: an EQ-LT-7 lot with a realised gain of 2,000 x (175 - 100) = Rs 1,50,000 and a lot whose
+  // Invested Value is blank (its economic gain unknown).
+  const known: KaLot = { ...EQ, buy: [2021, 4, 5], sell: [2025, 8, 11], units: 2000, buyNav: 100, sellNav: 175 };
+  const blankCost: KaLot = { ...MC, buy: [2021, 4, 5], sell: [2025, 8, 11], units: 1000, buyNav: 100, sellNav: 300, over: { invested: null, buyPrice: null, realised: null } };
+  const blankSale: KaLot = { ...MC, buy: [2021, 4, 5], sell: [2025, 8, 11], units: 1000, buyNav: 100, sellNav: 300, over: { sell: null, sellPrice: null, realised: null } };
+
+  test('B1: a lot with a blank Invested Value makes the realised total PARTIAL with the count, the gain left out missing, not 0', () => {
+    const r = run([known, blankCost], [A_(2025)]);
+    assert.equal(r.g[1]!.realised.kind, 'missing', 'the probe lot has an unknown economic gain');
+    assert.equal(r.g[1]!.notComputedDetail, 'cost-missing');
+    const p = pyR(r, 2025, CLIENT_A);
+    // The realised total: Rs 1,50,000.00 over the known lot, PARTIAL (coverage below 1), the count named.
+    assert.equal(p.values.realised.kind, 'value');
+    near(v(p.values.realised), 150000, 'realised over the known lot');
+    assert.ok(p.values.realised.kind === 'value' && (p.values.realised.coverage ?? 1) < 1, 'realised is PARTIAL');
+    assert.match(p.values.realised.kind === 'value' ? p.values.realised.prov.method : '', /PARTIAL: 1 lot has an unknown economic gain/);
+    assert.equal(p.values.lotsGainUnknown, 1, 'the count of lots with an unknown gain');
+    // The economic gain left out of the tax: missing, never 0.
+    isMissing(p.values.economicGainNotComputed, NA, /1 lot has an unknown economic gain/, 'economic gain not computed');
+    assert.equal(p.coverage.partial, true);
+    assert.equal(p.coverage.lotsNotComputed, 1);
+    // The family sum follows: PARTIAL realised, the gain left out missing, the count carried.
+    const f = famR(r, 2025);
+    assert.ok(f.familySumValues.realised.kind === 'value' && (f.familySumValues.realised.coverage ?? 1) < 1, 'family realised PARTIAL');
+    near(v(f.familySumValues.realised), 150000, 'family realised over the known lot');
+    isMissing(f.familySumValues.economicGainNotComputed, NA, /unknown economic gain/, 'family economic gain not computed');
+    assert.equal(f.familySumValues.lotsGainUnknown, 1);
+    assert.equal(f.familySum.coverage.partial, true);
+  });
+
+  test('B1: a blank Sell Amount likewise; every lot unknown makes the realised total missing; all known stays complete', () => {
+    const r = run([known, blankSale], [A_(2025)]);
+    assert.equal(r.g[1]!.notComputed, 'amount-missing');
+    const p = pyR(r, 2025, CLIENT_A);
+    assert.ok(p.values.realised.kind === 'value' && (p.values.realised.coverage ?? 1) < 1, 'realised is PARTIAL');
+    assert.equal(p.values.lotsGainUnknown, 1);
+    isMissing(p.values.economicGainNotComputed, NA, /unknown economic gain/, 'economic gain not computed');
+    // Only the unknown lot: the realised total itself is missing, with the count.
+    const only = pyR(run([blankSale], [A_(2025)]), 2025, CLIENT_A);
+    isMissing(only.values.realised, NA, /^1 lot has an unknown economic gain/, 'realised of unknown lots only');
+    // A lot left out with a known gain (tax class not set, KA-21): the gain left out is a figure, the realised complete.
+    const c = ka('KA-21');
+    const k = pyR(run(c.lots, c.personYear, { inputs: c.inputs }), 2025, CLIENT_A);
+    assert.equal(k.values.lotsGainUnknown, 0);
+    near(v(k.values.economicGainNotComputed), 20000, 'KA-21: economic gain Rs 20,000.00 left out, known');
+    assert.equal(k.values.realised.kind === 'value' && k.values.realised.coverage, undefined, 'realised complete');
+  });
+
+  test('B2: an anniversary lot whose long-term rule is to be confirmed (EQ-FOF-2) makes the alternative the dash, never its short-term figure', () => {
+    // The reviewer's probe, FY 2018-19, slab 30%: a 90/90 FoF lot (EQ-FOF-1) with a short-term loss of Rs 1,000.00; a
+    // 90/90 FoF lot sold on its anniversary (EQ-FOF-1 short term, gain Rs 5,000.00; long term EQ-FOF-2, to be
+    // confirmed); an equity lot sold on its anniversary (EQ-ST-2 short term, gain Rs 2,000.00; long term EQ-LT-3).
+    // The tax: (5,000 - 1,000) x 30% + 2,000 x 15% = Rs 1,500.00. Before the fix the alternative read Rs 1,200.00 (the
+    // FoF lot kept at its slab figure, the equity lot inside the exemption).
+    const fof = 'Sample Equity ETF Fund of Funds - Regular Plan - Growth';
+    const lots: KaLot[] = [
+      { scheme: fof, asset: 'Equity', category: 'FoFs Domestic', buy: [2018, 5, 2], sell: [2019, 2, 1], units: 1000, buyNav: 10, sellNav: 9 },
+      { scheme: fof, asset: 'Equity', category: 'FoFs Domestic', buy: [2018, 1, 10], sell: [2019, 1, 10], units: 1000, buyNav: 10, sellNav: 15 },
+      { ...EQ, buy: [2018, 3, 1], sell: [2019, 3, 1], units: 1000, buyNav: 10, sellNav: 12 },
+    ];
+    const r = run(lots, [A_(2018, { slabPct: 30 })], { inputs: { scheme: [{ schemeKey: fof.toLowerCase(), fy: null, etfFof9090: true }] } as Partial<TaxInputs> });
+    const g = r.g[1]!;
+    assert.equal(g.ruleId, 'EQ-FOF-1');
+    assert.equal(g.anniversaryLongTerm, null);
+    assert.equal(g.anniversaryLongTermDetail?.ruleId, 'EQ-FOF-2');
+    isMissing(g.anniversaryLongTermDetail?.taxableGain, NA, /rule to be confirmed/, 'the FoF lot\'s long-term gain');
+    assert.equal(r.g[2]!.anniversaryLongTermDetail?.ruleId, 'EQ-LT-3');
+    const p = py(r.roll, 2018, CLIENT_A);
+    near(v(p.estimate.tax), 1500, 'the tax as the app holds it');
+    isMissing(p.alternatives.anniversaryLongTerm, NA, /rule to be confirmed/, 'the person-year alternative');
+    for (const k of ['tax', 'surcharge', 'cess', 'total'] as const) isMissing(p.alternativesDetail.anniversaryLongTerm![k], NA, /rule to be confirmed/, `alternative ${k}`);
+    isMissing(year(r.roll, 2018).familySum.alternatives.anniversaryLongTerm, NA, /rule to be confirmed/, 'the family alternative');
+  });
+
+  test('B3 T3: the exemption applies after set-off, never to the gain before it (Rs 3,00,000 s.112A gains, Rs 2,50,000 short-term loss)', () => {
+    // FY 2025-26, exemption Rs 1,25,000. By hand (§9.3 steps 3 and 4, TR-10): the EQ-LT-7 gain of Rs 3,00,000 splits
+    // into Rs 1,75,000 above the unused exemption (ranked at 12.5%) and Rs 1,25,000 inside it (ranked at 0%, last).
+    // The short-term loss of Rs 2,50,000 (EQ-ST-3) takes the Rs 1,75,000 first, then Rs 75,000 of the part inside:
+    // set-off Rs 2,50,000, gain left Rs 50,000. The exemption, after set-off: min(50,000, 1,25,000) = Rs 50,000.
+    // Taxable 3,00,000 - 2,50,000 - 50,000 = Rs 0; tax Rs 0; nothing unabsorbed. (Applied before set-off, the exemption
+    // would be Rs 1,25,000 and the taxable a negative Rs 75,000.)
+    const r = run([
+      { ...EQ, buy: [2021, 4, 5], sell: [2025, 8, 11], units: 1000, buyNav: 100, sellNav: 400 },
+      { ...FX, buy: [2025, 1, 2], sell: [2025, 8, 11], units: 1000, buyNav: 400, sellNav: 150 },
+    ], [A_(2025)]);
+    const p = py(r.roll, 2025, CLIENT_A);
+    const b = p.buckets.find((x) => x.ruleId === 'EQ-LT-7')!;
+    assert.ok(b, 'the EQ-LT-7 bucket');
+    near(b.gain, 300000, 'gain');
+    near(b.setOff, 250000, 'set-off');
+    near(b.exemption, 50000, 'the exemption after set-off');
+    near(b.taxable, 0, 'taxable, never negative');
+    near(b.tax, 0, 'bucket tax');
+    near(p.exemption.applied, 50000, 'exemption applied');
+    near(v(p.values.exemptionApplied), 50000, 'exemption applied (Value)');
+    assert.deepEqual(p.unabsorbed, { st: 0, lt: 0 });
+    checkEstimate(p.estimate, { tax: 0, surcharge: 0, cess: 0, total: 0 }, 'T3');
+  });
+
+  test('B3 T8: a year whose exemption is to be confirmed (FY 2027-28) leaves the exemption and the tax missing, not computed', () => {
+    const r = run([{ ...EQ, buy: [2024, 4, 5], sell: [2027, 8, 11], units: 1000, buyNav: 100, sellNav: 300 }], [A_(2027)]);
+    const p = py(r.roll, 2027, CLIENT_A);
+    const open = 'the annual exemption of the year is to be confirmed';
+    isMissing(p.exemption.limit, NA, open, 'exemption limit');
+    isMissing(p.values.exemptionApplied, NA, open, 'exemption applied');
+    // The exemption block decides first, ahead of the surcharge and cess of the year (also to be confirmed).
+    for (const k of ['tax', 'surcharge', 'cess', 'total'] as const) isMissing(p.estimate[k], NA, open, `estimate ${k}`);
+    for (const bk of p.buckets) {
+      isMissing(bk.values.exemption, NA, open, `${bk.ruleId} exemption`);
+      isMissing(bk.values.taxable, NA, open, `${bk.ruleId} taxable`);
+    }
+  });
+
+  test('B3 T9: a year whose surcharge maximum is to be confirmed makes every tax figure missing, never before surcharge or 0', () => {
+    const why = 'the surcharge of the year is to be confirmed';
+    // FY 2027-28 without exemption-group gains (a short-term equity gain): the surcharge block decides, ahead of cess.
+    const r = run([{ ...EQ, buy: [2027, 1, 4], sell: [2027, 8, 11], units: 1000, buyNav: 100, sellNav: 120 }], [A_(2027)]);
+    const p = py(r.roll, 2027, CLIENT_A);
+    assert.equal(p.surchargeApplied, null);
+    for (const k of ['tax', 'surcharge', 'cess', 'total'] as const) isMissing(p.estimate[k], NA, why, `FY 2027-28 ${k}`);
+    assert.equal(p.estimate.beforeSurcharge, false, 'missing, not before surcharge');
+    // Only the surcharge to be confirmed: a copy of table v1 without its FY 2026-27 surcharge band (cess and the
+    // exemption of the year are set). Rs 20,000 short-term equity gain (EQ-ST-4, 20%) would be Rs 4,000.00 of tax; the year's
+    // tax stays missing rather than computed with a surcharge of 0.
+    const table = { ...TAX_RULES_V1, surcharge: { ...TAX_RULES_V1.surcharge, years: TAX_RULES_V1.surcharge.years.filter((y) => y.fyFrom !== 2026), onwardFrom: 2026 } };
+    const t = run([{ ...EQ, buy: [2026, 1, 5], sell: [2026, 8, 11], units: 1000, buyNav: 100, sellNav: 120 }], [A_(2026)], { rollup: { table } });
+    const q = py(t.roll, 2026, CLIENT_A);
+    assert.equal(q.buckets[0]?.ruleId, 'EQ-ST-4');
+    near(q.buckets[0]!.tax, 4000, 'the bucket tax is computed');
+    for (const k of ['tax', 'surcharge', 'cess', 'total'] as const) isMissing(q.estimate[k], NA, why, `surcharge open ${k}`);
+    assert.equal(q.estimate.beforeSurcharge, false);
+    // With the table's band (the control), the same year is a figure: 4,000 + cess 4% = Rs 4,160.00.
+    near(v(py(run([{ ...EQ, buy: [2026, 1, 5], sell: [2026, 8, 11], units: 1000, buyNav: 100, sellNav: 120 }], [A_(2026)]).roll, 2026, CLIENT_A).estimate.total), 4160, 'control');
   });
 });
 

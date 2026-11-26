@@ -228,10 +228,16 @@ type AnniversaryFigure =
  * The long-term figure of an anniversary-day lot, under the long-term row with the lot's own gift, inheritance or
  * first-held-before-2001 mark (fin review S-6): a grandfathered row then needs the s.55(2)(b) or s.90(9) cost input
  * (TR-11), so the figure is not computed (`cost-input-missing`), never the grandfathered formula without the mark.
+ * A long-term row that is itself to be confirmed (EQ-FOF-2; any row with toBeConfirmed) gives a figure not computed
+ * (`rule-to-be-confirmed`), never null: null means no long-term row applies, and the roll-up would then keep the lot at
+ * its short-term figure in the anniversary alternative (Gate B F-2).
  */
 function anniversaryLongTermFor(key: RuleKey, c: CostCtx): AnniversaryFigure | null {
   const row = longTermRowFor(c.table, key);
-  if (row === null || row.toBeConfirmed) return null;
+  if (row === null) return null;
+  if (row.toBeConfirmed) {
+    return { kind: 'not-computed', ruleId: row.id, rate: row.rate === 'two-leg' ? null : row.rate, reason: 'rule-to-be-confirmed' };
+  }
   const r = costFor(row, c);
   const rowRate: LotRate = row.rate === 'two-leg' ? null : row.rate;
   if (r.kind === 'not-computed') return { kind: 'not-computed', ruleId: row.id, rate: rowRate, reason: r.reason };
@@ -420,10 +426,11 @@ function realiseOne(x: LotCtx): TaxLot {
       // The contract's anniversaryLongTerm holds a plain-number gain, so a figure that is the dash stays null there;
       // the dash and its reason are in anniversaryLongTermDetail (TODO(contracts-4) in types.ts).
       const reason: NotComputed = a.reason === 'cost-missing' ? 'cost-input-missing' : a.reason;
+      const why = reason === 'rule-to-be-confirmed' ? `rule to be confirmed (${a.ruleId})` : reason;
       g.anniversaryLongTerm = null;
       g.anniversaryLongTermDetail = {
         ruleId: a.ruleId, rate: a.rate, costForTax: null,
-        taxableGain: missing(NA, `the long-term figure is not computed: ${reason}`, altProv),
+        taxableGain: missing(NA, `the long-term figure is not computed: ${why}`, altProv),
       };
     }
   }
