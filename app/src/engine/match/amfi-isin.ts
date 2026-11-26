@@ -1,7 +1,7 @@
 // The fund ISIN to AMFI scheme code map (parity rows E-125, BR-2.3; M2 plan S2 v3, item 1; MOD-04's decision of
-// 25 Nov 2026: option (a), the monthly NAV fetch keeps AMFI's code, ISINs and name; no other download).
+// 25 Nov 2026: option (a), the monthly NAV download step keeps AMFI's code, ISINs and name; no other download).
 //
-// Input: the ids file the NAV fetch writes from the December 2026 run (AmfiFetch.ps1; C:\Temp\navwork\amfi_<mon>_ids.tsv):
+// Input: the ids file the NAV download step writes from the December 2026 run (amfi_<mon>_ids.tsv, beside the NAV file):
 // tab-separated, UTF-8 without BOM, CRLF, sorted by code, columns
 //   code, isin_growth_or_payout, isin_reinvestment, name, plan, option, amc, category, last_serial, last_date.
 // Its values are AMFI's as given and are NOT validated there (CHAT-007, 25 Nov 2026): a "-" placeholder, or a non-ISIN
