@@ -137,4 +137,11 @@ describe('the direct-equity portfolio (E-148)', () => {
     near(v(r.lines[1]!.cagr), 20);
     assert.deepEqual(r.figure.value.kind === 'value' && r.figure.value.prov.sources, ['sha-file']);
   });
+  test('a source used only by a stock outside the base is not in the figure\'s provenance', () => {
+    const pack: PriceSource = { source: 'screener-pack', series: { INE000SAMPLE2: twentyPct3y }, sourceIds: ['sha-pack'] };
+    const r = directEquityCagr([sh('s1', 'INE000SAMPLE1', 6), { holdingId: 's2' as HoldingId, isin: 'INE000SAMPLE2', cmvCr: present(0, 'cr', P) }], [pack, file], AS_ON, '3y', 'family');
+    near(v(r.figure.value), 10);
+    assert.deepEqual(r.lines.map((l) => l.source), ['analyst-price-file', 'screener-pack']);
+    assert.deepEqual(r.figure.value.kind === 'value' && r.figure.value.prov.sources, ['sha-file']);
+  });
 });
