@@ -480,6 +480,39 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `tests/parity/contributions.parity.test.ts` against the legacy contribLag. The IRR parity ledger waits for a real
   export (TA-03, KI-186).
 
+### Added (new build, M3a wiring for test build 1: the IRR upload and the returns view on `/next/`)
+- **Section 1:** a "Transactions (IRR) file" upload with the base file's stages, usable once a base file is accepted
+  and cleared when a new base file is picked. It shows the file's import notes and says plainly that issues in the
+  transactions file do not block the workbook download yet.
+- **Section 4 (Analytics):** the returns view with a scope picker (the family, each client, and each adviser when the
+  file has a DISTRIBUTOR column). It shows fund XIRR against benchmark XIRR, the IRR tree, and contributors, laggards
+  and drags labelled "allocation x XIRR (an approximation, not an attribution)". The reconciliation notes cover
+  IRR-only clients, redeemed instruments, invalid benchmarks, holdings without flows, the unassigned line, and the
+  reconcile rule not yet set (D13).
+- **Workbook:** a "Fund IRR" sheet before the Audit Log, only when an IRR file is accepted. Its values are labelled as
+  computed by the app; the Excel XIRR check column waits (Q-60). Workbooks without an IRR file are byte-identical.
+- **Without a model change** (PLAN-04 option B): `engine/returns/review-returns.ts` gives the output that
+  `Review.returns` will hold once I-41 is written.
+- **Tests:** `unit/views/returns`, `unit/engine/review-returns`, `exports/xlsx/fund-irr`, `workflows/w-02-irr`,
+  `integration/returns-cross-output`.
+- **After the Gate B review and MOD-04's answers:**
+  - **Benchmark coverage:** the benchmark XIRR shows its coverage when it is partial.
+  - **Dates:** the IRR file's last flow date is shown beside the as-on date, with a count of any flows after it. No
+    figure changes.
+  - **One row per line:** the Fund IRR sheet writes each contributor, laggard and drag once, with a Role column, so no
+    percentage-point sum counts a line twice.
+  - **Unassigned share:** it has its own column, "Share of Money Paid In".
+  - **Missing figures:** the sheet's note says a missing figure is a blank cell with its status, where the screen
+    shows the dash.
+  - **Read Me:** it names the transactions file.
+  - **Spelling:** "Adviser" in user text.
+  - **New tests:**
+    - hand-worked known answers on screen and in the sheet (`integration/returns-known-answers`);
+    - cross-output for every figure cell;
+    - a refused IRR file;
+    - a synthetic IRR file whose distributors match the base book, so adviser scopes have flows;
+    - the browser check `tests/browser/irr-slot.cdp.mjs`.
+
 ### Added (new build, M7a: the capital-gains statement reader and the blank template; not wired into the page yet)
 - **`app/src/ingest/capital-gains.ts`** (E-150, D-036, design `docs/new-build/capital-gains-upload.md` §2 to §4, §6, §7,
   §11): the wealth platform's capital-gains export read as produced. Columns are found by header name in any order, and
@@ -499,6 +532,23 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Lot classes, the tax rules and the tax engine (E-152, E-154, E-155) stay owner-gated (PD-16, LP-01).
 - **Tests:** `tests/unit/ingest/capital-gains.test.ts`, `tests/exports/xlsx/cg-template.test.ts` and
   `tests/exports/xlsx/column-default-style.test.ts`, on synthetic statements only (`tests/fixtures/make-cg-statements.ts`).
+
+### Added (new build, M7a tax engine, round 1: the indicative tax of capital-gains statement lots; not wired into the page yet)
+- **`data/owner/tax-rules.json` and `engine/tax/rules.ts`** (E-154, E-106, E-144): the dated rule table v1 of the design
+  (§10, approved 27 Oct 2026) as data, from 1 Oct 2004: the rate rows, exemptions, both Cost Inflation Index series,
+  cess, surcharge maxima and caps, and the category map; the rule key to exactly one rate row.
+- **`engine/tax/tax-class.ts`, `lot-class.ts` and `realised.ts`** (E-152): per lot, the tax class, lot class (mergers
+  and successors), term, cost for tax, taxable gain and rule; NE-LT-1 both legs per lot.
+- **`engine/tax/rollup.ts`** (E-155): per person and financial year, never pooled: set-off, the exemption, tax,
+  surcharge, cess, the statement's split and the alternatives; the family sum as the sum of separate computations.
+- **The owner's PD-16 answers of 26 Nov 2026:** the dated table (item 1); an anniversary-day sale short term with the
+  long-term figure beside it (item 2); persons numbered by PAN per file in memory only, never from the PAN itself
+  (item 3); repeated rows decided by the analyst, with the units evidence beside each question (item 5); the FY 2024-25
+  exemption on the 12.5% gains first (item 6); the usual buckets from tax year 2026-27 (item 7). Item 4 stays with the
+  tax adviser.
+- **The slab rate** is the analyst's per person and year; the default is one named parameter while PD-07 is open.
+- **Tests:** `tests/unit/tax/{rules,lots,rollup,repeat-evidence,statement-engine}.test.ts` and the known answers KA-1
+  to KA-22 (`tests/fixtures/cg-known-answers.json`), to Rs 0.01.
 
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage

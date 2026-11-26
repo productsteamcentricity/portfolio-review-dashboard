@@ -1,0 +1,476 @@
+{
+  "version": "S3-rollup-1",
+  "design": "capital-gains-upload.md §13.4",
+  "review": "family-a",
+  "asOn": "2026-09-30",
+  "tolerance": 0.01,
+  "note": "Known answers only, never code (design §13.1, I-37 §3). Each case's lots are LotSpec data for tests/fixtures/make-cg-statements.ts (client Sample Client A, distributor Sample Distributor 1 and a folio from 91500000 when not given; a date override is [y, m, d]). Inputs: scheme entries name the scheme label; merger answers name a lot of the event by its index; lot marks name the lot index. Expected figures are copied from the design text at the line given in ref (money in rupees, compared to Rs 0.01 on the unrounded value, LD-42). A figure marked origin NB-03 is not in the design (prices the design leaves open), worked by hand from the same rules. tax is gain x rate before exemption, surcharge and cess (TR-9) at the case's slab rate (slabPct, null = not set); cess is tax x the year's cess rate with surcharge 0. The rollup section (S3) holds the person-year known answers: each case's personYear entries name the person by client label (the review's client id) or by personKey ('person:n'), with slabPct, surchargePct and regime (null = not entered); expect.personYears name the person the same way and compare tax, surcharge, cess and total (tax before surcharge and cess; total with both) to Rs 0.01 on the unrounded figure; a variant may give its own lots, lotsOver (fields merged into the case's lots by index) or personYear; rollupFy gives the case's lots to the roll-up as one person-year of that FY (KA-19 only, as the design says).",
+  "cases": [
+    {
+      "id": "KA-1", "group": "lots", "ref": "capital-gains-upload.md:1185-1189",
+      "lots": [
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2016, 6, 15], "sell": [2025, 6, 16], "units": 1000, "buyNav": 40, "sellNav": 80, "over": { "acqDate": [2018, 1, 31], "acqPrice": 50 } }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "ruleId": "EQ-LT-6", "lotClass": "grandfathered", "term": "long", "costBasis": "grandfathered", "costForTax": 50000, "taxableGain": 30000, "realised": 40000, "tax": 3750 }
+      ] },
+      "note": "Grandfathered, sale above the 31 Jan 2018 value: cost 1,000 x max(40, min(50, 80))."
+    },
+    {
+      "id": "KA-2a", "group": "lots", "ref": "capital-gains-upload.md:1190-1193",
+      "lots": [
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2017, 3, 10], "sell": [2019, 5, 20], "units": 500, "buyNav": 30, "sellNav": 42, "over": { "acqDate": [2018, 1, 31], "acqPrice": 45 } }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "ruleId": "EQ-LT-2", "lotClass": "grandfathered", "term": "long", "costBasis": "grandfathered", "costForTax": 21000, "taxableGain": 0, "realised": 6000 }
+      ] },
+      "note": "Sale below the value but above cost: cost 500 x max(30, min(45, 42))."
+    },
+    {
+      "id": "KA-2b", "group": "lots", "ref": "capital-gains-upload.md:1194-1196",
+      "lots": [
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2017, 3, 10], "sell": [2020, 6, 22], "units": 500, "buyNav": 30, "sellNav": 25, "over": { "acqDate": [2018, 1, 31], "acqPrice": 45 } }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "ruleId": "EQ-LT-2", "lotClass": "grandfathered", "term": "long", "costBasis": "grandfathered", "costForTax": 15000, "taxableGain": -2500, "realised": -2500 }
+      ] },
+      "note": "Sale below actual cost: a long-term loss of Rs 2,500.00 for set-off; cost 500 x max(30, min(45, 25))."
+    },
+    {
+      "id": "KA-3a", "group": "lots", "ref": "capital-gains-upload.md:1197-1200",
+      "lots": [
+        { "scheme": "Sample Corporate Bond Fund - Regular Plan - Growth", "asset": "Debt", "category": "Corporate Bond Funds", "buy": [2005, 8, 1], "sell": [2012, 9, 3], "units": 1000, "buyNav": 10, "sellNav": 25 }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "ruleId": "NE-LT-1", "lotClass": "standard", "term": "long", "costBasis": "actual", "costForTax": 10000, "taxableGain": 15000, "realised": 15000, "tax": 1500, "cess": 45, "total": 1545,
+          "legs": { "chosen": "actual10", "indexed20": { "cost": 17142.86, "gain": 7857.14, "tax": 1571.43 }, "actual10": { "cost": 10000, "gain": 15000, "tax": 1500 } },
+          "flags": ["old-law-choice"] }
+      ] },
+      "note": "NE-LT-1, the 10% leg lower; CII 852/497; surcharge nil (FY 2012-13), cess 3%."
+    },
+    {
+      "id": "KA-3b", "group": "lots", "ref": "capital-gains-upload.md:1201-1203",
+      "lots": [
+        { "scheme": "Sample Corporate Bond Fund - Regular Plan - Growth", "asset": "Debt", "category": "Corporate Bond Funds", "buy": [2009, 4, 15], "sell": [2013, 5, 15], "units": 1000, "buyNav": 10, "sellNav": 16 }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "ruleId": "NE-LT-1", "lotClass": "standard", "term": "long", "costBasis": "indexed", "costForTax": 14857.59, "taxableGain": 1142.41, "realised": 6000, "tax": 228.48,
+          "legs": { "chosen": "indexed20", "indexed20": { "cost": 14857.59, "gain": 1142.41, "tax": 228.48 }, "actual10": { "cost": 10000, "gain": 6000, "tax": 600 } },
+          "flags": ["old-law-choice"] }
+      ] },
+      "note": "NE-LT-1, the 20% indexed leg lower; CII 939/632."
+    },
+    {
+      "id": "KA-4", "group": "lots", "ref": "capital-gains-upload.md:1204-1208",
+      "lots": [
+        { "scheme": "Sample Corporate Bond Fund - Regular Plan - Growth", "asset": "Debt", "category": "Corporate Bond Funds", "buy": [2018, 6, 11], "sell": [2022, 8, 16], "units": 1500, "buyNav": 20, "sellNav": 26, "over": { "acqPrice": 23.6429, "ltcg": 3535.65 } }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "ruleId": "NE-LT-3", "lotClass": "indexed-cost-shown", "term": "long", "costBasis": "indexed", "costForTax": 35464.29, "taxableGain": 3535.71, "realised": 9000, "tax": 707.14, "cess": 28.29, "notFlags": ["gain-differs", "indexed-cost-ignored"] }
+      ] },
+      "note": "2001 series (331/280), indexed cost shown by the statement (1,500 x 23.6429 = 35,464.35, within tolerance). The stated LTCG 3,535.65 (39,000 minus the stated indexed cost) is origin NB-03: the design gives the stated cost, the LTCG cell follows from it."
+    },
+    {
+      "id": "KA-5", "group": "lots", "ref": "capital-gains-upload.md:1209-1214",
+      "lots": [
+        { "scheme": "Sample Short Duration Fund - Regular Plan - Growth", "asset": "Debt", "category": "Short Duration Funds", "buy": [2023, 4, 1], "sell": [2025, 4, 15], "units": 1000, "buyNav": 100, "sellNav": 116 },
+        { "scheme": "Sample Short Duration Fund - Regular Plan - Growth", "asset": "Debt", "category": "Short Duration Funds", "buy": [2023, 3, 31], "sell": [2025, 4, 15], "units": 1000, "buyNav": 100, "sellNav": 116 },
+        { "scheme": "Sample Short Duration Fund - Regular Plan - Growth", "asset": "Debt", "category": "Short Duration Funds", "buy": [2023, 3, 31], "sell": [2025, 3, 31], "units": 1000, "buyNav": 100, "sellNav": 116 }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "ruleId": "NE-50AA-2", "taxClass": "specified-mf", "term": "short", "deemedShort": true, "costBasis": "actual", "costForTax": 100000, "taxableGain": 16000, "tax": null },
+        { "lot": 1, "ruleId": "NE-LT-4", "term": "long", "costBasis": "actual", "taxableGain": 16000, "tax": 2000 },
+        { "lot": 2, "ruleId": "NE-ST-3", "term": "short", "taxableGain": 16000, "tax": null, "flags": ["anniversary-sale"], "anniversaryLongTerm": { "ruleId": "NE-LT-4", "taxableGain": 16000, "tax": 2000 } }
+      ] },
+      "variants": [
+        { "id": "KA-5 slab 30%", "slabPct": 30, "expect": { "lots": [ { "lot": 0, "ruleId": "NE-50AA-2", "taxableGain": 16000, "tax": 4800 } ] } }
+      ],
+      "note": "Section 50AA after the 2025 switch: (i) bought 1 Apr 2023, deemed short term; (ii) bought 31 Mar 2023, long term after the 24-month anniversary; (iii) the (ii) lot sold on its anniversary, with Rs 2,000.00 as the long-term alternative."
+    },
+    {
+      "id": "KA-6", "group": "lots", "ref": "capital-gains-upload.md:1215-1218",
+      "lots": [
+        { "scheme": "Sample Global Equity Fund of Funds - Regular Plan - Growth", "asset": "Equity", "category": "Fund of Funds Overseas", "buy": [2023, 4, 10], "sell": [2025, 3, 28], "units": 400, "buyNav": 25, "sellNav": 30 },
+        { "scheme": "Sample Global Equity Fund of Funds - Regular Plan - Growth", "asset": "Equity", "category": "Fund of Funds Overseas", "buy": [2023, 4, 10], "sell": [2025, 5, 12], "units": 400, "buyNav": 25, "sellNav": 32 }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "ruleId": "NE-50AA-1", "taxClass": "specified-mf", "term": "short", "taxableGain": 2000, "tax": null, "flags": ["tax-class-differs"] },
+        { "lot": 1, "ruleId": "NE-LT-4", "taxClass": "other-non-equity", "listed": false, "term": "long", "taxableGain": 2800, "tax": 350, "flags": ["tax-class-differs"] }
+      ] },
+      "note": "International fund of funds labelled Equity, bought 10 Apr 2023 (800 units, sold as two lots of 400): Specified under the 35% test in FY 2024-25, other non-equity and unlisted in FY 2025-26."
+    },
+    {
+      "id": "KA-7", "group": "lots", "ref": "capital-gains-upload.md:1219-1223",
+      "lots": [
+        { "scheme": "Sample Flexi Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Flexi Cap Funds", "buy": [2024, 9, 17], "sell": [2025, 9, 17], "units": 1000, "buyNav": 50, "sellNav": 60, "over": { "ltcg": 10000, "stcg": 0 } },
+        { "scheme": "Sample Flexi Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Flexi Cap Funds", "buy": [2024, 9, 17], "sell": [2025, 9, 18], "units": 1000, "buyNav": 50, "sellNav": 60 },
+        { "scheme": "Sample Flexi Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Flexi Cap Funds", "buy": [2024, 2, 29], "sell": [2025, 2, 28], "units": 100, "buyNav": 100, "sellNav": 120 },
+        { "scheme": "Sample Flexi Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Flexi Cap Funds", "buy": [2024, 2, 29], "sell": [2025, 3, 1], "units": 100, "buyNav": 100, "sellNav": 120 }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "ruleId": "EQ-ST-3", "term": "short", "taxableGain": 10000, "tax": 2000, "flags": ["term-differs", "anniversary-sale"], "anniversaryLongTerm": { "ruleId": "EQ-LT-7", "taxableGain": 10000, "tax": 1250 } },
+        { "lot": 1, "ruleId": "EQ-LT-7", "term": "long", "taxableGain": 10000, "tax": 1250, "flags": ["anniversary-sale"], "notFlags": ["term-differs"], "anniversaryLongTerm": null },
+        { "lot": 2, "ruleId": "EQ-ST-3", "term": "short", "taxableGain": 2000, "tax": 400, "flags": ["anniversary-sale"], "anniversaryLongTerm": { "ruleId": "EQ-LT-7", "taxableGain": 2000, "tax": 250 } },
+        { "lot": 3, "ruleId": "EQ-LT-7", "term": "long", "taxableGain": 2000, "tax": 250, "flags": ["anniversary-sale"] }
+      ] },
+      "note": "The anniversary (OD-2): the exact anniversary is short term, the statement's LTCG gives term-differs, the long-term figure beside; the day after is long term. The 29 Feb 2024 lots' units and prices (100 at Rs 100.00, sold at Rs 120.00) and their figures are origin NB-03; the design fixes only their rules."
+    },
+    {
+      "id": "KA-8", "group": "lots", "ref": "capital-gains-upload.md:1224-1234",
+      "lots": [
+        { "scheme": "Sample Mid Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Mid Cap Funds", "buy": [2019, 7, 1], "sell": [2023, 11, 10], "units": 2000, "buyNav": 15, "sellNav": 22, "over": { "acqDate": [2023, 11, 10], "acqPrice": 22, "ltcg": 0, "stcg": 0 } },
+        { "scheme": "Sample Multi Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Multi Cap Funds", "buy": [2019, 7, 1], "sell": [2026, 5, 4], "units": 1000, "buyNav": 30, "sellNav": 50 },
+        { "scheme": "Sample Focused Fund - Regular Plan - Growth", "asset": "Equity", "category": "Focused Funds", "buy": [2019, 7, 1], "sell": [2023, 11, 13], "units": 2000, "buyNav": 15, "sellNav": 22, "over": { "acqDate": [2023, 11, 13], "acqPrice": 22, "ltcg": 0, "stcg": 0 } },
+        { "scheme": "Sample Value Fund - Regular Plan - Growth", "asset": "Equity", "category": "Value Funds", "buy": [2023, 11, 13], "sell": [2024, 6, 3], "units": 1000, "buyNav": 44, "sellNav": 50 }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "lotClass": "non-taxable-transfer", "ruleId": null, "costBasis": "none", "taxableGain": 0, "realised": 14000, "realisedCounted": 0, "nonTaxable": 14000, "flags": ["non-taxable-transfers"] },
+        { "lot": 1, "ruleId": "EQ-LT-9", "term": "long", "costForTax": 30000, "taxableGain": 20000, "realisedCounted": 20000, "tax": 2500, "notFlags": ["successor-reset", "successor-not-reset"] },
+        { "lot": 2, "lotClass": "non-taxable-transfer", "taxableGain": 0, "realised": 14000, "realisedCounted": 14000, "nonTaxable": 0 },
+        { "lot": 3, "ruleId": "EQ-ST-2", "term": "short", "costForTax": 44000, "taxableGain": 6000, "tax": 900, "successor": "reset", "flags": ["successor-reset"] }
+      ] },
+      "variants": [
+        { "id": "KA-8 reset lot given its original date and cost", "inputs": { "lotMarks": [ { "lotIndex": 3, "resetOriginal": { "purchaseDate": [2019, 7, 1], "cost": 30000 } } ] },
+          "expect": { "lots": [
+            { "lot": 3, "ruleId": "EQ-LT-5", "term": "long", "costForTax": 30000, "taxableGain": 20000, "realised": 20000, "tax": 2000, "notFlags": ["successor-reset"] },
+            { "lot": 2, "lotClass": "non-taxable-transfer", "realisedCounted": 0, "nonTaxable": 14000 }
+          ] } }
+      ],
+      "note": "Merger event of scheme M (10 Nov 2023, non-taxable by date) with its successor N carrying the original date and cost; the successor-reset variant is its own event (M2 into N2, 13 Nov 2023), whose realised gain is kept while N2 is reset and returns to the non-taxable line once the analyst sets the original date and cost."
+    },
+    {
+      "id": "KA-14", "group": "lots", "ref": "capital-gains-upload.md:1264-1267",
+      "lots": [
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2005, 5, 2], "sell": [2005, 12, 1], "units": 1000, "buyNav": 20, "sellNav": 25 },
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2017, 1, 2], "sell": [2018, 3, 15], "units": 1000, "buyNav": 30, "sellNav": 36 },
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2017, 1, 2], "sell": [2018, 3, 15], "units": 1000, "buyNav": 30, "sellNav": 25 },
+        { "scheme": "Sample Mid Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Mid Cap Funds", "buy": [2024, 2, 2], "sell": [2024, 7, 22], "units": 100, "buyNav": 100, "sellNav": 110 },
+        { "scheme": "Sample Mid Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Mid Cap Funds", "buy": [2024, 2, 2], "sell": [2024, 7, 23], "units": 100, "buyNav": 100, "sellNav": 110 },
+        { "scheme": "Sample Mid Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Mid Cap Funds", "buy": [2008, 5, 5], "sell": [2008, 12, 1], "units": 100, "buyNav": 100, "sellNav": 110 }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "ruleId": "EQ-ST-1", "term": "short", "taxableGain": 5000, "tax": 500, "cess": 10, "total": 510 },
+        { "lot": 1, "ruleId": "EQ-LT-1", "term": "long", "exempt": true, "costBasis": "none", "taxableGain": 0, "realised": 6000 },
+        { "lot": 2, "ruleId": "EQ-LT-1", "term": "long", "exempt": true, "costBasis": "none", "taxableGain": 0, "realised": -5000 },
+        { "lot": 3, "ruleId": "EQ-ST-2", "term": "short", "rate": 0.15, "taxableGain": 1000, "tax": 150 },
+        { "lot": 4, "ruleId": "EQ-ST-3", "term": "short", "rate": 0.2, "taxableGain": 1000, "tax": 200 },
+        { "lot": 5, "ruleId": "EQ-ST-2", "term": "short", "rate": 0.15, "taxableGain": 1000, "tax": 150 }
+      ] },
+      "note": "Cess 2% (FY 2005-06) and the boundaries. Lot 0 is the design's. Lots 1 and 2 (the exempt gain and the exempt loss, prices origin NB-03), lots 3 and 4 (22 and 23 Jul 2024, prices origin NB-03) and lot 5 (the FY 2008-09 short-term lot of §13.4 'Equity, before 2018', origin NB-03) take the design's rules."
+    },
+    {
+      "id": "KA-15", "group": "lots", "ref": "capital-gains-upload.md:1268-1272",
+      "lots": [
+        { "scheme": "Sample Contra Fund - Regular Plan - Growth", "asset": "Equity", "category": "Contra Funds", "buy": [2019, 7, 1], "sell": [2023, 11, 10], "units": 1, "buyNav": 100, "sellNav": 150, "over": { "acqDate": [2023, 11, 10], "acqPrice": 150, "ltcg": 0, "stcg": 0 } },
+        { "scheme": "Sample Small Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Small Cap Funds", "buy": [2019, 7, 1], "sell": [2026, 5, 4], "units": 1, "buyNav": 100, "sellNav": 180 }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "lotClass": "non-taxable-transfer", "taxableGain": 0, "realised": 50, "realisedCounted": 0, "nonTaxable": 50 },
+        { "lot": 1, "taxableGain": 80, "realised": 80, "realisedCounted": 80 }
+      ] },
+      "note": "Merger counted once, the original cost carried: realised 80 in all. The dates and the one-unit lots are origin NB-03; the amounts are the design's."
+    },
+    {
+      "id": "KA-15-reset", "group": "lots", "ref": "capital-gains-upload.md:1268-1272",
+      "lots": [
+        { "scheme": "Sample Contra Fund - Regular Plan - Growth", "asset": "Equity", "category": "Contra Funds", "buy": [2019, 7, 1], "sell": [2023, 11, 10], "units": 1, "buyNav": 100, "sellNav": 150, "over": { "acqDate": [2023, 11, 10], "acqPrice": 150, "ltcg": 0, "stcg": 0 } },
+        { "scheme": "Sample Small Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Small Cap Funds", "buy": [2023, 11, 10], "sell": [2026, 5, 4], "units": 1, "buyNav": 150, "sellNav": 180 }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "lotClass": "non-taxable-transfer", "taxableGain": 0, "realised": 50, "realisedCounted": 50, "nonTaxable": 0 },
+        { "lot": 1, "taxableGain": 30, "realised": 30, "realisedCounted": 30, "successor": "reset", "flags": ["successor-reset"] }
+      ] },
+      "note": "The successor-reset reading of KA-15: the merger row keeps its 50 and the successor's 30 is added (80 in all); the taxable gain 30 is understated by 50."
+    },
+    {
+      "id": "KA-16", "group": "lots", "ref": "capital-gains-upload.md:1273-1279",
+      "lots": [
+        { "scheme": "Sample Corporate Bond Fund - Regular Plan - Growth", "asset": "Debt", "category": "Corporate Bond Funds", "buy": [2009, 4, 15], "sell": [2013, 5, 15], "units": 1000, "buyNav": 10, "sellNav": 16, "over": { "acqPrice": 14.8649, "ltcg": 1135.14 } }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "ruleId": "NE-LT-1", "lotClass": "indexed-cost-shown", "costBasis": "indexed", "costForTax": 14857.59, "taxableGain": 1142.41, "statementGain": 1135.14, "legs": { "chosen": "indexed20" }, "flags": ["gain-differs", "old-law-choice"], "notFlags": ["indexed-cost-ignored"] }
+      ] },
+      "note": "KA-3b's lot with the statement's 2001-series indexed price: the app on the 1981 series; the difference of Rs 7.27 is above the tolerance of Rs 1.60."
+    },
+    {
+      "id": "KA-17", "group": "lots", "ref": "capital-gains-upload.md:1280-1292",
+      "lots": [
+        { "scheme": "Sample Banking and PSU Fund - Regular Plan - Growth", "asset": "Debt", "category": "Banking and PSU Funds", "buy": [2012, 6, 1], "sell": [2015, 1, 15], "units": 1000, "buyNav": 10, "sellNav": 12, "over": { "acqDate": [2015, 1, 15], "acqPrice": 12, "ltcg": 0, "stcg": 0 } },
+        { "scheme": "Sample Gilt Fund - Regular Plan - Growth", "asset": "Debt", "category": "Gilt Funds", "buy": [2012, 6, 1], "sell": [2025, 6, 2], "units": 1000, "buyNav": 10, "sellNav": 15 }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "lotClass": "taxable-transfer", "ruleId": "NE-ST-2", "term": "short", "costBasis": "actual", "costForTax": 10000, "taxableGain": 2000, "realised": 2000, "realisedCounted": 2000, "tax": null, "flags": ["merger-taxable", "non-taxable-transfers"] },
+        { "lot": 1, "ruleId": "NE-LT-4", "term": "long", "costForTax": 10000, "taxableGain": 5000, "realised": 5000, "realisedCounted": 5000, "tax": 625, "successor": "not-reset", "doubleCounted": 2000, "flags": ["successor-not-reset"] }
+      ] },
+      "variants": [
+        { "id": "KA-17 merger row at slab 30%", "slabPct": 30, "expect": { "lots": [ { "lot": 0, "ruleId": "NE-ST-2", "taxableGain": 2000, "tax": 600, "cess": 18, "total": 618 } ] } },
+        { "id": "KA-17 successor re-based by the analyst", "inputs": { "lotMarks": [ { "lotIndex": 1, "rebase": "formula" } ] },
+          "expect": { "lots": [
+            { "lot": 1, "ruleId": "NE-LT-4", "purchaseDate": [2015, 1, 15], "costForTax": 12000, "taxableGain": 3000, "realised": 3000, "realisedCounted": 3000, "tax": 375, "notFlags": ["successor-not-reset"] },
+            { "lot": 0, "realisedCounted": 2000 }
+          ] } }
+      ],
+      "note": "A merger before the date gate (15 Jan 2015), taxable by default; its successor carries the original date and cost (successor-not-reset, Rs 2,000.00 counted twice) until re-based to 15 Jan 2015 at S x V / W = 12,000 x 10,000 / 10,000."
+    },
+    {
+      "id": "KA-17-two-lots", "group": "lots", "ref": "capital-gains-upload.md:1292-1297",
+      "lots": [
+        { "scheme": "Sample Banking and PSU Fund - Regular Plan - Growth", "asset": "Debt", "category": "Banking and PSU Funds", "buy": [2012, 6, 1], "sell": [2015, 1, 15], "units": 1000, "buyNav": 10, "sellNav": 12, "over": { "acqDate": [2015, 1, 15], "acqPrice": 12, "ltcg": 0, "stcg": 0 } },
+        { "scheme": "Sample Gilt Fund - Regular Plan - Growth", "asset": "Debt", "category": "Gilt Funds", "buy": [2012, 6, 1], "sell": [2025, 6, 2], "units": 600, "buyNav": 10, "sellNav": 15 },
+        { "scheme": "Sample Gilt Fund - Regular Plan - Growth", "asset": "Debt", "category": "Gilt Funds", "buy": [2012, 6, 1], "sell": [2025, 6, 2], "units": 400, "buyNav": 10, "sellNav": 15 },
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2012, 6, 1], "sell": [2025, 6, 2], "units": 100, "buyNav": 10, "sellNav": 20 }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 1, "costForTax": 6000, "taxableGain": 3000, "successor": "not-reset", "doubleCounted": 1200, "flags": ["successor-not-reset"] },
+        { "lot": 2, "costForTax": 4000, "taxableGain": 2000, "successor": "not-reset", "doubleCounted": 800, "flags": ["successor-not-reset"] },
+        { "lot": 3, "successor": "not-reset", "flags": ["successor-not-reset"] }
+      ] },
+      "variants": [
+        { "id": "KA-17 two lots re-based, the SIP lot listed but not re-based", "inputs": { "lotMarks": [ { "lotIndex": 1, "rebase": "formula" }, { "lotIndex": 2, "rebase": "formula" } ] },
+          "expect": { "lots": [
+            { "lot": 1, "ruleId": "NE-LT-4", "costForTax": 7200, "taxableGain": 1800, "notFlags": ["successor-not-reset"] },
+            { "lot": 2, "ruleId": "NE-LT-4", "costForTax": 4800, "taxableGain": 1200, "notFlags": ["successor-not-reset"] },
+            { "lot": 3, "costForTax": 1000, "taxableGain": 1000, "successor": "not-reset", "flags": ["successor-not-reset"] }
+          ] } }
+      ],
+      "note": "The KA-17 successor sold as 600 and 400 units, and an unrelated scheme's lot of the same account bought on 1 Jun 2012 (an SIP instalment; its units and prices are origin NB-03), listed as a candidate but not re-based."
+    },
+    {
+      "id": "NE-LT-1-equal-legs", "group": "lots", "ref": "capital-gains-upload.md:1369-1371",
+      "lots": [
+        { "scheme": "Sample Corporate Bond Fund - Regular Plan - Growth", "asset": "Debt", "category": "Corporate Bond Funds", "buy": [2005, 8, 1], "sell": [2012, 9, 3], "units": 1000, "buyNav": 4.97, "sellNav": 12.07 }
+      ],
+      "inputs": {}, "slabPct": null,
+      "expect": { "lots": [
+        { "lot": 0, "ruleId": "NE-LT-1", "costBasis": "indexed", "costForTax": 8520, "taxableGain": 3550, "tax": 710,
+          "legs": { "chosen": "indexed20", "indexed20": { "gain": 3550, "tax": 710 }, "actual10": { "gain": 7100, "tax": 710 } } }
+      ] },
+      "note": "Equal positive figures (Rs 710.00 on both legs): the 20% leg is taken, gain Rs 3,550.00, not Rs 7,100.00."
+    }
+  ],
+  "rollup": [
+    {
+      "id": "KA-9", "group": "rollup", "ref": "capital-gains-upload.md:1290-1295",
+      "lots": [
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2022, 5, 10], "sell": [2024, 6, 14], "units": 1000, "buyNav": 100, "sellNav": 180 },
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2022, 5, 10], "sell": [2024, 12, 16], "units": 1000, "buyNav": 100, "sellNav": 190 }
+      ],
+      "inputs": {}, "personYear": [ { "client": "Sample Client A", "fy": 2024, "slabPct": null, "surchargePct": 0, "regime": null } ],
+      "expect": {
+        "lots": [ { "lot": 0, "ruleId": "EQ-LT-5", "taxableGain": 80000 }, { "lot": 1, "ruleId": "EQ-LT-7", "taxableGain": 90000 } ],
+        "personYears": [
+          { "client": "Sample Client A", "fy": 2024, "exemptionApplied": 125000, "tax": 4500, "total": 4680, "partial": false,
+            "alternatives": { "fy2425OtherOrder": { "tax": 5625, "total": 5850 } }, "labels": ["order not set by the Act"] }
+        ]
+      },
+      "note": "FY 2024-25 split exemption, the person's only lots that year (surcharge 0%). Default order (LD-10, TR-2; owner, PD-16 item 6): the 12.5% gains first, Rs 45,000.00 left at 10%. The other order, in the note: Rs 45,000.00 at 12.5%. Difference Rs 1,125.00 (at most Rs 3,125)."
+    },
+    {
+      "id": "KA-10", "group": "rollup", "ref": "capital-gains-upload.md:1296-1300",
+      "lots": [
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2021, 4, 5], "sell": [2025, 8, 11], "units": 2000, "buyNav": 100, "sellNav": 175 },
+        { "client": "Sample Client B", "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2021, 4, 5], "sell": [2025, 8, 11], "units": 1000, "buyNav": 100, "sellNav": 240 }
+      ],
+      "inputs": {}, "personYear": [
+        { "client": "Sample Client A", "fy": 2025, "slabPct": null, "surchargePct": 0, "regime": null },
+        { "client": "Sample Client B", "fy": 2025, "slabPct": null, "surchargePct": 0, "regime": null }
+      ],
+      "expect": {
+        "lots": [ { "lot": 0, "ruleId": "EQ-LT-7", "taxableGain": 150000 }, { "lot": 1, "ruleId": "EQ-LT-7", "taxableGain": 140000 } ],
+        "personYears": [
+          { "client": "Sample Client A", "fy": 2025, "exemptionApplied": 125000, "tax": 3125, "cess": 125, "total": 3250, "partial": false },
+          { "client": "Sample Client B", "fy": 2025, "exemptionApplied": 125000, "tax": 1875, "total": 1950, "partial": false }
+        ],
+        "family": { "fy": 2025, "persons": 2, "tax": 5000, "total": 5200, "partial": false }
+      },
+      "note": "Two persons, each person's only lots that year (surcharge 0%): two separate computations, never pooled. Pooling the family (wrong) would give Rs 20,625.00."
+    },
+    {
+      "id": "KA-11", "group": "rollup", "ref": "capital-gains-upload.md:1301-1305",
+      "lots": [
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2021, 4, 5], "sell": [2025, 8, 11], "units": 2000, "buyNav": 100, "sellNav": 175 },
+        { "scheme": "Sample Short Duration Fund - Regular Plan - Growth", "asset": "Debt", "category": "Short Duration Funds", "buy": [2023, 4, 1], "sell": [2025, 4, 15], "units": 1000, "buyNav": 100, "sellNav": 116 }
+      ],
+      "inputs": {}, "personYear": [ { "client": "Sample Client A", "fy": 2025, "slabPct": 30, "surchargePct": 25, "regime": null } ],
+      "expect": {
+        "lots": [ { "lot": 0, "ruleId": "EQ-LT-7", "taxableGain": 150000 }, { "lot": 1, "ruleId": "NE-50AA-2", "taxableGain": 16000 } ],
+        "personYears": [
+          { "client": "Sample Client A", "fy": 2025, "surcharge": 1668.75, "cess": 383.75, "total": 9977.5, "partial": false, "beforeSurcharge": false,
+            "buckets": [ { "ruleId": "EQ-LT-7", "rate": 12.5, "tax": 3125, "surcharge": 468.75 }, { "ruleId": "NE-50AA-2", "rate": "slab", "taxable": 16000, "tax": 4800, "surcharge": 1200 } ] }
+        ]
+      },
+      "variants": [
+        { "id": "KA-11 old regime", "personYear": [ { "client": "Sample Client A", "fy": 2025, "slabPct": 30, "surchargePct": 25, "regime": "old" } ],
+          "expect": { "personYears": [ { "client": "Sample Client A", "fy": 2025, "surcharge": 1668.75, "cess": 383.75, "total": 9977.5 } ] } },
+        { "id": "KA-11 new regime", "personYear": [ { "client": "Sample Client A", "fy": 2025, "slabPct": 30, "surchargePct": 25, "regime": "new" } ],
+          "expect": { "personYears": [ { "client": "Sample Client A", "fy": 2025, "surcharge": 1668.75, "cess": 383.75, "total": 9977.5 } ] } }
+      ],
+      "note": "Surcharge cap: KA-10 Client A's lot and KA-5 (i)'s lot, surcharge entered as 25% (within the maximum of either regime), slab 30%. s.112A tax Rs 3,125.00, surcharge capped at 15% = Rs 468.75; Specified gain at slab Rs 4,800.00, surcharge 25% = Rs 1,200.00; cess 4% on Rs 9,593.75."
+    },
+    {
+      "id": "KA-12", "group": "rollup", "ref": "capital-gains-upload.md:1306-1312",
+      "lots": [
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2023, 5, 2], "sell": [2023, 11, 1], "units": 1000, "buyNav": 150, "sellNav": 100 },
+        { "scheme": "Sample Short Duration Fund - Regular Plan - Growth", "asset": "Debt", "category": "Short Duration Funds", "buy": [2023, 4, 3], "sell": [2024, 2, 1], "units": 8000, "buyNav": 100, "sellNav": 110 },
+        { "scheme": "Sample Mid Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Mid Cap Funds", "buy": [2023, 5, 2], "sell": [2023, 11, 1], "units": 1000, "buyNav": 100, "sellNav": 130 }
+      ],
+      "inputs": {}, "personYear": [ { "client": "Sample Client A", "fy": 2023, "slabPct": 30, "surchargePct": 0, "regime": null } ],
+      "expect": {
+        "lots": [ { "lot": 0, "ruleId": "EQ-ST-2", "taxableGain": -50000 }, { "lot": 1, "ruleId": "NE-50AA-1", "taxableGain": 80000 }, { "lot": 2, "ruleId": "EQ-ST-2", "taxableGain": 30000 } ],
+        "personYears": [ { "client": "Sample Client A", "fy": 2023, "tax": 13500, "unabsorbed": { "st": 0, "lt": 0 } } ]
+      },
+      "variants": [
+        { "id": "KA-12 slab 10%", "personYear": [ { "client": "Sample Client A", "fy": 2023, "slabPct": 10, "surchargePct": 0, "regime": null } ],
+          "expect": { "personYears": [ { "client": "Sample Client A", "fy": 2023, "tax": 6000 } ] } },
+        { "id": "KA-12 slab not set", "personYear": [ { "client": "Sample Client A", "fy": 2023, "slabPct": null, "surchargePct": 0, "regime": null } ],
+          "expect": { "personYears": [ { "client": "Sample Client A", "fy": 2023, "tax": null, "total": null, "afterSetOffDash": "slab rate not set" } ] } }
+      ],
+      "note": "A short-term loss next to slab gains, the person's only lots in FY 2023-24. Slab 30%: the loss against the slab gain first, Rs 9,000.00 + Rs 4,500.00. Slab 10%: against the 15% gain first, the rest against the slab gain, Rs 60,000 x 10%. Slab not set: the taxable amounts after set-off and the tax are the dash with 'slab rate not set' (LD-3). Surcharge 0% (the design's case default)."
+    },
+    {
+      "id": "KA-13", "group": "rollup", "ref": "capital-gains-upload.md:1313-1318",
+      "lots": [
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2022, 6, 1], "sell": [2024, 9, 2], "units": 1000, "buyNav": 200, "sellNav": 100 },
+        { "scheme": "Sample Corporate Bond Fund - Regular Plan - Growth", "asset": "Debt", "category": "Corporate Bond Funds", "buy": [2021, 6, 1], "sell": [2024, 9, 2], "units": 10000, "buyNav": 10, "sellNav": 20 },
+        { "scheme": "Sample Mid Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Mid Cap Funds", "buy": [2022, 6, 1], "sell": [2024, 9, 2], "units": 1000, "buyNav": 100, "sellNav": 200 }
+      ],
+      "inputs": {}, "personYear": [ { "client": "Sample Client A", "fy": 2024, "slabPct": null, "surchargePct": 0, "regime": null } ],
+      "expect": {
+        "lots": [ { "lot": 0, "ruleId": "EQ-LT-7", "taxableGain": -100000 }, { "lot": 1, "ruleId": "NE-LT-4", "taxableGain": 100000 }, { "lot": 2, "ruleId": "EQ-LT-7", "taxableGain": 100000 } ],
+        "personYears": [ { "client": "Sample Client A", "fy": 2024, "tax": 0, "exemptionApplied": 100000, "unabsorbed": { "st": 0, "lt": 0 },
+          "buckets": [ { "ruleId": "NE-LT-4", "setOff": 100000, "taxable": 0 } ] } ]
+      },
+      "note": "A long-term loss and the exemption tie, all sold 2 Sep 2024: TR-10 sets the loss against the debt gain; the equity gain falls within the exemption. Setting it against the equity gain instead would give Rs 12,500.00. The exemption applied (Rs 1,00,000.00, the equity gain left after set-off) is origin NB-03, read from the same rules."
+    },
+    {
+      "id": "KA-15", "group": "rollup", "ref": "capital-gains-upload.md:1323-1327",
+      "lots": [
+        { "scheme": "Sample Contra Fund - Regular Plan - Growth", "asset": "Equity", "category": "Contra Funds", "buy": [2019, 7, 1], "sell": [2023, 11, 10], "units": 1, "buyNav": 100, "sellNav": 150, "over": { "acqDate": [2023, 11, 10], "acqPrice": 150, "ltcg": 0, "stcg": 0 } },
+        { "scheme": "Sample Small Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Small Cap Funds", "buy": [2019, 7, 1], "sell": [2026, 5, 4], "units": 1, "buyNav": 100, "sellNav": 180 }
+      ],
+      "inputs": {}, "personYear": [],
+      "expect": {
+        "personYears": [
+          { "client": "Sample Client A", "fy": 2023, "realised": 0, "nonTaxable": 50 },
+          { "client": "Sample Client A", "fy": 2026, "realised": 80, "nonTaxable": 0 }
+        ],
+        "realisedAllYears": 80
+      },
+      "variants": [
+        { "id": "KA-15 successor reset", "lotsOver": [ null, { "buy": [2023, 11, 10], "buyNav": 150 } ],
+          "expect": { "personYears": [
+            { "client": "Sample Client A", "fy": 2023, "realised": 50, "nonTaxable": 0 },
+            { "client": "Sample Client A", "fy": 2026, "realised": 30, "nonTaxable": 0 }
+          ], "realisedAllYears": 80 } }
+      ],
+      "note": "Merger counted once (the realised and nonTaxable lines): with the original cost carried the merger row's 50 stays in the non-taxable line and the successor's 80 is realised; with a successor-reset lot (cost 150) the merger row keeps its 50 and the successor's 30 is added. The dates and one-unit lots are origin NB-03 (as in the lots case KA-15)."
+    },
+    {
+      "id": "KA-18", "group": "rollup", "ref": "capital-gains-upload.md:1353-1362",
+      "lots": [
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2023, 5, 2], "sell": [2023, 11, 1], "units": 1000, "buyNav": 150, "sellNav": 100 },
+        { "scheme": "Sample Flexi Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Flexi Cap Funds", "buy": [2021, 6, 1], "sell": [2023, 12, 1], "units": 1000, "buyNav": 200, "sellNav": 150 },
+        { "scheme": "Sample Corporate Bond Fund - Regular Plan - Growth", "asset": "Debt", "category": "Corporate Bond Funds", "buy": [2020, 6, 1], "sell": [2023, 12, 1], "units": 301, "buyNav": 100, "sellNav": 281.7276, "over": { "sell": 84800, "realised": 54700, "ltcg": 54700 } },
+        { "scheme": "Sample Mid Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Mid Cap Funds", "buy": [2023, 5, 2], "sell": [2023, 11, 1], "units": 1000, "buyNav": 100, "sellNav": 150 }
+      ],
+      "inputs": {}, "personYear": [ { "client": "Sample Client A", "fy": 2023, "slabPct": null, "surchargePct": 0, "regime": null } ],
+      "expect": {
+        "lots": [ { "lot": 0, "ruleId": "EQ-ST-2", "taxableGain": -50000 }, { "lot": 1, "ruleId": "EQ-LT-3", "taxableGain": -50000 }, { "lot": 2, "ruleId": "NE-LT-3", "costForTax": 34800, "taxableGain": 50000 }, { "lot": 3, "ruleId": "EQ-ST-2", "taxableGain": 50000 } ],
+        "personYears": [ { "client": "Sample Client A", "fy": 2023, "tax": 0, "total": 0, "unabsorbed": { "st": 0, "lt": 0 } } ]
+      },
+      "note": "Loss order, the person's only lots in FY 2023-24 (surcharge 0%, cess 4%): long-term losses first (TR-10), the long-term loss absorbs the 20% gain and the short-term loss the 15% gain; tax Rs 0.00, nothing unabsorbed. The other order would give Rs 7,800.00 with Rs 50,000.00 of long-term loss unabsorbed. Lot 2's Sale Price 281.7276 is origin NB-03 (the design gives the Sell Amount Rs 84,800.00 and 301 units; the Sell Amount and the Realized and LTCG cells are written as stated by the override)."
+    },
+    {
+      "id": "KA-19", "group": "rollup", "ref": "capital-gains-upload.md:1363-1366",
+      "lots": [
+        { "scheme": "Sample Corporate Bond Fund - Regular Plan - Growth", "asset": "Debt", "category": "Corporate Bond Funds", "buy": [2005, 8, 1], "sell": [2012, 9, 3], "units": 1000, "buyNav": 10, "sellNav": 25 },
+        { "scheme": "Sample Corporate Bond Fund - Regular Plan - Growth", "asset": "Debt", "category": "Corporate Bond Funds", "buy": [2009, 4, 15], "sell": [2013, 5, 15], "units": 1000, "buyNav": 10, "sellNav": 16 }
+      ],
+      "inputs": {}, "personYear": [ { "client": "Sample Client A", "fy": 2012, "slabPct": null, "surchargePct": null, "regime": null } ],
+      "rollupFy": 2012,
+      "expect": {
+        "lots": [ { "lot": 0, "ruleId": "NE-LT-1", "legs": { "chosen": "actual10" } }, { "lot": 1, "ruleId": "NE-LT-1", "legs": { "chosen": "indexed20" } } ],
+        "personYears": [ { "client": "Sample Client A", "fy": 2012, "tax": 1728.48,
+          "alternatives": { "oldLawYearTotal": { "tax": 1799.91, "leg": "indexed20" } }, "oldLawLegs": { "indexed20": 1799.91, "actual10": 2100 } } ]
+      },
+      "note": "NE-LT-1 per lot against the year's total: the figures of KA-3a and KA-3b given to the roll-up as two lots of one person-year (rollupFy: the test re-dates KA-3b's realised lot to FY 2012-13 in the roll-up input only, as the design says; FY 2012-13's surcharge maximum is nil). Per lot Rs 1,500.00 + Rs 228.48; the year's total min(Rs 1,799.91, Rs 2,100.00), higher by Rs 71.43."
+    },
+    {
+      "id": "KA-20", "group": "rollup", "ref": "capital-gains-upload.md:1367-1377",
+      "lots": [
+        { "scheme": "Sample Corporate Bond Fund - Regular Plan - Growth", "asset": "Debt", "category": "Corporate Bond Funds", "buy": [2005, 8, 1], "sell": [2012, 9, 3], "units": 1000, "buyNav": 10, "sellNav": 25 },
+        { "scheme": "Sample Gilt Fund - Regular Plan - Growth", "asset": "Debt", "category": "Gilt Funds", "buy": [2005, 8, 1], "sell": [2012, 9, 3], "units": 1000, "buyNav": 10, "sellNav": 9 }
+      ],
+      "inputs": {}, "personYear": [ { "client": "Sample Client A", "fy": 2012, "slabPct": null, "surchargePct": null, "regime": null } ],
+      "expect": {
+        "lots": [ { "lot": 0, "ruleId": "NE-LT-1", "taxableGain": 15000, "legs": { "chosen": "actual10" } },
+          { "lot": 1, "ruleId": "NE-LT-1", "costForTax": 17142.86, "taxableGain": -8142.86, "legs": { "chosen": "indexed20", "indexed20": { "tax": -1628.57 }, "actual10": { "tax": -100 } } } ],
+        "personYears": [ { "client": "Sample Client A", "fy": 2012, "tax": 685.71, "cess": 20.57, "total": 706.29, "totalUnrounded": 706.2857,
+          "alternatives": { "oldLawYearTotal": { "tax": 0, "leg": "indexed20" } }, "oldLawLegs": { "indexed20": 0, "actual10": 1400 } } ]
+      },
+      "note": "NE-LT-1 with a loss in the year, the person's only lots in FY 2012-13 (surcharge nil, cess 3%): lot B takes the 20% leg and brings its indexed loss of Rs 8,142.86 to set-off. Per lot Rs 6,857.14 at 10%. The year's total: every lot on its 20% leg, net minus Rs 285.71, tax Rs 0.00; on its 10% leg net Rs 14,000.00, tax Rs 1,400.00; the lower, Rs 0.00, is shown beside."
+    },
+    {
+      "id": "KA-21", "group": "rollup", "ref": "capital-gains-upload.md:1378-1387",
+      "lots": [
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2021, 4, 5], "sell": [2025, 8, 11], "units": 2000, "buyNav": 100, "sellNav": 175 },
+        { "scheme": "Sample Equity Fund of Funds - Regular Plan - Growth", "asset": "Equity", "category": "FoFs Domestic", "buy": [2021, 4, 5], "sell": [2025, 8, 11], "units": 1000, "buyNav": 100, "sellNav": 120 },
+        { "client": "Sample Client B", "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2021, 4, 5], "sell": [2025, 8, 11], "units": 1000, "buyNav": 100, "sellNav": 240 }
+      ],
+      "inputs": {}, "personYear": [
+        { "client": "Sample Client A", "fy": 2025, "slabPct": null, "surchargePct": 0, "regime": null },
+        { "client": "Sample Client B", "fy": 2025, "slabPct": null, "surchargePct": 0, "regime": null }
+      ],
+      "expect": {
+        "lots": [ { "lot": 1, "taxableGain": null, "realised": 20000, "flags": ["tax-class-not-set"] } ],
+        "personYears": [
+          { "client": "Sample Client A", "fy": 2025, "tax": 3125, "cess": 125, "total": 3250, "partial": true, "lotsNotComputed": 1, "economicGainNotComputed": 20000 },
+          { "client": "Sample Client B", "fy": 2025, "total": 1950, "partial": false }
+        ],
+        "family": { "fy": 2025, "persons": 2, "tax": 5000, "total": 5200, "partial": true }
+      },
+      "variants": [
+        { "id": "KA-21 (b) slab rate not set",
+          "lots": [
+            { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2021, 4, 5], "sell": [2025, 8, 11], "units": 2000, "buyNav": 100, "sellNav": 175 },
+            { "scheme": "Sample Short Duration Fund - Regular Plan - Growth", "asset": "Debt", "category": "Short Duration Funds", "buy": [2023, 4, 1], "sell": [2025, 4, 15], "units": 1000, "buyNav": 100, "sellNav": 116 }
+          ],
+          "personYear": [ { "client": "Sample Client A", "fy": 2025, "slabPct": null, "surchargePct": 0, "regime": null } ],
+          "expect": { "personYears": [ { "client": "Sample Client A", "fy": 2025, "tax": 3125, "cess": 125, "total": 3250, "partial": true, "lotsNotComputed": 0, "slabTaxableLeftOut": 16000, "afterSetOffDash": null } ] } }
+      ],
+      "note": "Partial coverage (FY 2025-26, surcharge 0%, cess 4%). (a) KA-10 Client A's lot and a domestic fund of funds labelled Equity without the 90/90 flag (tax-class-not-set), economic gain Rs 20,000.00: Rs 3,250.00 PARTIAL, '1 lot not computed, economic gain Rs 20,000.00'; with KA-10 Client B beside, the family sum Rs 5,000.00 of tax, Rs 5,200.00 with cess, PARTIAL. (b) KA-11's lots (the variant's own lots) with the slab rate not set and surcharge 0%: Rs 3,250.00 PARTIAL, the slab bucket of Rs 16,000.00 left out (no loss, so step 3 does not make the figures the dash)."
+    },
+    {
+      "id": "KA-22", "group": "rollup", "ref": "capital-gains-upload.md:1388-1397",
+      "lots": [
+        { "scheme": "Sample Large Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Large Cap Funds", "buy": [2012, 3, 1], "sell": [2012, 8, 1], "units": 1000, "buyNav": 50, "sellNav": 60 },
+        { "scheme": "Sample Mid Cap Fund - Regular Plan - Growth", "asset": "Equity", "category": "Mid Cap Funds", "buy": [2012, 3, 1], "sell": [2012, 8, 1], "units": 1000, "buyNav": 50, "sellNav": 45 },
+        { "scheme": "Sample Corporate Bond Fund - Regular Plan - Growth", "asset": "Debt", "category": "Corporate Bond Funds", "buy": [2005, 8, 1], "sell": [2012, 9, 3], "units": 1000, "buyNav": 10, "sellNav": 24.3 }
+      ],
+      "inputs": {}, "personYear": [ { "client": "Sample Client A", "fy": 2012, "slabPct": null, "surchargePct": null, "regime": null } ],
+      "expect": {
+        "lots": [ { "lot": 0, "ruleId": "EQ-ST-2", "taxableGain": 10000 }, { "lot": 1, "ruleId": "EQ-ST-2", "taxableGain": -5000 },
+          { "lot": 2, "ruleId": "NE-LT-1", "taxableGain": 14300, "legs": { "chosen": "actual10", "indexed20": { "gain": 7157.14, "tax": 1431.43 }, "actual10": { "gain": 14300, "tax": 1430 } } } ],
+        "personYears": [ { "client": "Sample Client A", "fy": 2012, "tax": 2180, "cess": 65.4, "total": 2245.4,
+          "alternatives": { "oldLawYearTotal": { "tax": 1931.43, "total": 1989.37, "leg": "indexed20" } }, "oldLawLegs": { "indexed20": 1931.43, "actual10": 2180 } } ]
+      },
+      "note": "NE-LT-1 beside a short-term equity loss, the person's only lots in FY 2012-13 (surcharge nil, cess 3%). Per lot: the loss to the 15% gain, Rs 750.00 + Rs 1,430.00. The year's total: on the 20% leg the loss goes to the 20% gain first, (Rs 7,157.14 minus Rs 5,000.00) x 20% + Rs 1,500.00 = Rs 1,931.43 (Rs 1,989.37 with cess); on the 10% leg Rs 2,180.00; the lower is shown beside."
+    }
+  ]
+}

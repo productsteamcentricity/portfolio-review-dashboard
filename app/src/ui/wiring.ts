@@ -18,6 +18,9 @@ import { systemClock } from '../services/clock.ts';
 import { auditExport } from '../services/audit-log.ts';
 import { downloadBytes, PPTX_MIME, XLSX_MIME } from '../services/download.ts';
 import { deckFileName, workbookFileName } from '../views/labels.ts';
+// M3a returns (NB-03): the transactions (IRR) file reader and the returns view-model the workbook takes.
+import type { ReturnsVM } from '../views/returns-vm.ts';
+import { loadIrrFile, type LoadedIrrFile } from '../ingest/load-irr.ts';
 
 export type LogoAsset = { id: string; label: string; dataUri: string; widthPx: number; heightPx: number };
 export type ExportResult = { kind: 'pptx' | 'xlsx'; fileName: string; bytes: number; sha256: string; audit: Omit<AuditEntry, 'id'> };
@@ -25,8 +28,10 @@ export type Wiring = {
   loadBaseFile(bytes: Uint8Array, fileName: string, answers: Partial<Record<'xirr' | 'bmXirr', XirrUnitChoice>>): LoadedBaseFile | LoadError;
   computeReview(req: ReviewRequest): Review;
   exportDeck(review: Review, vm: OverviewVM, logo: LogoAsset | null): Promise<ExportResult>;
-  exportWorkbook(review: Review, vm: OverviewVM): Promise<ExportResult>;
+  exportWorkbook(review: Review, vm: OverviewVM, returns?: ReturnsVM | null): Promise<ExportResult>;
   now(): string;
+  /** M3a returns (NB-03): reads a transactions (IRR) file; optional, so the test fakes stay valid. TODO(I-41): the IRR file joins ReviewRequest. */
+  loadIrrFile?(bytes: Uint8Array, fileName: string): LoadedIrrFile | LoadError;
 };
 
 export function browserWiring(build: BuildStamp): Wiring {
@@ -41,7 +46,9 @@ export function browserWiring(build: BuildStamp): Wiring {
     loadBaseFile: (bytes, fileName, answers) => loadBaseFile(bytes, fileName, XLSX as SheetJSLike, { answers, now }),
     computeReview: (req) => computeReview(req, { now, build }),
     exportDeck: async (_review, vm, logo) => finish('pptx', vm, await buildOverviewDeck(vm, { logo, now }, lib), deckFileName(vm)),
-    exportWorkbook: async (review, vm) => finish('xlsx', vm, buildOverviewWorkbook(workbookInputFrom(review, vm)), workbookFileName(vm)),
+    exportWorkbook: async (review, vm, returns) => finish('xlsx', vm, buildOverviewWorkbook(workbookInputFrom(review, vm, returns)), workbookFileName(vm)),
     now,
+    // M3a returns (NB-03). TODO(I-41): the loaded IRR file becomes ReviewRequest.irr, and its returns Review.returns (computeReview)
+    loadIrrFile: (bytes, fileName) => loadIrrFile(bytes, fileName, XLSX as SheetJSLike, { now }),
   };
 }

@@ -5,8 +5,10 @@
 // What it does (design sections in brackets):
 //   - finds the sheet and its header row by header name, any column order, extra columns listed (§2.1 to §2.3);
 //   - removes personal identifiers at read: every "[PAN: ...]" tag and every PAN-shaped token in every text cell of
-//     the sheet, before any cell is kept; only counts survive (§3). It never numbers, compares or groups PAN tokens
-//     (owner item 3 is open);
+//     the sheet, before any cell is kept; only counts survive (§3);
+//   - numbers the distinct PANs of the lot rows per file, in order of first appearance (Person 1..n; owner, PD-16
+//     item 3, 26 Nov 2026): the ordinal is kept on the lot, the PAN itself is discarded as soon as the row is numbered
+//     and nothing derived from it is kept (§3, §9.3);
 //   - tells lot rows from excluded lots, skipped rows, the totals row and the footer, whose text is never kept (§2.4);
 //   - parses the instrument tag into scheme label, folio and tag asset (§2.5);
 //   - turns each lot row into a statement lot with its row checks (§4) and its financial year (§8);
@@ -162,6 +164,56 @@ export function scrubText(text: string): { text: string; tags: number; tokens: n
   return { text: out, tags, tokens };
 }
 
+/**
+ * The PAN of one raw lot row, normalised to upper case, or null (design §3, PD-16 item 3): the PAN-shaped token inside
+ * Account Name's "[PAN: ...]" tag, else a bare PAN-shaped token in Account Name, else the first PAN-shaped token in any
+ * other text cell of the row, left to right. A tag without a PAN-shaped token inside gives no PAN. Used only by
+ * `numberPersons`, inside one `parseCapitalGains` call; the returned text is never stored.
+ */
+function panOfRow(row: readonly Cell[], accountCol: number | undefined): string | null {
+  const textOf = (c: Cell | undefined): string | null => (c && (c.t === 's' || c.t === 'e') ? c.v : null);
+  const first = (s: string): string | null => {
+    const m = PAN_TOKEN_TEST_RE.exec(s);
+    return m ? m[0].toUpperCase() : null;
+  };
+  const account = accountCol === undefined ? null : textOf(row[accountCol]);
+  if (account !== null) {
+    for (const tag of account.match(PAN_TAG_RE) ?? []) {
+      const t = first(tag);
+      if (t !== null) return t;
+    }
+    const bare = first(account);
+    if (bare !== null) return bare;
+  }
+  for (let j = 0; j < row.length; j++) {
+    if (j === accountCol) continue;
+    const s = textOf(row[j]);
+    const t = s === null ? null : first(s);
+    if (t !== null) return t;
+  }
+  return null;
+}
+
+/**
+ * The person ordinal of each lot row (design §3, §9.3; PD-16 item 3): the distinct PANs of the lot rows numbered 1..n
+ * in order of first appearance in the file. The map from PAN to ordinal lives only inside this function and is
+ * discarded when it returns: the result holds the ordinals alone, so an ordinal says nothing about the PAN's characters
+ * (two files whose PANs differ but appear in the same order give the same ordinals).
+ */
+function numberPersons(raw: readonly Cell[][], lotRows: readonly number[], accountCol: number | undefined): Array<number | null> {
+  const ordinal = new Map<string, number>();
+  return lotRows.map((r) => {
+    const pan = panOfRow(raw[r] ?? [], accountCol);
+    if (pan === null) return null;
+    let n = ordinal.get(pan);
+    if (n === undefined) {
+      n = ordinal.size + 1;
+      ordinal.set(pan, n);
+    }
+    return n;
+  });
+}
+
 type Scrubbed = { rows: Cell[][]; tags: number[]; tokens: number[] };
 
 /** A copy of the sheet's rows with every text cell scrubbed (formula text dropped), and the removals per row. */
@@ -264,6 +316,14 @@ export type CgLot = {
   clientId: ClientId | null;
   /** True when the person matches a client of the review. */
   inReview: boolean;
+  /**
+   * The PAN ordinal of the row (design §3, PD-16 item 3): "Person n", n the order of first appearance of the row's PAN
+   * among the file's lot rows; null when the row has no PAN. Per file and meaningless outside it; never derived from
+   * the PAN's characters.
+   */
+  personNo: number | null;
+  /** The person whose tax is computed (design §9.3): the PAN ordinal when the row has a PAN, else the client label. */
+  taxPerson: CgTaxPerson | null;
   accountId: AccountId;
   distributorId: DistributorId | null;
   /** Account Name split at its last " - " once the PAN tag is removed (design §2.3 row 2). */
@@ -334,6 +394,22 @@ export type CgRepeatQuestion = CapitalGainsRepeatsQuestion;
 /** A person of the statement (design §9.3): in memory only, never logged. */
 export type CgPerson = { clientId: ClientId; label: string; inReview: boolean; lots: number };
 
+/**
+ * A person of the statement by PAN ordinal (design §3, §9.3; PD-16 item 3): no PAN, only the ordinal, the client labels
+ * its lots carry (distinct after folding letter case and spacing, first spelling kept, in order of first appearance)
+ * and their client ids. In memory only, never logged.
+ */
+export type CgPanPerson = { personNo: number; labels: string[]; clientIds: ClientId[]; lots: number };
+
+/** The person for tax (design §9.3): a PAN ordinal of the file, or the client id of the label when the row has no PAN. */
+export type CgTaxPerson = { kind: 'pan'; personNo: number } | { kind: 'label'; clientId: ClientId };
+
+/** A key for grouping lots by person for tax (design §9.3): "person:n" for a PAN ordinal, else the client id. */
+export function taxPersonKey(p: CgTaxPerson | null): string | null {
+  if (p === null) return null;
+  return p.kind === 'pan' ? `person:${p.personNo}` : p.clientId;
+}
+
 export type CgColumnUse = { field: CgField; header: string; column: number };
 
 export type CgImport = {
@@ -356,6 +432,8 @@ export type CgImport = {
   events: CgRepeatEvent[];
   questions: CgRepeatQuestion[];
   persons: CgPerson[];
+  /** The persons by PAN ordinal, Person 1..n in order (design §3, §9.3); empty when no lot row has a PAN. */
+  panPersons: CgPanPerson[];
   /** Financial years whose realised and taxable totals are INSUFFICIENT EVIDENCE (an unanswered repeat event). */
   insufficientYears: string[];
   issues: ValidationResult[];
@@ -621,7 +699,7 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
     const out: CgImport = {
       parserVersion: CG_PARSER_VERSION, sourceId, sheet: chosen ? { name: chosen.name, headerRow: chosen.headerIndex + 1 } : null,
       sheets: attempts, columns: [], ignoredColumns: [], lots: [], excludedRows: [], skippedRows: [], totalsRow: null,
-      reconciliation: [], footerRows: 0, pan, events: [], questions: [], persons: [], insufficientYears: [],
+      reconciliation: [], footerRows: 0, pan, events: [], questions: [], persons: [], panPersons: [], insufficientYears: [],
       issues: issues.list, audit: [],
     };
     out.audit.push(importAudit(now, sourceId, out));
@@ -800,6 +878,12 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
   };
   const checkCounts = new Map<CgRowCheck, number>();
   const date1904 = wb.date1904;
+  // Persons by PAN ordinal (design §3, §9.3; PD-16 item 3), numbered on the raw rows before any lot is built; only the
+  // ordinals come back. The labels seen under each ordinal, and the lots without a PAN, are kept for the Warnings.
+  const personNos = numberPersons(sheet.rows, lotRowIdx, cols.get('accountName'));
+  const panPersons = new Map<number, { labels: Map<string, string>; clientIds: Set<ClientId>; lots: number[] }>();
+  const labelOrdinals = new Map<string, { label: string; ordinals: Set<number>; lots: number[] }>();
+  const clientsWithoutPan = new Set<ClientId>();
 
   const readField = (r: number, f: CgField): CgRead<number> => {
     const kind = cgColumn(f).kind;
@@ -892,6 +976,25 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
       if (p) p.lots++;
       else persons.set(clientId, { clientId, label: clientLabel, inReview, lots: 1 });
     }
+    const personNo = personNos[index] ?? null;
+    if (personNo !== null) {
+      const pp = panPersons.get(personNo) ?? { labels: new Map<string, string>(), clientIds: new Set<ClientId>(), lots: [] };
+      pp.lots.push(index);
+      if (clientLabel !== null) {
+        const folded = normaliseLabel(clientLabel);
+        if (!pp.labels.has(folded)) pp.labels.set(folded, clientLabel);
+        const lo = labelOrdinals.get(folded) ?? { label: clientLabel, ordinals: new Set<number>(), lots: [] };
+        lo.ordinals.add(personNo);
+        lo.lots.push(index);
+        labelOrdinals.set(folded, lo);
+      }
+      if (clientId !== null) pp.clientIds.add(clientId);
+      panPersons.set(personNo, pp);
+    } else if (clientId !== null) {
+      clientsWithoutPan.add(clientId);
+    }
+    const taxPerson: CgTaxPerson | null = personNo !== null ? { kind: 'pan', personNo }
+      : clientId !== null ? { kind: 'label', clientId } : null;
     const distLabel = text(r, 'distributorName');
     const distributorId = distLabel === null ? null : distIdOf(distLabel);
     const accountId = accountIdOf(keyOf([clientId, distributorId]));
@@ -904,7 +1007,7 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
     return {
       index, at: at(r), saleDate, financialYear: financialYearOf(saleDate), purchaseDate, units, saleValue,
       purchaseValue, salePrice: sp.v, salePriceDerived: sp.derived, purchasePrice: pp.v, purchasePriceDerived: pp.derived,
-      realised, clientId, inReview, accountId, distributorId, accountLabel: acct.accountLabel, accountNote: acct.accountNote,
+      realised, clientId, inReview, personNo, taxPerson, accountId, distributorId, accountLabel: acct.accountLabel, accountNote: acct.accountNote,
       schemeLabel: inst.schemeLabel, folio, tagAsset: inst.tagAsset, category: text(r, 'categoryName'), statementAsset,
       statement, eventId, duplicateOf: null, excludedAsRepeat: false, failedChecks: failed,
     };
@@ -1055,10 +1158,14 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
     issues.add('tag-asset-differs', 'Warning', sheetScope,
       `The asset in the instrument tag differs from Asset Name on ${plural(tagDiffers, 'lot', 'lots')}.`, { count: tagDiffers });
   }
-  const labels = [...persons.values()].map((p) => p.label);
+  // person-ambiguous (design §9.3, §11) only for lots without a PAN: a pair is tested when at least one of its labels
+  // belongs to a person with a lot whose row has no PAN (two labels under PANs are decided by the PANs). In a file
+  // without PANs every label qualifies, as before PD-16 item 3.
+  const allLabels = [...persons.values()].map((p) => p.label);
+  const labels = [...persons.values()].filter((p) => clientsWithoutPan.has(p.clientId)).map((p) => p.label);
   const reviewLabels = review ? review.clients.map((c) => c.label) : [];
   const pairs = new Set<string>();
-  const all = [...new Set([...labels, ...reviewLabels])];
+  const all = [...new Set([...allLabels, ...reviewLabels])];
   for (let i = 0; i < all.length; i++) {
     for (let j = i + 1; j < all.length; j++) {
       const a = all[i]!;
@@ -1067,10 +1174,34 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
       if (possiblyOnePerson(a, b)) pairs.add(keyOf([a, b]));
     }
   }
+  // A label on lots without a PAN that is also the label of a PAN ordinal (letter case and spacing folded) may be that
+  // person or another: a pair too, never joined silently.
+  for (const p of persons.values()) {
+    if (!clientsWithoutPan.has(p.clientId)) continue;
+    const lo = labelOrdinals.get(normaliseLabel(p.label));
+    if (lo) for (const n of lo.ordinals) pairs.add(keyOf([p.label, `Person ${n}`]));
+  }
   if (pairs.size > 0) {
     issues.add('person-ambiguous', 'Warning', sheetScope,
       `${plural(pairs.size, 'pair of client labels is', 'pairs of client labels are')} possibly one person; ${pairs.size === 1 ? 'it is' : 'they are'} computed separately until the analyst says otherwise.`,
       { count: pairs.size });
+  }
+  // The person by PAN (design §9.3; PD-16 item 3). Messages name the client labels and the ordinals, never a PAN, a
+  // folio or an amount.
+  const lotRows = (idx: readonly number[]): RowRef[] => idx.map((i) => lots[i]!.at);
+  for (const [personNo, pp] of [...panPersons.entries()].sort((x, y) => x[0] - y[0])) {
+    if (pp.labels.size < 2) continue;
+    const named = [...pp.labels.values()];
+    issues.add('person-labels-differ', 'Warning', { kind: 'rows', sourceId, rows: lotRows(pp.lots) },
+      `One PAN, Person ${personNo} of this statement, appears under ${named.length} client labels: ${listText(named.map((l) => `"${l}"`))}. Its lots are computed as one person, sharing one exemption.`,
+      { count: named.length });
+  }
+  for (const lo of labelOrdinals.values()) {
+    if (lo.ordinals.size < 2) continue;
+    const ordinals = [...lo.ordinals].sort((x, y) => x - y);
+    issues.add('person-split', 'Warning', { kind: 'rows', sourceId, rows: lotRows(lo.lots) },
+      `The client label "${lo.label}" carries ${ordinals.length} different PANs in this statement: ${listText(ordinals.map((n) => `Person ${n}`))}. They are computed as ${ordinals.length} persons.`,
+      { count: ordinals.length });
   }
   panIssue(issues, sheetScope, pan);
   const skippedCount = skipped.length;
@@ -1111,7 +1242,11 @@ export function parseCapitalGains(wb: Workbook, opts: CgOptions): CgImport {
     parserVersion: CG_PARSER_VERSION, sourceId, sheet: { name: sheetName, headerRow: headerIndex + 1 }, sheets: attempts,
     columns, ignoredColumns: header.ignored, lots, excludedRows: excluded, skippedRows: skipped,
     totalsRow: totalsIdx >= 0 ? totalsIdx + 1 : null, reconciliation, footerRows, pan, events, questions,
-    persons: [...persons.values()], insufficientYears, issues: issues.list, audit: [],
+    persons: [...persons.values()],
+    panPersons: [...panPersons.entries()].sort((x, y) => x[0] - y[0]).map(([personNo, pp]) => ({
+      personNo, labels: [...pp.labels.values()], clientIds: [...pp.clientIds], lots: pp.lots.length,
+    })),
+    insufficientYears, issues: issues.list, audit: [],
   };
   out.audit.push(importAudit(now, sourceId, out), ...audit);
   return out;
@@ -1146,6 +1281,7 @@ function importAudit(now: () => string, sourceId: SourceFileId, imp: CgImport): 
       panTags: imp.pan.tags,
       panTokens: imp.pan.tokens,
       panFooterTokens: imp.pan.footerTokens,
+      panPersons: imp.panPersons.length,
       repeatEvents: imp.events.length,
       openQuestions: imp.questions.length,
       blocking: imp.issues.filter((i) => i.severity === 'Blocking').length,

@@ -8,7 +8,7 @@
       "summary": "The client's files, the analyst's inputs and the month's reference data that a review starts from. Every upload will pass the Upload, Validate, Preview and Review stages before it feeds the review.",
       "arriving": [
         { "milestone": "M2", "what": "Fund monitor uploads, read by column name, with their data dates" },
-        { "milestone": "M3", "what": "Transactions (IRR) file, and the analyst's price file for direct equity" },
+        { "milestone": "M3", "what": "The analyst's price file for direct equity" },
         { "milestone": "M4", "what": "PMS and AIF look-through statements and bond holdings, as two clear inputs" },
         { "milestone": "M5 and M8", "what": "Review mode selector: Portfolio Review Only from M5, Portfolio Review with Rebalancing from M8" },
         { "milestone": "M6", "what": "Workbook re-upload, with the report of any replaced formula" },
@@ -50,8 +50,7 @@
       "title": "Analytics and overlap",
       "summary": "What the portfolio holds underneath its funds, and where the funds overlap.",
       "arriving": [
-        { "milestone": "M3", "what": "Contributors and laggards" },
-        { "milestone": "M4", "what": "Equity and debt look-through, fund overlap with its controls, and family, client and advisor scopes" },
+        { "milestone": "M4", "what": "Equity and debt look-through and fund overlap with its controls, per family, client and adviser scope" },
         { "milestone": "M5", "what": "Index overlap and active share" },
         { "milestone": "M12", "what": "Historical analytics and the drawdown comparison on index data" }
       ]
