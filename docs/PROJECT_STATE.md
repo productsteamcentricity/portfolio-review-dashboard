@@ -204,7 +204,8 @@
    decision. Sprint 2a (matcher corrections, under the owner's "new build first" exception to D-028 of 25 Nov 2026) is on
    `feat/m2-2a-match-corrections`: the owner's 16 fund aliases (PD-36), no answer decided by candidate order (KI-036),
    fund-house words never distinctive (KI-101), the re-key of ranks and risk ratios (KI-052, OD-23), the same-scheme
-   Direct twin (KI-054), the fund ISIN map and code join, and merged rows with different ISINs (S3-1); all opt-in,
+   Direct twin (KI-054), the fund ISIN map and code join, merged rows with different ISINs (S3-1), and the stricter
+   regime (option B) the owner chose on 26 Nov 2026 (`NEW_BUILD_MATCHING`); all opt-in at the engine,
    measured both ways (`tests/parity/matching-corrections-ledger.json`), not wired into the page yet. Sprint 2b (the
    product-class table, after the live page's LP-16, now merged) follows.
    Beside M2, the data-platform items (NB-04) are on their own branches: M10, the MF Screener data pack reader and

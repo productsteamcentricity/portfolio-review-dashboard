@@ -105,6 +105,7 @@ export function measure(opts: MatchOptions, stride = 1): Report {
 export const STAGES: ReadonlyArray<{ id: string; opts: MatchOptions }> = [
   { id: 'KI-036 no answer decided by candidate order', opts: { nullOnTies: true } },
   { id: 'KI-101 fund-house words are not distinctive', opts: { nullOnTies: true, houseTokens: true } },
+  { id: 'Option B, the stricter regime (the owner, 26 Nov 2026)', opts: { nullOnTies: true, houseTokens: true, absentFundGuard: true } },
 ];
 
 export const LEDGER = path.join(path.dirname(fileURLToPath(import.meta.url)), 'matching-corrections-ledger.json');

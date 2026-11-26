@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { matchInstrument, matchInstrumentDetail } from '../../../app/src/engine/match/instrument.ts';
+import { NEW_BUILD_MATCHING, matchInstrument, matchInstrumentDetail } from '../../../app/src/engine/match/instrument.ts';
 import { ownerAliasOf, parseOwnerAliases } from '../../../app/src/engine/match/owner-aliases.ts';
 import { buildCrosswalk, makeUniverse, resolveInstrument } from '../../../app/src/engine/match/crosswalk.ts';
 import { nameKey } from '../../../app/src/engine/match/normalize.ts';
@@ -81,18 +81,17 @@ describe('owner fund aliases: each approved line (real data/refdata)', () => {
     });
   }
 
-  /* Without its alias, what the corrected matcher (KI-036 + KI-101) gives each old name, measured 26 Nov 2026. Seven
-   * give no match. Nine still give another fund: the contained-name rule and generic words keep them, and the
-   * stricter guards that would stop them also lost correct official AMFI names (tests/parity/matching-corrections.ts;
-   * the decision is MOD-04's). These are why the aliases exist; any change here shows. */
+  /* Without its alias, what the new build's matcher (NEW_BUILD_MATCHING: KI-036, KI-101 and the stricter regime the
+   * owner chose on 26 Nov 2026) gives each old name. Nine give no match. Seven still give another fund (the
+   * contained-name rule with generic words): these are why the aliases exist; any change here shows. */
   const WITHOUT_ALIAS: Readonly<Record<number, string | null>> = {
-    1: 'ICICI Pru US Bluechip Equity Fund(G)', 2: 'SBI Long Term Fund-Reg(G)', 3: 'Axis Long Term Fund-Reg(G)', 4: null,
+    1: 'ICICI Pru US Bluechip Equity Fund(G)', 2: null, 3: null, 4: null,
     5: 'HDFC Equity Savings Fund(G)', 6: 'UTI Equity Savings Fund-Reg(G)', 7: 'Kotak Global Emerging Market Overseas Equity Active FOF(G)',
     8: null, 9: null, 11: null, 12: 'Kotak Multi Cap Fund-Reg(G)', 13: 'Motilal Oswal Multi Cap Fund-Reg(G)', 14: null, 15: null, 16: null,
     17: 'ICICI Pru Equity Savings Fund-Reg(G)',
   };
   test('per line: without the alias, the corrected matcher gives no match or the recorded other fund; with it, the right fund', (t) => {
-    const corrected = { nullOnTies: true, houseTokens: true };
+    const corrected = { ...NEW_BUILD_MATCHING };
     for (const a of table.byKey.values()) {
       const want = WITHOUT_ALIAS[a.line];
       assert.ok(want !== undefined, `line ${a.line} has no recorded answer`);

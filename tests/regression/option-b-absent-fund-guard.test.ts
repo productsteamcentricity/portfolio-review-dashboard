@@ -1,14 +1,14 @@
 // covers: E-13 KI-050 OD-5 M2.1
-// Option B of the matching-strictness question (MOD-04, 26 Nov 2026; the owner has not answered): MatchOptions
-// .absentFundGuard, OFF by default. A candidate is rejected when the holding's name leaves unmatched a word the candidate
+// Option B, the stricter regime the owner chose on 26 Nov 2026 ("Go ahead with the Stricter regime", via MOD-04):
+// MatchOptions.absentFundGuard, on in NEW_BUILD_MATCHING. A candidate is rejected when the holding's name leaves unmatched a word the candidate
 // set knows but that fewer than 5% of its names carry. Unknown words (misspellings) never count. Full sweep, 26 Nov
 // 2026, against default (A): leave-one-out wrong matches 2,725 -> 1,594; official AMFI names right 1,194 -> 1,174.
-// This file pins the switch's behaviour so that turning it on is a one-line, already-measured change.
+// This file pins the switch's behaviour; the ledger has it as a stage (tests/parity/matching-corrections.ts).
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { ABSENT_FUND_SHARE, matchInstrument } from '../../app/src/engine/match/instrument.ts';
+import { ABSENT_FUND_SHARE, NEW_BUILD_MATCHING, matchInstrument } from '../../app/src/engine/match/instrument.ts';
 import { AMFI_NAMES, type AmfiNames } from '../parity/amfi-names.ts';
 import { LEDGER, namesBasis } from '../parity/matching-corrections.ts';
 import { refdataBlock } from '../helpers/legacy-engine.ts';
@@ -23,8 +23,9 @@ const SET = [
   ...Array.from({ length: 12 }, (_, i) => `Omega Value Series ${i + 1} Fund-Reg(G)`),
 ];
 
-describe('option B: absentFundGuard (off by default)', () => {
-  test('off by default; needs the corrected path', () => {
+describe("option B: absentFundGuard (the new build's matching)", () => {
+  test('on in NEW_BUILD_MATCHING; needs the corrected path', () => {
+    assert.deepEqual({ ...NEW_BUILD_MATCHING }, { nullOnTies: true, houseTokens: true, absentFundGuard: true });
     assert.equal(ABSENT_FUND_SHARE, 0.05);
     assert.throws(() => matchInstrument('x', '', ['y'], undefined, { absentFundGuard: true }), /nullOnTies/);
   });

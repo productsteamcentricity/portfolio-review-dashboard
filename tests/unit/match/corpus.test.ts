@@ -21,7 +21,12 @@ const ACCEPTED_REGRESSIONS: Readonly<Record<string, string>> = {
   'amfi|Sundaram Focused Fund (Formerly Known as Principal Focused Multicap Fund)-Growth Option':
     'a score tie between two funds: the legacy was right only by candidate order; no match is the KI-036 answer',
 };
-const unaccepted = (r: Report): Change[] => r.changes.filter((c) => c.correct === 'regressed' && !(`${c.measure}|${c.query}` in ACCEPTED_REGRESSIONS));
+/** A stage whose AMFI losses the owner accepted as a whole, with the most the full sweep may show (the normaliser
+ * follow-up of sprint 2a aims to bring it down without new wrong matches). */
+const ACCEPTED_AMFI_LOSSES: Readonly<Record<string, { max: number; reason: string }>> = {
+  'Option B, the stricter regime (the owner, 26 Nov 2026)': { max: 22, reason: 'the owner chose the stricter regime knowing 21 of 1,206 correct names become unmatched (MOD-04, 26 Nov 2026)' },
+};
+const unaccepted = (r: Report, stage?: string): Change[] => r.changes.filter((c) => c.correct === 'regressed' && !(`${c.measure}|${c.query}` in ACCEPTED_REGRESSIONS) && !(c.measure === 'amfi' && stage !== undefined && stage in ACCEPTED_AMFI_LOSSES));
 const sig = (c: Change): string => [c.set, c.measure, c.query, c.amc, c.legacy, c.corrected].join(String.fromCharCode(1));
 
 describe('matcher corrections: corpus, both ways', () => {
@@ -31,7 +36,9 @@ describe('matcher corrections: corpus, both ways', () => {
       assert.equal(s.report.stride, 1, s.id);
       assert.equal(s.report.self.regressed, 0, `${s.id}: self regressions in the full sweep`);
       assert.equal(s.report.loo.wrongAdded, 0, `${s.id}: wrong matches added in the full sweep`);
-      assert.deepEqual(unaccepted(s.report), [], `${s.id}: unreviewed regressions in the full sweep`);
+      assert.deepEqual(unaccepted(s.report, s.id), [], `${s.id}: unreviewed regressions in the full sweep`);
+      const cap = ACCEPTED_AMFI_LOSSES[s.id];
+      if (cap) assert.ok(s.report.amfi.regressed <= cap.max, `${s.id}: ${s.report.amfi.regressed} AMFI losses, more than the accepted ${cap.max}`);
     }
   });
 
@@ -47,7 +54,7 @@ describe('matcher corrections: corpus, both ways', () => {
       t.diagnostic(`sample: self ${JSON.stringify(r.self)}; loo ${JSON.stringify(r.loo)}; amfi ${JSON.stringify(r.amfi)}; changes ${r.changes.length}`);
       assert.equal(r.self.regressed, 0);
       assert.equal(r.loo.wrongAdded, 0);
-      assert.deepEqual(unaccepted(r), []);
+      assert.deepEqual(unaccepted(r, stage.id), []);
       assert.ok(r.loo.wrongCorrected <= r.loo.wrongLegacy);
       const known = new Set(recorded.changes.map(sig));
       const missing = r.changes.filter((c) => !known.has(sig(c)));

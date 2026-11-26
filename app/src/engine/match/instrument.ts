@@ -32,11 +32,11 @@
 //     distinctive. The thresholds are unchanged, so this only rejects more. The audit's idf weighting was measured
 //     and not adopted: as a guard it lost correct official AMFI names, as a ranking it added wrong matches
 //     (tests/parity/matching-corrections.ts).
-//   - absentFundGuard (OFF by default; the owner's open question on matching strictness, MOD-04 26 Nov 2026, option B):
+//   - absentFundGuard (option B; the owner chose this stricter regime on 26 Nov 2026, so NEW_BUILD_MATCHING has it on):
 //     a candidate is rejected when the holding's name leaves unmatched a word the candidate set knows but that is in
 //     fewer than 5% of its names (a word the set does not know, such as a misspelling, never counts). Measured: about
 //     41% fewer wrong matches for funds absent from the vendor data, and 21 of 1,206 official AMFI names that match
-//     correctly today become unmatched. Turning it on is the one-line change the owner's answer needs.
+//     correctly today become unmatched (mostly normaliser gaps, a measured follow-up of sprint 2a).
 
 import { aliasFor, isExactOnlyKey } from './name-lists.ts';
 import { nameKey, normalize } from './normalize.ts';
@@ -53,10 +53,18 @@ export type MatchOptions = {
   nullOnTies?: boolean;
   /** KI-101: fund-house words (houseWords, and the holding's AMC words) never count as distinctive. Needs nullOnTies. */
   houseTokens?: boolean;
-  /** Option B, off by default: reject a candidate that leaves a known rare word of the holding's name unmatched (see
-   * above). Needs nullOnTies. */
+  /** Option B: reject a candidate that leaves a known rare word of the holding's name unmatched (see above). Needs
+   * nullOnTies. */
   absentFundGuard?: boolean;
 };
+
+/** The new build's matching (the owner's answers of 25 and 26 Nov 2026): KI-036, KI-101 and the stricter regime (B).
+ * The caller adds the owner's aliases. The parity tests call the matcher without options, as the legacy. */
+export const NEW_BUILD_MATCHING: Readonly<Pick<MatchOptions, 'nullOnTies' | 'houseTokens' | 'absentFundGuard'>> = Object.freeze({
+  nullOnTies: true,
+  houseTokens: true,
+  absentFundGuard: true,
+});
 
 /** Option B's bar: a known word in fewer than this share of a candidate set's names is informative. */
 export const ABSENT_FUND_SHARE = 0.05;
