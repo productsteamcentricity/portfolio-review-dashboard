@@ -42,6 +42,12 @@ export type ColumnSpec = {
   width: number;
   /** The data cells' style. */
   style?: StyleSpec;
+  /**
+   * A style for the whole column, written on its `<col>` element, so a value typed later into an empty cell of the
+   * column takes its number format (the blank capital-gains template, M7). Unset on every M1.4 sheet, whose bytes do
+   * not change.
+   */
+  defaultStyle?: StyleSpec;
 };
 
 /** Negative numbers in red #931621 through a cellIs-lessThan-0 rule over these columns' data cells. */

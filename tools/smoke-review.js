@@ -13,7 +13,8 @@
        above 20% is a breach
      - look-through market-cap and rating mixes sum to 100
      - transaction XIRR equals the exact answer the flows were built to give
-     - taxation reconciles, and LTCG + STCG + unclassified = CMV
+     - taxation reconciles, LTCG + STCG + unclassified + fund level = CMV, and the
+       family harvest is the sum of the per-client harvests
      - overlap matrix is square, symmetric, 100 on the diagonal
      - no NaN / Infinity anywhere in the model
      - the AI Analyst plan is deterministic
@@ -87,7 +88,12 @@ ok(tot && tot.fund > Math.min(...gs) && tot.fund < Math.max(...gs), 'portfolio X
 
 const T = m.taxation;
 ok(T.hasData && T.unreconciled.length === 0, 'taxation: every position reconciles to its lots');
-ok(near(T.totals.ltcgCmv + T.totals.stcgCmv + T.totals.unclassCmv, T.totals.cmv, 1e-6), 'taxation: LTCG + STCG + unclassified = CMV');
+/* tax batch T3 (KI-166): a Category III AIF is fund level, its own bucket */
+ok(near(T.totals.ltcgCmv + T.totals.stcgCmv + T.totals.unclassCmv + (T.totals.fundLevelCmv || 0), T.totals.cmv, 1e-6), 'taxation: LTCG + STCG + unclassified + fund level = CMV');
+/* tax batch T3 (KI-167): set-off is per person, so the family harvest is the sum of the clients' harvests */
+/* tax batch T4 (KI-182): with the crypto gain and loss kept out of set-off (0 here: the sample book holds no crypto) */
+ok(T.harvest.perClient && ['taxBefore', 'taxAfter', 'saving', 'ltUnused', 'stUnused', 'exBefore', 'exAfter', 'noSetOffGain', 'noSetOffLoss'].every(k =>
+  near(T.harvest[k], sum(T.clients, c => c.harvest[k]), 1e-12)), 'taxation: the family harvest is the sum of the per-client harvests');
 ok(T.totals.ltcgCmv > 0 && T.totals.stcgCmv > 0, 'taxation: lots on both sides of the 12-month line are split');
 
 const OV = m.overlap, n = OV.matrix.length;
@@ -154,21 +160,21 @@ ok(cB.covNote && /: 1 without XIRR/.test(cB.covNote) && mB.clients.filter(c => c
   'KI-006: the client with a blank XIRR carries a coverage footnote with the count, and only that client (' + cB.covNote + ')');
 ok(m.clients.every(c => !c.covNote), 'KI-006: no coverage footnote when every subtotal is complete (IRR loaded)');
 
-/* KI-065: debt mutual funds are taxed under Sec. 50AA; directly held bonds and G-Secs keep their rows */
+/* KI-065: debt mutual funds are taxed under Sec. 76 (old 50AA; KI-180, CR-0008); directly held bonds and G-Secs keep their rows */
 const tc = (asset, product, category, name) => E.taxClassOf({ asset, product, category, name });
 const taxCases = [
-  [tc('Debt', 'Mutual Funds', 'Corporate Bond Fund', 'X Corporate Bond Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 50AA'],
-  [tc('Debt', 'Mutual Funds', 'Dynamic Bond', 'X Dynamic Bond Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 50AA'],
-  [tc('Debt', 'Mutual Funds', 'Gilt Fund', 'X Gilt Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 50AA'],
-  [tc('Debt', 'Mutual Funds', 'Index Funds', 'X CRISIL IBX Gilt Index Fund'), 'Debt Mutual Funds – Sec. 50AA'],
-  [tc('Fixed Income', 'Mutual Funds', 'Corporate Bond Fund', 'X Corporate Bond Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 50AA'],
+  [tc('Debt', 'Mutual Funds', 'Corporate Bond Fund', 'X Corporate Bond Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 76 (old 50AA)'],
+  [tc('Debt', 'Mutual Funds', 'Dynamic Bond', 'X Dynamic Bond Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 76 (old 50AA)'],
+  [tc('Debt', 'Mutual Funds', 'Gilt Fund', 'X Gilt Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 76 (old 50AA)'],
+  [tc('Debt', 'Mutual Funds', 'Index Funds', 'X CRISIL IBX Gilt Index Fund'), 'Debt Mutual Funds – Sec. 76 (old 50AA)'],
+  [tc('Fixed Income', 'Mutual Funds', 'Corporate Bond Fund', 'X Corporate Bond Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 76 (old 50AA)'],
   [tc('Debt', 'Bonds', 'Corporate Bond', 'X Ltd 8.5% NCD 2028'), 'Listed Bonds / NCDs'],
   [tc('Debt', 'Bonds', 'G-Sec', '7.18% GOI 2033'), 'Government Securities / G-Secs'],
   [tc('Equity', 'Mutual Funds', 'Large Cap Fund', 'X Large Cap Fund-Reg(G)'), 'Equity Mutual Funds'],
   /* a blank Asset parses as Equity: the G-Sec name still marks a debt fund */
-  [tc('Equity', 'Mutual Funds', 'Index Funds', 'X Nifty G-Sec Apr 2029 Index Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 50AA'],
-  [tc('Equity', 'Mutual Funds', 'Other ETFs', 'X Nifty SDL Apr 2027 ETF'), 'Debt Mutual Funds – Sec. 50AA'],
-  [tc('Equity', 'Mutual Funds', 'Debt', 'X Banking & PSU Debt Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 50AA'],
+  [tc('Equity', 'Mutual Funds', 'Index Funds', 'X Nifty G-Sec Apr 2029 Index Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 76 (old 50AA)'],
+  [tc('Equity', 'Mutual Funds', 'Other ETFs', 'X Nifty SDL Apr 2027 ETF'), 'Debt Mutual Funds – Sec. 76 (old 50AA)'],
+  [tc('Equity', 'Mutual Funds', 'Debt', 'X Banking & PSU Debt Fund-Reg(G)'), 'Debt Mutual Funds – Sec. 76 (old 50AA)'],
   /* an equity : G-Sec blend needs its equity share: unclassified, not guessed */
   [tc('Equity', 'Mutual Funds', 'Index Funds', 'X Nifty200 Momentum 30 Plus 8-13yr G-Sec 75:25 Index Fund'), null],
   /* earlier rows keep their place */
@@ -177,7 +183,7 @@ const taxCases = [
   [tc('Debt', 'Mutual Funds', 'Arbitrage Fund', 'X Arbitrage Fund-Reg(G)'), 'Equity Mutual Funds'],
 ];
 const taxBad = taxCases.filter(c => c[0] !== c[1]);
-ok(taxBad.length === 0, 'KI-065: debt mutual funds take Sec. 50AA; direct bonds and G-Secs keep their rows' +
+ok(taxBad.length === 0, 'KI-065: debt mutual funds take Sec. 76 (old 50AA); direct bonds and G-Secs keep their rows' +
   (taxBad.length ? ': ' + taxBad.map(c => c[0] + ' (expected ' + c[1] + ')').join('; ') : ''));
 
 console.log('\n=== AI Analyst ===');
