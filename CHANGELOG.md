@@ -4,6 +4,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Fixed (new build, base-file reader: the platform's full holding report)
+- **KI-300** (`app/src/ingest/base-file.ts`): a money heading that is exactly the field's (Invested Value, Market Value or
+  Current Market Value, Total Gain/Loss, with any unit in brackets) is taken before a partial match, and a heading with
+  "price" is never the invested value, nor one with the word "realized" or "realised" the gain or loss. In the platform's
+  holding report "Invested Price" and "Realized Gain/Loss" come first, and the live page reads them instead (KI-300, open
+  there). Synthetic test in the report's layout (`tests/fixtures/holding-report.ts`); base-file ledger BF-27 and BF-28.
+
 ### Added (new build, M2.1 wiring for test build 1: holdings matched in section 1)
 - **Section 1 matches the base file's holdings** when the file loads (`engine/match/resolve-holdings.ts`): each holding goes to one
   universe as the live page routes it (listed shares to STOCK_RET by ISIN or company name; LP-16's non-MF classes unmatched with
