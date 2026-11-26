@@ -4,6 +4,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M10 pre-wiring tests: the zip directory defences; no change to the app, `/next/` or `/`)
+- **`tests/unit/ingest/screener-pack-zip.test.ts`** (ARC-03 R7 of M10's Gate B): each directory check of the Screener
+  pack reader has a test that fails when that check alone is removed: a second archive appended (the end-record
+  refusal is now asserted, not only a refusal), a gap between the directory and the end record, a local header whose
+  name differs at the same length, two entries whose data overlap, and a second directory that only JSZip would read
+  (the entry-list comparison). Synthetic archives only; 24 cases in the file.
+
 ### Added (new build, M10 Screener data pack: reader and browser store; not wired into the page yet)
 - **`app/src/ingest/screener-pack/`** reads an MF Screener data pack (contract `pr-datapack-v1`, D-026): the zip's central
   directory is checked against archive limits before anything is inflated (path traversal, entry count, nesting,
