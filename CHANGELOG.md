@@ -4,6 +4,26 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (LP-19, the December refresh prep: docs only; no change to `index.html` or the pipeline)
+- **`docs/MONTHLY_REFRESH.md` brought up to the October run** (refresh log 2026-10). This is a docs branch under
+  MOD-04's exception to FILE_OWNERSHIP row 20, which allows the runbook to change only on a `data/YYYY-MM-refresh`
+  branch.
+  - Files: the vendor's benchmark exports (`Benchmarks`), the Investment Reckoner PDF (`Outlook export`), the pagers
+    deck and Other Funds Analytics; niftyindices only as the fallback.
+  - Step 3: Market Update slides from the Reckoner PDF with Windows' PDF renderer, no Office. The scripts are pinned
+    by SHA-256; ARC-02's review is pending. The PowerPoint COM snippet is removed.
+  - Step 4: the in-house risk chain (tools, launch rule, inputs, hard stops).
+  - Step 4b: the AmfiFetch ids file for the new build.
+  - Step 7f: Other Funds analytics for carried look-throughs.
+  - Step 8: IST and UTC with `run-regression` and `node --test`, the heavy-run lock, and a read-only FUND_RANKS_CODES
+    rename check with its known answer (55 "renamed?", 0 "gone?").
+  - Step 10: the archive with SHA-256 lists before and after.
+  - Part 3 brought up to date.
+- `docs/MONTHLY_UPDATE_GUIDE.md`: the same file list.
+- `docs/refresh-log/2026-10.md` §8: published (PRs #21 to #36) and archived on 26 Nov 2026.
+- `docs/refresh-log/TEMPLATE.md`: sections for slides, the risk chain, the ids file, Other Funds, the rank check and
+  the archive.
+
 ### Added (new build, M10 Screener data pack: reader and browser store; not wired into the page yet)
 - **`app/src/ingest/screener-pack/`** reads an MF Screener data pack (contract `pr-datapack-v1`, D-026): the zip's central
   directory is checked against archive limits before anything is inflated (path traversal, entry count, nesting,
