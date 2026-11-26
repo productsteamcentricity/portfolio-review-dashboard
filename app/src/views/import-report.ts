@@ -2,7 +2,7 @@
 // read, from where, and what it left out and why (KI-074, OD-8, U-03, U-60). Selection and labelling only.
 
 import type { SourceFile, SkipReason } from '../model/source.ts';
-import type { AnalystQuestion, XirrUnitChoice } from '../model/validation.ts';
+import type { XirrUnitChoice, XirrUnitQuestion } from '../model/validation.ts';
 import type { BaseFileImport } from '../ingest/base-file.ts';
 import type { Holding } from '../model/holding.ts';
 import type { MoneyUnit } from '../engine/units.ts';
@@ -83,7 +83,11 @@ export function exclusionReasonText(h: Holding): string {
   return r.status === null ? r.phrase : `${r.phrase} (${r.status})`;
 }
 
-function question(q: AnalystQuestion): QuestionVM {
+/**
+ * Only an XIRR-unit question is rendered here: the base file's questions are typed `XirrUnitQuestion[]`, so a question
+ * of another kind (a capital-gains repeats question) cannot reach this function. Narrowed by type, no run-time test.
+ */
+function question(q: XirrUnitQuestion): QuestionVM {
   return {
     id: q.id,
     field: q.field,
