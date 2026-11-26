@@ -35,7 +35,7 @@ const ROWS: Array<Partial<Row>> = [
 const COMMON: Partial<Row> = {
   'Family Name': 'Sample Report Family', 'Family Source Code': 'F-0001', 'Client Name': 'Sample Report Client',
   'Client Source Code': 'C-0001', 'Account Name': 'Sample Report Client', 'Account Source Code': 'A-0001', 'Portfolio Type': 'Advisory',
-  'Folio No': '000000001', 'Distributor Name': 'Sample Distributor', 'Valuation Date': '31-10-2026', 'Holding Date': '31-10-2026',
+  'Folio No': 'SYN-FOLIO-A', 'Distributor Name': 'Sample Distributor', 'Valuation Date': '31-10-2026', 'Holding Date': '31-10-2026',
   'Purchase Date': '15-06-2023', 'Unrealized Short Term G/L (₹) ': 0, 'Unrealized Long Term Units': 0, 'Interest Earned (₹) ': 0,
   'Dividend Reinvestment (₹) ': 0, 'Dividend Payout (₹) ': 0,
 };
