@@ -4,6 +4,20 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M2.1 wiring for test build 1: holdings matched in section 1)
+- **Section 1 matches the base file's holdings** when the file loads (`engine/match/resolve-holdings.ts`): each holding goes to one
+  universe as the live page routes it (listed shares to STOCK_RET by ISIN or company name; LP-16's non-MF classes unmatched with
+  their class; PMS, AIF, SIF, else MF) and resolves through the crosswalk with `NEW_BUILD_MATCHING` and the owner's aliases. The
+  product class is a port of the live page's rule on PRODUCT_CLASS_RULES (`engine/match/product-class.ts`).
+- **The import report's matching section** (E-19, `views/matching.ts`) replaces the M2 placeholder: counts by how each holding
+  resolved, the non-fund classes, a "matched to a differently named fund" table and the unmatched list. Matching never blocks
+  a file.
+- **Monitor uploads** (U-08, U-09, U-10; `ingest/load-monitor.ts`, "Fund monitor files" in section 1): an MF Monitor (Regular,
+  Direct) or SIF Monitor read in the browser stands in for the embedded block and re-matches the holdings; the monitors stay when
+  the family changes.
+- The page carries five more refdata blocks through NB-04's loader (AIF_PERF, PMS_PERF, FUND_RANKS_CODES, PRODUCT_CLASS_RULES,
+  OWNER_FUND_ALIASES); the alias evidence links move to `data/owner/fund-aliases-evidence.json` (the page carries no remote URL).
+
 ### Added (new build, M2.1 sprint 2a: matcher corrections, opt-in; not wired into the page yet)
 - **Owner fund aliases** (`data/owner/fund-aliases.json`, `engine/match/owner-aliases.ts`; KI-050, PD-36): the 16 renames the
   owner approved on 25 Nov 2026, each with public evidence and Regular and Direct targets; line 17 applies only to names

@@ -207,7 +207,9 @@
    Direct twin (KI-054), the fund ISIN map and code join, merged rows with different ISINs (S3-1), and the stricter
    regime (option B) the owner chose on 26 Nov 2026 (`NEW_BUILD_MATCHING`); all opt-in at the engine,
    measured both ways (`tests/parity/matching-corrections-ledger.json`), not wired into the page yet. Sprint 2b (the
-   product-class table, after the live page's LP-16, now merged) follows.
+   product-class table, after the live page's LP-16, now merged) follows. For test build 1 (MOD-04's plan, 26 Nov 2026) the
+   matcher is wired into section 1 on `feat/m2-wiring` (stacked on 2a and NB-04's `feat/refdata-blocks`): holdings matched when
+   the base file loads, the import report's matching section (E-19), and the monitor uploads (U-08, U-09, U-10).
    Beside M2, the data-platform items (NB-04) are on their own branches: M10, the MF Screener data pack reader and
    browser store (`feat/m10-datapack`); M11a, the monthly update engine core (`feat/m11a-monthly-engine`, after M10);
    M12a, the drawdown engine on index data (`feat/m12a-drawdown`; the owner's answers of 25 Nov 2026 are its defaults;
