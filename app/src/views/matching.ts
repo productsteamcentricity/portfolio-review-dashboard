@@ -6,7 +6,8 @@
 //     alias, a name match (a proposal: the names differ), unmatched; and the non-fund classes, which have no fund data
 //     by design (LP-16);
 //   - "matched to": every holding whose match is an alias or a name match, with the reference name it took;
-//   - unmatched: every fund, PMS, AIF, SIF or listed share that matched nothing.
+//   - unmatched: every fund, PMS, AIF, SIF or listed share that matched nothing;
+//   - warnings: each product-class rule the page did not apply (an unknown field or class; never applied loosely).
 // Sentences never contain an en or em dash (D-029).
 
 import type { Holding } from '../model/holding.ts';
@@ -25,6 +26,8 @@ export type MatchingVM = {
   matchedTo: MatchedToRow[];
   unmatched: UnmatchedRow[];
   note: string;
+  /** Product-class rules not applied, one sentence each. */
+  warnings: string[];
 };
 
 const ROUTE_TEXT: Readonly<Record<Exclude<MatchRoute, 'other'>, string>> = {
@@ -32,7 +35,7 @@ const ROUTE_TEXT: Readonly<Record<Exclude<MatchRoute, 'other'>, string>> = {
 };
 
 export function buildMatchingSection(report: MatchReport | null, holdings: readonly Holding[]): MatchingVM {
-  if (!report) return { summary: MATCHING_NO_DATA, counts: [], otherClasses: [], matchedTo: [], unmatched: [], note: '' };
+  if (!report) return { summary: MATCHING_NO_DATA, counts: [], otherClasses: [], matchedTo: [], unmatched: [], note: '', warnings: [] };
   const byId = new Map(holdings.map((h) => [h.id, h]));
   let isin = 0, amfi = 0, exact = 0, alias = 0, name = 0, none = 0;
   const other = new Map<string, number>();
@@ -76,5 +79,6 @@ export function buildMatchingSection(report: MatchReport | null, holdings: reado
     matchedTo,
     unmatched,
     note: 'A tie between two funds, or a match that leaves a distinctive word of either name unmatched, is not taken: such a holding is shown as unmatched rather than given another fund\'s figures.',
+    warnings: (report.skippedRules ?? []).map((s) => `The product class rule "${plainText(s.label)}" was not applied: ${s.reason}. The holdings it would place are classed by the other rules, else as mutual funds.`),
   };
 }

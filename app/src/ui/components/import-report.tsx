@@ -123,6 +123,9 @@ export function ImportReport({ report, answers, onAnswer }: {
         </>
       ) : null}
       {report.matching.note ? <p class="field-help">{report.matching.note}</p> : null}
+      {report.matching.warnings.length > 0 ? (
+        <ul class="plain-list notes" id="matching-warnings">{report.matching.warnings.map((w) => <li key={w}>{w}</li>)}</ul>
+      ) : null}
     </>
   );
 }

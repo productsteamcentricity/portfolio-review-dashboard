@@ -19,7 +19,7 @@ import { buildCrosswalk, makeUniverse, resolveInstrument, type Crosswalk, type U
 import { NEW_BUILD_MATCHING, referenceVocabulary, type MatchOptions } from './instrument.ts';
 import { nameKey } from './normalize.ts';
 import { parseOwnerAliases, type OwnerAliasTable } from './owner-aliases.ts';
-import { holdingClass, nonMfRule, parseProductClassRules, type ProductClassRule } from './product-class.ts';
+import { holdingClass, nonMfRule, parseProductClassRulesDetailed, type ProductClassRule, type SkippedRule } from './product-class.ts';
 import { parseAmfiIsinRecord } from './amfi-isin.ts';
 
 type Block = Readonly<Record<string, unknown>>;
@@ -43,6 +43,8 @@ export type MatchContext = {
   crosswalk: Crosswalk;
   options: MatchOptions;
   rules: readonly ProductClassRule[];
+  /** PRODUCT_CLASS_RULES rules not applied (an unknown field or class), with the reason: shown in the import report. */
+  skippedRules: readonly SkippedRule[];
   aliasesApproved: string | null;
 };
 
@@ -61,6 +63,8 @@ export type MatchReport = {
   /** The universes the page carried (a route without its universe cannot match). */
   available: ReadonlyArray<'MF' | 'SIF' | 'AIF' | 'PMS' | 'STOCK'>;
   aliasesApproved: string | null;
+  /** The product-class rules the page did not apply, with the reason (never applied loosely). */
+  skippedRules: readonly SkippedRule[];
 };
 
 /** The live page's normCo: a company name in lower case, punctuation and the words ltd, limited, the, inc, corp, co,
@@ -99,8 +103,8 @@ export function buildMatchContext(b: MatchBlocks): MatchContext {
   const instrumentNames = Object.values(universes).filter((u) => u.matcher === 'instrument').map((u) => u.keys);
   const base: MatchOptions = { ...NEW_BUILD_MATCHING, knownWords: referenceVocabulary(instrumentNames) };
   const options: MatchOptions = aliases ? { ...base, ownerAliases: aliases } : base;
-  const rules = b.PRODUCT_CLASS_RULES === undefined || b.PRODUCT_CLASS_RULES === null ? [] : parseProductClassRules(b.PRODUCT_CLASS_RULES);
-  return { universes, crosswalk: buildCrosswalk(sources), options, rules, aliasesApproved: aliases ? aliases.approved : null };
+  const parsed = b.PRODUCT_CLASS_RULES === undefined || b.PRODUCT_CLASS_RULES === null ? { rules: [], skipped: [] } : parseProductClassRulesDetailed(b.PRODUCT_CLASS_RULES);
+  return { universes, crosswalk: buildCrosswalk(sources), options, rules: parsed.rules, skippedRules: parsed.skipped, aliasesApproved: aliases ? aliases.approved : null };
 }
 
 function unmatchedRef(productClass: ProductClass, name: string): InstrumentRef {
@@ -116,12 +120,12 @@ export function resolveHoldings(holdings: readonly Holding[], ctx: MatchContext)
     let route: MatchRoute;
     let classLabel: string | null = null;
     let ref: InstrumentRef | null;
-    if (isDirectEquityProduct(h.product) && !nonMfRule(h.product, ctx.rules)) {
+    if (isDirectEquityProduct(h.product) && !nonMfRule(h.product, ctx.rules, name)) {
       route = 'STOCK';
       const u = ctx.universes.STOCK;
       ref = u ? resolveInstrument(isin === undefined ? { name: companyKey(name) } : { name: companyKey(name), isin }, u, ctx.crosswalk) : unmatchedRef('EQUITY', name);
     } else {
-      const c = holdingClass(h.product, ctx.rules);
+      const c = holdingClass(h.product, ctx.rules, name);
       if (c.kind === 'other') {
         route = 'other';
         classLabel = c.label;
@@ -137,7 +141,7 @@ export function resolveHoldings(holdings: readonly Holding[], ctx: MatchContext)
     return { ...h, instrument: ref };
   });
   const available = (['MF', 'SIF', 'AIF', 'PMS', 'STOCK'] as const).filter((k) => ctx.universes[k] !== undefined);
-  return { holdings: out, report: { entries, available, aliasesApproved: ctx.aliasesApproved } };
+  return { holdings: out, report: { entries, available, aliasesApproved: ctx.aliasesApproved, skippedRules: ctx.skippedRules } };
 }
 
 /** Matches a loaded file's holdings with a context; the file is returned unchanged when there is none. */
