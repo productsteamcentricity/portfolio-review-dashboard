@@ -62,13 +62,16 @@ function run(product, name, asset) {
   return { h, ex, m };
 }
 const cls = (p, n) => { const r = run(p, n); return r.h.directEquity ? '(direct equity)' : r.h.pcls; };
-const _isNonMf = c => ['GIFT City funds', 'Offshore funds', 'US-dollar bonds (through LRS)', 'Fixed deposits', 'REITs and InvITs', 'Unlisted shares'].indexOf(c) >= 0;
+const _isNonMf = c => ['GIFT City funds', 'Offshore funds', 'US-dollar bonds (through LRS)', 'Rupee bonds and NCDs', 'Fixed deposits', 'REITs and InvITs', 'Unlisted shares', 'P2P lending'].indexOf(c) >= 0;   /* + LP-16b */
 
 /* 1 */
 const WANT = {
   'GIFT City funds': ['GIFT City funds', 'gift city fund', 'GIFT City AIF', 'IFSC Fund', 'GIFT IFSC'],
   'Offshore funds': ['Offshore funds', 'OFFSHORE FUND', 'Off-shore Fund'],
-  'US-dollar bonds (through LRS)': ['US-dollar bonds (through LRS)', 'Bonds', 'bond', 'NCD', 'NCDs', 'LRS', 'Debenture', 'Corporate Bonds'],
+  /* LP-16b (owner, 26 Nov 2026: "Rupee bonds and NCDs"): the US-dollar label only when the product or name says USD, US$,
+     dollar or LRS; every other bond, NCD or debenture is a rupee bond */
+  'US-dollar bonds (through LRS)': ['US-dollar bonds (through LRS)', 'LRS', 'USD Bonds', 'US$ Bonds', 'Dollar Bonds'],
+  'Rupee bonds and NCDs': ['Bonds', 'bond', 'NCD', 'NCDs', 'Debenture', 'Corporate Bonds'],
   'Fixed deposits': ['Fixed deposits', 'Fixed Deposit', 'FD', 'fds', 'Bank FD'],
   'REITs and InvITs': ['REITs and InvITs', 'REIT', 'reits', 'InvIT', 'InvITs', 'REITs & InvITs'],
   'Unlisted shares': ['Unlisted shares', 'Unlisted Equity', 'UNLISTED SHARES', 'Equity Shares - Unlisted']
@@ -122,20 +125,21 @@ ok(run('AIF', AIF).h.perfSrc === 'AIF' && run('PMS', PMS).h.perfSrc === 'PMS', '
 
 /* 8: the rules are data (REFDATA.PRODUCT_CLASS_RULES, contract I-40), in this order, and the engine reads them */
 const RULES = REF.PRODUCT_CLASS_RULES || [];
-ok(RULES.map(r => r.label).join('|') === 'GIFT City funds|Offshore funds|US-dollar bonds (through LRS)|Fixed deposits|REITs and InvITs|Unlisted shares',
-  '8. REFDATA.PRODUCT_CLASS_RULES holds the six owner labels in order');
-ok(RULES.filter(r => r.beforePmsAifSif).map(r => r.label).join('|') === 'GIFT City funds|Offshore funds', '8. GIFT City and offshore are tested before PMS / AIF / SIF');
+ok(RULES.map(r => r.label).join('|') === 'GIFT City funds|GIFT City funds|Offshore funds|US-dollar bonds (through LRS)|Rupee bonds and NCDs|Fixed deposits|REITs and InvITs|Unlisted shares|P2P lending',
+  '8. REFDATA.PRODUCT_CLASS_RULES holds the owner labels in order (LP-16b: the platform names, rupee bonds and P2P lending)');
+ok(RULES.filter(r => r.beforePmsAifSif).map(r => r.label).join('|') === 'GIFT City funds|GIFT City funds|Offshore funds', '8. GIFT City and offshore are tested before PMS / AIF / SIF');
 { const R2 = JSON.parse(JSON.stringify(REF)); R2.PRODUCT_CLASS_RULES = [];
   const rows = E.parseBaseRows([H, ['Test Client', 'HDFC Flexi Cap Fund(G)', '', 'Equity', 'HDFC', 'FD', 1, 1]]);
   E.computeReview(rows, R2, { familyName: 'Test', asOnDate: '25 Nov 2026' });
   ok(rows[0].pcls === 'MF', '8. with an empty table the engine classifies nothing as non-MF (it reads the data, not a copy)'); }
 
 /* 9: the six labels are tested before the engine's bond|ncd|debenture and shares? rules */
-{ const USD = 'US-dollar bonds (through LRS)';
+{ const USD = 'US-dollar bonds (through LRS)', RUPEE = 'Rupee bonds and NCDs';   /* LP-16b: USD only when the product or name says so */
   [['US-dollar bonds (through LRS)', 'Synthetic Corp 5.25% USD Bond 2030'], ['NCD', 'Tata Capital NCD 2027'], ['54EC Bonds', 'REC 54EC Bond 2029'],
     ['Tax Free Bonds', 'NHAI Tax Free Bond 2031'], ['RBI Bonds', 'RBI Floating Rate Savings Bond 2031']].forEach(([p, n]) => {
     const h = run(p, n).h;
-    ok(h.pcls === USD && !h.directEquity && !h.heldShare && !h.perfKey && !h.eqKey && !h.dbKey, '9. "' + p + '" (' + n + ') -> ' + USD + ' (got ' + h.pcls + ')');
+    const want = /usd|us$|dollar|lrs/i.test(p + ' ' + n) ? USD : RUPEE;
+    ok(h.pcls === want && !h.directEquity && !h.heldShare && !h.perfKey && !h.eqKey && !h.dbKey, '9. "' + p + '" (' + n + ') -> ' + want + ' (got ' + h.pcls + ')');
   });
   const u = run('Unlisted shares', 'Swiggy Ltd').h, l = run('Equity Shares', 'HDFC Bank Ltd.').h;
   ok(u.pcls === 'Unlisted shares' && !u.directEquity && u.heldShare === true, '9. "Unlisted shares": not direct equity, still a share held directly (zero fund fee)');

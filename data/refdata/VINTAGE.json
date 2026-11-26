@@ -164,8 +164,8 @@
       "asOnStatus": "NOT AVAILABLE IN SUPPLIED DATA",
       "class": "P",
       "file": "PRODUCT_CLASS_RULES.json",
-      "records": 6,
-      "sha256": "3d05be57979159f42fa7e11c135b210ec1c71f365f3021b73e9ef0e2902ed8e9",
+      "records": 9,
+      "sha256": "9d8653672de85afe0c7d2b3c3562661e6380ce8ff5aa51d63cfb87ac35775fa8",
       "source": "D-7 owner labels, Centricity owner table"
     },
     "SIF_PERF": {
