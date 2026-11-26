@@ -128,7 +128,17 @@ function roleText(roles: readonly ReturnsListId[]): string {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
-function scopeVM(s: ReviewScopeReturns, review: Pick<Review, 'clients' | 'holdings'>): ReturnsScopeVM {
+/**
+ * The names rule note (PLAN-05; the owner's rule of 26 Nov 2026): the base file's clients with no row in the
+ * transactions file, named as the base file spells them; null when every base-file client has rows. The same text on
+ * screen and in the Fund IRR sheet (one view-model).
+ */
+export function baseClientsWithoutRowsText(clients: ReviewReturns['baseClientsWithoutRows']): string | null {
+  if (clients.length === 0) return null;
+  return `Clients of the base file with no rows in the transactions file: ${clients.map((c) => plainText(c.clientLabel)).join(', ')}; the two files are joined on the exact client name.`;
+}
+
+function scopeVM(s: ReviewScopeReturns, review: Pick<Review, 'clients' | 'holdings'>, namesText: string | null): ReturnsScopeVM {
   const r = s.result;
   const key = s.key;
   const book: NoteBook = { notes: [], reasons: new Map() };
@@ -217,6 +227,8 @@ function scopeVM(s: ReviewScopeReturns, review: Pick<Review, 'clients' | 'holdin
       text: `${plural(n, 'client has', 'clients have')} flows in the transactions file and no holding in the base file, and ${n === 1 ? 'is' : 'are'} left out of every figure (OD-4): ${rec.irrOnlyClients.map((x) => `${plainText(x.clientLabel)} (${plural(x.flows, 'flow', 'flows')})`).join(', ')}.`,
     });
   }
+  // PLAN-05: the other side of the exact-name join, family-wide, on every scope as the note above.
+  if (namesText !== null) notes.push({ id: 'base-clients-without-rows', text: namesText });
   if (rec.redeemed.length > 0) {
     const n = rec.redeemed.length;
     notes.push({
@@ -268,7 +280,7 @@ function scopeVM(s: ReviewScopeReturns, review: Pick<Review, 'clients' | 'holdin
 /** The returns view-model of a review's returns. `source` is the IRR file's record, for the workbook's Source Register. */
 export function buildReturnsVM(returns: ReviewReturns, review: Pick<Review, 'clients' | 'holdings'>, opts: { source?: SourceFile } = {}): ReturnsVM {
   return {
-    scopes: returns.scopes.map((s) => scopeVM(s, review)),
+    scopes: returns.scopes.map((s) => scopeVM(s, review, baseClientsWithoutRowsText(returns.baseClientsWithoutRows))),
     basisText: XIRR_BASIS_TEXT,
     advisorText: returns.advisorScopes === 'no-distributor-column'
       ? 'The transactions (IRR) file has no DISTRIBUTOR column, so returns are not shown per adviser.'

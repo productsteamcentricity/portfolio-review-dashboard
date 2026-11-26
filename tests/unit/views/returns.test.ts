@@ -12,7 +12,7 @@ import type { LoadedIrrFile } from '../../../app/src/ingest/load-irr.ts';
 import type { ReturnsVM } from '../../../app/src/views/returns-vm.ts';
 import { returnsForReview } from '../../../app/src/engine/returns/review-returns.ts';
 import {
-  benchCoverageText, buildIrrImportVM, buildReturnsVM, canAcceptIrr, datesWords, IRR_ISSUES_NOTICE, irrSlotView, RECONCILE_D13_TEXT,
+  baseClientsWithoutRowsText, benchCoverageText, buildIrrImportVM, buildReturnsVM, canAcceptIrr, datesWords, IRR_ISSUES_NOTICE, irrSlotView, RECONCILE_D13_TEXT,
   returnsHeadlineFigures, scopeOf, XIRR_BASIS_TEXT,
 } from '../../../app/src/views/returns.ts';
 import { ymdToDay } from '../../../app/src/engine/dates.ts';
@@ -204,6 +204,44 @@ describe('reconciliation notes (OD-4, E-142, D13)', () => {
     const v = vmOf(load(files.get('irr-by-content')!, 'irr-by-content.xlsx'));
     assert.equal(v.advisorText, 'The transactions (IRR) file has no DISTRIBUTOR column, so returns are not shown per adviser.');
     assert.equal(vmOf(standard).advisorText, null);
+  });
+});
+
+// PLAN-05, the names rule on screen: a synthetic file with client B spelt "Sample Clint B" (the owner's rule of 26 Nov
+// 2026: the two files are joined on the exact client name, never by similarity).
+describe('the names rule note (PLAN-05)', () => {
+  const NAMES_TEXT = 'Clients of the base file with no rows in the transactions file: Sample Client B; the two files are joined on the exact client name.';
+  const misspelt = load(toWorkbook(loadSheetJS(), [{ name: 'SI Xirr', rows: [FUND_HEADER,
+    fundRow('Sample Client A', 'Sample Bluechip Fund - Regular Plan - Growth', 'SYN-1001', 'Equity', dateCell(2023, 4, 1), 'Purchase', null, 50, -10000, 'Centricity'),
+    fundRow('Sample Client A', 'Sample Bluechip Fund - Regular Plan - Growth', 'SYN-1001', 'Equity', dateCell(2025, 3, 31), null, 'Closing', null, 12000, 'Centricity'),
+    fundRow('Sample Clint B', 'Sample Balanced Advantage Fund - Regular Plan - Growth', 'SYN-2001', 'Hybrid', dateCell(2024, 1, 1), 'Purchase', null, 40, -8000, null),
+    fundRow('Sample Clint B', 'Sample Balanced Advantage Fund - Regular Plan - Growth', 'SYN-2001', 'Hybrid', dateCell(2024, 12, 31), null, 'Closing', null, 8800, null),
+  ] }]), 'misspelt.xlsx');
+
+  test('every scope carries the note, after the IRR-only note, with the exact-name sentence', () => {
+    const vm = vmOf(misspelt);
+    for (const s of vm.scopes) {
+      const ids = s.notes.map((n) => n.id);
+      assert.equal(s.notes.find((n) => n.id === 'base-clients-without-rows')?.text, NAMES_TEXT, s.key);
+      assert.equal(ids.indexOf('base-clients-without-rows'), ids.indexOf('irr-only-clients') + 1, s.key);
+      assert.ok(!s.notes.some((n) => DASHES.test(n.text)), s.key);
+    }
+    assert.match(vm.scopes[0]!.notes.find((n) => n.id === 'irr-only-clients')!.text, /Sample Clint B \(2 flows\)/);
+  });
+
+  test('no note when every base-file client has rows', () => {
+    for (const s of vmOf(standard).scopes) assert.ok(!s.notes.some((n) => n.id === 'base-clients-without-rows'), s.key);
+    assert.equal(baseClientsWithoutRowsText([]), null);
+  });
+
+  test('several clients are joined with commas, and file text passes through plainText', () => {
+    const t = baseClientsWithoutRowsText([
+      { clientId: 'cl_1' as never, clientLabel: 'Sample Client B' },
+      { clientId: 'cl_2' as never, clientLabel: `Sample ${String.fromCharCode(0x2013)} Client C` },
+    ])!;
+    assert.ok(t.startsWith('Clients of the base file with no rows in the transactions file: Sample Client B, Sample '));
+    assert.ok(t.endsWith('; the two files are joined on the exact client name.'));
+    assert.ok(!DASHES.test(t));
   });
 });
 

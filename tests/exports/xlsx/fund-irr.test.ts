@@ -15,6 +15,8 @@ import { buildReturnsVM, SCREEN_MISSING_LEAD, SHEET_MISSING_LEAD, XIRR_BASIS_TEX
 import { readXlsx, sheetByName, sheetTable } from '../../helpers/xlsx-read.ts';
 import { fixtureById, nodeWiring, reviewOf } from '../../helpers/node-wiring.ts';
 import { irrFixtures } from '../../fixtures/make-irr-files.ts';
+import { dateCell, FUND_HEADER, fundRow, toWorkbook } from '../../fixtures/make-irr-files.ts';
+import { loadSheetJS } from '../../helpers/sheetjs.ts';
 
 const w = nodeWiring();
 const { review, vm } = reviewOf(w, fixtureById('syn-standard'));
@@ -168,5 +170,35 @@ describe('with returns', () => {
     assert.equal(irr[1], 'irr-standard.xlsx');
     assert.equal(irr[4], returns.source!.id);
     assert.equal(irr[6], 'review');
+  });
+});
+
+// PLAN-05, the names rule in the sheet: client B spelt "Sample Clint B" in the transactions file (synthetic). The note
+// rows carry the view-model's own text, so the sheet and the screen agree.
+describe('the names rule note in the Fund IRR sheet (PLAN-05)', () => {
+  const BLUE = 'Sample Bluechip Fund - Regular Plan - Growth';
+  const BAL = 'Sample Balanced Advantage Fund - Regular Plan - Growth';
+  const l = w.loadIrrFile!(toWorkbook(loadSheetJS(), [{ name: 'SI Xirr', rows: [FUND_HEADER,
+    fundRow('Sample Client A', BLUE, 'SYN-1001', 'Equity', dateCell(2023, 4, 1), 'Purchase', null, 50, -10000, 'Centricity'),
+    fundRow('Sample Client A', BLUE, 'SYN-1001', 'Equity', dateCell(2025, 3, 31), null, 'Closing', null, 12000, 'Centricity'),
+    fundRow('Sample Clint B', BAL, 'SYN-2001', 'Hybrid', dateCell(2024, 1, 1), 'Purchase', null, 40, -8000, null),
+    fundRow('Sample Clint B', BAL, 'SYN-2001', 'Hybrid', dateCell(2024, 12, 31), null, 'Closing', null, 8800, null),
+  ] }]), 'misspelt.xlsx');
+  if (!('irr' in l)) throw new Error(l.kind);
+  const rvm = buildReturnsVM(returnsForReview(review, l.irr), review, { source: { ...l.source, stage: 'review' } });
+  const table = sheetTable(sheetByName(readXlsx(buildOverviewWorkbook(workbookInputFrom(review, vm, rvm))), 'Fund IRR'));
+  const header = table[0]!;
+  const col = (name: string): number => header.indexOf(name);
+
+  test('one Note row per scope with the screen\'s text, the exact-name sentence included', () => {
+    const text = 'Clients of the base file with no rows in the transactions file: Sample Client B; the two files are joined on the exact client name.';
+    for (const s of rvm.scopes) assert.equal(s.notes.find((n) => n.id === 'base-clients-without-rows')?.text, text, s.key);
+    const rows = table.filter((r) => r[col('Part')] === 'Note' && r[col('Label')] === text);
+    assert.deepEqual(rows.map((r) => r[col('Scope')]), rvm.scopes.map((s) => s.label));
+  });
+
+  test('none in the sheet of irr-standard, where every base-file client has rows', () => {
+    const std = sheetTable(sheetByName(readXlsx(buildOverviewWorkbook(workbookInputFrom(review, vm, returnsVmOf('irr-standard')))), 'Fund IRR'));
+    assert.ok(!std.some((r) => String(r[col('Label')]).startsWith('Clients of the base file with no rows')));
   });
 });

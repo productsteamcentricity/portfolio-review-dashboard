@@ -14,6 +14,9 @@ import { returnsForReview } from '../../../app/src/engine/returns/review-returns
 import { computeScopeReturns } from '../../../app/src/engine/returns/scope.ts';
 import { fixtureById, nodeWiring, reviewOf } from '../../helpers/node-wiring.ts';
 import { irrFixtures } from '../../fixtures/make-irr-files.ts';
+import { baseClientsWithoutRowsOf } from '../../../app/src/engine/returns/review-returns.ts';
+import { BENCH_HEADER, dateCell, FUND_HEADER, fundRow, toWorkbook } from '../../fixtures/make-irr-files.ts';
+import { loadSheetJS } from '../../helpers/sheetjs.ts';
 
 const w = nodeWiring();
 const run = reviewOf(w, fixtureById('syn-standard'));
@@ -246,5 +249,63 @@ describe('benchmark coverage (R2) and dates (R3)', () => {
   test('no figure changes with the as-on date (exclusion is an owner question)', () => {
     const after = returnsForReview(reviewOf(w, fixtureById('syn-standard'), { asOn: ymdToDay(2024, 1, 1)! }).review, irr);
     assert.deepEqual(after.scopes.map((s) => s.result.fund.xirr), m.scopes.map((s) => s.result.fund.xirr));
+  });
+});
+
+// PLAN-05, the names rule on screen (the owner's rule of 26 Nov 2026: the two files are joined on the exact client
+// name). A synthetic file where client B is spelt "Sample Clint B": B of the base file has no row in it, and the
+// misspelt name is an IRR-only client (OD-4). Never joined by similarity.
+function misspeltIrr(benchOnlyForB = false): IrrFileImport {
+  const A = 'Sample Client A';
+  const BLUE = 'Sample Bluechip Fund - Regular Plan - Growth';
+  const BAL = 'Sample Balanced Advantage Fund - Regular Plan - Growth';
+  const bytes = toWorkbook(loadSheetJS(), [
+    { name: 'SI Xirr', rows: [FUND_HEADER,
+      fundRow(A, BLUE, 'SYN-1001', 'Equity', dateCell(2023, 4, 1), 'Purchase', null, 50, -10000, 'Centricity'),
+      fundRow(A, BLUE, 'SYN-1001', 'Equity', dateCell(2025, 3, 31), null, 'Closing', null, 12000, 'Centricity'),
+      fundRow('Sample Clint B', BAL, 'SYN-2001', 'Hybrid', dateCell(2024, 1, 1), 'Purchase', null, 40, -8000, null),
+      fundRow('Sample Clint B', BAL, 'SYN-2001', 'Hybrid', dateCell(2024, 12, 31), null, 'Closing', null, 8800, null),
+    ] },
+    { name: 'SI Bmxirr', rows: [BENCH_HEADER,
+      [A, BLUE, 'Equity', 'Mutual Funds', dateCell(2023, 4, 1), 'Sample Index 1', -10000],
+      [A, BLUE, 'Equity', 'Mutual Funds', dateCell(2025, 3, 31), 'Sample Index 1', 11500],
+      ...(benchOnlyForB ? [['Sample Client B', BAL, 'Hybrid', 'Mutual Funds', dateCell(2024, 1, 1), 'Sample Index 2', -8000]] : []),
+    ] },
+  ]);
+  const l = w.loadIrrFile!(bytes, 'misspelt.xlsx');
+  if (!('irr' in l)) throw new Error(l.kind);
+  return l.irr;
+}
+
+describe('base-file clients with no rows in the transactions file (PLAN-05)', () => {
+  const [a, b] = run.review.clients;
+
+  test('none when every base-file client has rows (irr-standard)', () => {
+    assert.deepEqual(returnsForReview(run.review, irrOf('irr-standard')).baseClientsWithoutRows, []);
+  });
+
+  test('a client spelt differently: the base-file client is listed by its base-file name, the other spelling is IRR-only', () => {
+    const r = returnsForReview(run.review, misspeltIrr());
+    assert.equal(a!.label, 'Sample Client A');
+    assert.deepEqual(r.baseClientsWithoutRows, [{ clientId: b!.id, clientLabel: 'Sample Client B' }]);
+    assert.deepEqual(r.scopes[0]!.result.reconciliation.irrOnlyClients, [{ clientLabel: 'Sample Clint B', flows: 2 }]);
+  });
+
+  test('named as the base file spells them, whatever the analyst\'s display label', () => {
+    const labelled = reviewOf(w, fixtureById('syn-standard'), { labels: { family: 'Sample Family', clients: { [b!.id]: 'Client Two' } } });
+    assert.deepEqual(returnsForReview(labelled.review, misspeltIrr()).baseClientsWithoutRows, [{ clientId: b!.id, clientLabel: 'Sample Client B' }]);
+  });
+
+  test('a row on either sheet counts: a client with benchmark rows only is not listed', () => {
+    assert.deepEqual(baseClientsWithoutRowsOf(run.review.clients, misspeltIrr(true)), []);
+  });
+
+  test('in review order, and pure', () => {
+    const irr = misspeltIrr();
+    const none = { ...irr, fund: [], bench: [] };
+    assert.deepEqual(baseClientsWithoutRowsOf(run.review.clients, none).map((c) => c.clientId), run.review.clients.map((c) => c.id));
+    const before = JSON.stringify(irr);
+    assert.deepEqual(baseClientsWithoutRowsOf(run.review.clients, irr), baseClientsWithoutRowsOf(run.review.clients, irr));
+    assert.equal(JSON.stringify(irr), before);
   });
 });
