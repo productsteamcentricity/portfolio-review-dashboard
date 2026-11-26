@@ -305,11 +305,17 @@ function isinOrNull(row: Cell[], col: number | undefined): string | null {
   return ISIN_FORM.test(t) ? t : null;
 }
 
-/** The ISIN of a holding: the first member row that carries one (merged folios of one instrument share it). No field
- * at all when no row carries one, so a file without an ISIN column reads exactly as before. */
+/** The ISIN of a holding: the one its member rows carry (merged folios of one instrument share it). No field at all
+ * when no row carries one, so a file without an ISIN column reads exactly as before; and none when the rows carry
+ * different ISINs (CHAT-008's S3-1): the identifier is not guessed, the name decides, and the reader says so. */
 function isinOfMembers(members: ReadonlyArray<{ isin: string | null }>): { isin?: string } {
-  for (const m of members) if (m.isin) return { isin: m.isin };
-  return {};
+  const found = [...new Set(members.map((m) => m.isin).filter((i): i is string => i !== null))];
+  return found.length === 1 ? { isin: found[0]! } : {};
+}
+
+/** True when a holding's member rows carry more than one ISIN. */
+function isinsDisagree(members: ReadonlyArray<{ isin: string | null }>): boolean {
+  return new Set(members.map((m) => m.isin).filter((i): i is string => i !== null)).size > 1;
 }
 
 function textOrNull(row: Cell[], col: number | undefined): string | null {
@@ -975,10 +981,13 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
     };
   };
   const built: Array<{ firstRow: number; h: Holding }> = [];
+  /** S3-1: holdings whose merged rows carry different ISINs (no ISIN kept). */
+  const isinConflicts: HoldingId[] = [];
   /** The holding each holding row went into (for the KI-147 notices: a merged holding carries its folios'). */
   const holdingOfRow = new Map<number, HoldingId>();
   for (const g of groupOrder) {
     const h = holdingFrom(g.members, holdingId(keyOf(['in', g.key])), { status: 'included' });
+    if (isinsDisagree(g.members)) isinConflicts.push(h.id);
     for (const m of g.members) holdingOfRow.set(m.r, h.id);
     built.push({ firstRow: g.members[0]!.r, h });
   }
@@ -1104,6 +1113,11 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
         `${plural(partial.length, 'merged holding has', 'merged holdings have')} a folio without an invested value, gain or units: that total is left blank rather than partial.`,
         { decision: 'KI-113', count: partial.length, resolution: 'auto-resolved', status: 'resolved' });
     }
+  }
+  if (isinConflicts.length) {
+    issues.add('base-file.isin-disagree', 'Warning', { kind: 'holdings', holdingIds: [...isinConflicts] },
+      `${plural(isinConflicts.length, 'merged holding has rows', 'merged holdings have rows')} with different ISINs: no ISIN is kept for ${isinConflicts.length === 1 ? 'it' : 'them'}, and the instrument name decides the match.`,
+      { decision: 'S3-1', count: isinConflicts.length, resolution: 'auto-resolved', status: 'resolved' });
   }
   if (daysBlank.length) {
     // The live page's sentence (D-041 point 2): the merged holding days are blank, never one folio's figure.

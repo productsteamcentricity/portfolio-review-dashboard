@@ -2101,11 +2101,23 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     /* ---- TRANSACTION-BASED IRR (overrides CMV-weighted XIRR when an IRR file is uploaded) ---- */
     var irrTree=null, IRRO=null, irrAsOn="";
     var irrAgg=function(){return null;}, irrCli=function(){return null;}, irrInstr=function(){return null;}, irrPlace=function(){return null;};   /* irrPlace: KI-048 */
+    var irrJoinOf=function(){return null;}, irrJoinCounts=null;   /* KI-032: how each base client joined the IRR file */
     if (REF.IRR && REF.IRR.fund && REF.IRR.fund.length){
       irrTree = computeIRRtree(REF.IRR);
       if (REF.IRR.date){ var _d=REF.IRR.date; irrAsOn=_d.getUTCDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][_d.getUTCMonth()]+" "+_d.getUTCFullYear(); }
       var _F=REF.IRR.fund, _B=REF.IRR.bench||[];
-      var nc=function(x){ return String(x||"").toUpperCase().replace(/\(.*?\)/g," ").replace(/[^A-Z0-9]+/g," ").trim(); };
+      /* KI-032: the client key. Text in brackets is dropped except the marker words (an HUF, a minor, a guardian ...),
+         which name a different holder; "&" reads as AND; the letters H U F read as HUF and U G as UG. A name with none
+         of these keys exactly as before. */
+      var _MK={HUF:"HUF",KARTA:"HUF",TRUST:"TRUST",LLP:"LLP",PVT:"PVT",PRIVATE:"PVT",LTD:"LTD",LIMITED:"LTD",CO:"CO",FIRM:"FIRM",FOUNDATION:"FOUNDATION",MINOR:"MINOR",MNR:"MINOR",UG:"UG",GUARDIAN:"UG",THRU:"UG",THROUGH:"UG",JR:"JR",JUNIOR:"JR",SR:"SR",SENIOR:"SR",LATE:"LATE",DECEASED:"LATE",DECD:"LATE",AND:"AND",JOINT:"AND",JT:"AND"};
+      var _toks=function(s){ return s.replace(/[^A-Z0-9]+/g," ").trim().split(" ").filter(Boolean); };
+      var _seq=function(w){ var o=[]; for(var i=0;i<w.length;i++){
+          if(w[i]==="H"&&w[i+1]==="U"&&w[i+2]==="F"){ o.push("HUF"); i+=2; continue; }
+          if(w[i]==="U"&&w[i+1]==="G"){ o.push("UG"); i++; continue; }
+          o.push(w[i]); } return o; };
+      var nc=function(x){ var s=String(x||"").toUpperCase().replace(/&/g," AND ").replace(/\(([^)]*)\)/g,function(_m,inner){
+          return " "+_seq(_toks(inner)).filter(function(t){ return _MK[t]; }).join(" ")+" "; });
+        return _seq(_toks(s)).join(" "); };
       var grp=function(t,kf){ var g={}; t.forEach(function(x){ var k=kf(x); (g[k]||(g[k]=[])).push({d:x.d,a:x.a}); }); return g; };
       var mapx=function(gf,gb){ var o={}; for(var k in gf){ o[k]={f:xirr(gf[k]), b:(gb[k]?xirr(gb[k]):null)}; } return o; };
       var cliV=mapx(grp(_F,function(t){return nc(t.client);}), grp(_B,function(t){return nc(t.client);}));
@@ -2119,10 +2131,54 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       var cliInstr={}, cliKeys={};
       _F.forEach(function(t){ var c=nc(t.client); cliKeys[c]=1; (cliInstr[c]||(cliInstr[c]={}))[t.instrument]=1; });
       var cliList=Object.keys(cliKeys), instrCache={};
-      var resolveClient=function(cn){ var k=nc(cn); if(cliKeys[k])return k;
-        var bt=k.split(" ").filter(Boolean), best=null, bestn=0;
+      /* KI-032: the client join is decided once, before any figure: the exact key; else a unique variant (salutations
+         dropped, marker words equal, the shorter name contained in the longer with initials, and when the lengths differ
+         the first and last words equal and at most one more full word; one candidate each way); else none. The old rule
+         (two shared words, first in the file on a tie) is kept only to say in the client's note why a near name was not
+         joined. */
+      var _oldBest=function(k){ var bt=k.split(" ").filter(Boolean), best=null, bestn=0;
         cliList.forEach(function(ck){ var ct=ck.split(" "), n=0; bt.forEach(function(x){ if(ct.indexOf(x)>=0)n++; }); if(n>bestn){bestn=n;best=ck;} });
         return bestn>=2?best:null; };
+      var _SAL={MR:1,MRS:1,MS:1,MISS:1,DR:1,SHRI:1,SRI:1,SMT:1,SHRIMATI:1,KUM:1,MASTER:1};
+      var _parts=function(k){ var out=[], ent={};
+        k.split(" ").filter(Boolean).forEach(function(x){ if(_SAL[x]) return; if(_MK[x]){ ent[_MK[x]]=1; return; } out.push(x); });
+        return {w:out, e:Object.keys(ent).sort().join(" ")}; };
+      var _ini=function(a,b){ return a===b||(a.length===1&&b.charAt(0)===a)||(b.length===1&&a.charAt(0)===b); };
+      var _fits=function(S,L){ if(S.length>L.length) return false;
+        if(S.filter(function(x){ return x.length>1; }).length<2) return false;
+        var used=L.map(function(){ return false; });
+        var take=function(ok){ for(var j=0;j<L.length;j++) if(!used[j]&&ok(L[j])){ used[j]=true; return true; } return false; };
+        for(var i=0;i<S.length;i++){ var s=S[i]; if(s.length>1&&!take(function(y){ return y===s; })) return false; }
+        for(i=0;i<S.length;i++){ var c=S[i]; if(c.length===1&&!take(function(y){ return y===c; })&&!take(function(y){ return y.charAt(0)===c; })) return false; }
+        if(S.length<L.length){
+          if(!_ini(S[0],L[0])||S[S.length-1]!==L[L.length-1]) return false;
+          if(L.filter(function(y,j){ return !used[j]&&y.length>1; }).length>1) return false; }
+        return true; };
+      var _variant=function(a,b){ return _fits(a,b)||_fits(b,a); };
+      var _baseK={}; rows.forEach(function(h){ var k=nc(h.client); if(k) _baseK[k]=1; });
+      var _bases=Object.keys(_baseK), _claimed={};
+      _bases.forEach(function(k){ if(cliKeys[k]) _claimed[k]=1; });
+      var _P={}; cliList.forEach(function(c){ _P[c]=_parts(c); });
+      var _cand={}, _ent={}, _by={};
+      _bases.forEach(function(k){ if(cliKeys[k]) return; var p=_parts(k), c=[], ne=0;
+        cliList.forEach(function(ic){ if(_claimed[ic]) return; var q=_P[ic]; if(!_variant(p.w,q.w)) return;
+          if(p.e===q.e){ c.push(ic); (_by[ic]||(_by[ic]=[])).push(k); } else ne++; });
+        _cand[k]=c; _ent[k]=ne; });
+      var _join={}; irrJoinCounts={exact:0, variant:0, refused:0, none:0};
+      _bases.forEach(function(k){ var j;
+        if(cliKeys[k]) j={key:k, how:"exact"};
+        else if(_cand[k].length===1&&_by[_cand[k][0]].length===1) j={key:_cand[k][0], how:"variant"};
+        else { var ob=_oldBest(k), why=null;
+          if(_cand[k].length>1) why="more than one client in the IRR file could be this client";
+          else if(_cand[k].length) why="the IRR client with a similar name could also be another client";
+          else if(_ent[k]) why="the IRR client with a similar name is a different entity or holder (an HUF, trust, company, minor, guardian, joint, junior, senior or late holder)";
+          else if(ob&&_claimed[ob]) why="the IRR client with a similar name is another client's exact name";
+          else if(ob&&_P[ob].e!==_parts(k).e) why="the IRR client with a similar name is a different entity or holder (an HUF, trust, company, minor, guardian, joint, junior, senior or late holder)";
+          else if(ob) why="the names differ by more than a salutation, initials, a middle name or the word order";
+          j={key:null, how:why?"refused":"none", why:why}; }
+        _join[k]=j; irrJoinCounts[j.how]++; });
+      var resolveClient=function(cn){ var k=nc(cn); if(cliKeys[k])return k; var j=_join[k]; return j?j.key:null; };
+      irrJoinOf=function(cn){ return _join[nc(cn)]||null; };
       var keyMemo={};
       var irrKey=function(h){ var mk=String(h.client)+"\u0001"+h.name+"\u0001"+(h.amc||""); if(mk in keyMemo) return keyMemo[mk];
         var rc=resolveClient(h.client), mi=null;
@@ -2364,10 +2420,11 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       /* KI-048 / KI-100: what the transaction-based figures include beyond the holdings, and what is blank, case by case */
       var irrNote=null;
       if(IRRO){
-        if(!irrCli(cn)) irrNote="§ No transactions for this client in the IRR file: XIRR/BMXIRR are the base file's, CMV-weighted.";
+        if(!irrCli(cn)){ var _jr=irrJoinOf(cn); irrNote=(_jr&&_jr.how==="refused")?("§ Not joined to a client in the IRR file: "+_jr.why+". XIRR/BMXIRR are the base file's, CMV-weighted."):"§ No transactions for this client in the IRR file: XIRR/BMXIRR are the base file's, CMV-weighted."; }   /* KI-032 */
         else {
           var _nu=0,_ucmv=0,_nn=0; C2.rows.forEach(function(h){ var r=irrInstr(h); if(!r){ _nu++; _ucmv+=h.cmvCr; } else if(r.f==null||r.b==null) _nn++; });
           var _x=_px||{placed:0,aOnly:0,unplaced:0,benchOnly:0}, _ext=_x.placed+_x.unplaced, _np=[];
+          if((irrJoinOf(cn)||{}).how==="variant") _np.push("joined to the IRR file's client by a name variant (a salutation, initials, a middle name or the word order)");   /* KI-032 */
           var _pl=function(n,one,many){ return n+" "+(n>1?many:one); };
           if(_x.placed) _np.push(_pl(_x.placed,"instrument","instruments")+" not held or not matched to a holding "+(_x.placed>1?"are":"is")+" included by the IRR file's labels ("+unit.m(_x.pIn)+" invested, "+unit.m(_x.pOut)+" redeemed or closing value"+(_x.aOnly?("; "+_x.aOnly+" in an asset subtotal only, no product row matching "+(_x.aOnly>1?"their product labels":"its product label")):"")+")");
           if(_x.unplaced) _np.push(_pl(_x.unplaced,"instrument","instruments")+" not held or not matched to a holding could not be placed in a subtotal by "+(_x.unplaced>1?"their":"its")+" labels and "+(_x.unplaced>1?"count":"counts")+" only in the Grand Total ("+unit.m(_x.uIn)+" invested, "+unit.m(_x.uOut)+" redeemed or closing value)");
@@ -2382,7 +2439,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
           if(_np.length) irrNote="§ Transaction-based XIRR/BMXIRR: "+_np.join("; ")+".";
         }
       }
-      return {name:cn, totalCMV:ctot, totalInv:C2.ni?C2.inv:null, rows:outRows, covNote:covNote, invMissing:C2.im, invNote:invNote, irrNote:irrNote};
+      return {name:cn, totalCMV:ctot, totalInv:C2.ni?C2.inv:null, rows:outRows, covNote:covNote, invMissing:C2.im, invNote:invNote, irrNote:irrNote, irrJoin:IRRO?((irrJoinOf(cn)||{}).how||null):null};   /* irrJoin: KI-032 */
     });
 
     /* ---- ANALYTICS (CMV-weighted, hybrid split, normalise last) ---- */
@@ -3120,7 +3177,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       invMissing:invMissing, invNote:invMissing?("‡ Invested value and gain/loss total only the holdings that have an invested value: "+invMissing+" holding"+(invMissing>1?"s":"")+" without one ("+(Math.round((totalCMV?(totalCMV-invCmv)/totalCMV*100:0)*100)/100).toFixed(2)+"% of CMV)."):null,
       holdings:rows, unmatched:unmatched,
       allocByDistributor:allocByDistributor, allocByClient:allocByClient,
-      irr:irrTree, irrActive:!!IRRO, irrAsOn:irrAsOn,
+      irr:irrTree, irrActive:!!IRRO, irrAsOn:irrAsOn, irrJoin:irrJoinCounts,
       assetAllocation:{rows:aaRows, presentAssets:presentAssets},
       assetPie:assetPie, liqPie:liqPie,
       amc:{rows:amcRows, mfTotal:mfTotal, breaches:amcBreaches, max:amcRows[0]||null, notGiven:amcNotGiven},   /* OD-34 */

@@ -43,7 +43,7 @@ describe('the base file\'s ISIN column', () => {
     assert.equal(base.holdings[0]?.instrument, null);
   });
 
-  test('merged folios of one instrument keep the first ISIN given', () => {
+  test('merged folios of one instrument keep the one ISIN given', () => {
     const base = holdingsOf([
       ['Client Name', 'Instrument Name', 'Folio No', 'ISIN', 'Current Market Value (Cr.)'],
       ['Sample Client A', 'Sample Fund 1', 'F1', '', 1],
@@ -51,5 +51,22 @@ describe('the base file\'s ISIN column', () => {
     ]);
     assert.equal(base.holdings.length, 1);
     assert.equal(base.holdings[0]?.isin, 'INF000A01011');
+    assert.equal(base.issues.some((i) => i.ruleId === 'base-file.isin-disagree'), false);
+  });
+
+  test('S3-1: merged rows with different ISINs keep none, and the reader says so', () => {
+    const base = holdingsOf([
+      ['Client Name', 'Instrument Name', 'Folio No', 'ISIN', 'Current Market Value (Cr.)'],
+      ['Sample Client A', 'Sample Fund 1', 'F1', 'INF000A01011', 1],
+      ['Sample Client A', 'Sample Fund 1', 'F2', 'INF000B01012', 2],
+      ['Sample Client A', 'Sample Fund 2', 'F3', 'INF000C01013', 3],
+    ]);
+    const one = base.holdings.find((h) => h.instrumentName === 'Sample Fund 1')!;
+    assert.equal('isin' in one, false);
+    assert.equal(base.holdings.find((h) => h.instrumentName === 'Sample Fund 2')?.isin, 'INF000C01013');
+    const w = base.issues.filter((i) => i.ruleId === 'base-file.isin-disagree');
+    assert.equal(w.length, 1);
+    assert.equal(w[0]?.severity, 'Warning');
+    assert.deepEqual(w[0]?.scope, { kind: 'holdings', holdingIds: [one.id] });
   });
 });
