@@ -78,6 +78,28 @@ describe('section 1: holdings matched when a base file is picked', () => {
     assert.equal(b.get().upload.stage, 'review', 'the review still opens');
   });
 
+  test('a matcher that throws when a monitor change re-matches the file: the failure is said there too (CHAT-008 B1)', () => {
+    const w = nodeWiring();
+    const first = w.matchHoldings!;
+    let calls = 0;
+    w.matchHoldings = (loaded, overrides) => {
+      calls++;
+      if (calls > 1) throw new Error('the alias block could not be read');
+      return first(loaded, overrides);
+    };
+    const s = createStore({ wiring: w, prefs: memoryPrefs().prefs, logos: [] });
+    s.dispatch({ type: 'file-picked', fileName: 'b.xlsx', bytes: BYTES });
+    assert.equal(s.get().match?.failed, undefined, 'the first load matched');
+    assert.ok(s.get().match!.entries.length > 0);
+    s.dispatch({ type: 'monitor-remove', kind: 'mf-regular' });
+    assert.equal(calls, 2, 'the monitor change re-matched the file');
+    assert.equal(s.get().match?.failed, 'the alias block could not be read');
+    const l = s.get().upload.loaded!;
+    const m = buildImportReport(l.source, l.base, s.get().match).matching;
+    assert.equal(m.error, `${MATCHING_FAILED} The reason: the alias block could not be read`);
+    assert.notEqual(m.summary, MATCHING_NO_DATA, 'never the no-data sentence');
+  });
+
   test('a product-class table the reader cannot fully read still matches, and names the rule it skipped', () => {
     const blocks = committedBlocks();
     const rules = [{ class: 'BOND', keywords: ['deposit'], label: 'Future deposits', currencyAny: ['eur'] }, ...(blocks.PRODUCT_CLASS_RULES as unknown[])];
