@@ -218,6 +218,10 @@
    reported) and the blank template, is on `feat/m7a-cg-reader` (PR #35), not wired into the page yet. Lot classes,
    the tax rules and the tax engine stay owner-gated (PD-16, LP-01).
    Model contracts-2 (types only): contract I-37 (`app/src/model/tax.ts`) and the analyst question as a union on its kind.
+
+   **Claude: M3a wiring** (test build 1, `feat/m3a-wiring`): the transactions (IRR) upload in section 1 and the returns
+   view in section 4 (family, client and adviser scopes; fund and benchmark XIRR; the IRR tree; contributors and
+   laggards) with a Fund IRR sheet, without a model change (PLAN-04 option B); I-41 follows test build 1.
 6. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;
