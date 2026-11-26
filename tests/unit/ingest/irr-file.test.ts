@@ -7,14 +7,14 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readWorkbook } from '../../../app/src/ingest/workbook.ts';
-import { parseIrrFile, kindOf, readAmount } from '../../../app/src/ingest/irr-file.ts';
+import { parseIrrFile, kindOf, readAmount, sheetPeriodOf } from '../../../app/src/ingest/irr-file.ts';
 import type { IrrFileImport } from '../../../app/src/model/transactions.ts';
 import type { SourceFileId } from '../../../app/src/model/ids.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
 import { ymdToDay } from '../../../app/src/engine/dates.ts';
 import { parseBaseFile } from '../../../app/src/ingest/base-file.ts';
 import { loadSheetJS } from '../../helpers/sheetjs.ts';
-import { irrFixtures, DATE_CASES, toWorkbook, FUND_HEADER, fundRow, dateCell } from '../../fixtures/make-irr-files.ts';
+import { irrFixtures, DATE_CASES, toWorkbook, FUND_HEADER, BENCH_HEADER, fundRow, dateCell } from '../../fixtures/make-irr-files.ts';
 import { syntheticFixtures } from '../../fixtures/make-books.ts';
 
 const SRC = 'a'.repeat(64) as SourceFileId;
@@ -214,5 +214,90 @@ describe('OD-4 duplicate folios: flagged, never altered (financial review of 058
     assert.ok(!i.message.includes('SYN-'), 'the folio never appears in a message');
     assert.equal(imp.fund.length, 6);
     assert.deepEqual(imp.fund.map((t) => t.folio), ['SYN-9001', 'SYN-9001', 'SYN-9002', 'SYN-9002', 'SYN-9003', 'SYN-9003']);
+  });
+});
+
+// ARC-03's low finding on PLAN-05: "SI" must be the name's first word. A sheet whose name merely starts with the letters
+// SI ("SIP Xirr", a later sheet) must not replace the since-inception sheet; a reader that takes "SI" anywhere in the
+// name (or as a bare prefix) would read the SIP sheet's flows and fails here.
+describe('the since-inception sheet is "SI" as a word: "SI Xirr" wins over a later "SIP Xirr"', () => {
+  test('fund and benchmark: the SI pair is read, the SIP pair is not needed', () => {
+    const A = 'Sample Client A';
+    const F = 'Sample Bluechip Fund';
+    const fund = (amount: number, d: number): ReturnType<typeof fundRow> => fundRow(A, F, 'SYN-1001', 'Equity', dateCell(2024, 1, d), 'Purchase', null, 10, amount, null);
+    const bench = (amount: number, d: number): Array<string | number | null | { v: number; z: string }> => [A, F, 'Equity', 'Mutual Funds', dateCell(2024, 1, d), 'Sample Index 1', amount];
+    const wb = toWorkbook(xlsx, [
+      { name: 'SI Xirr', rows: [FUND_HEADER, fund(-100, 1), fund(-200, 2)] },
+      { name: 'SI Bmxirr', rows: [BENCH_HEADER, bench(-100, 1), bench(-200, 2)] },
+      { name: 'SIP Xirr', rows: [FUND_HEADER, fund(-7, 9)] },
+      { name: 'SIP Bmxirr', rows: [BENCH_HEADER, bench(-7, 9)] },
+    ]);
+    const imp = parseIrrFile(readWorkbook(xlsx, wb), { sourceId: SRC, now: NOW });
+    assert.equal(imp.fundSheet?.name, 'SI Xirr');
+    assert.equal(imp.benchSheet?.name, 'SI Bmxirr');
+    assert.deepEqual(imp.fund.map((t) => t.amountRupees), [-100, -200]);
+    assert.deepEqual(imp.bench.map((t) => t.amountRupees), [-100, -200]);
+    assert.deepEqual(imp.sheets.map((s) => s.outcome), ['used', 'used', 'not-needed', 'not-needed']);
+  });
+});
+
+// MOD-04's follow-up to PLAN-05, the sheet-pairing guard: the fund and benchmark sheets come from the same period (the
+// first word of the name: SI, YTD or QTD). Each benchmark sheet carries its own amount, so the test sees which was read.
+describe('the sheet-pairing guard: fund and benchmark sheets of the same period', () => {
+  const A = 'Sample Client A';
+  const F = 'Sample Bluechip Fund';
+  const fundSheet = (name: string, amount = -100): { name: string; rows: ReturnType<typeof fundRow>[] } =>
+    ({ name, rows: [FUND_HEADER, fundRow(A, F, 'SYN-1001', 'Equity', dateCell(2024, 1, 1), 'Purchase', null, 10, amount, null)] });
+  const benchSheet = (name: string, amount: number): { name: string; rows: Array<Array<string | number | null | { v: number; z: string }>> } =>
+    ({ name, rows: [BENCH_HEADER, [A, F, 'Equity', 'Mutual Funds', dateCell(2024, 1, 1), 'Sample Index 1', amount]] });
+  const read = (sheets: Parameters<typeof toWorkbook>[1]): IrrFileImport => parseIrrFile(readWorkbook(xlsx, toWorkbook(xlsx, sheets)), { sourceId: SRC, now: NOW });
+
+  test('SI fund with only a YTD benchmark: no benchmark read, a Warning naming the two sheets', () => {
+    const imp = read([fundSheet('SI Xirr'), benchSheet('YTD Bmxirr', -2)]);
+    assert.equal(imp.fundSheet?.name, 'SI Xirr');
+    assert.equal(imp.benchSheet, null);
+    assert.equal(imp.bench.length, 0);
+    const i = issue(imp, 'sheet-period-mismatch')!;
+    assert.equal(i.severity, 'Warning');
+    assert.ok(i.message.includes('"YTD Bmxirr"') && i.message.includes('"SI Xirr"'), i.message);
+    assert.ok(!new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`).test(i.message), 'no en or em dash (D-029)');
+    assert.equal(issue(imp, 'no-bench-sheet'), undefined, 'the mismatch is said in place of "no benchmark sheet"');
+    assert.deepEqual(imp.sheets.map((s) => [s.sheet, s.outcome]), [['SI Xirr', 'used'], ['YTD Bmxirr', 'not-needed']]);
+  });
+
+  test('SI fund with SI and YTD benchmarks, in either order: the SI benchmark is read, no Warning', () => {
+    for (const order of [['SI Bmxirr', 'YTD Bmxirr'], ['YTD Bmxirr', 'SI Bmxirr']]) {
+      const imp = read([fundSheet('SI Xirr'), ...order.map((n) => benchSheet(n, n.startsWith('SI') ? -1 : -2))]);
+      assert.equal(imp.benchSheet?.name, 'SI Bmxirr', order.join(', '));
+      assert.deepEqual(imp.bench.map((t) => t.amountRupees), [-1]);
+      assert.equal(issue(imp, 'sheet-period-mismatch'), undefined);
+    }
+  });
+
+  test('a YTD fund sheet (no SI fund sheet) with SI and YTD benchmarks: the YTD benchmark, not the SI one', () => {
+    const imp = read([fundSheet('YTD Xirr'), benchSheet('SI Bmxirr', -1), benchSheet('YTD Bmxirr', -2)]);
+    assert.deepEqual([imp.fundSheet?.name, imp.benchSheet?.name], ['YTD Xirr', 'YTD Bmxirr']);
+    assert.deepEqual(imp.bench.map((t) => t.amountRupees), [-2]);
+    assert.equal(issue(imp, 'sheet-period-mismatch'), undefined);
+  });
+
+  test('a QTD-only pair is used, the period read without regard to case', () => {
+    const imp = read([fundSheet('QTD Xirr'), benchSheet('qtd Bmxirr', -3)]);
+    assert.deepEqual([imp.fundSheet?.name, imp.benchSheet?.name], ['QTD Xirr', 'qtd Bmxirr']);
+    assert.deepEqual(imp.bench.map((t) => t.amountRupees), [-3]);
+    assert.equal(issue(imp, 'sheet-period-mismatch'), undefined);
+  });
+
+  test('legacy names (no period) pair as before, with or without a period on the other sheet', () => {
+    for (const [f, b] of [['Old Xirr', 'Old Bmxirr'], ['SI Xirr', 'Index Bmxirr'], ['Fund Xirr', 'YTD Bmxirr']]) {
+      const imp = read([fundSheet(f!), benchSheet(b!, -4)]);
+      assert.deepEqual([imp.fundSheet?.name, imp.benchSheet?.name], [f, b]);
+      assert.equal(issue(imp, 'sheet-period-mismatch'), undefined);
+    }
+  });
+
+  test('sheetPeriodOf: SI, YTD or QTD as the first word only', () => {
+    assert.deepEqual(['SI Xirr', 'ytd Bmxirr', ' QTD Xirr', 'SIP Xirr', 'Old SI Xirr', 'YTDX Xirr', 'Xirr'].map(sheetPeriodOf),
+      ['SI', 'YTD', 'QTD', null, null, null, null]);
   });
 });

@@ -7,6 +7,8 @@
 //     column: benchmark; with an amount column: fund); the header in the first 20 rows with a client, an amount and a
 //     date column (the I-04 aliases, matched on the upper-cased header and on the header with its parenthesised unit
 //     and currency signs removed, as the legacy hmap does);
+//   - the sheet-pairing guard (MOD-04): a fund and a benchmark sheet whose names start with different periods (SI, YTD,
+//     QTD) are never paired; the benchmark sheet of the fund sheet's period is taken, else none, with a Warning;
 //   - columns: the I-04 alias groups unchanged, plus the DISTRIBUTOR column (E-142; the legacy parser ignores it);
 //   - dates: THE FREE-TEXT DATE RULE of model/transactions.ts (KI-186): a serial by excelSerialToDay (its whole day,
 //     KI-211: never the next day from noon), text by parseDayText (the date as written; a zone never moves it); any
@@ -165,6 +167,12 @@ export function readFlowDay(cell: Cell | undefined, date1904: boolean): { day: D
 
 const textOrNull = (c: Cell | undefined): string | null => { const t = cellText(c); return t === '' ? null : t; };
 
+/** A sheet's period: the first word of its name when it is SI, YTD or QTD (any case), else null (MOD-04, PLAN-05). */
+export function sheetPeriodOf(name: string): 'SI' | 'YTD' | 'QTD' | null {
+  const m = /^(SI|YTD|QTD)\b/i.exec(name.trim());
+  return m ? (m[1]!.toUpperCase() as 'SI' | 'YTD' | 'QTD') : null;
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 
 class Issues {
@@ -208,11 +216,13 @@ export function parseIrrFile(wb: Workbook, opts: IrrFileOptions): IrrFileImport 
   let fundSi = false;
   const found = new Map<Sheet, 'by-name' | 'by-content'>();
   const nameMatched = new Set<Sheet>();
+  const benchNamed: Sheet[] = [];
   const isSi = (u: string): boolean => /^SI\b/.test(u.trim());
   for (const s of wb.sheets) {
     const u = s.name.toUpperCase();
     if (u.includes('BMXIRR') || u.includes('BM XIRR') || u.includes('BMX')) {
       nameMatched.add(s);
+      benchNamed.push(s);
       if (!benchSi || isSi(u)) { benchSh = s; benchSi = isSi(u); }
     } else if (u.includes('XIRR')) {
       nameMatched.add(s);
@@ -230,6 +240,18 @@ export function parseIrrFile(wb: Workbook, opts: IrrFileOptions): IrrFileImport 
       // A sheet named for a side that a later sheet of the same name test won is not needed, whatever its header.
       if (!nameMatched.has(s)) triedNoHeader.add(s);
     }
+  }
+  // The sheet-pairing guard (MOD-04, PLAN-05 follow-up): the fund and benchmark sheets come from the same period. A
+  // sheet's period is the first word of its name when that word is SI, YTD or QTD; else it has none, and the pairing
+  // is as before (legacy names such as "Old Xirr"). When both have a period and they differ, the benchmark sheet of the
+  // fund sheet's period is taken if the file has one (the last, as in the legacy); else no benchmark is read, with a
+  // Warning naming the two sheets (sheet names only, never client data).
+  let periodMismatch: { fund: string; bench: string } | null = null;
+  const fundPeriod = fundSh ? sheetPeriodOf(fundSh.name) : null;
+  const benchPeriod = benchSh ? sheetPeriodOf(benchSh.name) : null;
+  if (fundSh && benchSh && fundPeriod !== null && benchPeriod !== null && fundPeriod !== benchPeriod) {
+    const same = benchNamed.filter((s) => sheetPeriodOf(s.name) === fundPeriod).pop();
+    if (same) { benchSh = same; found.set(same, 'by-name'); } else { periodMismatch = { fund: fundSh.name, bench: benchSh.name }; benchSh = null; }
   }
 
   const skipped: IrrSkippedRow[] = [];
@@ -337,7 +359,11 @@ export function parseIrrFile(wb: Workbook, opts: IrrFileOptions): IrrFileImport 
       { resolution: 'auto-resolved', status: 'resolved' });
     if (fund.length === 0) issues.add('no-fund-flows', 'Blocking', { kind: 'sheet', sourceId, sheet: fundRead.read.name }, 'The fund sheet has no row that could be read as a flow.');
   }
-  if (!benchRead.read) {
+  if (!benchRead.read && periodMismatch !== null) {
+    // In place of "no sheet holds benchmark flows": one does, of another period.
+    issues.add('sheet-period-mismatch', 'Warning', fileScope,
+      `The benchmark sheet "${periodMismatch.bench}" is not of the same period as the fund sheet "${periodMismatch.fund}" (SI, YTD or QTD), and the file has no benchmark sheet of that period, so no benchmark flows are read and no benchmark XIRR can be computed.`);
+  } else if (!benchRead.read) {
     issues.add('no-bench-sheet', 'Warning', fileScope,
       'No sheet holds benchmark flows ("Bmxirr" in its name, or a benchmark-amount column), so no benchmark XIRR can be computed.');
   }
