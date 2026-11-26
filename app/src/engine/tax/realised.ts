@@ -336,8 +336,8 @@ function realiseOne(x: LotCtx): TaxLot {
   };
   const notComputed = (reason: NotComputedReason, status: MissingStatus = NA): TaxLot => {
     if (reason === 'amount-missing') {
-      // TODO(contracts-3): 'amount-missing' joins NotComputed
-      g.notComputed = 'no-valid-key';
+      // The contract holds it since contracts-3 (PR #45, 26 Nov 2026).
+      g.notComputed = 'amount-missing';
       g.notComputedDetail = 'amount-missing';
     } else if (reason === 'cost-missing') {
       g.notComputed = 'cost-input-missing';

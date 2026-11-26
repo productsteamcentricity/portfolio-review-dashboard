@@ -75,11 +75,11 @@ export type TaxLot = RealisedGain & {
   exempt: boolean;
   /**
    * The precise amount reason behind `notComputed` (MOD-04, 26 Nov 2026): 'amount-missing' (Sell Amount or, for the
-   * grandfathered formula, Sale Unit or the 31 Jan 2018 price blank or invalid) with `notComputed: 'no-valid-key'`
-   * until the contract holds it; 'cost-missing' (Invested Value blank or invalid) with `notComputed:
+   * grandfathered formula, Sale Unit or the 31 Jan 2018 price blank or invalid) with `notComputed: 'amount-missing'`
+   * (contracts-3); 'cost-missing' (Invested Value blank or invalid) with `notComputed:
    * 'cost-input-missing'`. Null for every other reason.
    */
-  // TODO(contracts-3): 'amount-missing' joins NotComputed
+  // 'amount-missing' is also the contract's NotComputed since contracts-3; this detail still tells a blank cost apart.
   notComputedDetail: 'amount-missing' | 'cost-missing' | null;
   /** NE-LT-1: each leg's cost, gain and tax, beside the contract's `legs`. */
   legDetail: LegDetail | null;

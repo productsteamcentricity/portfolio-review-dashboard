@@ -549,12 +549,12 @@ describe('the contract shape (model/tax.ts RealisedGain, I-37): Value fields, pr
     near(v(x.taxableGain), 1000, 'taxable gain');
     assert.deepEqual([x.notComputed, x.notComputedDetail], [null, null]);
   });
-  test('a blank Sell Amount: no-valid-key with detail amount-missing; a blank Invested Value: cost-input-missing with detail cost-missing', () => {
+  test('a blank Sell Amount: amount-missing (contracts-3); a blank Invested Value: cost-input-missing with detail cost-missing', () => {
     const { g } = run([
       L(EQ, [2021, 1, 4], [2023, 1, 5], { over: { sell: null } }),
       L(EQ, [2021, 1, 4], [2023, 1, 5], { over: { invested: null } }),
     ]);
-    assert.deepEqual([g[0]!.ruleId, g[0]!.notComputed, g[0]!.notComputedDetail, v(g[0]!.taxableGain)], ['EQ-LT-3', 'no-valid-key', 'amount-missing', null]);
+    assert.deepEqual([g[0]!.ruleId, g[0]!.notComputed, g[0]!.notComputedDetail, v(g[0]!.taxableGain)], ['EQ-LT-3', 'amount-missing', 'amount-missing', null]);
     assert.deepEqual([g[1]!.ruleId, g[1]!.notComputed, g[1]!.notComputedDetail, v(g[1]!.taxableGain)], ['EQ-LT-3', 'cost-input-missing', 'cost-missing', null]);
     assert.ok(!g[1]!.flags.includes('cost-input-missing'), 'the cost-input-missing issue stays the grandfathered cost input only');
     assert.deepEqual([g[0]!.taxableGain.kind, g[1]!.costForTax.kind], ['missing', 'missing']);
