@@ -212,16 +212,62 @@ only as zip/XML.
 
 ### Step 4: risk-ratio workbook
 
-The `Fund Risk Ratios & 3Y Rolling - All Funds (as on …).xlsx` workbook is computed in-house from AMFI NAV
-history and the five TRI files in `Index TRI`. **The previous owner's toolchain (`C:\Temp\navwork`) has not
-arrived yet.**
+The `Fund Risk Ratios & 3Y Rolling - All Funds (as on …).xlsx` workbook is computed in-house (PD-61; D-026 unchanged)
+from AMFI NAV history and the five TRI series. It was first run this way for 31 Oct 2026 on 19 Nov 2026 (refresh log
+2026-10, §9, the worked example). The method is in `previous-owner/knowledge/KNOWLEDGE_DUMP.md` §1.1 and §2.2.
 
-Until it does:
-- skip this step and step 7a;
-- MF_RISK and `DATA_DATES.risk` stay at 30 Sep 2026, and the MF Analysis caption says so;
-- record this in the log.
+**Where the tools are** (outside the repository and OneDrive):
+- `C:\dev\risk-tools` is the baseline, kept as received plus the reviewed changes.
+- `C:\Temp\navwork` is the working copy. It leaves out the nine Excel-COM scripts (`Render*.ps1`, `WriteAug.ps1`,
+  `ExcelCheckPR.ps1`, `FinalCheck.ps1`, `TestCom*.ps1`, `Bisect.ps1`), which are never run.
+- `NAVWORK_README.md` in both folders is the toolchain's own manual.
 
-The method is described in `previous-owner/knowledge/KNOWLEDGE_DUMP.md` §1.1 and §2.2.
+**Launch rule** (the owner, 19 Nov 2026):
+- Each script runs as `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script> <args>`, one process each, with
+  no policy change.
+- **Only a script whose SHA-256 ARC-02 has reviewed** runs. Check the hash just before the run, and record every run
+  in the log.
+- No Excel or PowerPoint is started or automated; workbooks are read and written as zip/XML.
+
+**Inputs:**
+- the previous month's NAV workbook, `02 Archive\<PREVM>\NAV Data as on <date>.xlsx` (for November:
+  `02 Archive\2026-10\NAV Data as on 31st October 2026.xlsx`, SHA-256 `3574f237…`);
+- `Benchmarks\NSE Data_….xlsx`, the vendor's "NAV Data" export, kept as received;
+- the AMFI NAV history fetched for the month (step 4b).
+
+**The chain** (each step a hard stop; the October scripts are named, and their month-parameterised successors replace
+them once ARC-02 has reviewed them, a separate toolchain item after LP-19):
+
+| # | Script (October name, reviewed SHA-256) | What it does | Must hold |
+|---|---|---|---|
+| 1 | `AmfiFetch.ps1` (`d20fcb57…`, LP-19) | Fetches the month's NAVs from portal.amfiindia.com (the only online step) and writes `amfi_<mon>.tsv` and `amfi_<mon>_ids.tsv` (step 4b) | Every chunk fetched. Fetch only after AMFI has published month-end (one request for the last days first). |
+| 2 | `ConvertVendorTri.ps1` (`d1433a17…`) | Reads the NSE export's five price/TRI column pairs (0-based, as recorded for October: NIFTY 100 7/8, NIFTY 50 15/16, NIFTY 500 19/20, Midcap 150 131/132, Smallcap 250 199/200) and keeps the trading days. Repeated-close days are dropped and printed. | The column map is checked against the header names, never assumed. |
+| 3 | `ReconcileOct.ps1` (`ae119b73…`) | Compares the converted TRI with the previous workbook's overlap (and with niftyindices files, if any) | 0 mismatches |
+| 4 | `BuildOct.ps1` (`cd937763…`) | Appends the month to the NAV workbook | A TRI value for every index on every weekday of the month; no interpolation of a gap, ever |
+| 5 | `VerifyOct.ps1` (`f938b381…`) | Checks the new workbook | Prior rows unchanged; 0 calendar gaps; every new NAV cell equals AMFI |
+| 6 | `GenOctMetrics.ps1` (`ce39f6c0…`) | Computes the metrics: first as on the previous month-end with `-Regression`, then as on the new one | The regression shows 0 differing rows against last month's published metrics |
+| 7 | `BuildPRSep.ps1` (`6b2244db…`, unchanged) | Writes the risk workbook (NAVWORK_README §2 step 11 on its text encoding). It runs only at the reviewed hash. | Exit 0 |
+| 8 | `VerifyPROct.ps1` (`8a2ce821…`) | Checks every value of the workbook against the metrics | 0 mismatches; the title reads the as-on date |
+
+**Label and price day.** The label is the month-end ("30 Nov 2026"). Log the last trading day if it is earlier: for
+October it was Fri 30 Oct, and Sat 31 Oct carried the Friday close, as the workbook had done for 20 earlier weekend
+rows.
+
+**Archive.** After the publish, copy the two outputs into `02 Archive\<M>` under the September names (step 10).
+
+**If anything fails, or a script has no reviewed hash:** skip this step and step 7a. MF_RISK and `DATA_DATES.risk`
+stay at the previous month, the MF Analysis caption says so, and the log lists it under "Blocks left stale".
+
+### Step 4b: the AmfiFetch ids file (for the new build)
+
+`AmfiFetch.ps1` (`d20fcb57…`, installed 25 Nov 2026, LP-19) also writes `amfi_<mon>_ids.tsv` next to the NAV file.
+- It has one row per AMFI scheme code, with the columns `code`, `isin_growth_or_payout`, `isin_reinvestment`, `name`,
+  `plan`, `option`, `amc`, `category`, `last_serial` and `last_date`. The latest date in the window wins.
+- It is UTF-8 without BOM, CRLF, sorted by code.
+- **Values are as AMFI gives them.** For 23–24 Nov, three codes carried "-" as an ISIN and one carried "HDFCNIVODG".
+  A row whose name holds a ";" is skipped and counted in the script's console line.
+- **Hand the file to the new build** (NB-02 derives `data/identifiers/amfi-isin.json` from it and validates the ISIN
+  form). Record its SHA-256, row count and the console line in the log. It is not committed by the refresh branch.
 
 ### Step 5: build and gate
 
