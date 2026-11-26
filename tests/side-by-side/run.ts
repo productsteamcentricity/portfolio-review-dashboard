@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { REPO, loadSheetJS } from '../helpers/sheetjs.ts';
 import { syntheticFixtures, buildVariants, SYNTHETIC_BOOK } from '../fixtures/make-books.ts';
 import type { BookRow } from '../fixtures/make-books.ts';
-import { irrFixtures } from '../fixtures/make-irr-files.ts';
+import { irrFixtures, standardSheets, toWorkbook } from '../fixtures/make-irr-files.ts';
 import { runLegacy } from './legacy.ts';
 import { runNew } from './next.ts';
 import { compareSides, loadLedger } from './compare.ts';
@@ -48,7 +48,11 @@ export function syntheticCases(): Case[] {
   const syn = syntheticFixtures(xlsx).find((f) => f.id === 'syn-standard')!;
   const irr = irrFixtures(xlsx).find((f) => f.id === 'irr-standard')!;
   const probe = buildVariants(xlsx, PROBE_BOOK, 'probe').find((f) => f.id === 'probe-standard')!;
+  // the standard IRR file with client A written with a salutation: the live page joins it as a name variant (KI-032),
+  // the new build keys clients by their exact label (D9) and leaves it out as an IRR-only client (OD-4)
+  const variantIrr = toWorkbook(xlsx, standardSheets().map((s) => ({ ...s, rows: s.rows.map((r, i) => (i > 0 && r[0] === 'Sample Client A' ? ['Mr. Sample Client A', ...r.slice(1)] : r)) })));
   return [
+    { id: 'syn-standard-irr-variant', input: { baseBytes: syn.bytes, irrBytes: variantIrr, asOn: '30 Sep 2026', label: 'Synthetic' } },
     { id: 'probe-irr-standard', input: { baseBytes: probe.bytes, irrBytes: irr.bytes, asOn: '30 Sep 2026', label: 'Probe' } },
     { id: 'sample-with-irr', input: { baseBytes: read('Sample_Base_File.xlsx'), irrBytes: read('Sample_IRR_Transactions.xlsx'), asOn: '30 Sep 2026', label: 'Sample Family' } },
     { id: 'sample-base-only', input: { baseBytes: read('Sample_Base_File.xlsx'), irrBytes: null, asOn: '30 Sep 2026', label: 'Sample Family' } },

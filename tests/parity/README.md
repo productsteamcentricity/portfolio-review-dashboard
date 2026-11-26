@@ -12,6 +12,8 @@ through `tools/engine-host.js` (from a script file, never `node -e`, KI-011).
 | `refdata.parity.test.ts` | none: the extracted reference data must equal the embedded blocks exactly |
 | `matching.parity.test.ts` (with `matching-queries.ts`; M2.1) | `matching-ledger.json`, basis names in `matching-basis.json` |
 | `monitor.parity.test.ts` (fixtures `tests/fixtures/make-monitors.ts`; M2.3) | `monitor-ledger.json` |
+| `unit/match/corpus.test.ts` (with `matching-corrections.ts`; the M2.1 sprint 2a corrections, legacy against corrected) | `matching-corrections-ledger.json` (full sweep: self, leave-one-out, official AMFI names from `amfi-names.json`, built by `amfi-names.ts`) |
+| `regression/ki-052-054-rekey-and-direct.test.ts` (with `rekey-ledger.ts`; KI-052, OD-23) | `rekey-ledger.json` (FUND_RANKS_CODES and MF_RISK onto MF_PERF keys; the FUND_RANKS_CODES vintage record) |
 
 ## The ledger
 

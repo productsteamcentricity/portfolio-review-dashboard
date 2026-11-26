@@ -14,6 +14,8 @@ export const SHEETS = {
   overview: 'Portfolio Overview',
   clients: 'Client Allocation',
   distributors: 'Distributor Allocation',
+  // M3a returns (NB-03): architecture §14 sheet 13, written only when a transactions (IRR) file is accepted.
+  fundIrr: 'Fund IRR',
   audit: 'Audit Log',
   manifest: '_manifest',
 } as const;

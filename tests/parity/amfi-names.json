@@ -1,0 +1,6037 @@
+{
+ "source": "AMFI NAV history report (public), scheme code and name, as written by the monthly NAV fetch (ids file)",
+ "asOn": "AMFI NAV history 23-24 Nov 2026",
+ "inputSha256": "a8207e139c7de1de3e223e6ef36462bed75d90abae7f11862447e1600198a181",
+ "pairs": [
+  {
+   "code": "100033",
+   "amfiName": "Aditya Birla Sun Life Large & Mid Cap Fund - Regular Growth",
+   "vendorKey": "Aditya Birla SL Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "100064",
+   "amfiName": "Aditya Birla Sun Life MNC Fund - Growth - Regular Plan",
+   "vendorKey": "Aditya Birla SL MNC Fund-Reg(G)"
+  },
+  {
+   "code": "100081",
+   "amfiName": "DSP Aggressive Hybrid Fund- Regular Plan - Growth",
+   "vendorKey": "DSP Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "100119",
+   "amfiName": "HDFC Balanced Advantage Fund - Growth Plan",
+   "vendorKey": "HDFC Balanced Advantage Fund(G)"
+  },
+  {
+   "code": "100175",
+   "amfiName": "quant ELSS Tax Saver Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant ELSS Tax Saver Fund(G)"
+  },
+  {
+   "code": "100177",
+   "amfiName": "quant Small Cap Fund - Growth - Regular Plan",
+   "vendorKey": "Quant Small Cap Fund(G)"
+  },
+  {
+   "code": "100219",
+   "amfiName": "JM Large Cap Fund (Regular) - Growth Option",
+   "vendorKey": "JM Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "100221",
+   "amfiName": "JM Aggressive Hybrid Fund (Regular) -Growth Option",
+   "vendorKey": "JM Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "100254",
+   "amfiName": "JM Value Fund (Regular) - Growth Option",
+   "vendorKey": "JM Value Fund-Reg(G)"
+  },
+  {
+   "code": "100313",
+   "amfiName": "LIC MF Flexi Cap Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "100323",
+   "amfiName": "LIC MF Aggressive Hybrid Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Aggressive Hybrid Fund(G)"
+  },
+  {
+   "code": "100349",
+   "amfiName": "ICICI Prudential Large & Mid Cap Fund - Growth",
+   "vendorKey": "ICICI Pru Large & Mid Cap Fund(G)"
+  },
+  {
+   "code": "100352",
+   "amfiName": "ICICI Prudential FMCG Fund - Growth",
+   "vendorKey": "ICICI Pru FMCG Fund(G)"
+  },
+  {
+   "code": "100363",
+   "amfiName": "ICICI Prudential Technology Fund - Growth",
+   "vendorKey": "ICICI Pru Technology Fund(G)"
+  },
+  {
+   "code": "100377",
+   "amfiName": "Nippon India Growth Mid Cap Fund-Growth Plan-Growth Option",
+   "vendorKey": "Nippon India Growth Mid Cap Fund(G)"
+  },
+  {
+   "code": "100380",
+   "amfiName": "Nippon India Vision Large & Midcap Fund-GROWTH PLAN-Growth Option",
+   "vendorKey": "Nippon India Vision Large & Mid Cap Fund(G)"
+  },
+  {
+   "code": "100414",
+   "amfiName": "Tata Aggressive Hybrid Fund- Regular Plan - Growth Option",
+   "vendorKey": "Tata Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "100415",
+   "amfiName": "Tata Ethical Fund-Regular Plan - Growth Option",
+   "vendorKey": "Tata Ethical Fund-Reg(G)"
+  },
+  {
+   "code": "100471",
+   "amfiName": "Franklin India Large Cap Fund-Growth",
+   "vendorKey": "Franklin India Large Cap Fund(G)"
+  },
+  {
+   "code": "100473",
+   "amfiName": "Franklin India Mid Cap Fund-Growth",
+   "vendorKey": "Franklin India Mid Cap Fund(G)"
+  },
+  {
+   "code": "100475",
+   "amfiName": "Tata Large Cap Fund -Regular Plan - Growth Option",
+   "vendorKey": "Tata Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "100476",
+   "amfiName": "Taurus Flexi Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Taurus Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "100477",
+   "amfiName": "Taurus Mid Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Taurus Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "100480",
+   "amfiName": "Taurus ELSS Tax Saver Fund - Regular Plan - Growth",
+   "vendorKey": "Taurus ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "100484",
+   "amfiName": "Franklin India Index Fund- NSE Nifty 50 Index Fund - Growth",
+   "vendorKey": "Franklin India NSE Nifty 50 Index Fund(G)"
+  },
+  {
+   "code": "100496",
+   "amfiName": "Templeton India Value Fund - Growth Plan",
+   "vendorKey": "Templeton India Value Fund(G)"
+  },
+  {
+   "code": "100520",
+   "amfiName": "Franklin India Flexi Cap Fund - Growth",
+   "vendorKey": "Franklin India Flexi Cap Fund(G)"
+  },
+  {
+   "code": "100522",
+   "amfiName": "Franklin India Technology Fund-Growth",
+   "vendorKey": "Franklin India Technology Fund(G)"
+  },
+  {
+   "code": "100526",
+   "amfiName": "Franklin India ELSS Tax Saver Fund-Growth",
+   "vendorKey": "Franklin India ELSS Tax Saver Fund(G)"
+  },
+  {
+   "code": "100550",
+   "amfiName": "Franklin India Aggressive Hybrid Fund - Growth Plan",
+   "vendorKey": "Franklin India Aggressive Hybrid Fund(G)"
+  },
+  {
+   "code": "100601",
+   "amfiName": "CANARA ROBECO CONSERVATIVE HYBRID FUND - REGULAR PLAN - GROWTH OPTION",
+   "vendorKey": "Canara Rob Conservative Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "100631",
+   "amfiName": "quant Multi Cap Fund-GROWTH OPTION - Regular Plan",
+   "vendorKey": "Quant Multi Cap Fund(G)"
+  },
+  {
+   "code": "100646",
+   "amfiName": "UTI - Unit Linked Insurance Plan",
+   "vendorKey": "UTI ULIP(G)"
+  },
+  {
+   "code": "100651",
+   "amfiName": "UTI Large Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "100664",
+   "amfiName": "UTI Large & Mid Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "100669",
+   "amfiName": "UTI - Flexi Cap Fund-Growth Option",
+   "vendorKey": "UTI Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "100684",
+   "amfiName": "UTI Aggressive Hybrid Fund - Regular Plan - Growth",
+   "vendorKey": "UTI Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "100740",
+   "amfiName": "UTI - MNC Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI MNC Fund-Reg(G)"
+  },
+  {
+   "code": "100795",
+   "amfiName": "Sundaram Small Cap Fund Regular Plan - Growth",
+   "vendorKey": "Sundaram Small Cap Fund(G)"
+  },
+  {
+   "code": "100807",
+   "amfiName": "UTI Healthcare Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "100821",
+   "amfiName": "UTI ELSS Tax Saver Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "100948",
+   "amfiName": "Franklin India Conservative Hybrid Fund - Growth",
+   "vendorKey": "Franklin India Conservative Hybrid Fund(G)"
+  },
+  {
+   "code": "100968",
+   "amfiName": "SBI Conservative Hybrid Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Conservative Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "101065",
+   "amfiName": "quant Mid Cap Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Mid Cap Fund(G)"
+  },
+  {
+   "code": "101070",
+   "amfiName": "quant Aggressive Hybrid Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Aggressive Hybrid Fund(G)"
+  },
+  {
+   "code": "101072",
+   "amfiName": "quant Multi Asset Allocation Fund-GROWTH OPTION - Regular Plan",
+   "vendorKey": "Quant Multi Asset Allocation Fund(G)"
+  },
+  {
+   "code": "101161",
+   "amfiName": "Nippon India Multi Cap Fund-Growth Plan-Growth Option",
+   "vendorKey": "Nippon India Multi Cap Fund(G)"
+  },
+  {
+   "code": "101199",
+   "amfiName": "LIC MF BSE Sensex Index Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF BSE Sensex Index Fund-Reg(G)"
+  },
+  {
+   "code": "101201",
+   "amfiName": "LIC MF Nifty 50 Index Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Nifty 50 Index Fund(G)"
+  },
+  {
+   "code": "101209",
+   "amfiName": "Taurus Large Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Taurus Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "101262",
+   "amfiName": "Nippon India Power & Infra Fund-Growth Plan -Growth Option",
+   "vendorKey": "Nippon India Power & Infra Fund(G)"
+  },
+  {
+   "code": "101281",
+   "amfiName": "HDFC BSE Sensex Index Fund - Growth Plan",
+   "vendorKey": "HDFC BSE Sensex Index Fund(G)"
+  },
+  {
+   "code": "101314",
+   "amfiName": "Aditya Birla Sun Life Nifty 50 Index Fund - Growth - Regular Plan",
+   "vendorKey": "Aditya Birla SL Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "101349",
+   "amfiName": "ICICI Prudential Nifty 50 Index Fund - Cumulative Option",
+   "vendorKey": "ICICI Pru Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "101525",
+   "amfiName": "HDFC Nifty 50 Index Fund - Growth Plan",
+   "vendorKey": "HDFC Nifty 50 Index Fund(G)"
+  },
+  {
+   "code": "101539",
+   "amfiName": "Sundaram Mid Cap Fund Regular Plan - Growth",
+   "vendorKey": "Sundaram Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "101585",
+   "amfiName": "HDFC Equity Savings Fund - GROWTH PLAN",
+   "vendorKey": "HDFC Equity Savings Fund(G)"
+  },
+  {
+   "code": "101592",
+   "amfiName": "Aditya Birla Sun Life MIDCAP Fund-Growth",
+   "vendorKey": "Aditya Birla SL Midcap Fund(G)"
+  },
+  {
+   "code": "101594",
+   "amfiName": "HSBC Large Cap Fund - Regular Growth",
+   "vendorKey": "HSBC Large Cap Fund(G)"
+  },
+  {
+   "code": "101635",
+   "amfiName": "DSP Large Cap Fund - Regular Plan - Growth",
+   "vendorKey": "DSP Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "101659",
+   "amfiName": "Tata Nifty 50 Index Fund -Regular Plan",
+   "vendorKey": "Tata NIFTY 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "101672",
+   "amfiName": "Tata Value Fund - Regular Plan -Growth Option",
+   "vendorKey": "Tata Value Fund(G)"
+  },
+  {
+   "code": "101705",
+   "amfiName": "ICICI Prudential BSE Sensex ETF",
+   "vendorKey": "ICICI Pru BSE Sensex ETF"
+  },
+  {
+   "code": "101738",
+   "amfiName": "Aditya Birla Sun Life Dividend Yield Fund - Growth - Regular Plan",
+   "vendorKey": "Aditya Birla SL Dividend Yield Fund-Reg(G)"
+  },
+  {
+   "code": "101746",
+   "amfiName": "Tata S&P BSE Sensex Index Fund -Regular Plan",
+   "vendorKey": "Tata BSE Sensex Index Fund-Reg(G)"
+  },
+  {
+   "code": "101762",
+   "amfiName": "HDFC Flexi Cap Fund - Growth Plan",
+   "vendorKey": "HDFC Flexi Cap Fund(G)"
+  },
+  {
+   "code": "101764",
+   "amfiName": "HDFC Value Fund - Growth Plan",
+   "vendorKey": "HDFC Value Fund-Reg(G)"
+  },
+  {
+   "code": "101766",
+   "amfiName": "Tata Infrastructure Fund-Regular Plan- Growth Option",
+   "vendorKey": "Tata Infrastructure Fund-Reg(G)"
+  },
+  {
+   "code": "101824",
+   "amfiName": "Tata Large & Mid Cap Fund- Regular Plan - Growth Option",
+   "vendorKey": "Tata Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "101853",
+   "amfiName": "Sundaram Value Fund Regular Plan - Growth",
+   "vendorKey": "Sundaram Value Fund-Reg(G)"
+  },
+  {
+   "code": "101862",
+   "amfiName": "Nippon India Banking & Financial Services Fund-Growth Plan-Growth Option",
+   "vendorKey": "Nippon India Banking & Financial Services Fund(G)"
+  },
+  {
+   "code": "101869",
+   "amfiName": "LIC MF Conservative Hybrid Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Conservative Hybrid Fund(G)"
+  },
+  {
+   "code": "101922",
+   "amfiName": "CANARA ROBECO FLEXI CAP FUND - REGULAR PLAN - GROWTH OPTION",
+   "vendorKey": "Canara Rob Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "102000",
+   "amfiName": "HDFC Large Cap Fund - Growth Option - Regular Plan",
+   "vendorKey": "HDFC Large Cap Fund(G)"
+  },
+  {
+   "code": "102020",
+   "amfiName": "Baroda BNP Paribas MULTI CAP FUND - Regular Plan - Growth Option",
+   "vendorKey": "Baroda BNP Paribas Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "102142",
+   "amfiName": "Sundaram Consumption Fund(Formerly Known as Sundaram Rural and Consumption Fund Regular Plan - Growth)",
+   "vendorKey": "Sundaram Consumption Fund(G)"
+  },
+  {
+   "code": "102172",
+   "amfiName": "Nippon India Conservative Hybrid  Fund-Growth Plan",
+   "vendorKey": "Nippon India Conservative Hybrid Fund(G)"
+  },
+  {
+   "code": "102252",
+   "amfiName": "HSBC Flexi Cap Fund - Regular Growth",
+   "vendorKey": "HSBC Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "102262",
+   "amfiName": "HSBC Conservative Hybrid Fund - Regular Growth",
+   "vendorKey": "HSBC Conservative Hybrid Fund(G)"
+  },
+  {
+   "code": "102272",
+   "amfiName": "SBI NIFTY INDEX FUND - REGULAR PLAN - GROWTH",
+   "vendorKey": "SBI Nifty Index Fund-Reg(G)"
+  },
+  {
+   "code": "102328",
+   "amfiName": "Tata Mid Cap Fund Regular Plan- Growth Option",
+   "vendorKey": "Tata Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "102394",
+   "amfiName": "UTI Mid Cap Fund-Growth Option",
+   "vendorKey": "UTI Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "102395",
+   "amfiName": "UTI Infrastructure Fund-Growth Option",
+   "vendorKey": "UTI Infrastructure Fund-Reg(G)"
+  },
+  {
+   "code": "102398",
+   "amfiName": "UTI-Transportation and Logistics  Fund-Growth Option",
+   "vendorKey": "UTI Transportation & Logistics Fund-Reg(G)"
+  },
+  {
+   "code": "102401",
+   "amfiName": "UTI Banking and Financial Services Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Banking and Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "102414",
+   "amfiName": "SBI CONTRA FUND - REGULAR PLAN -GROWTH",
+   "vendorKey": "SBI Contra Fund-Reg(G)"
+  },
+  {
+   "code": "102431",
+   "amfiName": "Nippon India Pharma Fund-Growth Plan-Growth Option",
+   "vendorKey": "Nippon India Pharma Fund(G)"
+  },
+  {
+   "code": "102434",
+   "amfiName": "DSP India T.I.G.E.R. Fund - Regular Plan - Growth",
+   "vendorKey": "DSP India T.I.G.E.R Fund-Reg(G)"
+  },
+  {
+   "code": "102535",
+   "amfiName": "UTI Conservative Hybrid Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Conservative Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "102594",
+   "amfiName": "ICICI Prudential Value Fund (erstwhile Value Discovery Fund) - Growth",
+   "vendorKey": "ICICI Pru Value Fund(G)"
+  },
+  {
+   "code": "102751",
+   "amfiName": "Nippon India Consumption Fund-Growth Plan-Growth Option",
+   "vendorKey": "Nippon India Consumption Fund(G)"
+  },
+  {
+   "code": "102756",
+   "amfiName": "SBI FOCUSED FUND - REGULAR PLAN -GROWTH",
+   "vendorKey": "SBI Focused Fund-Reg(G)"
+  },
+  {
+   "code": "102760",
+   "amfiName": "HDFC Focused Fund - GROWTH PLAN",
+   "vendorKey": "HDFC Focused Fund-Reg(G)"
+  },
+  {
+   "code": "102823",
+   "amfiName": "SBI HEALTHCARE OPPORTUNITIES FUND - REGULAR PLAN -GROWTH",
+   "vendorKey": "SBI Healthcare Opp Fund-Reg(G)"
+  },
+  {
+   "code": "102846",
+   "amfiName": "Nippon India Balanced Advantage Fund-Growth Plan-Growth Option",
+   "vendorKey": "Nippon India Balanced Advantage Fund(G)"
+  },
+  {
+   "code": "102875",
+   "amfiName": "Kotak-Small Cap Fund - Growth",
+   "vendorKey": "Kotak Small Cap Fund(G)"
+  },
+  {
+   "code": "102883",
+   "amfiName": "Franklin India Large & Mid Cap Fund - Growth Plan",
+   "vendorKey": "Franklin India Large & Mid Cap Fund(G)"
+  },
+  {
+   "code": "102920",
+   "amfiName": "CANARA ROBECO LARGE AND MID CAP FUND - REGULAR PLAN - GROWTH OPTION",
+   "vendorKey": "Canara Rob Large and Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "102941",
+   "amfiName": "SBI MIDCAP FUND - REGULAR PLAN - GROWTH",
+   "vendorKey": "SBI Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "103024",
+   "amfiName": "SBI LARGE & MIDCAP FUND- REGULAR PLAN -Growth",
+   "vendorKey": "SBI Large & Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "103026",
+   "amfiName": "UTI-Dividend Yield Fund.-Growth",
+   "vendorKey": "UTI Dividend Yield Fund-Reg(G)"
+  },
+  {
+   "code": "103034",
+   "amfiName": "SBI MNC FUND - REGULAR PLAN -GROWTH",
+   "vendorKey": "SBI MNC Fund-Reg(G)"
+  },
+  {
+   "code": "103040",
+   "amfiName": "Kotak Contra Fund - Regular Plan - Growth",
+   "vendorKey": "Kotak Contra Fund-Reg(G)"
+  },
+  {
+   "code": "103085",
+   "amfiName": "Nippon India Value Fund- Growth Plan",
+   "vendorKey": "Nippon India Value Fund(G)"
+  },
+  {
+   "code": "103098",
+   "amfiName": "UTI Value Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Value Fund-Reg(G)"
+  },
+  {
+   "code": "103111",
+   "amfiName": "Aditya Birla Sun Life Consumption Fund-Growth Option",
+   "vendorKey": "Aditya Birla SL Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "103145",
+   "amfiName": "SBI COMMA Fund - REGULAR PLAN - Growth",
+   "vendorKey": "SBI Comma Fund-Reg(G)"
+  },
+  {
+   "code": "103149",
+   "amfiName": "ICICI Prudential Infrastructure Fund - Growth",
+   "vendorKey": "ICICI Pru Infrastructure Fund(G)"
+  },
+  {
+   "code": "103151",
+   "amfiName": "Franklin India Opportunities Fund - Growth",
+   "vendorKey": "Franklin India Opportunities Fund(G)"
+  },
+  {
+   "code": "103166",
+   "amfiName": "Aditya Birla Sun Life Flexi Cap Fund - Growth - Regular Plan",
+   "vendorKey": "Aditya Birla SL Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "103168",
+   "amfiName": "Aditya Birla Sun Life Digital India Fund - Growth - Regular Plan",
+   "vendorKey": "Aditya Birla SL Digital India Fund-Reg(G)"
+  },
+  {
+   "code": "103174",
+   "amfiName": "Aditya Birla Sun Life Large Cap Fund-Growth",
+   "vendorKey": "Aditya Birla SL Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "103196",
+   "amfiName": "Nippon India ELSS Tax Saver Fund-Growth Plan-Growth Option",
+   "vendorKey": "Nippon India ELSS Tax Saver Fund(G)"
+  },
+  {
+   "code": "103215",
+   "amfiName": "SBI Flexicap Fund - REGULAR PLAN -Growth Option",
+   "vendorKey": "SBI Flexicap Fund-Reg(G)"
+  },
+  {
+   "code": "103309",
+   "amfiName": "Aditya Birla Sun Life Focused Fund -Growth Option",
+   "vendorKey": "Aditya Birla SL Focused Fund(G)"
+  },
+  {
+   "code": "103312",
+   "amfiName": "ICICI Prudential Exports & Services Fund - Growth",
+   "vendorKey": "ICICI Pru Exports & Services Fund(G)"
+  },
+  {
+   "code": "103339",
+   "amfiName": "Kotak ELSS Tax Saver Fund-Growth",
+   "vendorKey": "Kotak ELSS Tax Saver Fund(G)"
+  },
+  {
+   "code": "103360",
+   "amfiName": "Franklin India Small Cap Fund-Growth",
+   "vendorKey": "Franklin India Small Cap Fund(G)"
+  },
+  {
+   "code": "103390",
+   "amfiName": "CANARA ROBECO INFRASTRUCTURE FUND - REGULAR PLAN - GROWTH OPTION",
+   "vendorKey": "Canara Rob Infrastructure Fund-Reg(G)"
+  },
+  {
+   "code": "103408",
+   "amfiName": "SBI MULTI ASSET ALLOCATION FUND - REGULAR PLAN - GROWTH",
+   "vendorKey": "SBI Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "103476",
+   "amfiName": "Aditya Birla Sun Life Infrastructure Fund-Growth",
+   "vendorKey": "Aditya Birla SL Infrastructure Fund(G)"
+  },
+  {
+   "code": "103504",
+   "amfiName": "SBI Large Cap FUND-REGULAR PLAN GROWTH",
+   "vendorKey": "SBI Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "103678",
+   "amfiName": "Franklin India Dividend Yield Fund-Growth Plan",
+   "vendorKey": "Franklin India Dividend Yield Fund(G)"
+  },
+  {
+   "code": "103780",
+   "amfiName": "JM Arbitrage Fund (Regular) - Growth Option",
+   "vendorKey": "JM Arbitrage Fund(G)"
+  },
+  {
+   "code": "103819",
+   "amfiName": "DSP Large & Mid Cap Fund - Regular Plan - Growth",
+   "vendorKey": "DSP Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "104075",
+   "amfiName": "UTI Arbitrage Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "104481",
+   "amfiName": "DSP Midcap Fund - Regular Plan - Growth",
+   "vendorKey": "DSP Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "104513",
+   "amfiName": "quant Large & Mid Cap Fund - Growth Option",
+   "vendorKey": "Quant Large & Mid Cap Fund(G)"
+  },
+  {
+   "code": "104523",
+   "amfiName": "SBI ESG Exclusionary Strategy Fund - Regular Plan - Growth",
+   "vendorKey": "SBI ESG Exclusionary Strategy Fund-Reg(G)"
+  },
+  {
+   "code": "104636",
+   "amfiName": "Invesco India ELSS Tax Saver Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "104637",
+   "amfiName": "Nippon India Focused Fund -Growth Plan -Growth Option",
+   "vendorKey": "Nippon India Focused Fund(G)"
+  },
+  {
+   "code": "104683",
+   "amfiName": "ICICI Prudential Arbitrage Fund - Growth",
+   "vendorKey": "ICICI Pru Arbitrage Fund(G)"
+  },
+  {
+   "code": "104685",
+   "amfiName": "ICICI Prudential Balanced Advantage Fund - Growth",
+   "vendorKey": "ICICI Pru Balanced Advantage Fund(G)"
+  },
+  {
+   "code": "104772",
+   "amfiName": "DSP ELSS Tax Saver Fund - Regular Plan - Growth",
+   "vendorKey": "DSP ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "105001",
+   "amfiName": "Sundaram Large and Midcap Fund Regular Plan - Growth",
+   "vendorKey": "Sundaram Large and Mid Cap Fund(G)"
+  },
+  {
+   "code": "105417",
+   "amfiName": "Taurus Infrastructure Fund - Regular Plan - Growth",
+   "vendorKey": "Taurus Infrastructure Fund-Reg(G)"
+  },
+  {
+   "code": "105460",
+   "amfiName": "Invesco India Contra Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Contra Fund-Reg(G)"
+  },
+  {
+   "code": "105503",
+   "amfiName": "Invesco India Mid Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Invesco India Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "105603",
+   "amfiName": "Invesco India Arbitrage Fund - Regular Plan - Growth Option",
+   "vendorKey": "Invesco India Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "105628",
+   "amfiName": "SBI ELSS Tax Saver FUND - REGULAR PLAN- GROWTH",
+   "vendorKey": "SBI ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "105758",
+   "amfiName": "HDFC Mid Cap Fund - Growth Plan",
+   "vendorKey": "HDFC Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "105804",
+   "amfiName": "Aditya Birla Sun Life Small Cap Fund - GROWTH",
+   "vendorKey": "Aditya Birla SL Small Cap Fund(G)"
+  },
+  {
+   "code": "105817",
+   "amfiName": "Franklin India Focused Equity Fund - Growth Plan",
+   "vendorKey": "Franklin India Focused Equity Fund(G)"
+  },
+  {
+   "code": "105875",
+   "amfiName": "DSP Flexi Cap Fund - Regular Plan - Growth",
+   "vendorKey": "DSP Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "105968",
+   "amfiName": "Kotak Arbitrage Fund - Regular Plan - Growth",
+   "vendorKey": "Kotak Arbitrage Fund(G)"
+  },
+  {
+   "code": "105989",
+   "amfiName": "DSP Small Cap Fund - Regular - Growth",
+   "vendorKey": "DSP Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "106096",
+   "amfiName": "SBI INFRASTRUCTURE FUND -  REGULAR PLAN - GROWTH",
+   "vendorKey": "SBI Infrastructure Fund-Reg(G)"
+  },
+  {
+   "code": "106144",
+   "amfiName": "Invesco India Large & Mid Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "106170",
+   "amfiName": "quant Infrastructure Fund - Growth Option",
+   "vendorKey": "Quant Infrastructure Fund(G)"
+  },
+  {
+   "code": "106235",
+   "amfiName": "Nippon India Large Cap  Fund- Growth Plan -Growth Option",
+   "vendorKey": "Nippon India Large Cap Fund(G)"
+  },
+  {
+   "code": "106317",
+   "amfiName": "Invesco India Balanced Advantage Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "106425",
+   "amfiName": "UTI India Consumer Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI India Consumer Fund-Reg(G)"
+  },
+  {
+   "code": "106654",
+   "amfiName": "Invesco India Infrastructure Fund - Regular Plan - Growth Option",
+   "vendorKey": "Invesco India Infrastructure Fund-Reg(G)"
+  },
+  {
+   "code": "106871",
+   "amfiName": "LIC MF Large Cap Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "106873",
+   "amfiName": "Aditya Birla Sun Life International Equity Fund - Growth - Regular Plan",
+   "vendorKey": "Aditya Birla SL Intl. Equity Fund(G)"
+  },
+  {
+   "code": "106929",
+   "amfiName": "Kotak Nifty PSU Bank ETF",
+   "vendorKey": "Kotak Nifty PSU Bank ETF"
+  },
+  {
+   "code": "106979",
+   "amfiName": "Franklin Asian Equity Fund - Growth Plan",
+   "vendorKey": "Franklin Asian Equity Fund(G)"
+  },
+  {
+   "code": "107353",
+   "amfiName": "Invesco India Multi Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Invesco India Multicap Fund-Reg(G)"
+  },
+  {
+   "code": "107410",
+   "amfiName": "JM Focused Fund (Regular) - Growth Option",
+   "vendorKey": "JM Focused Fund-Reg(G)"
+  },
+  {
+   "code": "107524",
+   "amfiName": "HDFC Infrastructure Fund - Growth Plan",
+   "vendorKey": "HDFC Infrastructure Fund(G)"
+  },
+  {
+   "code": "107578",
+   "amfiName": "Mirae Asset Large Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "107745",
+   "amfiName": "Aditya Birla Sun Life ELSS Tax Saver Fund - Growth Option",
+   "vendorKey": "Aditya Birla SL ELSS Tax Saver Fund(G)"
+  },
+  {
+   "code": "107763",
+   "amfiName": "LIC MF Infrastructure Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Infra Fund-Reg(G)"
+  },
+  {
+   "code": "108167",
+   "amfiName": "Aditya Birla Sun Life Value Fund - Growth Option",
+   "vendorKey": "Aditya Birla SL Value Fund-Reg(G)"
+  },
+  {
+   "code": "108202",
+   "amfiName": "DSP Natural Resources And New Energy Fund - Regular - Growth",
+   "vendorKey": "DSP Natural Res & New Energy Fund-Reg(G)"
+  },
+  {
+   "code": "108249",
+   "amfiName": "Nippon India Quant Fund -Growth Plan - Growth Option",
+   "vendorKey": "Nippon India Quant Fund(G)"
+  },
+  {
+   "code": "108378",
+   "amfiName": "Invesco India Financial Services Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "108466",
+   "amfiName": "ICICI Prudential Large Cap Fund (erstwhile Bluechip Fund)  - Growth",
+   "vendorKey": "ICICI Pru Large Cap Fund(G)"
+  },
+  {
+   "code": "108479",
+   "amfiName": "Quantum Nifty 50 ETF",
+   "vendorKey": "Quantum Nifty 50 ETF"
+  },
+  {
+   "code": "108592",
+   "amfiName": "Bandhan Focused Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Focused Fund-Reg(G)"
+  },
+  {
+   "code": "108594",
+   "amfiName": "BANDHAN Flexi Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "108596",
+   "amfiName": "Bandhan Large & Mid Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "108799",
+   "amfiName": "BANDHAN Large Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "108845",
+   "amfiName": "BANDHAN Arbitrage Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "108909",
+   "amfiName": "Bandhan Value Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Value Fund-Reg(G)"
+  },
+  {
+   "code": "108995",
+   "amfiName": "BANDHAN Equity Savings Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "109010",
+   "amfiName": "Kotak BSE Sensex ETF",
+   "vendorKey": "Kotak BSE Sensex ETF"
+  },
+  {
+   "code": "109059",
+   "amfiName": "Sundaram Financial Services Opportunities Fund Regular Plan - Growth",
+   "vendorKey": "Sundaram Fin Serv Opp Fund(G)"
+  },
+  {
+   "code": "109275",
+   "amfiName": "quant Focused Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Focused Fund(G)"
+  },
+  {
+   "code": "109445",
+   "amfiName": "ICICI Prudential Banking and Financial Services Fund -  Growth",
+   "vendorKey": "ICICI Pru Banking & Fin Serv Fund(G)"
+  },
+  {
+   "code": "109830",
+   "amfiName": "quant Flexi Cap Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Flexi Cap Fund(G)"
+  },
+  {
+   "code": "110603",
+   "amfiName": "BANK OF INDIA Large & Mid Cap Fund Regular Plan- Growth",
+   "vendorKey": "Bank of India Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "111599",
+   "amfiName": "UTI Multi Asset Allocation Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "111638",
+   "amfiName": "Edelweiss ELSS Tax Saver Fund - Regular Plan - Growth Option",
+   "vendorKey": "Edelweiss ELSS Tax saver Fund-Reg(G)"
+  },
+  {
+   "code": "111712",
+   "amfiName": "BANK OF INDIA Conservative Hybrid Fund-Regular Plan-Growth",
+   "vendorKey": "Bank of India Conservative Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "111787",
+   "amfiName": "Taurus Ethical Fund - Regular Plan - Growth",
+   "vendorKey": "Taurus Ethical Fund-Reg(G)"
+  },
+  {
+   "code": "111940",
+   "amfiName": "Edelweiss Large Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Edelweiss Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "112088",
+   "amfiName": "Aditya BIRLA SUN LIFE ARBITRAGE FUND - REGULAR PLAN - GROWTH",
+   "vendorKey": "Aditya Birla SL Arbitrage Fund(G)"
+  },
+  {
+   "code": "112092",
+   "amfiName": "Franklin Build India Fund Growth Plan",
+   "vendorKey": "Franklin Build India Fund(G)"
+  },
+  {
+   "code": "112098",
+   "amfiName": "Invesco India Large Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Largecap Fund-Reg(G)"
+  },
+  {
+   "code": "112108",
+   "amfiName": "Edelweiss Aggressive Hybrid Fund - Regular Plan - Growth Option",
+   "vendorKey": "Edelweiss Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "112117",
+   "amfiName": "Edelweiss Balanced Advantage Fund - Regular Plan - Growth Option",
+   "vendorKey": "Edelweiss Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "112152",
+   "amfiName": "CANARA ROBECO CONSUMPTION FUND - REGULAR PLAN - GROWTH OPTION",
+   "vendorKey": "Canara Rob Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "112171",
+   "amfiName": "Invesco India PSU Equity Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India PSU Equity Fund-Reg(G)"
+  },
+  {
+   "code": "112277",
+   "amfiName": "Axis Large Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "112351",
+   "amfiName": "Kotak Nifty 50 ETF",
+   "vendorKey": "Kotak Nifty 50 ETF"
+  },
+  {
+   "code": "112353",
+   "amfiName": "BANDHAN Conservative Hybrid Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Conservative Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "112359",
+   "amfiName": "BANK OF INDIA Manufacturing & Infrastructure Fund-Growth",
+   "vendorKey": "Bank of India Mfg & Infra Fund-Reg(G)"
+  },
+  {
+   "code": "112868",
+   "amfiName": "Sundaram Conservative Hybrid Fund (Formerly Known as Sundaram Debt Oriented Hybrid Fund) Regular Plan - Growth",
+   "vendorKey": "Sundaram Conservative Hybrid Fund(G)"
+  },
+  {
+   "code": "112877",
+   "amfiName": "BANDHAN Nifty 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "112901",
+   "amfiName": "DSP Focused Fund - Regular Plan - Growth",
+   "vendorKey": "DSP Focused Fund-Reg(G)"
+  },
+  {
+   "code": "112924",
+   "amfiName": "Axis Conservative Hybrid Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Conservative Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "112932",
+   "amfiName": "Mirae Asset Large & Midcap Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Large & Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "112936",
+   "amfiName": "Nippon India Aggressive Hybrid Fund - Growth Plan",
+   "vendorKey": "Nippon India Aggressive Hybrid Fund(G)"
+  },
+  {
+   "code": "112948",
+   "amfiName": "Taurus Nifty 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Taurus Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "112957",
+   "amfiName": "ICICI Prudential Nifty Next 50 Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty Next 50 Index Fund(G)"
+  },
+  {
+   "code": "113064",
+   "amfiName": "Axis Multi Asset Allocation Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "113069",
+   "amfiName": "Motilal Oswal Nifty 50 ETF",
+   "vendorKey": "Motilal Oswal Nifty 50 ETF"
+  },
+  {
+   "code": "113099",
+   "amfiName": "SBI PSU Fund - REGULAR PLAN -Growth",
+   "vendorKey": "SBI PSU Fund-Reg(G)"
+  },
+  {
+   "code": "113177",
+   "amfiName": "Nippon India Small Cap Fund - Growth Plan - Growth Option",
+   "vendorKey": "Nippon India Small Cap Fund(G)"
+  },
+  {
+   "code": "113221",
+   "amfiName": "CANARA ROBECO LARGE CAP FUND - REGULAR PLAN - GROWTH OPTION",
+   "vendorKey": "Canara Rob Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "113269",
+   "amfiName": "Nippon India Index Fund - BSE Sensex Plan - Growth Plan - Growth Option",
+   "vendorKey": "Nippon India Index Fund-BSE Sensex Plan(G)"
+  },
+  {
+   "code": "113296",
+   "amfiName": "Nippon India Index Fund - Nifty 50 Plan - Growth Plan - Growth Option",
+   "vendorKey": "Nippon India Index Fund-Nifty 50 Plan(G)"
+  },
+  {
+   "code": "113345",
+   "amfiName": "Nippon India Arbitrage Fund - Growth Plan - Growth Option",
+   "vendorKey": "Nippon India Arbitrage Fund(G)"
+  },
+  {
+   "code": "114456",
+   "amfiName": "Motilal Oswal Nifty Midcap 100 ETF",
+   "vendorKey": "Motilal Oswal Nifty Midcap 100 ETF"
+  },
+  {
+   "code": "114458",
+   "amfiName": "Kotak Large Cap Fund - Growth",
+   "vendorKey": "Kotak Large Cap Fund(G)"
+  },
+  {
+   "code": "114476",
+   "amfiName": "BANDHAN Infrastructure Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Infrastructure Fund-Reg(G)"
+  },
+  {
+   "code": "114564",
+   "amfiName": "Axis Midcap Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "114931",
+   "amfiName": "Mirae Asset Great Consumer Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Great Consumer Fund-Reg(G)"
+  },
+  {
+   "code": "115270",
+   "amfiName": "Union Flexi Cap Fund - Growth Option",
+   "vendorKey": "Union Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "115284",
+   "amfiName": "Invesco India Nifty 50 Exchange Traded Fund",
+   "vendorKey": "Invesco India Nifty 50 ETF"
+  },
+  {
+   "code": "115512",
+   "amfiName": "Aditya Birla Sun Life Nifty 50 ETF",
+   "vendorKey": "Aditya Birla SL Nifty 50 ETF"
+  },
+  {
+   "code": "116051",
+   "amfiName": "Union ELSS Tax Saver Fund - Growth Option",
+   "vendorKey": "Union ELSS Tax Saver Fund(G)"
+  },
+  {
+   "code": "116547",
+   "amfiName": "Groww Largecap Fund (formerly known as Indiabulls Blue Chip Fund) - Regular Plan- Growth Option",
+   "vendorKey": "Groww Largecap Fund-Reg(G)"
+  },
+  {
+   "code": "117312",
+   "amfiName": "Taurus Banking & Financial Services Fund - Regular Plan - Growth",
+   "vendorKey": "Taurus Banking & Fin Serv Fund-Reg(G)"
+  },
+  {
+   "code": "117549",
+   "amfiName": "Baroda BNP Paribas Banking and Financial Services Fund - Regular - Growth Option",
+   "vendorKey": "Baroda BNP Paribas Banking and Fin Serv Fund-Reg(G)"
+  },
+  {
+   "code": "117560",
+   "amfiName": "Axis Focused Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Focused Fund-Reg(G)"
+  },
+  {
+   "code": "117620",
+   "amfiName": "ICICI Prudential US Bluechip Equity Fund - Growth",
+   "vendorKey": "ICICI Pru US Bluechip Equity Fund(G)"
+  },
+  {
+   "code": "120576",
+   "amfiName": "SBI CONSUMPTION OPPORTUNITIES FUND - REGULAR - GROWTH",
+   "vendorKey": "SBI Consumption Opp Fund-Reg(G)"
+  },
+  {
+   "code": "120577",
+   "amfiName": "SBI TECHNOLOGY OPPORTUNITIES FUND - REGULAR PLAN - GROWTH",
+   "vendorKey": "SBI Technology Opp Fund-Reg(G)"
+  },
+  {
+   "code": "121109",
+   "amfiName": "SBI BSE SENSEX ETF",
+   "vendorKey": "SBI BSE Sensex ETF"
+  },
+  {
+   "code": "121146",
+   "amfiName": "Nippon India ETF Nifty 100",
+   "vendorKey": "Nippon India ETF Nifty 100"
+  },
+  {
+   "code": "121366",
+   "amfiName": "ICICI Prudential Nifty 50 ETF",
+   "vendorKey": "ICICI Pru Nifty 50 ETF"
+  },
+  {
+   "code": "122387",
+   "amfiName": "Motilal Oswal Focused Fund - Regular Plan Growth Option",
+   "vendorKey": "Motilal Oswal Focused Fund-Reg(G)"
+  },
+  {
+   "code": "122640",
+   "amfiName": "Parag Parikh Flexi Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Parag Parikh Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "123004",
+   "amfiName": "ICICI Prudential Nifty 100 ETF",
+   "vendorKey": "ICICI Pru Nifty 100 ETF"
+  },
+  {
+   "code": "125305",
+   "amfiName": "PGIM India Midcap Fund - Regular Plan - Growth Option",
+   "vendorKey": "PGIM India Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "125350",
+   "amfiName": "Axis Small Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "125494",
+   "amfiName": "SBI Small Cap Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "125595",
+   "amfiName": "Aditya Birla Sun Life Banking and Financial Services Fund - Regular Plan - Growth",
+   "vendorKey": "Aditya Birla SL Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "125713",
+   "amfiName": "Shriram Aggressive Hybrid Fund- Regular Growth",
+   "vendorKey": "Shriram Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "126394",
+   "amfiName": "DSP Dynamic Asset Allocation Fund - Regular Plan - Growth",
+   "vendorKey": "DSP Dynamic Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "127039",
+   "amfiName": "Motilal Oswal Midcap Fund-Regular Plan-Growth Option",
+   "vendorKey": "Motilal Oswal Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "127849",
+   "amfiName": "BANK OF INDIA BALANCED ADVANTAGE FUND REGULAR PLAN  GROWTH",
+   "vendorKey": "Bank of India Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "128331",
+   "amfiName": "Nippon India ETF Nifty India Consumption",
+   "vendorKey": "Nippon India ETF Nifty India Consumption"
+  },
+  {
+   "code": "128639",
+   "amfiName": "Nippon India ETF Nifty Dividend Opportunities 50",
+   "vendorKey": "Nippon India ETF Nifty Dividend Opportunities 50"
+  },
+  {
+   "code": "129048",
+   "amfiName": "Motilal Oswal Flexi Cap Fund Regular Plan-Growth Option",
+   "vendorKey": "Motilal Oswal Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "129213",
+   "amfiName": "Sundaram Infrastructure Advantage Fund Regular Plan - Growth",
+   "vendorKey": "Sundaram Infra Advantage Fund(G)"
+  },
+  {
+   "code": "129647",
+   "amfiName": "Union Small Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "130205",
+   "amfiName": "Edelweiss Arbitrage Fund- Regular Plan- Growth Option",
+   "vendorKey": "Edelweiss Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "130502",
+   "amfiName": "HDFC Small Cap Fund - Growth Option",
+   "vendorKey": "HDFC Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "130771",
+   "amfiName": "Axis Arbitrage Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "131331",
+   "amfiName": "Nippon India ETF BSE Sensex",
+   "vendorKey": "Nippon India ETF BSE Sensex"
+  },
+  {
+   "code": "131357",
+   "amfiName": "BANDHAN Balanced Advantage Fund Regular Plan Growth",
+   "vendorKey": "Bandhan Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "131372",
+   "amfiName": "Kotak Equity Savings Fund - Regular - Growth",
+   "vendorKey": "Kotak Equity Savings Fund(G)"
+  },
+  {
+   "code": "131578",
+   "amfiName": "360 ONE Focused Fund -Regular Plan - Growth",
+   "vendorKey": "360 ONE Focused Fund-Reg(G)"
+  },
+  {
+   "code": "131666",
+   "amfiName": "Aditya Birla Sun Life Balanced Advantage Fund - Regular Plan - Growth Option",
+   "vendorKey": "Aditya Birla SL Balanced Advantage Fund(G)"
+  },
+  {
+   "code": "132998",
+   "amfiName": "Aditya Birla Sun Life Equity Savings Fund - Regular Plan - Growth",
+   "vendorKey": "Aditya Birla SL Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "133051",
+   "amfiName": "ICICI Prudential Equity Savings Fund - Cumulative option",
+   "vendorKey": "ICICI Pru Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "133122",
+   "amfiName": "Kotak Nifty Bank ETF",
+   "vendorKey": "Kotak Nifty Bank ETF"
+  },
+  {
+   "code": "133385",
+   "amfiName": "Motilal Oswal ELSS Tax Saver Fund - Regular Plan - Growth Option",
+   "vendorKey": "Motilal Oswal ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "133513",
+   "amfiName": "Aditya Birla Sun Life Manufacturing Equity Fund - Regular Plan - Growth",
+   "vendorKey": "Aditya Birla SL Mfg. Equity Fund-Reg(G)"
+  },
+  {
+   "code": "133711",
+   "amfiName": "LIC MF Large & Mid Cap Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Large & Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "133796",
+   "amfiName": "Kotak Infrastructure & Economic Reform Fund - Standard Plan-Growth",
+   "vendorKey": "Kotak Infra & Eco Reform Fund(G)"
+  },
+  {
+   "code": "133836",
+   "amfiName": "PGIM India Flexi Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "PGIM India Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "133858",
+   "amfiName": "SBI BANKING & FINANCIAL SERVICES FUND - REGULAR PLAN - GROWTH",
+   "vendorKey": "SBI Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "134008",
+   "amfiName": "SBI Nifty Bank ETF",
+   "vendorKey": "SBI Nifty Bank ETF"
+  },
+  {
+   "code": "134013",
+   "amfiName": "SBI Nifty Next 50 ETF",
+   "vendorKey": "SBI Nifty Next 50 ETF"
+  },
+  {
+   "code": "134014",
+   "amfiName": "SBI BSE 100 ETF",
+   "vendorKey": "SBI BSE 100 ETF"
+  },
+  {
+   "code": "134016",
+   "amfiName": "LIC MF Banking and Financial Services Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "134593",
+   "amfiName": "Nippon India Equity Savings Fund- Growth Plan- Growth Option",
+   "vendorKey": "Nippon India Equity Savings Fund(G)"
+  },
+  {
+   "code": "134644",
+   "amfiName": "SBI Equity Savings Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "134782",
+   "amfiName": "Nippon India ETF Nifty 50 Value 20",
+   "vendorKey": "Nippon India ETF Nifty 50 Value 20"
+  },
+  {
+   "code": "134815",
+   "amfiName": "Mirae Asset Aggressive Hybrid Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "134922",
+   "amfiName": "Nippon India US Equity Opportunities Fund- Growth Plan- Growth Option",
+   "vendorKey": "Nippon India US Equity Opp Fund(G)"
+  },
+  {
+   "code": "135106",
+   "amfiName": "SBI Nifty 50 ETF",
+   "vendorKey": "SBI Nifty 50 ETF"
+  },
+  {
+   "code": "135122",
+   "amfiName": "Axis Equity Savings Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "135320",
+   "amfiName": "UTI Nifty 50 ETF",
+   "vendorKey": "UTI Nifty 50 ETF"
+  },
+  {
+   "code": "135321",
+   "amfiName": "UTI BSE Sensex ETF",
+   "vendorKey": "UTI BSE Sensex ETF"
+  },
+  {
+   "code": "135343",
+   "amfiName": "Groww Value Fund (formerly known as Indiabulls Value Fund) - Regular Plan - Growth Option",
+   "vendorKey": "Groww Value Fund-Reg(G)"
+  },
+  {
+   "code": "135598",
+   "amfiName": "PGIM India ELSS Tax Saver Fund - Regular Plan - Growth Option",
+   "vendorKey": "PGIM India ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "135607",
+   "amfiName": "LIC MF Nifty 50 ETF",
+   "vendorKey": "LIC MF Nifty 50 ETF"
+  },
+  {
+   "code": "135672",
+   "amfiName": "LIC MF BSE Sensex ETF",
+   "vendorKey": "LIC MF BSE Sensex ETF"
+  },
+  {
+   "code": "135678",
+   "amfiName": "Navi Large & Midcap Fund- Regular Plan- Growth Option",
+   "vendorKey": "Navi Large & Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "135784",
+   "amfiName": "Mirae Asset ELSS Tax Saver Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "135794",
+   "amfiName": "Tata Banking And Financial Services Fund-Regular Plan-Growth",
+   "vendorKey": "Tata Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "135797",
+   "amfiName": "Tata Digital India Fund-Regular Plan-Growth",
+   "vendorKey": "Tata Digital India Fund-Reg(G)"
+  },
+  {
+   "code": "135804",
+   "amfiName": "Tata India Consumer Fund-Regular Plan-Growth",
+   "vendorKey": "Tata India Consumer Fund-Reg(G)"
+  },
+  {
+   "code": "135812",
+   "amfiName": "Tata India Pharma & Healthcare Fund-Regular Plan-Growth",
+   "vendorKey": "Tata India Pharma & Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "135815",
+   "amfiName": "Tata Resources & Energy Fund-Regular Plan-Growth",
+   "vendorKey": "Tata Resources & Energy Fund-Reg(G)"
+  },
+  {
+   "code": "135853",
+   "amfiName": "HDFC NIFTY 50 ETF - Growth Plan",
+   "vendorKey": "HDFC Nifty 50 ETF"
+  },
+  {
+   "code": "135854",
+   "amfiName": "HDFC BSE Sensex ETF - Growth Plan",
+   "vendorKey": "HDFC BSE Sensex ETF"
+  },
+  {
+   "code": "136473",
+   "amfiName": "LIC MF Nifty 100 ETF",
+   "vendorKey": "LIC MF Nifty 100 ETF"
+  },
+  {
+   "code": "136563",
+   "amfiName": "DSP Equity Savings Fund - Regular Plan - Growth",
+   "vendorKey": "DSP Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "138308",
+   "amfiName": "PGIM India Large Cap Fund - Growth",
+   "vendorKey": "PGIM India Large Cap Fund(G)"
+  },
+  {
+   "code": "138372",
+   "amfiName": "PGIM India Equity Savings Fund - Growth Option",
+   "vendorKey": "PGIM India Equity Savings Fund(G)"
+  },
+  {
+   "code": "138382",
+   "amfiName": "PGIM India Aggressive Hybrid Equity Fund - Growth Option",
+   "vendorKey": "PGIM India Aggressive Hybrid Equity Fund(G)"
+  },
+  {
+   "code": "138876",
+   "amfiName": "PGIM India Arbitrage Fund - Regular Plan - Growth",
+   "vendorKey": "PGIM India Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "139455",
+   "amfiName": "ICICI Prudential Nifty50 Value 20 ETF",
+   "vendorKey": "ICICI Pru Nifty50 Value 20 ETF"
+  },
+  {
+   "code": "139519",
+   "amfiName": "ICICI Prudential BSE Midcap Select ETF",
+   "vendorKey": "ICICI Pru BSE Midcap Select ETF"
+  },
+  {
+   "code": "139581",
+   "amfiName": "Aditya Birla Sun Life BSE Sensex ETF",
+   "vendorKey": "Aditya Birla SL BSE Sensex ETF"
+  },
+  {
+   "code": "139783",
+   "amfiName": "Mahindra Manulife ELSS Tax Saver Fund- Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "139839",
+   "amfiName": "BANDHAN Nifty 50 ETF",
+   "vendorKey": "Bandhan Nifty 50 ETF"
+  },
+  {
+   "code": "139840",
+   "amfiName": "BANDHAN BSE Sensex ETF",
+   "vendorKey": "Bandhan BSE Sensex ETF"
+  },
+  {
+   "code": "139870",
+   "amfiName": "Motilal Oswal Balanced Advantage Fund (MOFDYNAMIC) - Regular Plan - Growth Option",
+   "vendorKey": "Motilal Oswal Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "140084",
+   "amfiName": "Nippon India ETF Nifty 50 BeES",
+   "vendorKey": "Nippon India ETF Nifty 50 BeES"
+  },
+  {
+   "code": "140085",
+   "amfiName": "Nippon India ETF Nifty Next 50 Junior BeES",
+   "vendorKey": "Nippon India ETF Nifty Next 50 Junior BeES"
+  },
+  {
+   "code": "140087",
+   "amfiName": "Nippon India ETF Nifty Bank BeES",
+   "vendorKey": "Nippon India ETF Nifty Bank BeES"
+  },
+  {
+   "code": "140089",
+   "amfiName": "Nippon India ETF Nifty PSU Bank BeES",
+   "vendorKey": "Nippon India ETF Nifty PSU Bank BeES"
+  },
+  {
+   "code": "140094",
+   "amfiName": "Nippon India ETF Nifty 50 Shariah BeES",
+   "vendorKey": "Nippon India ETF Nifty 50 Shariah BeES"
+  },
+  {
+   "code": "140102",
+   "amfiName": "Nippon India ETF Nifty Infrastructure BeES",
+   "vendorKey": "Nippon India ETF Nifty Infrastructure BeES"
+  },
+  {
+   "code": "140107",
+   "amfiName": "CPSE ETF",
+   "vendorKey": "CPSE ETF"
+  },
+  {
+   "code": "140172",
+   "amfiName": "Edelweiss Large & Mid Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Edelweiss Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "140225",
+   "amfiName": "Edelweiss Mid Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Edelweiss Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "140351",
+   "amfiName": "Edelweiss Equity Savings Fund - Regular Plan - Growth Option",
+   "vendorKey": "Edelweiss Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "140355",
+   "amfiName": "Edelweiss Flexi Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Edelweiss Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "140381",
+   "amfiName": "Bandhan Aggressive Hybrid Fund-Regular Plan Growth",
+   "vendorKey": "Bandhan Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "140447",
+   "amfiName": "Mahindra Manulife Equity Savings Fund - Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "141068",
+   "amfiName": "Quantum Value Fund - Regular Plan Growth Option",
+   "vendorKey": "Quantum Value Fund-Reg(G)"
+  },
+  {
+   "code": "141070",
+   "amfiName": "Quantum ELSS Tax Saver Fund - Regular Plan Growth Option",
+   "vendorKey": "Quantum ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "141224",
+   "amfiName": "Mahindra Manulife Multi Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "141247",
+   "amfiName": "Union Largecap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Largecap Fund-Reg(G)"
+  },
+  {
+   "code": "141545",
+   "amfiName": "Axis Nifty 50 ETF",
+   "vendorKey": "Axis NIFTY 50 ETF"
+  },
+  {
+   "code": "141596",
+   "amfiName": "ICICI Prudential Nifty 100 Low Volatility 30 ETF",
+   "vendorKey": "ICICI Pru Nifty 100 Low Volatility 30 ETF"
+  },
+  {
+   "code": "141644",
+   "amfiName": "Axis Balanced Advantage Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "141665",
+   "amfiName": "UTI Nifty Next 50 Exchange Traded Fund",
+   "vendorKey": "UTI Nifty Next 50 ETF"
+  },
+  {
+   "code": "141839",
+   "amfiName": "ICICI Prudential BSE Sensex Index Fund - Cumulative Option",
+   "vendorKey": "ICICI Pru BSE Sensex Index Fund(G)"
+  },
+  {
+   "code": "141862",
+   "amfiName": "Groww ELSS Tax Saver Fund (formerly known as Indiabulls Tax Savings Fund)-Regular Plan-Growth Option",
+   "vendorKey": "Groww ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "141875",
+   "amfiName": "DSP Nifty 50 Equal Weight Index Fund - Regular Plan - Growth",
+   "vendorKey": "DSP Nifty 50 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "141923",
+   "amfiName": "HDFC Housing Opportunities Fund  - Growth Option",
+   "vendorKey": "HDFC Housing Opp Fund-Reg(G)"
+  },
+  {
+   "code": "141927",
+   "amfiName": "Axis Flexi Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "141957",
+   "amfiName": "BHARAT 22 ETF",
+   "vendorKey": "Bharat 22 ETF"
+  },
+  {
+   "code": "142035",
+   "amfiName": "Union Balanced Advantage Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "142109",
+   "amfiName": "Mahindra Manulife Mid Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "142282",
+   "amfiName": "DSP Arbitrage Fund - Regular - Growth",
+   "vendorKey": "DSP Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "142383",
+   "amfiName": "Edelweiss Recently Listed IPO Fund Regular Plan Growth",
+   "vendorKey": "Edelweiss Recently Listed IPO Fund-Reg(G)"
+  },
+  {
+   "code": "143162",
+   "amfiName": "Navi Aggressive Hybrid Fund - Regular Plan - Growth",
+   "vendorKey": "Navi Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "143247",
+   "amfiName": "ICICI Prudential BSE 500 ETF",
+   "vendorKey": "ICICI Pru BSE 500 ETF"
+  },
+  {
+   "code": "143340",
+   "amfiName": "UTI Nifty Next 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "143536",
+   "amfiName": "Invesco India Aggressive Hybrid Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "143620",
+   "amfiName": "BANK OF INDIA Arbitrage Fund Regular Growth",
+   "vendorKey": "Bank of India Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "143785",
+   "amfiName": "Mirae Asset Healthcare Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "143787",
+   "amfiName": "Navi Flexi Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Navi Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "144310",
+   "amfiName": "Union Equity Savings Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "144333",
+   "amfiName": "Kotak Balanced Advantage Fund -Regular Plan - Growth Option",
+   "vendorKey": "Kotak Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "144393",
+   "amfiName": "Axis Aggressive Hybrid Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "144461",
+   "amfiName": "Franklin India Equity Savings Fund- Growth",
+   "vendorKey": "Franklin India Equity Savings Fund(G)"
+  },
+  {
+   "code": "144484",
+   "amfiName": "UTI Equity Savings Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "144548",
+   "amfiName": "Tata Flexi Cap Fund -Regular Plan-Growth",
+   "vendorKey": "Tata Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "144587",
+   "amfiName": "ICICI Prudential Nifty Next 50 ETF",
+   "vendorKey": "ICICI Pru Nifty Next 50 ETF"
+  },
+  {
+   "code": "144838",
+   "amfiName": "Sundaram Services Fund Regular Plan - Growth",
+   "vendorKey": "Sundaram Services Fund-Reg(G)"
+  },
+  {
+   "code": "144902",
+   "amfiName": "Shriram Flexi Cap Fund - Regular Growth",
+   "vendorKey": "Shriram Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "144916",
+   "amfiName": "SBI BSE Sensex Next 50 ETF",
+   "vendorKey": "SBI BSE Sensex Next 50 ETF"
+  },
+  {
+   "code": "145077",
+   "amfiName": "ICICI Prudential Manufacturing Fund - Cumulative Option",
+   "vendorKey": "ICICI Pru Manufacturing Fund(G)"
+  },
+  {
+   "code": "145112",
+   "amfiName": "Axis Large & Mid Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "145139",
+   "amfiName": "Invesco India Small Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Smallcap Fund-Reg(G)"
+  },
+  {
+   "code": "145208",
+   "amfiName": "Tata Small Cap Fund-Regular Plan-Growth",
+   "vendorKey": "Tata Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "145355",
+   "amfiName": "Mahindra Manulife Consumption Fund- Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "145387",
+   "amfiName": "Baroda BNP Paribas Balanced Advantage Fund-Regular Plan -Growth Option",
+   "vendorKey": "Baroda BNP Paribas Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "145456",
+   "amfiName": "DSP Healthcare Fund - Regular Plan - Growth",
+   "vendorKey": "DSP Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "145471",
+   "amfiName": "Union Value Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Value Fund-Reg(G)"
+  },
+  {
+   "code": "145605",
+   "amfiName": "Groww Aggressive Hybrid Fund (formerly known as Indiabulls Equity Hybrid Fund) - Regular Plan - Growth option",
+   "vendorKey": "Groww Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "145633",
+   "amfiName": "Mirae Asset Nifty 50 ETF",
+   "vendorKey": "Mirae Asset Nifty 50 ETF"
+  },
+  {
+   "code": "145648",
+   "amfiName": "SBI Nifty 200 Quality 30 ETF",
+   "vendorKey": "SBI Nifty 200 Quality 30 ETF"
+  },
+  {
+   "code": "145677",
+   "amfiName": "BANK OF INDIA Small Cap Fund Regular Plan Growth",
+   "vendorKey": "Bank of India Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "145695",
+   "amfiName": "Mirae Asset Equity Savings Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "145723",
+   "amfiName": "Tata Arbitrage Fund-Regular Plan-Growth",
+   "vendorKey": "Tata Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "145801",
+   "amfiName": "Tata Nifty 50 Exchange Traded Fund",
+   "vendorKey": "Tata Nifty 50 ETF"
+  },
+  {
+   "code": "145820",
+   "amfiName": "Shriram ELSS Tax Saver Fund - Regular Growth",
+   "vendorKey": "Shriram ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "145881",
+   "amfiName": "Aditya Birla Sunlife Nifty Next 50 ETF",
+   "vendorKey": "Aditya Birla SL Nifty Next 50 ETF"
+  },
+  {
+   "code": "145890",
+   "amfiName": "LIC MF Arbitrage Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "145896",
+   "amfiName": "ICICI Prudential India Opportunities Fund - Cumulative Option",
+   "vendorKey": "ICICI Pru India Opp Fund(G)"
+  },
+  {
+   "code": "146007",
+   "amfiName": "Tata Balanced Advantage Fund-Regular Plan-Growth",
+   "vendorKey": "Tata Balanced Adv Fund-Reg(G)"
+  },
+  {
+   "code": "146127",
+   "amfiName": "CANARA ROBECO SMALL CAP FUND - REGULAR PLAN - GROWTH OPTION",
+   "vendorKey": "Canara Rob Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "146193",
+   "amfiName": "Edelweiss Small Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Edelweiss Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "146271",
+   "amfiName": "Nippon India ETF Nifty Midcap 150",
+   "vendorKey": "Nippon India ETF Nifty Midcap 150"
+  },
+  {
+   "code": "146294",
+   "amfiName": "Union Arbitrage Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "146379",
+   "amfiName": "DSP Nifty 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "DSP NIFTY 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "146380",
+   "amfiName": "DSP Nifty Next 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "DSP NIFTY Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "146388",
+   "amfiName": "UTI - BSE Sensex Next 50 Exchange Traded Fund",
+   "vendorKey": "UTI BSE Sensex Next 50 ETF"
+  },
+  {
+   "code": "146456",
+   "amfiName": "Invesco India Equity Savings Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "146551",
+   "amfiName": "Mahindra Manulife Large Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "146644",
+   "amfiName": "SBI Equity Minimum Variance Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Equity Minimum Variance Fund-Reg(G)"
+  },
+  {
+   "code": "146771",
+   "amfiName": "HSBC Large & Mid Cap Fund - Regular Growth",
+   "vendorKey": "HSBC Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "146950",
+   "amfiName": "ICICI Prudential Bharat Consumption Fund - Growth Option",
+   "vendorKey": "ICICI Pru Bharat Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "147184",
+   "amfiName": "ITI Multi Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "ITI Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "147203",
+   "amfiName": "Mirae Asset Focused Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Focused Fund-Reg(G)"
+  },
+  {
+   "code": "147303",
+   "amfiName": "DSP Quant Fund - Regular Plan - Growth",
+   "vendorKey": "DSP Quant Fund-Reg(G)"
+  },
+  {
+   "code": "147345",
+   "amfiName": "ICICI Prudential MNC Fund - Growth Option",
+   "vendorKey": "ICICI Pru MNC Fund(G)"
+  },
+  {
+   "code": "147371",
+   "amfiName": "QUANTUM ESG BEST IN CLASS STRATEGY FUND - REGULAR PLAN - GROWTH OPTION",
+   "vendorKey": "Quantum ESG Best In Class Strategy Fund-Reg(G)"
+  },
+  {
+   "code": "147405",
+   "amfiName": "Shriram Balanced Advantage Fund - Regular Growth",
+   "vendorKey": "Shriram Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "147407",
+   "amfiName": "Aditya Birla Sun Life Pharma and Healthcare Fund-Regular-Growth",
+   "vendorKey": "Aditya Birla SL Pharma & Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "147447",
+   "amfiName": "Mahindra Manulife Aggressive Hybrid Fund - Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "147477",
+   "amfiName": "Kotak Focused Fund- Regular plan _ Growth Option",
+   "vendorKey": "Kotak Focused Fund-Reg(G)"
+  },
+  {
+   "code": "147479",
+   "amfiName": "Mirae Asset Midcap Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "147482",
+   "amfiName": "Parag Parikh ELSS Tax Saver Fund- Regular Growth",
+   "vendorKey": "Parag Parikh ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "147483",
+   "amfiName": "ICICI Prudential Nifty Bank ETF",
+   "vendorKey": "ICICI Pru Nifty Bank ETF"
+  },
+  {
+   "code": "147490",
+   "amfiName": "Union Focused Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Focused Fund-Reg(G)"
+  },
+  {
+   "code": "147494",
+   "amfiName": "Baroda BNP Paribas Equity Savings Fund - Regular Plan - Growth",
+   "vendorKey": "Baroda BNP Paribas Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "147530",
+   "amfiName": "ICICI Prudential Nifty Private Bank ETF",
+   "vendorKey": "ICICI Pru Nifty Private Bank ETF"
+  },
+  {
+   "code": "147544",
+   "amfiName": "ITI ELSS Tax Saver Fund - Regular Plan - Growth Option",
+   "vendorKey": "ITI ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "147579",
+   "amfiName": "Nippon India ETF BSE Sensex Next 50",
+   "vendorKey": "Nippon India ETF BSE Sensex Next 50"
+  },
+  {
+   "code": "147614",
+   "amfiName": "Tata Nifty Private Bank Exchange Traded Fund",
+   "vendorKey": "Tata Nifty Pvt Bank ETF"
+  },
+  {
+   "code": "147618",
+   "amfiName": "ITI Arbitrage Fund - Regular Plan - Growth Option",
+   "vendorKey": "ITI Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "147619",
+   "amfiName": "Motilal Oswal Nifty Bank Index - Regular Plan",
+   "vendorKey": "Motilal Oswal Nifty Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "147621",
+   "amfiName": "Motilal Oswal Nifty Midcap 150 Index Fund - Regular Plan",
+   "vendorKey": "Motilal Oswal Nifty Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "147624",
+   "amfiName": "Motilal Oswal Nifty Smallcap 250 Index - Regular Plan",
+   "vendorKey": "Motilal Oswal Nifty Smallcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "147626",
+   "amfiName": "Motilal Oswal Nifty 500 Index Fund - Regular Plan",
+   "vendorKey": "Motilal Oswal Nifty 500 Index Fund-Reg(G)"
+  },
+  {
+   "code": "147661",
+   "amfiName": "ICICI Prudential Commodities Fund - Growth Option",
+   "vendorKey": "ICICI Pru Commodities Fund-Reg(G)"
+  },
+  {
+   "code": "147665",
+   "amfiName": "Axis Nifty 100 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Nifty 100 Index Fund-Reg(G)"
+  },
+  {
+   "code": "147701",
+   "amfiName": "Motilal Oswal Large and Midcap Fund - Regular Plan Growth",
+   "vendorKey": "Motilal Oswal Large & Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "147724",
+   "amfiName": "Kotak Pioneer Fund- Regular Plan- Growth Option",
+   "vendorKey": "Kotak Pioneer Fund-Reg(G)"
+  },
+  {
+   "code": "147735",
+   "amfiName": "Aditya Birla Sun Life Nifty Bank ETF",
+   "vendorKey": "Aditya Birla SL Nifty Bank ETF"
+  },
+  {
+   "code": "147748",
+   "amfiName": "Union Large & Midcap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Large & Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "147760",
+   "amfiName": "Tata Focused Fund-Regular Plan-Growth",
+   "vendorKey": "Tata Focused Fund-Reg(G)"
+  },
+  {
+   "code": "147787",
+   "amfiName": "ITI Balanced Advantage Fund - Regular Plan - Growth Option",
+   "vendorKey": "ITI Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "147795",
+   "amfiName": "Motilal Oswal Nifty 50 Index Fund - Regular plan - Growth",
+   "vendorKey": "Motilal Oswal Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "147797",
+   "amfiName": "Motilal Oswal Nifty Next 50 Index Fund - Regular plan - Growth",
+   "vendorKey": "Motilal Oswal Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "147843",
+   "amfiName": "Mahindra Manulife Large & Mid Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "147846",
+   "amfiName": "Aditya Birla Sun Life PSU Equity Fund-Regular Plan-Growth",
+   "vendorKey": "Aditya Birla SL PSU Equity Fund-Reg(G)"
+  },
+  {
+   "code": "147906",
+   "amfiName": "Mirae Asset Nifty Next 50 ETF",
+   "vendorKey": "Mirae Asset Nifty Next 50 ETF"
+  },
+  {
+   "code": "147920",
+   "amfiName": "ITI Small Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "ITI Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "147921",
+   "amfiName": "ICICI Prudential Nifty Midcap 150 ETF",
+   "vendorKey": "ICICI Pru Nifty Midcap 150 ETF"
+  },
+  {
+   "code": "147929",
+   "amfiName": "Axis ESG Integration Strategy Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis ESG Integration Strategy Fund-Reg(G)"
+  },
+  {
+   "code": "147944",
+   "amfiName": "BANDHAN SMALL CAP FUND - REGULAR PLAN GROWTH",
+   "vendorKey": "Bandhan Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "148050",
+   "amfiName": "Tata Multi Asset Allocation Fund-Regular Plan-Growth",
+   "vendorKey": "Tata Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "148071",
+   "amfiName": "Union Midcap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "148173",
+   "amfiName": "UTI Nifty Bank ETF",
+   "vendorKey": "UTI Nifty Bank ETF"
+  },
+  {
+   "code": "148351",
+   "amfiName": "ITI Large Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "ITI Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "148382",
+   "amfiName": "Motilal Oswal S&P 500 Index Fund - Regular Plan Growth",
+   "vendorKey": "Motilal Oswal S&P 500 Index Fund-Reg(G)"
+  },
+  {
+   "code": "148400",
+   "amfiName": "Mirae Asset Arbitrage Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "148405",
+   "amfiName": "BANK OF INDIA Flexi Cap Fund Regular Plan -Growth",
+   "vendorKey": "Bank of India Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "148408",
+   "amfiName": "Nippon India ETF Nifty IT",
+   "vendorKey": "Nippon India ETF Nifty IT"
+  },
+  {
+   "code": "148409",
+   "amfiName": "HSBC Focused Fund - Regular Growth",
+   "vendorKey": "HSBC Focused Fund-Reg(G)"
+  },
+  {
+   "code": "148456",
+   "amfiName": "ICICI Prudential Nifty Alpha Low- Volatility 30 ETF",
+   "vendorKey": "ICICI Pru Nifty Alpha Low - Volatility 30 ETF"
+  },
+  {
+   "code": "148459",
+   "amfiName": "Nippon India Multi Asset Allocation Fund - Regular Plan - Growth Option",
+   "vendorKey": "Nippon India Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "148461",
+   "amfiName": "HDFC NIFTY Bank ETF - GROWTH",
+   "vendorKey": "HDFC NIFTY Bank ETF"
+  },
+  {
+   "code": "148466",
+   "amfiName": "ICICI Prudential Nifty IT ETF",
+   "vendorKey": "ICICI Pru Nifty IT ETF"
+  },
+  {
+   "code": "148467",
+   "amfiName": "Mahindra Manulife Arbitrage Fund - Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "148471",
+   "amfiName": "Baroda BNP Paribas Large and Mid Cap Fund-Regular Plan-Growth Option",
+   "vendorKey": "Baroda BNP Paribas Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "148483",
+   "amfiName": "Invesco India Focused Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Focused Fund-Reg(G)"
+  },
+  {
+   "code": "148504",
+   "amfiName": "Sundaram Large Cap Fund(Formerly Known as Sundaram Blue Chip Fund) Regular Plan - Growth",
+   "vendorKey": "Sundaram Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "148517",
+   "amfiName": "ICICI Prudential ESG Exclusionary Strategy Fund - Growth",
+   "vendorKey": "ICICI Pru ESG Exclusionary Strategy Fund(G)"
+  },
+  {
+   "code": "148518",
+   "amfiName": "Nippon India Nifty Smallcap 250 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Nippon India Nifty Smallcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "148537",
+   "amfiName": "Aditya Birla Sun Life Special Opportunities Fund-Regular Plan-Growth",
+   "vendorKey": "Aditya Birla SL Special Opp Fund-Reg(G)"
+  },
+  {
+   "code": "148541",
+   "amfiName": "SBI Nifty Private Bank ETF",
+   "vendorKey": "SBI Nifty Private Bank ETF"
+  },
+  {
+   "code": "148542",
+   "amfiName": "SBI Nifty IT ETF",
+   "vendorKey": "SBI Nifty IT ETF"
+  },
+  {
+   "code": "148557",
+   "amfiName": "Edelweiss MSCI India Domestic & World Healthcare 45 index Fund Regular Plan - Growth",
+   "vendorKey": "Edelweiss MSCI India Domestic & World Healthcare 45 Index Fund-Reg(G)"
+  },
+  {
+   "code": "148559",
+   "amfiName": "Axis NIFTY Bank ETF",
+   "vendorKey": "Axis NIFTY Bank ETF"
+  },
+  {
+   "code": "148560",
+   "amfiName": "quant ESG Integration Strategy Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant ESG Integration Strategy Fund-Reg(G)"
+  },
+  {
+   "code": "148571",
+   "amfiName": "Mahindra Manulife Focused Fund - Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Focused Fund-Reg(G)"
+  },
+  {
+   "code": "148572",
+   "amfiName": "Mirae Asset Nifty 100 ESG Sector Leaders ETF",
+   "vendorKey": "Mirae Asset Nifty 100 ESG Sector Leaders ETF"
+  },
+  {
+   "code": "148591",
+   "amfiName": "Union Aggressive Hybrid Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "148594",
+   "amfiName": "DSP Value Fund - Regular Plan - Growth",
+   "vendorKey": "DSP Value Fund-Reg(G)"
+  },
+  {
+   "code": "148598",
+   "amfiName": "ICICI Prudential Quant Fund Growth",
+   "vendorKey": "ICICI Pru Quant Fund(G)"
+  },
+  {
+   "code": "148602",
+   "amfiName": "Kotak ESG Exclusionary Strategy Fund - Regular Plan - Growth Option",
+   "vendorKey": "Kotak ESG Exclusionary Strategy Fund-Reg(G)"
+  },
+  {
+   "code": "148610",
+   "amfiName": "HDFC Dividend Yield Fund - Growth Plan",
+   "vendorKey": "HDFC Dividend Yield Fund-Reg(G)"
+  },
+  {
+   "code": "148617",
+   "amfiName": "UTI Small Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "148621",
+   "amfiName": "Mirae Asset Banking and Financial Services Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Banking and Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "148631",
+   "amfiName": "Axis Innovation Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Innovation Fund-Reg(G)"
+  },
+  {
+   "code": "148635",
+   "amfiName": "Aditya Birla Sun Life ESG Integration Strategy Fund-Regular Plan-Growth",
+   "vendorKey": "Aditya Birla SL ESG Integration Strategy Fund-Reg(G)"
+  },
+  {
+   "code": "148653",
+   "amfiName": "ICICI Prudential Business Cycle Fund Growth",
+   "vendorKey": "ICICI Pru Business Cycle Fund(G)"
+  },
+  {
+   "code": "148657",
+   "amfiName": "PGIM India Balanced Advantage Fund - Regular Plan - Growth Option",
+   "vendorKey": "PGIM India Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "148704",
+   "amfiName": "UTI Nifty 200 Momentum 30 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Nifty200 Momentum 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "148719",
+   "amfiName": "Nippon India Nifty 50 Value 20 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Nippon India Nifty 50 Value 20 Index Fund-Reg(G)"
+  },
+  {
+   "code": "148723",
+   "amfiName": "Nippon India Nifty Midcap 150 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Nippon India Nifty Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "148732",
+   "amfiName": "ITI Mid Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "ITI Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "148743",
+   "amfiName": "Kotak Nifty Next 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Kotak Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "148753",
+   "amfiName": "Invesco India ESG Integration Strategy Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India ESG Integration Strategy Fund-Reg(G)"
+  },
+  {
+   "code": "148763",
+   "amfiName": "Kotak Nifty IT ETF",
+   "vendorKey": "Kotak Nifty IT ETF"
+  },
+  {
+   "code": "148799",
+   "amfiName": "Axis NIFTY IT ETF",
+   "vendorKey": "Axis NIFTY IT ETF"
+  },
+  {
+   "code": "148805",
+   "amfiName": "Aditya Birla Sun Life Nifty Midcap 150 Index Fund-Regular Growth",
+   "vendorKey": "Aditya Birla SL Nifty Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "148811",
+   "amfiName": "Aditya Birla Sun Life Nifty Smallcap 50 Index Fund-Regular Growth",
+   "vendorKey": "Aditya Birla SL Nifty Smallcap 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "148884",
+   "amfiName": "Canara Robeco Focused Fund - Regular Plan - Growth Option",
+   "vendorKey": "Canara Rob Focused Fund-Reg(G)"
+  },
+  {
+   "code": "148918",
+   "amfiName": "Aditya Birla Sun Life Multi-Cap Fund-Regular Growth",
+   "vendorKey": "Aditya Birla SL Multi-Cap Fund-Reg(G)"
+  },
+  {
+   "code": "148923",
+   "amfiName": "quant Quantamental Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Quantamental Fund-Reg(G)"
+  },
+  {
+   "code": "148934",
+   "amfiName": "Axis NIFTY Healthcare ETF",
+   "vendorKey": "Axis NIFTY Healthcare ETF"
+  },
+  {
+   "code": "148943",
+   "amfiName": "SBI Nifty Next 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "148948",
+   "amfiName": "Tata Dividend Yield Fund-Regular Plan-Growth",
+   "vendorKey": "Tata Dividend Yield Fund-Reg(G)"
+  },
+  {
+   "code": "148957",
+   "amfiName": "ICICI Prudential Nifty Healthcare ETF",
+   "vendorKey": "ICICI Pru Nifty Healthcare ETF"
+  },
+  {
+   "code": "148959",
+   "amfiName": "Parag Parikh Conservative Hybrid Fund - Regular Plan - Growth",
+   "vendorKey": "Parag Parikh Conservative Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "148965",
+   "amfiName": "Aditya Birla Sun Life Nifty 50 Equal Weight Index Fund-Regular Growth",
+   "vendorKey": "Aditya Birla SL Nifty 50 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "148973",
+   "amfiName": "ITI Value Fund - Regular Plan - Growth Option",
+   "vendorKey": "ITI Value Fund-Reg(G)"
+  },
+  {
+   "code": "148974",
+   "amfiName": "Kotak Nifty 50 Index Fund - Regular Plan-Growth",
+   "vendorKey": "Kotak Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "148982",
+   "amfiName": "BANK OF INDIA Large Cap Fund Regular Plan Growth",
+   "vendorKey": "Bank of India Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "148987",
+   "amfiName": "HDFC Banking & Financial Services Fund - Growth Option",
+   "vendorKey": "HDFC Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "148992",
+   "amfiName": "Axis Quant Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Quant Fund-Reg(G)"
+  },
+  {
+   "code": "149008",
+   "amfiName": "Nippon India Nifty Pharma ETF",
+   "vendorKey": "Nippon India Nifty Pharma ETF"
+  },
+  {
+   "code": "149020",
+   "amfiName": "PGIM India Small Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "PGIM India Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "149040",
+   "amfiName": "Navi Nifty 50 Index Fund-Regular Plan-Growth",
+   "vendorKey": "Navi Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149041",
+   "amfiName": "SBI Nifty Consumption ETF",
+   "vendorKey": "SBI Nifty Consumption ETF"
+  },
+  {
+   "code": "149068",
+   "amfiName": "Tata Business Cycle Fund-Regular Plan-Growth",
+   "vendorKey": "Tata Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "149072",
+   "amfiName": "ICICI Prudential Nifty FMCG ETF",
+   "vendorKey": "ICICI Pru Nifty FMCG ETF"
+  },
+  {
+   "code": "149088",
+   "amfiName": "Canara Robeco Value Fund - Regular Plan - Growth Option",
+   "vendorKey": "Canara Rob Value Fund-Reg(G)"
+  },
+  {
+   "code": "149089",
+   "amfiName": "Nippon India Flexi Cap Fund - Regular Plan - Growth Plan - Growth Option",
+   "vendorKey": "Nippon India Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "149090",
+   "amfiName": "UTI Focused Fund (30 stocks) - Regular Plan - Growth Option",
+   "vendorKey": "UTI Focused Fund-Reg(G)"
+  },
+  {
+   "code": "149101",
+   "amfiName": "Mahindra Manulife Flexi Cap Fund - Regular Plan -Growth",
+   "vendorKey": "Mahindra Manulife Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "149105",
+   "amfiName": "Mirae Asset Nifty Financial Services ETF",
+   "vendorKey": "Mirae Asset Nifty Financial Services ETF"
+  },
+  {
+   "code": "149106",
+   "amfiName": "HDFC NIFTY50 Equal weight Index Fund - Growth Option",
+   "vendorKey": "HDFC NIFTY50 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "149132",
+   "amfiName": "SBI Balanced Advantage Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "149140",
+   "amfiName": "Baroda BNP Paribas Business Cycle Fund - Regular Plan - Growth",
+   "vendorKey": "Baroda BNP Paribas Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "149156",
+   "amfiName": "Axis NIFTY India Consumption ETF",
+   "vendorKey": "Axis NIFTY India Consumption ETF"
+  },
+  {
+   "code": "149167",
+   "amfiName": "Axis Value Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Value Fund-Reg(G)"
+  },
+  {
+   "code": "149218",
+   "amfiName": "ICICI Prudential NASDAQ 100 Index Fund - Growth",
+   "vendorKey": "ICICI Pru NASDAQ 100 Index Fund(G)"
+  },
+  {
+   "code": "149252",
+   "amfiName": "Edelweiss Nifty 50 Index Fund Regular Plan Growth",
+   "vendorKey": "Edelweiss Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149256",
+   "amfiName": "Edelweiss Nifty 100 Quality 30 Index Fund Regular Plan Growth",
+   "vendorKey": "Edelweiss Nifty 100 Quality 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149259",
+   "amfiName": "LIC MF Balanced Advantage Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "149262",
+   "amfiName": "Aditya Birla Sun Life Nifty Healthcare ETF",
+   "vendorKey": "Aditya Birla SL Nifty Healthcare ETF"
+  },
+  {
+   "code": "149266",
+   "amfiName": "NJ Balanced Advantage Fund - Regular Plan - Growth Option",
+   "vendorKey": "NJ Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "149270",
+   "amfiName": "ITI Pharma and Healthcare Fund - Regular Plan - Growth Option",
+   "vendorKey": "ITI Pharma & Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "149281",
+   "amfiName": "ICICI Prudential Nifty Smallcap 250 Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty Smallcap 250 Index Fund(G)"
+  },
+  {
+   "code": "149285",
+   "amfiName": "ICICI Prudential Nifty India Consumption ETF",
+   "vendorKey": "ICICI Pru Nifty India Consumption ETF"
+  },
+  {
+   "code": "149286",
+   "amfiName": "DSP Nifty 50 Equal Weight ETF",
+   "vendorKey": "DSP Nifty 50 Equal Weight ETF"
+  },
+  {
+   "code": "149287",
+   "amfiName": "HDFC NIFTY Next 50 Index Fund - Growth Option",
+   "vendorKey": "HDFC NIFTY Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149293",
+   "amfiName": "Aditya Birla Sun Life Nifty IT ETF",
+   "vendorKey": "Aditya Birla SL Nifty IT ETF"
+  },
+  {
+   "code": "149296",
+   "amfiName": "Aditya Birla Sun Life Business Cycle Fund-Regular-Growth",
+   "vendorKey": "Aditya Birla SL Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "149305",
+   "amfiName": "BANDHAN MULTI CAP FUND - GROWTH - REGULAR PLAN",
+   "vendorKey": "Bandhan Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "149317",
+   "amfiName": "360 ONE QUANT FUND REGULAR GROWTH",
+   "vendorKey": "360 ONE Quant Fund-Reg(G)"
+  },
+  {
+   "code": "149324",
+   "amfiName": "ITI Banking and Financial Services Fund -Regular Plan - Growth Option",
+   "vendorKey": "ITI Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "149328",
+   "amfiName": "Nippon India Taiwan Equity fund- Regular Plan- Growth Option",
+   "vendorKey": "Nippon India Taiwan Equity Fund-Reg(G)"
+  },
+  {
+   "code": "149337",
+   "amfiName": "Quant Value Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Value Fund-Reg(G)"
+  },
+  {
+   "code": "149341",
+   "amfiName": "Edelweiss NIFTY Large Midcap 250 Index Fund - Regular Plan Growth",
+   "vendorKey": "Edelweiss NIFTY Large Mid Cap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149366",
+   "amfiName": "HDFC Multi Cap Fund - Growth Option",
+   "vendorKey": "HDFC Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "149371",
+   "amfiName": "Axis Nifty 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149382",
+   "amfiName": "Axis Multicap Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Multicap Fund-Reg(G)"
+  },
+  {
+   "code": "149390",
+   "amfiName": "ICICI Prudential Nifty Midcap 150 Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149392",
+   "amfiName": "DSP Nifty 50 ETF",
+   "vendorKey": "DSP Nifty 50 ETF"
+  },
+  {
+   "code": "149397",
+   "amfiName": "Kotak Nifty Alpha 50 ETF",
+   "vendorKey": "Kotak Nifty Alpha 50 ETF"
+  },
+  {
+   "code": "149403",
+   "amfiName": "DSP Nifty Midcap 150 Quality 50 ETF",
+   "vendorKey": "DSP Nifty Midcap 150 Quality 50 ETF"
+  },
+  {
+   "code": "149404",
+   "amfiName": "Mahindra Manulife Balanced Advantage Fund - Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "149448",
+   "amfiName": "Navi Nifty Next 50 Index Fund- Regular Plan- Growth",
+   "vendorKey": "Navi Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149449",
+   "amfiName": "Samco Flexi Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Samco Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "149463",
+   "amfiName": "ICICI Prudential Nifty Auto ETF",
+   "vendorKey": "ICICI Pru Nifty Auto ETF"
+  },
+  {
+   "code": "149465",
+   "amfiName": "Nippon India Nifty Auto ETF",
+   "vendorKey": "Nippon India Nifty Auto ETF"
+  },
+  {
+   "code": "149467",
+   "amfiName": "Axis Nifty Next 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149481",
+   "amfiName": "Sundaram Nifty 100 Equal Weight Fund (Formerly Known as Principal Nifty 100 Equal Weight Fund)-Growth",
+   "vendorKey": "Sundaram Nifty 100 Equal Weight Fund(G)"
+  },
+  {
+   "code": "149532",
+   "amfiName": "Sundaram Focused Fund (Formerly Known as Principal Focused Multicap Fund)-Growth Option",
+   "vendorKey": "Sundaram Focused Fund(G)"
+  },
+  {
+   "code": "149552",
+   "amfiName": "Sundaram Arbitrage Fund (Formerly Know as Principal Arbitrage Fund) - Regular Plan - Growth",
+   "vendorKey": "Sundaram Arbitrage Fund(G)"
+  },
+  {
+   "code": "149569",
+   "amfiName": "Sundaram ELSS Tax Saver Fund Regular Growth",
+   "vendorKey": "Sundaram ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "149599",
+   "amfiName": "Sundaram Aggressive Hybrid Fund (Formerly Known as Principal Hybrid Equity Fund)-Growth",
+   "vendorKey": "Sundaram Aggressive Hybrid Fund(G)"
+  },
+  {
+   "code": "149667",
+   "amfiName": "Sundaram Multi Cap Fund (Formerly Known as Principal Multi Cap Growth Fund)-Growth Option",
+   "vendorKey": "Sundaram Multi Cap Fund(G)"
+  },
+  {
+   "code": "149674",
+   "amfiName": "Sundaram Equity Savings Fund (Formerly Known as Principal Equity Savings Fund) - Growth Option",
+   "vendorKey": "Sundaram Equity Savings Fund(G)"
+  },
+  {
+   "code": "149697",
+   "amfiName": "Sundaram Dividend Yield Fund (Formerly Known as Principal Dividend Yield Fund)-Growth Plan",
+   "vendorKey": "Sundaram Dividend Yield Fund(G)"
+  },
+  {
+   "code": "149757",
+   "amfiName": "Kotak Nifty Midcap 50 ETF",
+   "vendorKey": "Kotak Nifty Midcap 50 ETF"
+  },
+  {
+   "code": "149766",
+   "amfiName": "Invesco India Flexi Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "149786",
+   "amfiName": "Mirae Asset Nifty India Manufacturing ETF",
+   "vendorKey": "Mirae Asset Nifty India Manufacturing ETF"
+  },
+  {
+   "code": "149799",
+   "amfiName": "Motilal Oswal Nifty 200 Momentum 30 Index Fund-Regular Plan",
+   "vendorKey": "Motilal Oswal Nifty 200 Momentum 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149801",
+   "amfiName": "Motilal Oswal Nifty 200 Momentum 30 ETF",
+   "vendorKey": "Motilal Oswal Nifty 200 Momentum 30 ETF"
+  },
+  {
+   "code": "149802",
+   "amfiName": "UTI BSE Sensex Index Fund - Regular Plan  -Growth Option",
+   "vendorKey": "UTI BSE Sensex Index Fund-Reg(G)"
+  },
+  {
+   "code": "149805",
+   "amfiName": "Navi Nifty Bank Index Fund- Regular Plan- Growth",
+   "vendorKey": "Navi Nifty Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "149833",
+   "amfiName": "BANDHAN NIFTY 100 INDEX FUND - REGULAR PLAN - GROWTH",
+   "vendorKey": "Bandhan Nifty 100 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149837",
+   "amfiName": "Aditya Birla Sun Life Nifty Next 50 Index Fund-Regular Growth",
+   "vendorKey": "Aditya Birla SL Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149840",
+   "amfiName": "Kotak Manufacture in India Fund - Regular Plan Growth",
+   "vendorKey": "Kotak Manufacture in India Fund-Reg(G)"
+  },
+  {
+   "code": "149859",
+   "amfiName": "ICICI Prudential Nifty Bank Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "149869",
+   "amfiName": "HDFC NIFTY 100 Index Fund - Growth Option",
+   "vendorKey": "HDFC NIFTY 100 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149871",
+   "amfiName": "HDFC Nifty 100 Equal Weight Index Fund - Growth Option",
+   "vendorKey": "HDFC NIFTY 100 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "149880",
+   "amfiName": "UTI BSE Low Volatility Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI BSE Low Volatility Index Fund-Reg(G)"
+  },
+  {
+   "code": "149886",
+   "amfiName": "SBI Multicap Fund- Regular Plan- Growth Option",
+   "vendorKey": "SBI Multicap Fund-Reg(G)"
+  },
+  {
+   "code": "149893",
+   "amfiName": "Navi Nifty Midcap 150 Index Fund Regular Plan- Growth",
+   "vendorKey": "Navi Nifty Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149896",
+   "amfiName": "Axis Nifty Smallcap 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Nifty Smallcap 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149918",
+   "amfiName": "Mirae Asset Nifty Midcap 150 ETF",
+   "vendorKey": "Mirae Asset Nifty Midcap 150 ETF"
+  },
+  {
+   "code": "149920",
+   "amfiName": "Motilal Oswal BSE Low Volatility Index Fund-Regular plan",
+   "vendorKey": "Motilal Oswal BSE Low Volatility Index Fund-Reg(G)"
+  },
+  {
+   "code": "149921",
+   "amfiName": "Motilal Oswal BSE Low Volatility ETF",
+   "vendorKey": "Motilal Oswal BSE Low Volatility ETF"
+  },
+  {
+   "code": "149938",
+   "amfiName": "Axis Nifty Midcap 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Nifty Midcap 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "149959",
+   "amfiName": "Tata Nifty India Digital Exchange Traded Fund",
+   "vendorKey": "Tata Nifty India Digital ETF"
+  },
+  {
+   "code": "150000",
+   "amfiName": "Kotak Nifty 100 Low Volatility 30 ETF",
+   "vendorKey": "Kotak Nifty 100 Low Volatility 30 ETF"
+  },
+  {
+   "code": "150156",
+   "amfiName": "BARODA BNP PARIBAS ELSS Tax Saver Fund - Regular - Growth Option",
+   "vendorKey": "Baroda BNP Paribas ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "150185",
+   "amfiName": "BARODA BNP PARIBAS LARGE CAP Fund- Regular Plan - Growth Option",
+   "vendorKey": "Baroda BNP Paribas Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "150203",
+   "amfiName": "BARODA BNP PARIBAS Conservative Hybrid Fund-Regular Plan-Growth Option",
+   "vendorKey": "Baroda BNP Paribas Conservative Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "150209",
+   "amfiName": "BARODA BNP PARIBAS Mid Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Baroda BNP Paribas Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "150250",
+   "amfiName": "BARODA BNP PARIBAS ARBITRAGE FUND- REGULAR PLAN- GROWTH OPTION",
+   "vendorKey": "Baroda BNP Paribas Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "150258",
+   "amfiName": "Baroda BNP Paribas Aggressive Hybrid Fund- REGULAT PLAN -GROWTH OPTION",
+   "vendorKey": "Baroda BNP Paribas Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "150263",
+   "amfiName": "BARODA BNP PARIBAS Focused Fund - Regular Plan-Growth Option",
+   "vendorKey": "Baroda BNP Paribas Focused Fund-Reg(G)"
+  },
+  {
+   "code": "150268",
+   "amfiName": "BARODA BNP PARIBAS India Consumption Fund - Regular Plan - Growth Option",
+   "vendorKey": "Baroda BNP Paribas India Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "150308",
+   "amfiName": "ICICI PRUDENTIAL HOUSING OPPORTUNITIES FUND - Growth",
+   "vendorKey": "ICICI Pru Housing Opp Fund-Reg(G)"
+  },
+  {
+   "code": "150312",
+   "amfiName": "UTI Nifty Midcap 150 Quality 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Nifty Midcap 150 Quality 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "150347",
+   "amfiName": "WhiteOak Capital Flexi Cap Fund Regular Plan-Growth",
+   "vendorKey": "WOC Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "150366",
+   "amfiName": "NJ Arbitrage Fund - Regular Plan - Growth Option",
+   "vendorKey": "NJ Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "150382",
+   "amfiName": "Edelweiss Focused Fund - Regular Plan - Growth",
+   "vendorKey": "Edelweiss Focused Fund-Reg(G)"
+  },
+  {
+   "code": "150385",
+   "amfiName": "Baroda BNP Paribas Flexi Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Baroda BNP Paribas Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "150427",
+   "amfiName": "DSP Nifty Midcap 150 Quality 50 Index Fund - Regular - Growth",
+   "vendorKey": "DSP Nifty Midcap 150 Quality 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "150441",
+   "amfiName": "quant Large Cap Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "150444",
+   "amfiName": "Motilal Oswal BSE Financials ex Bank 30 Index Fund Regular Growth",
+   "vendorKey": "Motilal Oswal BSE Financials ex Bank 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "150445",
+   "amfiName": "Motilal Oswal BSE Healthcare ETF",
+   "vendorKey": "Motilal Oswal BSE Healthcare ETF"
+  },
+  {
+   "code": "150454",
+   "amfiName": "ICICI Prudential Nifty 200 Momentum 30 Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty 200 Momentum 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "150455",
+   "amfiName": "ICICI Prudential Nifty 200 Momentum 30 ETF",
+   "vendorKey": "ICICI Pru Nifty 200 Momentum 30 ETF"
+  },
+  {
+   "code": "150466",
+   "amfiName": "ICICI Prudential Nifty IT Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty IT Index Fund-Reg(G)"
+  },
+  {
+   "code": "150473",
+   "amfiName": "Mirae Asset Balanced Advantage Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "150476",
+   "amfiName": "HDFC NIFTY 100 ETF - Growth Option",
+   "vendorKey": "HDFC Nifty 100 ETF"
+  },
+  {
+   "code": "150477",
+   "amfiName": "HDFC NIFTY NEXT 50 ETF - Growth Option",
+   "vendorKey": "HDFC NIFTY Next 50 ETF"
+  },
+  {
+   "code": "150480",
+   "amfiName": "Franklin India Balanced Advantage Fund- Growth",
+   "vendorKey": "Franklin India Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "150490",
+   "amfiName": "Nippon India Nifty Alpha Low Volatility 30 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Nippon India Nifty Alpha Low Volatility 30 Index Fund(G)"
+  },
+  {
+   "code": "150492",
+   "amfiName": "Kotak Nifty India Consumption ETF",
+   "vendorKey": "Kotak NIFTY India Consumption ETF"
+  },
+  {
+   "code": "150497",
+   "amfiName": "Aditya Birla Sun Life Nifty 200 Quality 30 ETF",
+   "vendorKey": "Aditya Birla SL Nifty 200 Quality 30 ETF"
+  },
+  {
+   "code": "150498",
+   "amfiName": "Aditya Birla Sun Life Nifty 200 Momentum 30 ETF",
+   "vendorKey": "Aditya Birla SL Nifty 200 Momentum 30 ETF"
+  },
+  {
+   "code": "150516",
+   "amfiName": "Navi Nifty India Manufacturing Index Fund- Regular Plan- Growth",
+   "vendorKey": "Navi Nifty India Manufacturing Index Fund-Reg(G)"
+  },
+  {
+   "code": "150517",
+   "amfiName": "Motilal Oswal BSE Enhanced Value ETF",
+   "vendorKey": "Motilal Oswal BSE Enhanced Value ETF"
+  },
+  {
+   "code": "150519",
+   "amfiName": "Motilal Oswal BSE Enhanced Value Index Fund-Regular plan",
+   "vendorKey": "Motilal Oswal BSE Enhanced Value Index Fund-Reg(G)"
+  },
+  {
+   "code": "150520",
+   "amfiName": "Motilal Oswal BSE Quality ETF",
+   "vendorKey": "Motilal Oswal BSE Quality ETF"
+  },
+  {
+   "code": "150522",
+   "amfiName": "Motilal Oswal BSE Quality Index Fund-Regular plan",
+   "vendorKey": "Motilal Oswal BSE Quality Index Fund-Reg(G)"
+  },
+  {
+   "code": "150526",
+   "amfiName": "ICICI Prudential Nifty Infrastructure ETF",
+   "vendorKey": "ICICI Pru Nifty Infrastructure ETF"
+  },
+  {
+   "code": "150531",
+   "amfiName": "Kotak Nifty MNC ETF",
+   "vendorKey": "Kotak NIFTY MNC ETF"
+  },
+  {
+   "code": "150537",
+   "amfiName": "Tata Housing Opportunities Fund - Regular Plan - Growth",
+   "vendorKey": "Tata Housing Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "150538",
+   "amfiName": "ICICI Prudential PSU Equity Fund - Growth",
+   "vendorKey": "ICICI Pru PSU Equity Fund-Reg(G)"
+  },
+  {
+   "code": "150568",
+   "amfiName": "Sundaram Flexicap Fund Regular Growth",
+   "vendorKey": "Sundaram Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "150583",
+   "amfiName": "WhiteOak Capital Mid Cap Fund Regular Plan Growth",
+   "vendorKey": "WOC Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "150589",
+   "amfiName": "WhiteOak Capital ELSS Tax Saver Fund Regular Plan Growth",
+   "vendorKey": "WOC ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "150592",
+   "amfiName": "BANDHAN NIFTY200 MOMENTUM 30 INDEX FUND - GROWTH - REGULAR PLAN",
+   "vendorKey": "Bandhan Nifty200 Momentum 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "150619",
+   "amfiName": "HDFC NIFTY 50 VALUE 20 ETF - Growth Option",
+   "vendorKey": "HDFC NIFTY50 Value 20 ETF"
+  },
+  {
+   "code": "150620",
+   "amfiName": "HDFC NIFTY100 QUALITY 30 ETF - Growth Option",
+   "vendorKey": "HDFC NIFTY100 Quality 30 ETF"
+  },
+  {
+   "code": "150621",
+   "amfiName": "HDFC NIFTY GROWTH SECTORS 15 ETF - Growth Option",
+   "vendorKey": "HDFC NIFTY Growth Sectors 15 ETF"
+  },
+  {
+   "code": "150626",
+   "amfiName": "Kotak Business Cycle Fund-Regular Plan--Growth",
+   "vendorKey": "Kotak Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "150633",
+   "amfiName": "BANDHAN NIFTY100 LOW VOLATILITY 30 INDEX FUND - GROWTH - REGULAR PLAN",
+   "vendorKey": "Bandhan Nifty100 Low Volatility 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "150637",
+   "amfiName": "ICICI Prudential Nifty50 Equal Weight Index Fund- Growth",
+   "vendorKey": "ICICI Pru Nifty50 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "150645",
+   "amfiName": "ICICI Prudential Nifty Auto Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty Auto Index Fund-Reg(G)"
+  },
+  {
+   "code": "150657",
+   "amfiName": "HDFC NIFTY200 MOMENTUM 30 ETF - Growth Option",
+   "vendorKey": "HDFC NIFTY200 Momentum 30 ETF"
+  },
+  {
+   "code": "150658",
+   "amfiName": "HDFC NIFTY100 Low Volatility 30 ETF - Growth Option",
+   "vendorKey": "HDFC NIFTY100 Low Volatility 30 ETF"
+  },
+  {
+   "code": "150661",
+   "amfiName": "LIC MF Multi Cap Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "150672",
+   "amfiName": "SBI Nifty Midcap 150 Index Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Nifty Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "150676",
+   "amfiName": "SBI Nifty Smallcap 250 Index Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Nifty Smallcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "150684",
+   "amfiName": "ICICI PRUDENTIAL TRANSPORTATION AND LOGISTICS FUND - Growth",
+   "vendorKey": "ICICI Pru Transportation and Logistics Fund-Reg(G)"
+  },
+  {
+   "code": "150717",
+   "amfiName": "BANDHAN TRANSPORTATION AND LOGISTICS FUND - GROWTH - REGULAR PLAN",
+   "vendorKey": "Bandhan Transportation and Logistics Fund-Reg(G)"
+  },
+  {
+   "code": "150741",
+   "amfiName": "Tata Nifty Midcap 150 Momentum 50 Index Fund - Growth - Regular Plan",
+   "vendorKey": "Tata Nifty Midcap 150 Momentum 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "150799",
+   "amfiName": "WhiteOak Capital Large Cap Fund Regular Plan Growth",
+   "vendorKey": "WOC Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "150801",
+   "amfiName": "HDFC NIFTY IT ETF - Growth option",
+   "vendorKey": "HDFC NIFTY IT ETF"
+  },
+  {
+   "code": "150802",
+   "amfiName": "HDFC NIFTY Private Bank ETF - Growth Option",
+   "vendorKey": "HDFC NIFTY Private Bank ETF"
+  },
+  {
+   "code": "150803",
+   "amfiName": "HDFC Business Cycle Fund - Growth Option",
+   "vendorKey": "HDFC Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "150816",
+   "amfiName": "Canara Robeco Mid Cap Fund- Regular Plan- Growth Option",
+   "vendorKey": "Canara Rob Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "150839",
+   "amfiName": "Samco ELSS Tax Saver Fund - Regular Plan - Growth Option",
+   "vendorKey": "Samco ELSS Tax Saver Fund-Reg(G)"
+  },
+  {
+   "code": "150855",
+   "amfiName": "Union Multicap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Multicap Fund-Reg(G)"
+  },
+  {
+   "code": "150863",
+   "amfiName": "Baroda BNP Paribas Multi Asset Fund - Regular Plan - Growth Option",
+   "vendorKey": "Baroda BNP Paribas Multi Asset Fund-Reg(G)"
+  },
+  {
+   "code": "150879",
+   "amfiName": "ICICI Prudential Nifty Financial Services Ex-BaNk ETF",
+   "vendorKey": "ICICI Pru Nifty Financial Services Ex-Bank ETF"
+  },
+  {
+   "code": "150894",
+   "amfiName": "Edelweiss Nifty Smallcap 250 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Edelweiss Nifty Smallcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "150897",
+   "amfiName": "Edelweiss Nifty Next 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Edelweiss Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "150900",
+   "amfiName": "Edelweiss Nifty Midcap150 Momentum 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Edelweiss Nifty Midcap150 Momentum 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "150912",
+   "amfiName": "Mahindra Manulife Small Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "150929",
+   "amfiName": "ICICI Prudential Nifty Pharma Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty Pharma Index Fund-Reg(G)"
+  },
+  {
+   "code": "151034",
+   "amfiName": "HSBC Midcap Fund - Regular Growth",
+   "vendorKey": "HSBC Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "151037",
+   "amfiName": "HSBC Infrastructure Fund - Regular Growth",
+   "vendorKey": "HSBC Infrastructure Fund-Reg(G)"
+  },
+  {
+   "code": "151058",
+   "amfiName": "HSBC Equity Savings Fund - Regular Growth",
+   "vendorKey": "HSBC Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "151076",
+   "amfiName": "HSBC ELSS Tax saver Fund - Regular Growth",
+   "vendorKey": "HSBC ELSS Tax saver Fund-Reg(G)"
+  },
+  {
+   "code": "151110",
+   "amfiName": "HSBC Value Fund - Regular Growth",
+   "vendorKey": "HSBC Value Fund-Reg(G)"
+  },
+  {
+   "code": "151120",
+   "amfiName": "HSBC Aggressive Hybrid Fund - Regular Growth",
+   "vendorKey": "HSBC Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "151127",
+   "amfiName": "HSBC Balanced Advantage Fund - Regular Growth",
+   "vendorKey": "HSBC Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "151133",
+   "amfiName": "HSBC Small Cap Fund - Regular Growth",
+   "vendorKey": "HSBC Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "151134",
+   "amfiName": "HSBC Arbitrage Fund - Regular Growth",
+   "vendorKey": "HSBC Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "151144",
+   "amfiName": "HSBC Business Cycles Fund - Regular Growth",
+   "vendorKey": "HSBC Business Cycles Fund-Reg(G)"
+  },
+  {
+   "code": "151158",
+   "amfiName": "HSBC NIFTY 50 INDEX FUND - Regular Growth",
+   "vendorKey": "HSBC Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "151162",
+   "amfiName": "HSBC NIFTY NEXT 50 INDEX FUND - Regular Growth",
+   "vendorKey": "HSBC Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "151164",
+   "amfiName": "360 ONE ELSS Tax Saver Nifty 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "360 ONE ELSS Tax Saver Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "151207",
+   "amfiName": "ICICI Prudential Nifty Commodities ETF",
+   "vendorKey": "ICICI Pru Nifty Commodities ETF"
+  },
+  {
+   "code": "151235",
+   "amfiName": "Tata Multicap Fund - Regular Plan - Growth",
+   "vendorKey": "Tata Multicap Fund-Reg(G)"
+  },
+  {
+   "code": "151262",
+   "amfiName": "DSP Nifty Bank ETF",
+   "vendorKey": "DSP Nifty Bank ETF"
+  },
+  {
+   "code": "151268",
+   "amfiName": "WhiteOak Capital Balanced Advantage Fund Regular Plan Growth",
+   "vendorKey": "WOC Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "151289",
+   "amfiName": "HSBC Multi Cap Fund - Regular - Growth",
+   "vendorKey": "HSBC Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "151309",
+   "amfiName": "Aditya Birla Sun Life Multi Asset Allocation Fund-Regular Growth",
+   "vendorKey": "Aditya Birla SL Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "151366",
+   "amfiName": "Axis Business Cycles Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Business Cycles Fund-Reg(G)"
+  },
+  {
+   "code": "151374",
+   "amfiName": "HDFC NIFTY Midcap 150 ETF - Growth Option",
+   "vendorKey": "HDFC NIFTY Midcap 150 ETF"
+  },
+  {
+   "code": "151375",
+   "amfiName": "HDFC NIFTY Smallcap 250 ETF - Growth Option",
+   "vendorKey": "HDFC NIFTY Smallcap 250 ETF"
+  },
+  {
+   "code": "151376",
+   "amfiName": "HDFC BSE 500 ETF - Growth Option",
+   "vendorKey": "HDFC BSE 500 ETF"
+  },
+  {
+   "code": "151377",
+   "amfiName": "ITI Flexi Cap Fund- Regular Plan- Growth",
+   "vendorKey": "ITI Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "151381",
+   "amfiName": "Kotak Banking & Financial Services Fund - Regular Plan - Growth",
+   "vendorKey": "Kotak Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "151414",
+   "amfiName": "Mirae Asset Flexi Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "151445",
+   "amfiName": "Bank of India Multi Cap Fund Regular Plan - Growth",
+   "vendorKey": "Bank of India Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "151457",
+   "amfiName": "HDFC MNC Fund - Growth Option",
+   "vendorKey": "HDFC MNC Fund-Reg(G)"
+  },
+  {
+   "code": "151472",
+   "amfiName": "NAVI ELSS TAX SAVER NIFTY 50 INDEX FUND - REGULAR PLAN GROWTH",
+   "vendorKey": "Navi ELSS Tax Saver Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "151476",
+   "amfiName": "SBI Dividend Yield Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Dividend Yield Fund-Reg(G)"
+  },
+  {
+   "code": "151572",
+   "amfiName": "ICICI Prudential Nifty PSU Bank ETF",
+   "vendorKey": "ICICI Pru Nifty PSU Bank ETF"
+  },
+  {
+   "code": "151579",
+   "amfiName": "ICICI Prudential Innovation Fund - Growth",
+   "vendorKey": "ICICI Pru Innovation Fund-Reg(G)"
+  },
+  {
+   "code": "151585",
+   "amfiName": "Axis BSE Sensex ETF",
+   "vendorKey": "Axis BSE Sensex ETF"
+  },
+  {
+   "code": "151604",
+   "amfiName": "Mirae Asset Nifty 100 Low Volatility 30 ETF",
+   "vendorKey": "Mirae Asset Nifty 100 Low Volatility 30 ETF"
+  },
+  {
+   "code": "151647",
+   "amfiName": "Kotak Nifty Smallcap 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Kotak Nifty Smallcap 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "151714",
+   "amfiName": "quant Dynamic Asset Allocation Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Dynamic Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "151725",
+   "amfiName": "HDFC NIFTY Midcap 150 Index Fund - Growth Option",
+   "vendorKey": "HDFC NIFTY Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "151726",
+   "amfiName": "HDFC NIFTY Smallcap 250 Index Fund - Growth Option",
+   "vendorKey": "HDFC NIFTY Smallcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "151729",
+   "amfiName": "HDFC BSE 500 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "HDFC BSE 500 Index Fund-Reg(G)"
+  },
+  {
+   "code": "151738",
+   "amfiName": "UTI Nifty 500 Value 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Nifty 500 Value 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "151746",
+   "amfiName": "WhiteOak Capital Multi Asset Allocation Fund Regular Plan Growth",
+   "vendorKey": "WOC Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "151747",
+   "amfiName": "Baroda BNP Paribas Value Fund - Regular Plan - Growth option",
+   "vendorKey": "Baroda BNP Paribas Value Fund-Reg(G)"
+  },
+  {
+   "code": "151751",
+   "amfiName": "HDFC Defence Fund - Growth Option",
+   "vendorKey": "HDFC Defence Fund-Reg(G)"
+  },
+  {
+   "code": "151752",
+   "amfiName": "Samco Active Momentum Fund - Regular Plan - Growth Option",
+   "vendorKey": "Samco Active Momentum Fund-Reg(G)"
+  },
+  {
+   "code": "151758",
+   "amfiName": "quant Business Cycle Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "151761",
+   "amfiName": "UTI Nifty50 Equal Weight Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI NIFTY50 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "151763",
+   "amfiName": "UTI BSE Housing Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI BSE Housing Index Fund-Reg(G)"
+  },
+  {
+   "code": "151765",
+   "amfiName": "SBI BSE Sensex Index Fund - Regular Plan - Growth",
+   "vendorKey": "SBI BSE Sensex Index Fund-Reg(G)"
+  },
+  {
+   "code": "151778",
+   "amfiName": "ITI Focused Fund - Regular Plan - Growth",
+   "vendorKey": "ITI Focused Fund-Reg(G)"
+  },
+  {
+   "code": "151783",
+   "amfiName": "Kotak Nifty 200 Momentum 30 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Kotak Nifty 200 Momentum 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "151787",
+   "amfiName": "Axis Nifty IT Index Fund - Regular Plan - Growth",
+   "vendorKey": "Axis NIFTY IT Index Fund-Reg(G)"
+  },
+  {
+   "code": "151788",
+   "amfiName": "quant BFSI Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant BFSI Fund-Reg(G)"
+  },
+  {
+   "code": "151795",
+   "amfiName": "Edelweiss Multi Asset Allocation Fund - Regular Plan - Growth",
+   "vendorKey": "Edelweiss Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "151799",
+   "amfiName": "360 ONE FLEXICAP FUND-REGULAR PLAN- GROWTH",
+   "vendorKey": "360 ONE Flexicap Fund-Reg(G)"
+  },
+  {
+   "code": "151803",
+   "amfiName": "HDFC Consumption Fund - Growth Option",
+   "vendorKey": "HDFC Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "151812",
+   "amfiName": "Mirae Asset Multicap Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Multicap Fund-Reg(G)"
+  },
+  {
+   "code": "151815",
+   "amfiName": "Motilal Oswal Nifty Microcap 250 Index Fund- Regular- Growth Option",
+   "vendorKey": "Motilal Oswal Nifty Microcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "151818",
+   "amfiName": "BANDHAN FINANCIAL SERVICES FUND - REGULAR PLAN - GROWTH",
+   "vendorKey": "Bandhan Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "151820",
+   "amfiName": "DSP Nifty IT ETF",
+   "vendorKey": "DSP Nifty IT ETF"
+  },
+  {
+   "code": "151821",
+   "amfiName": "Canara Robeco Multi Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Canara Rob Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "151855",
+   "amfiName": "quant Healthcare Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "151857",
+   "amfiName": "Mirae Asset Nifty Bank ETF",
+   "vendorKey": "Mirae Asset Nifty Bank ETF"
+  },
+  {
+   "code": "151878",
+   "amfiName": "Kotak Quant Fund - Regular Plan - Growth Option",
+   "vendorKey": "Kotak Quant Fund-Reg(G)"
+  },
+  {
+   "code": "151882",
+   "amfiName": "UTI Balanced Advantage Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "151886",
+   "amfiName": "DSP BSE Sensex ETF",
+   "vendorKey": "DSP BSE Sensex ETF"
+  },
+  {
+   "code": "151887",
+   "amfiName": "DSP Nifty Private Bank ETF",
+   "vendorKey": "DSP Nifty Private Bank ETF"
+  },
+  {
+   "code": "151888",
+   "amfiName": "DSP Nifty PSU Bank ETF",
+   "vendorKey": "DSP Nifty PSU Bank ETF"
+  },
+  {
+   "code": "151898",
+   "amfiName": "Bajaj Finserv Flexi Cap Fund -Regular Plan-Growth",
+   "vendorKey": "Bajaj Finserv Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "151900",
+   "amfiName": "HDFC Transportation and Logistics Fund - Growth Option",
+   "vendorKey": "HDFC Transportation and Logistics Fund-Reg(G)"
+  },
+  {
+   "code": "151903",
+   "amfiName": "Union Innovation & Opportunities Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Innovation & Opp Fund-Reg(G)"
+  },
+  {
+   "code": "151907",
+   "amfiName": "ICICI Prudential Nifty 200 Quality 30 ETF",
+   "vendorKey": "ICICI Pru Nifty 200 Quality 30 ETF"
+  },
+  {
+   "code": "151909",
+   "amfiName": "Kotak Nifty Financial Services Ex-Bank Index Fund - Regular Plan - Growth option",
+   "vendorKey": "Kotak Nifty Financial Services Ex-Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "151913",
+   "amfiName": "quant Manufacturing Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Manufacturing Fund-Reg(G)"
+  },
+  {
+   "code": "151920",
+   "amfiName": "NJ Flexi Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "NJ Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "151935",
+   "amfiName": "LIC MF Nifty Next 50 Index Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Nifty Next 50 Index Fund(G)"
+  },
+  {
+   "code": "151950",
+   "amfiName": "LIC MF Equity Savings Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Equity Savings Fund(G)"
+  },
+  {
+   "code": "152001",
+   "amfiName": "LIC MF Mid Cap Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Midcap Fund-Reg(G)"
+  },
+  {
+   "code": "152003",
+   "amfiName": "LIC MF Small Cap Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152009",
+   "amfiName": "LIC MF Focused Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Focused Fund-Reg(G)"
+  },
+  {
+   "code": "152016",
+   "amfiName": "LIC MF Value Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Value Fund-Reg(G)"
+  },
+  {
+   "code": "152019",
+   "amfiName": "LIC MF Dividend Yield Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Dividend Yield Fund-Reg(G)"
+  },
+  {
+   "code": "152025",
+   "amfiName": "LIC MF Healthcare Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "152027",
+   "amfiName": "HSBC Consumption Fund - Regular Growth",
+   "vendorKey": "HSBC Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "152034",
+   "amfiName": "Nippon India Innovation Fund-Regular Plan-Growth Option",
+   "vendorKey": "Nippon India Innovation Fund-Reg(G)"
+  },
+  {
+   "code": "152038",
+   "amfiName": "Kotak  BSE Housing Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Kotak BSE Housing Index Fund-Reg(G)"
+  },
+  {
+   "code": "152043",
+   "amfiName": "Bandhan Nifty IT Index Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Nifty IT Index Fund-Reg(G)"
+  },
+  {
+   "code": "152046",
+   "amfiName": "Mahindra Manulife Business Cycle Fund-  Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "152050",
+   "amfiName": "UTI Nifty Midcap 150 Exchange Traded Fund",
+   "vendorKey": "UTI Nifty Midcap 150 ETF"
+  },
+  {
+   "code": "152052",
+   "amfiName": "Shriram Multi Asset Allocation Fund - Regular Growth",
+   "vendorKey": "Shriram Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152053",
+   "amfiName": "DSP Multi Asset Allocation Fund - Regular - Growth",
+   "vendorKey": "DSP Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152058",
+   "amfiName": "HDFC Technology Fund - Growth Option",
+   "vendorKey": "HDFC Technology Fund-Reg(G)"
+  },
+  {
+   "code": "152061",
+   "amfiName": "NAVI BSE SENSEX INDEX FUND - REGULAR PLAN - GROWTH",
+   "vendorKey": "Navi BSE Sensex Index Fund-Reg(G)"
+  },
+  {
+   "code": "152065",
+   "amfiName": "Kotak Multi Asset Allocation Fund - Regular Plan - Growth Option",
+   "vendorKey": "Kotak Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152070",
+   "amfiName": "quant Teck Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Teck Fund-Reg(G)"
+  },
+  {
+   "code": "152072",
+   "amfiName": "WhiteOak Capital Multi Cap Fund Regular Plan Growth",
+   "vendorKey": "WOC Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152078",
+   "amfiName": "Bajaj Finserv Arbitrage Fund- Regular Plan-Growth",
+   "vendorKey": "Bajaj Finserv Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "152084",
+   "amfiName": "HDFC Pharma and Healthcare Fund - Growth Option",
+   "vendorKey": "HDFC Pharma and Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "152086",
+   "amfiName": "UTI Innovation Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Innovation Fund-Reg(G)"
+  },
+  {
+   "code": "152095",
+   "amfiName": "Edelweiss Multi Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Edelweiss Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152097",
+   "amfiName": "Mirae Asset BSE Sensex ETF",
+   "vendorKey": "Mirae Asset BSE Sensex ETF"
+  },
+  {
+   "code": "152106",
+   "amfiName": "Motilal Oswal Nifty 500 ETF",
+   "vendorKey": "Motilal Oswal Nifty 500 ETF"
+  },
+  {
+   "code": "152108",
+   "amfiName": "QUANTUM SMALL CAP FUND - REGULAR PLAN GROWTH OPTION",
+   "vendorKey": "Quantum Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152110",
+   "amfiName": "Parag Parikh Arbitrage Fund - Regular Plan Growth",
+   "vendorKey": "Parag Parikh Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "152127",
+   "amfiName": "Groww Nifty Total Market Index Fund - Regular Plan - Growth",
+   "vendorKey": "Groww Nifty Total Market Index Fund-Reg(G)"
+  },
+  {
+   "code": "152130",
+   "amfiName": "Baroda BNP Paribas Small Cap Fund - Regular Plan - Growth option",
+   "vendorKey": "Baroda BNP Paribas Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152134",
+   "amfiName": "Mirae Asset Nifty 200 Alpha 30 ETF",
+   "vendorKey": "Mirae Asset Nifty 200 Alpha 30 ETF"
+  },
+  {
+   "code": "152136",
+   "amfiName": "Helios Flexi Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Helios Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152155",
+   "amfiName": "Mirae Asset Nifty IT ETF",
+   "vendorKey": "Mirae Asset Nifty IT ETF"
+  },
+  {
+   "code": "152156",
+   "amfiName": "Zerodha CASE Nifty LargeMidcap 250 Index Fund - Direct Plan - Growth option",
+   "vendorKey": "Zerodha Nifty LargeMidcap 250 Index Fund(G)-Direct Plan"
+  },
+  {
+   "code": "152157",
+   "amfiName": "Zerodha CASE ELSS Tax Saver Nifty LargeMidcap 250 Index Fund - Direct Plan - Growth option",
+   "vendorKey": "Zerodha ELSS Tax Saver Nifty LargeMidcap 250 Index Fund(G)-Direct Plan"
+  },
+  {
+   "code": "152161",
+   "amfiName": "Aditya Birla Sun Life Transportation and Logistics Fund-Regular Growth",
+   "vendorKey": "Aditya Birla SL Transportation and Logistics Fund-Reg(G)"
+  },
+  {
+   "code": "152170",
+   "amfiName": "Kotak Consumption Fund - Regular plan - Growth Option",
+   "vendorKey": "Kotak Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "152179",
+   "amfiName": "Bandhan Nifty Alpha 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Nifty Alpha 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152187",
+   "amfiName": "Samco Dynamic Asset Allocation Fund - Regular Plan - Growth Option",
+   "vendorKey": "Samco Dynamic Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152190",
+   "amfiName": "quant Momentum Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Momentum Fund-Reg(G)"
+  },
+  {
+   "code": "152196",
+   "amfiName": "Bajaj Finserv Balanced Advantage Fund-Regular Plan-Growth",
+   "vendorKey": "Bajaj Finserv Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "152205",
+   "amfiName": "Axis India Manufacturing Fund - Regular Plan - Growth",
+   "vendorKey": "Axis India Manufacturing Fund-Reg(G)"
+  },
+  {
+   "code": "152208",
+   "amfiName": "DSP Banking & Financial Services Fund - Regular - Growth",
+   "vendorKey": "DSP Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "152216",
+   "amfiName": "Kotak Healthcare Fund - Regular Plan - Growth Option",
+   "vendorKey": "Kotak Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "152225",
+   "amfiName": "Whiteoak Capital Large & Mid Cap Fund Regular Plan Growth",
+   "vendorKey": "WOC Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152232",
+   "amfiName": "Motilal Oswal Small Cap Fund - Regular - Growth",
+   "vendorKey": "Motilal Oswal Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152245",
+   "amfiName": "DSP Nifty Smallcap250 Quality 50 Index Fund - Regular - Growth",
+   "vendorKey": "DSP Nifty Smallcap250 Quality 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152256",
+   "amfiName": "quant Commodities Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Commodities Fund-Reg(G)"
+  },
+  {
+   "code": "152266",
+   "amfiName": "BANDHAN Nifty Smallcap 250 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Nifty Smallcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152274",
+   "amfiName": "Groww Banking & Financial Services Fund - Regular - Growth",
+   "vendorKey": "Groww Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "152306",
+   "amfiName": "DSP Nifty Healthcare ETF",
+   "vendorKey": "DSP Nifty Healthcare ETF"
+  },
+  {
+   "code": "152311",
+   "amfiName": "Sundaram Multi Asset Allocation Fund Regular Plan Growth",
+   "vendorKey": "Sundaram Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152322",
+   "amfiName": "WhiteOak Capital Banking & Financial Services Fund - Regular Growth",
+   "vendorKey": "WOC Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "152326",
+   "amfiName": "Bandhan Multi Asset Allocation Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152331",
+   "amfiName": "Baroda BNP Paribas Nifty 50 Index Fund - Regular Plan - Growth option",
+   "vendorKey": "Baroda BNP Paribas Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152338",
+   "amfiName": "quant Consumption Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "152347",
+   "amfiName": "Mirae Asset Multi Asset Allocation Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152348",
+   "amfiName": "WhiteOak Capital Pharma and Heathcare Fund Regular Plan Growth",
+   "vendorKey": "WOC Pharma and Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "152350",
+   "amfiName": "HDFC NIFTY PSU BANK ETF",
+   "vendorKey": "HDFC Nifty PSU Bank ETF"
+  },
+  {
+   "code": "152352",
+   "amfiName": "Motilal Oswal Large Cap Regular Plan Growth",
+   "vendorKey": "Motilal Oswal Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152355",
+   "amfiName": "UTI Nifty IT ETF",
+   "vendorKey": "UTI Nifty IT ETF"
+  },
+  {
+   "code": "152356",
+   "amfiName": "Bajaj Finserv Nifty 50 ETF",
+   "vendorKey": "Bajaj Finserv Nifty 50 ETF"
+  },
+  {
+   "code": "152357",
+   "amfiName": "Bajaj Finserv Nifty Bank ETF",
+   "vendorKey": "Bajaj Finserv Nifty Bank ETF"
+  },
+  {
+   "code": "152361",
+   "amfiName": "Old Bridge Focused Fund - Regular Growth",
+   "vendorKey": "Old Bridge Focused Fund-Reg(G)"
+  },
+  {
+   "code": "152366",
+   "amfiName": "ICICI Prudential Nifty50 Value 20 Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty50 Value 20 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152372",
+   "amfiName": "SBI Nifty50 Equal Weight Index Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Nifty50 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "152378",
+   "amfiName": "HSBC Multi Asset Allocation Fund - Regular - Growth",
+   "vendorKey": "HSBC Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152383",
+   "amfiName": "PGIM India Large and Midcap Fund - Regular Plan - Growth Option",
+   "vendorKey": "PGIM India Large and Mid Cap Fund(G)"
+  },
+  {
+   "code": "152387",
+   "amfiName": "Nippon India Nifty Bank Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Nippon India Nifty Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "152391",
+   "amfiName": "Nippon India Nifty IT Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Nippon India Nifty IT Index Fund-Reg(G)"
+  },
+  {
+   "code": "152398",
+   "amfiName": "Bank of India Multi Asset Allocation Fund-Regular Plan-Growth",
+   "vendorKey": "Bank of India Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152404",
+   "amfiName": "LIC MF Nifty Midcap 100 ETF",
+   "vendorKey": "LIC MF Nifty Midcap 100 ETF"
+  },
+  {
+   "code": "152411",
+   "amfiName": "Union Business Cycle Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "152413",
+   "amfiName": "quant PSU Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant PSU Fund-Reg(G)"
+  },
+  {
+   "code": "152418",
+   "amfiName": "SBI Energy Opportunities Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Energy Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "152421",
+   "amfiName": "Axis BSE Sensex Index Fund - Regular Plan - Growth",
+   "vendorKey": "Axis BSE Sensex Index Fund-Reg(G)"
+  },
+  {
+   "code": "152429",
+   "amfiName": "HDFC NIFTY200 Momentum 30 Index Fund - Regular Plan",
+   "vendorKey": "HDFC NIFTY200 Momentum 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152433",
+   "amfiName": "Groww Nifty Smallcap 250 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Groww Nifty Smallcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152439",
+   "amfiName": "Edelweiss Technology Fund - Regular Plan - Growth",
+   "vendorKey": "Edelweiss Technology Fund-Reg(G)"
+  },
+  {
+   "code": "152441",
+   "amfiName": "Mahindra Manulife Multi Asset Allocation Fund- Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152447",
+   "amfiName": "Canara Robeco Manufacturing Fund - Regular Plan - Growth Option",
+   "vendorKey": "Canara Rob Manufacturing Fund-Reg(G)"
+  },
+  {
+   "code": "152455",
+   "amfiName": "Mirae Asset Nifty Smallcap 250 Momentum Quality 100 ETF",
+   "vendorKey": "Mirae Asset Nifty Smallcap 250 Momentum Quality 100 ETF"
+  },
+  {
+   "code": "152460",
+   "amfiName": "Kotak Technology Fund - Regular Plan - Growth Option",
+   "vendorKey": "Kotak Technology Fund-Reg(G)"
+  },
+  {
+   "code": "152464",
+   "amfiName": "Parag Parikh Dynamic Asset Allocation Fund - Regular Plan Growth",
+   "vendorKey": "Parag Parikh Dynamic Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152472",
+   "amfiName": "Baroda BNP Paribas Innovation Fund Regular plan - Growth Option",
+   "vendorKey": "Baroda BNP Paribas Innovation Fund-Reg(G)"
+  },
+  {
+   "code": "152475",
+   "amfiName": "Quantum Multi Asset Allocation Fund - Regular Plan Growth Option",
+   "vendorKey": "Quantum Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152481",
+   "amfiName": "ICICI Prudential Nifty LargeMidcap 250 Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty LargeMidcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152512",
+   "amfiName": "Helios Balanced Advantage Fund- Regular Plan- Growth Option",
+   "vendorKey": "Helios Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "152522",
+   "amfiName": "HDFC NIFTY Reality Index Fund - Regular Plan",
+   "vendorKey": "HDFC NIFTY Realty Index Fund-Reg(G)"
+  },
+  {
+   "code": "152536",
+   "amfiName": "Navi NiftyIT Index Fund - Regular Plan -Growth",
+   "vendorKey": "Navi Nifty IT Index Fund-Reg(G)"
+  },
+  {
+   "code": "152541",
+   "amfiName": "Motilal Oswal Nifty Realty ETF",
+   "vendorKey": "Motilal Oswal Nifty Realty ETF"
+  },
+  {
+   "code": "152546",
+   "amfiName": "Motilal Oswal Nifty Smallcap 250 ETF",
+   "vendorKey": "Motilal Oswal Nifty Smallcap 250 ETF"
+  },
+  {
+   "code": "152560",
+   "amfiName": "Tata Nifty Auto Index Fund - Regular Plan - Growth",
+   "vendorKey": "Tata Nifty Auto Index Fund-Reg(G)"
+  },
+  {
+   "code": "152567",
+   "amfiName": "Tata Nifty MidSmall Healthcare Index Fund - Regular Plan - Growth",
+   "vendorKey": "Tata Nifty MidSmall Healthcare Index Fund-Reg(G)"
+  },
+  {
+   "code": "152573",
+   "amfiName": "Tata Nifty Realty Index Fund - Regular Plan - Growth",
+   "vendorKey": "Tata Nifty Realty Index Fund-Reg(G)"
+  },
+  {
+   "code": "152574",
+   "amfiName": "Tata Nifty Financial Services Index Fund - Regular Plan - Growth",
+   "vendorKey": "Tata Nifty Financial Services Index Fund-Reg(G)"
+  },
+  {
+   "code": "152582",
+   "amfiName": "TRUSTMF Flexi Cap Fund-Regular Plan- Growth",
+   "vendorKey": "TRUSTMF Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152587",
+   "amfiName": "Samco Special Opportunities Fund - Regular Plan - Growth",
+   "vendorKey": "Samco Special Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "152590",
+   "amfiName": "Tata Nifty500 Multicap India Manufacturing 50:30:20 Index Fund -Regular Plan-Growth",
+   "vendorKey": "Tata Nifty500 Multicap India Manufacturing 50:30:20 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152596",
+   "amfiName": "Tata Nifty500 Multicap Infrastructure 50:30:20 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Tata Nifty500 Multicap Infrastructure 50:30:20 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152602",
+   "amfiName": "HDFC Manufacturing fund - Growth Option - Regular Plan",
+   "vendorKey": "HDFC Manufacturing Fund-Reg(G)"
+  },
+  {
+   "code": "152606",
+   "amfiName": "Bandhan Innovation Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Innovation Fund-Reg(G)"
+  },
+  {
+   "code": "152612",
+   "amfiName": "JM Small Cap Fund (Regular) - Growth Option",
+   "vendorKey": "JM Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152617",
+   "amfiName": "Edelweiss Nifty Alpha Low Volatility 30 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Edelweiss Nifty Alpha Low Volatility 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152620",
+   "amfiName": "Aditya Birla Sun Life Nifty PSE ETF",
+   "vendorKey": "Aditya Birla SL Nifty PSE ETF"
+  },
+  {
+   "code": "152632",
+   "amfiName": "Axis Nifty Bank Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Nifty Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "152633",
+   "amfiName": "Groww Nifty Non-Cyclical Consumer Index Fund - Regular Plan - Growth",
+   "vendorKey": "Groww Nifty Non-Cyclical Consumer Index Fund-Reg(G)"
+  },
+  {
+   "code": "152634",
+   "amfiName": "Mirae Asset Nifty MidSmallcap400 Momentum Quality 100 ETF",
+   "vendorKey": "Mirae Asset Nifty MidSmallcap400 Momentum Quality 100 ETF"
+  },
+  {
+   "code": "152642",
+   "amfiName": "Bajaj Finserv Multi Asset Allocation Fund - Regular Growth",
+   "vendorKey": "Bajaj Finserv Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152643",
+   "amfiName": "WhiteOak Capital Special Opportunities Fund - Regular Growth",
+   "vendorKey": "WOC Special Opp Fund-Reg(G)"
+  },
+  {
+   "code": "152650",
+   "amfiName": "Motilal Oswal Multi Cap Fund Regular Plan Growth",
+   "vendorKey": "Motilal Oswal Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152653",
+   "amfiName": "DSP Nifty Bank Index Fund - Regular - Growth",
+   "vendorKey": "DSP Nifty Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "152658",
+   "amfiName": "SBI Automotive Opportunities Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Automotive Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "152664",
+   "amfiName": "Kotak NIFTY 100 Low Volatility 30 Index Fund - Regular plan - Growth option",
+   "vendorKey": "Kotak NIFTY 100 Low Volatility 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152667",
+   "amfiName": "Zerodha CASE Nifty 100 ETF",
+   "vendorKey": "Zerodha Nifty 100 ETF"
+  },
+  {
+   "code": "152668",
+   "amfiName": "Zerodha CASE Nifty Midcap 150 ETF",
+   "vendorKey": "Zerodha Nifty Midcap 150 ETF"
+  },
+  {
+   "code": "152671",
+   "amfiName": "Mahindra Manulife Manufacturing Fund - Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Manufacturing Fund-Reg(G)"
+  },
+  {
+   "code": "152678",
+   "amfiName": "Sundaram Business Cycle Fund Regular Plan Growth",
+   "vendorKey": "Sundaram Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "152682",
+   "amfiName": "Helios Financial Services Fund - Regular Plan - Growth Option",
+   "vendorKey": "Helios Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "152683",
+   "amfiName": "Baroda BNP Paribas Nifty Bank ETF",
+   "vendorKey": "Baroda BNP Paribas NIFTY Bank ETF"
+  },
+  {
+   "code": "152686",
+   "amfiName": "Aditya Birla Sun Life Quant Fund - Regular Growth",
+   "vendorKey": "Aditya Birla SL Quant Fund-Reg(G)"
+  },
+  {
+   "code": "152690",
+   "amfiName": "Canara Robeco Balanced Advantage Fund - Regular Plan - Growth Option",
+   "vendorKey": "Canara Rob Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "152692",
+   "amfiName": "Motilal Oswal Quant Fund - Regular - Growth",
+   "vendorKey": "Motilal Oswal Quant Fund-Reg(G)"
+  },
+  {
+   "code": "152696",
+   "amfiName": "Baroda BNP Paribas Manufacturing Fund - Regular Plan - Growth Option",
+   "vendorKey": "Baroda BNP Paribas Manufacturing Fund-Reg(G)"
+  },
+  {
+   "code": "152703",
+   "amfiName": "Kotak Special Opportunities Fund - Regular Plan - Growth Option",
+   "vendorKey": "Kotak Special Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "152711",
+   "amfiName": "Motilal Oswal Nifty India Defence Index Fund Regular Plan Growth",
+   "vendorKey": "Motilal Oswal Nifty India Defence Index Fund-Reg(G)"
+  },
+  {
+   "code": "152714",
+   "amfiName": "HDFC NIFTY100 Low Volatility 30 Index Fund - Regular Plan",
+   "vendorKey": "HDFC NIFTY100 Low Volatility 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152715",
+   "amfiName": "Mirae Asset Nifty EV and New Age Automotive ETF",
+   "vendorKey": "Mirae Asset Nifty EV and New Age Automotive ETF"
+  },
+  {
+   "code": "152717",
+   "amfiName": "Bandhan Nifty Total Market Index Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Nifty Total Market Index Fund-Reg(G)"
+  },
+  {
+   "code": "152724",
+   "amfiName": "Edelweiss Business Cycle Fund - Regular Plan - Growth",
+   "vendorKey": "Edelweiss Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "152726",
+   "amfiName": "ICICI PRUDENTIAL ENERGY OPPORTUNITIES FUND - Growth",
+   "vendorKey": "ICICI Pru Energy Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "152730",
+   "amfiName": "Axis Nifty 500 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Nifty 500 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152738",
+   "amfiName": "Franklin India Multi Cap Fund - Growth",
+   "vendorKey": "Franklin India Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152746",
+   "amfiName": "Tata Nifty India Tourism Index Fund - Regular - Growth",
+   "vendorKey": "Tata Nifty India Tourism Index Fund-Reg(G)"
+  },
+  {
+   "code": "152748",
+   "amfiName": "ICICI Prudential Nifty Oil & Gas ETF",
+   "vendorKey": "ICICI Pru Nifty Oil & Gas ETF"
+  },
+  {
+   "code": "152749",
+   "amfiName": "SBI Nifty50 Equal Weight ETF",
+   "vendorKey": "SBI Nifty50 Equal Weight ETF"
+  },
+  {
+   "code": "152750",
+   "amfiName": "NAVI NIFTY 500 MULTICAP 50-25-25 REGULAR PLAN",
+   "vendorKey": "Navi Nifty 500 Multicap 50:25:25 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152752",
+   "amfiName": "Kotak BSE PSU Index Fund - Regular Plan - Growth",
+   "vendorKey": "Kotak BSE PSU Index Fund-Reg(G)"
+  },
+  {
+   "code": "152758",
+   "amfiName": "Invesco India Manufacturing Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Manufacturing Fund-Reg(G)"
+  },
+  {
+   "code": "152763",
+   "amfiName": "Motilal Owsal Manufacturing Fund - Regular Plan - Growth",
+   "vendorKey": "Motilal Oswal Manufacturing Fund-Reg(G)"
+  },
+  {
+   "code": "152764",
+   "amfiName": "GROWW NIFTY EV & NEW AGE AUTOMOTIVE ETF",
+   "vendorKey": "Groww Nifty EV & New Age Automotive ETF"
+  },
+  {
+   "code": "152765",
+   "amfiName": "KOTAK NIFTY MIDCAP 50 INDEX FUND-REGULAR PLAN-GROWTH",
+   "vendorKey": "Kotak NIFTY Midcap 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152769",
+   "amfiName": "ICICI Prudential Nifty Metal ETF",
+   "vendorKey": "ICICI Pru Nifty Metal ETF"
+  },
+  {
+   "code": "152774",
+   "amfiName": "SBI Innovative Opportunities Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Innovative Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "152779",
+   "amfiName": "HDFC NIFTY500 Multicap 50:25:25 index Fund - Regular Plan",
+   "vendorKey": "HDFC Nifty500 Multicap 50:25:25 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152780",
+   "amfiName": "BAJAJ FINSERV LARGE CAP FUND - REGULAR PLAN - GROWTH",
+   "vendorKey": "Bajaj Finserv Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152786",
+   "amfiName": "Union Multi Asset Allocation Fund- Regular Plan - Growth Option",
+   "vendorKey": "Union Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "152790",
+   "amfiName": "Bank of India Business Cycle Fund - Regular Plan - Growth",
+   "vendorKey": "Bank of India Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "152792",
+   "amfiName": "Bandhan Nifty Bank Index Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Nifty Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "152794",
+   "amfiName": "Motilal Oswal Business Cycle Fund-Regular Plan-Growth",
+   "vendorKey": "Motilal Oswal Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "152800",
+   "amfiName": "Aditya Birla Sun Life Nifty India Defence Index Fund-Regular-Growth",
+   "vendorKey": "Aditya Birla SL Nifty India Defence Index Fund-Reg(G)"
+  },
+  {
+   "code": "152804",
+   "amfiName": "Axis Consumption Fund Regular Plan - Growth",
+   "vendorKey": "Axis Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "152807",
+   "amfiName": "Baroda BNP Paribas Dividend Yield Fund - Regular Plan - Growth Option",
+   "vendorKey": "Baroda BNP Paribas Dividend Yield Fund-Reg(G)"
+  },
+  {
+   "code": "152811",
+   "amfiName": "Mirae Asset Nifty500 Multicap 50:25:25 ETF",
+   "vendorKey": "Mirae Asset Nifty500 Multicap 50:25:25 ETF"
+  },
+  {
+   "code": "152812",
+   "amfiName": "DSP Nifty Top 10 Equal Weight ETF",
+   "vendorKey": "DSP Nifty Top 10 Equal Weight ETF"
+  },
+  {
+   "code": "152813",
+   "amfiName": "DSP Nifty Top 10 Equal Weight Index Fund - Regular - Growth",
+   "vendorKey": "DSP Nifty Top 10 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "152816",
+   "amfiName": "PGIM India Multi Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "PGIM India Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152824",
+   "amfiName": "ITI Large & Midcap Fund - Regular Plan - Growth",
+   "vendorKey": "ITI Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152830",
+   "amfiName": "HSBC India Export Opportunities Fund - Regular Growth",
+   "vendorKey": "HSBC India Export Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "152834",
+   "amfiName": "Tata Nifty200 Alpha 30 Index Fund - Regular -Growth",
+   "vendorKey": "Tata Nifty200 Alpha 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152840",
+   "amfiName": "Nippon India Nifty 500 Equal Weight Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Nippon India Nifty 500 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "152843",
+   "amfiName": "Bandhan BSE Healthcare Index Fund Regular Plan - Growth",
+   "vendorKey": "Bandhan BSE Healthcare Index Fund-Reg(G)"
+  },
+  {
+   "code": "152845",
+   "amfiName": "Groww Nifty India Defence ETF",
+   "vendorKey": "Groww Nifty India Defence ETF"
+  },
+  {
+   "code": "152846",
+   "amfiName": "Motilal Oswal Nifty India Defence ETF",
+   "vendorKey": "Motilal Oswal Nifty India Defence ETF"
+  },
+  {
+   "code": "152848",
+   "amfiName": "Samco Multi Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Samco Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152850",
+   "amfiName": "WhiteOak Capital Arbitrage Fund Regular Plan Growth",
+   "vendorKey": "WOC Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "152856",
+   "amfiName": "Bandhan Nifty Midcap 150 Index Fund-Regular Plan-Growth",
+   "vendorKey": "Bandhan Nifty Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152857",
+   "amfiName": "Edelweiss Nifty Bank ETF - Growth",
+   "vendorKey": "Edelweiss Nifty Bank ETF"
+  },
+  {
+   "code": "152858",
+   "amfiName": "UTI Nifty 200 Quality 30 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Nifty200 Quality 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152862",
+   "amfiName": "Invesco India Technology Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Technology Fund-Reg(G)"
+  },
+  {
+   "code": "152865",
+   "amfiName": "UTI Nifty Private Bank Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Nifty Private Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "152872",
+   "amfiName": "Kotak Nifty India Tourism Index Fund-Regular plan-Growth",
+   "vendorKey": "Kotak Nifty India Tourism Index Fund-Reg(G)"
+  },
+  {
+   "code": "152874",
+   "amfiName": "Motilal Oswal Nifty 500 Momentum 50 ETF",
+   "vendorKey": "Motilal Oswal Nifty 500 Momentum 50 ETF"
+  },
+  {
+   "code": "152876",
+   "amfiName": "Motilal Oswal Nifty 500 Momentum 50 Index Fund-Regular Plan-Growth",
+   "vendorKey": "Motilal Oswal Nifty 500 Momentum 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152877",
+   "amfiName": "Bandhan Business Cycle Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "152883",
+   "amfiName": "Nippon India Nifty 500 Momentum 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Nippon India Nifty 500 Momentum 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152890",
+   "amfiName": "HDFC NIFTY LargeMidcap 250 Index Fund - Growth Option",
+   "vendorKey": "HDFC Nifty LargeMidcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152906",
+   "amfiName": "SBI Nifty 500 Index Fund- Regular Plan- Growth",
+   "vendorKey": "SBI Nifty 500 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152913",
+   "amfiName": "Kotak MNC Fund-Regular Plan- Growth",
+   "vendorKey": "Kotak MNC Fund-Reg(G)"
+  },
+  {
+   "code": "152914",
+   "amfiName": "WhiteOak Capital Digital Bharat Fund Regular Plan Growth",
+   "vendorKey": "WOC Digital Bharat Fund-Reg(G)"
+  },
+  {
+   "code": "152918",
+   "amfiName": "Kotak Nifty Midcap 150 Momentum 50 Index Fund-Regular Plan-Growth",
+   "vendorKey": "Kotak NIFTY Midcap 150 Momentum 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152922",
+   "amfiName": "LIC MF Manufacturing Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Manufacturing Fund-Reg(G)"
+  },
+  {
+   "code": "152924",
+   "amfiName": "Mirae Asset Nifty Metal ETF",
+   "vendorKey": "Mirae Asset Nifty Metal ETF"
+  },
+  {
+   "code": "152929",
+   "amfiName": "Mirae Asset Nifty PSU Bank ETF",
+   "vendorKey": "Mirae Asset Nifty PSU Bank ETF"
+  },
+  {
+   "code": "152930",
+   "amfiName": "Baroda BNP Paribas Nifty200 Momentum 30 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Baroda BNP Paribas Nifty200 Momentum 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152932",
+   "amfiName": "ICICI Prudential Nifty200 Value 30 ETF",
+   "vendorKey": "ICICI Pru Nifty200 Value 30 ETF"
+  },
+  {
+   "code": "152934",
+   "amfiName": "ICICI Prudential Nifty200 Value 30 Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty200 Value 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152940",
+   "amfiName": "TRUSTMF SMALL CAP FUND -REGULAR PLAN-GROWTH",
+   "vendorKey": "TRUSTMF Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152943",
+   "amfiName": "Helios Large & Mid Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Helios Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "152950",
+   "amfiName": "Axis Nifty500 Value 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Nifty500 Value 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152954",
+   "amfiName": "Tata Nifty Capital Markets Index Fund - Regular Plan Growth Option",
+   "vendorKey": "Tata Nifty Capital Markets Index Fund-Reg(G)"
+  },
+  {
+   "code": "152963",
+   "amfiName": "WhiteOak Capital ESG Best-In-Class Strategy Fund Regular Plan Growth",
+   "vendorKey": "WOC ESG Best-In-Class Strategy Fund-Reg(G)"
+  },
+  {
+   "code": "152966",
+   "amfiName": "Motilal Oswal Digital India Fund - Regular Plan- Growth",
+   "vendorKey": "Motilal Oswal Digital India Fund-Reg(G)"
+  },
+  {
+   "code": "152970",
+   "amfiName": "Mirae Asset Nifty Total Market Index Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Nifty Total Market Index Fund-Reg(G)"
+  },
+  {
+   "code": "152974",
+   "amfiName": "Mirae Asset Nifty 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152978",
+   "amfiName": "Mirae Asset Nifty LargeMidcap 250 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Nifty LargeMidcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152981",
+   "amfiName": "Edelweiss Nifty500 Multicap Momentum Quality 50 ETF - Growth",
+   "vendorKey": "Edelweiss Nifty500 Multicap Momentum Quality 50 ETF"
+  },
+  {
+   "code": "152988",
+   "amfiName": "Edelweiss Nifty500 Multicap Momentum Quality 50 Index Fund - Regular - Growth",
+   "vendorKey": "Edelweiss Nifty500 Multicap Momentum Quality 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "152991",
+   "amfiName": "Bandhan Nifty 500 Value 50 Index Fund Regular Plan - Growth",
+   "vendorKey": "Bandhan Nifty 500 Value 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153001",
+   "amfiName": "Baroda BNP Paribas Nifty Midcap 150 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Baroda BNP Paribas NIFTY Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153002",
+   "amfiName": "Bandhan Nifty 500 Momentum 50 Index Fund Regular Plan-Growth",
+   "vendorKey": "Bandhan Nifty 500 Momentum 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153012",
+   "amfiName": "SBI Nifty India Consumption Index Fund- Regular Plan- Growth",
+   "vendorKey": "SBI Nifty India Consumption Index Fund-Reg(G)"
+  },
+  {
+   "code": "153022",
+   "amfiName": "Motilal Oswal Nifty MidSmall Healthcare Index Fund-Regular Plan-Growth",
+   "vendorKey": "Motilal Oswal Nifty MidSmall Healthcare Index Fund-Reg(G)"
+  },
+  {
+   "code": "153024",
+   "amfiName": "Motilal Oswal Nifty MidSmall India Consumption Index Fund-Regular Plan-Growth",
+   "vendorKey": "Motilal Oswal Nifty MidSmall India Consumption Index Fund-Reg(G)"
+  },
+  {
+   "code": "153026",
+   "amfiName": "Motilal Oswal Nifty MidSmall Financial Services Index Fund-Regular Plan-Growth",
+   "vendorKey": "Motilal Oswal Nifty MidSmall Financial Services Index Fund-Reg(G)"
+  },
+  {
+   "code": "153028",
+   "amfiName": "Motilal Oswal Nifty MidSmall IT and Telecom Index Fund-Regular Plan-Growth",
+   "vendorKey": "Motilal Oswal Nifty MidSmall IT and Telecom Index Fund-Reg(G)"
+  },
+  {
+   "code": "153040",
+   "amfiName": "PGIM India Healthcare Fund - Regular Plan - Growth Option",
+   "vendorKey": "PGIM India Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "153042",
+   "amfiName": "Franklin India Arbitrage Fund - Growth",
+   "vendorKey": "Franklin India Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "153046",
+   "amfiName": "Invesco India Multi Asset Allocation Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "153059",
+   "amfiName": "Tata India Innovation Fund- Regular Growth",
+   "vendorKey": "Tata India Innovation Fund-Reg(G)"
+  },
+  {
+   "code": "153061",
+   "amfiName": "Nippon India Nifty Realty Index Fund-Regular Plan- Growth Option",
+   "vendorKey": "Nippon India Nifty Realty Index Fund-Reg(G)"
+  },
+  {
+   "code": "153066",
+   "amfiName": "Nippon India Nifty Auto Index Fund - Regular Plan- Growth Option",
+   "vendorKey": "Nippon India Nifty Auto Index Fund-Reg(G)"
+  },
+  {
+   "code": "153069",
+   "amfiName": "ICICI Prudential Equity Minimum Variance Fund - Growth",
+   "vendorKey": "ICICI Pru Equity Minimum Variance Fund-Reg(G)"
+  },
+  {
+   "code": "153072",
+   "amfiName": "BAJAJ FINSERV CONSUMPTION FUND - REGULAR - GROWTH",
+   "vendorKey": "Bajaj Finserv Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "153077",
+   "amfiName": "Shriram Multi Sector Rotation Fund - Regular Plan Growth Option",
+   "vendorKey": "Shriram Multi Sector Rotation Fund-Reg(G)"
+  },
+  {
+   "code": "153080",
+   "amfiName": "Aditya Birla Sun Life BSE India Infrastructure Index Fund-Regular Growth",
+   "vendorKey": "Aditya Birla SL BSE India Infrastructure Index Fund-Reg(G)"
+  },
+  {
+   "code": "153085",
+   "amfiName": "Axis Momentum Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Momentum Fund-Reg(G)"
+  },
+  {
+   "code": "153087",
+   "amfiName": "UTI Nifty Alpha Low-Volatility 30 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Nifty Alpha Low-Volatility 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153088",
+   "amfiName": "UTI Nifty Midcap 150 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Nifty Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153091",
+   "amfiName": "Samco Arbitrage Fund - Regular Plan - Growth",
+   "vendorKey": "Samco Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "153093",
+   "amfiName": "Samco Multi Asset Allocation Fund - Regular Plan - Growth",
+   "vendorKey": "Samco Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "153095",
+   "amfiName": "Quantum Ethical Fund - Regular Plan Growth Option",
+   "vendorKey": "Quantum Ethical Fund-Reg(G)"
+  },
+  {
+   "code": "153096",
+   "amfiName": "HDFC Nifty India Digital Index Fund - Growth Option - Regular",
+   "vendorKey": "HDFC Nifty India Digital Index Fund-Reg(G)"
+  },
+  {
+   "code": "153100",
+   "amfiName": "Groww Multicap Fund - Regular - Growth",
+   "vendorKey": "Groww Multicap Fund-Reg(G)"
+  },
+  {
+   "code": "153111",
+   "amfiName": "Union Active Momentum Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Active Momentum Fund-Reg(G)"
+  },
+  {
+   "code": "153113",
+   "amfiName": "Bandhan Nifty 200 Quality 30 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Nifty 200 Quality 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153116",
+   "amfiName": "Kotak Transportation & Logistics Fund-Regular-Growth",
+   "vendorKey": "Kotak Transportation & Logistics Fund-Reg(G)"
+  },
+  {
+   "code": "153122",
+   "amfiName": "DSP Business Cycle Fund - Regular - Growth",
+   "vendorKey": "DSP Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "153127",
+   "amfiName": "Aditya Birla Sun Life Conglomerate Fund-Regular Growth",
+   "vendorKey": "Aditya Birla SL Conglomerate Fund-Reg(G)"
+  },
+  {
+   "code": "153134",
+   "amfiName": "Tata BSE Select Business Groups Index Fund - Regular Growth",
+   "vendorKey": "Tata BSE Select Business Groups Index Fund-Reg(G)"
+  },
+  {
+   "code": "153137",
+   "amfiName": "Motilal Oswal Nifty Capital Market Index Fund - Regular Plan - Growth",
+   "vendorKey": "Motilal Oswal Nifty Capital Market Index Fund-Reg(G)"
+  },
+  {
+   "code": "153140",
+   "amfiName": "Bank of India Consumption Fund - Regular - Growth",
+   "vendorKey": "Bank of India Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "153145",
+   "amfiName": "Kotak Nifty 100 Equal Weight Index Fund - Regular Plan - Growth",
+   "vendorKey": "Kotak Nifty 100 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "153148",
+   "amfiName": "Kotak Nifty 50 Equal Weight Index Fund - Regular Plan - Growth",
+   "vendorKey": "Kotak Nifty 50 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "153153",
+   "amfiName": "SBI Quant Fund- Regular Plan- Growth",
+   "vendorKey": "SBI Quant Fund-Reg(G)"
+  },
+  {
+   "code": "153155",
+   "amfiName": "BAJAJ FINSERV HEALTHCARE FUND - REGULAR - GROWTH",
+   "vendorKey": "Bajaj Finserv Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "153162",
+   "amfiName": "ICICI Prudential Nifty 500 Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty 500 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153180",
+   "amfiName": "Edelweiss BSE Capital Markets & Insurance  ETF - Growth",
+   "vendorKey": "Edelweiss BSE Capital Markets & Insurance ETF"
+  },
+  {
+   "code": "153181",
+   "amfiName": "ICICI Prudential Rural Opportunities Fund - Growth",
+   "vendorKey": "ICICI Pru Rural Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "153188",
+   "amfiName": "Motilal Oswal Arbitrage Fund-Regular Plan-Growth",
+   "vendorKey": "Motilal Oswal Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "153190",
+   "amfiName": "WhiteOak Capital Quality Equity Fund Regular Plan Growth",
+   "vendorKey": "WOC Quality Equity Fund-Reg(G)"
+  },
+  {
+   "code": "153191",
+   "amfiName": "Mirae Asset Nifty India New Age Consumption ETF",
+   "vendorKey": "Mirae Asset Nifty India New Age Consumption ETF"
+  },
+  {
+   "code": "153198",
+   "amfiName": "Mirae Asset Small Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153205",
+   "amfiName": "UTI Quant Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Quant Fund-Reg(G)"
+  },
+  {
+   "code": "153212",
+   "amfiName": "Bandhan Nifty Alpha Low Volatility 30 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Nifty Alpha Low Volatility 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153216",
+   "amfiName": "DSP BSE SENSEX Next 30 Index Fund - Regular - Growth",
+   "vendorKey": "DSP BSE Sensex Next 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153221",
+   "amfiName": "Kotak Nifty SmallCap 250 Index Fund- Regular - Growth",
+   "vendorKey": "Kotak Nifty Smallcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153226",
+   "amfiName": "Baroda BNP Paribas Energy Opportunities Fund - Regular Plan - Growth Option",
+   "vendorKey": "Baroda BNP Paribas Energy Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "153228",
+   "amfiName": "DSP BSE SENSEX Next 30 ETF",
+   "vendorKey": "DSP BSE Sensex Next 30 ETF"
+  },
+  {
+   "code": "153229",
+   "amfiName": "Groww Nifty India Railways PSU ETF",
+   "vendorKey": "Groww Nifty India Railways PSU ETF"
+  },
+  {
+   "code": "153232",
+   "amfiName": "Groww Nifty India Railways PSU Index Fund - Regular Plan - Growth",
+   "vendorKey": "Groww Nifty India Railways PSU Index Fund-Reg(G)"
+  },
+  {
+   "code": "153238",
+   "amfiName": "Samco Large Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Samco Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153245",
+   "amfiName": "Axis Nifty500 Momentum 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Nifty500 Momentum 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153248",
+   "amfiName": "LIC MF Multi Asset Allocation Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "153253",
+   "amfiName": "SBI Nifty Bank Index Fund-Regular Plan- Growth",
+   "vendorKey": "SBI Nifty Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "153255",
+   "amfiName": "Edelweiss Consumption Fund - Regular - Growth",
+   "vendorKey": "Edelweiss Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "153256",
+   "amfiName": "Motilal Oswal Innovation Opportunities Fund- Regular Plan- Growth",
+   "vendorKey": "Motilal Oswal Innovation Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "153263",
+   "amfiName": "ITI Bharat Consumption Fund - Regular Plan Plan - Growth",
+   "vendorKey": "ITI Bharat Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "153265",
+   "amfiName": "HDFC Nifty100 Quality 30 Index Fund - Regular Plan",
+   "vendorKey": "HDFC Nifty100 Quality 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153267",
+   "amfiName": "HSBC Financial Services Fund - Regular Growth",
+   "vendorKey": "HSBC Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "153271",
+   "amfiName": "UTI Nifty India Manufacturing Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Nifty India Manufacturing Index Fund-Reg(G)"
+  },
+  {
+   "code": "153273",
+   "amfiName": "UTI Nifty Midsmallcap 400 Momentum Quality 100 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Nifty Midsmallcap 400 Momentum Quality 100 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153276",
+   "amfiName": "Nippon India Active Momentum Fund - Regular Plan- Growth Option",
+   "vendorKey": "Nippon India Active Momentum Fund-Reg(G)"
+  },
+  {
+   "code": "153284",
+   "amfiName": "Kotak BSE Sensex Index Fund - Regular - Growth",
+   "vendorKey": "Kotak BSE Sensex Index Fund-Reg(G)"
+  },
+  {
+   "code": "153288",
+   "amfiName": "Invesco India Business Cycle Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "153304",
+   "amfiName": "Mahindra Manulife Value Fund - Regular Plan - Growth",
+   "vendorKey": "Mahindra Manulife Value Fund-Reg(G)"
+  },
+  {
+   "code": "153307",
+   "amfiName": "BAJAJ FINSERV MULTI CAP FUND - REGULAR - GROWTH",
+   "vendorKey": "Bajaj Finserv Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153314",
+   "amfiName": "Kotak MSCI India ETF",
+   "vendorKey": "Kotak MSCI India ETF"
+  },
+  {
+   "code": "153315",
+   "amfiName": "Kotak Nifty 100 Equal Weight ETF",
+   "vendorKey": "Kotak Nifty 100 Equal Weight ETF"
+  },
+  {
+   "code": "153323",
+   "amfiName": "SBI Nifty IT Index Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Nifty IT Index Fund-Reg(G)"
+  },
+  {
+   "code": "153327",
+   "amfiName": "Helios Mid Cap Fund - Regular Plan - Growth Plan",
+   "vendorKey": "Helios Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153329",
+   "amfiName": "Groww Nifty 200 ETF",
+   "vendorKey": "Groww Nifty 200 ETF"
+  },
+  {
+   "code": "153331",
+   "amfiName": "ANGEL ONE NIFTY TOTAL MARKET INDEX FUND REGULAR PLAN GROWTH OPTION",
+   "vendorKey": "Angel One Nifty Total Market Index Fund-Reg(G)"
+  },
+  {
+   "code": "153332",
+   "amfiName": "ANGEL ONE NIFTY TOTAL MARKET ETF",
+   "vendorKey": "Angel One Nifty Total Market ETF"
+  },
+  {
+   "code": "153347",
+   "amfiName": "DSP Nifty Private Bank Index Fund - Regular - Growth",
+   "vendorKey": "DSP Nifty Private Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "153349",
+   "amfiName": "Bandhan Nifty Next 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153351",
+   "amfiName": "KOTAK NIFTY COMMODITIES INDEX FUND-REGULAR GROWTH",
+   "vendorKey": "Kotak Nifty Commodities Index Fund-Reg(G)"
+  },
+  {
+   "code": "153356",
+   "amfiName": "WhiteOak Capital Equity Savings Fund Regular Plan Growth",
+   "vendorKey": "WOC Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "153363",
+   "amfiName": "Navi Nifty Smallcap 250 Momentum quality index fund- Regular Plan",
+   "vendorKey": "Navi Nifty Smallcap250 Momentum Quality 100 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153365",
+   "amfiName": "Motilal Oswal Active Momentum Fund- Regular- Growth",
+   "vendorKey": "Motilal Oswal Active Momentum Fund-Reg(G)"
+  },
+  {
+   "code": "153377",
+   "amfiName": "Unifi Dynamic Asset Allocation Fund - Regular Growth",
+   "vendorKey": "Unifi Dynamic Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "153379",
+   "amfiName": "Mirae Asset BSE 200 Equal Weight ETF",
+   "vendorKey": "Mirae Asset BSE 200 Equal Weight ETF"
+  },
+  {
+   "code": "153384",
+   "amfiName": "Mirae Asset BSE Select IPO ETF",
+   "vendorKey": "Mirae Asset BSE Select IPO ETF"
+  },
+  {
+   "code": "153397",
+   "amfiName": "ICICI Prudential Nifty EV & New Age Automotive ETF",
+   "vendorKey": "ICICI Pru Nifty EV & New Age Automotive ETF"
+  },
+  {
+   "code": "153398",
+   "amfiName": "Kotak Nifty Midcap 150 ETF",
+   "vendorKey": "Kotak Nifty Midcap 150 ETF"
+  },
+  {
+   "code": "153399",
+   "amfiName": "KOTAK NIFTY MIDCAP 150 INDEX FUND-REGULAR PLAN-GROWTH",
+   "vendorKey": "Kotak Nifty Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153404",
+   "amfiName": "HDFC Nifty Top 20 Equal Weight Index Fund - Regular Growth",
+   "vendorKey": "HDFC Nifty Top 20 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "153406",
+   "amfiName": "Motilal Oswal Nifty Capital Market ETF",
+   "vendorKey": "Motilal Oswal Nifty Capital Market ETF"
+  },
+  {
+   "code": "153414",
+   "amfiName": "Axis Nifty500 Value 50 ETF",
+   "vendorKey": "Axis Nifty500 Value 50 ETF"
+  },
+  {
+   "code": "153425",
+   "amfiName": "Tata BSE Quality Index Fund Regular plan Growth Option",
+   "vendorKey": "Tata BSE Quality Index Fund-Reg(G)"
+  },
+  {
+   "code": "153428",
+   "amfiName": "quant Arbitrage Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "153434",
+   "amfiName": "SBI BSE PSU BANK INDEX FUND- Regular Plan- Growth",
+   "vendorKey": "SBI BSE PSU Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "153435",
+   "amfiName": "SBI BSE PSU BANK ETF",
+   "vendorKey": "SBI BSE PSU Bank ETF"
+  },
+  {
+   "code": "153449",
+   "amfiName": "Kotak Energy Opportunities Fund-Regular-Growth",
+   "vendorKey": "Kotak Energy Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "153452",
+   "amfiName": "Groww Nifty 500 Momentum 50 ETF",
+   "vendorKey": "Groww Nifty 500 Momentum 50 ETF"
+  },
+  {
+   "code": "153459",
+   "amfiName": "ICICI Prudential Quality Fund - Growth",
+   "vendorKey": "ICICI Pru Quality Fund-Reg(G)"
+  },
+  {
+   "code": "153463",
+   "amfiName": "Kotak Nifty Top 10 Equal Weight Index Fund-Regular Plan-Growth",
+   "vendorKey": "Kotak Nifty Top 10 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "153466",
+   "amfiName": "Canara Robeco Multi Asset Allocation Fund - Regular Plan - Growth",
+   "vendorKey": "Canara Rob Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "153472",
+   "amfiName": "Nippon India Nifty 500 Quality 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Nippon India Nifty 500 Quality 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153475",
+   "amfiName": "Nippon India Nifty 500 Low Volatility 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Nippon India Nifty 500 Low Volatility 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153480",
+   "amfiName": "Bajaj Finserv Nifty Next 50 Index Fund - Regular - Growth",
+   "vendorKey": "Bajaj Finserv Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153482",
+   "amfiName": "Motilal Oswal Infrastructure Fund-Regular-Growth",
+   "vendorKey": "Motilal Oswal Infrastructure Fund-Reg(G)"
+  },
+  {
+   "code": "153495",
+   "amfiName": "Edelweiss BSE Internet Economy Index Fund - Regular Plan - Growth",
+   "vendorKey": "Edelweiss BSE Internet Economy Index Fund-Reg(G)"
+  },
+  {
+   "code": "153508",
+   "amfiName": "Bajaj Finserv Nifty 50 Index Fund - Regular - Growth",
+   "vendorKey": "Bajaj Finserv Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153516",
+   "amfiName": "UTI Multi Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "UTI Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153519",
+   "amfiName": "Mirae Asset Nifty 50 Equal Weight ETF",
+   "vendorKey": "Mirae Asset Nifty50 Equal Weight ETF"
+  },
+  {
+   "code": "153530",
+   "amfiName": "ANGEL ONE NIFTY 50 INDEX FUND-REGULAR-GROWTH",
+   "vendorKey": "Angel One Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153531",
+   "amfiName": "ANGEL ONE NIFTY 50 ETF",
+   "vendorKey": "Angel One Nifty 50 ETF"
+  },
+  {
+   "code": "153532",
+   "amfiName": "MOTILAL OSWAL NIFTY 50 EQUAL WEIGHT ETF",
+   "vendorKey": "Motilal Oswal Nifty 50 Equal Weight ETF"
+  },
+  {
+   "code": "153533",
+   "amfiName": "Samco Large & Mid Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Samco Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153535",
+   "amfiName": "MOTILAL OSWAL NIFTY NEXT 50 ETF",
+   "vendorKey": "Motilal Oswal Nifty Next 50 ETF"
+  },
+  {
+   "code": "153542",
+   "amfiName": "Unifi Flexi Cap Fund - Regular Growth",
+   "vendorKey": "Unifi Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153544",
+   "amfiName": "ICICI Prudential Nifty200 Quality 30 Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty200 Quality 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153554",
+   "amfiName": "SBI Nifty200 Quality 30 Index Fund-Regular Plan- Growth",
+   "vendorKey": "SBI Nifty200 Quality 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153561",
+   "amfiName": "Motilal Oswal Services Fund - Regular Plan - Growth",
+   "vendorKey": "Motilal Oswal Services Fund-Reg(G)"
+  },
+  {
+   "code": "153564",
+   "amfiName": "Motilal Oswal BSE India Infrastructure ETF",
+   "vendorKey": "Motilal Oswal BSE India Infrastructure ETF"
+  },
+  {
+   "code": "153566",
+   "amfiName": "Nippon India BSE Sensex Next 30 Index Fund - Regular Plan-Growth Option",
+   "vendorKey": "Nippon India BSE Sensex Next 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153569",
+   "amfiName": "Nippon India BSE Sensex Next 30 ETF",
+   "vendorKey": "Nippon India BSE Sensex Next 30 ETF"
+  },
+  {
+   "code": "153572",
+   "amfiName": "Motilal Oswal Nifty India Manufacturing ETF",
+   "vendorKey": "Motilal Oswal Nifty India Manufacturing ETF"
+  },
+  {
+   "code": "153580",
+   "amfiName": "Tata Nifty Midcap 150 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Tata Nifty Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153583",
+   "amfiName": "Groww Nifty 500 Low Volatility 50 ETF",
+   "vendorKey": "Groww Nifty 500 Low Volatility 50 ETF"
+  },
+  {
+   "code": "153588",
+   "amfiName": "DSP Nifty IT Index Fund - Regular - Growth",
+   "vendorKey": "DSP Nifty IT Index Fund-Reg(G)"
+  },
+  {
+   "code": "153592",
+   "amfiName": "DSP Nifty Healthcare Index Fund - Regular - Growth",
+   "vendorKey": "DSP Nifty Healthcare Index Fund-Reg(G)"
+  },
+  {
+   "code": "153597",
+   "amfiName": "Motilal Oswal BSE 1000 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Motilal Oswal BSE 1000 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153602",
+   "amfiName": "Baroda BNP Paribas Health and Wellness Fund Regular Growth",
+   "vendorKey": "Baroda BNP Paribas Health and Wellness Fund-Reg(G)"
+  },
+  {
+   "code": "153608",
+   "amfiName": "Motilal Oswal Nifty PSE ETF",
+   "vendorKey": "Motilal Oswal Nifty PSE ETF"
+  },
+  {
+   "code": "153609",
+   "amfiName": "BAJAJ FINSERV SMALL CAP FUND - REGULAR - GROWTH",
+   "vendorKey": "Bajaj Finserv Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153613",
+   "amfiName": "ICICI Prudential Nifty Top 15 Equal Weight Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty Top 15 Equal Weight Index Fund-Reg(G)"
+  },
+  {
+   "code": "153617",
+   "amfiName": "ICICI Prudential Nifty Top 15 Equal Weight ETF",
+   "vendorKey": "ICICI Pru Nifty Top 15 Equal Weight ETF"
+  },
+  {
+   "code": "153618",
+   "amfiName": "Motilal Oswal Nifty India Tourism ETF",
+   "vendorKey": "Motilal Oswal Nifty India Tourism ETF"
+  },
+  {
+   "code": "153619",
+   "amfiName": "HDFC INNOVATION FUND - REGULAR PLAN - GROWTH OPTION",
+   "vendorKey": "HDFC Innovation Fund-Reg(G)"
+  },
+  {
+   "code": "153621",
+   "amfiName": "Axis Services Opportunities Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Services Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "153625",
+   "amfiName": "Groww Nifty India Internet ETF",
+   "vendorKey": "Groww Nifty India Internet ETF"
+  },
+  {
+   "code": "153627",
+   "amfiName": "JM Large & Mid Cap Fund (Regular) - Growth Option",
+   "vendorKey": "JM Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153642",
+   "amfiName": "Mirae Asset Nifty India Internet ETF",
+   "vendorKey": "Mirae Asset Nifty India Internet ETF"
+  },
+  {
+   "code": "153645",
+   "amfiName": "TRUSTMF MULTI CAP FUND -REGULAR PLAN-GROWTH",
+   "vendorKey": "TRUSTMF Multi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153657",
+   "amfiName": "Kotak Nifty200 Quality 30 ETF",
+   "vendorKey": "Kotak Nifty200 Quality 30 ETF"
+  },
+  {
+   "code": "153659",
+   "amfiName": "KOTAK NIFTY 200 QUALITY 30 INDEX FUND - REGULAR PLAN - GROWTH",
+   "vendorKey": "Kotak Nifty 200 Quality 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153663",
+   "amfiName": "SBI Nifty200 Momentum 30 Index Fund- Regular Plan- Growth",
+   "vendorKey": "SBI Nifty200 Momentum 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153667",
+   "amfiName": "Sundaram Multi-Factor Fund - Regular - Growth",
+   "vendorKey": "Sundaram Multi-Factor Fund-Reg(G)"
+  },
+  {
+   "code": "153675",
+   "amfiName": "Mahindra Manulife Banking & Financial Services Fund - Regular - Growth",
+   "vendorKey": "Mahindra Manulife Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "153676",
+   "amfiName": "ICICI Prudential Nifty Private Bank Index Fund - Growth",
+   "vendorKey": "ICICI Pru Nifty Private Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "153685",
+   "amfiName": "ICICI Prudential Active Momentum Fund - Growth",
+   "vendorKey": "ICICI Pru Active Momentum Fund-Reg(G)"
+  },
+  {
+   "code": "153691",
+   "amfiName": "Nippon India MNC Fund- Regular Plan-Growth Option",
+   "vendorKey": "Nippon India MNC Fund-Reg(G)"
+  },
+  {
+   "code": "153694",
+   "amfiName": "Motilal Oswal Nifty Midcap150 Momentum 50 ETF",
+   "vendorKey": "Motilal Oswal Nifty Midcap150 Momentum 50 ETF"
+  },
+  {
+   "code": "153699",
+   "amfiName": "Groww Nifty 50 ETF",
+   "vendorKey": "Groww Nifty 50 ETF"
+  },
+  {
+   "code": "153707",
+   "amfiName": "quant Equity Savings Fund - Growth Option - Regular Plan",
+   "vendorKey": "Quant Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "153710",
+   "amfiName": "Groww Nifty 50 Index Fund Regular Growth",
+   "vendorKey": "Groww Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153716",
+   "amfiName": "SBI Nifty100 Low Volatility 30 Index Fund- Regular Plan- Growth",
+   "vendorKey": "SBI Nifty100 Low Volatility 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153721",
+   "amfiName": "Bandhan Multi-Factor Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Multi-Factor Fund-Reg(G)"
+  },
+  {
+   "code": "153724",
+   "amfiName": "Motilal Oswal Nifty Alpha 50 ETF",
+   "vendorKey": "Motilal Oswal Nifty Alpha 50 ETF"
+  },
+  {
+   "code": "153726",
+   "amfiName": "Bank of India Mid Cap Fund - Regular Plan Growth",
+   "vendorKey": "Bank of India Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153733",
+   "amfiName": "Franklin India Multi Asset Allocation Fund- Growth",
+   "vendorKey": "Franklin India Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "153735",
+   "amfiName": "Aditya Birla Sun Life BSE 500 Momentum 50 Index Fund- Regular Growth",
+   "vendorKey": "Aditya Birla SL BSE 500 Momentum 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153739",
+   "amfiName": "CAPITALMIND FLEXI CAP FUND REGULAR GROWTH",
+   "vendorKey": "Capitalmind Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153742",
+   "amfiName": "Aditya Birla Sun Life BSE 500 Quality 50 Index Fund - Regular Growth",
+   "vendorKey": "Aditya Birla SL BSE 500 Quality 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153744",
+   "amfiName": "Groww BSE Power ETF",
+   "vendorKey": "Groww BSE Power ETF"
+  },
+  {
+   "code": "153751",
+   "amfiName": "Motilal Oswal Special Opportunities Fund-Regular Plan-Growth",
+   "vendorKey": "Motilal Oswal Special Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "153755",
+   "amfiName": "Kotak Active Momentum Fund - Regular Plan - Growth",
+   "vendorKey": "Kotak Active Momentum Fund-Reg(G)"
+  },
+  {
+   "code": "153769",
+   "amfiName": "BAJAJ FINSERV EQUITY SAVINGS FUND - REGULAR - GROWTH",
+   "vendorKey": "Bajaj Finserv Equity Savings Fund-Reg(G)"
+  },
+  {
+   "code": "153772",
+   "amfiName": "360 ONE Multi Asset Allocation Fund - Regular Plan - Growth",
+   "vendorKey": "360 ONE Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "153784",
+   "amfiName": "Kotak Nifty Alpha 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Kotak Nifty Alpha 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153785",
+   "amfiName": "Groww Nifty Next 50 ETF",
+   "vendorKey": "Groww Nifty Next 50 ETF"
+  },
+  {
+   "code": "153788",
+   "amfiName": "JioBlackRock Nifty Midcap 150 Index Fund - Direct Plan - Growth Option",
+   "vendorKey": "JioBlackRock Nifty Midcap 150 Index Fund(G)-Direct Plan"
+  },
+  {
+   "code": "153798",
+   "amfiName": "Groww Nifty Next 50 Index Fund Regular Growth",
+   "vendorKey": "Groww Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153802",
+   "amfiName": "DSP Nifty500 Flexicap Quality 30 Index Fund - Regular - Growth",
+   "vendorKey": "DSP Nifty500 Flexicap Quality 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153805",
+   "amfiName": "TRUSTMF ARBITRAGE FUND -REGULAR PLAN-GROWTH",
+   "vendorKey": "TRUSTMF Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "153809",
+   "amfiName": "Nippon India Nifty India Manufacturing Index-Regular Plan-Growth Option",
+   "vendorKey": "Nippon India Nifty India Manufacturing Index Fund-Reg(G)"
+  },
+  {
+   "code": "153810",
+   "amfiName": "Nippon India Nifty India Manufacturing ETF",
+   "vendorKey": "Nippon India Nifty India Manufacturing ETF"
+  },
+  {
+   "code": "153830",
+   "amfiName": "Axis Nifty500 Quality 50 Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "Axis Nifty500 Quality 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153837",
+   "amfiName": "Zerodha CASE Nifty Smallcap 100 ETF",
+   "vendorKey": "Zerodha Nifty Smallcap 100 ETF"
+  },
+  {
+   "code": "153839",
+   "amfiName": "Bandhan BSE India Sector Leaders Index Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan BSE India Sector Leaders Index Fund-Reg(G)"
+  },
+  {
+   "code": "153841",
+   "amfiName": "Edelweiss Nifty LargeMidcap 250 ETF - Growth",
+   "vendorKey": "Edelweiss Nifty LargeMidcap 250 ETF"
+  },
+  {
+   "code": "153844",
+   "amfiName": "Baroda BNP Paribas Business Conglomerates Fund Regular Growth Option",
+   "vendorKey": "Baroda BNP Paribas Business Conglomerates Fund-Reg(G)"
+  },
+  {
+   "code": "153851",
+   "amfiName": "Groww Multi Asset Allocation Fund Regular Growth",
+   "vendorKey": "Groww Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "153855",
+   "amfiName": "Tata Nifty Next 50 Index Fund - Regular Plan Growth Option",
+   "vendorKey": "Tata Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153865",
+   "amfiName": "ICICI Prudential Conglomerate Fund - Growth",
+   "vendorKey": "ICICI Pru Conglomerate Fund-Reg(G)"
+  },
+  {
+   "code": "153869",
+   "amfiName": "Samco Small Cap Fund - Regular Plan",
+   "vendorKey": "Samco Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153870",
+   "amfiName": "THE WEALTH COMPANY FLEXI CAP FUND - REGULAR GROWTH",
+   "vendorKey": "The Wealth Company Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153874",
+   "amfiName": "DSP Nifty500 Flexicap Quality 30 ETF",
+   "vendorKey": "DSP Nifty500 Flexicap Quality 30 ETF"
+  },
+  {
+   "code": "153892",
+   "amfiName": "THE WEALTH COMPANY ARBITRAGE FUND REGULAR GROWTH",
+   "vendorKey": "The Wealth Company Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "153897",
+   "amfiName": "THE WEALTH COMPANY ETHICAL FUND REGULAR GROWTH",
+   "vendorKey": "The Wealth Company Ethical Fund-Reg(G)"
+  },
+  {
+   "code": "153899",
+   "amfiName": "Groww Nifty Realty ETF",
+   "vendorKey": "Groww Nifty Realty ETF"
+  },
+  {
+   "code": "153902",
+   "amfiName": "Invesco India Consumption Fund - Regular Plan - Growth Plan",
+   "vendorKey": "Invesco India Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "153904",
+   "amfiName": "Kotak Nifty 200 Momentum 30 ETF",
+   "vendorKey": "Kotak Nifty 200 Momentum 30 ETF"
+  },
+  {
+   "code": "153905",
+   "amfiName": "Zerodha CASE Nifty 50 ETF",
+   "vendorKey": "Zerodha Nifty 50 ETF"
+  },
+  {
+   "code": "153906",
+   "amfiName": "Zerodha CASE Nifty 50 Index Fund - Direct Plan - Growth",
+   "vendorKey": "Zerodha Nifty 50 Index Fund(G)-Direct Plan"
+  },
+  {
+   "code": "153907",
+   "amfiName": "Groww Nifty Capital Markets ETF",
+   "vendorKey": "Groww Nifty Capital Markets ETF"
+  },
+  {
+   "code": "153909",
+   "amfiName": "Helios Small Cap Fund - Regular Plan - Growth Option",
+   "vendorKey": "Helios Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "153916",
+   "amfiName": "Motilal Oswal Consumption Fund-Regular-Growth",
+   "vendorKey": "Motilal Oswal Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "153923",
+   "amfiName": "Groww Nifty Smallcap250 ETF",
+   "vendorKey": "Groww Nifty Smallcap 250 ETF"
+  },
+  {
+   "code": "153928",
+   "amfiName": "Motilal Oswal Nifty 100 ETF",
+   "vendorKey": "Motilal Oswal Nifty 100 ETF"
+  },
+  {
+   "code": "153931",
+   "amfiName": "Motilal Oswal Nifty Energy ETF",
+   "vendorKey": "Motilal Oswal Nifty Energy ETF"
+  },
+  {
+   "code": "153932",
+   "amfiName": "Zerodha CASE BSE SENSEX Index Fund",
+   "vendorKey": "Zerodha BSE SENSEX Index Fund(G)-Direct Plan"
+  },
+  {
+   "code": "153934",
+   "amfiName": "Kotak Nifty Chemicals ETF",
+   "vendorKey": "Kotak Nifty Chemicals ETF"
+  },
+  {
+   "code": "153935",
+   "amfiName": "Bajaj Finserv Banking and Financial Services Fund - Regular - Growth",
+   "vendorKey": "Bajaj Finserv Banking and Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "153940",
+   "amfiName": "Groww Nifty Midcap 150 ETF",
+   "vendorKey": "Groww Nifty Midcap 150 ETF"
+  },
+  {
+   "code": "153943",
+   "amfiName": "Franklin India Multi-Factor Fund- Growth",
+   "vendorKey": "Franklin India Multi-Factor Fund(G)"
+  },
+  {
+   "code": "153945",
+   "amfiName": "Mirae Asset Nifty Energy ETF",
+   "vendorKey": "Mirae Asset Nifty Energy ETF"
+  },
+  {
+   "code": "153946",
+   "amfiName": "Mirae Asset Nifty Smallcap 250 ETF",
+   "vendorKey": "Mirae Asset Nifty Smallcap 250 ETF"
+  },
+  {
+   "code": "153947",
+   "amfiName": "Edelweiss BSE Sensex ETF - Growth",
+   "vendorKey": "Edelweiss BSE Sensex ETF"
+  },
+  {
+   "code": "153950",
+   "amfiName": "LIC MF Consumption Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "153953",
+   "amfiName": "Groww Nifty Midcap 150 Index Fund Regular Growth",
+   "vendorKey": "Groww Nifty Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153955",
+   "amfiName": "ANGEL ONE NIFTY TOTAL MARKET MOMENTUM QUALITY 50 INDEX FUND - REGULAR GROWTH",
+   "vendorKey": "Angel One Nifty Total Market Momentum Quality 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "153957",
+   "amfiName": "ANGEL ONE NIFTY TOTAL MARKET MOMENTUM QUALITY 50 ETF",
+   "vendorKey": "Angel One Nifty Total Market Momentum Quality 50 ETF"
+  },
+  {
+   "code": "153958",
+   "amfiName": "HDFC BSE India Sector Leaders Index Fund - Regular Plan - Growth Option",
+   "vendorKey": "HDFC BSE India Sector Leaders Index Fund-Reg(G)"
+  },
+  {
+   "code": "153966",
+   "amfiName": "Edelweiss Nifty 50 ETF - Growth",
+   "vendorKey": "Edelweiss Nifty 50 ETF"
+  },
+  {
+   "code": "153969",
+   "amfiName": "Kotak Rural Opportunities Fund - Regular Plan - Growth",
+   "vendorKey": "Kotak Rural Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "153974",
+   "amfiName": "Bandhan Healthcare Fund - Regular Plan - Growth",
+   "vendorKey": "Bandhan Healthcare Fund-Reg(G)"
+  },
+  {
+   "code": "153975",
+   "amfiName": "DSP MSCI INDIA ETF",
+   "vendorKey": "DSP MSCI India ETF"
+  },
+  {
+   "code": "153977",
+   "amfiName": "Old Bridge Arbitrage Fund Regular Growth",
+   "vendorKey": "Old Bridge Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "153985",
+   "amfiName": "Mirae Asset Infrastructure Fund - Regular Plan - Growth",
+   "vendorKey": "Mirae Asset Infrastructure Fund-Reg(G)"
+  },
+  {
+   "code": "153988",
+   "amfiName": "PGIM India Multi Asset Allocation Fund - Regular Plan - Growth Option",
+   "vendorKey": "PGIM India Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "154002",
+   "amfiName": "The Wealth Company Multi Asset Allocation Fund - Regular Growth",
+   "vendorKey": "The Wealth Company Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "154003",
+   "amfiName": "Motilal Oswal BSE Select IPO ETF",
+   "vendorKey": "Motilal Oswal BSE Select IPO ETF"
+  },
+  {
+   "code": "154012",
+   "amfiName": "DSP Nifty Midcap 150 Index Fund - Regular - Growth",
+   "vendorKey": "DSP Nifty Midcap 150 Index Fund-Reg(G)"
+  },
+  {
+   "code": "154016",
+   "amfiName": "DSP Nifty Smallcap 250 Index Fund - Regular - Growth",
+   "vendorKey": "DSP Nifty Smallcap 250 Index Fund-Reg(G)"
+  },
+  {
+   "code": "154022",
+   "amfiName": "Union Consumption Fund - Regular Plan - Growth Option",
+   "vendorKey": "Union Consumption Fund-Reg(G)"
+  },
+  {
+   "code": "154024",
+   "amfiName": "DSP Nifty Smallcap 250 ETF",
+   "vendorKey": "DSP Nifty Smallcap 250 ETF"
+  },
+  {
+   "code": "154025",
+   "amfiName": "DSP Nifty Midcap 150 ETF",
+   "vendorKey": "DSP Nifty Midcap 150 ETF"
+  },
+  {
+   "code": "154026",
+   "amfiName": "Navi Nifty Midsmall 400 Index Fund - Regular - Growth",
+   "vendorKey": "Navi Nifty MidSmallcap 400 Index Fund-Reg(G)"
+  },
+  {
+   "code": "154030",
+   "amfiName": "Kotak Nifty500 Momentum 50 Index Fund - Regular Plan - Growth",
+   "vendorKey": "Kotak Nifty500 Momentum 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "154033",
+   "amfiName": "Motilal Oswal Nifty Services Sector ETF",
+   "vendorKey": "Motilal Oswal Nifty Services Sector ETF"
+  },
+  {
+   "code": "154034",
+   "amfiName": "Groww Nifty Metal ETF",
+   "vendorKey": "Groww Nifty Metal ETF"
+  },
+  {
+   "code": "154041",
+   "amfiName": "Abakkus Flexi Cap Fund - Regular - Growth",
+   "vendorKey": "Abakkus Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "154060",
+   "amfiName": "Mirae Asset Nifty Top 20 Equal Weight ETF",
+   "vendorKey": "Mirae Asset Nifty Top 20 Equal Weight ETF"
+  },
+  {
+   "code": "154061",
+   "amfiName": "Mirae Asset BSE 500 Dividend Leaders 50 ETF",
+   "vendorKey": "Mirae Asset BSE 500 Dividend Leaders 50 ETF"
+  },
+  {
+   "code": "154062",
+   "amfiName": "Motilal Oswal Nifty MNC ETF",
+   "vendorKey": "Motilal Oswal Nifty MNC ETF"
+  },
+  {
+   "code": "154064",
+   "amfiName": "Tata BSE Multicap Consumption 50:30:20 Index Fund - Regular Plan Growth Option",
+   "vendorKey": "Tata BSE Multicap Consumption 50:30:20 Index Fund-Reg(G)"
+  },
+  {
+   "code": "154087",
+   "amfiName": "DSP Nifty Next 50 ETF",
+   "vendorKey": "DSP Nifty Next 50 ETF"
+  },
+  {
+   "code": "154090",
+   "amfiName": "DSP Nifty 500 Index Fund - Regular - Growth",
+   "vendorKey": "DSP Nifty 500 Index Fund-Reg(G)"
+  },
+  {
+   "code": "154095",
+   "amfiName": "Bank of India Banking & Financial Services Fund - Regular Plan - Growth",
+   "vendorKey": "Bank of India Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "154099",
+   "amfiName": "Kotak Dividend Yield Fund - Regular -Growth",
+   "vendorKey": "Kotak Dividend Yield Fund-Reg(G)"
+  },
+  {
+   "code": "154101",
+   "amfiName": "Kotak Nifty Next 50 ETF",
+   "vendorKey": "Kotak Nifty Next 50 ETF"
+  },
+  {
+   "code": "154102",
+   "amfiName": "Groww Small Cap Fund-Regular-Growth",
+   "vendorKey": "Groww Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "154107",
+   "amfiName": "Edelweiss Financial Services Fund - Regular Plan - Growth Option",
+   "vendorKey": "Edelweiss Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "154111",
+   "amfiName": "Groww Nifty Chemicals ETF",
+   "vendorKey": "Groww Nifty Chemicals ETF"
+  },
+  {
+   "code": "154115",
+   "amfiName": "Samco Mid Cap Fund - Regular Plan",
+   "vendorKey": "Samco Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "154120",
+   "amfiName": "Mahindra Manulife Innovation Opportunities Fund - Regular - Growth",
+   "vendorKey": "Mahindra Manulife Innovation Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "154137",
+   "amfiName": "Motilal Oswal Financial Services Fund- Regular-Growth",
+   "vendorKey": "Motilal Oswal Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "154148",
+   "amfiName": "Kotak Nifty200 Value 30 Index Fund - Regular - Growth",
+   "vendorKey": "Kotak Nifty200 Value 30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "154151",
+   "amfiName": "Kotak Services Fund - Regular - Growth",
+   "vendorKey": "Kotak Services Fund-Reg(G)"
+  },
+  {
+   "code": "154154",
+   "amfiName": "Parag Parikh Large Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Parag Parikh Large Cap Fund-Reg(G)"
+  },
+  {
+   "code": "154159",
+   "amfiName": "ITI Business Cycle Fund- Regular Plan- Growth",
+   "vendorKey": "ITI Business Cycle Fund-Reg(G)"
+  },
+  {
+   "code": "154162",
+   "amfiName": "WhiteOak Capital Consumption Opportunities Fund Regular Plan Growth",
+   "vendorKey": "WOC Consumption Opportunities Fund-Reg(G)"
+  },
+  {
+   "code": "154163",
+   "amfiName": "Groww Nifty PSE ETF",
+   "vendorKey": "Groww Nifty PSE ETF"
+  },
+  {
+   "code": "154169",
+   "amfiName": "Mirae Asset Nifty 500 Healthcare ETF",
+   "vendorKey": "Mirae Asset Nifty 500 Healthcare ETF"
+  },
+  {
+   "code": "154170",
+   "amfiName": "Axis BSE India Sectors Leaders Index Fund- Regular Plan- Growth Option",
+   "vendorKey": "Axis BSE India Sector Leaders Index Fund-Reg(G)"
+  },
+  {
+   "code": "154175",
+   "amfiName": "SBI Quality Fund - Regular Plan - Growth",
+   "vendorKey": "SBI Quality Fund-Reg(G)"
+  },
+  {
+   "code": "154180",
+   "amfiName": "HDFC Nifty India Consumption Index  Fund - Regular Growth Plan",
+   "vendorKey": "HDFC Nifty India Consumption Index Fund-Reg(G)"
+  },
+  {
+   "code": "154181",
+   "amfiName": "Mirae Asset Nifty India Infrastructure & Logistics ETF",
+   "vendorKey": "Mirae Asset Nifty India Infrastructure & Logistics ETF"
+  },
+  {
+   "code": "154182",
+   "amfiName": "Mirae Asset BSE India Defence ETF",
+   "vendorKey": "Mirae Asset BSE India Defence ETF"
+  },
+  {
+   "code": "154183",
+   "amfiName": "The Wealth Company Balanced Advantage Fund - Regular Growth",
+   "vendorKey": "The Wealth Company Balanced Advantage Fund-Reg(G)"
+  },
+  {
+   "code": "154194",
+   "amfiName": "Baroda BNP Paribas Best-in-Class Strategy Fund - Regular - Growth Option",
+   "vendorKey": "Baroda BNP Paribas ESG Best-in-class Strategy Fund-Reg(G)"
+  },
+  {
+   "code": "154198",
+   "amfiName": "UTI Nifty500 Shariah Index Fund - Regular Plan Growth Option",
+   "vendorKey": "UTI Nifty500 Shariah Index Fund-Reg(G)"
+  },
+  {
+   "code": "154199",
+   "amfiName": "Groww BSE Hospitals ETF",
+   "vendorKey": "Groww BSE Hospitals ETF"
+  },
+  {
+   "code": "154211",
+   "amfiName": "TRUSTMF MID CAP FUND -REGULAR-GROWTH",
+   "vendorKey": "TRUSTMF Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "154214",
+   "amfiName": "Abakkus Small Cap Fund - Regular  Plan - Growth",
+   "vendorKey": "Abakkus Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "154220",
+   "amfiName": "Aditya Birla Sun Life MSCI India ETF",
+   "vendorKey": "Aditya Birla SL MSCI India ETF"
+  },
+  {
+   "code": "154224",
+   "amfiName": "Aditya Birla Sun Life BSE Top 10 Banks ETF",
+   "vendorKey": "Aditya Birla SL BSE Top 10 Banks ETF"
+  },
+  {
+   "code": "154226",
+   "amfiName": "Old Bridge Flexi Cap Fund Regular Growth",
+   "vendorKey": "Old Bridge Flexi Cap Fund-Reg(G)"
+  },
+  {
+   "code": "154231",
+   "amfiName": "Capitalmind Multi Asset Allocation Fund-Regular-Growth",
+   "vendorKey": "Capitalmind Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "154233",
+   "amfiName": "Capitalmind Arbitrage Fund-regular-Growth",
+   "vendorKey": "Capitalmind Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "154237",
+   "amfiName": "SBI Nifty Midcap 150 Momentum 50 ETF",
+   "vendorKey": "SBI Nifty Midcap 150 Momentum 50 ETF"
+  },
+  {
+   "code": "154247",
+   "amfiName": "LIC MF Technology Fund-Regular Plan-Growth",
+   "vendorKey": "LIC MF Technology Fund-Reg(G)"
+  },
+  {
+   "code": "154248",
+   "amfiName": "Canara Robeco Banking and Financials Services Fund - Regular Plan - Growth",
+   "vendorKey": "Canara Rob Banking & Financial Services Fund-Reg(G)"
+  },
+  {
+   "code": "154256",
+   "amfiName": "DSP BSE Top 10 Banks ETF",
+   "vendorKey": "DSP BSE Top 10 Banks ETF"
+  },
+  {
+   "code": "154258",
+   "amfiName": "Helios Arbitrage Fund - Regular Growth",
+   "vendorKey": "Helios Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "154268",
+   "amfiName": "The Wealth Company Small Cap Fund- Regular-Growth",
+   "vendorKey": "The Wealth Company Small Cap Fund-Reg(G)"
+  },
+  {
+   "code": "154277",
+   "amfiName": "Groww Nifty PSU Bank ETF",
+   "vendorKey": "Groww Nifty PSU Bank ETF"
+  },
+  {
+   "code": "154284",
+   "amfiName": "Groww Nifty PSU Bank Index Fund Regular Growth",
+   "vendorKey": "Groww Nifty PSU Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "154299",
+   "amfiName": "Mirae Asset Nifty 500 Value 50 ETF",
+   "vendorKey": "Mirae Asset Nifty 500 Value 50 ETF"
+  },
+  {
+   "code": "154302",
+   "amfiName": "Choice Nifty 50 Index Fund - Regular Plan Growth",
+   "vendorKey": "Choice Nifty 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "154303",
+   "amfiName": "Choice Nifty Next 50 Index Fund - Regular Plan Growth",
+   "vendorKey": "Choice Nifty Next 50 Index Fund-Reg(G)"
+  },
+  {
+   "code": "154305",
+   "amfiName": "SBI Nifty Midcap 150 ETF",
+   "vendorKey": "SBI Nifty Midcap 150 ETF"
+  },
+  {
+   "code": "154306",
+   "amfiName": "Zerodha CASE Nifty MidSmallcap400 50:50 Index Fund - Direct Plan - Growth Option",
+   "vendorKey": "Zerodha Nifty MidSmallcap400 50:50 Index Fund(G)-Direct Plan"
+  },
+  {
+   "code": "154312",
+   "amfiName": "Edelweiss Nifty LargeMidcap 250 Plus 8-13 yr G-Sec 70-30 Index Fund Regular Plan Growth",
+   "vendorKey": "Edelweiss Nifty LargeMidcap250 Plus 8-13 yr G-Sec 70:30 Index Fund-Reg(G)"
+  },
+  {
+   "code": "154322",
+   "amfiName": "Motilal Oswal BSE Top 10 Banks ETF",
+   "vendorKey": "Motilal Oswal BSE Top 10 Banks ETF"
+  },
+  {
+   "code": "154325",
+   "amfiName": "Groww Arbitrage Fund Regular Growth",
+   "vendorKey": "Groww Arbitrage Fund-Reg(G)"
+  },
+  {
+   "code": "154327",
+   "amfiName": "Axis Nifty India Defence Index Fund - Regular Plan - Growth",
+   "vendorKey": "Axis Nifty India Defence Index Fund-Reg(G)"
+  },
+  {
+   "code": "154338",
+   "amfiName": "Motilal Oswal Contra Fund - Regular â Growth",
+   "vendorKey": "Motilal Oswal Contra Fund-Reg(G)"
+  },
+  {
+   "code": "154342",
+   "amfiName": "Invesco India BSE Sensex Index Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India BSE Sensex Index Fund-Reg(G)"
+  },
+  {
+   "code": "154344",
+   "amfiName": "Invesco India Nifty Bank Index Fund - Regular Plan - Growth",
+   "vendorKey": "Invesco India Nifty Bank Index Fund-Reg(G)"
+  },
+  {
+   "code": "154357",
+   "amfiName": "DSP Nifty FMCG ETF",
+   "vendorKey": "DSP Nifty FMCG ETF"
+  },
+  {
+   "code": "154382",
+   "amfiName": "The Wealth Company Large & Mid Cap Fund Regular Growth",
+   "vendorKey": "The Wealth Company Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "154393",
+   "amfiName": "WhiteOak Capital Aggressive Hybrid Fund Regular Plan Growth",
+   "vendorKey": "WOC Aggressive Hybrid Fund-Reg(G)"
+  },
+  {
+   "code": "154424",
+   "amfiName": "JM Multi Asset Allocation Fund (Regular) - Growth Option",
+   "vendorKey": "JM Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "154434",
+   "amfiName": "TRUSTMF LARGE & MIDCAP FUND - REGULAR PLAN - GROWTH",
+   "vendorKey": "TRUSTMF Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "154440",
+   "amfiName": "ALPHAGREP MULTI ASSET ALLOCATION FUND-REGULAR-GROWTH",
+   "vendorKey": "AlphaGrep Multi Asset Allocation Fund-Reg(G)"
+  },
+  {
+   "code": "154452",
+   "amfiName": "NJ Momentum Fund - Regular Growth",
+   "vendorKey": "NJ Momentum Fund-Reg(G)"
+  },
+  {
+   "code": "154458",
+   "amfiName": "NJ Value Fund - Regular Growth",
+   "vendorKey": "NJ Value Fund-Reg(G)"
+  },
+  {
+   "code": "154478",
+   "amfiName": "Abakkus Large & Mid Cap Fund - Regular Plan - Growth",
+   "vendorKey": "Abakkus Large & Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "154479",
+   "amfiName": "The Wealth Company Mid Cap Fund- Regular-Growth",
+   "vendorKey": "The Wealth Company Mid Cap Fund-Reg(G)"
+  },
+  {
+   "code": "154486",
+   "amfiName": "Baroda BNP Paribas Services Fund - Regular Growth option",
+   "vendorKey": "Baroda BNP Paribas Services Fund-Reg(G)"
+  }
+ ]
+}

@@ -4,6 +4,73 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M3b data side: the reference data embedded in the page; not read by any screen yet)
+- **`scripts/build.mjs`** writes each file of its `REFDATA_BLOCKS` list whole as a data block
+  `<script type="application/json" id="refdata-<NAME>">`: MF_PERF, MF_PERF_DIRECT, SIF_PERF, BENCH_RET, STOCK_RET and
+  VINTAGE (format agreed by NB-02 and NB-04, 26 Nov 2026; NB-02 adds the matcher's blocks); a block file must be a
+  .json file directly inside `data/refdata/` or `data/owner/`, else the build stops. Data blocks are not hashed
+  into the build id or the CSP: the build id is unchanged, the page grows from 2,003,823 to 4,656,615 bytes (the
+  check-next budget is 25 MB). The build id names the code, not the data: the data's provenance is `VINTAGE.json`
+  (each file's SHA-256 and the data month), in the page as `refdata-VINTAGE`. The data is what `index.html` already
+  publishes (class P).
+- **`app/src/data/refdata.ts`**: `readBlock(name)` parses a block once and keeps it; `blockOf(name, overrides)` returns
+  an uploaded MF or SIF Monitor in place of the embedded block (for the matcher and the views); `asOnOf(name)` dates a
+  block from VINTAGE (STOCK_RET: NOT AVAILABLE IN SUPPLIED DATA). Not a pure layer: engines get blocks as arguments.
+- Tests: `tests/next/refdata-blocks.test.mjs` (each block equals its committed file, in list order, the same names as
+  `BLOCK_NAMES`; the page passes check-next; a data change leaves the build id and the CSP unchanged; deterministic),
+  `tests/unit/data/refdata.test.ts`.
+
+### Fixed (live page, KI-032: the IRR client join; `index.html` `9C973F615E6601B08277F6F8227DB569`, 16,413,720 bytes)
+- **A client never takes another client's transaction figures** (CR-0011; the owner's "Careful variant match", 26 Nov
+  2026). The IRR client join is now the exact name, else a unique name variant (a salutation, initials, one middle name or
+  the word order; marker words such as HUF, Karta, trust, company, minor, guardian, Jr, Late or Deceased, or a joint "&" or "Joint" equal on both
+  sides; the first and last words equal when the lengths differ; one candidate each way), else no join. The client key
+  keeps marker words written in brackets, so "X (HUF)" is no longer the individual X's key (an IRR file holding both
+  merged their flows on the client sheet). Before, a client without an exact name took whichever IRR client shared two
+  name words, so it could show a family member's or an HUF's Grand Total and holding XIRRs.
+  - A client not joined keeps the base file's CMV-weighted figures; its § note says why when a near name was refused,
+    and names no one. A variant join is named in the § note. The counts are in the review model (`irrJoin`).
+  - Clients whose names are in the IRR file exactly, and the family Fund IRR tree, are unchanged.
+  - `tools/patches/2026-11-26-ki032-irr-client-join.js`; `tools/regression/KI-032-irr-client-join.js` (180 known-answer
+    checks). Side-by-side kit: SB-03 retired; SB-04 to SB-07 for the client-name variant case (the new build keeps exact
+    client labels, D9); 16 tests.
+
+### Added (new build, M2.1 sprint 2a: matcher corrections, opt-in; not wired into the page yet)
+- **Owner fund aliases** (`data/owner/fund-aliases.json`, `engine/match/owner-aliases.ts`; KI-050, PD-36): the 16 renames the
+  owner approved on 25 Nov 2026, each with public evidence and Regular and Direct targets; line 17 applies only to names
+  saying "regular savings" (ICICI Pru Savings Fund shares its normalised key). Line 10 is on hold.
+- **KI-036** (`MatchOptions.nullOnTies`): a candidate equal to the raw name wins first; Growth and IDCW of one scheme are told
+  apart by the holding's own option ("Dividend Yield" is a category); any other tie gives no match.
+- **KI-101** (`MatchOptions.houseTokens`): a fund house's words (the leading words at least 90% of its names share) and the
+  holding's AMC words never count as distinctive; the thresholds are unchanged. The audit's idf weighting was measured and
+  not adopted (it lost correct official AMFI names or added wrong matches).
+- Measured both ways over the real universes (`tests/parity/matching-corrections.ts`, ledger with every changed answer;
+  official AMFI names as a real-world recall corpus, `tests/parity/amfi-names.json`): self regressions 0; leave-one-out
+  wrong matches 3,932 to 2,725; official names right 1,195 to 1,194 (one score tie the legacy won by candidate order).
+- **Option B, the stricter regime** (`MatchOptions.absentFundGuard`; the owner chose it on 26 Nov 2026, on in
+  `NEW_BUILD_MATCHING`, the preset the wiring will use): rejects a candidate that leaves a known rare word of the holding's
+  name unmatched; measured 2,725 to 1,594 wrong matches for absent funds and 21 of 1,206 correct official names unmatched
+  (mostly normaliser gaps; a measured follow-up aims to recover them).
+- **Second normaliser and candidate-side word guard** (`MatchOptions.normaliserV2`, `candidateWordGuard`; on in
+  `NEW_BUILD_MATCHING`): matching tokens drop "(Formerly Known as ...)" and "S&P" before "BSE", split letters from digits,
+  collapse spaces before the compounds and add a few synonyms; the guard also checks the candidate's own rare words.
+  A word of the holding's name the reference data knows elsewhere counts too (`knownWords`, `referenceVocabulary`: every set's words
+  less its fund-house words). The legacy normaliser, the alias keys and the name lists are unchanged. Full sweep against the
+  legacy: self regressions 0; leave-one-out wrong matches 3,932 to 1,094 (0 added); official AMFI names right 1,195 to 1,198,
+  wrong 8 to 1. Four official names now get no match (all to null, none to another fund): two were already among the
+  stricter regime's 22 losses (UTI Focused Fund (30 stocks), Navi Nifty Smallcap 250 Momentum Quality) and two are new
+  (Kotak Infrastructure & Economic Reform Fund, Standard Plan; Baroda BNP Paribas Best-in-Class Strategy Fund).
+- **KI-052, OD-23, KI-054** (`engine/match/rekey.ts`): FUND_RANKS_CODES and MF_RISK re-keyed onto MF_PERF keys by spelling
+  and owner alias, never by fuzzy match (`tests/parity/rekey-ledger.json`, also the FUND_RANKS_CODES vintage record);
+  the Direct twin only for the same scheme; the look-through key.
+- **Fund ISIN map** (`engine/match/amfi-isin.ts`, `scripts/amfi-isin.ts`): from the monthly NAV fetch's ids file, ISINs of the
+  form only, ambiguous ones left out; the crosswalk resolves a fund ISIN or AMFI code through FUND_RANKS_CODES and the
+  official AMFI names, each re-keyed (opt-in: `MatchOptions.identifierJoin`, in `NEW_BUILD_MATCHING`). The first real file comes
+  from the December refresh.
+
+### Fixed (new build)
+- **S3-1:** a merged holding whose rows carry different ISINs keeps none, with the Warning `base-file.isin-disagree`.
+
 ### Changed (new build, model contracts-3: two additive type changes; types only, `/next/` build byte-identical)
 - **`app/src/model/tax.ts`** (I-37): `NotComputed` gains `'amount-missing'` (a lot whose Sell Amount is blank, the
   reader's `required-cell-blank`; a blank Invested Value stays `'cost-input-missing'`). DATA_DICTIONARY §5.5 lists it.
@@ -11,6 +78,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   the weights) for a figure built from more than one source or date, such as Regular and Direct plans read from
   monitors of different dates; a rendering names every part. Asked for by NB-03 (M7a engine) and ARC-03's review of
   NB-04's M3b data side.
+
 ### Added (side-by-side kit for test build 1: tests only; no change to `index.html`, `/next/` or `app/`)
 - **`tests/side-by-side/`** runs the same book through the legacy engine (`tools/engine-host.js`) and the new build
   (`app/src`: base file, matcher, IRR file, scope returns, contributions). It compares the holdings matches, the holding
@@ -378,6 +446,39 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **Tests:** unit tests for each module, `tests/regression/ki-047-xirr-same-day.test.ts`, and
   `tests/parity/contributions.parity.test.ts` against the legacy contribLag. The IRR parity ledger waits for a real
   export (TA-03, KI-186).
+
+### Added (new build, M3a wiring for test build 1: the IRR upload and the returns view on `/next/`)
+- **Section 1:** a "Transactions (IRR) file" upload with the base file's stages, usable once a base file is accepted
+  and cleared when a new base file is picked. It shows the file's import notes and says plainly that issues in the
+  transactions file do not block the workbook download yet.
+- **Section 4 (Analytics):** the returns view with a scope picker (the family, each client, and each adviser when the
+  file has a DISTRIBUTOR column). It shows fund XIRR against benchmark XIRR, the IRR tree, and contributors, laggards
+  and drags labelled "allocation x XIRR (an approximation, not an attribution)". The reconciliation notes cover
+  IRR-only clients, redeemed instruments, invalid benchmarks, holdings without flows, the unassigned line, and the
+  reconcile rule not yet set (D13).
+- **Workbook:** a "Fund IRR" sheet before the Audit Log, only when an IRR file is accepted. Its values are labelled as
+  computed by the app; the Excel XIRR check column waits (Q-60). Workbooks without an IRR file are byte-identical.
+- **Without a model change** (PLAN-04 option B): `engine/returns/review-returns.ts` gives the output that
+  `Review.returns` will hold once I-41 is written.
+- **Tests:** `unit/views/returns`, `unit/engine/review-returns`, `exports/xlsx/fund-irr`, `workflows/w-02-irr`,
+  `integration/returns-cross-output`.
+- **After the Gate B review and MOD-04's answers:**
+  - **Benchmark coverage:** the benchmark XIRR shows its coverage when it is partial.
+  - **Dates:** the IRR file's last flow date is shown beside the as-on date, with a count of any flows after it. No
+    figure changes.
+  - **One row per line:** the Fund IRR sheet writes each contributor, laggard and drag once, with a Role column, so no
+    percentage-point sum counts a line twice.
+  - **Unassigned share:** it has its own column, "Share of Money Paid In".
+  - **Missing figures:** the sheet's note says a missing figure is a blank cell with its status, where the screen
+    shows the dash.
+  - **Read Me:** it names the transactions file.
+  - **Spelling:** "Adviser" in user text.
+  - **New tests:**
+    - hand-worked known answers on screen and in the sheet (`integration/returns-known-answers`);
+    - cross-output for every figure cell;
+    - a refused IRR file;
+    - a synthetic IRR file whose distributors match the base book, so adviser scopes have flows;
+    - the browser check `tests/browser/irr-slot.cdp.mjs`.
 
 ### Added (new build, M7a: the capital-gains statement reader and the blank template; not wired into the page yet)
 - **`app/src/ingest/capital-gains.ts`** (E-150, D-036, design `docs/new-build/capital-gains-upload.md` §2 to §4, §6, §7,
