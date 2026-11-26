@@ -81,7 +81,26 @@ describe('owner fund aliases: each approved line (real data/refdata)', () => {
     });
   }
 
-  test.todo('per line: without the alias, the corrected matcher gives null, never a wrong fund (lands with the KI-101 and KI-036 corrections in this sprint)');
+  /* Without its alias, what the corrected matcher (KI-036 + KI-101) gives each old name, measured 26 Nov 2026. Seven
+   * give no match. Nine still give another fund: the contained-name rule and generic words keep them, and the
+   * stricter guards that would stop them also lost correct official AMFI names (tests/parity/matching-corrections.ts;
+   * the decision is MOD-04's). These are why the aliases exist; any change here shows. */
+  const WITHOUT_ALIAS: Readonly<Record<number, string | null>> = {
+    1: 'ICICI Pru US Bluechip Equity Fund(G)', 2: 'SBI Long Term Fund-Reg(G)', 3: 'Axis Long Term Fund-Reg(G)', 4: null,
+    5: 'HDFC Equity Savings Fund(G)', 6: 'UTI Equity Savings Fund-Reg(G)', 7: 'Kotak Global Emerging Market Overseas Equity Active FOF(G)',
+    8: null, 9: null, 11: null, 12: 'Kotak Multi Cap Fund-Reg(G)', 13: 'Motilal Oswal Multi Cap Fund-Reg(G)', 14: null, 15: null, 16: null,
+    17: 'ICICI Pru Equity Savings Fund-Reg(G)',
+  };
+  test('per line: without the alias, the corrected matcher gives no match or the recorded other fund; with it, the right fund', (t) => {
+    const corrected = { nullOnTies: true, houseTokens: true };
+    for (const a of table.byKey.values()) {
+      const want = WITHOUT_ALIAS[a.line];
+      assert.ok(want !== undefined, `line ${a.line} has no recorded answer`);
+      if (want !== null && !REG.includes(want)) { t.diagnostic(`REPORT ONLY: line ${a.line}: ${want} is not in today's MF_PERF`); continue; }
+      assert.equal(matchInstrument(`${a.oldName}(G)`, '', REG, undefined, corrected), want, `line ${a.line} without the alias`);
+      if (REG.includes(a.regular)) assert.equal(matchInstrument(`${a.oldName}(G)`, '', REG, undefined, { ...corrected, ownerAliases: table }), a.regular, `line ${a.line} with the alias`);
+    }
+  });
 });
 
 describe('owner fund aliases: guards', () => {
