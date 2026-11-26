@@ -72,7 +72,10 @@ case uses fails the test too.
 |---|---|
 | SB-01 | performance not built in the new build yet (E-31, E-147) |
 | SB-02 | the adviser XIRR exists only in the new build (E-142, D15) |
-| SB-03 | a client with no IRR flows: the live page borrows another client's flows by its fuzzy name match (KI-032; the new build keys clients by id, D9) |
+| SB-04 to SB-07 | case `syn-standard-irr-variant`: the IRR file writes a client with a salutation. The live page joins it as a name variant (KI-032 fix), and the new build keys clients by their exact label (D9, kept by MOD-04 on 26 Nov 2026). So that client's holding XIRRs (SB-04), its client XIRR (SB-05), the family XIRR (SB-06; the new build leaves the IRR-only label out, OD-4) and the contributions (SB-07) differ |
+
+SB-03 (a client without flows borrowing another client's flows through the old fuzzy name join) was retired with the
+KI-032 fix: the live page no longer joins Sample Client C to another Sample Client, and the probe book agrees.
 
 ## Expected on a real file (decided differences that no synthetic case covers yet)
 
@@ -85,7 +88,9 @@ They are decided behaviour, not defects:
   contribution line joins other holdings, the kit cannot read the holding's own XIRR (the new build does compute it,
   scope.ts step 6) and shows it as missing on the new side.
 - **Benchmark-only series:** the live page's family and client benchmark XIRRs use every benchmark row (KI-048).
-- **Client names:** the live page matches IRR clients by two shared words; the new build uses the exact client (D9, KI-032).
+- **Client names:** the live page joins an IRR client by its exact name or by an unambiguous variant (a salutation,
+  initials, a middle name: KI-032); the new build uses the exact label only (D9). The synthetic case is SB-04 to SB-07;
+  on a real file such a client shows the same differences, unclassified until a narrow entry names that fixture.
 - **Matching by ISIN first** in the new build (E-13, E-19).
 - **The all-negative guard of contributors** (E-29).
 
@@ -100,5 +105,5 @@ Read the matrix row and the ledger reference of each difference before calling i
 | `next.ts` | The new build's modules. |
 | `compare.ts` | The comparison, the matrix tags and the ledger match. |
 | `report.ts` | Writes report.json and report.html. |
-| `run.ts` | The command, the synthetic cases and the probe book (two distributors, a share, an FD, an NCD, a client without flows). |
+| `run.ts` | The command, the synthetic cases, the probe book (two distributors, a share, an FD, an NCD, a client without flows) and the client-name variant case. |
 | `side-by-side.test.ts` | The test. |

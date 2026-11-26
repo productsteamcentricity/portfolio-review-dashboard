@@ -33,16 +33,54 @@
       "description": "The new build computes an XIRR per adviser (distributor) from the IRR file; the live page has no adviser XIRR. Each adviser scope is present only on the new side."
     },
     {
-      "id": "SB-03",
+      "id": "SB-04",
+      "section": "holdings",
+      "kind": "field",
+      "field": ["xirr", "bmxirr"],
+      "key": "/^sample client a \\| /",
+      "fixtures": ["syn-standard-irr-variant"],
+      "legacy": "*",
+      "new": "*",
+      "class": "improvement",
+      "reference": "D9; KI-032 (live variant join, owner 26 Nov 2026); MOD-04 26 Nov 2026 (the new build keeps D9)",
+      "description": "The IRR file writes client A with a salutation (Mr. Sample Client A). The live page joins it to the base client as a name variant (KI-032 fix) and its holdings take their transaction XIRR. The new build keys clients by their exact label (D9), finds no flows for Sample Client A, and its holdings keep the base file's XIRR and BMXIRR."
+    },
+    {
+      "id": "SB-05",
       "section": "scopes",
       "kind": "only-legacy",
-      "key": "client | sample client c",
-      "fixtures": ["probe-irr-standard"],
+      "key": "client | sample client a",
+      "fixtures": ["syn-standard-irr-variant"],
       "legacy": true,
       "new": null,
-      "class": "correction",
-      "reference": "KI-032; D9",
-      "description": "A client with no flows in the IRR file. The live page resolves IRR client names fuzzily (two shared words), so Sample Client C takes the flows of another Sample Client and shows a client XIRR that is not its own. The new build keys clients by id and shows no client XIRR for it."
+      "class": "improvement",
+      "reference": "D9; KI-032; MOD-04 26 Nov 2026",
+      "description": "The same case: the live page shows a client XIRR for Sample Client A from the variant-joined flows; the new build has no flows for the exact label and shows none."
+    },
+    {
+      "id": "SB-06",
+      "section": "scopes",
+      "kind": "field",
+      "field": ["xirr", "bmxirr"],
+      "key": "family",
+      "fixtures": ["syn-standard-irr-variant"],
+      "legacy": "*",
+      "new": "*",
+      "class": "improvement",
+      "reference": "OD-4; D9",
+      "description": "The same case: the new build leaves the IRR-only client (Mr. Sample Client A, no exact base-file label) out of the family XIRR and lists it (OD-4); the live page's family tree takes every client of the IRR file."
+    },
+    {
+      "id": "SB-07",
+      "section": "contributions",
+      "kind": "field",
+      "field": ["rank", "contribPp"],
+      "fixtures": ["syn-standard-irr-variant"],
+      "legacy": "*",
+      "new": "*",
+      "class": "improvement",
+      "reference": "D9; OD-4 (follows SB-04)",
+      "description": "The same case: client A's holdings carry different XIRRs on the two sides (SB-04), so their contributions and the ranks of the contributors list differ."
     }
   ]
 }

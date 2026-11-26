@@ -2101,6 +2101,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
     /* ---- TRANSACTION-BASED IRR (overrides CMV-weighted XIRR when an IRR file is uploaded) ---- */
     var irrTree=null, IRRO=null, irrAsOn="";
     var irrAgg=function(){return null;}, irrCli=function(){return null;}, irrInstr=function(){return null;}, irrPlace=function(){return null;};   /* irrPlace: KI-048 */
+    var irrJoinOf=function(){return null;}, irrJoinCounts=null;   /* KI-032: how each base client joined the IRR file */
     if (REF.IRR && REF.IRR.fund && REF.IRR.fund.length){
       irrTree = computeIRRtree(REF.IRR);
       if (REF.IRR.date){ var _d=REF.IRR.date; irrAsOn=_d.getUTCDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][_d.getUTCMonth()]+" "+_d.getUTCFullYear(); }
@@ -2119,10 +2120,54 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       var cliInstr={}, cliKeys={};
       _F.forEach(function(t){ var c=nc(t.client); cliKeys[c]=1; (cliInstr[c]||(cliInstr[c]={}))[t.instrument]=1; });
       var cliList=Object.keys(cliKeys), instrCache={};
-      var resolveClient=function(cn){ var k=nc(cn); if(cliKeys[k])return k;
-        var bt=k.split(" ").filter(Boolean), best=null, bestn=0;
+      /* KI-032: the client join is decided once, before any figure: the exact normalised name; else a unique variant
+         (salutations dropped, entity words equal, the shorter name contained in the longer with initials, the first
+         words equal when the lengths differ, one candidate each way); else none. The old rule (two shared words, first
+         in the file on a tie) is kept only to say in the client's note why a near name was not joined. */
+      var _oldBest=function(k){ var bt=k.split(" ").filter(Boolean), best=null, bestn=0;
         cliList.forEach(function(ck){ var ct=ck.split(" "), n=0; bt.forEach(function(x){ if(ct.indexOf(x)>=0)n++; }); if(n>bestn){bestn=n;best=ck;} });
         return bestn>=2?best:null; };
+      var _SAL={MR:1,MRS:1,MS:1,MISS:1,DR:1,SHRI:1,SRI:1,SMT:1,SHRIMATI:1,KUM:1,MASTER:1,LATE:1};
+      var _ENT={HUF:"HUF",TRUST:"TRUST",LLP:"LLP",PVT:"PVT",PRIVATE:"PVT",LTD:"LTD",LIMITED:"LTD",CO:"CO",FIRM:"FIRM",FOUNDATION:"FOUNDATION",MINOR:"MINOR",UG:"UG",GUARDIAN:"UG"};
+      var _parts=function(k){ var w=k.split(" ").filter(Boolean), out=[], ent={};
+        for(var i=0;i<w.length;i++){ var x=w[i];
+          if(x==="U"&&w[i+1]==="G"){ ent.UG=1; i++; continue; }
+          if(_SAL[x]) continue;
+          if(_ENT[x]){ ent[_ENT[x]]=1; continue; }
+          out.push(x); }
+        return {w:out, e:Object.keys(ent).sort().join(" ")}; };
+      var _fits=function(S,L){ if(S.length>L.length) return false;
+        if(S.filter(function(x){ return x.length>1; }).length<2) return false;
+        var used=L.map(function(){ return false; });
+        var take=function(ok){ for(var j=0;j<L.length;j++) if(!used[j]&&ok(L[j])){ used[j]=true; return true; } return false; };
+        for(var i=0;i<S.length;i++){ var s=S[i]; if(s.length>1&&!take(function(y){ return y===s; })) return false; }
+        for(i=0;i<S.length;i++){ var c=S[i]; if(c.length===1&&!take(function(y){ return y===c; })&&!take(function(y){ return y.charAt(0)===c; })) return false; }
+        if(S.length<L.length){ var a=S[0], b=L[0]; if(!(a===b||(a.length===1&&b.charAt(0)===a)||(b.length===1&&a.charAt(0)===b))) return false; }
+        return true; };
+      var _variant=function(a,b){ return _fits(a,b)||_fits(b,a); };
+      var _baseK={}; rows.forEach(function(h){ var k=nc(h.client); if(k) _baseK[k]=1; });
+      var _bases=Object.keys(_baseK), _claimed={};
+      _bases.forEach(function(k){ if(cliKeys[k]) _claimed[k]=1; });
+      var _P={}; cliList.forEach(function(c){ _P[c]=_parts(c); });
+      var _cand={}, _ent={}, _by={};
+      _bases.forEach(function(k){ if(cliKeys[k]) return; var p=_parts(k), c=[], ne=0;
+        cliList.forEach(function(ic){ if(_claimed[ic]) return; var q=_P[ic]; if(!_variant(p.w,q.w)) return;
+          if(p.e===q.e){ c.push(ic); (_by[ic]||(_by[ic]=[])).push(k); } else ne++; });
+        _cand[k]=c; _ent[k]=ne; });
+      var _join={}; irrJoinCounts={exact:0, variant:0, refused:0, none:0};
+      _bases.forEach(function(k){ var j;
+        if(cliKeys[k]) j={key:k, how:"exact"};
+        else if(_cand[k].length===1&&_by[_cand[k][0]].length===1) j={key:_cand[k][0], how:"variant"};
+        else { var ob=_oldBest(k), why=null;
+          if(_cand[k].length>1) why="more than one client in the IRR file could be this client";
+          else if(_cand[k].length) why="the IRR client with a similar name could also be another client";
+          else if(_ent[k]) why="the IRR client with a similar name is a different entity (HUF, trust, company or minor)";
+          else if(ob&&_claimed[ob]) why="the IRR client with a similar name is another client's exact name";
+          else if(ob) why="the names differ by more than a salutation, initials or a middle name";
+          j={key:null, how:why?"refused":"none", why:why}; }
+        _join[k]=j; irrJoinCounts[j.how]++; });
+      var resolveClient=function(cn){ var k=nc(cn); if(cliKeys[k])return k; var j=_join[k]; return j?j.key:null; };
+      irrJoinOf=function(cn){ return _join[nc(cn)]||null; };
       var keyMemo={};
       var irrKey=function(h){ var mk=String(h.client)+"\u0001"+h.name+"\u0001"+(h.amc||""); if(mk in keyMemo) return keyMemo[mk];
         var rc=resolveClient(h.client), mi=null;
@@ -2364,10 +2409,11 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       /* KI-048 / KI-100: what the transaction-based figures include beyond the holdings, and what is blank, case by case */
       var irrNote=null;
       if(IRRO){
-        if(!irrCli(cn)) irrNote="§ No transactions for this client in the IRR file: XIRR/BMXIRR are the base file's, CMV-weighted.";
+        if(!irrCli(cn)){ var _jr=irrJoinOf(cn); irrNote="§ No transactions for this client in the IRR file: XIRR/BMXIRR are the base file's, CMV-weighted."+(_jr&&_jr.how==="refused"?" An IRR client with a similar name was not joined: "+_jr.why+".":""); }   /* KI-032 */
         else {
           var _nu=0,_ucmv=0,_nn=0; C2.rows.forEach(function(h){ var r=irrInstr(h); if(!r){ _nu++; _ucmv+=h.cmvCr; } else if(r.f==null||r.b==null) _nn++; });
           var _x=_px||{placed:0,aOnly:0,unplaced:0,benchOnly:0}, _ext=_x.placed+_x.unplaced, _np=[];
+          if((irrJoinOf(cn)||{}).how==="variant") _np.push("joined to the IRR file's client by a name variant (a salutation, initials or a middle name)");   /* KI-032 */
           var _pl=function(n,one,many){ return n+" "+(n>1?many:one); };
           if(_x.placed) _np.push(_pl(_x.placed,"instrument","instruments")+" not held or not matched to a holding "+(_x.placed>1?"are":"is")+" included by the IRR file's labels ("+unit.m(_x.pIn)+" invested, "+unit.m(_x.pOut)+" redeemed or closing value"+(_x.aOnly?("; "+_x.aOnly+" in an asset subtotal only, no product row matching "+(_x.aOnly>1?"their product labels":"its product label")):"")+")");
           if(_x.unplaced) _np.push(_pl(_x.unplaced,"instrument","instruments")+" not held or not matched to a holding could not be placed in a subtotal by "+(_x.unplaced>1?"their":"its")+" labels and "+(_x.unplaced>1?"count":"counts")+" only in the Grand Total ("+unit.m(_x.uIn)+" invested, "+unit.m(_x.uOut)+" redeemed or closing value)");
@@ -3120,7 +3166,7 @@ var TOPIC_SLIDES={"holdings":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AA
       invMissing:invMissing, invNote:invMissing?("‡ Invested value and gain/loss total only the holdings that have an invested value: "+invMissing+" holding"+(invMissing>1?"s":"")+" without one ("+(Math.round((totalCMV?(totalCMV-invCmv)/totalCMV*100:0)*100)/100).toFixed(2)+"% of CMV)."):null,
       holdings:rows, unmatched:unmatched,
       allocByDistributor:allocByDistributor, allocByClient:allocByClient,
-      irr:irrTree, irrActive:!!IRRO, irrAsOn:irrAsOn,
+      irr:irrTree, irrActive:!!IRRO, irrAsOn:irrAsOn, irrJoin:irrJoinCounts,
       assetAllocation:{rows:aaRows, presentAssets:presentAssets},
       assetPie:assetPie, liqPie:liqPie,
       amc:{rows:amcRows, mfTotal:mfTotal, breaches:amcBreaches, max:amcRows[0]||null, notGiven:amcNotGiven},   /* OD-34 */
