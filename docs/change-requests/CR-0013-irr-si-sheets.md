@@ -25,13 +25,25 @@ Bmxirr". Workaround until live: keep only the SI pair in the uploaded file.
 
 ## Evidence
 
-`tools/regression/IRR-SI-since-inception-sheets.js`, 15 known-answer checks in IST and UTC:
+`tools/regression/IRR-SI-since-inception-sheets.js`, 16 known-answer checks in IST and UTC:
 - The six-sheet file gives the same holding XIRRs, client Grand Totals and Fund IRR tree as a file with only the SI
-  pair: the sample book's exact flows from `tools/make-sample-base.js`. A QTD-only file gives different figures.
+  pair: the sample book's exact flows from `tools/make-sample-base.js`. A QTD-only file gives different figures. Each
+  holding's XIRR and BMXIRR equal an independent XIRR (actual/365, bisection) of its own SI flows.
 - The sheet choice for the platform order and its reverse, SI- / SI_ / "Since Inception" names, "SIP Xirr", legacy
   names, MTD and FYTD, and period sheets only.
 - The content fallback, with QTD tabs first.
 - Run against the page before the fix, 7 of the checks fail.
+
+## Review and follow-up
+
+Financial review of 6c3074f: APPROVE WITH NOTES. Since inception is the right scope for every consumer (transaction
+XIRRs, client and family figures, the Fund IRR tree, tax lots). Reviews built from six-sheet files before this fix should be
+regenerated. Follow-up (not blocking; the platform's file always has the SI pair):
+- the fund and benchmark sheets are chosen independently: when only one kind has an SI sheet, warn or refuse rather
+  than pair periods silently; name the two sheets used in the upload status;
+- names such as 1Y, 3Y, FY26, Q2, H1, CYTD or "YTD2026" are not read as periods: with no SI sheet and more than one
+  candidate of a kind, show the sheet taken or refuse;
+- the new build's reader (`app/src/ingest/irr-file.ts`) has the same last-match rule and needs its own change.
 
 ## Records
 

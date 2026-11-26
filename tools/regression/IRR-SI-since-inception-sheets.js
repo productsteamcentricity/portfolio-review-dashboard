@@ -70,6 +70,32 @@ ok(sig(mQtd) !== sig(mSi), '1. control: the QTD pair alone gives different figur
 { const t = (mSix.irr || []).find(r => r.level === 0), s = (mSi.irr || []).find(r => r.level === 0);
   ok(t && s && t.fund === s.fund && t.bench === s.bench, '1. family XIRR / BMXIRR from the six-sheet file = SI: ' + (t && (t.fund * 100).toFixed(4)) + '% / ' + (t && (t.bench * 100).toFixed(4)) + '%'); }
 
+/* 1b. the known answer itself (financial review of 6c3074f, finding 6): each holding's XIRR / BMXIRR from the six-sheet
+   file equals an independent XIRR (actual/365, plain bisection) of that client's and instrument's flows in the SI sheets */
+function myXirr(cf) {
+  if (cf.length < 2 || !cf.some(c => c.a > 0) || !cf.some(c => c.a < 0)) return null;
+  const t0 = Math.min(...cf.map(c => +c.d));
+  const npv = r => cf.reduce((s, c) => s + c.a / Math.pow(1 + r, (c.d - t0) / 86400000 / 365), 0);
+  let lo = -0.99, hi = 10, flo = npv(lo);
+  if ((flo < 0) === (npv(hi) < 0)) return null;
+  for (let i = 0; i < 300 && hi - lo > 1e-14; i++) { const m = (lo + hi) / 2, fm = npv(m); if ((flo < 0) !== (fm < 0)) hi = m; else { lo = m; flo = fm; } }
+  return (lo + hi) / 2;
+}
+function flows(rows, inst) {
+  const h = rows[0].map(c => String(c).toUpperCase()), ci = h.findIndex(c => /^CLIENT/.test(c)), ii = h.findIndex(c => /^INSTRUMENT/.test(c)),
+    di = h.findIndex(c => /DATE/.test(c)), ai = h.findIndex(c => /AMOUNT/.test(c));
+  return rows.slice(1).filter(r => r[ci] === inst.client && r[ii] === inst.name && r[di] instanceof Date).map(r => ({ d: r[di], a: Number(r[ai]) }));
+}
+{ let n = 0, good = 0;
+  for (const h of mSix.holdings) {
+    const f = flows(SI_F, h), b = flows(SI_B, h);
+    if (!f.length) continue;
+    n++;
+    const ex = myXirr(f), eb = myXirr(b);
+    if (ex != null && Math.abs(h.xirrFrac - ex) < 1e-6 && (eb == null ? h.bmxirrFrac == null : Math.abs(h.bmxirrFrac - eb) < 1e-6)) good++;
+  }
+  ok(n > 5 && good === n, '1b. every holding with flows: XIRR / BMXIRR from the six-sheet file = an independent XIRR of its SI flows (' + good + '/' + n + ')'); }
+
 /* 2. sheet choice by name: which sheet each kind came from, by its row count (each sheet below holds a distinct count) */
 const mk = n => [SI_F[0]].concat(SI_F.slice(1, 1 + n));
 const mkB = n => [SI_B[0]].concat(SI_B.slice(1, 1 + n));

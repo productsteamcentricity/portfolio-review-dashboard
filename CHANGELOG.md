@@ -13,7 +13,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     preferred ("SIP Xirr" is not SI). Otherwise the last match wins, as before. A file with period sheets only gives no
     fund rows, and the upload asks for an SI Xirr sheet.
   - `tools/patches/2026-11-26-irr-si-sheets.js` (parsers script only); `tools/regression/IRR-SI-since-inception-sheets.js`
-    (15 known-answer checks: the six-sheet file's review equals the SI pair's; 7 of them fail on the page before the fix).
+    (16 known-answer checks: the six-sheet file's review equals the SI pair's, and each holding's XIRR an independent XIRR of
+    its SI flows; 7 of the checks fail on the page before the fix).
 
 ### Added (new build, M3b data side: the reference data embedded in the page; not read by any screen yet)
 - **`scripts/build.mjs`** writes each file of its `REFDATA_BLOCKS` list whole as a data block
