@@ -25,8 +25,9 @@ Whichever pipeline runs, every completed cycle from the 2026-10 data month ends 
 
 1. Drop the month's files in the private monthly inbox, one `YYYY-MM` folder per **data month**, as today
    ([MONTHLY_REFRESH.md, part 1](MONTHLY_REFRESH.md#part-1-the-owners-part)); the full list is
-   [below](#files-the-owner-supplies-each-month). The five Index TRI files in the month's `Index TRI` subfolder are the
-   index data for drawdown comparisons (D-023 point 2; confirmed by the owner on 22 Oct 2026).
+   [below](#files-the-owner-supplies-each-month). The vendor's NSE benchmark export in the month's `Benchmarks`
+   subfolder (since October 2026; the five niftyindices files in `Index TRI` are the fallback) is the index data for
+   the risk ratios and the drawdown comparisons (D-023 point 2; confirmed by the owner on 22 Oct 2026).
    The MF Screener data pack (`pr-datapack_<cycle>.zip`) is uploaded into the dashboard every Screener cycle (D-026),
    and a copy goes in the month's folder so that the monthly update can validate it and record its fingerprint.
 2. Give the one instruction: *"I have updated the files in the monthly_updates folder. Process the updates and prepare
@@ -53,8 +54,11 @@ this table at every refresh. "Inbox" is the month's folder `01 Monthly Updates\Y
 | Equity, Hybrid and Debt Analytics | Accord Fintech | with the monitors | the inbox's `Analytics` subfolder | public (all Accord files, D-023) | the look-through blocks (market cap, sectors, stocks, ratings, issuers) and `STOCK_INFO` |
 | Listed Direct Equity master | Accord Fintech | with the monitors | inbox | public (all Accord files, D-023) | `STOCK_INFO`: company names, sectors, market cap |
 | Listed Direct Equity returns issue | Accord Fintech | often a day or two after the rest | inbox | public (all Accord files, D-023) | `STOCK_RET`: direct-equity returns (the new app computes 1Y, 3Y and 5Y from prices instead, D-023 point 4) |
-| Monthly Outlook deck | Centricity research team | monthly, issued in the following month | inbox | public (market update material, D-023) | the Market Update slides |
-| Five Index TRI files: Nifty 50, Nifty 100, Nifty 500, Nifty Midcap 150, Nifty Smallcap 250 | the owner, downloaded from niftyindices.com | monthly | the inbox's `Index TRI` subfolder | public (index data, D-023) | today the in-house risk ratios (`MF_RISK`); in the new app the drawdown comparison (D-023 point 2 and its addendum of 22 Oct 2026) |
+| Investment Reckoner PDF (the next month's issue carries this month's data) | Centricity Products team | monthly | the inbox's `Outlook export` subfolder | public (market update material, D-023) | the Market Update slides: the owner's chosen pages, rendered without Office (MONTHLY_REFRESH step 3; since 22 Nov 2026) |
+| Pagers deck (`Monthly Outlook Pagers_…` or `Invictus Market Outlook Pagers_…`), when issued | Centricity research team | monthly, issued in the following month | inbox | public (market update material, D-023) | Market Update pages, only when the owner asks (by the PDF route) |
+| Benchmark exports `NSE Data_…`, `BSE Data_…`, `world Data_…` (the vendor's "NAV Data" exports, from the 1st of the previous month) | Accord Fintech | with the monitors | the inbox's `Benchmarks` subfolder | public (all Accord files, D-023) | the five TRI series of the in-house risk ratios (`MF_RISK`, step 4: the NSE file); in the new app the drawdown comparison (D-023 point 2) |
+| Five Index TRI files (Nifty 50, 100, 500, Midcap 150, Smallcap 250), **fallback only** | the owner, downloaded from niftyindices.com | only when the NSE export is missing or has a gap | the inbox's `Index TRI` subfolder | public (index data, D-023) | as the NSE export |
+| Other Funds Analytics | Accord Fintech | when sent (first: October 2026) | the inbox's `Analytics` subfolder | public (all Accord files, D-023) | look-throughs the main analytics files left out and the build carried forward (MONTHLY_REFRESH step 7f) |
 
 **When available** (sent when issued or changed):
 
