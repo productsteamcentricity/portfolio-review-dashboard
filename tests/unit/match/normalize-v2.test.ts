@@ -7,7 +7,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { normalize, normalizeV2 } from '../../../app/src/engine/match/normalize.ts';
-import { NEW_BUILD_MATCHING, matchInstrument } from '../../../app/src/engine/match/instrument.ts';
+import { NEW_BUILD_MATCHING, matchInstrument, referenceVocabulary } from '../../../app/src/engine/match/instrument.ts';
 
 describe('normalizeV2', () => {
   test('"(Formerly Known as ...)" and "(erstwhile ...)" are dropped', () => {
@@ -52,5 +52,24 @@ describe('candidateWordGuard (with the stricter regime)', () => {
   test('needs the stricter regime; the preset has both', () => {
     assert.throws(() => matchInstrument('x', '', ['y'], undefined, { nullOnTies: true, candidateWordGuard: true }), /absentFundGuard/);
     assert.deepEqual({ ...NEW_BUILD_MATCHING }, { nullOnTies: true, identifierJoin: true, houseTokens: true, absentFundGuard: true, normaliserV2: true, candidateWordGuard: true });
+  });
+});
+
+describe('knownWords: the reference data\'s vocabulary for the stricter regime', () => {
+  const regular = ['Zeta Nifty 500 Shariah Index Fund-Reg(G)', 'Zeta Nifty 500 Index Fund-Reg(G)', 'Zeta Bond Fund-Reg(G)', 'Kappa Case Nifty 50 ETF', 'Kappa Case Nifty 100 ETF', 'Kappa Case Nifty Bank ETF'];
+  const direct = ['Zeta Nifty 500 Index Fund(G)-Direct Plan', 'Zeta Bond Fund(G)-Direct Plan', 'Kappa Nifty 50 ETF'];
+  const known = referenceVocabulary([regular, direct]);
+  const strict = { nullOnTies: true, houseTokens: true, absentFundGuard: true, normaliserV2: true, candidateWordGuard: true };
+
+  test('a word of a fund missing from this set but known elsewhere blocks the match', () => {
+    const q = 'Zeta Nifty 500 Shariah Index Fund - Direct Plan';
+    assert.equal(matchInstrument(q, 'Zeta', direct, undefined, strict), 'Zeta Nifty 500 Index Fund(G)-Direct Plan', 'without the vocabulary "shariah" looks unknown');
+    assert.equal(matchInstrument(q, 'Zeta', direct, undefined, { ...strict, knownWords: known }), null);
+  });
+
+  test('a fund-house word of another set ("case") is not a known word', () => {
+    assert.ok(known.has('shariah'));
+    assert.equal(known.has('case'), false);
+    assert.equal(matchInstrument('Kappa Case Nifty 50 ETF', 'Kappa', direct, undefined, { ...strict, knownWords: known }), 'Kappa Nifty 50 ETF');
   });
 });

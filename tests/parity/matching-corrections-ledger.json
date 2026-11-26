@@ -50776,7 +50776,8 @@
     "houseTokens": true,
     "absentFundGuard": true,
     "normaliserV2": true,
-    "candidateWordGuard": true
+    "candidateWordGuard": true,
+    "knownWords": {}
    },
    "report": {
     "stride": 1,
@@ -50791,9 +50792,9 @@
     "loo": {
      "queries": 6931,
      "wrongLegacy": 3932,
-     "wrongCorrected": 1106,
-     "wrongRemoved": 2827,
-     "wrongAdded": 1
+     "wrongCorrected": 1094,
+     "wrongRemoved": 2838,
+     "wrongAdded": 0
     },
     "amfi": {
      "queries": 1206,
@@ -54461,9 +54462,9 @@
       "query": "Groww Nifty Cements ETF",
       "amc": "",
       "legacy": "Groww Nifty 200 ETF",
-      "corrected": "Groww Nifty 50 ETF",
-      "kind": "other-answer",
-      "correct": "neither"
+      "corrected": null,
+      "kind": "to-null",
+      "correct": "fixed"
      },
      {
       "set": "MF_PERF",
@@ -56544,6 +56545,16 @@
       "corrected": "Invesco India Nifty Bank ETF",
       "kind": "other-answer",
       "correct": "neither"
+     },
+     {
+      "set": "MF_PERF",
+      "measure": "loo",
+      "query": "Invesco India Nifty Chemical Index Fund-Reg(G)",
+      "amc": "",
+      "legacy": "Invesco India Nifty Bank Index Fund-Reg(G)",
+      "corrected": null,
+      "kind": "to-null",
+      "correct": "fixed"
      },
      {
       "set": "MF_PERF",
@@ -70848,16 +70859,6 @@
      {
       "set": "MF_PERF_DIRECT",
       "measure": "loo",
-      "query": "UTI Nifty500 Shariah Index Fund(G)-Direct Plan",
-      "amc": "",
-      "legacy": null,
-      "corrected": "UTI Nifty 500 Index Fund(G)-Direct Plan",
-      "kind": "from-null",
-      "correct": "regressed"
-     },
-     {
-      "set": "MF_PERF_DIRECT",
-      "measure": "loo",
       "query": "UTI Short Term Fund(G)-Direct Plan",
       "amc": "",
       "legacy": "UTI Ultra Short Term Fund(G)-Direct Plan",
@@ -72791,9 +72792,9 @@
       "query": "Groww Nifty Cements ETF",
       "amc": "",
       "legacy": "Groww Nifty 200 ETF",
-      "corrected": "Groww Nifty 50 ETF",
-      "kind": "other-answer",
-      "correct": "neither"
+      "corrected": null,
+      "kind": "to-null",
+      "correct": "fixed"
      },
      {
       "set": "EQUITY_ANALYTICS:MF",
@@ -74054,6 +74055,16 @@
       "corrected": "Invesco India Nifty Bank ETF",
       "kind": "other-answer",
       "correct": "neither"
+     },
+     {
+      "set": "EQUITY_ANALYTICS:MF",
+      "measure": "loo",
+      "query": "Invesco India Nifty Chemical Index Fund-Reg(G)",
+      "amc": "",
+      "legacy": "Invesco India Nifty Bank Index Fund-Reg(G)",
+      "corrected": null,
+      "kind": "to-null",
+      "correct": "fixed"
      },
      {
       "set": "EQUITY_ANALYTICS:MF",
@@ -75338,6 +75349,16 @@
      {
       "set": "EQUITY_ANALYTICS:MF",
       "measure": "loo",
+      "query": "Motilal Oswal Nifty Microcap 250 Index Fund-Reg(G)",
+      "amc": "",
+      "legacy": "Motilal Oswal Nifty Smallcap 250 Index Fund-Reg(G)",
+      "corrected": null,
+      "kind": "to-null",
+      "correct": "fixed"
+     },
+     {
+      "set": "EQUITY_ANALYTICS:MF",
+      "measure": "loo",
       "query": "Motilal Oswal Nifty MidSmall Financial Services Index Fund-Reg(G)",
       "amc": "",
       "legacy": "Motilal Oswal Nifty MidSmall Healthcare Index Fund-Reg(G)",
@@ -75484,6 +75505,16 @@
       "corrected": "Motilal Oswal Nifty Smallcap 250 ETF",
       "kind": "other-answer",
       "correct": "neither"
+     },
+     {
+      "set": "EQUITY_ANALYTICS:MF",
+      "measure": "loo",
+      "query": "Motilal Oswal S&P 500 Index Fund-Reg(G)",
+      "amc": "",
+      "legacy": "Motilal Oswal Nifty 500 Index Fund-Reg(G)",
+      "corrected": null,
+      "kind": "to-null",
+      "correct": "fixed"
      },
      {
       "set": "EQUITY_ANALYTICS:MF",
@@ -77338,6 +77369,16 @@
      {
       "set": "HYBRID_ANALYTICS:MF",
       "measure": "loo",
+      "query": "SBI Children's Fund-Investment Plan-Reg(G)",
+      "amc": "",
+      "legacy": "SBI Children's Fund-Savings Plan-Reg(G)",
+      "corrected": null,
+      "kind": "to-null",
+      "correct": "fixed"
+     },
+     {
+      "set": "HYBRID_ANALYTICS:MF",
+      "measure": "loo",
       "query": "SBI Children's Fund-Savings Plan-Reg(G)",
       "amc": "",
       "legacy": "SBI Children's Fund-Investment Plan-Reg(G)",
@@ -77481,9 +77522,9 @@
       "query": "Aditya Birla SL CRISIL Broad Based Gilt ETF",
       "amc": "",
       "legacy": "Aditya Birla SL CRISIL 10 Year Gilt ETF",
-      "corrected": "Aditya Birla SL CRISIL Liquid Overnight ETF",
-      "kind": "other-answer",
-      "correct": "neither"
+      "corrected": null,
+      "kind": "to-null",
+      "correct": "fixed"
      },
      {
       "set": "DEBT_ANALYTICS:MF",
@@ -78738,6 +78779,16 @@
      {
       "set": "DEBT_ANALYTICS:MF",
       "measure": "loo",
+      "query": "Mirae Asset Ultra Short to Short Term Fund-Reg Savings Plan(G)",
+      "amc": "",
+      "legacy": "Mirae Asset Ultra Short-Term Fund-Reg(G)",
+      "corrected": null,
+      "kind": "to-null",
+      "correct": "fixed"
+     },
+     {
+      "set": "DEBT_ANALYTICS:MF",
+      "measure": "loo",
       "query": "Mirae Asset Ultra Short-Term Fund-Reg(G)",
       "amc": "",
       "legacy": "Mirae Asset Ultra Short to Short Term Fund-Reg Savings Plan(G)",
@@ -78811,6 +78862,16 @@
       "query": "Nippon India Credit Risk Fund-Segregated Portfolio 2-(G)",
       "amc": "",
       "legacy": "Nippon India Medium Term Fund-Segregated Portfolio 2-(G)",
+      "corrected": null,
+      "kind": "to-null",
+      "correct": "fixed"
+     },
+     {
+      "set": "DEBT_ANALYTICS:MF",
+      "measure": "loo",
+      "query": "Nippon India ETF Nifty 1D Rate Liquid BeES",
+      "amc": "",
+      "legacy": "Nippon India Nifty 1D Rate Liquid ETF(G)",
       "corrected": null,
       "kind": "to-null",
       "correct": "fixed"
@@ -83251,6 +83312,16 @@
       "query": "Motilal Oswal Nifty MNC ETF",
       "amc": "",
       "legacy": "Motilal Oswal Nifty 100 ETF",
+      "corrected": null,
+      "kind": "to-null",
+      "correct": "fixed"
+     },
+     {
+      "set": "MF_RISK",
+      "measure": "loo",
+      "query": "Motilal Oswal Nifty Microcap 250 Index Fund-Reg(G)",
+      "amc": "",
+      "legacy": "Motilal Oswal Nifty Smallcap 250 Index Fund-Reg(G)",
       "corrected": null,
       "kind": "to-null",
       "correct": "fixed"

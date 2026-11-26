@@ -69,7 +69,27 @@ export type MatchOptions = {
   normaliserV2?: boolean;
   /** With absentFundGuard: also reject a candidate whose own known rare words are left unmatched. */
   candidateWordGuard?: boolean;
+  /** With absentFundGuard: the reference data's known words (referenceVocabulary over every universe's names). A word of the
+   * holding's name that this candidate set lacks but the reference data knows elsewhere is informative too: the word
+   * of a fund missing from this set ("shariah") is not mistaken for a misspelling. Data-dependent, so not in
+   * NEW_BUILD_MATCHING: the caller that builds the universes builds it. */
+  knownWords?: ReadonlySet<string>;
 };
+
+/** The reference data's known words for knownWords: every word of every candidate set's names (normalizeV2 tokens),
+ * less each set's fund-house words (a brand word such as Zerodha's "case", missing from some sets' names, is not
+ * informative). */
+export function referenceVocabulary(sets: ReadonlyArray<readonly string[]>): ReadonlySet<string> {
+  const words = new Set<string>();
+  const houses = new Set<string>();
+  for (const names of sets) {
+    const cache: TokenCache = new Map(names.map((n) => [n, normalizeV2(n)]));
+    for (const t of cache.values()) for (const w of t) words.add(w);
+    for (const h of houseWords(names, cache).values()) for (const w of h) houses.add(w);
+  }
+  for (const h of houses) words.delete(h);
+  return words;
+}
 
 /** The new build's matching (the owner's answers of 25 and 26 Nov 2026): KI-036, KI-101 and the stricter regime (B).
  * The caller adds the owner's aliases. The parity tests call the matcher without options, as the legacy. */
@@ -102,7 +122,7 @@ function documentFrequency(candidates: readonly string[], cache?: TokenCache): R
 
 /** Option B: true when the holding's name leaves unmatched a word the set knows and fewer than ABSENT_FUND_SHARE of
  * its names carry ("fund" and house words never count). */
-function leavesKnownRareWord(nt: readonly string[], ct: readonly string[], isHouse: ((t: string) => boolean) | undefined, candidates: readonly string[], cache: TokenCache | undefined, bothSides = false): boolean {
+function leavesKnownRareWord(nt: readonly string[], ct: readonly string[], isHouse: ((t: string) => boolean) | undefined, candidates: readonly string[], cache: TokenCache | undefined, bothSides = false, known?: ReadonlySet<string>): boolean {
   const df = documentFrequency(candidates, cache);
   const bar = ABSENT_FUND_SHARE * candidates.length;
   const cs = new Set(ct);
@@ -110,6 +130,7 @@ function leavesKnownRareWord(nt: readonly string[], ct: readonly string[], isHou
     if (cs.has(t) || t === 'fund' || (isHouse && isHouse(t))) continue;
     const d = df.get(t) ?? 0;
     if (d > 0 && d < bar) return true;
+    if (d === 0 && known !== undefined && known.has(t)) return true;
   }
   if (bothSides) {
     const qs = new Set(nt);
@@ -252,7 +273,7 @@ function correctedTail(name: unknown, nt: string[], key: string, amcTok: string,
     const isHouse = houses ? (t: string): boolean => amcWords!.has(t) || (own !== undefined && own.has(t)) : undefined;
     const s = fuzzyScore(nt, amcTok, ct, isHouse);
     if (!s) continue;
-    if (opts?.absentFundGuard && leavesKnownRareWord(nt, ct, isHouse, candidates, cache, !!opts.candidateWordGuard)) continue;
+    if (opts?.absentFundGuard && leavesKnownRareWord(nt, ct, isHouse, candidates, cache, !!opts.candidateWordGuard, opts.knownWords)) continue;
     if (s.shared > bestShared || (s.shared === bestShared && s.jaccard > bestJac)) {
       tied = [c];
       bestShared = s.shared;
