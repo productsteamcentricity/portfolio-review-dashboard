@@ -52,11 +52,11 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | E-12 | Five-year age gate | `engine/returns/quants.ts` | `unit/returns/age-gate.test.ts` | correction (KI-053: applied everywhere) | not started |
 | E-13 | Name matcher | `engine/match/` | `parity/matching.parity.test.ts`; `unit/match/normalize.test.ts`, `instrument.test.ts`, `name-lists.test.ts`; `regression/cr0010-a2-pins.test.ts` (M2.1 sprint 1, at parity); corrections, sprint 2a, opt-in (`MatchOptions`): `unit/match/corpus.test.ts` with `parity/matching-corrections-ledger.json` (self, leave-one-out and official AMFI names, every changed answer), `unit/match/owner-aliases.test.ts`, `regression/ki-036-ties.test.ts`, `regression/ki-101-house-words.test.ts` | correction (KI-050, KI-036, KI-101, OD-5) | in progress |
 | E-14 | PMS matcher | `engine/match/pms.ts` | `parity/matching.parity.test.ts`; `unit/match/pms.test.ts` | none | in progress |
-| E-15 | Product-class routing | `engine/classify/product-class.ts` | `unit/classify/product-class.test.ts` | correction (KI-051 OD-6, KI-024 OD-7, KI-077) | not started |
+| E-15 | Product-class routing | `engine/match/product-class.ts` (the live page's LP-16 rule, for matching; M2.1 wiring); the full classifier `engine/classify/product-class.ts` in sprint 2b | `unit/match/product-class.test.ts` (LP-16 known answers), `unit/match/resolve-holdings.test.ts`; `unit/classify/product-class.test.ts` (2b) | correction (KI-051 OD-6, KI-024 OD-7, KI-077) | in progress |
 | E-16 | Direct equity | `engine/classify/direct-equity.ts` | `unit/classify/direct-equity.test.ts` | correction (N-4) | not started |
 | E-17 | Commodity | `engine/classify/commodity.ts` | `unit/classify/commodity.test.ts` | none | not started |
 | E-18 | Liquidity | `engine/classify/liquidity.ts` | `unit/engine/liquidity.test.ts`; `unit/views/negative-cmv.test.ts` | none | in progress |
-| E-19 | Unmatched surfacing | `engine/match/`, validation | `parity/matching.parity.test.ts` | improvement (matched-to disclosure) | not started |
+| E-19 | Unmatched surfacing | `engine/match/resolve-holdings.ts`, `views/matching.ts`, the import report (M2.1 wiring) | `unit/match/resolve-holdings.test.ts`, `integration/matching.test.ts`, `browser/overview.cdp.mjs` | improvement (matched-to disclosure) | in progress |
 | E-20 | AMC key | `engine/match/amc.ts` | `regression/ki-061-amc-canonical-key.test.ts`, `od-32-renamed-amc.test.ts`, `od-34-blank-amc.test.ts`; `unit/match/amc.test.ts`; `parity/matching.parity.test.ts` | correction (N-10, OD-32, OD-34) | in progress |
 | E-21 | Totals | `engine/aggregate/totals.ts` | `parity/aggregation.parity.test.ts`; `unit/engine/totals.test.ts`; `integration/overview.test.ts`; `regression/ki-007-blank-invested.test.ts`; `acceptance/ac-01-standard-review.test.ts`; `regression/ki-148-total-rows.test.ts`; `regression/ki-151-prototype-labels.test.ts`; `unit/views/negative-cmv.test.ts` | correction (OD-18, OD-8) | in progress |
 | E-22 | Asset allocation | `engine/aggregate/allocation.ts` | `parity/aggregation.parity.test.ts`; `unit/engine/allocation.test.ts`; `integration/overview.test.ts`; `exports/xlsx/dash-labels.test.ts`; `acceptance/ac-01-standard-review.test.ts`; `regression/ki-151-prototype-labels.test.ts`; `unit/views/negative-cmv.test.ts` | correction (OD-7 unknown asset) | in progress |
@@ -168,9 +168,9 @@ on the same synthetic books (`tests/parity/golden/`, M1.3). Slide groups are com
 | U-05 | As-on date | section 1 | `unit/ui/store.test.ts`; `regression/ki-087-as-on-no-fallback.test.ts`; `integration/as-on-change.test.ts`; `workflows/w-01-load-family.test.ts` | correction (KI-087, KI-019 OD-24) | in progress |
 | U-06 | Template download | section 1 | `unit/ingest/template.test.ts` (template loads with zero warnings) | correction (KI-093) | not started |
 | U-07 | Logo choice | section 1 | `exports/pptx/logo-placement.test.ts`; `workflows/w-01-load-family.test.ts` | correction (KI-020) | in progress |
-| U-08 | MF Monitor upload | section 1 | `integration/monitor-upload.test.ts` | correction (OD-11) | not started |
-| U-09 | Direct Monitor upload | section 1 | same | correction (OD-11, KI-054) | not started |
-| U-10 | SIF Monitor upload | section 1 | same | correction (KI-026) | not started |
+| U-08 | MF Monitor upload | section 1 (`ingest/load-monitor.ts`, `ui/components/monitor-slots.tsx`) | `integration/monitor-upload.test.ts`, `unit/ingest/load-monitor.test.ts` | correction (OD-11) | in progress |
+| U-09 | Direct Monitor upload | section 1 | same | correction (OD-11, KI-054) | in progress |
+| U-10 | SIF Monitor upload | section 1 | same | correction (KI-026) | in progress |
 | U-11 | SOA upload | section 1 | `integration/client-uploads.test.ts` | correction (KI-077) | not started |
 | U-12 | Bonds upload | section 1 | same | correction (KI-056) | not started |
 | U-13 | IRR upload | section 1 | same | correction (KI-075, KI-032) | not started |

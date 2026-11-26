@@ -15,6 +15,10 @@ import type { OverviewVM } from '../views/overview-vm.ts';
 import type { Prefs } from '../services/storage.ts';
 import type { LogoAsset, Wiring } from './wiring.ts';
 import type { MatchReport } from '../engine/match/resolve-holdings.ts';
+import type { LoadedMonitor, MonitorBlocks, MonitorLoadError, MonitorUploadKind } from '../ingest/load-monitor.ts';
+
+/** One uploaded monitor file (U-08, U-09, U-10): read, or refused with the reason. */
+export type MonitorSlot = { fileName: string; size: number; loaded: LoadedMonitor | null; error: MonitorLoadError | { refused: true; reason: 'unreadable'; message: string } | null };
 import { buildOverviewVM } from '../views/overview.ts';
 import { DEFAULT_FAMILY_LABEL, checkLabel } from '../views/labels.ts';
 import { imageSize } from '../views/logo.ts';
@@ -29,6 +33,10 @@ export type AppState = {
   upload: UploadState;
   /** M2.1: what each holding of the loaded file was matched to (E-19); null before a file loads or without fund data. */
   match: MatchReport | null;
+  /** M2.1: the month's monitor files uploaded in section 1; kept when the family changes (they are not family data). */
+  monitors: Partial<Record<MonitorUploadKind, MonitorSlot>>;
+  /** Remounts the monitor inputs, so the same file can be picked again (KI-089). */
+  monitorKey: number;
   asOn: number | null;
   labels: ReviewLabels;
   acknowledged: string[];
@@ -51,7 +59,10 @@ export type Action =
   | { type: 'family-label'; label: string }
   | { type: 'client-label'; clientId: string; label: string }
   | { type: 'acknowledge'; resultId: string }
-  | { type: 'logo'; logo: LogoAsset | null };
+  | { type: 'logo'; logo: LogoAsset | null }
+  | { type: 'monitor-picked'; kind: MonitorUploadKind; fileName: string; bytes: Uint8Array }
+  | { type: 'monitor-unreadable'; kind: MonitorUploadKind; fileName: string; size: number }
+  | { type: 'monitor-remove'; kind: MonitorUploadKind };
 
 export type Store = {
   get(): AppState;
@@ -72,6 +83,8 @@ function initialState(logo: LogoAsset | null, inputKey: number): AppState {
   return {
     upload: emptyUpload(),
     match: null,
+    monitors: {},
+    monitorKey: 0,
     asOn: null,
     labels: { family: DEFAULT_FAMILY_LABEL, clients: {} },
     acknowledged: [],
@@ -137,6 +150,28 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
   };
   const accepted = (s: AppState): boolean => s.upload.stage === 'review' && s.upload.loaded !== null;
 
+  /** The uploaded monitors' blocks, standing in for the embedded ones. */
+  const overridesOf = (monitors: AppState['monitors']): MonitorBlocks => {
+    const o: MonitorBlocks = {};
+    for (const slot of Object.values(monitors)) if (slot?.loaded) Object.assign(o, slot.loaded.blocks);
+    return o;
+  };
+  /** The file's holdings matched (matching never blocks a file: on any failure they stay unmatched). */
+  const matched = (loaded: LoadedBaseFile, monitors: AppState['monitors']): { loaded: LoadedBaseFile; report: MatchReport | null } => {
+    if (!deps.wiring.matchHoldings) return { loaded, report: null };
+    try {
+      return deps.wiring.matchHoldings(loaded, overridesOf(monitors));
+    } catch {
+      return { loaded, report: null };
+    }
+  };
+  /** After a monitor changes: the loaded file matched again against the data now in use. */
+  const rematch = (s: AppState): AppState => {
+    if (!s.upload.loaded) return s;
+    const m = matched(s.upload.loaded, s.monitors);
+    return recompute({ ...s, upload: { ...s.upload, loaded: m.loaded }, match: m.report });
+  };
+
   const load = (s: AppState, bytes: Uint8Array, fileName: string): AppState => {
     let result: LoadedBaseFile | LoadError;
     try {
@@ -146,19 +181,8 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
       return { ...s, upload: { ...s.upload, stage: 'upload', loaded: null, error: { kind: 'review-failed', message: messageOf(err) } }, review: null, vm: null };
     }
     if (isLoadError(result)) return { ...s, upload: { ...s.upload, stage: 'upload', loaded: null, error: result }, match: null, review: null, vm: null };
-    let loaded = result;
-    let match: MatchReport | null = null;
-    if (deps.wiring.matchHoldings) {
-      try {
-        const m = deps.wiring.matchHoldings(result);
-        loaded = m.loaded;
-        match = m.report;
-      } catch {
-        /* matching never blocks a file: the holdings stay unmatched and the report says the data is not there */
-        match = null;
-      }
-    }
-    return { ...s, upload: { ...s.upload, stage: 'validate', loaded, error: null }, match, review: null, vm: null };
+    const m = matched(result, s.monitors);
+    return { ...s, upload: { ...s.upload, stage: 'validate', loaded: m.loaded, error: null }, match: m.report, review: null, vm: null };
   };
 
   const compute = (s: AppState): AppState => {
@@ -187,7 +211,7 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
         kept = { bytes: a.bytes, fileName: a.fileName };
         // A new family: nothing of the previous one stays but the logo; the input remounts so that the same file can
         // be picked again (KI-089).
-        const fresh = initialState(state.logo, state.inputKey + 1);
+        const fresh = { ...initialState(state.logo, state.inputKey + 1), monitors: state.monitors, monitorKey: state.monitorKey };
         fresh.upload = { stage: 'upload', fileName: a.fileName, size: a.bytes.length, loaded: null, error: null };
         set(fresh);
         set(load(fresh, a.bytes, a.fileName));
@@ -198,7 +222,7 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
         // the family as a pick does, and the slot shows the refusal; the input remounts and takes the focus.
         session += 1;
         kept = null;
-        const fresh = initialState(state.logo, state.inputKey + 1);
+        const fresh = { ...initialState(state.logo, state.inputKey + 1), monitors: state.monitors, monitorKey: state.monitorKey };
         fresh.upload = {
           stage: 'upload', fileName: a.fileName, size: a.size, loaded: null,
           error: { kind: 'unreadable', message: 'the browser could not read the file' },
@@ -221,8 +245,32 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
       case 'remove':
         session += 1;
         kept = null;
-        set(initialState(state.logo, state.inputKey + 1));
+        set({ ...initialState(state.logo, state.inputKey + 1), monitors: state.monitors, monitorKey: state.monitorKey });
         return;
+      case 'monitor-picked': {
+        const slot: MonitorSlot = { fileName: a.fileName, size: a.bytes.length, loaded: null, error: null };
+        const regular = a.kind === 'mf-direct' ? state.monitors['mf-regular']?.loaded?.blocks.MF_PERF : undefined;
+        let r: LoadedMonitor | MonitorLoadError | null = null;
+        try {
+          r = deps.wiring.loadMonitor ? deps.wiring.loadMonitor(a.kind, a.bytes, a.fileName, regular) : null;
+        } catch (err) {
+          r = { refused: true, reason: 'unreadable', message: messageOf(err) };
+        }
+        if (r === null) slot.error = { refused: true, reason: 'unreadable', message: 'monitor files cannot be read in this build' };
+        else if ('refused' in r) slot.error = r;
+        else slot.loaded = r;
+        set(rematch({ ...state, monitors: { ...state.monitors, [a.kind]: slot }, monitorKey: state.monitorKey + 1 }));
+        return;
+      }
+      case 'monitor-unreadable':
+        set(rematch({ ...state, monitors: { ...state.monitors, [a.kind]: { fileName: a.fileName, size: a.size, loaded: null, error: { refused: true, reason: 'unreadable', message: 'the browser could not read the file' } } }, monitorKey: state.monitorKey + 1 }));
+        return;
+      case 'monitor-remove': {
+        const next = { ...state.monitors };
+        delete next[a.kind];
+        set(rematch({ ...state, monitors: next, monitorKey: state.monitorKey + 1 }));
+        return;
+      }
       case 'as-on':
         // A cleared date is null, never another date (KI-087): the review then holds a Blocking result.
         set(recompute({ ...state, asOn: a.day }));

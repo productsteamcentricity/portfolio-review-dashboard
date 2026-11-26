@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildMatchContext, type MatchBlocks, type MatchContext } from '../../app/src/engine/match/resolve-holdings.ts';
+import type { MonitorBlocks } from '../../app/src/ingest/load-monitor.ts';
 import { refdataBlock } from './legacy-engine.ts';
 import { REPO } from './sheetjs.ts';
 
@@ -17,7 +18,12 @@ export function committedBlocks(): MatchBlocks {
 }
 
 let ctx: MatchContext | undefined;
-/** The match context of the committed reference data, built once per process. */
-export function committedMatchContext(): MatchContext {
+/** The match context of the committed reference data (built once), or with uploaded monitors standing in for their
+ * blocks (built for each set). */
+export function committedMatchContext(overrides?: MonitorBlocks): MatchContext {
+  if (overrides && (overrides.MF_PERF || overrides.SIF_PERF)) {
+    const b = committedBlocks();
+    return buildMatchContext({ ...b, MF_PERF: overrides.MF_PERF ?? b.MF_PERF, SIF_PERF: overrides.SIF_PERF ?? b.SIF_PERF });
+  }
   return (ctx ??= buildMatchContext(committedBlocks()));
 }

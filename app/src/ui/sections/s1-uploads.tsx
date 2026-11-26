@@ -14,6 +14,7 @@ import { buildValidationPanel } from '../../views/validation-panel.ts';
 import { Chip, Group } from '../components/group.tsx';
 import { UploadStages } from '../components/upload-stages.tsx';
 import { ImportReport } from '../components/import-report.tsx';
+import { MonitorSlots } from '../components/monitor-slots.tsx';
 import { ValidationPanel } from '../components/validation-panel.tsx';
 import { SourceRegister } from '../components/source-register.tsx';
 import { LabelsEditor } from '../components/labels-editor.tsx';
@@ -107,6 +108,10 @@ export function S1Uploads({ store, state, logos }: { store: Store; state: AppSta
     <>
       <Group id="group-base-file" title="Base file" note="Upload, Validate, Preview, Review">
         <UploadSlot state={state} store={store} />
+      </Group>
+
+      <Group id="group-monitors" title="Fund monitor files" note="Optional: the month's data is embedded">
+        <MonitorSlots state={state} store={store} />
       </Group>
 
       {report ? (

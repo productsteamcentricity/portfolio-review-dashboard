@@ -23,6 +23,8 @@ import { buildOverviewVM } from '../../app/src/views/overview.ts';
 import { loadSheetJS } from './sheetjs.ts';
 import { committedMatchContext } from './match-blocks.ts';
 import { matchLoaded } from '../../app/src/engine/match/resolve-holdings.ts';
+import { loadMonitor, type MonitorSheetJS } from '../../app/src/ingest/load-monitor.ts';
+import { refdataBlock } from './legacy-engine.ts';
 import { loadPptxGenJS } from './pptxgenjs.ts';
 import { slideInventory } from './slide-inventory.ts';
 import { NUM_FMT_CODES } from '../../app/src/exports/xlsx/styles.ts';
@@ -78,7 +80,8 @@ export function nodeWiring(build: BuildStamp = NODE_BUILD, nowIso: string = NODE
       return finish('xlsx', vm, bytes, fileName);
     },
     now,
-    matchHoldings: (loaded) => matchLoaded(loaded, committedMatchContext()),
+    matchHoldings: (loaded, overrides) => matchLoaded(loaded, committedMatchContext(overrides)),
+    loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, xlsx as unknown as MonitorSheetJS, regular ?? (refdataBlock('MF_PERF') as never)),
   };
 }
 
