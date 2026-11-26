@@ -23,10 +23,14 @@
 //   - ownerAliases (owner-aliases.ts; KI-050, PD-36): after the legacy alias step and before the exact name, an
 //     owner-approved rename resolves the old name to the renamed fund, where that fund is a candidate (step
 //     'owner-alias').
+//   - nullOnTies (KI-036; the audit's fix): candidate order never decides an answer. A candidate equal to the raw name
+//     wins first. When several candidates share the normalised name, or several tie on the fuzzy score, the holding's
+//     own option decides if the tied candidates are option variants of one scheme (G against IDCW: the tied keys share
+//     one normalised name); otherwise there is no match (steps 'exact-ambiguous', 'fuzzy-tie').
 
 import { aliasFor, isExactOnlyKey } from './name-lists.ts';
 import { nameKey, normalize } from './normalize.ts';
-import { ownerAliasOf, ownerAliasTarget, type OwnerAliasTable } from './owner-aliases.ts';
+import { ownerAliasOf, ownerAliasTarget, wordsOf, type OwnerAliasTable } from './owner-aliases.ts';
 
 /** Normalised tokens of candidate names, kept between calls (the legacy candNormCache). */
 export type TokenCache = Map<string, string[]>;
@@ -35,9 +39,32 @@ export type TokenCache = Map<string, string[]>;
 export type MatchOptions = {
   /** The owner's fund aliases (data/owner/fund-aliases.json, parsed by parseOwnerAliases). */
   ownerAliases?: OwnerAliasTable;
+  /** KI-036: no answer decided by candidate order. */
+  nullOnTies?: boolean;
 };
 
-export type MatchStep = 'block' | 'pin' | 'owner-alias' | 'exact' | 'exact-only-stop' | 'fuzzy' | 'none';
+export type MatchStep =
+  | 'block' | 'pin' | 'owner-alias' | 'exact' | 'exact-ambiguous' | 'exact-only-stop' | 'fuzzy' | 'fuzzy-tie' | 'none';
+
+export type PlanOption = 'growth' | 'idcw' | 'bonus';
+
+const IDCW_WORDS = ['idcw', 'dividend', 'div', 'payout', 'reinvestment', 'reinvest'];
+
+/** The option a name states: IDCW (any dividend wording), bonus, else growth (the default when none is stated).
+ * "Dividend Yield" is a fund category, part of the scheme's name, not an option. */
+export function optionOf(name: unknown): PlanOption {
+  const w = ` ${wordsOf(name)} `.split(' dividend yield ').join(' ');
+  if (IDCW_WORDS.some((x) => w.includes(` ${x} `))) return 'idcw';
+  if (w.includes(' bonus ')) return 'bonus';
+  return 'growth';
+}
+
+/** Among option variants of one scheme, the one with the holding's own option; null unless exactly one has it. */
+function byOption(name: unknown, tied: readonly string[]): string | null {
+  const want = optionOf(name);
+  const hit = tied.filter((c) => optionOf(c) === want);
+  return hit.length === 1 ? hit[0]! : null;
+}
 
 export type MatchDetail = {
   key: string | null;
@@ -79,6 +106,39 @@ export function fuzzyScore(nameTokens: readonly string[], amcTok: string, candTo
   return { shared, jaccard: shared / uni.size };
 }
 
+/** The exact and fuzzy steps with KI-036's correction: raw name first, then no answer that candidate order decides. */
+function correctedTail(name: unknown, nt: string[], key: string, amcTok: string, candidates: readonly string[], cache?: TokenCache): MatchDetail {
+  const raw = String(name ?? '').trim();
+  if (raw !== '' && candidates.includes(raw)) return { key: raw, step: 'exact' };
+  const exact = candidates.filter((c) => tokensOf(c, cache).join(' ') === key);
+  if (exact.length === 1) return { key: exact[0]!, step: 'exact' };
+  if (exact.length > 1) {
+    const k = byOption(name, exact);
+    return k === null ? { key: null, step: 'exact-ambiguous' } : { key: k, step: 'exact' };
+  }
+  if (isExactOnlyKey(key)) return { key: null, step: 'exact-only-stop' };
+  let tied: string[] = [];
+  let bestShared = 0;
+  let bestJac = 0;
+  for (const c of candidates) {
+    const s = fuzzyScore(nt, amcTok, tokensOf(c, cache));
+    if (!s) continue;
+    if (s.shared > bestShared || (s.shared === bestShared && s.jaccard > bestJac)) {
+      tied = [c];
+      bestShared = s.shared;
+      bestJac = s.jaccard;
+    } else if (s.shared === bestShared && s.jaccard === bestJac) {
+      tied.push(c);
+    }
+  }
+  if (tied.length === 0) return { key: null, step: 'none' };
+  if (tied.length === 1) return { key: tied[0]!, step: 'fuzzy', shared: bestShared, jaccard: bestJac };
+  /* option variants of one scheme share one normalised name; anything else is a real tie */
+  const oneScheme = new Set(tied.map((c) => tokensOf(c, cache).join(' '))).size === 1;
+  const k = oneScheme ? byOption(name, tied) : null;
+  return k === null ? { key: null, step: 'fuzzy-tie', shared: bestShared, jaccard: bestJac } : { key: k, step: 'fuzzy', shared: bestShared, jaccard: bestJac };
+}
+
 /** matchInstrument with the step that decided it. */
 export function matchInstrumentDetail(name: unknown, amc: unknown, candidates: readonly string[], cache?: TokenCache, opts?: MatchOptions): MatchDetail {
   const nt = normalize(name);
@@ -94,6 +154,7 @@ export function matchInstrumentDetail(name: unknown, amc: unknown, candidates: r
     if (target !== undefined) return { key: target, step: 'owner-alias' };
   }
   const amcTok = normalize(amc)[0] ?? nt[0] ?? '';
+  if (opts?.nullOnTies) return correctedTail(name, nt, key, amcTok, candidates, cache);
   for (const c of candidates) {
     if (tokensOf(c, cache).join(' ') === key) return { key: c, step: 'exact' };
   }
