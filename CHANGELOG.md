@@ -20,6 +20,18 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Tests: `unit/returns/portfolio-returns.test.ts`, `unit/returns/stock-cagr.test.ts` (the known answers of
   08-regression-test-plan). Parity rows E-147 and E-148: in progress.
 
+### Added (new build, M11a monthly update engine core; the legacy refresh pipeline is unchanged)
+- **`scripts/monthly-update/`** reads a month's files from the private inbox and `monthly_updates/YYYY-MM/`, classifies
+  each by content, then structure, then name (client material detected first and quarantined, never copied; a name and
+  content that disagree stop the file, and a name that looks like client material stops it even when the content is
+  vendor data, so it is never staged and its name stays out of the committed files), fingerprints them (SHA-256 + role + key + month), stops a role on competing
+  files or a stale copy of an earlier month, reports files whose as-on belongs to another month, validates the MF
+  Screener data pack with the app's own reader and records only its fingerprint, contract version, cycle and counts
+  (D-026), and writes `MANIFEST.json` and `UPDATE_REPORT.md` atomically. Dry run by default; a repeat run changes no byte
+  (AC-24). Office files are read as zip and XML only. Checked privately on the real October inbox (dry run).
+- Tests on synthetic files built at run time (`tests/fixtures/make-monthly-files.ts`): `unit/monthly-update/{classify,
+  ledger,zip,report}`, `integration/monthly-update` (53 cases; AC-12, AC-21 pack in a tracked folder, AC-24).
+
 ### Changed (new build, model contracts-2: contract I-37 and the analyst question; types only, `/next/` build byte-identical)
 - **`app/src/model/tax.ts`** (contract I-37): the lot and roll-up types of the capital-gains and tax engine
   (`RealisedGain`, `TaxInputs`, `Bucket`, `PersonYearTax`, `FamilyTaxYear`, `TaxPosition`, `HarvestResult` and their
