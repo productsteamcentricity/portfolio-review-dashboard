@@ -383,6 +383,42 @@ node scripts/data-extract.ts && node scripts/data-extract.ts --check   # the new
 Commit the regenerated `data/refdata/` (its JSON files and `VINTAGE.json`) on the refresh branch: CI checks it equal
 to the spliced `index.html`, so a refresh without it fails (D-035).
 
+**The full checks, in IST and then in UTC** (`TZ=UTC`), as every live change since October has run them:
+- invariants, smoke and AI analyst;
+- `node tools/run-regression.js`;
+- `node --test "tests/**/*.test.mjs" "tests/**/*.test.ts"`;
+- `data-extract --check`.
+
+Record the counts. They are heavy runs: take the heavy-run lock first (`C:\dev\private\locks\HEAVY-RUN.lock`; the
+README there). Write it only when there is no lock or it is older than 90 minutes, read your own line back, and delete
+only your own line.
+
+**FUND_RANKS_CODES against renames** (read only; LP-19). `FUND_RANKS_CODES` (from the Fund Ranks file, last 15 Aug
+2026) keys fund names to AMFI codes, and a scheme renamed since then has no row under its new name. With the month's
+AmfiFetch ids file (step 4b), list every rank name that is not a key of the month's `MF_PERF`. Then split them by
+whether AMFI still lists the code (renamed) or not (closed or merged):
+
+```bash
+node - data/refdata "<…>/amfi_<mon>_ids.tsv" > "$OUT/rank-codes.txt" <<'EOF'
+const fs = require('fs'), [refdir, ids] = process.argv.slice(2);
+const R = JSON.parse(fs.readFileSync(refdir + '/FUND_RANKS_CODES.json', 'utf8'));
+const P = JSON.parse(fs.readFileSync(refdir + '/MF_PERF.json', 'utf8'));
+const A = new Map(fs.readFileSync(ids, 'utf8').split(/\r?\n/).slice(1).filter(Boolean).map(l => l.split('\t')).map(f => [f[0], f[3]]));
+const miss = Object.entries(R).filter(([n]) => !P[n]);
+const ren = miss.filter(([, c]) => A.has(String(c))), gone = miss.filter(([, c]) => !A.has(String(c)));
+console.log(`ranks ${Object.keys(R).length}; in MF_PERF ${Object.keys(R).length - miss.length}; renamed? ${ren.length}; gone? ${gone.length}`);
+ren.forEach(([n, c]) => console.log(`RENAMED?\t${c}\t${n}\t-> AMFI: ${A.get(String(c))}`));
+gone.forEach(([n, c]) => console.log(`GONE?\t${c}\t${n}`));
+EOF
+```
+
+- **Known answer (26 Nov 2026, October data, the ids file of 23–24 Nov):** 1,262 ranks, 1,207 in MF_PERF, 55 renamed
+  (all codes still listed by AMFI: SEBI recategorisation renames such as "Equity Hybrid '95" → "Aggressive Hybrid" and
+  "Regular Savings" → "Conservative Hybrid"), 0 gone.
+- **It is a check, not a fix.** Copy the counts and the list into the log under anomalies. The ranks are corrected
+  only from a new Fund Ranks file (step 7d), and D-026 keeps ranks and scores off the public page and out of git.
+- A rise in "gone" is a stop-and-ask.
+
 Then do the browser check:
 1. Start `node tools/serve-dashboard.js` (or the preview config `dashboard`).
 2. Load the synthetic base and IRR files.
