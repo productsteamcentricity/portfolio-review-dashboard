@@ -31,7 +31,7 @@ merged) KI-160, KI-161 and KI-176, with KI-022, and the disclosure step of KI-17
 `fix/legacy-batch-3-tax-p3-r2`, not yet merged) KI-166 to KI-169, KI-171, KI-175, KI-181 and KI-182, with KI-130 and
 the PMS case of KI-064, and in T4 (the re-review of T3, the same branch) crypto kept out of set-off (KI-182); in tax
 batch part T5 (branch `fix/legacy-batch-3-tax-cr-0008`, the branch that merges the whole tax batch, not yet merged)
-KI-185 and KI-186. Fixes follow the order in the audit register. The owner's decisions are in
+KI-185 and KI-186; KI-032 (CR-0011, branch `fix/ki032-irr-client-join`, not yet merged). Fixes follow the order in the audit register. The owner's decisions are in
 [`audits/2026-10-19-decisions.md`](audits/2026-10-19-decisions.md): all recommendations accepted on 19 Oct 2026
 except OD-11 (D-021).
 
@@ -188,6 +188,14 @@ the IRR upload is cleared. Workaround: reload the page.
 **Reproduced** with the synthetic book (fix batch 1b review): when Sample Client B has no IRR transactions it
 resolves to Sample Client A on two shared tokens, and takes A's Grand Total and flows. Since fix batch 1b the
 § note shows that none of B's holdings matches an instrument, but the join itself still needs its own fix.
+**Fixed** on branch `fix/ki032-irr-client-join` (CR-0011; patch `tools/patches/2026-11-26-ki032-irr-client-join.js`;
+the owner's "Careful variant match", 26 Nov 2026). The join is decided once per review: the exact normalised name;
+else a unique name variant (salutations dropped, entity words such as HUF, trust, company, minor or guardian equal on
+both sides, every word of the shorter name in the longer one with initials, the first words equal when the lengths
+differ, one candidate each way); else no join. A client not joined keeps the base file's CMV-weighted figures, and its
+§ note says why when a near name was refused. A variant join is named in the § note. The counts are in the review
+model (`irrJoin`). Known-answer test: `tools/regression/KI-032-irr-client-join.js` (58 checks). The new build keeps
+exact client labels (D9); the side-by-side kit classifies the difference (SB-04 to SB-07) and retired SB-03.
 
 ## Low
 
