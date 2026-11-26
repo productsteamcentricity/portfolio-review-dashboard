@@ -13,8 +13,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   name: Regular and Direct are separate tables with their own dates (36 names of the October 2026 data are in both,
   with different returns); a plan the first source lacks is read from the next source that has it. One coverage
   footnote text for screen, slide and sheet ("3Y covers 80% of MF value; 1 fund without a 3Y return excluded", with
-  the sources and
-  dates); `asOnDay()` reads the monitor's as-on text.
+  the sources and dates); `asOnDay()` reads the monitor's as-on text.
 - **`app/src/engine/returns/stock-cagr.ts`** (E-148, D-023 point 4): each stock's 1Y/3Y/5Y CAGR from split- and
   bonus-adjusted prices at the exact anniversaries of the review's as-on date (29 Feb maps to 28 Feb), a price on that
   date or up to 7 days earlier, else the tenor is missing (INSUFFICIENT EVIDENCE when the series starts later, never
