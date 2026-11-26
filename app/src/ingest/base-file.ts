@@ -46,7 +46,7 @@ import type { RowRef, SheetAttempt, SkipReason, SkippedRow } from '../model/sour
 import type { AssetClass, Holding, MergeGap } from '../model/holding.ts';
 import type { Account, Client, Distributor, Folio, HoldingMode, Ownership } from '../model/ownership.ts';
 import type {
-  AnalystQuestion, Severity, ValidationResult, ValidationScope, XirrUnitChoice,
+  Severity, ValidationResult, ValidationScope, XirrUnitChoice, XirrUnitQuestion,
 } from '../model/validation.ts';
 import type { AuditEntry } from '../model/audit.ts';
 import type {
@@ -753,7 +753,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
   const answers = opts.answers ?? {};
   const xPlan = planXirr(sheet.rows, scan.holdingRows, cols.xirr, header('xirr'), 'xirr', answers.xirr);
   const bPlan = planXirr(sheet.rows, scan.holdingRows, cols.bmxirr, header('bmxirr'), 'bmXirr', answers.bmXirr);
-  const questions: AnalystQuestion[] = [];
+  const questions: XirrUnitQuestion[] = [];
   const audit: AuditEntry[] = [];
   for (const plan of [xPlan, bPlan]) {
     if (!plan) continue;
