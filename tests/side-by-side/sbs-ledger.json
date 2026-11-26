@@ -1,0 +1,48 @@
+{
+  "schema": "parity-ledger-v1",
+  "area": "side-by-side kit (test build 1): the legacy engine and the new build on the same book",
+  "legacy": "index.html through tools/engine-host.js",
+  "new": "app/src (ingest, engine/match, engine/returns)",
+  "test": "tests/side-by-side/side-by-side.test.ts",
+  "notes": [
+    "Fields as tests/parity/README.md describes for the parity ledgers, plus section (holdings, performance, scopes, contributions or *) and kind (field, only-legacy, only-new, not-built or *).",
+    "class not-built: the new build has no module for the section yet; the entry is retired when the module merges and the section is compared."
+  ],
+  "entries": [
+    {
+      "id": "SB-01",
+      "section": "performance",
+      "kind": "not-built",
+      "fixtures": "*",
+      "legacy": "*",
+      "new": null,
+      "class": "not-built",
+      "reference": "E-31; E-147; TEST-BUILD-1 (M3b, CHAT-011 and CHAT-009)",
+      "description": "The new build has no performance view yet (engine/returns/performance.ts and portfolio-returns.ts arrive with M3b). Every legacy performance row is listed and not compared. Retire this entry and switch the section on when those modules merge."
+    },
+    {
+      "id": "SB-02",
+      "section": "scopes",
+      "kind": "only-new",
+      "key": "/^advisor \\| /",
+      "fixtures": "*",
+      "legacy": null,
+      "new": true,
+      "class": "improvement",
+      "reference": "E-142; D15",
+      "description": "The new build computes an XIRR per adviser (distributor) from the IRR file; the live page has no adviser XIRR. Each adviser scope is present only on the new side."
+    },
+    {
+      "id": "SB-03",
+      "section": "scopes",
+      "kind": "only-legacy",
+      "key": "client | sample client c",
+      "fixtures": ["probe-irr-standard"],
+      "legacy": true,
+      "new": null,
+      "class": "correction",
+      "reference": "KI-032; D9",
+      "description": "A client with no flows in the IRR file. The live page resolves IRR client names fuzzily (two shared words), so Sample Client C takes the flows of another Sample Client and shows a client XIRR that is not its own. The new build keys clients by id and shows no client XIRR for it."
+    }
+  ]
+}
