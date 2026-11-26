@@ -45,13 +45,20 @@ export type ValidationResult = {
 /** The two readings of an unformatted XIRR column whose values are all below 1.5 in size (OD-3). */
 export type XirrUnitChoice = 'percent' | 'fraction';
 
+/** The two answers to a repeated-rows question of the capital-gains statement (design capital-gains-upload.md §6). */
+export type CgRepeatAnswer = 'as-stated' | 'once';
+
 /**
  * A question the analyst answers with one click before the affected values are used (OD-3: never guess).
- * Until it is answered the affected values are missing (INSUFFICIENT EVIDENCE).
+ * Until it is answered the affected values are missing (INSUFFICIENT EVIDENCE). A union on `kind`: a consumer
+ * narrows on it before reading the fields of one kind, so a question is never shown as a question of another kind.
  */
-export type AnalystQuestion = {
+export type AnalystQuestion = XirrUnitQuestion | CapitalGainsRepeatsQuestion;
+
+/** The base-file reader's question (OD-3): how to read an unformatted XIRR column. */
+export type XirrUnitQuestion = {
   id: string;
-  kind: 'xirr-unit' | 'capital-gains-repeats';
+  kind: 'xirr-unit';
   /** The holding field the column feeds. */
   field: 'xirr' | 'bmXirr';
   sheet: string;
@@ -62,4 +69,22 @@ export type AnalystQuestion = {
   /** What the reader saw: how many unformatted numbers, and the largest size among them. */
   evidence: { values: number; maxAbs: number };
   decision: 'OD-3';
+};
+
+/**
+ * The capital-gains reader's question (design capital-gains-upload.md §6), one per sale event with repeated rows:
+ * count the repeated rows as stated, or once. Produced by ingest/capital-gains.ts, whose `CgRepeatQuestion` is this
+ * type.
+ */
+export type CapitalGainsRepeatsQuestion = {
+  id: string;
+  kind: 'capital-gains-repeats';
+  eventId: string;
+  options: readonly CgRepeatAnswer[];
+  prompt: string;
+  /**
+   * The event's rows, the rows beyond the first of each group of exact repeats, whether the whole sale repeats, and
+   * its financial-year label.
+   */
+  evidence: { rows: number; extraRows: number; wholly: boolean; financialYear: string };
 };

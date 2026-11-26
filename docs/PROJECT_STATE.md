@@ -127,7 +127,12 @@
   - Merges are made locally with that identity, because GitHub's merge button records the account e-mail
     (KI-098).
 - **Monthly refresh.** `buildtools/` was proved byte-identical on September (CR-0003). The process is in
-  docs/MONTHLY_REFRESH.md, and the inbox `01 Monthly Updates\2026-10` is ready.
+  docs/MONTHLY_REFRESH.md, brought up to the October run by LP-19 on 26 Nov 2026.
+  - October 2026 is published and was archived on 26 Nov 2026 (`02 Archive\2026-10`; refresh log 2026-10 §8).
+  - The inbox `01 Monthly Updates\2026-11` is ready for the December refresh (data as on 30 Nov 2026).
+  - The PDF slide scripts are reviewed by ARC-02 (render-pdf 958b095e GO on conditions; shrink 530357e6 GO after its
+    one-line fix).
+  - Before that window, one item remains: month-parameterised risk scripts, a separate toolchain item.
 - **OneDrive project folder:** `…\Desktop\Claude Code-Portfolio Review Dashboard` (D-018).
 - **Local preview:** `Open Dashboard.cmd` (OneDrive) or `tools/open-dashboard.cmd` opens http://127.0.0.1:8099.
   The server serves only the dashboard and `test-data/`. With M1.2, `npm run serve` (preview configuration `next`)
@@ -212,6 +217,7 @@
    **Claude: M7a**, the capital-gains statement reader (PAN removed at read time, repeated lots reported, blank cells
    reported) and the blank template, is on `feat/m7a-cg-reader` (PR #35), not wired into the page yet. Lot classes,
    the tax rules and the tax engine stay owner-gated (PD-16, LP-01).
+   Model contracts-2 (types only): contract I-37 (`app/src/model/tax.ts`) and the analyst question as a union on its kind.
 6. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;

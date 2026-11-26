@@ -19,7 +19,8 @@ export type {
 } from './ownership.ts';
 export { SEVERITIES } from './validation.ts';
 export type {
-  AnalystQuestion, Resolution, Severity, ValidationResult, ValidationScope, ValidationStatus, XirrUnitChoice,
+  AnalystQuestion, CapitalGainsRepeatsQuestion, CgRepeatAnswer, Resolution, Severity, ValidationResult,
+  ValidationScope, ValidationStatus, XirrUnitChoice, XirrUnitQuestion,
 } from './validation.ts';
 export type { AuditDetail, AuditEntry, AuditKind } from './audit.ts';
 export { ASSET_ORDER } from './review.ts';
@@ -43,3 +44,7 @@ export type {
 export type {
   IndexColumnUse, IndexField, IndexId, IndexPoint, IndexSeries, IndexSeriesImport, IndexSkippedRow, IndexSkipReason,
 } from './index-series.ts';
+export type {
+  Bucket, CostBasis, FamilyTaxYear, FyStart, GainSource, HarvestResult, LotClass, NotComputed, PersonYearTax,
+  RealisedGain, TaxClass, TaxInputs, TaxPosition, TaxSubType, Term,
+} from './tax.ts';
