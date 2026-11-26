@@ -1,0 +1,86 @@
+{
+  "schema": "parity-ledger-v1",
+  "area": "side-by-side kit (test build 1): the legacy engine and the new build on the same book",
+  "legacy": "index.html through tools/engine-host.js",
+  "new": "app/src (ingest, engine/match, engine/returns)",
+  "test": "tests/side-by-side/side-by-side.test.ts",
+  "notes": [
+    "Fields as tests/parity/README.md describes for the parity ledgers, plus section (holdings, performance, scopes, contributions or *) and kind (field, only-legacy, only-new, not-built or *).",
+    "class not-built: the new build has no module for the section yet; the entry is retired when the module merges and the section is compared."
+  ],
+  "entries": [
+    {
+      "id": "SB-01",
+      "section": "performance",
+      "kind": "not-built",
+      "fixtures": "*",
+      "legacy": "*",
+      "new": null,
+      "class": "not-built",
+      "reference": "E-31; E-147; TEST-BUILD-1 (M3b, CHAT-011 and CHAT-009)",
+      "description": "The new build has no performance view yet (engine/returns/performance.ts and portfolio-returns.ts arrive with M3b). Every legacy performance row is listed and not compared. Retire this entry and switch the section on when those modules merge."
+    },
+    {
+      "id": "SB-02",
+      "section": "scopes",
+      "kind": "only-new",
+      "key": "/^advisor \\| /",
+      "fixtures": "*",
+      "legacy": null,
+      "new": true,
+      "class": "improvement",
+      "reference": "E-142; D15",
+      "description": "The new build computes an XIRR per adviser (distributor) from the IRR file; the live page has no adviser XIRR. Each adviser scope is present only on the new side."
+    },
+    {
+      "id": "SB-04",
+      "section": "holdings",
+      "kind": "field",
+      "field": ["xirr", "bmxirr"],
+      "key": "/^sample client a \\| /",
+      "fixtures": ["syn-standard-irr-variant"],
+      "legacy": "*",
+      "new": "*",
+      "class": "improvement",
+      "reference": "D9; KI-032 (live variant join, owner 26 Nov 2026); MOD-04 26 Nov 2026 (the new build keeps D9)",
+      "description": "The IRR file writes client A with a salutation (Mr. Sample Client A). The live page joins it to the base client as a name variant (KI-032 fix) and its holdings take their transaction XIRR. The new build keys clients by their exact label (D9), finds no flows for Sample Client A, and its holdings keep the base file's XIRR and BMXIRR. Here the live page is the more complete: a salutation alone costs the new build the client's own transaction XIRR. Follow-up for the new build (MOD-04 to log): a salutation-aware join or an IRR-client mapping."
+    },
+    {
+      "id": "SB-05",
+      "section": "scopes",
+      "kind": "only-legacy",
+      "key": "client | sample client a",
+      "fixtures": ["syn-standard-irr-variant"],
+      "legacy": true,
+      "new": null,
+      "class": "improvement",
+      "reference": "D9; KI-032; MOD-04 26 Nov 2026",
+      "description": "The same case: the live page shows a client XIRR for Sample Client A from the variant-joined flows; the new build has no flows for the exact label and shows none."
+    },
+    {
+      "id": "SB-06",
+      "section": "scopes",
+      "kind": "field",
+      "field": ["xirr", "bmxirr"],
+      "key": "family",
+      "fixtures": ["syn-standard-irr-variant"],
+      "legacy": "*",
+      "new": "*",
+      "class": "improvement",
+      "reference": "OD-4; D9",
+      "description": "The same case: the new build leaves the IRR-only client (Mr. Sample Client A, no exact base-file label) out of the family XIRR and lists it (OD-4); the live page's family tree takes every client of the IRR file."
+    },
+    {
+      "id": "SB-07",
+      "section": "contributions",
+      "kind": "field",
+      "field": ["rank", "contribPp"],
+      "fixtures": ["syn-standard-irr-variant"],
+      "legacy": "*",
+      "new": "*",
+      "class": "improvement",
+      "reference": "D9; OD-4 (follows SB-04)",
+      "description": "The same case: client A's holdings carry different XIRRs on the two sides (SB-04), so their contributions and the ranks of the contributors list differ."
+    }
+  ]
+}

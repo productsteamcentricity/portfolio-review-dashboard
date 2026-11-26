@@ -34,10 +34,14 @@ export type LotClass =
 export type CostBasis = 'actual' | 'grandfathered' | 'indexed' | 'none';
 export type Term = 'short' | 'long';
 export type GainSource = 'statement' | 'derived from transactions';
-/** Why a lot has no computable taxable gain (it then enters no bucket; the person-year is PARTIAL COVERAGE). */
+/**
+ * Why a lot has no computable taxable gain (it then enters no bucket; the person-year is PARTIAL COVERAGE).
+ * 'amount-missing': the lot's Sell Amount is blank (the reader's `required-cell-blank`); a blank Invested Value is
+ * 'cost-input-missing'.
+ */
 export type NotComputed =
   | 'no-valid-key' | 'tax-class-not-set' | 'listed-flag-missing' | 'rule-to-be-confirmed' | 'cost-input-missing'
-  | 'outside-rule-table';
+  | 'amount-missing' | 'outside-rule-table';
 
 /** Financial year by its start year: 2025 is FY 2025-26; from 2026 the label is "Tax year 2026-27". */
 export type FyStart = number;
