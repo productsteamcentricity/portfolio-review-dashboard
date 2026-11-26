@@ -4,6 +4,17 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M12a drawdown engine on index data; not wired yet; the index for each asset class awaits the owner)
+- **`app/src/engine/drawdown.ts`** (E-149, D-023 point 2): per index series the maximum peak-to-trough fall, its peak and
+  trough days, the recovery day and the months to recover from the trough (or not yet recovered); a blend of series at
+  given weights on the days every series has. `compareDrawdowns` applies the owner's answers of 25 Nov 2026 as named
+  defaults: month-end points measured from the period's first day, months to recover counted in month-end steps, one
+  common period for every index and the blend (returned so it can be shown), and monthly rebalancing to today's weights
+  (`buy-and-hold` also built). Months with no point are listed per index and for the blend, and the result is flagged,
+  never hidden. Which index stands for each asset class is still open with the owner, so the caller passes the weights.
+  Built on the I-44 index-series type. Known-answer tests (`unit/engine/drawdown.test.ts`, 28 cases, IST and UTC),
+  including the matrix's -30.00% case.
+
 ### Added (new build, M10 Screener data pack: reader and browser store; not wired into the page yet)
 - **`app/src/ingest/screener-pack/`** reads an MF Screener data pack (contract `pr-datapack-v1`, D-026): the zip's central
   directory is checked against archive limits before anything is inflated (path traversal, entry count, nesting,
