@@ -480,6 +480,21 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     - a synthetic IRR file whose distributors match the base book, so adviser scopes have flows;
     - the browser check `tests/browser/irr-slot.cdp.mjs`.
 
+### Added (new build, the transactions (IRR) file template and two reader rules for the platform's cashflow file; PLAN-05)
+- **The blank template** (`exports/xlsx/irr-template.ts`): the platform's six-sheet cashflow layout (SI, YTD and QTD
+  pairs, the export's exact headings) with a Read Me. Client names must be written exactly as in the holding report:
+  the two files are joined on the exact name only, never by similarity (the owner, 26 Nov 2026). It is downloaded from
+  the IRR slot in section 1.
+- **The reader** (`ingest/irr-file.ts`):
+  - It reads the since-inception pair of the six-sheet file: a sheet whose first word is "SI" is preferred over the
+    legacy last match, which would take the QTD sheets. Recorded as a difference from the live parseIRR, which CR-0013
+    corrects there.
+  - The fund and benchmark sheets must name the same period (SI, YTD or QTD), or no benchmark is read and a Warning
+    names both sheets (CR-0013 follow-up).
+- **On screen and on the Fund IRR sheet:** the base-file clients with no rows in the transactions file are listed.
+- **For the M3b holdings sheet:** `engine/returns/irr-aggregate.ts` gives the IRR tree's client, asset and product
+  XIRRs, or nothing when the IRR file has no such line.
+
 ### Added (new build, M7a: the capital-gains statement reader and the blank template; not wired into the page yet)
 - **`app/src/ingest/capital-gains.ts`** (E-150, D-036, design `docs/new-build/capital-gains-upload.md` §2 to §4, §6, §7,
   §11): the wealth platform's capital-gains export read as produced. Columns are found by header name in any order, and
