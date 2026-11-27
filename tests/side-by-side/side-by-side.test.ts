@@ -44,6 +44,12 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
         if (s.holdings.some((h) => h.matched !== null)) assert.ok(s.performance!.some((x) => x.kind === 'fund' && Object.values(x.returns).some((v) => v !== null)), `${c.id}: ${s.engine} has no fund figure`);
       }
       for (const d of r.diffs) assert.match(d.matrix, /^E-\d+$/);   // every tag names a parity-matrix row
+      // an all-dash benchmark row (SB-24, SB-25, SB-42; KI-073) is a correction only while the live page's row has no
+      // figure in any tenor (financial review of 179981d, suggestion 1)
+      for (const d of r.diffs.filter((x) => ['SB-24', 'SB-25', 'SB-42'].includes(x.ledger ?? ''))) {
+        const row = legacy.performance!.find((x) => x.key === d.key)!;
+        assert.ok(Object.values(row.returns).every((v) => v === null), `${c.id}: ${d.key} has a live-page figure (${d.ledger})`);
+      }
       if (c.input.irrBytes) {
         // the IRR path really ran (financial review of 5a39d92, finding 4): the family and every compared client have an
         // XIRR on both sides (null against null would pass as "same")
