@@ -36,6 +36,11 @@ export type Holding = {
   /** The ISIN the base file gives for this holding (a column whose heading contains "ISIN"), when well formed; absent
    * otherwise. Read only; the crosswalk uses it first once matching is wired in (the owner's answer of 25 Nov 2026). */
   isin?: string;
+  /** The "Account Name" of the holding's rows, as given: each different name once, in file order (more than one when
+   * merged folios sit in different accounts). Absent when the file has no such column or no row of the holding has a
+   * name. Read, kept and shown only (D1 (a), 27 Nov 2026): no figure, no grouping and no identity uses it; `accountId`
+   * stays client + distributor. Client data: never on slides or in logs. */
+  accountNames?: string[];
   clientLabel: string | null;
   clientId: ClientId | null;
   distributorLabel: string | null;
