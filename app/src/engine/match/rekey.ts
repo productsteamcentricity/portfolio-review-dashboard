@@ -94,11 +94,26 @@ export function rekeyBlock(blockKeys: readonly string[], universeKeys: readonly 
 const ADJUSTED = /[(]adjusted[)]/gi;
 const HAS_ADJUSTED = /[(]adjusted[)]/i;
 
-/** KI-054: the Direct key of the same scheme as a Regular key, or null (no twin: a blank row, never a substitute). */
-export function directTwin(regularKey: string, directKeys: readonly string[]): string | null {
-  const want = nameKey(regularKey);
-  const opt = optionOf(regularKey);
-  const hits = directKeys.filter((d) => nameKey(d.replace(ADJUSTED, ' ')) === want && optionOf(d) === opt);
+/** The Direct keys by scheme identity (normalised name and option), each list in the keys' order: built once per block
+ * (N11 of the financial review of 27 Nov 2026: directTwin normalised all 1,775 Direct keys for every fund). */
+export type DirectTwinIndex = ReadonlyMap<string, readonly string[]>;
+
+export function directTwinIndex(directKeys: readonly string[]): DirectTwinIndex {
+  const out = new Map<string, string[]>();
+  for (const d of directKeys) {
+    const k = `${nameKey(d.replace(ADJUSTED, ' '))}|${optionOf(d)}`;
+    const list = out.get(k);
+    if (list) list.push(d);
+    else out.set(k, [d]);
+  }
+  return out;
+}
+
+/** KI-054: the Direct key of the same scheme as a Regular key, or null (no twin: a blank row, never a substitute).
+ * `directKeys` may be given as its index (directTwinIndex), so a block is normalised once. */
+export function directTwin(regularKey: string, directKeys: readonly string[] | DirectTwinIndex): string | null {
+  const index = Array.isArray(directKeys) ? directTwinIndex(directKeys as readonly string[]) : directKeys as DirectTwinIndex;
+  const hits = index.get(`${nameKey(regularKey)}|${optionOf(regularKey)}`) ?? [];
   if (hits.length === 1) return hits[0]!;
   if (hits.length > 1) {
     /* the plain row before an "(Adjusted)" duplicate of the same scheme */

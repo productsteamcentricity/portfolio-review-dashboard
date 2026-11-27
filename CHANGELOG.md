@@ -4,6 +4,34 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M3b follow-up for test build 1: the IRR file in section 5, the weighted 3Y and 5Y returns, and the financial review's notes; `/next/` only, no change to `index.html`)
+- **The IRR file in section 5 and the client sheets** (MOD-05's financial review of M3b, N2; KI-048, KI-100):
+  - With an accepted IRR file, a subtotal's XIRR and BMXIRR come from it, through NB-03's `irrAggregateFor`
+    (`views/holdings.ts` `irrHookFrom`). The same hook serves the workbook's client sheets, so screen and file agree.
+  - A subtotal the IRR file cannot give is a dash, with its reason listed under the table ("XIRR covers 1 of 2 holdings
+    on this line: ..."). There is no market-value fallback.
+  - A table that mixes the two bases marks each IRR subtotal with § and says so in its caption.
+- **The dagger note** counts the holdings of the rows marked †, so a Grand Total taken from the IRR file no longer reads
+  "0.00% of CMV covered" (N2a).
+- **Negative market values** (N3):
+  - The coverage is counted in holdings.
+  - A subtotal whose holdings with the rate have market values of both signs is blank, NOT COMPARABLE: a CMV of
+    1.0000001 beside one of -1 gave -19,99,99,989.88%.
+  - Weights of one sign keep their average, as the live page does. Ledger entry HS-05.
+- **The ‡ note gives the share of CMV again**, in the live page's wording, and a legend explains the "p" marker (N5).
+- **E-147, the weighted average return of current holdings (mutual funds), 3Y and 5Y** (D-023 point 3; NB-04's
+  `portfolio-returns.ts`):
+  - Computed for the family and for each client.
+  - The sources, in order: the uploaded MF Monitor, then the embedded `MF_PERF` and `MF_PERF_DIRECT`.
+  - Section 5 shows it as a table with one coverage footnote per figure. A figure with no source is the dash with "no
+    source".
+  - The Performance sheet ends with one Weighted row per scope.
+- **The Direct list's single-plan ETF rows** show the Regular block's figures under that block's date, on screen and in
+  the sheet (N8).
+- **PF-02's wording**: Debt MF has no 10Y in either build (N9).
+- **The Direct block's keys are normalised once per block** (`directTwinIndex`), not once per fund; the same twins
+  for every `MF_PERF` key (N11).
+
 ### Changed (tests only: side-by-side kit phase 2 (a), fund matching, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
 - **`tests/side-by-side/`**: the new side runs the new build's wired matcher (`resolveHoldings` with the shipped blocks
   and the owner's aliases, as `/next/` does) instead of the kit's copy of the live routing rule, so routing (E-15), ISIN

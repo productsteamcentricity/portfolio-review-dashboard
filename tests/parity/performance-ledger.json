@@ -56,7 +56,7 @@
       ],
       "class": "correction",
       "reference": "Q-45 (proceeding on default); brief 7.3",
-      "description": "Debt MF has no 2Y column; 10Y and SI are kept.",
+      "description": "Debt MF has no 2Y column (the live page shows one); SI is kept. Neither build has a 10Y column for Debt MF (config/performance.json; the legacy BUCKET_DEFS, 07_engine.js:615). Wording corrected on 27 Nov 2026 (MOD-05's financial review, N9).",
       "fixtures": [
         "family-a",
         "family-a-all-classes",

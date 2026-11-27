@@ -79,6 +79,8 @@ function bucketRows(push: (r: Row, style?: StyleSpec) => void, b: PerfBucket, pl
       row.status = opt(s.status);
       /* S3: a scheme the Regular block carries only as a Direct plan is its own single plan, never "Regular" */
       if (mf && planList === 'Regular' && f.plan === 'single-plan') row.plan = strCell('Direct only (single plan)');
+      /* N8: in the Direct list a single-plan ETF shows the Regular block's figures, so its row carries that block's date */
+      if (mf && planList === 'Direct' && f.plan === 'single-plan' && b.singlePlanAsOn) row.asOn = dateCell(b.singlePlanAsOn);
       const planNote = mf && planList === 'Direct' ? PLAN_TEXT[f.plan] : '';
       row.note = opt([planNote, s.note ?? ''].filter((x) => x !== '').join('. ') || null);
       push(row);

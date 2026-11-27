@@ -131,8 +131,9 @@ function bucketVM(b: PerfBucket, plan: PerformancePlan, directList: boolean): Pe
   const notes: string[] = [];
   if (b.hasBenchmarks && b.benchAsOn) notes.push(b.benchAsOn.kind === 'value' ? `Benchmarks ${dateText(b.benchAsOn)}.` : `Benchmarks: ${dateText(b.benchAsOn)}.`);
   if (singlePlan > 0) {
+    /* N8: the Direct list's single-plan rows show the Regular block's figures, which may be of another date */
     notes.push(directList
-      ? `${DAGGER} ${plural(singlePlan, 'ETF has', 'ETFs have')} a single plan: the figures are the fund's own.`
+      ? `${DAGGER} ${plural(singlePlan, 'ETF has', 'ETFs have')} a single plan: the figures are the fund's own, from the Regular plans' data, ${dateText(b.singlePlanAsOn ?? null)}.`
       : `${DAGGER} ${plural(singlePlan, 'scheme has', 'schemes have')} only a Direct plan: the figures are that plan's.`);
   }
   if (noTwin.length > 0) notes.push(`${plural(noTwin.length, 'fund has', 'funds have')} no Direct plan in the Direct data, so the row is blank: ${names(noTwin)}.`);

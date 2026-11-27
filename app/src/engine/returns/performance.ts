@@ -31,7 +31,7 @@ import { missing, present } from '../value.ts';
 import { isIncluded } from '../aggregate/totals.ts';
 import { isDirectEquityProduct } from '../match/resolve-holdings.ts';
 import { holdingClass, nonMfRule, type ProductClassRule } from '../match/product-class.ts';
-import { directTwin, isDirectKey } from '../match/rekey.ts';
+import { directTwin, directTwinIndex, isDirectKey, type DirectTwinIndex } from '../match/rekey.ts';
 import config from '../../config/performance.json' with { type: 'json' };
 
 export type BucketKey = 'Equity MF' | 'Hybrid MF' | 'Debt MF' | 'Commodity MF' | 'PMS' | 'AIF' | 'SIF' | 'Direct Equity';
@@ -106,6 +106,9 @@ export type PerfBucket = {
   /** The as-on date of the bucket's own block (KI-083). */
   asOn: Value<DayNumber>;
   benchAsOn: Value<DayNumber> | null;
+  /** N8 (financial review of 27 Nov 2026): in the Direct list, the date of the Regular block whose figures its
+   * single-plan ETF rows show (the bucket's own date is the Direct block's); absent elsewhere. */
+  singlePlanAsOn?: Value<DayNumber>;
   groups: PerfGroup[];
 };
 export type PerformanceResult = {
@@ -276,6 +279,14 @@ function groupsOf(bucket: BucketKey, cats: readonly string[]): GroupSpec[] {
   return specs.map((x) => x.spec);
 }
 
+/** N11: one index of the Direct block's keys per block object (the block is not changed after it is read). */
+const TWIN_INDEX = new WeakMap<object, DirectTwinIndex>();
+function twinIndexOf(block: object): DirectTwinIndex {
+  let ix = TWIN_INDEX.get(block);
+  if (!ix) { ix = directTwinIndex(Object.keys(block)); TWIN_INDEX.set(block, ix); }
+  return ix;
+}
+
 function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: PerformanceSources, direct: boolean, noTwin: string[]): PerfBucket {
   const def = CFG.buckets.find((b) => b.key === bucket)!;
   const cols = def.cols;
@@ -286,7 +297,7 @@ function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: Performanc
     if (g) g.push(x);
     else byCat.set(c, [x]);
   }
-  const directKeys = direct && s.MF_DIRECT ? Object.keys(s.MF_DIRECT) : [];
+  const directKeys = direct && s.MF_DIRECT ? twinIndexOf(s.MF_DIRECT) : new Map<string, readonly string[]>();
   const source = bucket === 'PMS' ? 'PMS_PERF' : bucket === 'AIF' ? 'AIF_PERF' : bucket === 'SIF' ? 'SIF_PERF' : bucket === 'Direct Equity' ? 'STOCK_RET' : 'MF_PERF';
   const mfBucket = bucket.endsWith(' MF');
   const hasBenchmarks = bucket !== 'SIF' && bucket !== 'Direct Equity';
@@ -349,7 +360,9 @@ function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: Performanc
     return { label: g.label, funds, benchmarks, missingBenchmarks, noBenchmarkNamed, noBenchmarkReason };
   });
   const benchAsOn = groups.some((g) => g.benchmarks.length > 0) ? (s.asOn.BENCH ?? missing(STATUS.NOT_AVAILABLE, 'BENCH_RET records no as-on date')) : null;
-  return { key: bucket, cols, mcap: def.mcap, debt: def.debt, hasBenchmarks, asOn: asOnOfBucket(s, bucket, direct && mfBucket), benchAsOn, groups };
+  const out: PerfBucket = { key: bucket, cols, mcap: def.mcap, debt: def.debt, hasBenchmarks, asOn: asOnOfBucket(s, bucket, direct && mfBucket), benchAsOn, groups };
+  if (direct && mfBucket && groups.some((g) => g.funds.some((f) => f.plan === 'single-plan'))) out.singlePlanAsOn = asOnOfBucket(s, bucket, false);
+  return out;
 }
 
 /**

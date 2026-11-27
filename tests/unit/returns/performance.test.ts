@@ -126,6 +126,23 @@ describe('computePerformance', () => {
     assert.equal(bucket('PMS', d), bucket('PMS'));
     assert.equal(computePerformance(H.filter((x) => x.product === 'PMS'), SRC).direct, null, 'no matched mutual fund: no Direct list');
   });
+
+  test('N8: the Direct list\'s single-plan ETF shows the Regular block\'s figures under that block\'s date, on screen and in the sheet', () => {
+    /* a Direct block of another date (30 Oct 2026) than the Regular one (31 Oct 2026) */
+    const r2 = computePerformance(H, { ...SRC, asOn: { ...SRC.asOn, MF_DIRECT: day(20756) } });
+    const eq = bucket('Equity MF', r2.direct!);
+    assert.ok(eq.asOn.kind === 'value' && eq.asOn.v === 20756);
+    assert.ok(eq.singlePlanAsOn?.kind === 'value' && eq.singlePlanAsOn.v === 20757);
+    assert.equal(bucket('Equity MF', r2.regular).singlePlanAsOn, undefined);
+    const note = buildPerformanceVM(r2, 'direct').buckets[0]!.notes.find((x) => x.includes('single plan'));
+    assert.equal(note, `${String.fromCharCode(0x2020)} 1 ETF has a single plan: the figures are the fund's own, from the Regular plans' data, as on 31 Oct 2026.`);
+    const sheet = performanceSheet(r2);
+    const keys = sheet.columns.map((c) => c.key);
+    const at = (row: unknown[], k: string): unknown => (row[keys.indexOf(k)] as { v?: unknown } | null)?.v ?? null;
+    const etfRow = sheet.rows.find((x) => at(x, 'plan') === 'Direct' && at(x, 'name') === 'Alpha Nifty 50 ETF')!;
+    const otherDirect = sheet.rows.find((x) => at(x, 'plan') === 'Direct' && at(x, 'row') === 'Fund' && at(x, 'name') !== 'Alpha Nifty 50 ETF')!;
+    assert.equal((at(etfRow, 'asOn') as number) - (at(otherDirect, 'asOn') as number), 1, 'the ETF row carries the Regular date, the others the Direct date');
+  });
 });
 
 describe('B1 (KI-024, rule 4; MOD-05 on the financial review of 27 Nov 2026): a PMS or AIF gets an equity index only when all its holdings are equity', () => {

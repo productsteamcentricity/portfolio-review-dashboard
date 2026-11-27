@@ -236,11 +236,17 @@
    the matcher is wired into section 1 (PR #54, merged 27 Nov 2026, after NB-04's refdata blocks, PR #49): holdings
    matched when the base file loads, the import report's matching section (E-19), and the monitor uploads (U-08, U-09,
    U-10).
-   M3b for test build 1 (section 5) is on `feat/m3b-views` (PR #59, after its financial review): the holding sheets
-   (E-25) and their tables with column chips (U-23), the client holdings sheets of the workbook (E-80), the performance
-   tables with one benchmark table and the Direct list by the same scheme only (E-31, E-32, E-30), their section 5 view
-   with one Regular/Direct switch (U-41) and the Performance sheet (E-84). The weighted 3Y and 5Y returns engine
-   (E-147, NB-04, PR #61) is on main but not yet shown; that display, the IRR hook and the slides C-21 and C-22 follow.
+   M3b for test build 1 (section 5) merged in PR #59 (27 Nov 2026, after its financial review). It brought:
+   - the holding sheets (E-25) and their tables with column chips (U-23);
+   - the client holdings sheets of the workbook (E-80);
+   - the performance tables, with one benchmark table and the Direct list by the same scheme only (E-31, E-32, E-30);
+   - their section 5 view, with one Regular/Direct switch (U-41);
+   - the Performance sheet (E-84).
+   The M3b follow-up is on `feat/m3b-followup`:
+   - the IRR file's subtotals in section 5 and the client sheets;
+   - the weighted 3Y and 5Y returns (E-147) shown with their coverage footnotes;
+   - the financial review's notes (N2, N3, N5, N8, N9, N11).
+   The slides C-21 and C-22 follow.
    Beside M2, the data-platform items (NB-04): M10, the MF Screener data pack reader and browser store, merged in
    PR #37 and accepted on 26 Nov 2026 (not wired); M11a, the monthly update engine core, merged in
    PR #41; M12a, the drawdown engine on index data, merged in PR #38, owner Gate E pending (the
