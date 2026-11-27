@@ -9,8 +9,8 @@ PD-30, PD-36, PD-44, PD-54 confirmed, PD-56 changed); owner decisions without a 
 PDs, 26 have an answer on record (PD-16 only in part: item 4 is open) and 40 stay open. **Owner of this log from now on:** MOD-04.
 **Updated:** 27 Nov 2026 (IST), drafted by EX-03 (CHAT-014) for MOD-05 (CHAT-015) on branch `docs/registers-5` (base
 `main` 56a25fe). PD-67 added (the 15-hour delegation of 26 Nov); the publishes of KI-032, LP-16b and KI-301 added to
-PD-30; the owner's decisions of 26 and 27 Nov without a PD number added to section 2.4. **Owner of this log from now on:**
-MOD-05.
+PD-30; the owner's decisions of 26 and 27 Nov without a PD number added to section 2.4; the counts on the line above were not
+recounted in registers-5. **Owner of this log from now on:** MOD-05.
 
 This log has three parts, kept apart on purpose:
 1. **Approved decisions.** An index of D-001 to D-042 and the lead's handover rulings. The full text of every D
@@ -989,8 +989,11 @@ PD-50 to PD-56: the plain-language sections are still to be written; their table
 **GIVEN 26 Nov 2026, about 19:30 IST** (answer card: "Yes, as on 25 Nov (Recommended)"): while away for about 15 hours, the owner again handed routine approvals and business defaults with a recommended answer to the Moderator. It ended about 10:30 IST on 27 Nov.
 - **Limits recorded with it.** As PD-66: nothing prohibited, no account settings, no Office runs, no data deletion, nothing material and irreversible; new-build merges to `/next/` continued; Gate E acceptances waited for the owner.
 - **Across the Moderator change.** The delegation carried over to CHAT-015 (MOD-05) when it took over on 26 Nov; decisions after that were recorded as "MOD-05 under delegation (PD-67)".
-- **After it ended.** KI-301 was ready after 10:30 IST on 27 Nov, so its publish waited for the owner ("Publish KI-301", PD-30 above).
-- **Decisions taken under it:** [UNCERTAIN: to be listed by MOD-05 from its record before this log merges].
+- **Decisions taken under it:**
+  - A price dated after the review's as-on date is never used in the new build's performance figures (no look-ahead); the latest point on or before it is used, labelled with its own date. (Moderator MOD-04, 26 Nov 2026.)
+  - P2P lending in the product-class rules: class OTHER, asset class Debt, following the owner's answer "Debt" of 26 Nov 2026. (Moderator MOD-04, 26 Nov 2026.)
+  - No live-page publish was made under PD-67. KI-301 (PR #53) was ready after the delegation ended and was published on the owner's own word of 27 Nov 2026 ("Publish KI-301"); LP-16b (PR #50) was published under the owner's own "Publish when green" of 26 Nov 2026.
+- PD-67 ended about 10:30 IST on 27 Nov 2026. Gate E acceptances were not taken under it.
 
 ### 2.4 Owner decisions without a PD number (17 to 27 Nov 2026)
 
@@ -1025,15 +1028,15 @@ Answers and instructions the owner gave in chat that have no PD number. Recorded
 | 26 Nov 2026 | Q-12: SheetJS 0.20.2 | "Yes, download it (Recommended)" | One download from the official site, its SHA-256 recorded in `app/vendor/MANIFEST.json`, Guardian review; the pinned-version change is recorded against D-025 and D-034. Fixes CVE-2023-30533 and CVE-2024-22363 and allows the monitor upload buttons |
 | 26 Nov 2026 | Fund-matching strictness (OD-5), option B | "Go ahead with the Stricter regime" (the owner also asked why 21 funds would show as not matched) | Option B on in the new build; a follow-up fix to name normalisation ("S&P", "(Formerly Known as ...)", "And" against "&") recovers the 21 correct names, measured |
 | 26 Nov 2026 | Test build target | "I want to start testing on the new build within 2 weeks maximum" | Test build 1 on `/next/` by Thu 10 Dec 2026: matched holdings and the import report (M2 wired), performance (M3b), returns and XIRR (M3a wired), and their sheets |
-| 26 Nov 2026 | PD-16 item 5: repeated lot rows | "Can be genuine lots"; then "Repeating lot rows- this issue can be clarified against the total number of units from the holding report." | Identical lot rows can be separate genuine lots. Each repeated group is checked against independent units evidence (sold lots: the redemption units in the IRR file; open lots: the base file's units): the reading that evidence supports is suggested with its evidence and the analyst confirms; with no evidence or conflicting evidence the analyst is asked, with no suggestion. An earlier reading (repeats are a printing error) is withdrawn |
+| 26 Nov 2026 | PD-16 item 5: repeated lot rows | "Can be genuine lots"; then "Repeating lot rows- this issue can be clarified against the total number of units from the holding report." | The Moderator's earlier reading (that the platform export does not repeat lot rows by design, with the suggested answer "once") is withdrawn. Owner, 26 Nov 2026: "Can be genuine lots". Repeated groups are checked against independent units evidence (redemption units in the transactions file for sold lots, the holding report's units for open lots); the supported reading is suggested with its evidence and the analyst confirms; with no evidence or conflicting evidence the analyst is asked with no suggestion |
 | 26 Nov 2026 | KI-032 live fix (the IRR client join) | "Careful variant match (Recommended)"; "Yes, counts only (Recommended)"; "Before 13 Dec (Recommended)" | Live page: the exact name first, else a unique name variant (salutations ignored, entity and holder words equal, unique both ways, named in a note), else no join, with a note. A local, read-only, counts-only measurement on real files was allowed and later waived. Target: live before 13 Dec; publish on the owner's word (PR #47) |
 | 26 Nov 2026 | Transactions (IRR) file template for the new build | "Easier fix for this is we can create an XIRR template as well similar to the base file template which will have the name of the client included in the file."; "Client Code might not be available; join just on the names as they would be unique" | The new build gets a blank transactions file template whose client names match the base file exactly; the join stays exact names only (D9); no client code column. A name in one file with no match in the other is listed with a note, never joined by similarity (PR #57) |
 | 26 Nov 2026 | KI-032 kept on the live page | "Yes, keep the live fix (Recommended)" | The live fix continues as a safety net until switch-over, beside the new build's exact join |
-| 26 Nov 2026 | New-build base file template, final | the owner asked for a template the platform's holding report can fill, "only keep columns which are absolutely necessary"; the cashflow file is uploaded as it is; Portfolio Type "Not needed in review" | A 17-column base file template for the new build, as the platform exports it; it replaces the 25 Nov proposal |
+| 26 Nov 2026 | New-build base file template, final | "design a template for the new build which can be downloaded from the platform so everyone knows what to upload"; "only keep columns which are absolutely necessary"; Portfolio Type: "Not needed in review" | A 17-column base file template for the new build, as the platform exports it; it replaces the 25 Nov proposal |
 | 26 Nov 2026 | The platform's Product Name values | "Treat Global Exposure as both Offshore Funds and Gift City Funds"; "Rupee bonds and NCDs (Recommended)"; P2P Lending: "Debt; but it won't be there in any of the portfolios" | Global Exposure: GIFT City funds when the name says GIFT or IFSC, else Offshore funds. "Bonds": rupee bonds and NCDs on the domestic listed bond rows; "US-dollar bonds (through LRS)" only when the product or name says USD, US or LRS. P2P Lending: Debt. Unlisted-Direct: unlisted shares; AIF-Listed: a Listed AIF (D-043). **Changes** the 25 Nov answer on bond labels (above). Live: LP-16b (PR #50); new build: M2.2 |
-| 26 Nov 2026 | Model of the next Moderator | "Yes, next chat on Fable" | The successor Moderator chat (CHAT-015, MOD-05) runs on another model |
+| 26 Nov 2026 | Model of the next Moderator | "Yes, next chat on Fable" | The next Moderator chat (CHAT-015, MOD-05) runs on the Fable model; MOD-04 stayed on its model until the handover |
 | 26 Nov 2026 | Standby Moderator | "Yes, open it now (Recommended)" | CHAT-015 (MOD-05) opened on standby, to take over only on the active Moderator's handover message |
-| 26 Nov 2026 | Moderator change | "Handover to the new moderator" | CHAT-013 (MOD-04) handed over to CHAT-015 (MOD-05), about 20:40 to 20:55 IST; CHAT-013 is a historical record that only forwards notes |
+| 26 Nov 2026 | Moderator change | "Handover to the new moderator" | CHAT-013 (MOD-04) handed over to CHAT-015 (MOD-05) on 26 Nov 2026, about 20:40 IST; CHAT-013 is a historical record that only forwards notes |
 
 ## 3. Recommendations not yet approved
 

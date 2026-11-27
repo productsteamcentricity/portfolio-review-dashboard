@@ -65,7 +65,7 @@ CHAT_SUCCESSION_REGISTER there. **Next free number: CHAT-016.**
 | CHAT-011 | NB-04, new build: data platform (M10, M11a, M12a) | ACTIVE | 24 Nov 2026 (late evening IST) | |
 | CHAT-012 | ARC-03, new-build reviewer | ACTIVE | 24 Nov 2026 (late evening IST) | not the rule-10 Guardian |
 | CHAT-013 | MOD-04, Moderator | historical record since 26 Nov 2026; forwards notes only | 25 Nov 2026 (about 01:00 IST) | took over from CHAT-006 on 25 Nov 2026 about 01:20 IST; handed over to CHAT-015 on 26 Nov 2026 on the owner's order |
-| CHAT-015 | MOD-05, Master Project Moderator | ACTIVE, the only active Moderator | 26 Nov 2026 (about 19:35 IST, as a standby) | took over from CHAT-013 on 26 Nov 2026 about 20:40 to 20:55 IST, on the owner's order (the next Moderator runs on another model) |
+| CHAT-015 | MOD-05, Master Project Moderator | ACTIVE, the only active Moderator | 26 Nov 2026 (about 19:35 IST, as a standby) | took over from CHAT-013 on 26 Nov 2026 about 20:40 IST, on the owner's order (the next Moderator runs on the Fable model) |
 
 **Not chats.** Subagent workflow runs (the `.claude/worktrees/wf_*` worktrees and `worktree-wf_*` branches) belong to the chat
 that started them. They are listed under that chat below.

@@ -20,6 +20,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   module statuses; M11a (PR #41) corrected.
 - **`docs/project-control/DECISION_LOG.md`**: PD-67 (the 15-hour delegation of 26 Nov); the publishes of KI-032, LP-16b
   and KI-301 under PD-30; the owner's decisions of 26 and 27 Nov in section 2.4.
+- **`docs/coordination/MODEL_ROUTING_LOG.md`**: the successor Moderator CHAT-015 (MOD-05) runs on the Fable model.
 - **`docs/project-control/README.md`**, Gate D: a live change that regenerates `data/refdata` changes `/next/` too (since
   PR #49), so its Gate D states the expected `/next/` SHA-256.
 - **`docs/PROJECT_STATE.md`**: LP-16b live (`04079A77`); test build 1's status; the merged M2.1, M3a, M7a R1 and M11a
