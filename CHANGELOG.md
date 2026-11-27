@@ -4,6 +4,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (tooling: the new app's build ignores where `node_modules` really lives, 28 Nov 2026; `/next/` byte-identical)
+- **`scripts/build.mjs`**: esbuild's `preserveSymlinks` is on, so a worktree whose `node_modules` is a junction to
+  another worktree's builds the same page. Before, the bundler wrote the resolved path into three Preact module
+  comments, and such a build differed by a few bytes. The page is byte-identical before and after (5,133,832 B, SHA-256
+  `dde507b6…`); `docs/new-build/toolchain.md` §4 says so.
+
 ### Added (new build, M10 before wiring: the pack store in a real browser; tests only, `/next/` unchanged)
 - **`tests/browser/screener-store.cdp.mjs`** (ARC-03's condition for wiring M10): the MF Screener data pack reader and
   browser store run in headless Edge or Chrome against the real IndexedDB, from a `file://` harness bundled by esbuild
