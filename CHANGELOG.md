@@ -4,6 +4,25 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
+  `docs/project-control/CHAT_REGISTRY.md`): CHAT-016 (ARC-04, Guardian, successor of CHAT-008) and CHAT-017 (NB-05, new
+  build, successor of CHAT-009) opened on the owner's "Open both" of 27 Nov 2026 and took over that day; ARC-04 is
+  the only chat named as ARC-01's rule-10 successor (through ARC-02) from this record's merge; next free number CHAT-018.
+- **`docs/project-control/DECISION_LOG.md`** 2.4: the owner's "Open both".
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/CRITICAL_PATH.md`**: the E-148 condition list closed before "tax round
+  2" (CHAT-008's note N1 on registers-6).
+
+### Changed (tests only: the side-by-side kit's Gold rows, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
+- **`tests/side-by-side/`**: SB-13, SB-14, SB-40 and SB-41 now say their holding names ("Axis Gold -Reg(G)", "Kotak Gold
+  (G)") are synthetic spellings, the vendor's name without the word "Fund", and that under the real spellings (the
+  vendor's name, tested; the AMFI Regular and Direct Growth names, the new-build chat's run) both
+  builds match the Gold fund, so they are not alias candidates (the Moderator's correction on the new-build chat's
+  evidence). Classes after the financial review: SB-13, SB-14 (and SB-35, SB-36, which follow them)
+  corrections (the live page shows another scheme's figures); SB-40, SB-41 accepted differences under KI-036 (ties left
+  unmatched; the owner's "New build first" of 25 Nov 2026; no owner question is open). Two parity rows with the real spellings are added to the performance probe and tested (both builds, both lists). SB-25 (the all-dash gold price row) also covers the
+  performance probe.
+
 ### Changed (records, registers-6, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/project-control/DECISION_LOG.md`**: the stricter-matching row of 26 Nov corrected to the measured result (the
   follow-up recovered 20 of option B's 22 lost names and lost 2 others; 4 correct names unmatched, named: a known gap,

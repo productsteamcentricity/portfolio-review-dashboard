@@ -148,7 +148,7 @@
   (PR #59, M3b). The M3b data engines (weighted 3Y and 5Y returns E-147, direct-equity CAGR E-148) merged in PR #61,
   not yet wired. The owner's acceptance (Gate E) is pending. The side-by-side kit compares the live page and the new
   build on fund matching and every performance bucket (PRs #60, #62, #63). Next on the new build: the M3b follow-up (the
-  IRR file's XIRRs in the holdings tables, the weighted 3Y and 5Y display), the conditions set at the review of PR #61 before the direct-equity CAGR (E-148) is wired: the per-stock provenance date, a figure date that does not depend on row order, wording, and the owner's answers on month labels against true days and tax round 2. Not
+  IRR file's XIRRs in the holdings tables, the weighted 3Y and 5Y display), the conditions set at the review of PR #61 before the direct-equity CAGR (E-148) is wired (the per-stock provenance date, a figure date that does not depend on row order, wording, and the owner's answers on month labels against true days); and tax round 2. Not
   in test build 1: a price-file reader (built after it, once the owner supplies the file layout).
 - **Repository.** `C:\dev\portfolio-review`; `origin` =
   https://github.com/productsteamcentricity/portfolio-review-dashboard (**public**, D-008).
