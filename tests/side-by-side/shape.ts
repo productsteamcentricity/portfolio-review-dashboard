@@ -42,7 +42,7 @@ export type SbsPerfRow = {
   bucket: string;
   kind: 'fund' | 'bench';
   name: string;
-  /** The group (sub-heading) the row sits under; compared for funds only. */
+  /** The group (sub-heading) the row sits under; a benchmark under several groups lists them all (pushPerfRow). */
   group: string;
   returns: Record<string, number | null>;
   /** The reference record the row's figures come from (a key of MF_PERF, MF_PERF_DIRECT, PMS_PERF, AIF_PERF, SIF_PERF or
@@ -79,9 +79,15 @@ export function perfKey(list: string, bucket: string, kind: 'fund' | 'bench', na
   return `${list} | ${labelKey(bucket)} | ${kind} | ${kind === 'fund' ? labelKey(name) : name}`;
 }
 
-/** Adds rows to a performance list, keeping the first row of a key (a benchmark under two groups of one bucket). */
+/** Adds rows to a performance list. A benchmark shown under several groups of one bucket is one row whose group lists
+ * every group it sits under, in order, joined by " + " (CHAT-008's note N1 on 26ef40c: a benchmark moved to another
+ * group shows as a group difference). */
 export function pushPerfRow(out: SbsPerfRow[], row: SbsPerfRow): void {
-  if (row.kind === 'bench' && out.some((r) => r.key === row.key)) return;
+  const known = row.kind === 'bench' ? out.find((r) => r.key === row.key) : undefined;
+  if (known) {
+    if (!known.group.split(' + ').includes(row.group)) known.group = `${known.group} + ${row.group}`;
+    return;
+  }
   out.push(row);
 }
 

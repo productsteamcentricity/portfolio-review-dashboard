@@ -22,8 +22,8 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
   const ledger = loadLedger();
   const used = new Set<string>();
 
-  test('eight synthetic cases, four with an IRR file', () => {
-    assert.equal(cases.length, 8);
+  test('nine synthetic cases, four with an IRR file', () => {
+    assert.equal(cases.length, 9);
     assert.equal(cases.filter((c) => c.input.irrBytes !== null).length, 4);
   });
 
@@ -193,6 +193,57 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     assert.ok(!result.diffs.some((x) => x.key.endsWith(`| fund | ${z}`)), 'S3: no difference');
     assert.equal(row('regular', 'hybrid mf', z).ref, 'Zerodha Arbitrage Fund(G)-Direct Plan');
     for (const [t, v] of Object.entries(row('regular', 'hybrid mf', z).returns)) assert.equal(v, fig(MF, 'Zerodha Arbitrage Fund(G)-Direct Plan', t), `S3 regular ${t}`);
+  });
+
+  test('the performance probe: AIF and SIF buckets, Dividend Yield, Contra and Value funds (kit phase 2 (c))', () => {
+    const { legacy, next, result } = runSides(cases.find((c) => c.id === 'performance-probe')!);
+    const block = (n: string): Record<string, { r?: Record<string, number | null> }> => {
+      const j = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'refdata', `${n}.json`), 'utf8')) as Record<string, unknown>;
+      return ((j as { data?: unknown }).data ?? j) as Record<string, { r?: Record<string, number | null> }>;
+    };
+    const AIF = block('AIF_PERF'), SIF = block('SIF_PERF'), BENCH = block('BENCH_RET'), MFD = block('MF_PERF_DIRECT');
+    const rowOf = (s: SbsSide, key: string) => s.performance!.find((x) => x.key === key);
+    // every AIF and SIF fund row on both sides shows its own record's figures (each tenor of the bucket's columns)
+    for (const s of [legacy, next]) {
+      for (const r of s.performance!.filter((x) => x.kind === 'fund' && (x.bucket === 'AIF' || x.bucket === 'SIF'))) {
+        const b = r.bucket === 'AIF' ? AIF : SIF;
+        assert.ok(r.ref !== null && r.ref in b, `${s.engine} ${r.key}: record`);
+        for (const [t, v] of Object.entries(r.returns)) assert.equal(v, b[r.ref!]!.r?.[t] ?? null, `${s.engine} ${r.key} ${t}`);
+      }
+      // the SIF bucket has no benchmark rows by design, on both sides
+      assert.ok(!s.performance!.some((x) => x.bucket === 'SIF' && x.kind === 'bench'), `${s.engine}: a SIF benchmark`);
+    }
+    // KI-024 both ways: the equity AIF (Mid Cap) takes Nifty Midcap 150 on both sides, with BENCH_RET's figures; the hybrid
+    // long-short AIF takes none in the new build (SB-49), Nifty 500 on the live page
+    for (const list of ['regular', 'direct']) {
+      for (const s of [legacy, next]) {
+        const b = rowOf(s, `${list} | aif | bench | niftymidcap150`)!;
+        assert.equal(b.group, 'Mid Cap', `${s.engine} ${list}`);
+        for (const [t, v] of Object.entries(b.returns)) assert.equal(v, BENCH['niftymidcap150']!.r?.[t] ?? null, `${s.engine} ${list} midcap ${t}`);
+      }
+      assert.equal(rowOf(next, `${list} | aif | bench | nifty500`), undefined, `new ${list}: Nifty 500 for the hybrid AIF`);
+      assert.equal(rowOf(legacy, `${list} | aif | bench | nifty500`)!.group, 'Long Short', `legacy ${list}`);
+    }
+    // the brief's Diversified group (Q-45 default): Dividend Yield, Contra and Value beside Flexi Cap in the new build
+    for (const f of ['hdfc dividend yield fund-reg(g)', 'icici pru contra fund-reg(g)', 'axis value fund-reg(g)', 'parag parikh flexi cap fund-reg(g)']) {
+      assert.equal(rowOf(next, `regular | equity mf | fund | ${f}`)!.group, 'Diversified Funds', f);
+    }
+    // a fund with no Direct plan of its scheme (SB-50): a blank Direct row in the new build, noted; the live page drops it
+    assert.ok(!Object.keys(MFD).some((k) => /^HDFC Dividend Yield/i.test(k)), 'the Direct block has no such plan');
+    const dy = rowOf(next, 'direct | equity mf | fund | hdfc dividend yield fund-reg(g)')!;
+    assert.equal(dy.ref, null);
+    assert.ok(Object.values(dy.returns).every((v) => v === null));
+    assert.ok(next.notes.some((n) => /no Direct twin.*HDFC Dividend Yield Fund-Reg\(G\)/.test(n)), 'new: noted as having no Direct twin');
+    assert.equal(rowOf(legacy, 'direct | equity mf | fund | hdfc dividend yield fund-reg(g)'), undefined);
+    assert.equal(result.unclassified, 0);
+  });
+
+  test('a benchmark moved to another group is caught as an unclassified E-30 difference (CHAT-008 N1 on 26ef40c)', () => {
+    const { legacy, next } = runSides(cases.find((c) => c.id === 'performance-probe')!);
+    const moved = { ...next, performance: next.performance!.map((x) => (x.key === 'regular | aif | bench | niftymidcap150' ? { ...x, group: 'Long Short' } : x)) };
+    const r = compareSides('performance-probe', false, legacy, moved, ledger);
+    const d = r.diffs.filter((x) => x.key === 'regular | aif | bench | niftymidcap150');
+    assert.deepEqual(d.map((x) => [x.field, x.legacy, x.new, x.matrix, x.ledger]), [['group', 'Mid Cap', 'Long Short', 'E-30', null]]);
   });
 
   test('a client name variant in the IRR file: the live page joins it (KI-032), the new build does not (D9)', () => {

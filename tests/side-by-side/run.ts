@@ -73,6 +73,21 @@ export const MATCH_BOOK: ReadonlyArray<BookRow & { isin?: string }> = [
   row({ client: 'Sample Client N', name: 'Zerodha Arbitrage Fund(G)-Direct Plan', cat: 'Arbitrage Fund', asset: 'Hybrid', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-6011' }),
 ];
 
+/** The performance probe book (kit phase 2 (c); MOD-05, 27 Nov 2026): public names from the shipped blocks for the
+ * buckets and groups no other case reaches: two AIFs (one of asset Equity with an equity category, one Hybrid long-short:
+ * KI-024), two SIFs (equity and hybrid long-short: the SIF bucket has no benchmark rows), and Dividend Yield, Contra and
+ * Value funds beside a Flexi Cap fund (the Diversified group of the brief, Q-45). Clients, folios and amounts invented. */
+export const PERF_BOOK: readonly BookRow[] = [
+  row({ client: 'Sample Client P', name: 'Alchemy Leaders of Tomorrow', cat: 'Mid Cap', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7001', units: null }),
+  row({ client: 'Sample Client P', name: 'ICICI Prudential Alpha Opportunities', cat: 'Long Short', asset: 'Hybrid', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7002', units: null }),
+  row({ client: 'Sample Client P', name: 'DynaSIF Equity Long-Short Fund-Reg(G)', cat: 'Equity Long Short Fund', amc: '', product: 'SIF', dist: 'Centricity', folio: 'SYN-7003' }),
+  row({ client: 'Sample Client P', name: 'Altiva Hybrid Long-Short Fund-Reg(G)', cat: 'Hybrid Long-Short Fund', asset: 'Hybrid', amc: '', product: 'SIF', dist: 'Centricity', folio: 'SYN-7004' }),
+  row({ client: 'Sample Client P', name: 'HDFC Dividend Yield Fund-Reg(G)', cat: 'Dividend Yield Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7005' }),
+  row({ client: 'Sample Client P', name: 'ICICI Pru Contra Fund-Reg(G)', cat: 'Contra Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7006' }),
+  row({ client: 'Sample Client P', name: 'Axis Value Fund-Reg(G)', cat: 'Value Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7007' }),
+  row({ client: 'Sample Client P', name: 'Parag Parikh Flexi Cap Fund-Reg(G)', cat: 'Flexi Cap Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7008' }),
+];
+
 /** A base file's bytes with an ISIN column appended (heading "ISIN", one cell per holding row; blank when none). */
 function withIsinColumn(xlsx: ReturnType<typeof loadSheetJS>, bytes: Uint8Array, isins: ReadonlyArray<string | undefined>): Uint8Array {
   const X = xlsx as unknown as { read: (b: Uint8Array, o: object) => { Sheets: Record<string, Record<string, unknown>>; SheetNames: string[] }; utils: { decode_range: (r: string) => { e: { c: number } }; sheet_add_aoa: (ws: unknown, d: unknown[][], o: object) => void } };
@@ -100,6 +115,7 @@ export function syntheticCases(): Case[] {
   const match = withIsinColumn(xlsx, buildVariants(xlsx, MATCH_BOOK, 'match').find((f) => f.id === 'match-standard')!.bytes, MATCH_BOOK.map((h) => h.isin));
   return [
     { id: 'matching-probe', input: { baseBytes: match, irrBytes: null, asOn: '30 Sep 2026', label: 'Matching probe' } },
+    { id: 'performance-probe', input: { baseBytes: buildVariants(xlsx, PERF_BOOK, 'perf').find((f) => f.id === 'perf-standard')!.bytes, irrBytes: null, asOn: '30 Sep 2026', label: 'Performance probe' } },
     { id: 'syn-standard-irr-variant', input: { baseBytes: syn.bytes, irrBytes: variantIrr, asOn: '30 Sep 2026', label: 'Synthetic' } },
     { id: 'probe-irr-standard', input: { baseBytes: probe.bytes, irrBytes: irr.bytes, asOn: '30 Sep 2026', label: 'Probe' } },
     { id: 'sample-with-irr', input: { baseBytes: read('Sample_Base_File.xlsx'), irrBytes: read('Sample_IRR_Transactions.xlsx'), asOn: '30 Sep 2026', label: 'Sample Family' } },

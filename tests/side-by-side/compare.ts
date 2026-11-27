@@ -166,11 +166,11 @@ export function compareSides(fixture: string, irr: boolean, L: SbsSide, N: SbsSi
   if (L.contributions && N.contributions) keyed('contributions', L.contributions, N.contributions, ['rank', 'cmvCr', 'contribPp'], () => 'E-29');
   if (L.performance && N.performance) {
     // each tenor is its own field ("r 1Y"), compared with the kit's tolerance, so one figure differing is one difference
-    // (CHAT-008's note N1 on the kit); a tenor one side's bucket lacks reads as null; a benchmark's group is not compared
+    // (CHAT-008's note N1 on the kit); a tenor one side's bucket lacks reads as null; a benchmark's groups are compared too
     type Flat = { key: string; list: string; kind: string; [field: string]: unknown };
     const tenors = [...new Set([...L.performance, ...N.performance].flatMap((r) => Object.keys(r.returns)))];
     const flat = (rows: readonly SbsPerfRow[]): Flat[] => rows.map((r) => {
-      const o: Flat = { key: r.key, list: r.list, kind: r.kind, group: r.kind === 'fund' ? r.group : null };
+      const o: Flat = { key: r.key, list: r.list, kind: r.kind, group: r.group };
       for (const t of tenors) o[`r ${t}`] = r.returns[t] ?? null;
       return o;
     });
