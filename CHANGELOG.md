@@ -809,6 +809,34 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **Tests:** `tests/unit/tax/{rules,lots,rollup,repeat-evidence,statement-engine}.test.ts` and the known answers KA-1
   to KA-22 (`tests/fixtures/cg-known-answers.json`), to Rs 0.01.
 
+### Added (new build, M7a tax engine, round 2: the holdings' tax, harvesting and the IRR reconciliation; not wired into the page yet)
+- **`engine/tax/classify.ts` and `lots.ts`** (E-41, E-42): the live tax classification and FIFO lots (TA-03) ported on
+  the I-21 table, at parity with the live on 10 synthetic books. Recorded corrections: the OD-16 trade kinds, and OD-15
+  (one instrument over several holdings split by folio, else apportioned by units).
+- **`engine/tax/holdings-rollup.ts` and `harvest.ts`** (E-43): the live roll-ups and per-client harvest, at parity with
+  equal inputs. New-build rules: the exemption only when the amount already used is known (Q-52), otherwise "exemption
+  not applied"; no slab default (PD-07, one named parameter). Hand-worked H-1 to H-6.
+- **`engine/tax/realised-irr.ts` and `reconcile.ts`** (E-141): realised gains derived from the IRR file by FIFO (a gap
+  is stated, never guessed), reconciled with the statement per scheme and financial year. The tolerance is the larger
+  of the amount tolerance on the sale value and Rs 1 plus Rs 0.005 per statement row (MOD-04, 26 Nov 2026). Beyond it,
+  a High result with both figures kept. The statement is the source of record for a year it covers.
+- **After ARC-03's Gate B of aa67a45 (Q-49: a gap is named, never estimated):** until the owner rules how the IRR
+  export writes transfer and bonus rows, a transfer out is not a sale and a sale reaching a transfer in, stock in,
+  demerger in or bonus lot is a named gap (`transfer-row`, `bonus-row`); a holding with such a row is unreconciled
+  (`transferRow`, `bonusRow`), never split; a sale of 0 is a gap (`sale-without-amount`; `noPxSell` on the holdings
+  side); a holdings-ledger oversell is named on the record; a statement covering part of a client-year is PARTIAL; the
+  harvest labels say what the figures leave out. Tests pin the units tolerance (0.0004 absorbed, 0.0006 a gap) and the
+  reconcile tolerance's per-row part and its boundary. Parity ledger TX-06 to TX-12 and TXR-14 to TXR-18 (book
+  `tax-gate-b`).
+- **After the delta financial review (N-1 to N-5):** every sale after a transfer in, stock in or demerger in is
+  `transfer-row` (the FIFO order is not known); a holdings transfer out keeps the FIFO split and is named on the record;
+  a short-held derived loss of a scheme with a bonus row carries the TR-21 Warning `stripping-candidate`, computed
+  normally; the holdings oversell is pinned at 0.0006 units; only derived sales make a statement year PARTIAL. No parity
+  figure changed.
+- **Tests:** `tests/unit/tax/{fifo-lots,holdings-rollup,harvest,realised-irr}.test.ts`,
+  `tests/parity/tax.parity.test.ts` with its ledger, `tests/regression/ki-065-debt-mf-tax.test.ts`,
+  `tests/integration/realised-gains-reconcile.test.ts`.
+
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage
   funds of funds and others), Taurus, Abakkus, Focus, Marcellus, Citrus and Equirus are no longer international; "U.S." now is.

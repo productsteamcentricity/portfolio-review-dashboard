@@ -266,8 +266,10 @@
 
    **Claude: M7a**, the capital-gains statement reader (PAN removed at read time, repeated lots reported, blank cells
    reported) and the blank template, is merged (PR #35) and accepted by the owner (Gate E), not wired into the page yet. The
-   owner answered PD-16 on 26 Nov 2026 (item 4 stays with the tax adviser). **The M7a tax engine**: round 1 (the
-   statement lots: the dated rules, lot classes, per-lot tax and the tax per person and year) merged in PR #52; round 2 (the holdings: classification, FIFO lots, harvesting and the IRR reconciliation) follows.
+   owner answered PD-16 on 26 Nov 2026 (item 4 stays with the tax adviser). **The M7a tax engine:** round 1 (the
+   statement lots: the dated rules, lot classes, per-lot tax and the tax per person and year) is merged (PR #52); round 2
+   (the holdings: classification, FIFO lots, harvesting and the IRR reconciliation) is on `feat/m7a-tax-engine`. Neither
+   is wired into the page yet.
    Model contracts-1 (PR #29, types only): I-31, I-32, I-44, I-45 and decision C-01. Model contracts-2 (PR #40, types
    only): contract I-37 (`app/src/model/tax.ts`) and the analyst question as a union on its kind.
 
