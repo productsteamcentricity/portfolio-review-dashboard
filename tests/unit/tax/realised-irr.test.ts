@@ -445,12 +445,12 @@ describe('Gate B of aa67a45 (ARC-03): transfer, bonus and zero-amount rows are n
     assert.ok(lotsOf(r, SCHEME.FLEXI).every((x) => x.realised.kind === 'missing'));
   });
 
-  test('B1: a sale reaching a transfer in lot is a gap; the earlier purchase is still computed', () => {
+  test('B1, N-1: every sale after a transfer in is a gap, whole, even one the earlier purchase could meet', () => {
     // Purchase 1 Apr 2023 50 u at 100 (5,000); Transfer In 1 Jun 2024 12,000 at 120 = 100 u (dated and valued by the
-    // transfer, not the original purchase: cost and date not known). Redemption 1 Aug 2025 13,500 at 150 = 90 u: 50 u of
-    // the purchase (cost 5,000, sale 13,500 x 50/90 = 7,500, realised 2,500, long), then 40 u reach the transfer lot: a
-    // gap 'transfer-row' (40 u, sale 6,000), purchase date and cost missing (the old code took cost 4,800, date 1 Jun
-    // 2024: realised 1,200, short). A later redemption (1 Sep 2025, 10 u) is 'after-earlier-gap'.
+    // transfer: the transferred units' original acquisition date is not known, so neither is the FIFO order).
+    // Redemption 1 Aug 2025 13,500 at 150 = 90 u, and 1 Sep 2025 1,500 at 150 = 10 u: both 'transfer-row', units and
+    // sale value kept, cost and realised missing (fa88c2b computed 50 u of the purchase: realised 2,500, long). FY
+    // 2025-26 realised NOT AVAILABLE.
     const r = run([
       flow(A, SCHEME.MID, [2023, 4, 1], 'Purchase', 100, -5000),
       flow(A, SCHEME.MID, [2024, 6, 1], 'Transfer In', 120, -12000),
@@ -458,36 +458,44 @@ describe('Gate B of aa67a45 (ARC-03): transfer, bonus and zero-amount rows are n
       flow(A, SCHEME.MID, [2025, 9, 1], 'Redemption', 150, 1500),
     ], [hold(A, SCHEME.MID, 'Mid Cap Fund', 50, 5000, 7500)]);
     const l = lotsOf(r, SCHEME.MID);
-    assert.deepEqual(l.map((x) => x.gap), [null, 'transfer-row', 'after-earlier-gap']);
-    near(v(l[0]!.realised), 2500, 'purchase part');
-    assert.equal(termOf(l[0]!), 'long');
-    near(v(l[1]!.units), 40, 'gap units'); near(v(l[1]!.saleValue), 6000, 'gap sale value');
-    assert.equal(l[1]!.buyKind, 'transfer-in');
-    assert.equal(l[1]!.purchaseDate.kind, 'missing');
-    assert.equal(l[1]!.purchasePrice.kind, 'missing');
-    assert.equal(l[1]!.purchaseValue.kind, 'missing');
-    const sy = r.schemeYears[0]!;
-    near(v(sy.realised), 2500, 'PARTIAL');
-    assert.ok(sy.realised.kind === 'value' && Math.abs(sy.realised.coverage! - 1 / 3) < 1e-9);
+    assert.deepEqual(l.map((x) => x.gap), ['transfer-row', 'transfer-row']);
+    near(v(l[0]!.units), 90, 'units'); near(v(l[0]!.saleValue), 13500, 'sale value');
+    assert.ok(l.every((x) => x.realised.kind === 'missing' && x.purchaseDate.kind === 'missing' && x.purchaseValue.kind === 'missing'));
+    assert.equal(r.schemeYears[0]!.realised.kind, 'missing');
   });
 
-  test('B1: stock in and demerger in are lots not known too; a sale met by earlier known lots stays computed', () => {
-    // Purchase 1 Jan 2024 100 u at 100; Stock In 1 Feb 2024 50 u at 110; Demerger In 1 Mar 2024 20 u at 10. Redemption
-    // 1 Jun 2025 7,200 at 120 = 60 u: all from the purchase (cost 6,000, realised 1,200): computed, no gap. Redemption
-    // 1 Jul 2025 6,000 at 120 = 50 u: 40 u left of the purchase (cost 4,000, sale 4,800, realised 800), then 10 u reach
-    // the stock in lot: 'transfer-row'.
+  test('N-1, the review case R-XFER-IN-BEFORE-SALE: a sale after a transfer in is not LT 1,500', () => {
+    // Purchase 1 Apr 2023 50 u at 100 (5,000); Transfer In 1 Jun 2024 100 u at 120 (12,000); Redemption 1 Sep 2024
+    // 6,500 at 130 = 50 u. fa88c2b met it from the purchase: 50 x (130 - 100) = 1,500, long. If the transferred units
+    // were bought earlier, FIFO sells them first: the figure is not known. Now 'transfer-row'.
+    const r = run([
+      flow(A, SCHEME.MID, [2023, 4, 1], 'Purchase', 100, -5000),
+      flow(A, SCHEME.MID, [2024, 6, 1], 'Transfer In', 120, -12000),
+      flow(A, SCHEME.MID, [2024, 9, 1], 'Redemption', 130, 6500),
+    ], [hold(A, SCHEME.MID, 'Mid Cap Fund', 100, 12000, 13000)]);
+    assert.deepEqual(gapsOf(r, SCHEME.MID), ['transfer-row']);
+    assert.equal(r.schemeYears[0]!.realised.kind, 'missing');
+  });
+
+  test('B1, N-1: stock in and demerger in are lots not known too; sales before them stay computed, sales after are gaps', () => {
+    // Focused (B): Purchase 1 Jan 2024 100 u at 100; Redemption 15 Jan 2024 2,200 at 110 = 20 u (before the stock in:
+    // cost 2,000, realised 200, computed); Stock In 1 Feb 2024 50 u at 110; Redemption 1 Jun 2025 7,200 at 120 = 60 u:
+    // 'transfer-row' (fa88c2b computed it from the purchase, realised 1,200). Value (B): Purchase 1 Jan 2024 100 u at
+    // 100; Demerger In 1 Mar 2024 20 u at 10; Redemption 1 Jun 2025 1,200 at 120 = 10 u: 'transfer-row'.
     const r = run([
       flow(B, SCHEME.FOCUSED, [2024, 1, 1], 'Purchase', 100, -10000),
+      flow(B, SCHEME.FOCUSED, [2024, 1, 15], 'Redemption', 110, 2200),
       flow(B, SCHEME.FOCUSED, [2024, 2, 1], 'Stock In', 110, -5500),
-      flow(B, SCHEME.FOCUSED, [2024, 3, 1], 'Demerger In', 10, -200),
       flow(B, SCHEME.FOCUSED, [2025, 6, 1], 'Redemption', 120, 7200),
-      flow(B, SCHEME.FOCUSED, [2025, 7, 1], 'Redemption', 120, 6000),
+      flow(B, SCHEME.VALUE, [2024, 1, 1], 'Purchase', 100, -10000),
+      flow(B, SCHEME.VALUE, [2024, 3, 1], 'Demerger In', 10, -200),
+      flow(B, SCHEME.VALUE, [2025, 6, 1], 'Redemption', 120, 1200),
     ]);
     const l = lotsOf(r, SCHEME.FOCUSED);
-    assert.deepEqual(l.map((x) => x.gap), [null, null, 'transfer-row']);
-    near(v(l[0]!.realised), 1200, 'first sale'); near(v(l[1]!.realised), 800, 'second sale, known part');
-    assert.equal(l[2]!.buyKind, 'stock-in');
-    near(v(l[2]!.units), 10, 'gap units');
+    assert.deepEqual(l.map((x) => x.gap), [null, 'transfer-row']);
+    near(v(l[0]!.realised), 200, 'sale before the stock in');
+    near(v(l[1]!.units), 60, 'gap units');
+    assert.deepEqual(gapsOf(r, SCHEME.VALUE), ['transfer-row']);
   });
 
   test('B2, ARC-03 case: a bonus row with an amount is never costed at it (old total 0; the bonus part is a gap)', () => {
@@ -570,5 +578,37 @@ describe('Gate B of aa67a45 (ARC-03): transfer, bonus and zero-amount rows are n
     assert.ok(Math.abs(v(lo[1]!.units)! - 0.0006) < 1e-9, 'gap units');
     near(v(lo[0]!.realised), 1000, 'computed part');
     assert.ok(outside.schemeYears[0]!.realised.kind === 'value' && outside.schemeYears[0]!.realised.coverage === 0.5);
+  });
+});
+
+describe('delta review N-3: TR-21 bonus-stripping candidates on derived lots (design section 10.4)', () => {
+  const termOf = (x: DerivedLot): string | null => (x.term.kind === 'value' ? x.term.v : null);
+  test('R-TR21: a short-held loss of a scheme with a bonus row is computed and flagged stripping-candidate (Warning)', () => {
+    // Purchase 1 Apr 2025 100 u at 100 (10,000); Bonus 1 Jun 2025 100 u written at 50; Redemption 1 Sep 2025 9,500 at
+    // 95 = 100 u, all from the purchase (cost 10,000): realised -500, held 5 months, short; the bonus units are still
+    // held. Without record-date data the loss is computed normally and flagged, as the statement side does
+    // (realised.ts finish). A gain, and a loss held more than 12 months, are not flagged.
+    const r = run([
+      flow(A, SCHEME.BLUE, [2025, 4, 1], 'Purchase', 100, -10000),
+      flow(A, SCHEME.BLUE, [2025, 6, 1], 'Bonus', 50, -5000),
+      flow(A, SCHEME.BLUE, [2025, 9, 1], 'Redemption', 95, 9500),
+      flow(A, SCHEME.FLEXI, [2024, 1, 1], 'Purchase', 100, -10000),
+      flow(A, SCHEME.FLEXI, [2024, 3, 1], 'Bonus', 50, 0),
+      flow(A, SCHEME.FLEXI, [2025, 6, 1], 'Redemption', 90, 4500),
+      flow(A, SCHEME.FLEXI, [2025, 7, 1], 'Redemption', 120, 1200),
+    ], [hold(A, SCHEME.BLUE, 'Large Cap Fund', 100, 1, 1)]);
+    const [x] = lotsOf(r, SCHEME.BLUE);
+    assert.equal(x!.gap, null);
+    near(v(x!.realised), -500, 'computed normally');
+    assert.equal(termOf(x!), 'short');
+    assert.deepEqual(x!.flags, ['stripping-candidate']);
+    // Flexi Cap: 50 u sold at a loss after 17 months (-500) and 10 u at a gain (+200): neither flagged.
+    const f = lotsOf(r, SCHEME.FLEXI);
+    assert.deepEqual(f.map((y) => v(y.realised)), [-500, 200]);
+    assert.ok(f.every((y) => !y.flags.includes('stripping-candidate')));
+    const w = r.issues.find((i) => i.ruleId === 'tax.stripping-candidate')!;
+    assert.ok(w && w.severity === 'Warning' && w.count === 1);
+    assert.match(w.message, /may fall under bonus stripping; without record-date data it is computed normally/);
+    assert.ok(!DASH.test(w.message));
   });
 });

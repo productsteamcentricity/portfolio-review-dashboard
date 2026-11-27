@@ -371,4 +371,23 @@ describe('Gate B of aa67a45 (ARC-03): the tolerance pairs (Q4, Q5) and a stateme
     assert.equal(full.clients[0]!.schemesLeftOut, 0);
     assert.ok(full.total.kind === 'value' && full.total.coverage === undefined);
   });
+
+  test('N-5: a scheme whose only derived rows in the year are a transfer out or a sale of 0 does not make the figure PARTIAL', () => {
+    // irr-realised with A's Focused redemption of 1 Oct 2025 written as a Transfer Out instead, and A's Midcap bought
+    // 1 May 2024 and "sold" 1 Sep 2025 for 0. Neither row sells anything, so FY 2025-26 for A (the statement's Flexi
+    // Cap lot, 1,700) leaves no scheme out: complete (fa88c2b marked it PARTIAL with 2 schemes left out).
+    const rows = irrRealisedRows().filter((r) => !(r.includes(SCHEME.FOCUSED) && r.includes('Redemption')));
+    rows.push(
+      flow(CLIENT_A, SCHEME.FOCUSED, [2025, 10, 1], 'Transfer Out', 30, 1500),
+      flow(CLIENT_A, SCHEME.MID, [2024, 5, 1], 'Purchase', 100, -10000),
+      flow(CLIENT_A, SCHEME.MID, [2025, 9, 1], 'Redemption', 120, 0),
+    );
+    const der = deriveRealisedGains(irrImport(rows, xlsx).fund, { asOn: AS_ON_DAY });
+    assert.deepEqual(der.lots.filter((l) => l.clientLabel === CLIENT_A && l.financialYear === 2025 && l.gap !== null).map((l) => l.gap).sort(),
+      ['sale-without-amount', 'transfer-row']);
+    const a = realisedForYear(2025, der, statementOf()).clients.find((c) => c.source === 'statement')!;
+    assert.equal(a.schemesLeftOut, 0);
+    near(v(a.total), 1700, 'A total');
+    assert.ok(a.total.kind === 'value' && a.total.coverage === undefined, JSON.stringify(a.total));
+  });
 });

@@ -700,6 +700,11 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   harvest labels say what the figures leave out. Tests pin the units tolerance (0.0004 absorbed, 0.0006 a gap) and the
   reconcile tolerance's per-row part and its boundary. Parity ledger TX-06 to TX-12 and TXR-14 to TXR-18 (book
   `tax-gate-b`).
+- **After the delta financial review (N-1 to N-5):** every sale after a transfer in, stock in or demerger in is
+  `transfer-row` (the FIFO order is not known); a holdings transfer out keeps the FIFO split and is named on the record;
+  a short-held derived loss of a scheme with a bonus row carries the TR-21 Warning `stripping-candidate`, computed
+  normally; the holdings oversell is pinned at 0.0006 units; only derived sales make a statement year PARTIAL. No parity
+  figure changed.
 - **Tests:** `tests/unit/tax/{fifo-lots,holdings-rollup,harvest,realised-irr}.test.ts`,
   `tests/parity/tax.parity.test.ts` with its ledger, `tests/regression/ki-065-debt-mf-tax.test.ts`,
   `tests/integration/realised-gains-reconcile.test.ts`.

@@ -27,8 +27,9 @@
 //   - 'sale-without-price': a sale without a price (its units are not known);
 //   - 'purchase-without-price': the sale reaches a purchase without a price (its units are not known);
 //   - 'units-beyond-held': the sale sells more units than the earlier purchases hold (beyond UNITS_TOLERANCE);
-//   - 'transfer-row': a transfer out (a change of folio or account, or a gift, is not a sale, s.47(iii)), or a sale that
-//     reaches a transfer in, stock in or demerger in lot (B1);
+//   - 'transfer-row': a transfer out (a change of folio or account, or a gift, is not a sale, s.47(iii)), or any sale
+//     after a transfer in, stock in or demerger in entered the ledger (B1; delta review N-1: the transferred units'
+//     original acquisition date is not known, so the FIFO order is not known);
 //   - 'bonus-row': the sale reaches a bonus lot (bonus units have nil cost by law; the export's row is not confirmed, B2);
 //   - 'sale-without-amount': a sale row whose amount is 0 (it moves no units we can count, so later sales would take
 //     the wrong lots);
@@ -56,7 +57,8 @@ import { ymdToDay } from '../dates.ts';
 import { BONUS_KINDS, TRANSFER_IN_KINDS, UNITS_TOLERANCE, consumeFifo, isTradeFlow, tradePriceOf } from './lots.ts';
 import { INST, TAX_RULES_I21, classifyHolding, i21ByInst, isListedEtf } from './classify.ts';
 import type { ClassifyContext, I21Row } from './classify.ts';
-import { TAX_RULES_V1, ruleFor } from './rules.ts';
+import { TAX_RULES_V1, anniversaryOf, ruleFor } from './rules.ts';
+import { STRIPPING_HOLDING_MONTHS } from './realised.ts';
 import type { DayWindow, SubType, TaxRuleTable } from './rules.ts';
 
 /** Units sold beyond the units held up to this many are rounding (lots.ts; re-exported here, where S5 introduced it). */
@@ -75,7 +77,7 @@ const GAP_TEXT: Readonly<Record<DerivedGap, string>> = {
   'sale-without-price': 'a sale without a price: the units it sold are not known',
   'purchase-without-price': 'the sale reaches a purchase without a price: the units of that purchase are not known',
   'units-beyond-held': 'the sale sells more units than the earlier purchases in the IRR file hold',
-  'transfer-row': 'a transfer out of a folio or account, or a gift, is not a sale, and a transfer in, stock in or demerger in is dated and valued by the transfer: what cost and date carry over is not known',
+  'transfer-row': 'a transfer out of a folio or account, or a gift, is not a sale, and a transfer in, stock in or demerger in is dated and valued by the transfer: what cost and date carry over, and so the order later sales take units in, is not known',
   'bonus-row': 'the sale reaches bonus units: bonus units have nil cost by law, and how the IRR file writes a bonus row is not confirmed',
   'sale-without-amount': 'a sale row with an amount of 0: the units it sold are not known',
   'after-earlier-gap': 'an earlier gap in this scheme leaves the units remaining not known',
@@ -150,6 +152,8 @@ export type DerivedLot = RealisedGain & {
   clientLabel: string;
   /** The sale's kind (OD-16 out kinds). */
   saleKind: TransactionKind;
+  /** The row is a sale: not a transfer out and not a row with an amount of 0 (reconcile.ts item 8, delta review N-5). */
+  saleRow: boolean;
   /** The purchase row the lot came from; null for a gap lot that reached no purchase. */
   buyAt: RowRef | null;
   buyKind: TransactionKind | null;
@@ -331,6 +335,11 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
 
     const ledger: LedgerLot[] = [];
     let broken = false;
+    // Delta review N-1: once a transfer in, stock in or demerger in enters the ledger, the transferred units' original
+    // acquisition date is not known, so the FIFO order is not known: every later sale is 'transfer-row'.
+    let afterTransferIn = false;
+    // Delta review N-3 (TR-21): an instrument with a bonus row; its short-held losses are stripping candidates.
+    const hasBonus = trades.some((t) => t.direction === 'in' && BONUS_KINDS.has(t.kind));
     for (const t of trades) {
       const amt = Math.abs(t.amountRupees);
       const px = tradePriceOf(t);
@@ -339,6 +348,7 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
         // costed at its amount or dated by the row, until the owner rules how the IRR export writes such rows.
         const why = TRANSFER_IN_KINDS.has(t.kind) ? 'transfer' as const : BONUS_KINDS.has(t.kind) ? 'bonus' as const : px === null ? 'price' as const : null;
         if (px === null) counts.purchasesWithoutPrice++;
+        if (why === 'transfer') afterTransferIn = true;
         ledger.push({ u: px === null ? 0 : amt / px, known: why === null, why, px: why === null ? px : null, day: t.day, at: t.at, kind: t.kind });
         continue;
       }
@@ -372,6 +382,11 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
         // The purchase date is known for a purchase row; a transfer in or bonus lot is dated by the row, not the purchase.
         const buyDated = buy !== null && (buy.why === null || buy.why === 'price');
         const noTax = missing(STATUS.NOT_AVAILABLE, 'tax not computed on a lot derived from transactions (S5)');
+        const flags = o.gap !== null ? ['tax.derived-gaps'] : [];
+        // TR-21 (design section 10.4; as realised.ts finish): without record-date data, a loss on a lot held 12 months or
+        // less of a scheme with bonus units is a bonus-stripping candidate, computed normally (delta review N-3).
+        if (o.gap === null && hasBonus && realised.kind === 'value' && realised.v < 0 && buy !== null && buy.known
+          && t.day <= anniversaryOf(buy.day, STRIPPING_HOLDING_MONTHS)) flags.push('stripping-candidate');
         return {
           source: DERIVED_SOURCE, at: t.at, scheme: t.instrument, schemeLabel: t.instrumentName ?? '', folio: t.folio,
           tagAsset: null, category: t.categoryLabel, statementAsset: null, clientId: t.clientId, accountId: null,
@@ -387,11 +402,18 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
           realised, financialYear: fy.start, financialYearLabel: fy.label,
           taxClass: noTax, listed: noTax, subType: 'none', lotClass: 'standard', term, ruleId: null, costForTax: noTax,
           costBasis: 'none', taxableGain: noTax, notComputed: 'tax-class-not-set', legs: null, anniversaryLongTerm: null,
-          duplicateOf: null, excludedAsRepeat: false, statement: null, flags: o.gap !== null ? ['tax.derived-gaps'] : [],
+          duplicateOf: null, excludedAsRepeat: false, statement: null, flags,
           instrumentKey: key, instrumentName: t.instrumentName, clientLabel: t.clientLabel, saleKind: t.kind,
+          saleRow: t.kind !== 'transfer-out' && amt > EPS,
           buyAt: buy?.at ?? null, buyKind: buy?.kind ?? null, i21: ra?.rule.inst ?? null, termRule, gap: o.gap,
         };
       };
+      if (afterTransferIn) {
+        // Delta review N-1 (Q-49): the sale's lots and their order are not known after a transfer in.
+        lots.push(base({ units: px !== null ? amt / px : null, sale: t.kind === 'transfer-out' || amt <= EPS ? null : amt, buy: null, cost: null, gap: 'transfer-row' }));
+        broken = true;
+        continue;
+      }
       if (broken) {
         lots.push(base({ units: px !== null ? amt / px : null, sale: t.kind === 'transfer-out' || amt <= EPS ? null : amt, buy: null, cost: null, gap: 'after-earlier-gap' }));
         continue;
@@ -503,6 +525,13 @@ function deriveIssues(lots: readonly DerivedLot[], counts: DerivedCounts, source
     add('derived-gaps', 'Warning',
       `${plural(gaps.length, 'realised lot derived from the IRR file is', 'realised lots derived from the IRR file are')} not computed and no figure is estimated for ${gaps.length === 1 ? 'it' : 'them'}: ${by.join('; ')}. The scheme and year totals they belong to are PARTIAL COVERAGE.`,
       gaps.length);
+  }
+  const strip = lots.filter((l) => l.flags.includes('stripping-candidate')).length;
+  if (strip) {
+    // TR-21 (delta review N-3): the statement side's Warning, for the lots derived from the IRR file.
+    add('stripping-candidate', 'Warning',
+      `${plural(strip, 'loss derived from the IRR file', 'losses derived from the IRR file')}, on units held 12 months or less of a scheme with a bonus row, may fall under bonus stripping; without record-date data ${strip === 1 ? 'it is' : 'they are'} computed normally.`,
+      strip);
   }
   if (counts.untyped || counts.unrecognised.length) {
     const named = counts.unrecognised.map((u) => `"${u.label}" (${plural(u.rows, 'row', 'rows')})`);

@@ -28,7 +28,8 @@
 // in, stock in or demerger in is unreconciled 'transferRow' (B3, OD-16), one with a bonus row 'bonusRow' (B2), never
 // split, until the owner rules how the IRR export writes such rows; an oversell on the unit ledger is named in the
 // reason (`oversoldUnits`), never clamped silently; a sale row with an amount of 0 counts as a sale the units of which
-// are not known (the noPxSell kind, with its own reason text).
+// are not known (the noPxSell kind, with its own reason text). A transfer out keeps the FIFO split (the usual
+// convention, s.45(2A)) and is named the same way (`transferOutFifo`; delta review N-2).
 // One correction (OD-15, KI-069): when one IRR instrument joins more than one holding (the same scheme with two
 // distributors) and the flows carry no folio that tells them apart, the instrument's lots are apportioned by units (by
 // invested value on the rupee ledger) across those holdings and labelled `apportioned`; the live gives every such
@@ -126,6 +127,11 @@ export type TaxPositionRecord = Omit<TaxPosition, 'gain' | 'lt' | 'st' | 'unclas
    * ledger; null when none or on the rupee ledger. Never silent (Gate B of aa67a45): the reason says so.
    */
   oversoldUnits: number | null;
+  /**
+   * The history (to the as-on date) holds a transfer out, consumed oldest first (FIFO, the usual convention, s.45(2A)):
+   * which units it moved is assumed, not in the IRR file. Named in the reason (delta review N-2).
+   */
+  transferOutFifo: boolean;
   /** TX-18: open lots bought before 1 Feb 2018 in a grandfathering class. */
   gfLots: number;
   oldest: DayNumber | null;
@@ -205,6 +211,8 @@ type Ledger = {
   transferRow: boolean; bonusRow: boolean; zeroSell: boolean;
   /** Units sold beyond the unit ledger's lots (each shortfall beyond UNITS_TOLERANCE, added up). */
   oversold: number;
+  /** A transfer out was consumed by FIFO (delta review N-2). */
+  transferOut: boolean;
 };
 
 const EPS = 1e-9;
@@ -241,13 +249,14 @@ function consume(lots: Array<{ u: number }>, need: number): void {
 
 /** One pass over trades sorted by day (file order within a day): both FIFO ledgers. */
 function runLedger(trades: readonly Transaction[], asOn: DayNumber): Ledger {
-  const L: Ledger = { units: [], rupees: [], noPxBuy: false, swIn: false, noPxSell: false, later: 0, transferRow: false, bonusRow: false, zeroSell: false, oversold: 0 };
+  const L: Ledger = { units: [], rupees: [], noPxBuy: false, swIn: false, noPxSell: false, later: 0, transferRow: false, bonusRow: false, zeroSell: false, oversold: 0, transferOut: false };
   for (const t of trades) {
     if (t.day > asOn) { L.later++; continue; }
     const amt = Math.abs(t.amountRupees);
     const buy = t.direction === 'in';
     if (buy && TRANSFER_IN_KINDS.has(t.kind)) L.transferRow = true;
     if (buy && BONUS_KINDS.has(t.kind)) L.bonusRow = true;
+    if (!buy && t.kind === 'transfer-out') L.transferOut = true;
     // Item 7 (Gate B of aa67a45): a sale row with an amount of 0 moves no units; the reason treats it as a sale without a price.
     if (!buy && amt <= EPS) { L.noPxSell = true; L.zeroSell = true; }
     if (buy) L.rupees.push({ day: t.day, u: amt }); else consume(L.rupees, amt);
@@ -295,6 +304,7 @@ const REASON = {
   transferRow: 'The transaction history of this holding holds a transfer in, stock in or demerger in. Its lots would be dated and costed by the transfer, not by the original purchase, and what cost and date carry over is not known, so no split is shown (OD-16).',
   bonusRow: 'The transaction history of this holding holds a bonus row. Bonus units have nil cost by law, and how the IRR file writes a bonus row is not confirmed, so no split is shown rather than one costed at the row\'s amount.',
   oversold: 'The transaction history sells more units than its earlier purchases hold, so a purchase, bonus or split is missing from the IRR file; the lots shown are those left after the sale.',
+  transferOut: 'The transaction history holds a transfer out; the IRR file does not say which units it moved, so the oldest are assumed (FIFO, the usual convention).',
   apportion: 'The IRR history of this scheme covers more than one holding and gives no folio that tells them apart, and not every one of those holdings has the units (or invested value) to apportion its lots by, so no split is shown (OD-15).',
   noRow: (inst: string): string => `No row in the tax rules covers the class "${inst}".`,
 } as const;
@@ -458,12 +468,18 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
       instrumentName: h.instrumentName, locked: null, fundLevel: null, notSplit: null, unreconciledKind: null,
       usual: !!cls.usual, catAssumed: !!cls.catAssumed, catRuled: !!cls.catRuled,
       baseUnits: amtMode ? null : baseU, fifoUnits: amtMode ? null : fifoU, pxGap, viaSwitchIn: pxGap && swIn,
-      oversoldUnits: !amtMode && ledger && ledger.oversold > 0 ? ledger.oversold : null, gfLots: 0,
+      oversoldUnits: !amtMode && ledger && ledger.oversold > 0 ? ledger.oversold : null, transferOutFifo: !!ledger?.transferOut, gfLots: 0,
       oldest: null, newest: null, laterTrades: later, lotDetail: [],
     };
     /** Gate B of aa67a45: an oversell on the unit ledger is named in the reason, never silent. */
-    const withOversold = (reason: string | null): string | null => (rec.oversoldUnits === null ? reason
-      : reason === null ? REASON.oversold : `${reason.replace(/\.?\s*$/, '.')} ${REASON.oversold}`);
+    // Delta review N-2: a transfer out consumed by FIFO is named the same way.
+    const withOversold = (reason: string | null): string | null => {
+      const notes: string[] = [];
+      if (rec.oversoldUnits !== null) notes.push(REASON.oversold);
+      if (rec.transferOutFifo) notes.push(REASON.transferOut);
+      if (!notes.length) return reason;
+      return [reason === null ? null : reason.replace(/\.?\s*$/, '.'), ...notes].filter((x): x is string => x !== null).join(' ');
+    };
     const unreconciled = (kind: UnreconciledKind, reason: string): void => {
       rec.status = 'unreconciled';
       rec.unreconciledKind = kind;

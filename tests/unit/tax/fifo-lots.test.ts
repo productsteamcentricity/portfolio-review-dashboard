@@ -505,3 +505,39 @@ describe('Gate B of aa67a45 (ARC-03): transfer and bonus rows, oversells and zer
     assert.match(x.reason!, /carries an amount of 0, so the units it sold could not be counted/);
   });
 });
+
+describe('delta review N-2 and N-4: a transfer out named on the record; the oversell tolerance pinned', () => {
+  test('N-2, the review case H-XFER-OUT: a transfer out keeps the FIFO split and is named', () => {
+    // 100 u bought 10 Jan 2024 at 100 and 100 u bought 10 Jan 2026 at 100; Transfer Out 1 Mar 2026 of 100 u (12,000
+    // at 120). FIFO (the usual convention, s.45(2A)) moves the 2024 units: the 2026 lot stays, short on 30 Sep 2026.
+    // Base 100 u, invested 10,000, CMV 15,000: short 15,000, gain 5,000 (the same split as fa88c2b), now with
+    // transferOutFifo and a reason saying the oldest units are assumed moved. No transfer out: no flag.
+    const r = run([hold(FLEXI, 'Flexi Cap Fund', 'Equity', 100, 10000, 15000)], [
+      flow(FLEXI, [2024, 1, 10], 'Purchase', 100, -10000),
+      flow(FLEXI, [2026, 1, 10], 'Purchase', 100, -10000),
+      flow(FLEXI, [2026, 3, 1], 'Transfer Out', 120, 12000),
+    ]);
+    const x = one(r, FLEXI);
+    assert.equal(x.status, 'ok');
+    near(x.st.cmv, 15000, 'short'); near(x.st.gain, 5000, 'gain'); near(x.lt.cmv, 0, 'long');
+    assert.equal(x.transferOutFifo, true);
+    assert.match(x.reason!, /holds a transfer out; the IRR file does not say which units it moved, so the oldest are assumed \(FIFO/);
+    const plain = run([hold(FLEXI, 'Flexi Cap Fund', 'Equity', 100, 10000, 15000)], [flow(FLEXI, [2026, 1, 10], 'Purchase', 100, -10000)]);
+    assert.equal(one(plain, FLEXI).transferOutFifo, false);
+    assert.equal(one(plain, FLEXI).reason, null);
+  });
+
+  test('N-4: a holdings oversell of 0.0006 u is flagged (beyond UNITS_TOLERANCE)', () => {
+    // Purchase 10 Jan 2024 100 u at 100; Redemption 10 Jun 2024 10,000.06 at 100 = 100.0006 u (0.0006 u beyond);
+    // Purchase 10 Jan 2025 100 u at 120. The split stands (long 13,000, gain 1,000); oversoldUnits 0.0006 and the reason.
+    const r = run([hold(FLEXI, 'Flexi Cap Fund', 'Equity', 100, 12000, 13000)], [
+      flow(FLEXI, [2024, 1, 10], 'Purchase', 100, -10000),
+      flow(FLEXI, [2024, 6, 10], 'Redemption', 100, 10000.06),
+      flow(FLEXI, [2025, 1, 10], 'Purchase', 120, -12000),
+    ]);
+    const x = one(r, FLEXI);
+    assert.ok(x.oversoldUnits !== null && Math.abs(x.oversoldUnits - 0.0006) < 1e-9, String(x.oversoldUnits));
+    assert.match(x.reason!, /sells more units than its earlier purchases hold/);
+    near(x.lt.cmv, 13000, 'long');
+  });
+});

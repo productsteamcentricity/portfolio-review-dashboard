@@ -514,7 +514,8 @@ export function realisedForYear(fy: number, derived: DerivedRealised | null, sta
         if (hit !== null) covered.add(derivedInstrumentKey(c, hit));
       }
       const leftLotsBy = new Map<string, number>();
-      for (const l of derBy.get(c) ?? []) if (!covered.has(l.instrumentKey)) leftLotsBy.set(l.instrumentKey, (leftLotsBy.get(l.instrumentKey) ?? 0) + 1);
+      // Delta review N-5: only derived lots that are sales count (a transfer out or a row of amount 0 sells nothing).
+      for (const l of derBy.get(c) ?? []) if (l.saleRow && !covered.has(l.instrumentKey)) leftLotsBy.set(l.instrumentKey, (leftLotsBy.get(l.instrumentKey) ?? 0) + 1);
       const leftLots = [...leftLotsBy.values()].reduce((s, n) => s + n, 0);
       const fig = figureOf(parts, used.length, unknown, prov, ie);
       const schemesLeftOut = leftLotsBy.size;
