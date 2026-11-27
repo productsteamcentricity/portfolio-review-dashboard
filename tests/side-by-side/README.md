@@ -35,7 +35,7 @@ With `--base`, both `--out` and `--as-on` are required: the command refuses to g
 | Section | Rows | Fields | Matrix rows |
 |---|---|---|---|
 | holdings | each included holding, keyed by client, instrument name, folio, product and distributor; a key twice on one side is a `duplicate-key` difference | the route (MF, PMS, AIF, SIF, STOCK, or `other (<class>)` for a non-MF class), the matched reference entry and its universe (a STOCK_RET key for a listed share), the market value, the holding's XIRR and BMXIRR; the new build's method is shown, not compared | E-15 (route), E-13, E-14 (match), E-21, E-25 or E-28 (XIRR) |
-| performance | each fund row of the legacy performance view | 1Y/3Y/5Y and the benchmark's | E-31, E-30 |
+| performance | the Regular and the Direct list: each fund row (by the name shown) and each benchmark row (one per bucket) of every bucket | each tenor of the bucket's columns ("r 1Y"), and a fund's group | E-31 (Regular funds), E-32 (Direct funds), E-30 (benchmarks) |
 | scopes | the family, each client and each adviser, with an IRR file | XIRR and benchmark XIRR | E-27, E-142 |
 | contributions | the contributors, laggards and drags lists | rank, market value, contribution | E-29 |
 
@@ -60,8 +60,12 @@ How the kit reads each side:
 - **The adviser XIRR** has no reference in the live page (`SB-02`). The kit shows it but cannot check it.
 - **Units in the report:** XIRRs as percentages with the difference in basis points; market value in Crore; contributions
   in percentage points. "Not compared" counts the rows one engine cannot give yet.
-- **Performance.** The new build has no performance view yet (E-31, E-147; M3b). The legacy rows are listed under
-  `SB-01` and not compared. When M3b merges, `next.ts` fills `performance` and `SB-01` is retired.
+- **Performance (phase 2 (b), since M3b, PR #59).** The new side runs `computePerformance` on the resolved holdings with
+  the sources `/next/` reads (`performanceSourcesFrom`, no uploaded monitor); the legacy side reads the page's
+  `regularList` and, when it has one, `directList`. Each tenor is compared on its own with the kit's tolerance; a tenor
+  missing from one side's bucket reads as null. SB-01 (not built) is retired. A fund row whose figures differ because
+  its holding matched differently carries `follows` (the matching entry it follows, with that entry's class), and the
+  test checks every such Regular-list figure against the record each side matched.
 - **Tolerance.** Numbers agree within 1e-9 relative plus 1e-12 absolute.
 
 ## The ledger (`sbs-ledger.json`)
@@ -81,9 +85,10 @@ outside this list.
 
 | Entry | Difference |
 |---|---|
-| SB-01 | performance not built in the new build yet (E-31, E-147) |
 | SB-02 | the adviser XIRR exists only in the new build (E-142, D15) |
 | SB-08 to SB-17 | case `matching-probe` (fund matching, phase 2): public scheme names from `tests/parity/matching-corrections-ledger.json`, each with its known answer there. **Corrections** (the live page matches another fund, the new build the right one): SB-08 the normaliser follow-up (Multi-Cap), SB-09 and SB-10 KI-036 (an IDCW plan matched to the Growth plan), SB-11 the normaliser (an AMFI "Exchange Traded Fund" name), SB-12 KI-050 with the owner's alias PD-36 line 1. **Accepted differences** under OD-5 option B (the owner's "Go ahead with the Stricter regime", 26 Nov 2026): SB-13 and SB-14, a Gold fund the live page matches to its sibling Gold ETF and the new build leaves unmatched (alias candidates). **Known gaps** SB-15 and SB-16: two of the 4 names the ledger still lists as regressed (the live page is right, the new build leaves them unmatched; SB-16 was newly lost by the normaliser follow-up); not yet ruled on by the owner (asked 27 Nov 2026); alias candidates (PD-36). **Improvement** SB-17: a listed share found only by its ISIN (E-13; KI-184, the live page never reads the ISIN column) |
+| SB-18 to SB-29 | the performance tables' decisions, each a correction already recorded in `tests/parity/performance-ledger.json`: the Thematic and Sectoral group renamed (SB-18, PF-03); no 2Y column for Debt MF (SB-19, PF-02); an unmatched PMS in its own bucket, with its equity index there because its holding is Equity (SB-20 to SB-22, PF-04, KI-024); each held diversified category with its own index only (SB-23, PF-15); no benchmark named for hybrid allocation categories and for gold (SB-24, SB-25; OD-7); the group of other-class holdings leaving with its index (SB-26, PF-14); other classes (a fixed deposit, an NCD, a REIT, an unlisted share) out of the tables (SB-27, PF-04); the Direct list keeping an unmatched fund (SB-28, PF-11) and an ETF's own figures (SB-29, PF-06) |
+| SB-30 to SB-39 | case `matching-probe`: each fund row's figures follow its holding's match (SB-08 to SB-17) in both lists, with the same class: corrections SB-30 to SB-34, accepted differences SB-35 and SB-36, known gaps SB-37 and SB-38, improvement SB-39 |
 | SB-04 to SB-07 | case `syn-standard-irr-variant`: the IRR file writes a client with a salutation. The live page joins it as a name variant (KI-032 fix), and the new build keys clients by their exact label (D9, kept by MOD-04 on 26 Nov 2026). So that client's holding XIRRs (SB-04), its client XIRR (SB-05), the family XIRR (SB-06; the new build leaves the IRR-only label out, OD-4) and the contributions (SB-07) differ. Class `accepted-difference` (owner-accepted difference; reviewed at M15): the owner decided on 26 Nov 2026 that the new build joins on exact names only, with a transactions template that carries them |
 
 SB-03 (a client without flows borrowing another client's flows through the old fuzzy name join) was retired with the

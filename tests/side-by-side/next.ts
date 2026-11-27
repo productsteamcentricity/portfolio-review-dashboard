@@ -4,8 +4,8 @@
 // aliases (tests/helpers/match-blocks.ts committedMatchContext): product-class routing (E-15), ISIN first, the owner's
 // aliases (PD-36) and NEW_BUILD_MATCHING, exactly as /next/ runs it. IRR: ingest/irr-file + engine/returns/scope
 // (family, each client, each adviser), with the per-holding transaction XIRR read from the IRR tree's instrument nodes.
-//
-// Not built yet: the performance view (E-31, E-147; M3b). `performance` is null until those modules merge.
+// Performance (M3b, PR #59): engine/returns/performance computePerformance on the resolved holdings, with the sources
+// /next/ reads (data/performance-sources performanceSourcesFrom, no uploaded monitor), the Regular and the Direct list.
 
 import { readWorkbook } from '../../app/src/ingest/workbook.ts';
 import { parseBaseFile } from '../../app/src/ingest/base-file.ts';
@@ -13,12 +13,17 @@ import { parseIrrFile } from '../../app/src/ingest/irr-file.ts';
 import { resolveHoldings } from '../../app/src/engine/match/resolve-holdings.ts';
 import type { HoldingMatch, MatchContext } from '../../app/src/engine/match/resolve-holdings.ts';
 import { computeScopeReturns } from '../../app/src/engine/returns/scope.ts';
+import { benchKey, computePerformance } from '../../app/src/engine/returns/performance.ts';
+import type { PerfBucket, PerformanceSources } from '../../app/src/engine/returns/performance.ts';
+import { performanceSourcesFrom } from '../../app/src/data/performance-sources.ts';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { Holding } from '../../app/src/model/holding.ts';
 import type { SourceFileId } from '../../app/src/model/ids.ts';
-import { loadSheetJS } from '../helpers/sheetjs.ts';
+import { REPO, loadSheetJS } from '../helpers/sheetjs.ts';
 import { committedMatchContext } from '../helpers/match-blocks.ts';
-import type { SbsContribution, SbsHolding, SbsInput, SbsScope, SbsSide } from './shape.ts';
-import { holdingKey, labelKey } from './shape.ts';
+import type { SbsContribution, SbsHolding, SbsInput, SbsPerfRow, SbsScope, SbsSide } from './shape.ts';
+import { holdingKey, labelKey, perfKey, pushPerfRow } from './shape.ts';
 
 const SRC_BASE = 'b'.repeat(64) as SourceFileId;
 const SRC_IRR = 'c'.repeat(64) as SourceFileId;
@@ -35,6 +40,34 @@ function matchContext(): MatchContext {
   return ctx;
 }
 
+let perfSources: PerformanceSources | null = null;
+/** The performance sources /next/ reads, from the committed refdata files (as tests/helpers/node-wiring.ts does). */
+function performanceSources(): PerformanceSources {
+  perfSources ??= performanceSourcesFrom(undefined, (id: string): string | null => {
+    const p = path.join(REPO, 'data', 'refdata', `${id.replace(/^refdata-/, '')}.json`);
+    return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+  });
+  return perfSources;
+}
+
+/** The new build's performance tables in the kit's rows: per list and bucket, each group's fund rows (by the name the
+ * table shows) and benchmark rows, the figures of the bucket's columns (null where the table has no figure). */
+function perfRows(list: 'regular' | 'direct', buckets: readonly PerfBucket[], out: SbsPerfRow[]): void {
+  for (const b of buckets) {
+    for (const g of b.groups) {
+      const rows: Array<{ kind: 'fund' | 'bench'; name: string; r: Partial<Record<string, V>> }> = [
+        ...g.funds.map((f) => ({ kind: 'fund' as const, name: f.name, r: f.r as Partial<Record<string, V>> })),
+        ...g.benchmarks.map((x) => ({ kind: 'bench' as const, name: x.name, r: x.r as Partial<Record<string, V>> })),
+      ];
+      for (const x of rows) {
+        const returns: Record<string, number | null> = {};
+        for (const c of b.cols) returns[c] = val(x.r[c]);
+        pushPerfRow(out, { key: perfKey(list, b.key, x.kind, x.kind === 'fund' ? x.name : benchKey(x.name)), list, bucket: b.key, kind: x.kind, name: x.name, group: g.label, returns });
+      }
+    }
+  }
+}
+
 /** The kit's route of a holding: a universe (MF, SIF, AIF, PMS, STOCK) or 'other (<class label>)' for a non-MF class
  * that has no fund data by design (LP-16). The legacy side writes the same strings from the engine's own fields. */
 export function routeLabel(m: HoldingMatch): string {
@@ -46,7 +79,6 @@ export function runNew(input: SbsInput): SbsSide {
   const xlsx = loadSheetJS();
   const notes: string[] = [
     'new: matching is the wired resolver of /next/ (resolveHoldings: product-class routing E-15, ISIN first, the owner\'s aliases PD-36, the stricter regime of 26 Nov 2026); route and matched entry are compared, the method is shown only.',
-    'new: the performance view (E-31, E-147) is not built yet (M3b); the performance section shows the legacy rows only.',
   ];
   const base = parseBaseFile(readWorkbook(xlsx, input.baseBytes), { sourceId: SRC_BASE, now: NOW });
   const included = base.holdings.filter((h) => h.inclusion.status === 'included');
@@ -130,5 +162,12 @@ export function runNew(input: SbsInput): SbsSide {
     });
   }
 
-  return { engine: 'new', holdings, performance: null, scopes, contributions, notes };
+  const perf = computePerformance(resolved.holdings, performanceSources());
+  const performance: SbsPerfRow[] = [];
+  perfRows('regular', perf.regular, performance);
+  if (perf.direct) perfRows('direct', perf.direct, performance);
+  if (perf.leftOut.length) notes.push(`new: ${perf.leftOut.length} holding(s) left out of the performance tables (${perf.leftOut.map((x) => `${x.name}: ${x.reason}`).join('; ')}).`);
+  if (perf.noDirectTwin.length) notes.push(`new: ${perf.noDirectTwin.length} fund(s) with no Direct twin (blank rows in the Direct list): ${perf.noDirectTwin.join(', ')}.`);
+
+  return { engine: 'new', holdings, performance, scopes, contributions, notes };
 }

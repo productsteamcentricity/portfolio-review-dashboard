@@ -4,6 +4,17 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (tests only: side-by-side kit phase 2 (b), the performance tables, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
+- **`tests/side-by-side/`**: the performance tables are compared on both sides now that M3b is merged (PR #59): the new
+  build's `computePerformance` with the sources `/next/` reads, against the live page's Regular and Direct lists; fund
+  rows and benchmark rows per bucket, each tenor on its own with the kit's tolerance, and a fund's group. SB-01 (not
+  built) is retired.
+- SB-18 to SB-29 classify the tables' decisions, each a correction already in `tests/parity/performance-ledger.json`
+  (PF-02, PF-03, PF-04, PF-06, PF-11, PF-13 to PF-16; KI-024, KI-072, OD-7). SB-30 to SB-39: on the matching probe,
+  each fund row follows its holding's match (SB-08 to SB-17) with the same class; the test checks every such
+  Regular-list figure against the record each side matched, and three Direct-list rows against the alias's Direct
+  target and the ETFs' own figures. 20 tests, in IST and UTC.
+
 ### Changed (tests only: side-by-side kit phase 2 (a), fund matching, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
 - **`tests/side-by-side/`**: the new side runs the new build's wired matcher (`resolveHoldings` with the shipped blocks
   and the owner's aliases, as `/next/` does) instead of the kit's copy of the live routing rule, so routing (E-15), ISIN
