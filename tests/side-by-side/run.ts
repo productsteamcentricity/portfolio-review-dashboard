@@ -74,8 +74,8 @@ export const MATCH_BOOK: ReadonlyArray<BookRow & { isin?: string }> = [
 ];
 
 /** The performance probe book (kit phase 2 (c); MOD-05, 27 Nov 2026): public names from the shipped blocks for the
- * buckets and groups no other case reaches: two AIFs (one of asset Equity with an equity category, one Hybrid long-short:
- * KI-024), two SIFs (equity and hybrid long-short: the SIF bucket has no benchmark rows), and Dividend Yield, Contra and
+ * buckets and groups no other case reaches: five AIFs (asset Equity with an equity category; Hybrid long-short; an Equity
+ * and a Hybrid one sharing the category Small Cap; Equity with the generic category "Category III": KI-024), two SIFs (equity and hybrid long-short: the SIF bucket has no benchmark rows), and Dividend Yield, Contra and
  * Value funds beside a Flexi Cap fund (the Diversified group of the brief, Q-45). Clients, folios and amounts invented. */
 export const PERF_BOOK: readonly BookRow[] = [
   row({ client: 'Sample Client P', name: 'Alchemy Leaders of Tomorrow', cat: 'Mid Cap', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7001', units: null }),
@@ -83,7 +83,12 @@ export const PERF_BOOK: readonly BookRow[] = [
   row({ client: 'Sample Client P', name: 'DynaSIF Equity Long-Short Fund-Reg(G)', cat: 'Equity Long Short Fund', amc: '', product: 'SIF', dist: 'Centricity', folio: 'SYN-7003' }),
   row({ client: 'Sample Client P', name: 'Altiva Hybrid Long-Short Fund-Reg(G)', cat: 'Hybrid Long-Short Fund', asset: 'Hybrid', amc: '', product: 'SIF', dist: 'Centricity', folio: 'SYN-7004' }),
   row({ client: 'Sample Client P', name: 'HDFC Dividend Yield Fund-Reg(G)', cat: 'Dividend Yield Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7005' }),
-  row({ client: 'Sample Client P', name: 'ICICI Pru Contra Fund-Reg(G)', cat: 'Contra Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7006' }),
+  row({ client: 'Sample Client P', name: 'Kotak Contra Fund-Reg(G)', cat: 'Contra Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7006' }),
+  // financial review of 8fa975f: an Equity and a Hybrid AIF in one category (the group is not all Equity: no index), and an
+  // Equity AIF with a generic category (the catch-all index, Nifty 500)
+  row({ client: 'Sample Client P', name: 'SageOne Flagship Growth OE Fund', cat: 'Small Cap', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7009', units: null }),
+  row({ client: 'Sample Client P', name: 'Singularity Equity Fund I', cat: 'Small Cap', asset: 'Hybrid', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7010', units: null }),
+  row({ client: 'Sample Client P', name: 'Kotak Iconic Fund II', cat: 'Category III', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7011', units: null }),
   row({ client: 'Sample Client P', name: 'Axis Value Fund-Reg(G)', cat: 'Value Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7007' }),
   row({ client: 'Sample Client P', name: 'Parag Parikh Flexi Cap Fund-Reg(G)', cat: 'Flexi Cap Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7008' }),
 ];

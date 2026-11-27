@@ -213,19 +213,23 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
       // the SIF bucket has no benchmark rows by design, on both sides
       assert.ok(!s.performance!.some((x) => x.bucket === 'SIF' && x.kind === 'bench'), `${s.engine}: a SIF benchmark`);
     }
-    // KI-024 both ways: the equity AIF (Mid Cap) takes Nifty Midcap 150 on both sides, with BENCH_RET's figures; the hybrid
-    // long-short AIF takes none in the new build (SB-49), Nifty 500 on the live page
+    // KI-024 both ways: the equity AIF (Mid Cap) takes Nifty Midcap 150 on both sides, with BENCH_RET's figures; a group not
+    // all Equity takes none in the new build (SB-49, SB-58)
     for (const list of ['regular', 'direct']) {
       for (const s of [legacy, next]) {
         const b = rowOf(s, `${list} | aif | bench | niftymidcap150`)!;
         assert.equal(b.group, 'Mid Cap', `${s.engine} ${list}`);
         for (const [t, v] of Object.entries(b.returns)) assert.equal(v, BENCH['niftymidcap150']!.r?.[t] ?? null, `${s.engine} ${list} midcap ${t}`);
       }
-      assert.equal(rowOf(next, `${list} | aif | bench | nifty500`), undefined, `new ${list}: Nifty 500 for the hybrid AIF`);
-      assert.equal(rowOf(legacy, `${list} | aif | bench | nifty500`)!.group, 'Long Short', `legacy ${list}`);
+      // Nifty 500: the generic-category Equity AIF on both sides; the hybrid long-short AIF too on the live page only (SB-49)
+      assert.equal(rowOf(next, `${list} | aif | bench | nifty500`)!.group, 'Category III', `new ${list}: Nifty 500 groups`);
+      assert.equal(rowOf(legacy, `${list} | aif | bench | nifty500`)!.group, 'Long Short + Category III', `legacy ${list}`);
+      // an Equity and a Hybrid AIF in one category (SB-58): the live page's category index, none in the new build
+      assert.equal(rowOf(legacy, `${list} | aif | bench | niftysmallcap250`)!.group, 'Small Cap', `legacy ${list} small cap`);
+      assert.equal(rowOf(next, `${list} | aif | bench | niftysmallcap250`), undefined, `new ${list}: an index for a mixed group`);
     }
     // the brief's Diversified group (Q-45 default): Dividend Yield, Contra and Value beside Flexi Cap in the new build
-    for (const f of ['hdfc dividend yield fund-reg(g)', 'icici pru contra fund-reg(g)', 'axis value fund-reg(g)', 'parag parikh flexi cap fund-reg(g)']) {
+    for (const f of ['hdfc dividend yield fund-reg(g)', 'kotak contra fund-reg(g)', 'axis value fund-reg(g)', 'parag parikh flexi cap fund-reg(g)']) {
       assert.equal(rowOf(next, `regular | equity mf | fund | ${f}`)!.group, 'Diversified Funds', f);
     }
     // a fund with no Direct plan of its scheme (SB-50): a blank Direct row in the new build, noted; the live page drops it

@@ -5,10 +5,11 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ## [Unreleased]
 
 ### Changed (tests only: side-by-side kit phase 2 (c), AIF, SIF and the Diversified group, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
-- **`tests/side-by-side/`**: a performance probe book with two AIFs (an equity Mid Cap one and a hybrid long-short one),
+- **`tests/side-by-side/`**: a performance probe book with five AIFs (equity Mid Cap; hybrid long-short; an Equity and a Hybrid
+  one sharing a category; an Equity one with a generic category),
   two SIFs, and Dividend Yield, Contra and Value funds beside a Flexi Cap fund; benchmark rows now compare the groups
-  they sit under (CHAT-008's note N1). SB-46 to SB-57: the three funds under Diversified Funds (brief 7.3, the Q-45
-  default not yet confirmed by the owner), no equity index for the hybrid AIF (KI-024), a fund with no Direct plan kept
+  they sit under (CHAT-008's note N1). SB-46 to SB-58: the three funds under Diversified Funds (brief 7.3, the Q-45
+  default not yet confirmed by the owner), no equity index for an AIF group not all Equity (KI-024), a fund with no Direct plan kept
   blank in the Direct list (KI-054), and the groups of Nifty 500 following the decisions already classified. The test
   checks the AIF and SIF figures against their records, both AIF benchmarks, the empty SIF benchmarks and a moved
   benchmark group (unclassified). 23 tests, in IST and UTC.

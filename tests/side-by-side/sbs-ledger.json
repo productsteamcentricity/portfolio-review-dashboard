@@ -581,7 +581,7 @@
       "section": "performance",
       "kind": "field",
       "field": "group",
-      "key": "/^(regular|direct) \\| equity mf \\| fund \\| (icici pru contra fund-reg\\(g\\))$/",
+      "key": "/^(regular|direct) \\| equity mf \\| fund \\| (kotak contra fund-reg\\(g\\))$/",
       "fixtures": ["performance-probe"],
       "legacy": "Contra",
       "new": "Diversified Funds",
@@ -605,14 +605,15 @@
     {
       "id": "SB-49",
       "section": "performance",
-      "kind": "only-legacy",
+      "kind": "field",
       "key": "/^(regular|direct) \\| aif \\| bench \\| (nifty500)$/",
       "fixtures": ["performance-probe"],
-      "legacy": true,
-      "new": null,
+      "legacy": "Long Short + Category III",
+      "new": "Category III",
       "class": "correction",
       "reference": "E-30; KI-024 (MOD-05's ruling of 27 Nov 2026: an equity index for a PMS or AIF group only when every holding is Equity); PF-08",
-      "description": "An AIF of asset Hybrid in the category Long Short: the live page compares it with Nifty 500 (its default for an AIF category it does not map); the new build names no benchmark (not every holding of the group is Equity). The equity AIF of the same book (Mid Cap) takes Nifty Midcap 150 on both sides."
+      "description": "Nifty 500 in the AIF bucket: on the live page it sits under the groups \"Long Short\" (an AIF of asset Hybrid, by the AIF fallback) and \"Category III\" (an Equity AIF, a generic category); in the new build under \"Category III\" only, because the Long Short group is not all Equity and names no benchmark. The Equity Mid Cap AIF takes Nifty Midcap 150 on both sides.",
+      "field": "group"
     },
     {
       "id": "SB-50",
@@ -716,6 +717,18 @@
       "class": "correction",
       "reference": "E-30; SB-47, SB-48 (The group order follows the Q-45 default, not yet confirmed by the owner.); the live page's Direct list has no Dividend Yield group (SB-50)",
       "description": "Nifty 500 sits under the groups \"Diversified Funds + Contra + Value\" on the live page and \"Diversified Funds\" in the new build: the groups follow the decisions named in the reference; the index and its figures are the same."
+    },
+    {
+      "id": "SB-58",
+      "section": "performance",
+      "kind": "only-legacy",
+      "key": "/^(regular|direct) \\| aif \\| bench \\| (niftysmallcap250)$/",
+      "fixtures": ["performance-probe"],
+      "legacy": true,
+      "new": null,
+      "class": "correction",
+      "reference": "E-30; KI-024 (MOD-05's ruling of 27 Nov 2026: an equity index for a PMS or AIF group only when every holding is Equity); PF-08",
+      "description": "An Equity AIF and a Hybrid AIF in one category (Small Cap): the live page compares the group with Nifty Smallcap 250 by its category; the new build names no benchmark, because not every holding of the group is Equity."
     }
   ]
 }
