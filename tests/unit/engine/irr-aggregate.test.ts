@@ -32,47 +32,67 @@ const standard = returnsForReview(run.review, loadIrr(irrFixtures().find((f) => 
 const tree = standard.scopes[0]!.result.tree;
 const nodeOf = (level: string, clientId: ClientId, label: string) => tree.find((n) => n.level === level && n.clientId === clientId && n.label === label)!;
 const pct = (v: { kind: string; v?: number }): number => (v.kind === 'value' ? Math.round(v.v! * 100) / 100 : NaN);
+type Scope = Parameters<typeof irrAggregateFor>[2];
+type Returns = Parameters<typeof irrAggregateFor>[0];
+/** The node the adapter would pick for a label path (exact label, else the one case- and spacing-free match). */
+function ownIds(ret: Returns, clientId: ClientId, scope: Scope): Scope['holdingIds'] {
+  const fam = ret.scopes.find((x) => x.scope.kind === 'family');
+  if (!fam) return [];
+  const t = fam.result.tree;
+  let node = t.find((n) => n.level === 'client' && n.clientId === clientId);
+  const norm = (x: string): string => x.replace(/\s+/g, ' ').trim().toLowerCase();
+  const child = (level: 'asset' | 'product', label: string) => {
+    const kids = t.filter((n) => n.level === level && n.parentKey === node!.key);
+    return kids.find((n) => n.label === label) ?? (kids.filter((n) => norm(n.label) === norm(label)).length === 1 ? kids.find((n) => norm(n.label) === norm(label)) : undefined);
+  };
+  if (node && scope.asset !== undefined) node = child('asset', scope.asset);
+  if (node && scope.product !== undefined) node = child('product', scope.product);
+  return node ? [...node.holdingIds] : [];
+}
+/** irrAggregateFor with the node's own holdings when the test names none (the label path), else as given. */
+const agg = (ret: Returns, clientId: ClientId, scope: Scope) =>
+  irrAggregateFor(ret, clientId, scope.holdingIds.length === 0 ? { ...scope, holdingIds: ownIds(ret, clientId, scope) } : scope);
 
 describe('irrAggregateFor', () => {
   test('client: the client node\'s fund and benchmark XIRR', () => {
-    const r = irrAggregateFor(standard, A!, { holdingIds: [] })!;
+    const r = agg(standard, A!, { holdingIds: [] })!;
     const n = nodeOf('client', A!, 'Sample Client A');
     assert.deepEqual(r, { fund: n.fund.xirr, bench: n.bench.xirr, basis: 'irr-tree' });
     assert.equal(r.fund.kind, 'value');
   });
 
   test('asset: the asset node under that client (A\'s Equity is its Bluechip only, 7.76%)', () => {
-    const r = irrAggregateFor(standard, A!, { asset: 'Equity', holdingIds: [] })!;
+    const r = agg(standard, A!, { asset: 'Equity', holdingIds: [] })!;
     assert.equal(pct(r.fund), 7.76);
     const eq = tree.find((n) => n.level === 'asset' && n.clientId === A && n.label === 'Equity')!;
     assert.deepEqual(r, { fund: eq.fund.xirr, bench: eq.bench.xirr, basis: 'irr-tree' });
-    const debt = irrAggregateFor(standard, A!, { asset: 'Debt', holdingIds: [] })!;
+    const debt = agg(standard, A!, { asset: 'Debt', holdingIds: [] })!;
     assert.notDeepEqual(debt.fund, r.fund, 'another asset, another node');
   });
 
   test('product: the product node under that asset node; labels matched on case and spacing only', () => {
-    const r = irrAggregateFor(standard, A!, { asset: 'Equity', product: 'Mutual Funds', holdingIds: [] })!;
+    const r = agg(standard, A!, { asset: 'Equity', product: 'Mutual Funds', holdingIds: [] })!;
     const eq = tree.find((n) => n.level === 'asset' && n.clientId === A && n.label === 'Equity')!;
     const p = tree.find((n) => n.level === 'product' && n.parentKey === eq.key)!;
     assert.deepEqual(r, { fund: p.fund.xirr, bench: p.bench.xirr, basis: 'irr-tree' });
-    assert.deepEqual(irrAggregateFor(standard, A!, { asset: '  EQUITY ', product: 'mutual  funds', holdingIds: [] }), r);
+    assert.deepEqual(agg(standard, A!, { asset: '  EQUITY ', product: 'mutual  funds', holdingIds: [] }), r);
   });
 
   test('a label the transactions file does not use gives null (never a similar label)', () => {
-    assert.equal(irrAggregateFor(standard, A!, { asset: 'Equity Funds', holdingIds: [] }), null);
-    assert.equal(irrAggregateFor(standard, A!, { asset: 'Hybrid', holdingIds: [] }), null, 'Hybrid is B\'s, not A\'s');
-    assert.equal(irrAggregateFor(standard, A!, { asset: 'Equity', product: 'Direct Equity', holdingIds: [] }), null);
-    assert.equal(irrAggregateFor(standard, A!, { product: 'Mutual Funds', holdingIds: [] }), null, 'a product without its asset');
+    assert.equal(agg(standard, A!, { asset: 'Equity Funds', holdingIds: [] }), null);
+    assert.equal(agg(standard, A!, { asset: 'Hybrid', holdingIds: [] }), null, 'Hybrid is B\'s, not A\'s');
+    assert.equal(agg(standard, A!, { asset: 'Equity', product: 'Direct Equity', holdingIds: [] }), null);
+    assert.equal(agg(standard, A!, { product: 'Mutual Funds', holdingIds: [] }), null, 'a product without its asset');
   });
 
   test('a client with no node in the tree gives null', () => {
-    assert.equal(irrAggregateFor(standard, 'cl_not_in_review' as ClientId, { holdingIds: [] }), null);
+    assert.equal(agg(standard, 'cl_not_in_review' as ClientId, { holdingIds: [] }), null);
     const onlyA = returnsForReview(run.review, loadIrr(toWorkbook(loadSheetJS(), [{ name: 'SI Xirr', rows: [FUND_HEADER,
       fundRow('Sample Client A', 'Sample Bluechip Fund - Regular Plan - Growth', 'SYN-1001', 'Equity', dateCell(2023, 4, 1), 'Purchase', null, 50, -10000, null),
       fundRow('Sample Client A', 'Sample Bluechip Fund - Regular Plan - Growth', 'SYN-1001', 'Equity', dateCell(2025, 3, 31), null, 'Closing', null, 12000, null),
     ] }])));
-    assert.equal(irrAggregateFor(onlyA, B!, { holdingIds: [] }), null, 'B has no row in this file');
-    assert.ok(irrAggregateFor(onlyA, A!, { holdingIds: [] }) !== null);
+    assert.equal(agg(onlyA, B!, { holdingIds: [] }), null, 'B has no row in this file');
+    assert.ok(agg(onlyA, A!, { holdingIds: [] }) !== null);
   });
 
   test('KI-100: a node whose XIRR is a gap gives the missing Value with its status, never null', () => {
@@ -81,7 +101,7 @@ describe('irrAggregateFor', () => {
       fundRow('Sample Client B', 'Sample Balanced Advantage Fund - Regular Plan - Growth', 'SYN-2001', 'Hybrid', dateCell(2024, 1, 1), 'Purchase', null, 40, -8000, null),
     ] }])));
     for (const scope of [{ holdingIds: [] }, { asset: 'Hybrid', holdingIds: [] }, { asset: 'Hybrid', product: 'Mutual Funds', holdingIds: [] }]) {
-      const r = irrAggregateFor(gap, B!, scope);
+      const r = agg(gap, B!, scope);
       assert.ok(r !== null, JSON.stringify(scope));
       assert.ok(r.fund.kind === 'missing' && r.fund.status === STATUS.INSUFFICIENT_EVIDENCE, JSON.stringify(r.fund));
       assert.ok(r.bench.kind === 'missing' && r.bench.status === STATUS.NOT_AVAILABLE, JSON.stringify(r.bench));
@@ -90,7 +110,7 @@ describe('irrAggregateFor', () => {
 
   test('pure: the returns are not changed', () => {
     const before = JSON.stringify(standard);
-    irrAggregateFor(standard, A!, { asset: 'Equity', product: 'Mutual Funds', holdingIds: [] });
+    agg(standard, A!, { asset: 'Equity', product: 'Mutual Funds', holdingIds: [] });
     assert.equal(JSON.stringify(standard), before);
   });
 });
@@ -132,17 +152,17 @@ describe('Gate B of d6401f6, B1: an exact label wins; an ambiguous normalised la
   ], [br(BLUE, 2023, 4, 1, -10000), br(BLUE, 2025, 3, 31, 11500), br(FLEXI, 2023, 4, 1, -10000), br(FLEXI, 2025, 3, 31, 11000)]);
 
   test('"Equity" is the exact node (Bluechip, 9.5445%), never Flexi Cap\'s "EQUITY" node (22.4745%)', () => {
-    const r = irrAggregateFor(two, A!, { asset: 'Equity', holdingIds: [] })!;
+    const r = agg(two, A!, { asset: 'Equity', holdingIds: [] })!;
     assert.ok(Math.abs(figure(r.fund) - sqrtRate(1.2)) < 1e-6, `fund ${JSON.stringify(r.fund)}`);
     assert.ok(Math.abs(figure(r.bench) - sqrtRate(1.15)) < 1e-6, `bench ${JSON.stringify(r.bench)}`);
     assert.equal(r.basis, 'irr-tree');
-    const upper = irrAggregateFor(two, A!, { asset: 'EQUITY', holdingIds: [] })!;
+    const upper = agg(two, A!, { asset: 'EQUITY', holdingIds: [] })!;
     assert.ok(Math.abs(figure(upper.fund) - sqrtRate(1.5)) < 1e-6, 'the exact "EQUITY" node is Flexi Cap\'s');
   });
 
   test('"equity" (no exact node, two normalised matches): a missing value (NOT COMPARABLE) with its reason, never one node', () => {
     for (const asset of ['equity', ' Equity ']) {
-      const m = missingOf(irrAggregateFor(two, A!, { asset, holdingIds: [] }));
+      const m = missingOf(agg(two, A!, { asset, holdingIds: [] }));
       assert.ok(m.kind === 'missing' && m.status === STATUS.NOT_COMPARABLE, JSON.stringify(m));
       assert.match(m.reason, /2 asset classes under this client/);
       assert.match(m.reason, /cannot be read from one of them/);
@@ -150,19 +170,19 @@ describe('Gate B of d6401f6, B1: an exact label wins; an ambiguous normalised la
   });
 
   test('one normalised match is still found (the Bond\'s "Debt" as "  DEBT ")', () => {
-    const r = irrAggregateFor(two, A!, { asset: '  DEBT ', holdingIds: [hBond!] })!;
+    const r = agg(two, A!, { asset: '  DEBT ', holdingIds: [hBond!] })!;
     assert.equal(r.fund.kind, 'value');
   });
 });
 
 describe('Gate B of d6401f6, B2: the node stands for the line only when it holds the same holdings', () => {
   test('(i) holdings with no flows: A\'s Equity line (Bluechip and Flexi Cap) over the Equity node (Bluechip only) is PARTIAL', () => {
-    const m = missingOf(irrAggregateFor(standard, A!, { asset: 'Equity', holdingIds: [hBlue!, hFlexi!] }));
+    const m = missingOf(agg(standard, A!, { asset: 'Equity', holdingIds: [hBlue!, hFlexi!] }));
     assert.ok(m.kind === 'missing' && m.status === STATUS.PARTIAL, JSON.stringify(m));
     assert.equal(m.reason, 'XIRR covers 1 of 2 holdings on this line: 1 holding has no flow in the IRR file.');
-    const p = missingOf(irrAggregateFor(standard, A!, { asset: 'Equity', product: 'Mutual Funds', holdingIds: [hBlue!, hFlexi!] }));
+    const p = missingOf(agg(standard, A!, { asset: 'Equity', product: 'Mutual Funds', holdingIds: [hBlue!, hFlexi!] }));
     assert.ok(p.kind === 'missing' && p.status === STATUS.PARTIAL, 'the product node too');
-    const c = missingOf(irrAggregateFor(standard, A!, { holdingIds: [hBlue!, hFlexi!, hBond!] }));
+    const c = missingOf(agg(standard, A!, { holdingIds: [hBlue!, hFlexi!, hBond!] }));
     assert.match(c.kind === 'missing' ? c.reason : '', /^XIRR covers 2 of 3 holdings on this line/);
   });
 
@@ -173,11 +193,11 @@ describe('Gate B of d6401f6, B2: the node stands for the line only when it holds
       fr(FLEXI, 'Equity', 2023, 4, 1, -10000), fr(FLEXI, 'Equity', 2025, 3, 31, 15000, true),
     ], [br(BLUE, 2023, 4, 1, -10000), br(BLUE, 2025, 3, 31, 11500), br(FLEXI, 2023, 4, 1, -10000)]);
     assert.ok(inv.scopes[0]!.result.reconciliation.invalidBenchmark.some((x) => x.instrumentName === FLEXI), 'Flexi Cap\'s benchmark is invalid');
-    const m = missingOf(irrAggregateFor(inv, A!, { asset: 'Equity', holdingIds: [hBlue!, hFlexi!] }));
+    const m = missingOf(agg(inv, A!, { asset: 'Equity', holdingIds: [hBlue!, hFlexi!] }));
     assert.ok(m.kind === 'missing' && m.status === STATUS.PARTIAL, JSON.stringify(m));
     assert.equal(m.reason, 'XIRR covers 1 of 2 holdings on this line: 1 holding has flows that are not in this node (left out for an invalid benchmark, or under another label in the IRR file).');
     // Today's label-only lookup still reads the node, Bluechip alone (9.5445%).
-    assert.ok(Math.abs(figure(irrAggregateFor(inv, A!, { asset: 'Equity', holdingIds: [] })!.fund) - sqrtRate(1.2)) < 1e-6);
+    assert.ok(Math.abs(figure(agg(inv, A!, { asset: 'Equity', holdingIds: [] })!.fund) - sqrtRate(1.2)) < 1e-6);
   });
 
   test('(iii) a redeemed instrument in the node: its flows are in the node\'s XIRR but on no line (NOT COMPARABLE)', () => {
@@ -187,7 +207,7 @@ describe('Gate B of d6401f6, B2: the node stands for the line only when it holds
     ], [br(BLUE, 2023, 4, 1, -10000), br(BLUE, 2025, 3, 31, 11500)]);
     const eq = red.scopes[0]!.result.tree.find((n) => n.level === 'asset' && n.clientId === A && n.label === 'Equity')!;
     assert.deepEqual(eq.holdingIds, [hBlue], 'the node\'s holdings are the line\'s: the redeemed instrument has none');
-    const m = missingOf(irrAggregateFor(red, A!, { asset: 'Equity', holdingIds: [hBlue!] }));
+    const m = missingOf(agg(red, A!, { asset: 'Equity', holdingIds: [hBlue!] }));
     assert.ok(m.kind === 'missing' && m.status === STATUS.NOT_COMPARABLE, JSON.stringify(m));
     assert.equal(m.reason, 'XIRR covers 1 of 1 holding on this line: the node also holds 1 redeemed instrument (flows in the IRR file, no current holding).');
   });
@@ -197,25 +217,25 @@ describe('Gate B of d6401f6, B2: the node stands for the line only when it holds
       fr(BLUE, 'Equity', 2023, 4, 1, -10000), fr(BLUE, 'Equity', 2025, 3, 31, 12000, true),
       fr(FLEXI, 'Hybrid', 2023, 4, 1, -10000), fr(FLEXI, 'Hybrid', 2025, 3, 31, 15000, true),
     ], [br(BLUE, 2023, 4, 1, -10000), br(BLUE, 2025, 3, 31, 11500), br(FLEXI, 2023, 4, 1, -10000), br(FLEXI, 2025, 3, 31, 11000)]);
-    const m = missingOf(irrAggregateFor(lab, A!, { asset: 'Equity', holdingIds: [hBlue!, hFlexi!] }));
+    const m = missingOf(agg(lab, A!, { asset: 'Equity', holdingIds: [hBlue!, hFlexi!] }));
     assert.ok(m.kind === 'missing' && m.status === STATUS.PARTIAL, JSON.stringify(m));
     assert.match(m.kind === 'missing' ? m.reason : '', /1 holding has flows that are not in this node/);
-    assert.equal(irrAggregateFor(lab, A!, { asset: 'Equity Funds', holdingIds: [hBlue!, hFlexi!] }), null, 'a label the IRR file does not have at all: null');
+    assert.equal(agg(lab, A!, { asset: 'Equity Funds', holdingIds: [hBlue!, hFlexi!] }), null, 'a label the IRR file does not have at all: null');
   });
 
   test('a node holding more than the line: the client node (Bluechip and Bond) for a line of Bluechip alone', () => {
-    const m = missingOf(irrAggregateFor(standard, A!, { holdingIds: [hBlue!] }));
+    const m = missingOf(agg(standard, A!, { holdingIds: [hBlue!] }));
     assert.ok(m.kind === 'missing' && m.status === STATUS.NOT_COMPARABLE, JSON.stringify(m));
     assert.equal(m.reason, 'XIRR covers 1 of 1 holding on this line: the node also holds 1 holding not on this line.');
   });
 
   test('the exact set gives the node\'s figures: A\'s Debt line (the Bond), A\'s Equity line of Bluechip alone, in any order', () => {
     const debt = tree.find((n) => n.level === 'asset' && n.clientId === A && n.label === 'Debt')!;
-    assert.deepEqual(irrAggregateFor(standard, A!, { asset: 'Debt', holdingIds: [hBond!] }), { fund: debt.fund.xirr, bench: debt.bench.xirr, basis: 'irr-tree' });
-    const r = irrAggregateFor(standard, A!, { asset: 'Equity', product: 'Mutual Funds', holdingIds: [hBlue!, hBlue!] })!;
+    assert.deepEqual(agg(standard, A!, { asset: 'Debt', holdingIds: [hBond!] }), { fund: debt.fund.xirr, bench: debt.bench.xirr, basis: 'irr-tree' });
+    const r = agg(standard, A!, { asset: 'Equity', product: 'Mutual Funds', holdingIds: [hBlue!, hBlue!] })!;
     assert.equal(pct(r.fund), 7.76, 'a repeated id is the same set');
     const client = tree.find((n) => n.level === 'client' && n.clientId === A)!;
-    assert.deepEqual(irrAggregateFor(standard, A!, { holdingIds: [hBond!, hBlue!] }), { fund: client.fund.xirr, bench: client.bench.xirr, basis: 'irr-tree' });
+    assert.deepEqual(agg(standard, A!, { holdingIds: [hBond!, hBlue!] }), { fund: client.fund.xirr, bench: client.bench.xirr, basis: 'irr-tree' });
   });
 });
 
@@ -225,14 +245,29 @@ describe('Gate B of d6401f6, F4: the blank marker is never a scope label', () =>
       [br(BLUE, 2023, 4, 1, -10000), br(BLUE, 2025, 3, 31, 11500)]);
     const dash = String.fromCharCode(0x2014);
     assert.ok(blank.scopes[0]!.result.tree.some((n) => n.level === 'asset' && n.label === dash), 'the tree has the blank node');
-    assert.equal(irrAggregateFor(blank, A!, { asset: dash, holdingIds: [] }), null);
-    assert.equal(irrAggregateFor(blank, A!, { asset: ` ${dash} `, holdingIds: [] }), null);
+    assert.equal(agg(blank, A!, { asset: dash, holdingIds: [] }), null);
+    assert.equal(agg(blank, A!, { asset: ` ${dash} `, holdingIds: [] }), null);
     // A blank product under "Equity": the product dash marker is refused the same way.
     const noProduct = (row: ReturnType<typeof fundRow>) => row.map((c, i) => (i === 5 ? '' : c));
     const blankProduct = returnsOf([noProduct(fr(BLUE, 'Equity', 2023, 4, 1, -10000)), noProduct(fr(BLUE, 'Equity', 2025, 3, 31, 12000, true))],
       [br(BLUE, 2023, 4, 1, -10000), br(BLUE, 2025, 3, 31, 11500)]);
     assert.ok(blankProduct.scopes[0]!.result.tree.some((n) => n.level === 'product' && n.label === dash), 'the tree has the blank product node');
-    assert.equal(irrAggregateFor(blankProduct, A!, { asset: 'Equity', product: dash, holdingIds: [] }), null);
-    assert.equal(irrAggregateFor(blankProduct, A!, { asset: 'Equity', holdingIds: [] })!.fund.kind, 'value', 'the asset node itself is read');
+    assert.equal(agg(blankProduct, A!, { asset: 'Equity', product: dash, holdingIds: [] }), null);
+    assert.equal(agg(blankProduct, A!, { asset: 'Equity', holdingIds: [] })!.fund.kind, 'value', 'the asset node itself is read');
+  });
+});
+
+describe('delta review of 5f6a87c: an empty holdings list is never a figure', () => {
+  test('holdingIds [] gives a missing value ("no holdings named"), never the node unchecked, at every level', () => {
+    for (const scope of [{ holdingIds: [] }, { asset: 'Equity', holdingIds: [] }, { asset: 'Equity', product: 'Mutual Funds', holdingIds: [] }]) {
+      const r = irrAggregateFor(standard, A!, scope)!;
+      assert.ok(r !== null, JSON.stringify(scope));
+      assert.equal(r.fund.kind, 'missing');
+      assert.ok(r.fund.kind === 'missing' && r.fund.status === STATUS.NOT_AVAILABLE && /No holdings are named/.test(r.fund.reason));
+      assert.equal(r.basis, 'irr-tree');
+    }
+  });
+  test('labels the transactions file does not have stay null with an empty list', () => {
+    assert.equal(irrAggregateFor(standard, A!, { asset: 'Equity Funds', holdingIds: [] }), null);
   });
 });

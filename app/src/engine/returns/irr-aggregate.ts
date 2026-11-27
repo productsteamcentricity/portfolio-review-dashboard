@@ -24,7 +24,8 @@
 //     whose flows are not in this node: left out of the tree for an invalid benchmark (ii, OD-4), or under another asset
 //     or product label in the IRR file (iv);
 //   - the node holds more than the line (NOT COMPARABLE): holdings not on the line, or redeemed instruments (iii).
-// An empty `scope.holdingIds` keeps the label-only lookup (no coverage check): the client node or the labelled node.
+// An empty `scope.holdingIds` names no holdings for the line, so no node can be shown to cover it: a missing value
+// ("no holdings named for this line"), never the node's figure unchecked (delta review of 5f6a87c).
 //
 // null only when: there is no family scope, the client has no node in the tree (no fund flow of the client in the
 // transactions file), the asset or product label is not in the transactions file under that client at all, a product
@@ -79,10 +80,11 @@ export function irrAggregateFor(returns: ReviewReturns, clientId: ClientId, scop
       node = product;
     }
   }
-  if (scope.holdingIds.length > 0) {
-    const gap = coverageGap(tree, node, scope.holdingIds, family.result.reconciliation.holdingsWithoutFlows);
-    if (gap) return missingBoth(gap.status, gap.reason);
+  if (scope.holdingIds.length === 0) {
+    return missingBoth(STATUS.NOT_AVAILABLE, 'No holdings are named for this line, so the transactions file\'s XIRR cannot be shown to cover it.');
   }
+  const gap = coverageGap(tree, node, scope.holdingIds, family.result.reconciliation.holdingsWithoutFlows);
+  if (gap) return missingBoth(gap.status, gap.reason);
   return { fund: node.fund.xirr, bench: node.bench.xirr, basis: 'irr-tree' };
 }
 
