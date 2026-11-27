@@ -31,14 +31,23 @@ export type SbsHolding = {
   bmxirr: number | null;
 };
 
-/** One fund row of the performance view: the matched fund's returns and its benchmark's, per tenor. */
+/** One row of the performance tables (E-30, E-31, E-32): a fund row or a benchmark row of a bucket, in the Regular or
+ * the Direct list. Keyed `list | bucket | fund | <name>` or `list | bucket | bench | <benchmark key>` (a benchmark shown
+ * under two groups of a bucket is one row, as the parity comparator reads it). A fund's group is compared; a
+ * benchmark's group is not. Returns are percent figures per tenor of the bucket's columns, null when the table shows
+ * none. */
 export type SbsPerfRow = {
   key: string;
+  list: 'regular' | 'direct';
   bucket: string;
-  fund: string;
+  kind: 'fund' | 'bench';
+  name: string;
+  /** The group (sub-heading) the row sits under; compared for funds only. */
+  group: string;
   returns: Record<string, number | null>;
-  benchmark: string | null;
-  benchReturns: Record<string, number | null>;
+  /** The reference record the row's figures come from (a key of MF_PERF, MF_PERF_DIRECT, PMS_PERF, AIF_PERF, SIF_PERF or
+   * STOCK_RET), or null; shown and used by the test's known-answer checks, never compared. */
+  ref: string | null;
 };
 
 /** One XIRR scope: the family, a client (by label) or an adviser (by label). */
@@ -50,7 +59,7 @@ export type SbsContribution = { key: string; list: 'contributors' | 'laggards' |
 export type SbsSide = {
   engine: 'legacy' | 'new';
   holdings: SbsHolding[];
-  /** null: the engine has no performance view yet (the new build until M3b, E-31). */
+  /** null: the engine has no performance view (kept for a side that cannot give one; both give it since M3b, PR #59). */
   performance: SbsPerfRow[] | null;
   scopes: SbsScope[];
   contributions: SbsContribution[] | null;
@@ -63,6 +72,17 @@ export type SbsInput = { baseBytes: Uint8Array; irrBytes: Uint8Array | null; asO
 export function holdingKey(client: unknown, name: unknown, folio: unknown, product: unknown, distributor: unknown): string {
   const n = (v: unknown): string => String(v ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
   return `${n(client)} | ${n(name)} | ${n(folio)} | ${n(product)} | ${n(distributor)}`;
+}
+
+/** The performance row key (SbsPerfRow). A benchmark's name goes through `benchKey` (the legacy normBench) first. */
+export function perfKey(list: string, bucket: string, kind: 'fund' | 'bench', name: string): string {
+  return `${list} | ${labelKey(bucket)} | ${kind} | ${kind === 'fund' ? labelKey(name) : name}`;
+}
+
+/** Adds rows to a performance list, keeping the first row of a key (a benchmark under two groups of one bucket). */
+export function pushPerfRow(out: SbsPerfRow[], row: SbsPerfRow): void {
+  if (row.kind === 'bench' && out.some((r) => r.key === row.key)) return;
+  out.push(row);
 }
 
 /** A label key: lower case, spaces folded (for scopes and buckets). */
