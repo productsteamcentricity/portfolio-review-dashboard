@@ -18,6 +18,7 @@ import { performanceSheet } from '../../../app/src/exports/xlsx/sheets/performan
 import { parseProductClassRules } from '../../../app/src/engine/match/product-class.ts';
 import { fundReturnSourcesFrom } from '../../../app/src/data/performance-sources.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
+import { dayToExcelSerial } from '../../../app/src/engine/dates.ts';
 import { refdataBlock } from '../../helpers/legacy-engine.ts';
 import { FILE_BLOCK_TEXT } from '../../helpers/node-wiring.ts';
 
@@ -116,6 +117,7 @@ describe('E-147 on screen and in the sheet', () => {
     assert.ok(Math.abs((at(rows[0]!, '3Y') as number) - 11) < 1e-9);
     assert.ok(Math.abs((at(rows[0]!, '5Y') as number) - 8.2) < 1e-9);
     assert.equal(at(rows[0]!, 'status'), STATUS.PARTIAL);
+    assert.equal(at(rows[0]!, 'asOn'), dayToExcelSerial(OCT31 as DayNumber), 'both figures are of 31 Oct 2026: the one date');
     assert.equal(at(rows[0]!, 'note'), `${w.notes[0]!.replace(/^Family, /, '')} ${w.notes[1]!.replace(/^Family, /, '')}`);
     assert.equal(at(rows[2]!, '3Y'), null);
     assert.equal(at(rows[2]!, 'status'), STATUS.NOT_AVAILABLE);
@@ -159,5 +161,32 @@ describe('B1 of the follow-up\'s financial review: a Direct-plan holding is read
     assert.ok(Math.abs(pct(r.byTenor['5y'].figure!.value) - 63 / 7) < 1e-9);
     const w = buildPerformanceVM(computePerformance(D, SRC2, { fundSources: FUNDS2 }), 'regular').weighted!;
     assert.equal(w.notes[1], 'Family, 5Y: weighted average return of current holdings. 5Y covers 70% of MF value; 1 fund whose plan differs from the account excluded. Source: MF Monitor (embedded monthly data), Regular plans, as on 31 Oct 2026; MF Monitor (embedded monthly data), Direct plans, as on 31 Oct 2026.');
+  });
+
+  test('L2 (Gate B of d93da80): the sheet\'s As On is blank when the 3Y and 5Y figures are of different dates, and the Note says so', () => {
+    /* the Direct table is of 30 Sep 2026, the Regular one of 31 Oct 2026. 3Y: only K1 (Direct) has a return, so the
+       figure is the Direct table's, 30 Sep. 5Y: K1 (Direct, 30 Sep) and K3 (Regular, 31 Oct); the figure takes the
+       date of the first table in the caller's order, the Regular one, 31 Oct. One row, two dates. */
+    const SEP30 = OCT31 - 31;
+    const FUNDS3: FundReturnSource[] = [{ source: 'embedded-mf-monitor', plans: { regular: { asOn: day(OCT31), funds: MF }, direct: { asOn: day(SEP30), funds: DIR } } }];
+    const D3 = [h('K1 Fund - Direct Plan - Growth', 5, 'c1', 'K1 Fund-Reg(G)'), h('K3 Fund', 2, 'c1', 'K3 Fund-Reg(G)')];
+    const res3 = computePerformance(D3, { ...SRC2, asOn: { MF: day(OCT31), MF_DIRECT: day(SEP30) } }, { fundSources: FUNDS3 });
+    const fam = res3.weighted![0]!;
+    const d3 = fam.byTenor['3y'].figure!.asOn;
+    const d5 = fam.byTenor['5y'].figure!.asOn;
+    assert.ok(d3.kind === 'value' && d3.v === SEP30, JSON.stringify(d3));
+    assert.ok(d5.kind === 'value' && d5.v === OCT31, JSON.stringify(d5));
+    /* the figures themselves: 3Y 15% over K1 alone; 5Y (5 x 11 + 2 x 4) / 7 = 9.00% */
+    assert.ok(Math.abs(pct(fam.byTenor['3y'].figure!.value) - 15) < 1e-9);
+    assert.ok(Math.abs(pct(fam.byTenor['5y'].figure!.value) - 63 / 7) < 1e-9);
+    const sheet = performanceSheet(res3);
+    const keys = sheet.columns.map((c) => c.key);
+    const at = (row: unknown[], k: string): unknown => { const c = row[keys.indexOf(k)] as { v?: unknown } | null; return c === null ? null : c?.v; };
+    const row = sheet.rows.filter((r) => at(r, 'row') === 'Weighted')[0]!;
+    assert.equal(at(row, 'asOn'), null, 'no single date stands for both figures');
+    const note = String(at(row, 'note'));
+    assert.ok(note.startsWith('The figures of this row do not share one as-on date, so As On is blank; each footnote gives its own. 3Y: '), note);
+    assert.match(note, /Direct plans, as on 30 Sep 2026/);
+    assert.match(note, /Regular plans, as on 31 Oct 2026/);
   });
 });

@@ -214,7 +214,10 @@ function route(holdings: readonly Holding[], s: PerformanceSources, leftOut: Per
     const pc = c.productClass;
     if (pc === 'PMS' || pc === 'AIF' || pc === 'SIF') {
       const book = bookOf(s, pc);
-      out.push({ h, bucket: pc, key, record: key && book ? book[key] ?? null : null });
+      /* a key whose record is not in this bucket's book is no match here (as for a mutual fund below): the row is
+         "not matched to reference data", never a matched fund "with no returns" (Gate B of 80e875e, note N2) */
+      const rec = key && book ? book[key] ?? null : null;
+      out.push({ h, bucket: pc, key: rec ? key : null, record: rec });
       continue;
     }
     const record = key && s.MF ? s.MF[key] ?? null : null;

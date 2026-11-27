@@ -151,8 +151,16 @@ function clientVM(s: ClientHoldingsSheet, review: Review, index: number): Holdin
     /* N5: the legacy's share of the client's CMV held by those holdings (07_engine.js:1284) */
     const cmvOf = (v: Value<number>): number => (v.kind === 'value' ? v.v : 0);
     const total = cmvOf(s.cmv);
-    const share = total !== 0 ? noInvRows.reduce((a, r) => a + cmvOf(r.cmv), 0) / total * 100 : 0;
-    notes.push(`${DOUBLE_DAGGER} Invested value, gain/loss and absolute return count only the holdings that have an invested value: ${plural(noInvRows.length, 'holding', 'holdings')} without one (${f(share)}% of CMV).`);
+    const part = noInvRows.reduce((a, r) => a + cmvOf(r.cmv), 0);
+    /* L1 of the Gate B of d93da80: the figure is a share only when no market value of the client is negative and the
+       total is above 0 (else it can pass 100% or fall below 0, so none is given); a share above 0 never reads 0.00% */
+    const negative = s.rows.some((r) => r.level === 'item' && r.cmv.kind === 'value' && r.cmv.v < 0);
+    const share = part / total * 100;
+    const shareText = negative ? 'their share of CMV is not given, as a market value is negative'
+      : total <= 0 ? 'their share of CMV is not given, as the CMV is 0'
+        : part > 0 && share < 0.005 ? 'under 0.01% of CMV'
+          : `${f(share)}% of CMV`;
+    notes.push(`${DOUBLE_DAGGER} Invested value, gain/loss and absolute return count only the holdings that have an invested value: ${plural(noInvRows.length, 'holding', 'holdings')} without one (${shareText}).`);
   }
   if (s.partial) {
     notes.push(s.partial.byCount

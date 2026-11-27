@@ -234,6 +234,26 @@ describe('the follow-up\'s financial review (27 Nov 2026): S1 to S4', () => {
     assert.equal(c.rows.find((r) => r.level === 'asset' && r.name === 'Debt')!.cells.xirr.text, '8.00%');
   });
 
+  test('L1 (Gate B of d93da80): the double-dagger share never reads 0.00% for a holding with a value, and is not given when a market value is negative', () => {
+    const gap = missing(STATUS.NOT_AVAILABLE, 'not in the file');
+    const FLEXI = 'Sample Flexi Cap Fund - Regular Plan - Growth';
+    const of = (holdings: unknown) => buildHoldingsVM({ ...review, holdings } as Review).clients.find((c) => c.title === 'Sample Client A')!.notes.find((x) => x.startsWith(DOUBLE_DAGGER))!;
+    /* a residual 0.00001 Cr without an invested value, beside Bluechip 0.625 and the bond 0.896: 0.00066% of 1.52101 Cr */
+    const tiny = of(review.holdings.map((h) => (h.instrumentName === FLEXI && h.cmv.kind === 'value' ? { ...h, invested: gap, cmv: { ...h.cmv, v: 0.00001 } } : h)));
+    assert.equal(tiny, `${DOUBLE_DAGGER} Invested value, gain/loss and absolute return count only the holdings that have an invested value: 1 holding without one (under 0.01% of CMV).`);
+    /* the same holding at its own 0.452 Cr: 0.452 / 1.973 = 22.91% */
+    const usual = of(review.holdings.map((h) => (h.instrumentName === FLEXI ? { ...h, invested: gap } : h)));
+    assert.match(usual, /1 holding without one \(22\.91% of CMV\)\.$/);
+    /* Bluechip made negative (-0.625): the client's CMV is 0.723 and the holding's 0.452 would read 62.52%, a share of nothing real */
+    const neg = of(review.holdings.map((h) => {
+      if (h.instrumentName === FLEXI) return { ...h, invested: gap };
+      if (h.instrumentName === 'Sample Bluechip Fund - Regular Plan - Growth' && h.cmv.kind === 'value') return { ...h, cmv: { ...h.cmv, v: -h.cmv.v } };
+      return h;
+    }));
+    assert.equal(neg, `${DOUBLE_DAGGER} Invested value, gain/loss and absolute return count only the holdings that have an invested value: 1 holding without one (their share of CMV is not given, as a market value is negative).`);
+    assert.doesNotMatch(neg, /[0-9]%/);
+  });
+
   test('S3: a CMV-weighted subtotal of market values of both signs is blank with its reason listed, product sharing its asset\'s note', () => {
     const holdings = review.holdings.map((h) => (h.instrumentName === 'Sample Flexi Cap Fund - Regular Plan - Growth' && h.cmv.kind === 'value'
       ? { ...h, cmv: { ...h.cmv, v: -h.cmv.v } } : h));

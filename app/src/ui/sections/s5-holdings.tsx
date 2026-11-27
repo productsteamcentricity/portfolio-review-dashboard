@@ -60,7 +60,7 @@ export function S5Holdings({ state }: { store: Store; state: AppState }) {
               </tbody>
             </table>
           </div>
-          {c.notes.length ? <ul class="plain-list notes">{c.notes.map((n) => <li key={n}>{n}</li>)}</ul> : null}
+          {c.notes.length ? <ul class="plain-list notes">{c.notes.map((n, ni) => <li key={`n${ni}`}>{n}</li>)}</ul> : null}
         </Group>
       ))}
       <S5Performance state={state} />

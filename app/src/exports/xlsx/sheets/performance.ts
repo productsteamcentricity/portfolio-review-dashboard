@@ -112,6 +112,7 @@ function weightedRows(push: (r: Row, style?: StyleSpec) => void, res: Performanc
     };
     const statuses: string[] = [];
     const notes: string[] = [];
+    const days: Array<Value<DayNumber>> = [];
     for (const t of WEIGHTED_TENORS) {
       const res1 = w.byTenor[t];
       const foot = footnoteOf(res1);
@@ -122,11 +123,18 @@ function weightedRows(push: (r: Row, style?: StyleSpec) => void, res: Performanc
       }
       const val = res1.figure.value;
       row[TENOR_KEY[t]] = v(val, PCT);
-      if (row.asOn === undefined) row.asOn = dateCell(res1.figure.asOn);
+      days.push(res1.figure.asOn);
       if (val.kind === 'missing') statuses.push(val.status);
       else if (val.coverage !== undefined && val.coverage < 1) statuses.push(STATUS.PARTIAL);
       notes.push(footnoteText(foot));
     }
+    /* As On holds one date only when every figure of the row has that date (L2 of the Gate B of d93da80): the 3Y and
+       the 5Y figure can come from tables of different dates (a Regular and a Direct table), and then the cell is
+       blank and the Note says so before the footnotes, each of which names its own date */
+    const dated = days.filter((d) => d.kind === 'value');
+    const oneDate = dated.length === days.length && dated.every((d) => d.v === dated[0]!.v);
+    if (days.length > 0 && (oneDate || dated.length === 0)) row.asOn = dateCell(days[0]!);
+    else if (days.length > 0) notes.unshift('The figures of this row do not share one as-on date, so As On is blank; each footnote gives its own.');
     if (statuses.length) row.status = strCell([...new Set(statuses)].join('; '));
     row.note = strCell(notes.join(' '));
     push(row);

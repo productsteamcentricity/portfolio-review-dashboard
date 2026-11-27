@@ -214,3 +214,25 @@ describe('N10: an unmatched fund and a matched fund with no returns are told apa
     assert.ok(b.notes.includes('1 fund has no returns in the data and is not shown: Alpha Empty Fund.'), JSON.stringify(b.notes));
   });
 });
+
+describe('N2 of the Gate B of 80e875e: a PMS, AIF or SIF key whose record is not in that bucket\'s book is no match', () => {
+  test('the row has no key and is listed as not matched, never as a matched fund with no returns', () => {
+    /* the holding carries a key (from another data set, or an older one) that the PMS book of SRC does not hold */
+    const res2 = computePerformance([
+      h('Stray Strategy PMS', 'PMS', 'Equity', 'Flexi Cap', 'Stray Strategy PMS'),
+      h('Beta Equity PMS', 'PMS', 'Equity', 'Flexi Cap', 'Beta Equity PMS'),
+    ], SRC);
+    const funds = res2.regular.find((b) => b.key === 'PMS')!.groups.flatMap((g) => g.funds);
+    assert.deepEqual(funds.map((f) => [f.name, f.key]).sort(), [['Beta Equity PMS', 'Beta Equity PMS'], ['Stray Strategy PMS', null]]);
+    const stray = funds.find((f) => f.name === 'Stray Strategy PMS')!;
+    assert.ok(stray.r['1Y']!.kind === 'missing' && stray.r['1Y']!.reason === 'the holding is not matched to reference data');
+    const notes = buildPerformanceVM(res2).buckets.find((b) => b.key === 'PMS')!.notes;
+    assert.ok(notes.includes('1 fund is not matched to reference data and is not shown: Stray Strategy PMS.'), JSON.stringify(notes));
+    assert.ok(!notes.some((x) => /no returns in the data/.test(x)), JSON.stringify(notes));
+    /* the sheet's Matched To cell is blank for it */
+    const sheet = performanceSheet(res2);
+    const keys = sheet.columns.map((c) => c.key);
+    const row = sheet.rows.find((r) => (r[keys.indexOf('name')] as { v?: unknown } | null)?.v === 'Stray Strategy PMS')!;
+    assert.equal(row[keys.indexOf('key')], null);
+  });
+});
