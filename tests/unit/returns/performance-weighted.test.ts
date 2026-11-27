@@ -240,7 +240,7 @@ describe('B1 of the follow-up\'s financial review: a Direct-plan holding is read
 });
 
 describe('L5 (Gate B of d93da80): mutual-fund holdings with no client are in the Family row and in no client row, and the table says so', () => {
-  const NOTE = '1 mutual-fund holding has no client in the base file: it is counted in the Family row and in no client row.';
+  const NOTE = '1 mutual-fund holding has no client in the base file: it is in the Family row\'s holdings and in no client row\'s.';
   const orphan = { ...h('K2 Fund', 3, 'c1', 'K2 Fund-Reg(G)'), clientId: null, clientLabel: null } as unknown as Holding;
   const r = computePerformance([h('K1 Fund', 5, 'c1', 'K1 Fund-Reg(G)'), orphan], SRC, { fundSources: FUNDS });
 
@@ -262,5 +262,28 @@ describe('L5 (Gate B of d93da80): mutual-fund holdings with no client are in the
     assert.ok(!String(at(rows[1]!, 'note')).includes('no client in the base file'));
     assert.ok(!buildPerformanceVM(res, 'regular').weighted!.notes.some((x) => x.includes('no client in the base file')));
     assert.equal(res.weighted![0]!.withoutClient, 0);
+  });
+
+  test('which holdings the count takes: mutual funds only, of any value; two of them read in the plural', () => {
+    const noClient = (x: Holding): Holding => ({ ...x, clientId: null, clientLabel: null } as unknown as Holding);
+    const k1 = h('K1 Fund', 5, 'c1', 'K1 Fund-Reg(G)');
+    /* a PMS with no client is not a mutual fund: no count, no note, and the family is K1 alone, 14.00% */
+    const pms = computePerformance([k1, noClient(h('A Portfolio PMS', 7, 'c1', undefined, 'PMS'))], SRC, { fundSources: FUNDS });
+    assert.equal(pms.weighted![0]!.withoutClient, 0);
+    assert.ok(Math.abs(pct(pms.weighted![0]!.byTenor['3y'].figure!.value) - 14) < 1e-9);
+    assert.ok(!buildPerformanceVM(pms, 'regular').weighted!.notes.some((x) => x.includes('no client in the base file')));
+    /* a mutual fund of no market value and no client is in the family's holdings (the count) though not in its figure:
+       the figure is K1's 14.00%, and the family's own footnote says the holding is not counted */
+    const zero = computePerformance([k1, noClient(h('K2 Fund', 0, 'c1', 'K2 Fund-Reg(G)'))], SRC, { fundSources: FUNDS });
+    assert.equal(zero.weighted![0]!.withoutClient, 1);
+    assert.ok(Math.abs(pct(zero.weighted![0]!.byTenor['3y'].figure!.value) - 14) < 1e-9);
+    const zn = buildPerformanceVM(zero, 'regular').weighted!.notes;
+    assert.ok(zn.includes(NOTE), JSON.stringify(zn));
+    assert.ok(zn.some((x) => x.startsWith('Family, 3Y') && /1 holding without a positive market value not counted/.test(x)), JSON.stringify(zn));
+    /* two of them, 3 and 2 Crore: (5 x 14 + 3 x 6) / 8 = 11.00% over 80% of the 10 Crore (K3 has no 3Y) */
+    const two = computePerformance([k1, noClient(h('K2 Fund', 3, 'c1', 'K2 Fund-Reg(G)')), noClient(h('K3 Fund', 2, 'c1', 'K3 Fund-Reg(G)'))], SRC, { fundSources: FUNDS });
+    assert.equal(two.weighted![0]!.withoutClient, 2);
+    assert.ok(Math.abs(pct(two.weighted![0]!.byTenor['3y'].figure!.value) - 11) < 1e-9);
+    assert.ok(buildPerformanceVM(two, 'regular').weighted!.notes.includes('2 mutual-fund holdings have no client in the base file: they are in the Family row\'s holdings and in no client row\'s.'));
   });
 });

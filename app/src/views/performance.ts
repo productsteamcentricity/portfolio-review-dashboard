@@ -62,11 +62,13 @@ export function scopeName(r: WeightedReturnRow, labels: Readonly<Record<string, 
   return plainText(labels[r.clientId] ?? r.clientLabel ?? NOT_GIVEN.client.label);
 }
 
-/** The family row's note when some mutual-fund holdings have no client (screen and sheet); null when all have one. */
+/** The family row's note when some mutual-fund holdings have no client (screen and sheet); null when all have one.
+ * "In the row's holdings", not "counted": whether a holding enters the figure is the footnote's to say (one without a
+ * positive market value does not). */
 export function withoutClientNote(r: WeightedReturnRow): string | null {
   const n = r.clientId === null ? r.withoutClient ?? 0 : 0;
   if (n === 0) return null;
-  return `${plural(n, 'mutual-fund holding has', 'mutual-fund holdings have')} no client in the base file: ${n === 1 ? 'it is' : 'they are'} counted in the Family row and in no client row.`;
+  return `${plural(n, 'mutual-fund holding has', 'mutual-fund holdings have')} no client in the base file: ${n === 1 ? 'it is' : 'they are'} in the Family row's holdings and in no client row's.`;
 }
 
 function weightedVM(rows: readonly WeightedReturnRow[] | null | undefined, labels: Readonly<Record<string, string>>): WeightedReturnsVM | null {

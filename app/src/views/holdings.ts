@@ -158,9 +158,11 @@ function clientVM(s: ClientHoldingsSheet, review: Review, index: number): Holdin
        total is above 0 (else it can pass 100% or fall below 0, so none is given); a share above 0 never reads 0.00% */
     const items = s.rows.filter((r) => r.level === 'item');
     const negative = items.some((r) => r.cmv.kind === 'value' && r.cmv.v < 0);
-    /* when no holding has an invested value the share is the whole, exactly (the two sums run in different orders,
-       so their ratio can fall a hair below 100 and would read 99.99%) */
-    const share = noInvRows.length === items.length ? 100 : part / total * 100;
+    /* when the holdings that do have an invested value hold no market value (or there is none), the share is the
+       whole, exactly (the two sums run in different orders, so their ratio can fall a hair below 100 and would read
+       99.99%) */
+    const whole = items.every((r) => r.invested.kind !== 'value' || cmvOf(r.cmv) === 0);
+    const share = whole ? 100 : part / total * 100;
     const shareText = negative ? 'their share of CMV is not given, as a market value is negative'
       : total <= 0 ? 'their share of CMV is not given, as the CMV is 0'
         : part > 0 && share < 0.005 ? 'under 0.01% of CMV'

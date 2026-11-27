@@ -18,13 +18,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     whole table stays the base file's, under the caption that says so (an owner question).
 - **The ‡ note's share of CMV** (note L1): a holding that has a value never reads "0.00% of CMV"; it reads "under 0.01%
   of CMV". When a market value of the client is negative, or the CMV is 0, no share is given and the note says why.
-  When no holding has an invested value the share reads 100.00%; it could read 99.99%.
+  When the holdings without an invested value hold all the market value the share reads 100.00%; it could read 99.99%.
 - **The Performance sheet's Weighted rows** (note L2): As On holds a date only when the 3Y and the 5Y figure share it.
   When they come from tables of different dates, the cell is blank and the Note says so before the two footnotes. A
   figure with no value brings no date; a figure built from tables of two dates keeps its first table's date, and its
   footnote names both (an owner question).
-- **Mutual-fund holdings with no client** are counted in the Family row of the weighted returns and in no client row. A
-  note under the table, and in the sheet's Family row, now says so with the count (note L5).
+- **Mutual-fund holdings with no client** are among the Family row's holdings in the weighted returns and in no client
+  row's. A note under the table, and in the sheet's Family row, now says so with the count (note L5).
 - **A PMS, AIF or SIF holding whose key has no record in that bucket's data** is "not matched to reference data", as a
   mutual fund already is, never a matched fund "with no returns" (Gate B of M3b, note N2).
 - The rows of the weighted-returns table and the notes lists are keyed by position, so two clients with one name cannot

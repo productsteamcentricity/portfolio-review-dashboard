@@ -294,6 +294,9 @@ describe('the follow-up\'s financial review (27 Nov 2026): S1 to S4', () => {
     const mk = (id: string, asset: string, v: number) => ({ ...A0, id, instrumentName: `Sample Fund ${id}`, assetClass: asset, invested: gap, cmv: { ...A0.cmv, v } });
     const all = [mk('w1', 'Equity', 0.607), mk('w2', 'Equity', 0.365), mk('w3', 'Debt', 0.017), mk('w4', 'Debt', 0.872)];
     assert.equal(buildHoldingsVM({ ...review, holdings: all } as unknown as Review).clients[0]!.notes.find((x) => x.startsWith(DOUBLE_DAGGER)), `${head}4 holdings without one (100.00% of CMV).`);
+    /* the same four beside a fifth that has an invested value and no market value: still the whole, 1.861 / 1.861 */
+    const withZero = [...all, { ...mk('w5', 'Debt', 0), invested: A0.invested }];
+    assert.equal(buildHoldingsVM({ ...review, holdings: withZero } as unknown as Review).clients[0]!.notes.find((x) => x.startsWith(DOUBLE_DAGGER)), `${head}4 holdings without one (100.00% of CMV).`);
   });
 
   test('S3: a CMV-weighted subtotal of market values of both signs is blank with its reason listed, product sharing its asset\'s note', () => {
