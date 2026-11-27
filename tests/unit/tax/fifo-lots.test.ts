@@ -707,4 +707,24 @@ describe('round 2c (Gate B of 5c9ae0a F3, F4; MOD-05\'s merger condition) on the
     assert.equal(recs.length, 2);
     assert.deepEqual(recs.map((x) => [x.unreconciledKind, Math.round(x.unclassified.cmv)]).sort(), [['mergerCandidate', 10800], ['mergerCandidate', 7200]].sort());
   });
+
+  test('B1 with folios: Contra and Value merged into Small Cap through FB1 and FB2, both holdings not split (mutant B1e)', () => {
+    // Contra 100 u at 100 and Value 100 u at 40, switched out whole on 10 Nov 2023 (15,000 and 5,000) into Small Cap
+    // through folio FB1 (15,000 = 100 u at 150) and FB2 (5,000 = 33.3333 u). Base: Small Cap FB1 100 u (invested 15,000,
+    // CMV 18,000) and FB2 33.3333 u (5,000, 6,000). The folios give each holding its own ledger with one switch-in row;
+    // both rows are the many-into-one candidate's, so both holdings are unreconciled 'mergerCandidate' (marking only the
+    // first switch-in row would leave FB2 split on a lot dated at the merger).
+    const VALUE = 'Sample Value Fund - Regular Plan - Growth';
+    const r = run([
+      hold(SMALL, 'Small Cap Fund', 'Equity', 100, 15000, 18000, { dist: D1, folio: 'FB1' }),
+      hold(SMALL, 'Small Cap Fund', 'Equity', 5000 / 150, 5000, 6000, { dist: D2, folio: 'FB2' }),
+    ], [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000, { folio: 'FA1' }), flow(VALUE, [2019, 7, 1], 'Purchase', 40, -4000, { folio: 'FV1' }),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 15000, { folio: 'FA1' }), flow(VALUE, [2023, 11, 10], 'Switch Out', 50, 5000, { folio: 'FV1' }),
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -15000, { folio: 'FB1' }), flow(SMALL, [2023, 11, 10], 'Switch In', 150, -5000, { folio: 'FB2' }),
+    ]);
+    const recs = recsOf(r, SMALL);
+    assert.equal(recs.length, 2);
+    assert.deepEqual(recs.map((x) => [x.unreconciledKind, Math.round(x.unclassified.cmv)]).sort(), [['mergerCandidate', 18000], ['mergerCandidate', 6000]].sort());
+  });
 });

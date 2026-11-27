@@ -582,3 +582,28 @@ describe('round 2c financial review V5: the amount tolerance from sale-value sum
     assert.equal(withinTolerance(paiseDifference(1e5 + 1.59, 1e5), reconcileTolerance(15800.5, 0, 2)), false);
   });
 });
+
+describe('Gate B of 4001f8f: a many-into-one merger in the reconciliation (mutant RC1)', () => {
+  test('a statement showing only one source\'s merger does not show the merger: the successor stays a gap', () => {
+    // IRR: Contra 100 u at 100 and Value 100 u at 40, switched out whole on 10 Nov 2023 (15,000 and 5,000) into Small
+    // Cap (20,000); Small Cap redeemed 4 May 2026 for 24,000. The statement shows Contra's merger row (non-taxable, 10 Nov
+    // 2023) and the Small Cap sale (original cost carried), but no Value merger. Every source must show it, so the Small
+    // Cap Tax year 2026-27 row is not reconciled for the derived gap; reading the ordinary-switch lots on one source's
+    // word would compare them as if the merger were shown.
+    const der = deriveRealisedGains(irrImport([
+      flow(CLIENT_A, SCHEME.OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(CLIENT_A, SCHEME.VALUE, [2019, 7, 1], 'Purchase', 40, -4000),
+      flow(CLIENT_A, SCHEME.OLD, [2023, 11, 10], 'Switch Out', 150, 15000), flow(CLIENT_A, SCHEME.VALUE, [2023, 11, 10], 'Switch Out', 50, 5000),
+      flow(CLIENT_A, SCHEME.NEW, [2023, 11, 10], 'Switch In', 150, -20000), flow(CLIENT_A, SCHEME.NEW, [2026, 5, 4], 'Redemption', 180, 24000),
+    ], xlsx).fund, { asOn: AS_ON_DAY });
+    assert.equal(der.counts.mergerCandidates, 2);
+    const imp = parseLots(mismatchStatementLots({ sellNew: 'carried' }).filter((l) => l.scheme === SCHEME.OLD || l.scheme === SCHEME.NEW), {}, xlsx);
+    const st: StatementSide = { imp, realised: realiseLots(imp, emptyTaxInputs(), { asOnDay: AS_ON_DAY, now: NOW }) };
+    const rec = reconcileRealised(der, st);
+    const r = rowOf(rec, 2026, SCHEME.NEW);
+    assert.equal(r.outcome, 'not-reconciled');
+    assert.equal(r.reason, 'derived-gaps');
+    assert.equal(r.mergerSuccessorLots, 0);
+    // Contra's own switch out is read as before where its merger is shown (0 against 0, reconciled).
+    assert.equal(rowOf(rec, 2023, SCHEME.OLD).outcome, 'reconciled');
+  });
+});

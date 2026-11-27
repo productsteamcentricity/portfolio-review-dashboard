@@ -931,4 +931,20 @@ describe('Gate B of 4001f8f: many-into-one mergers (B1), a provably partial swit
     assert.deepEqual(lotsOf(r, NEW).map((x) => [x.gap, x.mergerCandidate?.role ?? null]), [['merger-candidate', 'successor'], [null, null]]);
     near(v(lotsOf(r, NEW)[1]!.realised), 1000, 'fresh purchase sold');
   });
+
+  test('D1: a sale of A whose units are not known ends the lower bound, so a later switch out of the rest is a candidate (mutant D1b)', () => {
+    // Contra 100 u at 100; a Redemption of 7,000 with no price (units not known: it may have sold any number); then a
+    // Switch Out of 30 u at 150 (4,500), Contra's last trade, into Small Cap for 4,500. After the unknown sale no lower
+    // bound of Contra's units is left, so the switch out may have emptied it: a candidate, and Small Cap's later sale
+    // (30 u at 180, 5,400) a successor gap. Keeping the priced bound (100 - 30 = 70 u) would call it partial and compute
+    // it: the unsafe direction.
+    const r = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD, [2022, 1, 1], 'Redemption', null, 7000),
+      flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 4500), flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -4500),
+      flow(A, NEW, [2026, 5, 4], 'Redemption', 180, 5400),
+    ]);
+    assert.equal(r.counts.mergerCandidates, 1);
+    assert.deepEqual(lotsOf(r, OLD).map((x) => x.gap), ['sale-without-price', 'merger-candidate']);
+    assert.deepEqual(lotsOf(r, NEW).map((x) => [x.gap, x.mergerCandidate?.role]), [['merger-candidate', 'successor']]);
+  });
 });
