@@ -34,7 +34,17 @@
 //   - 'sale-without-amount': a sale row whose amount is 0 (it moves no units we can count, so later sales would take
 //     the wrong lots);
 //   - 'after-earlier-gap': a sale after any other gap in the same instrument, since which units remain is
-//     then not known (an oversell included, R2 B-1: the missing purchases' units would be sold first under FIFO).
+//     then not known (an oversell included, R2 B-1: the missing purchases' units would be sold first under FIFO);
+//   - 'merger-candidate' (round 2c, MOD-05's merger condition): the switch out of a merger candidate (lots.ts
+//     `mergerCandidates`: within one client and day, a switch out that empties scheme A, paired with exactly one switch in
+//     to another scheme B of the same amount), with no sale value; and every sale of B after the candidate's switch in,
+//     whose cost and date then carry over from A (a merger is not a sale, s.47(xviii)) and are not in the IRR file. It
+//     takes precedence over the other gaps of the row. The lots the ordinary-switch rule gives for the row are kept on the
+//     gap lot (`asSwitch`), never counted: reconcile.ts uses them only where the statement shows the merger, so its
+//     existing merger handling is unchanged. Without a statement no gain is computed on a candidate.
+// TR-21 (bonus stripping, s.94(8); Gate B of 5c9ae0a F2): a computed loss is flagged 'stripping-candidate' when some bonus
+// row's date b of the instrument has b minus 3 months <= purchase <= b < sale <= b plus 9 months (calendar months, clamped
+// to the month end as rules.ts `anniversaryOf`). The IRR file has no record date, so the bonus row's date stands for it.
 // Output: the engine-local DerivedLot (the contract's RealisedGain with `source: 'derived from transactions'` and the
 // lines the contract does not hold), and per scheme and financial year the totals. Derived lots carry no tax
 // computation in S5: the tax class, rule and taxable gain are missing (notComputed 'tax-class-not-set').
@@ -53,12 +63,11 @@ import { keyOf, normaliseLabel } from '../ids.ts';
 import { missing, present } from '../value.ts';
 import type { HoldingJoin } from '../returns/irr-tree.ts';
 import { matcherJoin } from '../returns/scope.ts';
-import { ymdToDay } from '../dates.ts';
-import { BONUS_KINDS, TRANSFER_IN_KINDS, UNITS_TOLERANCE, consumeFifo, isTradeFlow, tradePriceOf } from './lots.ts';
+import { dayToYmd, ymdToDay } from '../dates.ts';
+import { BONUS_KINDS, TRANSFER_IN_KINDS, UNITS_TOLERANCE, consumeFifo, isTradeFlow, mergerCandidates, tradePriceOf } from './lots.ts';
 import { INST, TAX_RULES_I21, classifyHolding, i21ByInst, isListedEtf } from './classify.ts';
 import type { ClassifyContext, I21Row } from './classify.ts';
 import { TAX_RULES_V1, anniversaryOf, ruleFor } from './rules.ts';
-import { STRIPPING_HOLDING_MONTHS } from './realised.ts';
 import type { DayWindow, SubType, TaxRuleTable } from './rules.ts';
 
 /** Units sold beyond the units held up to this many are rounding (lots.ts; re-exported here, where S5 introduced it). */
@@ -68,10 +77,10 @@ export const DERIVED_SOURCE = 'derived from transactions' as const;
 
 /** Why a derived lot's cost and realised gain are not computed. */
 export type DerivedGap = 'sale-without-price' | 'purchase-without-price' | 'units-beyond-held' | 'transfer-row' | 'bonus-row'
-  | 'sale-without-amount' | 'after-earlier-gap';
+  | 'sale-without-amount' | 'after-earlier-gap' | 'merger-candidate';
 
 export const DERIVED_GAPS: readonly DerivedGap[] = ['sale-without-price', 'purchase-without-price', 'units-beyond-held', 'transfer-row', 'bonus-row',
-  'sale-without-amount', 'after-earlier-gap'];
+  'sale-without-amount', 'after-earlier-gap', 'merger-candidate'];
 
 const GAP_TEXT: Readonly<Record<DerivedGap, string>> = {
   'sale-without-price': 'a sale without a price: the units it sold are not known',
@@ -81,7 +90,33 @@ const GAP_TEXT: Readonly<Record<DerivedGap, string>> = {
   'bonus-row': 'the sale reaches bonus units: bonus units have nil cost by law, and how the IRR file writes a bonus row is not confirmed',
   'sale-without-amount': 'a sale row with an amount of 0: the units it sold are not known',
   'after-earlier-gap': 'an earlier gap in this scheme leaves the units remaining not known',
+  'merger-candidate': 'a switch pair that looks like a scheme merger (the whole of one scheme switched into one other scheme on the same day for the same amount) moved these units: a merger is not a sale (s.47(xviii)) and cost and date carry over, which the IRR file does not give, so no gain is computed until the analyst confirms it',
 };
+
+/** TR-21 (s.94(8)): units bought within this many months before the record date... */
+export const STRIPPING_MONTHS_BEFORE = 3;
+/** ...and sold within this many months after it. */
+export const STRIPPING_MONTHS_AFTER = 9;
+
+/** The day N calendar months before a day, clamped to the month end (rules.ts `anniversaryOf` run backwards). */
+export function monthsBefore(day: DayNumber, months: number): DayNumber {
+  const { y, m, d } = dayToYmd(day);
+  const index = y * 12 + (m - 1) - months;
+  const year = Math.floor(index / 12);
+  const month = index - year * 12 + 1;
+  const firstOfNext = month === 12 ? ymdToDay(year + 1, 1, 1) : ymdToDay(year, month + 1, 1);
+  if (firstOfNext === null) throw new Error(`monthsBefore: year ${year} is out of range`);
+  return ymdToDay(year, month, Math.min(d, dayToYmd(firstOfNext - 1).d))!;
+}
+
+/**
+ * The s.94(8) window of TR-21 (Gate B of 5c9ae0a, F2): b minus 3 months <= purchase <= b < sale <= b plus 9 months, with
+ * b the bonus record date; the IRR file has no record date, so the bonus row's date stands for b.
+ */
+export function inStrippingWindow(purchaseDay: DayNumber, bonusDay: DayNumber, saleDay: DayNumber): boolean {
+  return monthsBefore(bonusDay, STRIPPING_MONTHS_BEFORE) <= purchaseDay && purchaseDay <= bonusDay
+    && bonusDay < saleDay && saleDay <= anniversaryOf(bonusDay, STRIPPING_MONTHS_AFTER);
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 // The term of a derived lot by the law at its sale date (R2 B-2)
@@ -164,6 +199,16 @@ export type DerivedLot = RealisedGain & {
   /** Null for a computed lot; the gap otherwise (cost and realised missing). */
   gap: DerivedGap | null;
   financialYearLabel: string;
+  /**
+   * Round 2c: on a 'merger-candidate' gap lot, its role (the candidate's switch out, or a sale of the scheme switched
+   * into, on or after the candidate's switch in) and the candidate's day; null otherwise.
+   */
+  mergerCandidate: { role: 'switch-out' | 'successor'; day: DayNumber } | null;
+  /**
+   * Round 2c: on a 'merger-candidate' gap lot, the lots the ordinary-switch rule gives for the row (as before round 2c).
+   * Never counted in a figure: reconcile.ts uses them only where the statement shows the merger. Null otherwise.
+   */
+  asSwitch: DerivedLot[] | null;
 };
 
 /** The derived totals of one client's instrument in one financial year (rupees). */
@@ -208,6 +253,8 @@ export type DerivedCounts = {
   instrumentsTermUnknown: number;
   /** Instruments with sales whose class is not a mutual-fund unit table v1 covers: their term is not known (R2 B-2). */
   instrumentsOutsideTable: number;
+  /** Switch pairs that look like a scheme merger (round 2c, lots.ts `mergerCandidates`). */
+  mergerCandidates: number;
 };
 
 /** One client's instrument as the derivation saw it (all instruments with trades, sold or not). */
@@ -282,7 +329,7 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
   const holdingById = new Map(holdings.map((h) => [h.id, h]));
   const counts: DerivedCounts = {
     flows: fund.length, trades: 0, sales: 0, purchases: 0, valuation: 0, untyped: 0, unrecognised: [], later: 0,
-    salesWithoutPrice: 0, purchasesWithoutPrice: 0, instrumentsTermUnknown: 0, instrumentsOutsideTable: 0,
+    salesWithoutPrice: 0, purchasesWithoutPrice: 0, instrumentsTermUnknown: 0, instrumentsOutsideTable: 0, mergerCandidates: 0,
   };
   const rules = opts.rules ?? TAX_RULES_V1;
   const sourceId = opts.sourceId ?? fund[0]?.at.sourceId ?? null;
@@ -290,6 +337,7 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
   // 1. Trades in day order (file order within a day), grouped by client and instrument; the rest counted.
   const sorted = fund.map((t, i) => ({ t, i })).sort((a, b) => a.t.day - b.t.day || a.i - b.i).map((x) => x.t);
   const groups = new Map<string, Transaction[]>();
+  const used: Transaction[] = [];
   for (const t of sorted) {
     if (t.direction === 'valuation') { counts.valuation++; continue; }
     if (t.kind === 'untyped') { counts.untyped++; continue; }
@@ -303,10 +351,16 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
     if (opts.asOn !== undefined && t.day > opts.asOn) { counts.later++; continue; }
     counts.trades++;
     if (t.direction === 'in') counts.purchases++; else counts.sales++;
+    used.push(t);
     const k = derivedInstrumentKey(t.clientId, t.instrumentName);
     const l = groups.get(k);
     if (l) l.push(t); else groups.set(k, [t]);
   }
+  // Round 2c (MOD-05's merger condition; Q-49): the switch pairs that look like a scheme merger.
+  const merger = mergerCandidates(used);
+  counts.mergerCandidates = merger.outs.size;
+  // TODO(contracts-4): the analyst's answer to a merger candidate (a merger, or an ordinary switch) needs a model field;
+  // until then every candidate stays a 'merger-candidate' gap without a statement.
 
   // 2. The ledger of each instrument.
   const lots: DerivedLot[] = [];
@@ -338,12 +392,15 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
     // Delta review N-1: once a transfer in, stock in or demerger in enters the ledger, the transferred units' original
     // acquisition date is not known, so the FIFO order is not known: every later sale is 'transfer-row'.
     let afterTransferIn = false;
-    // Delta review N-3 (TR-21): an instrument with a bonus row; its short-held losses are stripping candidates.
-    const hasBonus = trades.some((t) => t.direction === 'in' && BONUS_KINDS.has(t.kind));
+    // Delta review N-3, F2 (TR-21): the dates of the instrument's bonus rows, each standing for a record date.
+    const bonusDays = trades.filter((t) => t.direction === 'in' && BONUS_KINDS.has(t.kind)).map((t) => t.day);
+    // Round 2c: the day of a merger candidate's switch in to this instrument, once it has entered (null before).
+    let successorDay: DayNumber | null = null;
     for (const t of trades) {
       const amt = Math.abs(t.amountRupees);
       const px = tradePriceOf(t);
       if (t.direction === 'in') {
+        if (merger.ins.has(t)) successorDay = t.day;
         // B1, B2 (Gate B of aa67a45; Q-49): a transfer in, stock in, demerger in or bonus row is a lot not known, never
         // costed at its amount or dated by the row, until the owner rules how the IRR export writes such rows.
         const why = TRANSFER_IN_KINDS.has(t.kind) ? 'transfer' as const : BONUS_KINDS.has(t.kind) ? 'bonus' as const : px === null ? 'price' as const : null;
@@ -383,10 +440,11 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
         const buyDated = buy !== null && (buy.why === null || buy.why === 'price');
         const noTax = missing(STATUS.NOT_AVAILABLE, 'tax not computed on a lot derived from transactions (S5)');
         const flags = o.gap !== null ? ['tax.derived-gaps'] : [];
-        // TR-21 (design section 10.4; as realised.ts finish): without record-date data, a loss on a lot held 12 months or
-        // less of a scheme with bonus units is a bonus-stripping candidate, computed normally (delta review N-3).
-        if (o.gap === null && hasBonus && realised.kind === 'value' && realised.v < 0 && buy !== null && buy.known
-          && t.day <= anniversaryOf(buy.day, STRIPPING_HOLDING_MONTHS)) flags.push('stripping-candidate');
+        // TR-21 (design section 10.4; delta review N-3; F2): a loss on units bought within 3 months before a bonus row and
+        // sold within 9 months after it (s.94(8)) is a bonus-stripping candidate, computed normally; the bonus row's date
+        // stands for the record date, which the IRR file does not give.
+        if (o.gap === null && realised.kind === 'value' && realised.v < 0 && buy !== null && buy.known
+          && bonusDays.some((b) => inStrippingWindow(buy.day, b, t.day))) flags.push('stripping-candidate');
         return {
           source: DERIVED_SOURCE, at: t.at, scheme: t.instrument, schemeLabel: t.instrumentName ?? '', folio: t.folio,
           tagAsset: null, category: t.categoryLabel, statementAsset: null, clientId: t.clientId, accountId: null,
@@ -406,55 +464,70 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
           instrumentKey: key, instrumentName: t.instrumentName, clientLabel: t.clientLabel, saleKind: t.kind,
           saleRow: t.kind !== 'transfer-out' && amt > EPS,
           buyAt: buy?.at ?? null, buyKind: buy?.kind ?? null, i21: ra?.rule.inst ?? null, termRule, gap: o.gap,
+          mergerCandidate: null, asSwitch: null,
         };
       };
-      if (afterTransferIn) {
-        // Delta review N-1 (Q-49): the sale's lots and their order are not known after a transfer in.
-        lots.push(base({ units: px !== null ? amt / px : null, sale: t.kind === 'transfer-out' || amt <= EPS ? null : amt, buy: null, cost: null, gap: 'transfer-row' }));
-        broken = true;
-        continue;
+      const start = lots.length;
+      sale: {
+        if (afterTransferIn) {
+          // Delta review N-1 (Q-49): the sale's lots and their order are not known after a transfer in.
+          lots.push(base({ units: px !== null ? amt / px : null, sale: t.kind === 'transfer-out' || amt <= EPS ? null : amt, buy: null, cost: null, gap: 'transfer-row' }));
+          broken = true;
+          break sale;
+        }
+        if (broken) {
+          lots.push(base({ units: px !== null ? amt / px : null, sale: t.kind === 'transfer-out' || amt <= EPS ? null : amt, buy: null, cost: null, gap: 'after-earlier-gap' }));
+          break sale;
+        }
+        if (t.kind === 'transfer-out') {
+          // B1 (Gate B of aa67a45; Q-49): a transfer out is not a sale; what leaves and what carries over is not known.
+          lots.push(base({ units: px !== null ? amt / px : null, sale: null, buy: null, cost: null, gap: 'transfer-row' }));
+          broken = true;
+          break sale;
+        }
+        if (amt <= EPS) {
+          // Item 7 (Gate B of aa67a45): a sale row with an amount of 0 moves no units we can count.
+          lots.push(base({ units: null, sale: null, buy: null, cost: null, gap: 'sale-without-amount' }));
+          broken = true;
+          break sale;
+        }
+        if (px === null) {
+          lots.push(base({ units: null, sale: amt, buy: null, cost: null, gap: 'sale-without-price' }));
+          broken = true;
+          break sale;
+        }
+        const saleUnits = amt / px;
+        const firstUnknown = ledger.findIndex((x) => !x.known && x.u >= 0);
+        const known = firstUnknown < 0 ? ledger.slice() : ledger.slice(0, firstUnknown);
+        const { takes, short } = consumeFifo(known, saleUnits);
+        const gapped = short > UNITS_TOLERANCE || (short > 0 && takes.length === 0);
+        // Within the tolerance the residue is rounding: the sale value is shared over the units taken.
+        const denom = gapped ? saleUnits : saleUnits - short;
+        for (const tk of takes) {
+          const b = known[tk.index]!;
+          lots.push(base({ units: tk.take, sale: amt * tk.take / denom, buy: b, cost: tk.take * b.px!, gap: null }));
+        }
+        if (gapped) {
+          const reached = firstUnknown >= 0 ? ledger[firstUnknown]! : null;
+          lots.push(base({ units: short, sale: amt * short / saleUnits, buy: reached, cost: null, gap: reached ? REACHED_GAP[reached.why ?? 'price'] : 'units-beyond-held' }));
+          // Any gap breaks the ledger (R2 B-1): an oversell shows purchases (or a bonus or split) missing from the file,
+          // and FIFO would sell their remaining units before any later purchase, so no later sale's cost is known.
+          broken = true;
+        }
+        // Lots used up leave the ledger (a lot without known units stays until a gap breaks the ledger).
+        for (let i = ledger.length - 1; i >= 0; i--) if (ledger[i]!.known && ledger[i]!.u <= EPS) ledger.splice(i, 1);
       }
-      if (broken) {
-        lots.push(base({ units: px !== null ? amt / px : null, sale: t.kind === 'transfer-out' || amt <= EPS ? null : amt, buy: null, cost: null, gap: 'after-earlier-gap' }));
-        continue;
+      // Round 2c (MOD-05's merger condition; Q-49): the switch out of a merger candidate, or a sale of the scheme switched
+      // into after the candidate's switch in, is one 'merger-candidate' gap lot. The ledger above ran as before, so the
+      // lots it gave for the row (the ordinary-switch reading) are kept on the gap lot, never counted (`asSwitch`).
+      const out = merger.outs.get(t);
+      const role = out !== undefined ? 'switch-out' as const : successorDay !== null ? 'successor' as const : null;
+      if (role !== null) {
+        const asSwitch = lots.splice(start);
+        const gapSale = role === 'switch-out' || t.kind === 'transfer-out' || amt <= EPS ? null : amt;
+        const g = base({ units: px !== null && amt > EPS ? amt / px : null, sale: gapSale, buy: null, cost: null, gap: 'merger-candidate' });
+        lots.push({ ...g, mergerCandidate: { role, day: role === 'switch-out' ? t.day : successorDay! }, asSwitch });
       }
-      if (t.kind === 'transfer-out') {
-        // B1 (Gate B of aa67a45; Q-49): a transfer out is not a sale; what leaves and what carries over is not known.
-        lots.push(base({ units: px !== null ? amt / px : null, sale: null, buy: null, cost: null, gap: 'transfer-row' }));
-        broken = true;
-        continue;
-      }
-      if (amt <= EPS) {
-        // Item 7 (Gate B of aa67a45): a sale row with an amount of 0 moves no units we can count.
-        lots.push(base({ units: null, sale: null, buy: null, cost: null, gap: 'sale-without-amount' }));
-        broken = true;
-        continue;
-      }
-      if (px === null) {
-        lots.push(base({ units: null, sale: amt, buy: null, cost: null, gap: 'sale-without-price' }));
-        broken = true;
-        continue;
-      }
-      const saleUnits = amt / px;
-      const firstUnknown = ledger.findIndex((x) => !x.known && x.u >= 0);
-      const known = firstUnknown < 0 ? ledger.slice() : ledger.slice(0, firstUnknown);
-      const { takes, short } = consumeFifo(known, saleUnits);
-      const gapped = short > UNITS_TOLERANCE || (short > 0 && takes.length === 0);
-      // Within the tolerance the residue is rounding: the sale value is shared over the units taken.
-      const denom = gapped ? saleUnits : saleUnits - short;
-      for (const tk of takes) {
-        const b = known[tk.index]!;
-        lots.push(base({ units: tk.take, sale: amt * tk.take / denom, buy: b, cost: tk.take * b.px!, gap: null }));
-      }
-      if (gapped) {
-        const reached = firstUnknown >= 0 ? ledger[firstUnknown]! : null;
-        lots.push(base({ units: short, sale: amt * short / saleUnits, buy: reached, cost: null, gap: reached ? REACHED_GAP[reached.why ?? 'price'] : 'units-beyond-held' }));
-        // Any gap breaks the ledger (R2 B-1): an oversell shows purchases (or a bonus or split) missing from the file,
-        // and FIFO would sell their remaining units before any later purchase, so no later sale's cost is known.
-        broken = true;
-      }
-      // Lots used up leave the ledger (a lot without known units stays until a gap breaks the ledger).
-      for (let i = ledger.length - 1; i >= 0; i--) if (ledger[i]!.known && ledger[i]!.u <= EPS) ledger.splice(i, 1);
     }
   }
 
@@ -526,11 +599,18 @@ function deriveIssues(lots: readonly DerivedLot[], counts: DerivedCounts, source
       `${plural(gaps.length, 'realised lot derived from the IRR file is', 'realised lots derived from the IRR file are')} not computed and no figure is estimated for ${gaps.length === 1 ? 'it' : 'them'}: ${by.join('; ')}. The scheme and year totals they belong to are PARTIAL COVERAGE.`,
       gaps.length);
   }
+  if (counts.mergerCandidates) {
+    // Round 2c (MOD-05's merger condition): the question to the analyst, in counts only.
+    const n = counts.mergerCandidates;
+    add('derived-merger-candidates', 'Warning',
+      `${plural(n, 'switch pair looks', 'switch pairs look')} like a scheme merger; a merger is not a sale (s.47(xviii)) and cost and date carry over; confirm ${n === 1 ? 'it' : 'each'} with the analyst. No gain is computed on ${n === 1 ? 'it' : 'them'} without a capital-gains statement.`,
+      n);
+  }
   const strip = lots.filter((l) => l.flags.includes('stripping-candidate')).length;
   if (strip) {
-    // TR-21 (delta review N-3): the statement side's Warning, for the lots derived from the IRR file.
+    // TR-21 (delta review N-3; F2): the statement side's Warning, for the lots derived from the IRR file.
     add('stripping-candidate', 'Warning',
-      `${plural(strip, 'loss derived from the IRR file', 'losses derived from the IRR file')}, on units held 12 months or less of a scheme with a bonus row, may fall under bonus stripping; without record-date data ${strip === 1 ? 'it is' : 'they are'} computed normally.`,
+      `${plural(strip, 'loss derived from the IRR file', 'losses derived from the IRR file')}, on units bought within 3 months before a bonus row and sold within 9 months after it (s.94(8)), may fall under bonus stripping; without record-date data ${strip === 1 ? 'it is' : 'they are'} computed normally, and the bonus row's date stands for the record date.`,
       strip);
   }
   if (counts.untyped || counts.unrecognised.length) {

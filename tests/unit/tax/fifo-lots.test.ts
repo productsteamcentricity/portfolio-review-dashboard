@@ -541,3 +541,77 @@ describe('delta review N-2 and N-4: a transfer out named on the record; the over
     near(x.lt.cmv, 13000, 'long');
   });
 });
+
+describe('round 2c (Gate B of 5c9ae0a F3, F4; MOD-05\'s merger condition) on the holdings side', () => {
+  const OLD = 'Sample Contra Fund - Regular Plan - Growth';
+  const SMALL = 'Sample Small Cap Fund - Regular Plan - Growth';
+
+  test('F3: on a shared instrument the oversell and its reason are this holding\'s share (OD-15)', () => {
+    // IRR (no folio): Purchase 1 Feb 2024 100 u at 100; Redemption 1 Jun 2024 15,000 at 100 = 150 u (50 u beyond);
+    // Purchase 1 Feb 2025 400 u at 120 (48,000). Holdings D1 300 u (invested 36,000, CMV 39,000) and D2 100 u (12,000,
+    // 13,000): shares 0.75 and 0.25 of the 400 u lot. The oversell is 50 u for the scheme: 37.5 u for D1 and 12.5 u for
+    // D2 (5c9ae0a gave 50 to each). Both split, long on 30 Sep 2026: 39,000 at a gain of 3,000; 13,000 at 1,000.
+    const r = run([
+      hold(MID, 'Mid Cap Fund', 'Equity', 300, 36000, 39000, { dist: D1 }),
+      hold(MID, 'Mid Cap Fund', 'Equity', 100, 12000, 13000, { dist: D2 }),
+    ], [
+      flow(MID, [2024, 2, 1], 'Purchase', 100, -10000, { dist: null }),
+      flow(MID, [2024, 6, 1], 'Redemption', 100, 15000, { dist: null }),
+      flow(MID, [2025, 2, 1], 'Purchase', 120, -48000, { dist: null }),
+    ]);
+    const [h1, h2] = recsOf(r, MID);
+    assert.ok(h1 && h2);
+    near(h1.oversoldUnits, 37.5, 'D1 share'); near(h2.oversoldUnits, 12.5, 'D2 share');
+    near(h1.lt.cmv, 39000); near(h1.lt.gain, 3000); near(h2.lt.cmv, 13000); near(h2.lt.gain, 1000);
+    assert.match(h1.reason!, /sells more units than its earlier purchases hold \(37\.5 units beyond, this holding's share by units of the scheme's history \(OD-15\)\)/);
+    assert.match(h2.reason!, /\(12\.5 units beyond, this holding's share/);
+    // Not shared: the whole figure, without the share words (item 6's case: 50 u).
+    const own = run([hold(FLEXI, 'Flexi Cap Fund', 'Equity', 100, 12000, 13000)], [
+      flow(FLEXI, [2024, 1, 10], 'Purchase', 100, -10000), flow(FLEXI, [2024, 6, 10], 'Redemption', 100, 15000),
+      flow(FLEXI, [2025, 1, 10], 'Purchase', 120, -12000),
+    ]);
+    assert.match(one(own, FLEXI).reason!, /\(50 units beyond\), so a purchase, bonus or split is missing/);
+  });
+
+  test('F4: a sale of 0 within the 1% band keeps the split and is named in the reason', () => {
+    // Purchase 1 Jan 2024 100 u at 100; Redemption 1 Jan 2025 written at 110 for 0. Base 99.5 u (invested 9,950, CMV
+    // 11,940): 0.5% from the history's 100 u, inside the band, so the split stands: long 11,940 at a gain of 1,990
+    // (5c9ae0a: the same split with no reason). The reason names the sale of 0.
+    const r = run([hold(BLUE, 'Large Cap Fund', 'Equity', 99.5, 9950, 11940)], [
+      flow(BLUE, [2024, 1, 1], 'Purchase', 100, -10000), flow(BLUE, [2025, 1, 1], 'Redemption', 110, 0),
+    ]);
+    const x = one(r, BLUE);
+    assert.equal(x.status, 'ok');
+    near(x.lt.cmv, 11940, 'long'); near(x.lt.gain, 1990, 'gain');
+    assert.equal(x.reason, 'A sale, switch out or transfer out in the transaction history carries an amount of 0, so the units it sold could not be counted; the units still reconcile to the base file within 1%, so the split is shown on them.');
+  });
+
+  test('the merger condition: a holding with a merger candidate\'s switch in is not split; an ordinary partial switch is', () => {
+    // Contra: Purchase 1 Jul 2019 100 u at 100; Switch Out 10 Nov 2023 15,000 at 150 = all 100 u, Contra's last trade;
+    // Small Cap: Switch In 10 Nov 2023 15,000 at 150 (100 u), the only switch in of that amount: a merger candidate.
+    // Base Small Cap 100 u, invested 15,000, CMV 18,000. 5c9ae0a split it long 18,000 at a gain of 3,000, dated and
+    // costed at the switch; now unreconciled 'mergerCandidate', the 18,000 and 3,000 unclassified. Long + short +
+    // unclassified = CMV in the roll-up; no harvest candidate.
+    const r = run([hold(SMALL, 'Small Cap Fund', 'Equity', 100, 15000, 18000)], [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 15000),
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -15000),
+    ]);
+    const x = one(r, SMALL);
+    assert.equal(x.status, 'unreconciled');
+    assert.equal(x.unreconciledKind, 'mergerCandidate');
+    near(x.unclassified.cmv, 18000, 'unclassified'); near(x.unclassified.gain, 3000, 'gain');
+    assert.equal(x.lt.cmv + x.st.cmv, 0);
+    assert.match(x.reason!, /looks like a scheme merger: on the same day the whole of another scheme was switched out for the same amount\. A merger is not a sale \(s\.47\(xviii\)\)/);
+    // The partial switch: 7,500 = 50 of Contra's 100 u (Contra kept), Small Cap 50 u in at 150. Base 50 u, invested
+    // 7,500, CMV 9,000: an ordinary switch, split long 9,000 at a gain of 1,500 as before.
+    const p = run([hold(SMALL, 'Small Cap Fund', 'Equity', 50, 7500, 9000)], [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 7500),
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -7500),
+    ]);
+    const y = one(p, SMALL);
+    assert.equal(y.status, 'ok');
+    near(y.lt.cmv, 9000, 'long'); near(y.lt.gain, 1500, 'gain');
+  });
+});

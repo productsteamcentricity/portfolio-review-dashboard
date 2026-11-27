@@ -9,6 +9,8 @@ import assert from 'node:assert/strict';
 import { readWorkbook } from '../../../app/src/ingest/workbook.ts';
 import { parseBaseFile } from '../../../app/src/ingest/base-file.ts';
 import { deriveRealisedGains, DERIVED_SOURCE, UNITS_TOLERANCE } from '../../../app/src/engine/tax/realised-irr.ts';
+// Round 2c's window helpers through the namespace, so the file still loads on an older engine (the revert proof).
+import * as realisedIrr from '../../../app/src/engine/tax/realised-irr.ts';
 import type { DerivedLot, DerivedRealised, DeriveOptions } from '../../../app/src/engine/tax/realised-irr.ts';
 import { consumeFifo } from '../../../app/src/engine/tax/lots.ts';
 import { realisedForYear } from '../../../app/src/engine/tax/reconcile.ts';
@@ -610,5 +612,167 @@ describe('delta review N-3: TR-21 bonus-stripping candidates on derived lots (de
     assert.ok(w && w.severity === 'Warning' && w.count === 1);
     assert.match(w.message, /may fall under bonus stripping; without record-date data it is computed normally/);
     assert.ok(!DASH.test(w.message));
+  });
+});
+
+describe('round 2c, F2 (Gate B of 5c9ae0a): the TR-21 flag only inside the s.94(8) window around the bonus row', () => {
+  // Each instrument: a Purchase of 100 u at 100 (10,000), a Bonus row of 50 u written at 90 (-4,500) on b, and a
+  // Redemption of 100 u from the purchase (FIFO: the purchase lot comes first). A loss sells at 90 (9,000: -1,000), a
+  // gain at 110 (+1,000), nil at 100 (0). The window: b minus 3 months <= purchase <= b < sale <= b plus 9 months,
+  // calendar months clamped to the month end; b = 31 May 2025: from 28 Feb 2025, to 28 Feb 2026.
+  type Ymd = readonly [number, number, number];
+  type Case = { name: string; buy: Ymd; sale: Ymd; px?: number; bonus?: Ymd | null; flag: boolean; why: string };
+  const B31: Ymd = [2025, 5, 31];
+  const cases: Case[] = [
+    { name: 'W1', buy: [2025, 2, 28], sale: [2025, 9, 1], flag: true, why: 'bought on b minus 3 months (28 Feb, clamped)' },
+    { name: 'W2', buy: [2025, 2, 27], sale: [2025, 9, 1], flag: false, why: 'bought a day before the window' },
+    { name: 'W3', buy: [2025, 5, 31], sale: [2025, 9, 1], flag: true, why: 'bought on b' },
+    { name: 'W4', buy: [2025, 4, 1], sale: [2025, 5, 31], flag: false, why: 'sold on b, not after it' },
+    { name: 'W5', buy: [2025, 4, 1], sale: [2026, 2, 28], flag: true, why: 'sold on b plus 9 months (28 Feb 2026, clamped)' },
+    { name: 'W6', buy: [2025, 4, 1], sale: [2026, 3, 1], flag: false, why: 'sold a day after the window' },
+    // A purchase after b cannot give a computed loss here: FIFO reaches the earlier bonus lot first, a 'bonus-row' gap
+    // (B2), which breaks the ledger. The bound purchase <= b is pinned by W3 and on the window itself (next test).
+    { name: 'G', buy: [2025, 4, 1], sale: [2025, 9, 1], px: 110, flag: false, why: 'a gain inside the window (D-1)' },
+    { name: 'Z', buy: [2025, 4, 1], sale: [2025, 9, 1], px: 100, flag: false, why: 'a realised gain of 0 is not a loss (M14)' },
+    { name: 'N', buy: [2025, 4, 1], sale: [2025, 9, 1], bonus: null, flag: false, why: 'no bonus row (M12)' },
+    // CHAT-012's F2 case: a bonus after the sale (buy 1 Jan 2025, loss sale 1 Mar 2025, bonus 1 Jun 2025).
+    { name: 'AFTER', buy: [2025, 1, 1], sale: [2025, 3, 1], bonus: [2025, 6, 1], flag: false, why: 'the bonus comes after the sale' },
+  ];
+  const nameOf = (c: Case): string => `Sample Window ${c.name} Fund - Growth`;
+  const r = run(cases.flatMap((c) => {
+    const bonus = c.bonus === undefined ? B31 : c.bonus;
+    const px = c.px ?? 90;
+    return [
+      flow(A, nameOf(c), c.buy, 'Purchase', 100, -10000),
+      ...(bonus ? [flow(A, nameOf(c), bonus, 'Bonus', 90, -4500)] : []),
+      flow(A, nameOf(c), c.sale, 'Redemption', px, px * 100),
+    ];
+  }));
+
+  for (const c of cases) {
+    test(`${c.name}: ${c.flag ? 'flagged' : 'not flagged'}, ${c.why}`, () => {
+      const l = lotsOf(r, nameOf(c));
+      assert.equal(l.length, 1);
+      assert.equal(l[0]!.gap, null);
+      near(v(l[0]!.realised), ((c.px ?? 90) - 100) * 100, 'computed normally');
+      assert.equal(l[0]!.flags.includes('stripping-candidate'), c.flag);
+    });
+  }
+
+  test('the window itself: month ends clamped both ways; a purchase after b, or a bonus years before it, is outside', () => {
+    // b = 31 May 2025: 3 months before is 28 Feb 2025 (no 31 Feb), 9 months after 28 Feb 2026. b = 31 Aug 2024: 3 months
+    // before is 31 May 2024; 9 months after 31 May 2025. Leap year: b = 31 May 2024: 29 Feb 2024 and 28 Feb 2025.
+    const { monthsBefore, inStrippingWindow, STRIPPING_MONTHS_BEFORE, STRIPPING_MONTHS_AFTER } = realisedIrr;
+    assert.equal(monthsBefore(day(2025, 5, 31), 3), day(2025, 2, 28));
+    assert.equal(monthsBefore(day(2024, 8, 31), 3), day(2024, 5, 31));
+    assert.equal(monthsBefore(day(2024, 5, 31), 3), day(2024, 2, 29));
+    assert.equal(monthsBefore(day(2025, 2, 15), 3), day(2024, 11, 15));
+    const b = day(2025, 5, 31);
+    assert.equal(inStrippingWindow(day(2025, 2, 28), b, day(2026, 2, 28)), true);
+    assert.equal(inStrippingWindow(day(2025, 6, 1), b, day(2025, 9, 1)), false, 'bought after b');
+    assert.equal(inStrippingWindow(day(2025, 1, 1), day(2023, 6, 1), day(2025, 3, 1)), false, 'bonus years before the purchase');
+    assert.equal(inStrippingWindow(day(2025, 1, 1), day(2025, 6, 1), day(2025, 3, 1)), false, 'bonus after the sale');
+    assert.equal(STRIPPING_MONTHS_BEFORE, 3);
+    assert.equal(STRIPPING_MONTHS_AFTER, 9);
+  });
+
+  test('the Warning counts the flagged lots and says the bonus row\'s date stands for the record date', () => {
+    const w = r.issues.find((i) => i.ruleId === 'tax.stripping-candidate')!;
+    assert.equal(w.count, cases.filter((c) => c.flag).length);
+    assert.match(w.message, /^3 losses derived from the IRR file, on units bought within 3 months before a bonus row and sold within 9 months after it \(s\.94\(8\)\), may fall under bonus stripping; without record-date data they are computed normally, and the bonus row's date stands for the record date\.$/);
+    assert.ok(!DASH.test(w.message));
+  });
+});
+
+describe('round 2c, the merger condition (MOD-05): merger candidates on the realised side', () => {
+  const OLD = 'Sample Contra Fund - Regular Plan - Growth';
+  const NEW = 'Sample Small Cap Fund - Regular Plan - Growth';
+  const THIRD = 'Sample Focused Fund - Regular Plan - Growth';
+  /** A: OLD bought 1 Jul 2019 100 u at 100; on 10 Nov 2023 a Switch Out of OLD and Switch Ins as given. */
+  const pair = (out: number, ins: Array<[string, number]>, extra: Cell[][] = []): DerivedRealised => run([
+    flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000),
+    flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, out),
+    ...ins.map(([name, amt]) => flow(A, name, [2023, 11, 10], 'Switch In', 150, -amt)),
+    ...extra,
+  ]);
+  const oldGap = (r: DerivedRealised): string | null => lotsOf(r, OLD)[0]!.gap;
+
+  test('the whole holding into one other scheme for the same amount is a candidate; within the amount tolerance too', () => {
+    // 15,000 = 100 u at 150, all of OLD; one Switch In of 15,000: candidate. 15,001 (within Rs 1.50 = 0.01% of
+    // 15,001): candidate; 15,002: an ordinary switch, computed 5,000.
+    assert.equal(oldGap(pair(15000, [[NEW, 15000]])), 'merger-candidate');
+    assert.equal(oldGap(pair(15000, [[NEW, 15001]])), 'merger-candidate');
+    const r = pair(15000, [[NEW, 15002]]);
+    assert.equal(oldGap(r), null);
+    near(v(lotsOf(r, OLD)[0]!.realised), 5000, 'ordinary switch');
+    assert.equal(r.counts.mergerCandidates, 0);
+    assert.ok(!r.issues.some((i) => i.ruleId === 'tax.derived-merger-candidates'));
+  });
+
+  test('the whole holding within UNITS_TOLERANCE: 0.0004 u short of 100 u is still the whole holding', () => {
+    // Switch Out of 14,999.94 at 150 = 99.9996 u: 0.0004 u left, within 0.0005: a candidate (with a switch in of the same
+    // amount). Of 14,999.91 = 99.9994 u: 0.0006 u left, A is kept: an ordinary switch, computed.
+    assert.equal(oldGap(pair(14999.94, [[NEW, 14999.94]])), 'merger-candidate');
+    assert.equal(oldGap(pair(14999.91, [[NEW, 14999.91]])), null);
+  });
+
+  test('what stays computed: a partial switch, A traded later, several partners, another client, a redemption', () => {
+    // Partial: 7,500 = 50 of 100 u (A kept) with a Switch In of 7,500: computed 2,500.
+    const partial = pair(7500, [[NEW, 7500]]);
+    assert.equal(oldGap(partial), null);
+    near(v(lotsOf(partial, OLD)[0]!.realised), 2500, 'partial');
+    // A later Purchase of OLD (1 Dec 2023): A is not left empty, computed.
+    assert.equal(oldGap(pair(15000, [[NEW, 15000]], [flow(A, OLD, [2023, 12, 1], 'Purchase', 150, -1500)])), null);
+    // Two Switch Ins of 15,000 the same day (NEW and THIRD): several possible partners, computed; neither switch in is
+    // a candidate's (a later sale of NEW stays computed).
+    const two = pair(15000, [[NEW, 15000], [THIRD, 15000]], [flow(A, NEW, [2026, 5, 4], 'Redemption', 180, 18000)]);
+    assert.equal(oldGap(two), null);
+    assert.deepEqual(lotsOf(two, NEW).map((x) => x.gap), [null]);
+    // Two Switch Outs of 15,000 that day (OLD and THIRD, THIRD kept) and one Switch In: the switch in has two possible
+    // partners, computed.
+    const rivals = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, THIRD, [2019, 7, 1], 'Purchase', 100, -20000),
+      flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 15000), flow(A, THIRD, [2023, 11, 10], 'Switch Out', 150, 15000),
+      flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -15000),
+    ]);
+    assert.equal(oldGap(rivals), null);
+    // The switch in is another client's: not one client, computed.
+    const other = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 15000),
+      flow(B, NEW, [2023, 11, 10], 'Switch In', 150, -15000),
+    ]);
+    assert.equal(oldGap(other), null);
+    // A redemption (not a switch out) of the whole holding with a switch in of the same amount: computed.
+    const redemption = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD, [2023, 11, 10], 'Redemption', 150, 15000),
+      flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -15000),
+    ]);
+    assert.equal(oldGap(redemption), null);
+  });
+
+  test('the scheme switched into: sales before the candidate stay computed, sales after are the gap', () => {
+    // NEW: Purchase 1 Jan 2023 100 u at 100; Redemption 1 Mar 2023 20 u at 120 (2,400: realised 400, before the switch
+    // in, computed); the candidate's Switch In 10 Nov 2023 (100 u at 150); Redemption 1 Jun 2025 50 u at 200 (10,000):
+    // FIFO would take the 2023 purchase (cost 5,000, realised 5,000), but it comes after the switch in: one
+    // 'merger-candidate' gap lot, sale value 10,000, no cost, no realised gain, the ordinary-switch lot kept.
+    const r = run([
+      flow(A, NEW, [2023, 1, 1], 'Purchase', 100, -10000),
+      flow(A, NEW, [2023, 3, 1], 'Redemption', 120, 2400),
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000),
+      flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 15000),
+      flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -15000),
+      flow(A, NEW, [2025, 6, 1], 'Redemption', 200, 10000),
+    ]);
+    const l = lotsOf(r, NEW);
+    assert.deepEqual(l.map((x) => x.gap), [null, 'merger-candidate']);
+    near(v(l[0]!.realised), 400, 'before the switch in');
+    assert.deepEqual(l[1]!.mergerCandidate, { role: 'successor', day: day(2023, 11, 10) });
+    near(v(l[1]!.saleValue), 10000, 'sale value'); near(v(l[1]!.units), 50, 'units');
+    assert.equal(l[1]!.realised.kind, 'missing'); assert.equal(l[1]!.purchaseDate.kind, 'missing');
+    assert.deepEqual(l[1]!.asSwitch!.map((x) => v(x.realised)), [5000]);
+    const sy = r.schemeYears.find((s) => s.instrumentName === NEW && s.fy === 2025)!;
+    assert.equal(sy.realised.kind, 'missing');
+    assert.deepEqual(sy.gaps, { 'merger-candidate': 1 });
+    assert.match(r.issues.find((i) => i.ruleId === 'tax.derived-gaps')!.message, /looks like a scheme merger/);
   });
 });

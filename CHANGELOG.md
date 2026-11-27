@@ -4,6 +4,34 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (new build, M7a tax engine, round 2c: Gate B of 5c9ae0a F1 to F4 and merger candidates; not wired into the page yet)
+- **Q-49 throughout: a gap is named, never estimated.** The owner has not said how the IRR export writes mergers,
+  transfers or bonuses (Q-T1, Q-T5); nothing below assumes it.
+- **F1 (`engine/tax/reconcile.ts`):** the difference of the two sides is taken from each side's sum rounded to whole
+  paise and compared with the tolerance with a relative epsilon of a few ULPs, so a difference exactly at the tolerance
+  reconciles (10,200 against 10,198.98 at 1.02; 136 paise against the 72-row tolerance Rs 1.36). The Q4 and Q5 pairs
+  hold.
+- **F2 (`engine/tax/realised-irr.ts`):** the TR-21 Warning `stripping-candidate` only when the loss is inside the
+  s.94(8) window: b minus 3 months <= purchase <= b < sale <= b plus 9 months (calendar months, clamped to the month
+  end), the bonus row's date standing for the record date b, which the export does not give (said in the Warning). A
+  bonus after the sale, or before the window, no longer flags.
+- **F3, F4 (`engine/tax/lots.ts`):** on a shared instrument the holdings oversell (`oversoldUnits` and its reason, which
+  now gives the units) is the holding's share (OD-15); a sale of 0 within the 1% band keeps the split and is named in
+  the reason.
+- **The merger condition (MOD-05):** a switch out that empties a scheme into exactly one other scheme on the same day
+  for the same amount (within the reader's amount tolerance) is a merger candidate. On the realised side the switch out
+  is the gap `merger-candidate` (no sale value, no gain) and every later sale of the scheme switched into is the same
+  gap; the Warning `tax.derived-merger-candidates` asks the analyst, in counts only (a merger is not a sale,
+  s.47(xviii)). On the holdings side a holding with the candidate's switch in is unreconciled `mergerCandidate`, never
+  split. Ordinary switches (partial, unequal amounts, the scheme kept, several partners) stay computed; where the
+  statement shows the merger, the reconciliation reads the candidate as before (its existing merger handling is
+  unchanged). The fixture's Contra to Small Cap merger (5,000 in FY 2023-24 from the IRR side) is now a gap without a
+  statement. The analyst's answer needs a model field (contracts-4).
+- **Parity:** book `tax-r2c`, ledger TX-13, TX-14 and TXR-19 to TXR-23, with its known answers; no other expected figure
+  changed.
+- **Tests:** `tests/unit/tax/{realised-irr,fifo-lots}.test.ts`, `tests/integration/realised-gains-reconcile.test.ts`,
+  `tests/parity/tax.parity.test.ts`; each fails on main 0d38184's engine file.
+
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
   `docs/project-control/CHAT_REGISTRY.md`): CHAT-016 (ARC-04, Guardian, successor of CHAT-008) and CHAT-017 (NB-05, new

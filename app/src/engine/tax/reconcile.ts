@@ -32,6 +32,10 @@
 //   (b) the reader's totals tolerance (`totalsTolerance`: Rs 1 plus Rs 0.005 per lot row summed) over the statement's
 //       lot rows of the scheme-year: each row is rounded to the paisa on Sell Amount and Invested Value, and a SIP
 //       scheme-year can sum hundreds of such rows, while the derived side carries the IRR amounts unrounded.
+// The difference is taken from each side's sum rounded to whole paise and compared with a relative epsilon of a few ULPs
+// (F1 of Gate B of 5c9ae0a: a difference exactly at the tolerance reconciles, whatever the float rounding).
+// Merger candidates (round 2c, realised-irr.ts 'merger-candidate'): a candidate's gap lot is read as its ordinary-switch
+// lots only where the statement shows the merger; there the merger handling above is unchanged. Elsewhere it is a gap.
 //
 // The review's figure (`tax.realisedFY`, realisedForYear): per client and financial year, the statement where it covers
 // that client's year (at least one lot of the client sold in the year: the source of record), else the derived figure
@@ -132,6 +136,24 @@ export const TOLERANCE_RULE = 'the larger of Rs 1 or 0.01% of the larger sale va
 /** The tolerance of one scheme-year (see the header). */
 export function reconcileTolerance(statementSale: number, derivedSale: number, statementRows: number): number {
   return Math.max(amountTolerance(Math.max(Math.abs(statementSale), Math.abs(derivedSale))), totalsTolerance(statementRows));
+}
+
+/** F1: statement minus derived, from each side's sum rounded to whole paise (rupees, an exact count of paise / 100). */
+export function paiseDifference(statement: number, derived: number): number {
+  return (Math.round(statement * 100) - Math.round(derived * 100)) / 100;
+}
+
+/** F1: how many units in the last place of the larger of the two figures the comparison allows. */
+const TOLERANCE_ULPS = 4;
+
+/**
+ * F1 (Gate B of 5c9ae0a): |difference| <= tolerance with a relative epsilon of a few ULPs, never a bare `<=` on floats:
+ * a tolerance of Rs 1.36 is the float 1.3599999999999999 when built as 1 + 0.005 x 72 rows, and a difference of 136 paise
+ * is 1.36; the two are the same amount and reconcile.
+ */
+export function withinTolerance(difference: number, tolerance: number): boolean {
+  const d = Math.abs(difference);
+  return d - tolerance <= TOLERANCE_ULPS * Number.EPSILON * Math.max(d, Math.abs(tolerance));
 }
 
 function plural(n: number, one: string, many: string): string {
@@ -295,11 +317,22 @@ export function reconcileRealised(derived: DerivedRealised, statement: Statement
     const mergerDays = new Map<number, number>();
     for (const g of p.stmt) if (g.lotClass === 'non-taxable-transfer') mergerDays.set(g.saleDate, keptShareOf(g, realised.events));
     const mergerShare = (l: DerivedLot): number | null => (mergerDays.has(l.saleDate) ? mergerDays.get(l.saleDate)! : null);
-    const years = [...new Set([...p.stmt.map((g) => g.financialYear), ...p.derived.map((l) => l.financialYear)])].sort((a, b) => a - b);
+    // Round 2c (MOD-05's merger condition): where the statement shows the merger (a non-taxable transfer of this scheme on
+    // the candidate's switch-out day, or, for the scheme switched into, one of the same client in another scheme on the
+    // switch-in day), a 'merger-candidate' gap lot stands for the lots of the ordinary-switch reading it keeps, so the
+    // merger handling below is exactly as before round 2c. Elsewhere it stays a gap.
+    const shown = (l: DerivedLot): boolean => {
+      const c = l.mergerCandidate;
+      if (!c || !l.asSwitch) return false;
+      return c.role === 'switch-out' ? mergerDays.has(l.saleDate)
+        : clientMergers.some((m) => m.pair !== p && m.clientId === p.clientId && m.day === c.day);
+    };
+    const derivedLots = p.derived.flatMap((l) => (shown(l) ? l.asSwitch! : [l]));
+    const years = [...new Set([...p.stmt.map((g) => g.financialYear), ...derivedLots.map((l) => l.financialYear)])].sort((a, b) => a - b);
     for (const fy of years) {
       const fyLabel = fyLabelOf(fy);
       const sl = p.stmt.filter((g) => g.financialYear === fy);
-      const dl = p.derived.filter((l) => l.financialYear === fy);
+      const dl = derivedLots.filter((l) => l.financialYear === fy);
       const dProv: Provenance = { sources: [...new Set(dl.map((l) => l.at.sourceId))], method: 'realised gains derived from transactions, summed per scheme (architecture section 6.7)' };
       const s = sl.length ? statementFigure(sl, sProv) : null;
       const d = dl.length ? derivedFigure(dl, mergerShare, dProv) : null;
@@ -316,17 +349,19 @@ export function reconcileRealised(derived: DerivedRealised, statement: Statement
       else if (d.lotsUnknown > 0) { row.outcome = 'not-reconciled'; row.reason = 'derived-gaps'; }
       else {
         const rowsInStatement = sl.length;
-        row.difference = s.realisedKnown - d.realisedKnown;
+        // F1 (Gate B of 5c9ae0a): the difference of the two sides' sums, each rounded to whole paise, compared with the
+        // tolerance in exact terms (`withinTolerance`), so a difference exactly at the tolerance reconciles.
+        row.difference = paiseDifference(s.realisedKnown, d.realisedKnown);
         row.tolerance = reconcileTolerance(s.saleValue, d.saleValue, rowsInStatement);
-        row.outcome = Math.abs(row.difference) <= row.tolerance ? 'reconciled' : 'differs';
+        row.outcome = withinTolerance(row.difference, row.tolerance) ? 'reconciled' : 'differs';
       }
       rows.push(row);
     }
-    if (p.stmt.length && !p.derived.length) {
+    if (p.stmt.length && !derivedLots.length) {
       statementOnly.push({ clientId: p.clientId, schemeLabels: [...p.schemeLabels], instrumentName: p.instrumentName, years: [...new Set(p.stmt.map((g) => g.financialYearLabel))] });
     }
-    if (!p.stmt.length && p.derived.length) {
-      irrOnly.push({ clientId: p.clientId, schemeLabels: [], instrumentName: p.instrumentName, years: [...new Set(p.derived.map((l) => l.financialYearLabel))] });
+    if (!p.stmt.length && derivedLots.length) {
+      irrOnly.push({ clientId: p.clientId, schemeLabels: [], instrumentName: p.instrumentName, years: [...new Set(derivedLots.map((l) => l.financialYearLabel))] });
     }
   }
   rows.sort((a, b) => a.fy - b.fy || String(a.clientId).localeCompare(String(b.clientId))
@@ -515,7 +550,8 @@ export function realisedForYear(fy: number, derived: DerivedRealised | null, sta
       }
       const leftLotsBy = new Map<string, number>();
       // Delta review N-5: only derived lots that are sales count (a transfer out or a row of amount 0 sells nothing).
-      for (const l of derBy.get(c) ?? []) if (l.saleRow && !covered.has(l.instrumentKey)) leftLotsBy.set(l.instrumentKey, (leftLotsBy.get(l.instrumentKey) ?? 0) + 1);
+      // Round 2c: a merger candidate's gap lot counts as the lots it keeps, so the statement figure stands as before.
+      for (const l of (derBy.get(c) ?? []).flatMap((x) => x.asSwitch ?? [x])) if (l.saleRow && !covered.has(l.instrumentKey)) leftLotsBy.set(l.instrumentKey, (leftLotsBy.get(l.instrumentKey) ?? 0) + 1);
       const leftLots = [...leftLotsBy.values()].reduce((s, n) => s + n, 0);
       const fig = figureOf(parts, used.length, unknown, prov, ie);
       const schemesLeftOut = leftLotsBy.size;
