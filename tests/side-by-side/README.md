@@ -69,7 +69,9 @@ How the kit reads each side:
 Every difference must match an entry, or the test fails ("unclassified"). The fields are those of the parity ledgers
 ([../parity/README.md](../parity/README.md)), plus:
 - `section`: holdings, performance, scopes, contributions or `*`;
-- `kind`: field, only-legacy, only-new, not-built or `*`.
+- `kind`: field, only-legacy, only-new, not-built or `*`;
+- the `legacy` and `new` patterns may be `{ "byField": { "<field>": <value> } }`: an entry over several fields then pins
+  each field's own value (SB-13 to SB-17), so a different answer on either side is unclassified.
 
 The class is `correction`, `improvement`, `not-built`, `accepted-difference` or `regression`; a regression is never
 merged. `accepted-difference` is an owner-accepted difference; reviewed at M15: the builds differ by an owner's decision,

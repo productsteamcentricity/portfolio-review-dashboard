@@ -75,9 +75,13 @@ export function sameValue(a: unknown, b: unknown): boolean {
   return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
 
-function matchPattern(p: Pattern, v: unknown): boolean {
+/** A pattern: '*', { "type": "number" | "string" }, { "byField": { <field>: <pattern> } } (an entry over several fields
+ * pins each field's own value; a field it does not name never matches), or an exact value. */
+function matchPattern(p: Pattern, v: unknown, field: string | null = null): boolean {
   if (p === '*') return true;
   if (p && typeof p === 'object' && !Array.isArray(p)) {
+    const by = (p as { byField?: Record<string, Pattern> }).byField;
+    if (by !== undefined) return field !== null && Object.prototype.hasOwnProperty.call(by, field) && matchPattern(by[field], v);
     const t = (p as { type?: string }).type;
     if (t === 'number') return typeof v === 'number';
     if (t === 'string') return typeof v === 'string';
@@ -99,7 +103,7 @@ export function classify(d: Diff, fixture: string, ledger: readonly LedgerEntry[
     }
     if (!matchKey(e.key, d.key)) continue;
     if (e.fixtures !== '*' && !e.fixtures.includes(fixture)) continue;
-    if (!matchPattern(e.legacy, d.legacy) || !matchPattern(e.new, d.new)) continue;
+    if (!matchPattern(e.legacy, d.legacy, d.field) || !matchPattern(e.new, d.new, d.field)) continue;
     return e.id;
   }
   return null;

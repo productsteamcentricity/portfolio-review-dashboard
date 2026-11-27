@@ -4,6 +4,21 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (tests only: side-by-side kit phase 2 (a), fund matching, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
+- **`tests/side-by-side/`**: the new side runs the new build's wired matcher (`resolveHoldings` with the shipped blocks
+  and the owner's aliases, as `/next/` does) instead of the kit's copy of the live routing rule, so routing (E-15), ISIN
+  first, the owner's aliases (PD-36) and the stricter regime (OD-5 option B) are compared. Both sides write the routes
+  MF, PMS, AIF, SIF, STOCK or `other (<class>)`; a listed share's STOCK_RET key is compared too; the new build's method
+  is shown, not compared.
+- New case `matching-probe`: public scheme names from `tests/parity/matching-corrections-ledger.json`, each with its
+  known answer, plus an owner alias, two listed shares (one with an ISIN column), a REIT and an unlisted share. Its ten
+  differences: SB-08 to SB-12 corrections (KI-036, KI-050 with PD-36, the normaliser follow-up), SB-13 to SB-16
+  accepted differences inside the owner's acceptance of the stricter regime (26 Nov 2026; the 4 names still unmatched
+  are offered to the owner as alias candidates), SB-17 an improvement (a share found by its ISIN; KI-184). Entries over
+  two fields pin each field's value (`byField`).
+- The report has a "Fund matching" section per case: holdings matched alike, the count per class, and one quotable line
+  per differing holding. 19 tests, in IST and UTC.
+
 ### Changed (records, registers-5, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/project-control/CHAT_REGISTRY.md`, `docs/coordination/CHAT_SUCCESSION_REGISTER.md`,
   `CONTEXT_COMPACTION_TRACKER.md`): CHAT-013 (MOD-04) handed over to CHAT-015 (MOD-05) on 26 Nov 2026 on the owner's

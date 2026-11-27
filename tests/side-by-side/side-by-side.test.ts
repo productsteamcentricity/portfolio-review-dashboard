@@ -112,6 +112,10 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     const html = fundMatching(m);
     assert.match(html, /The live page matched ICICI Pru US Bluechip Equity Fund\(G\); the new build matched ICICI Pru Large Cap Fund\(G\) by alias-pin \(pinned\)\. Why: correction/);
     assert.match(html, /The live page matched UTI Focused Fund-Reg\(G\); the new build matched nothing\. Why: accepted difference/);
+    // the entries pin each field's exact answer (CHAT-008 N1): another live-page fund for the Gold holding is unclassified
+    const moved = { ...legacy, holdings: legacy.holdings.map((h) => (/axis gold/i.test(h.name) ? { ...h, matched: 'Axis Gold Fund-Reg(G)' } : h)) };
+    const r2 = compareSides('matching-probe', false, moved, next, ledger);
+    assert.deepEqual(r2.diffs.filter((d) => d.section === 'holdings' && /axis gold/i.test(d.key)).map((d) => [d.field, d.ledger]), [['matched', null], ['universe', 'SB-13']]);
   });
 
   test('a client name variant in the IRR file: the live page joins it (KI-032), the new build does not (D9)', () => {
