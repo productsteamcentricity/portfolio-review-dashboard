@@ -221,6 +221,9 @@ returns for direct equity.
 month-end stock price history.
 **Addendum (owner, 22 Oct 2026).** The index data of point 2 is the five Index TRI files (Nifty 50, Nifty 100,
 Nifty 500, Nifty Midcap 150, Nifty Smallcap 250) that the owner already puts in each month's `Index TRI` folder.
+**Note, 28 Nov 2026:** for the direct-equity CAGR this entry's anniversary rule is read together with the no-look-ahead
+rule (Moderator decision of 26 Nov 2026 under PD-67: the latest price on or before the review date, dated by its own day)
+and the owner's answer of 28 Nov 2026 that the review date and data dates are compared as month labels.
 
 ## D-024 — The new app is previewed publicly at `/next/` (22 Oct 2026, lead under D-033; ND-3, ND-9)
 **Context.** CR-0006 builds the new app beside `index.html`; D-007 publishes `index.html` only (Q-10, Q-85).

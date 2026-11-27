@@ -121,7 +121,7 @@ Paths are the contract between `engine/` and `observations/`; `docs/DATA_DICTION
 | `contrib.rows[]`, `contrib.total`, `contrib.drags[]` | contributions (allocation x XIRR) |
 | `perf.byFund[f].{r1y,r3y,r5y,bm1y,bm3y,bm5y}` | trailing returns against the category benchmark |
 | `perf.portfolio.{r3y,r5y}`, `.coverage`, `.source` | MF portfolio 3Y and 5Y returns: weighted average return of current holdings, funds without a return excluded and counted (D-023 point 3, E-147) |
-| `de.cagr[stock].{r1y,r3y,r5y}`, `de.portfolio.{r1y,r3y,r5y}`, `.coverage` | direct-equity CAGR from adjusted month-end prices at exact anniversaries, and the allocation-weighted figure (D-023 point 4, E-148) |
+| `de.cagr[stock].{r1y,r3y,r5y}`, `de.portfolio.{r1y,r3y,r5y}`, `.coverage` | direct-equity CAGR from adjusted month-end prices (no look-ahead: the end price is the latest on or before the review's as-on date, and the figure is dated by that price's own day (Moderator decision of 26 Nov 2026 under PD-67)), and the allocation-weighted figure (D-023 point 4, E-148) |
 | `drawdown.index[id].{maxDd,peak,trough,recoveryMonths}`, `drawdown.blend.*` | drawdowns on index data, per index and for a blend at current asset-class weights (D-023 point 2, E-149) |
 | `risk.byFund[f].{alpha,sharpe,sortino,dc,sd}`, `risk.peer[cat]` | ratios and the peer basis (median, Q-51) |
 | `quants.score.weighted`, `.coverage` | Portfolio Quants roll-up (E-132) |
