@@ -3,7 +3,7 @@
 //
 //   - Per stock, CAGR(n) = (P(as-on) / P(as-on minus n years))^(1/n) - 1, for n = 1, 3, 5, as a percent number, on
 //     split- and bonus-adjusted prices (the Screener pack's month-end prices in M10u; else the analyst's price file).
-//   - No look-ahead (PD-67, MOD-04 under the owner's delegation, 26 Nov 2026): a price dated after the review as-on is
+//   - No look-ahead (the no-look-ahead rule (Moderator decision of 26 Nov 2026 under PD-67)): a price dated after the review as-on is
 //     never used. P(as-on) is the latest price on or before the as-on, and the figure is dated by that price's own day.
 //     - Month-end data (one point per month, each in its month's last 7 days, as the pack's month-end prices): the
 //       latest month-end point on or before the as-on, from the as-on's month or the one before (as-on 15 Oct uses
@@ -25,7 +25,11 @@
 //     as-on date equals the first source's (I-31's rule; MOD-04, 26 Nov 2026); otherwise the stock's figure is
 //     missing. The figure's source is the first source used by a stock in the base; with no source at all there is no
 //     figure (null). The figure, its parts and the footnote are dated by the own day of the end prices actually used
-//     (ARC-03 delta M1; PD-67), not by the review's as-on or a source's file date. `parts`, `used` and `mixed` as for
+//     (ARC-03 delta M1; the no-look-ahead rule), not by the review's as-on or a source's file date. Within one source
+//     the stocks can end on different days: the figure carries the LATEST end day among the primary source's stocks in
+//     the base, and every other end day used is listed (`used`, the footnote) in ascending order with its count; the
+//     parts are in source order, then date. Nothing depends on the order of the holdings (MOD-05's ruling on ARC-03 F3,
+//     27 Nov 2026). A present stock value's provenance carries its end day (F2). `parts`, `used` and `mixed` as for
 //     E-147: footnoteOf(result) goes with every rendering.
 // Replaces the vendor return columns of STOCK_RET for these tenors; differences go to the parity ledger (E-148).
 // Pure: no globals.
@@ -37,7 +41,7 @@ import type { DayNumber, Value } from '../../model/value.ts';
 import { STATUS } from '../../model/status.ts';
 import { missing, present } from '../value.ts';
 import { dayToIso, dayToYmd, ymdToDay } from '../dates.ts';
-import { partsOf, weightItems, TENOR_KEY, WEIGHTED_RETURN_LABEL, type UsedTable, type WeightInput, type WeightedResult } from './portfolio-returns.ts';
+import { assertOneSourcePerKind, partsOf, weightItems, TENOR_KEY, WEIGHTED_RETURN_LABEL, type UsedTable, type WeightInput, type WeightedResult } from './portfolio-returns.ts';
 
 /** How far back from a wanted date a price may be taken (calendar days). */
 export const PRICE_LOOKBACK_DAYS = 7;
@@ -143,7 +147,7 @@ function cagrDetail(points: readonly PricePoint[], asOn: DayNumber, tenor: Retur
   if (typeof s === 'string') return fail(missing(STATUS.INVALID_SOURCE, s, prov));
   if (s.length === 0) return fail(missing(STATUS.NOT_AVAILABLE, 'no price series', prov));
   const monthly = isMonthEndSeries(s);
-  // P(as-on): never a price after the as-on (PD-67)
+  // P(as-on): never a price after the as-on (the no-look-ahead rule)
   const end = monthly ? monthEndOnOrBefore(s, asOn) : priceOnOrBefore(s, asOn);
   if (!end) {
     const why = monthly ? `no month-end price on or before ${dayToIso(asOn)} in its month or the month before` : `no price within ${PRICE_LOOKBACK_DAYS} days up to ${dayToIso(asOn)}`;
@@ -160,7 +164,8 @@ function cagrDetail(points: readonly PricePoint[], asOn: DayNumber, tenor: Retur
       ? missing(STATUS.INSUFFICIENT_EVIDENCE, `prices start on ${dayToIso(s[0]!.day)}, after ${dayToIso(startDay)}: not enough history for ${t}`, prov)
       : missing(STATUS.NOT_AVAILABLE, `no price ${where(startDay)}`, prov));
   }
-  return { value: present((Math.pow(end.price / start.price, 1 / n) - 1) * 100, 'pct', prov), endDay: end.day };
+  // a present value is dated by the end price it used (ARC-03 F2), not the review as-on
+  return { value: present((Math.pow(end.price / start.price, 1 / n) - 1) * 100, 'pct', { ...prov, asOf: dayToIso(end.day) }), endDay: end.day };
 }
 
 /** One stock's line: the CAGR used (or why it is missing) and the source of its prices. */
@@ -168,7 +173,10 @@ export type StockCagrLine = { holdingId: HoldingId; isin: string | null; cagr: V
 
 export type StockCagrResult = WeightedResult & {
   lines: StockCagrLine[];
-  /** Each (source, own day of the end prices) used, in source order. */
+  /**
+   * Each (source, end day) used with its count of stocks in the base: per source (in source order) its latest end day
+   * first, then its other end days in ascending order.
+   */
   used: UsedTable[];
   mixed: boolean;
 };
@@ -184,6 +192,7 @@ export function directEquityCagr(
   tenor: ReturnTenor,
   scope: ScopeKey,
 ): StockCagrResult {
+  assertOneSourcePerKind(sources.map((s) => s.source));
   const lines: StockCagrLine[] = [];
   const inputs: WeightInput[] = [];
   const srcOfInput: Array<PriceSource | null> = [];
@@ -197,7 +206,8 @@ export function directEquityCagr(
     const first = chain[0];
     if (!first || h.isin === null) {
       const why = h.isin === null ? 'the holding has no ISIN' : 'no price series for this ISIN';
-      lines.push({ holdingId: h.holdingId, isin: h.isin, cagr: missing(STATUS.NOT_AVAILABLE, why), source: null });
+      // a missing line keeps the review as-on as its date (F2)
+      lines.push({ holdingId: h.holdingId, isin: h.isin, cagr: missing(STATUS.NOT_AVAILABLE, why, { sources: [], method: 'no price series', asOf: dayToIso(asOn) }), source: null });
       inputs.push({ holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { excluded: h.isin === null ? 'unmatched' : 'no-return' } });
       srcOfInput.push(null);
       endOfInput.push(null);
@@ -227,17 +237,26 @@ export function directEquityCagr(
       endOfInput.push(null);
     }
   }
-  // the date of what was used: each stock's end price's own day (PD-67)
-  const labelOf = (day: DayNumber): Value<DayNumber> => present(day, 'date', { sources: [], method: 'day of the end price used (PD-67)' });
+  // the date of what was used: each stock's end price's own day (the no-look-ahead rule)
+  const labelOf = (day: DayNumber): Value<DayNumber> => present(day, 'date', { sources: [], method: 'day of the end price used (no-look-ahead rule)' });
   const inBase = (i: number): boolean => inputs[i]!.cmvCr.kind === 'value' && (inputs[i]!.cmvCr as { v: number }).v > 0;
-  const usedTags: Array<{ source: PriceSource; day: DayNumber; label: Value<DayNumber> }> = [];
+  // (source, end day) -> count of stocks in the base; then per source: the latest day first, the others ascending
+  const counts = new Map<PriceSource, Map<DayNumber, number>>();
   srcOfInput.forEach((s, i) => {
     const d = endOfInput[i];
     if (!s || d == null || !inBase(i)) return;
-    const label = labelOf(d);
-    if (!usedTags.some((u) => u.source === s && sameDay(u.label, label))) usedTags.push({ source: s, day: d, label });
+    const m = counts.get(s) ?? new Map<DayNumber, number>();
+    m.set(d, (m.get(d) ?? 0) + 1);
+    counts.set(s, m);
   });
-  usedTags.sort((a, b) => sources.indexOf(a.source) - sources.indexOf(b.source));
+  const usedTags: Array<{ source: PriceSource; day: DayNumber; label: Value<DayNumber>; count: number }> = [];
+  for (const s of sources) {
+    const m = counts.get(s);
+    if (!m) continue;
+    const days = [...m.keys()].sort((a, b) => a - b);
+    const latest = days[days.length - 1]!;
+    for (const d of [latest, ...days.slice(0, -1)]) usedTags.push({ source: s, day: d, label: labelOf(d), count: m.get(d)! });
+  }
   const usedInOrder = sources.filter((s) => used.has(s));
   const firstConsulted = sources.find((s) => consulted.has(s));
   const res = weightItems(inputs, {
@@ -245,7 +264,7 @@ export function directEquityCagr(
     tenor,
     basis: 'equity-value',
     primary: usedInOrder[0]?.source ?? firstConsulted?.source ?? sources[0]?.source ?? null,
-    // the day of the primary's end prices; with nothing used, the review as-on
+    // the latest end day among the primary source's stocks (usedTags[0]); with nothing used, the review as-on
     asOn: usedTags[0] ? usedTags[0].label : present(asOn, 'date', { sources: [], method: 'review as-on date' }),
     sourceIds: usedInOrder.flatMap((s) => [...(s.sourceIds ?? [])]),
     method: `${WEIGHTED_RETURN_LABEL} (${TENOR_KEY[tenor]} CAGR, D-023 point 4)`,
@@ -253,8 +272,8 @@ export function directEquityCagr(
   const parts = partsOf(res.items, (i) => {
     const s = srcOfInput[i];
     const d = endOfInput[i];
-    return s && d != null ? { source: s.source, asOn: labelOf(d) } : null;
+    return s && d != null ? { source: s.source, asOn: labelOf(d), rank: sources.indexOf(s) } : null;
   });
   if (res.figure && parts) res.figure.parts = parts;
-  return { ...res, lines, used: usedTags.map((u) => ({ source: u.source.source, asOn: u.label })), mixed: parts !== undefined };
+  return { ...res, lines, used: usedTags.map((u) => ({ source: u.source.source, asOn: u.label, count: u.count })), mixed: parts !== undefined };
 }
