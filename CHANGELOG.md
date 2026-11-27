@@ -4,6 +4,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M10 before wiring: the pack store in a real browser; tests only, `/next/` unchanged)
+- **`tests/browser/screener-store.cdp.mjs`** (ARC-03's condition for wiring M10): the MF Screener data pack reader and
+  browser store run in headless Edge or Chrome against the real IndexedDB, from a `file://` harness bundled by esbuild
+  (JSZip from the vendored PptxGenJS, as the app passes it) with a fresh profile; synthetic packs picked through a file
+  input. 13 checks: offer, read-back SHA-checked, re-offer no-op, older cycle refused, newer cycle replacing with
+  history kept, a damaged IndexedDB record refused and removed, a tampered pack refused, no exception and no request.
+  Local only, as the other `*.cdp.mjs` scripts; no real pack content (D-026). Listed in `docs/TESTING.md`.
+
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
   `docs/project-control/CHAT_REGISTRY.md`): CHAT-016 (ARC-04, Guardian, successor of CHAT-008) and CHAT-017 (NB-05, new
