@@ -12,6 +12,24 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   history kept, a damaged IndexedDB record refused and removed, a tampered pack refused, no exception and no request.
   Local only, as the other `*.cdp.mjs` scripts; no real pack content (D-026). Listed in `docs/TESTING.md`.
 
+### Changed (records, registers-8, 28 Nov 2026: docs and one test comment; no change to `index.html`, `app/` or data)
+- **The direct-equity CAGR rule** (`docs/PRD.md`, `new-build/{01-legacy-system-audit,02-capability-inventory,
+  07-implementation-roadmap,observation-rule-bank,open-questions}.md`): the older "exact anniversaries" sentence replaced
+  by the rule on main: no look-ahead, the latest price on or before the as-on date, dated by its own day (Moderator
+  decision of 26 Nov 2026 under PD-67; CHAT-011's finding). `DATA_DICTIONARY.md` and `03-architecture.md` carry the rule
+  since PR #68.
+- **`docs/project-control/DECISION_LOG.md`**: PD-68, the owner's delegation of 28 Nov 2026, with the owner's words; the
+  owner's six answers of 28 Nov 2026 in section 2.4 (the five alias lines, the returns note, a new fund's return as
+  absolute, no price-day line, month labels, the base-file XIRR for a line without transactions); the four unmatched
+  names marked answered in section 2.5, and the 26 Nov stricter-matching row updated (the aliases approved).
+  **`docs/DECISIONS.md`**: a dated note under D-023 (its own text unchanged). **`docs/KNOWN_ISSUES.md`**: KI-302 answered
+  by the owner (absolute, marked), open until built.
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,MODULE_DEPENDENCY_MAP,CRITICAL_PATH}.md`**: PRs #65 to #69 and
+  what comes next (CHAT-016's note N4); decision log 2.5: the CAGR figure date in the code since PR #68.
+- **Compactions** recounted (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).
+- **`tests/unit/match/corpus.test.ts`**: a comment and a reason text no longer say the owner accepted losses it was not
+  asked about (CHAT-016's note N3).
+
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
   `docs/project-control/CHAT_REGISTRY.md`): CHAT-016 (ARC-04, Guardian, successor of CHAT-008) and CHAT-017 (NB-05, new

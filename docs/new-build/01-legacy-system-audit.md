@@ -211,7 +211,7 @@ balanced-advantage equity sleeves counted gross in effective equity (G-6) [OP §
 | Legacy changes during the parallel run | CR-0005 schedules fix batches 2 to 7 (D-021) and D-022 puts OD-32 and OD-34 in legacy batch 2a; moving presentation-only items to the new build would change that plan | D-028 (Q-16): calculation, data and security fixes on the live page; presentation-only items to the new build |
 | Pages publishes `index.html` only (D-007) | the new app needs `/next/` | D-024 (Q-10) supersedes D-007 in part |
 | Accepted decisions that prescribe a dash | OD-13 (no unlisted holdings) and OD-29 (totals without a return) show "—"; the brief bars dashes in presentation writing | D-029 (Q-42): no conflict; the dash is a marker, and the ban covers sentences |
-| Direct-equity returns basis | the legacy shows the vendor's `STOCK_RET` returns; D-023 point 4 computes CAGR from adjusted month-end prices at exact anniversaries | built in the new app (E-148); differences classified in the parity ledger |
+| Direct-equity returns basis | the legacy shows the vendor's `STOCK_RET` returns; D-023 point 4 computes CAGR from adjusted month-end prices (no look-ahead: the end price is the latest on or before the review's as-on date, and the figure is dated by that price's own day (Moderator decision of 26 Nov 2026 under PD-67)) | built in the new app (E-148); differences classified in the parity ledger |
 | Echoed holdings sheet name | OD-22 named it "Holdings (as loaded)"; the brief's list says "Source Inputs" | kept as "Holdings (as loaded)" (`03-architecture.md` §14) |
 
 ## 8. What could not be verified, and why

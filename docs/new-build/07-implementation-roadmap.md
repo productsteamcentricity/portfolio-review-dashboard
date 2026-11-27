@@ -197,7 +197,7 @@ dashboard (D-033); every other question proceeds on its default.
   (`engine/returns/portfolio-returns.ts`) with the source order (the uploaded MF Monitor, then the embedded monthly
   MF Monitor; the Screener pack joins as the third source in M10), the same-as-on rule and the coverage footnote;
   E-148 direct-equity 1Y, 3Y and 5Y CAGR (`engine/returns/stock-cagr.ts`) on the analyst's price file
-  (`ingest/price-file.ts`) until the pack's month-end prices arrive in M10, exact anniversaries, excluded stocks
+  (`ingest/price-file.ts`) until the pack's month-end prices arrive in M10 (no look-ahead: the end price is the latest on or before the review's as-on date, and the figure is dated by that price's own day (Moderator decision of 26 Nov 2026 under PD-67)), excluded stocks
   footnoted. Components C-21 holdings, C-22 performance (the Direct Equity variant shows the CAGR with its dates),
   C-24 fund IRR. Sheets Holdings, Performance (weighted returns by `SUMPRODUCT` with the coverage cell), Fund IRR
   (XIRR engine values plus an Excel `XIRR` check column, Q-60).
