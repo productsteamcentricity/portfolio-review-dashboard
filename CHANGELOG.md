@@ -15,9 +15,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ### Changed (tests only: the side-by-side kit's Gold rows, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
 - **`tests/side-by-side/`**: SB-13, SB-14, SB-40 and SB-41 now say their holding names ("Axis Gold -Reg(G)", "Kotak Gold
-  (G)") are synthetic spellings, the vendor's name without the word "Fund", and that under every real spelling both
+  (G)") are synthetic spellings, the vendor's name without the word "Fund", and that under the real spellings (the
+  vendor's name, tested; the AMFI Regular and Direct Growth names, the new-build chat's run) both
   builds match the Gold fund, so they are not alias candidates (the Moderator's correction on the new-build chat's
-  evidence). Classes unchanged. Two parity rows with the real spellings are added to the performance probe and tested (both builds, both lists). SB-25 (the all-dash gold price row) also covers the
+  evidence). Classes after the financial review: SB-13, SB-14 (and SB-35, SB-36, which follow them)
+  corrections (the live page shows another scheme's figures); SB-40, SB-41 accepted differences under OD-5 option B
+  (no owner question is open). Two parity rows with the real spellings are added to the performance probe and tested (both builds, both lists). SB-25 (the all-dash gold price row) also covers the
   performance probe.
 
 ### Changed (records, registers-6, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
