@@ -4,6 +4,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (new build, M3b: the E-147 footnote names other-date funds; one share format; `/next/` changes)
+- **`app/src/engine/returns/portfolio-returns.ts`** (ARC-03's L3, moved to NB-04 by MOD-05; the follow-up's financial
+  review S5): a fund absent from its plan's primary table and from every same-date table, whose return is only in a
+  table of another date, is excluded as `other-date` and footnoted "not in the primary table (its 3Y return is only in
+  a table of another date)" instead of "without a 3Y return"; a fund listed without the tenor, or absent everywhere,
+  stays "without a 3Y return". The coverage share has a fixed one decimal ("63.0%" beside "89.8%"). Weights, values
+  and coverage are unchanged; only the reason and the text change. Tests in `unit/returns/portfolio-returns.test.ts`.
+
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
   `docs/project-control/CHAT_REGISTRY.md`): CHAT-016 (ARC-04, Guardian, successor of CHAT-008) and CHAT-017 (NB-05, new
