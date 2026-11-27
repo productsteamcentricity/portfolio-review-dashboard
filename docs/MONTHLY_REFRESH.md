@@ -239,8 +239,14 @@ from AMFI NAV history and the five TRI series. It was first run this way for 31 
 - Each script runs as `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script> <args>`, one process each, with
   no policy change.
 - **A script runs only if ARC-02 has reviewed its SHA-256, or the owner has given permission for that run.** Check the
-  hash just before the run, and record every run, and which of the two allowed it, in the log. `BuildPRSep.ps1` (row 7
-  below) is **not** reviewed.
+  hash just before the run, and record every run, and which of the two allowed it, in the log. Every script of the chain
+  below is reviewed (item 6, 26 Nov 2026: ARC-02's static GO and its final GO on the known-answer run, record
+  `item6-risk-scripts-static-review-2026-11-26.md`; the helpers `XlsxTool`, `Calc`, `Metrics`, `XlsxWrite` and
+  `WriteXlsx` too, so check their hashes as well).
+- **Conditions of that review (ARC-02, C1 to C3):** `-Work` and `-Out` only in local `C:\Temp` folders, never OneDrive or
+  `02 Archive` (the writers delete their destination first); `BuildPRSep.ps1` always with explicit `-Tsv`, `-Out` and
+  `-AsOn` (its defaults are September's), any error line is a stop even with exit 0, and `VerifyPRMonth.ps1` with the same
+  as-on right after; the regression output is `<Work>\regress_<prev>.tsv`, never `<prev>_pr_metrics.tsv`.
 - No Excel or PowerPoint is started or automated; workbooks are read and written as zip/XML.
 
 **Inputs:**
@@ -249,19 +255,23 @@ from AMFI NAV history and the five TRI series. It was first run this way for 31 
 - `Benchmarks\NSE Data_….xlsx`, the vendor's "NAV Data" export, kept as received;
 - the AMFI NAV history fetched for the month (step 4b).
 
-**The chain** (each step a hard stop; the October scripts are named, and their month-parameterised successors replace
-them once ARC-02 has reviewed them, a separate toolchain item after LP-19):
+**The chain** (each step a hard stop; the month-parameterised scripts of item 6, installed on 26 Nov 2026 in both
+folders, replace the October ones, which stay in the folders unchanged; `<M>` is the data month, e.g. `2026-11`):
 
-| # | Script (October name, SHA-256; reviewed by ARC-02 except row 7) | What it does | Must hold |
+| # | Script (SHA-256 prefix; reviewed by ARC-02) | What it does | Must hold |
 |---|---|---|---|
 | 1 | `AmfiFetch.ps1` (`d20fcb57…`, LP-19) | Fetches the month's NAVs from portal.amfiindia.com (the only online step) and writes `amfi_<mon>.tsv` and `amfi_<mon>_ids.tsv` (step 4b) | Every chunk fetched. Fetch only after AMFI has published month-end (one request for the last days first). |
 | 2 | `ConvertVendorTri.ps1` (`d1433a17…`) | Reads the NSE export's five price/TRI column pairs (0-based, as recorded for October: NIFTY 100 7/8, NIFTY 50 15/16, NIFTY 500 19/20, Midcap 150 131/132, Smallcap 250 199/200) and keeps the trading days. Repeated-close days are dropped and printed. | The column map is checked against the header names, never assumed. |
-| 3 | `ReconcileOct.ps1` (`ae119b73…`) | Compares the converted TRI with the previous workbook's overlap (and with niftyindices files, if any) | 0 mismatches |
-| 4 | `BuildOct.ps1` (`cd937763…`) | Appends the month to the NAV workbook | A TRI value for every index on every weekday of the month; no interpolation of a gap, ever |
-| 5 | `VerifyOct.ps1` (`f938b381…`) | Checks the new workbook | Prior rows unchanged; 0 calendar gaps; every new NAV cell equals AMFI |
-| 6 | `GenOctMetrics.ps1` (`ce39f6c0…`) | Computes the metrics: first as on the previous month-end with `-Regression`, then as on the new one | The regression shows 0 differing rows against last month's published metrics |
-| 7 | `BuildPRSep.ps1` (`6b2244db…`, unchanged from the baseline; **not reviewed by ARC-02**) | Writes the risk workbook (NAVWORK_README §2 step 11 on its text encoding). It ran once, on 19 Nov 2026, under the owner's one-time permission ("Yes, allow it"; refresh log 2026-10, §9). **Before it runs again it needs ARC-02's review or the owner's permission again.** | Exit 0 |
-| 8 | `VerifyPROct.ps1` (`8a2ce821…`) | Checks every value of the workbook against the metrics | 0 mismatches; the title reads the as-on date |
+| 3 | `ReconcileMonth.ps1 -Month <M> -Work C:\Temp\navwork` (`d064aba1…`) | Compares the converted TRI with the previous workbook's overlap (and with niftyindices files, if any) | 0 mismatches |
+| 4 | `BuildMonth.ps1 -Month <M> -Work …` (`69fddbe8…`) | Appends the month to the NAV workbook | A TRI value for every index on every weekday of the month; no interpolation of a gap, ever |
+| 5 | `VerifyMonth.ps1 -Month <M> -Work …` (`2b6856ad…`) | Checks the new workbook | Prior rows unchanged; 0 calendar gaps; every new NAV cell equals AMFI |
+| 6 | `GenMonthMetrics.ps1 -Month <M>` (`d5248110…`): first `-AsOn <previous month-end> -OutTsv <Work>\regress_<prev>.tsv -Regression`, then `-AsOn <month-end>` | Computes the metrics: first as on the previous month-end, then as on the new one | The regression shows 0 differing rows against last month's published metrics |
+| 7 | `BuildPRSep.ps1 -Tsv <Work>\<mon>_pr_metrics.tsv -Out <Work>\pr_metrics_<mon>.xlsx -AsOn <month-end>` (`6b2244db…`, unchanged from the baseline; reviewed by ARC-02 on 26 Nov 2026 with item 6) | Writes the risk workbook (NAVWORK_README §2 step 11 on its text encoding) | Exit 0 **and** no error line in its output (it has no `Stop` preference); then row 8 at once |
+| 8 | `VerifyPRMonth.ps1 -Month <M> -AsOn <month-end> -Work …` (`b16308db…`) | Checks every value of the workbook against the metrics | 0 mismatches; more than 0 values checked; the title reads the as-on date |
+
+The full SHA-256 of each installed script is in the `install.sha256` record kept with the item 6 review record (not in
+the toolchain folders; 26 Nov 2026). The known-answer evidence of that review stays in `C:\Temp\navwork_kat`, never
+deleted.
 
 **Label and price day.** The label is the month-end ("30 Nov 2026"). Log the last trading day if it is earlier: for
 October it was Fri 30 Oct, and Sat 31 Oct carried the Friday close, as the workbook had done for 20 earlier weekend

@@ -4,6 +4,124 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (tests only: side-by-side kit phase 2 (a), fund matching, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
+- **`tests/side-by-side/`**: the new side runs the new build's wired matcher (`resolveHoldings` with the shipped blocks
+  and the owner's aliases, as `/next/` does) instead of the kit's copy of the live routing rule, so routing (E-15), ISIN
+  first, the owner's aliases (PD-36) and the stricter regime (OD-5 option B) are compared. Both sides write the routes
+  MF, PMS, AIF, SIF, STOCK or `other (<class>)`; a listed share's STOCK_RET key is compared too; the new build's method
+  is shown, not compared.
+- New case `matching-probe`: public scheme names from `tests/parity/matching-corrections-ledger.json`, each with its
+  known answer, plus an owner alias, two listed shares (one with an ISIN column), a REIT and an unlisted share. Its ten
+  differences: SB-08 to SB-12 corrections (KI-036, KI-050 with PD-36, the normaliser follow-up), SB-13 and SB-14
+  accepted differences (a Gold fund the live page matches to its sibling ETF), SB-15 and SB-16 known gaps (the live
+  page is right and the new build leaves the name unmatched; not yet ruled on by the owner, asked 27 Nov 2026; alias
+  candidates under PD-36; new non-failing class `known-gap`), SB-17 an improvement (a share found by its ISIN; KI-184). Entries over
+  two fields pin each field's value (`byField`).
+- The report has a "Fund matching" section per case: holdings matched alike, the count per class, and one quotable line
+  per differing holding. 19 tests, in IST and UTC.
+
+### Changed (records, registers-5, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **Chat registers** (`docs/project-control/CHAT_REGISTRY.md`, `docs/coordination/CHAT_SUCCESSION_REGISTER.md`,
+  `CONTEXT_COMPACTION_TRACKER.md`): CHAT-013 (MOD-04) handed over to CHAT-015 (MOD-05) on 26 Nov 2026 on the owner's
+  order; CHAT-013 is a historical record; CHAT-007 is retired; compactions recounted from the markers (CHAT-008 and
+  CHAT-009 at 2); next free number CHAT-016.
+- **`docs/coordination/FILE_OWNERSHIP_MAP.md`**: MOD-05 the Moderator and CHAT-014 EX-03 the live-page chat;
+  `tests/side-by-side/**` to EX-03; `engine/returns/{portfolio-returns,stock-cagr}.ts` to NB-04 (`performance.ts` stays
+  NB-02); no price-file reader in test build 1; `exports/xlsx/irr-template.ts` and `engine/returns/irr-aggregate.ts` to
+  NB-03.
+- **I-40 addendum** (`docs/coordination/INTERFACE_CONTRACTS.md`): the rule fields `nameAny` and `andAny`, the product
+  classes of the new build's model (P2P lending is OTHER, its Debt asset set by the live engine), and the import report
+  for a rule with an unknown field or class.
+- **`docs/coordination/CODING_MAP.md`, `CRITICAL_PATH.md`, `MODULE_DEPENDENCY_MAP.md`**: PRs #43 to #57 and their
+  module statuses; M11a (PR #41) corrected.
+- **`docs/project-control/DECISION_LOG.md`**: PD-67 (the 15-hour delegation of 26 Nov); the publishes of KI-032, LP-16b
+  and KI-301 under PD-30; the owner's decisions of 26 and 27 Nov in section 2.4.
+- **`docs/coordination/MODEL_ROUTING_LOG.md`**: the successor Moderator CHAT-015 (MOD-05) runs on the Fable model.
+- **`docs/project-control/README.md`**, Gate D: a live change that regenerates `data/refdata` changes `/next/` too (since
+  PR #49), so its Gate D states the expected `/next/` SHA-256.
+- **`docs/PROJECT_STATE.md`**: LP-16b live (`04079A77`); test build 1's status; the merged M2.1, M3a, M7a R1 and M11a
+  items.
+
+### Changed (tests only: the side-by-side kit's ledger class and a KI-032 case; no change to `index.html`, `/next/` or `app/`)
+- **`tests/side-by-side/`**: SB-04 to SB-07, the decided difference of client names between the live page (KI-032's
+  variant join) and the new build (exact labels, D9), are now class `accepted-difference`: an owner-accepted difference,
+  reviewed at M15 (MOD-04, 26 Nov 2026), neither an improvement nor a regression. The test fails on a class outside the
+  list and on any regression entry (17 tests).
+- **`tools/regression/KI-032-irr-client-join.js`**: initials "U. G." read as the guardian marker; the same spelling joins
+  exactly, the full name never joins (the safe direction; CHAT-008's Gate B note N2). 193 checks.
+
+### Changed (docs: the refresh runbook's risk-ratio chain for the December refresh; no change to `index.html` or `app/`)
+- **`docs/MONTHLY_REFRESH.md` step 4** names the month-parameterised scripts of item 6 (`ReconcileMonth`, `BuildMonth`,
+  `VerifyMonth`, `GenMonthMetrics`, `VerifyPRMonth`; installed 26 Nov 2026, reviewed by ARC-02 with a known-answer run)
+  in place of the October ones, with their arguments and SHA-256 prefixes. `BuildPRSep.ps1` is reviewed now too. The
+  review's conditions are in the launch rule: local `C:\Temp` work folders only, `BuildPRSep` always with explicit
+  arguments and checked by `VerifyPRMonth` at once, and the regression output never over last month's metrics.
+- `docs/PROJECT_STATE.md`: nothing toolchain-side is left before the December window.
+
+### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `04079A77756282B284016FBFB02212C0`, 16,416,337 bytes, on KI-301's page)
+- **The platform's own Product Name values are classed as the owner decided** (CR-0012; 26 Nov 2026):
+  - "Global Exposure" is a GIFT City fund when the instrument name says GIFT or IFSC, otherwise an Offshore fund (it was
+    looked up as a mutual fund).
+  - "Bonds", and every bond, NCD or debenture without USD, US$, US, dollar or LRS in its product or name, are "Rupee bonds and
+    NCDs" on the listed bond tax rows. The label "US-dollar bonds (through LRS)" (and no tax row) is kept for those that
+    say so. This changes the 25 Nov 2026 rule, which labelled every bond US-dollar.
+  - "P2P Lending" is its own class, "P2P lending" (product class OTHER in the shared table), not looked up as a fund, and
+    a Debt asset whatever its Asset Name says (asset allocation, debt look-through); still no tax row.
+  - "Unlisted-Direct" is an unlisted share held directly (no fund fee), as "Unlisted Shares" is.
+  - "AIF-Listed" is a Listed AIF: Category III with its note (D-043), as the category "Listed AIF" is.
+  - The tax rule reads USD, US$, US (a whole word: not "Plus" or "Bus"), dollar or LRS in the name only for a product or
+    category that says bond, NCD or debenture, so a fund, AIF or PMS named "... Bond ..." keeps its own row; a currency
+    word may be followed by a figure ("US$500mn", "USD5.25").
+  - Mutual Funds, Direct Equity, PMS and SIF are unchanged.
+- `PRODUCT_CLASS_RULES` (contract I-40) gains two optional fields, `nameAny` and `andAny`; `data/refdata` is regenerated.
+- `tools/patches/2026-11-26-lp16b-platform-product-names.js`; `tools/regression/LP16b-platform-product-names.js` (105
+  known-answer checks); the LP-16 test follows the new bond rule; the side-by-side kit's routing copy reads the new fields.
+
+### Fixed (live page, KI-301 (IRR-SI): the cashflow file's since-inception sheets; `index.html` `6896AFEC8626BEB22357A258AB69508D`, 16,414,518 bytes, on 9C973F61)
+- **Transaction XIRRs come from the since-inception sheets** (CR-0013; found by CHAT-010, flagged by CHAT-012, MOD-04's
+  order, 26 Nov 2026). The platform's cashflow file holds SI Xirr, SI Bmxirr, YTD Xirr, YTD Bmxirr, QTD Xirr and QTD
+  Bmxirr, in that order. The IRR reader took the last matching sheet names, QTD Xirr and QTD Bmxirr, so every transaction
+  XIRR, the client sheets, the Fund IRR tree and the tax lots used quarter-to-date flows only, with no error.
+  - A sheet named YTD, QTD, MTD or FYTD is never taken, by name or by content. A sheet named SI or "Since Inception" is
+    preferred ("SIP Xirr" is not SI). Otherwise the last match wins, as before. A file with period sheets only gives no
+    fund rows, and the upload asks for an SI Xirr sheet.
+  - `tools/patches/2026-11-26-irr-si-sheets.js` (parsers script only); `tools/regression/IRR-SI-since-inception-sheets.js`
+    (19 known-answer checks: the six-sheet file's review equals the SI pair's, and each holding's XIRR an independent XIRR of
+    its SI flows; 7 of the checks fail on the page before the fix).
+
+### Added (new build, M3b data side: the weighted returns engines; not wired into the page yet)
+- **`app/src/engine/returns/portfolio-returns.ts`** (E-147, D-023 point 3): the MF portfolio's 1Y/3Y/5Y "weighted
+  average return of current holdings", weighted by share of the MF value. A fund without the tenor is left out of the
+  weights and counted in the coverage, never 0% (funds at 50/30/20% with 14%, 6% and none: 11.00% at 80% coverage,
+  not 8.80%). Sources in order: the uploaded MF Monitor, then the embedded monthly monitor (the pack joins in M10u); a
+  fund missing in the primary is filled from a later source only at the same as-on date. A fund is its plan and scheme
+  name: Regular and Direct are separate tables with their own dates (36 names of the October 2026 data are in both,
+  with different returns); a plan the first source lacks is read from the next source that has it. One coverage
+  footnote text for screen, slide and sheet ("3Y covers 80% of MF value; 1 fund without a 3Y return excluded", with
+  the sources and dates, and the holdings outside the base), which goes with every rendering of the figure; `asOnDay()`
+  reads the monitor's as-on text. The figure names what it used (ARC-03 Gate B): its source is the first primary
+  actually used and its date that primary table's date (missing when it has none; I-31), `mixed` flags tables of
+  more than one source or date, and with no source at all there is no figure. A
+  holding's plan comes from the vendor table the match came from; an unknown plan is excluded and counted (`no-plan`),
+  as is an account plan that disagrees (`plan-mismatch`). MOD-04's rulings of 26 Nov 2026: a figure from more than one
+  (source, as-on) pair lists each part with its share of the weights used (`parts`, I-31 since contracts-3); a
+  table's date is the month-end label, its true price day only in the notes (PD-57, PD-58; `monitorAsOn()`); an
+  explicit "no 3Y" in the primary is never overridden by another source.
+- **`app/src/engine/returns/stock-cagr.ts`** (E-148, D-023 point 4): each stock's 1Y/3Y/5Y CAGR from split- and
+  bonus-adjusted prices at the exact anniversaries of the review's as-on date (29 Feb maps to 28 Feb), a price on that
+  date or up to 7 days earlier, else the tenor is missing (INSUFFICIENT EVIDENCE when the series starts later, never
+  0%); the direct-equity figure weighted by direct-equity value (60/40% at 10% and 20%: 14.00%; without the 40%
+  stock's 3Y: 10.00% at 60%). A stock takes the first price source with a non-empty series for it, labelled with that
+  source; the figure names the source used, and with no price source at all there is no figure. No look-ahead
+  (PD-67): a price after the review as-on is never used; the end price is the latest on or before the as-on (on
+  month-end data the latest month-end point in the as-on's month or the one before: 15 Oct and 30 Oct use 30 Sep,
+  2 Nov uses 31 Oct; the start is the point of the month of that point's anniversary, so 28 Feb 2025 uses 29 Feb 2024).
+  A series too short for the tenor is filled by a later source only at the same as-on date. The figure, its parts and
+  the footnote are dated by the day of the end prices used (never a file's own date). The footnote counts each
+  exclusion reason apart (no return, not matched or no ISIN, no known plan, plan differs; `footnoteOf(result)`).
+- Tests: `unit/returns/portfolio-returns.test.ts`, `unit/returns/stock-cagr.test.ts` (the known answers of
+  08-regression-test-plan). Parity rows E-147 and E-148: in progress.
+
 ### Added (new build, M3b data side: the reference data embedded in the page; not read by any screen yet)
 - **`scripts/build.mjs`** writes each file of its `REFDATA_BLOCKS` list whole as a data block
   `<script type="application/json" id="refdata-<NAME>">`: MF_PERF, MF_PERF_DIRECT, SIF_PERF, BENCH_RET, STOCK_RET and
@@ -34,6 +152,37 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - `tools/patches/2026-11-26-ki032-irr-client-join.js`; `tools/regression/KI-032-irr-client-join.js` (180 known-answer
     checks). Side-by-side kit: SB-03 retired; SB-04 to SB-07 for the client-name variant case (the new build keeps exact
     client labels, D9); 16 tests.
+
+### Fixed (new build, base-file reader: the platform's full holding report)
+- **KI-300** (`app/src/ingest/base-file.ts`): a money heading that is exactly the field's (Invested Value, Market Value or
+  Current Market Value, Total Gain/Loss, with any unit in brackets) is taken before a partial match, and a heading with
+  "price" is never the invested value, nor one with the word "realized" or "realised" the gain or loss. In the platform's
+  holding report "Invested Price" and "Realized Gain/Loss" come first, and the live page reads them instead (KI-300, open
+  there). Synthetic test in the report's layout (`tests/fixtures/holding-report.ts`); base-file ledger BF-27 and BF-28.
+
+### Added (new build, M2.1 wiring for test build 1: holdings matched in section 1)
+- **Section 1 matches the base file's holdings** when the file loads (`engine/match/resolve-holdings.ts`): each holding goes to one
+  universe as the live page routes it (listed shares to STOCK_RET by ISIN or company name; LP-16's non-MF classes unmatched with
+  their class; PMS, AIF, SIF, else MF) and resolves through the crosswalk with `NEW_BUILD_MATCHING` and the owner's aliases. The
+  product class is a port of the live page's rule on PRODUCT_CLASS_RULES (`engine/match/product-class.ts`).
+- **The import report's matching section** (E-19, `views/matching.ts`) replaces the M2 placeholder: counts by how each holding
+  resolved, the non-fund classes, a "matched to a differently named fund" table and the unmatched list. Matching never blocks
+  a file.
+- **Monitor uploads** (U-08, U-09, U-10; `ingest/load-monitor.ts`, "Fund monitor files" in section 1): an MF Monitor (Regular,
+  Direct) or SIF Monitor read in the browser stands in for the embedded block and re-matches the holdings; the monitors stay when
+  the family changes.
+- The page carries five more refdata blocks through NB-04's loader (AIF_PERF, PMS_PERF, FUND_RANKS_CODES, PRODUCT_CLASS_RULES,
+  OWNER_FUND_ALIASES); the alias evidence links move to `data/owner/fund-aliases-evidence.json` (the page carries no remote URL).
+- **Product classes read LP-16b's table** (`engine/match/product-class.ts`; CHAT-008's Gate B finding B1): `nameAny` (the
+  instrument name must say it: Global Exposure is a GIFT City fund only for GIFT or IFSC, else Offshore) and `andAny` (the
+  product or the name: a bond is US-dollar only with USD, US$, US, dollar or LRS, else a rupee bond or NCD), ported from the
+  live page; LP-16b's own known answers pass. A rule with a field or class the reader does not know is skipped and named in
+  the import report, never applied loosely and never taking matching down; P2P lending is class OTHER (MOD-04, 26 Nov
+  2026), so a DEBT rule is skipped.
+- **A matching failure is said, never silent:** the file still loads and the import report shows an error card with the
+  reason, instead of every holding reading as unmatched.
+- An uploaded monitor is refused before a sheet is expanded when the sheet's declared range exceeds the cell limit; an
+  uploaded monitor's names also rebuild the matcher's known words, a vocabulary the ledger has not measured.
 
 ### Added (new build, M2.1 sprint 2a: matcher corrections, opt-in; not wired into the page yet)
 - **Owner fund aliases** (`data/owner/fund-aliases.json`, `engine/match/owner-aliases.ts`; KI-050, PD-36): the 16 renames the
@@ -479,6 +628,21 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     - a refused IRR file;
     - a synthetic IRR file whose distributors match the base book, so adviser scopes have flows;
     - the browser check `tests/browser/irr-slot.cdp.mjs`.
+
+### Added (new build, the transactions (IRR) file template and two reader rules for the platform's cashflow file; PLAN-05)
+- **The blank template** (`exports/xlsx/irr-template.ts`): the platform's six-sheet cashflow layout (SI, YTD and QTD
+  pairs, the export's exact headings) with a Read Me. Client names must be written exactly as in the holding report:
+  the two files are joined on the exact name only, never by similarity (the owner, 26 Nov 2026). It is downloaded from
+  the IRR slot in section 1.
+- **The reader** (`ingest/irr-file.ts`):
+  - It reads the since-inception pair of the six-sheet file: a sheet whose first word is "SI" is preferred over the
+    legacy last match, which would take the QTD sheets. Recorded as a difference from the live parseIRR, which CR-0013
+    corrects there.
+  - The fund and benchmark sheets must name the same period (SI, YTD or QTD), or no benchmark is read and a Warning
+    names both sheets (CR-0013 follow-up).
+- **On screen and on the Fund IRR sheet:** the base-file clients with no rows in the transactions file are listed.
+- **For the M3b holdings sheet:** `engine/returns/irr-aggregate.ts` gives the IRR tree's client, asset and product
+  XIRRs, or nothing when the IRR file has no such line.
 
 ### Added (new build, M7a: the capital-gains statement reader and the blank template; not wired into the page yet)
 - **`app/src/ingest/capital-gains.ts`** (E-150, D-036, design `docs/new-build/capital-gains-upload.md` §2 to §4, §6, §7,

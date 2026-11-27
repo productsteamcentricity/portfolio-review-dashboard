@@ -21,11 +21,27 @@ export type Diff = {
 };
 /** compared = rows both engines have a value for (same + different); notCompared = rows one engine cannot give yet. */
 export type SectionCount = { compared: number; same: number; different: number; notCompared: number };
+/** One holding whose route or matched entry differs between the builds, for the report's "Fund matching" summary. */
+export type MatchingRow = {
+  key: string;
+  name: string;
+  route: string;
+  legacy: string | null;
+  new: string | null;
+  /** The new build's method and confidence (shown, never compared). */
+  method: string | null;
+  ledger: string | null;
+  class: LedgerEntry['class'] | null;
+  reference: string | null;
+};
+export type MatchingSummary = { compared: number; same: number; rows: MatchingRow[] };
 export type Comparison = {
   fixture: string;
   counts: Record<Section, SectionCount>;
   diffs: Diff[];
   unclassified: number;
+  /** Fund matching (E-13, E-14, E-15): holdings both sides have, how many match alike, and every one that does not. */
+  matching: MatchingSummary;
   notes: string[];
 };
 
@@ -39,7 +55,10 @@ export type LedgerEntry = {
   fixtures: string[] | '*';
   legacy: Pattern;
   new: Pattern;
-  class: 'correction' | 'improvement' | 'not-built' | 'regression';
+  /** accepted-difference: the owner accepted that the two builds differ here (reviewed at M15); never a defect.
+   * known-gap: the live page is right and the new build is not, under a decided regime, with the owner's ruling still
+   * open; it passes the test but its entry must say so ("not yet ruled on by the owner"). */
+  class: 'correction' | 'improvement' | 'not-built' | 'regression' | 'accepted-difference' | 'known-gap';
   reference: string;
   description: string;
 };
@@ -58,9 +77,13 @@ export function sameValue(a: unknown, b: unknown): boolean {
   return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
 
-function matchPattern(p: Pattern, v: unknown): boolean {
+/** A pattern: '*', { "type": "number" | "string" }, { "byField": { <field>: <pattern> } } (an entry over several fields
+ * pins each field's own value; a field it does not name never matches), or an exact value. */
+function matchPattern(p: Pattern, v: unknown, field: string | null = null): boolean {
   if (p === '*') return true;
   if (p && typeof p === 'object' && !Array.isArray(p)) {
+    const by = (p as { byField?: Record<string, Pattern> }).byField;
+    if (by !== undefined) return field !== null && Object.prototype.hasOwnProperty.call(by, field) && matchPattern(by[field], v);
     const t = (p as { type?: string }).type;
     if (t === 'number') return typeof v === 'number';
     if (t === 'string') return typeof v === 'string';
@@ -82,7 +105,7 @@ export function classify(d: Diff, fixture: string, ledger: readonly LedgerEntry[
     }
     if (!matchKey(e.key, d.key)) continue;
     if (e.fixtures !== '*' && !e.fixtures.includes(fixture)) continue;
-    if (!matchPattern(e.legacy, d.legacy) || !matchPattern(e.new, d.new)) continue;
+    if (!matchPattern(e.legacy, d.legacy, d.field) || !matchPattern(e.new, d.new, d.field)) continue;
     return e.id;
   }
   return null;
@@ -148,5 +171,22 @@ export function compareSides(fixture: string, irr: boolean, L: SbsSide, N: SbsSi
   }
 
   for (const d of diffs) d.ledger = classify(d, fixture, ledger);
-  return { fixture, counts, diffs, unclassified: diffs.filter((d) => d.ledger === null).length, notes: [...L.notes, ...N.notes] };
+
+  // the fund-matching summary: one row per holding (on both sides) whose route, matched entry or universe differs; its
+  // ledger entry is the one its differences share (none when any of them is unclassified or they disagree)
+  const MATCH_FIELDS = new Set(['route', 'matched', 'universe']);
+  const nByKey = new Map(N.holdings.map((h) => [h.key, h]));
+  const matching: MatchingSummary = { compared: 0, same: 0, rows: [] };
+  for (const l of L.holdings) {
+    const n = nByKey.get(l.key);
+    if (!n) continue;
+    matching.compared++;
+    const ds = diffs.filter((d) => d.section === 'holdings' && d.kind === 'field' && d.key === l.key && MATCH_FIELDS.has(d.field ?? ''));
+    if (!ds.length) { matching.same++; continue; }
+    const ids = new Set(ds.map((d) => d.ledger));
+    const id = ids.size === 1 ? [...ids][0]! : null;
+    const e = id ? ledger.find((x) => x.id === id) ?? null : null;
+    matching.rows.push({ key: l.key, name: l.name, route: l.route === n.route ? n.route : `${l.route} / ${n.route}`, legacy: l.matched, new: n.matched, method: n.method, ledger: id, class: e ? e.class : null, reference: e ? e.reference : null });
+  }
+  return { fixture, counts, diffs, unclassified: diffs.filter((d) => d.ledger === null).length, matching, notes: [...L.notes, ...N.notes] };
 }

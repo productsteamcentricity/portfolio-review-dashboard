@@ -35,11 +35,13 @@ export function legacyModel(input: SbsInput): Any {
   return E.computeReview(rows, ref, { familyName: input.label, asOnDate: input.asOn });
 }
 
-/** Where the live page looked the holding up, from the engine's own fields (index.html computeReview: h.directEquity
- * :1569, h.pcls and _nonMf :1532 and :1584, the performance branch :1611-1617). The direct-equity and non-MF decisions
- * are the engine's; the PMS/AIF/SIF/MF split repeats its four product tests. */
+/** Where the live page looked the holding up, in the new side's route strings (next.ts routeLabel), from the engine's own
+ * fields (index.html computeReview): a listed share (h.directEquity, LP-16) is 'STOCK'; a non-MF class of
+ * PRODUCT_CLASS_RULES (h.pcls) is 'other (<label>)'; else the performance branch's universe, whose PMS/AIF/SIF/MF split
+ * repeats its four product tests. */
 function legacyRouteOf(h: Any, nonMf: ReadonlySet<string>): string {
-  if (h.directEquity || nonMf.has(h.pcls)) return 'none';
+  if (h.directEquity) return 'STOCK';
+  if (nonMf.has(h.pcls)) return `other (${String(h.pcls)})`;
   const p = String(h.product ?? '');
   if (/pms/i.test(p)) return 'PMS';
   if (/aif/i.test(p)) return 'AIF';
@@ -47,27 +49,40 @@ function legacyRouteOf(h: Any, nonMf: ReadonlySet<string>): string {
   return 'MF';
 }
 
+/** The STOCK_RET key the live page found for a listed share: h.stockRet is the entry itself (SR[normCo(name)]), so
+ * its key is looked up by identity in the same block, never recomputed here. */
+function stockKeyOf(h: Any, stockRet: Readonly<Record<string, unknown>>): string | null {
+  if (!h.directEquity || !h.stockRet) return null;
+  for (const k of Object.keys(stockRet)) if (stockRet[k] === h.stockRet) return k;
+  throw new Error(`legacy: the STOCK_RET entry of ${String(h.name)} is not in the block`);
+}
+
 /** The legacy side in the kit's shape. */
 export function runLegacy(input: SbsInput): SbsSide {
   const m = legacyModel(input);
   const notes: string[] = [];
-  const nonMf = new Set<string>(((legacyHost().REF.PRODUCT_CLASS_RULES ?? []) as Any[]).map((r) => String(r.label)));
+  const REF = legacyHost().REF;
+  const nonMf = new Set<string>(((REF.PRODUCT_CLASS_RULES ?? []) as Any[]).map((r) => String(r.label)));
+  const stockRet = (REF.STOCK_RET ?? {}) as Record<string, unknown>;
 
-  const holdings: SbsHolding[] = (m.holdings as Any[]).map((h) => ({
-    key: holdingKey(h.client, h.name, h.folio, h.product, h.distributor),
-    route: legacyRouteOf(h, nonMf),
-    baseXirr: num(h.__sbsBaseXirr),
-    client: String(h.client ?? ''),
-    name: String(h.name ?? ''),
-    amc: String(h.amc ?? ''),
-    folio: String(h.folio ?? ''),
-    cmvCr: num(h.cmvCr),
-    matched: h.perfKey ?? null,
-    universe: h.perfSrc ?? null,
-    method: null,
-    xirr: num(h.xirrFrac),
-    bmxirr: num(h.bmxirrFrac),
-  }));
+  const holdings: SbsHolding[] = (m.holdings as Any[]).map((h) => {
+    const stock = stockKeyOf(h, stockRet);
+    return {
+      key: holdingKey(h.client, h.name, h.folio, h.product, h.distributor),
+      route: legacyRouteOf(h, nonMf),
+      baseXirr: num(h.__sbsBaseXirr),
+      client: String(h.client ?? ''),
+      name: String(h.name ?? ''),
+      amc: String(h.amc ?? ''),
+      folio: String(h.folio ?? ''),
+      cmvCr: num(h.cmvCr),
+      matched: h.directEquity ? stock : (h.perfKey ?? null),
+      universe: h.directEquity ? (stock ? 'STOCK' : null) : (h.perfSrc ?? null),
+      method: null,
+      xirr: num(h.xirrFrac),
+      bmxirr: num(h.bmxirrFrac),
+    };
+  });
 
   const performance: SbsPerfRow[] = [];
   for (const b of (m.performance?.buckets ?? []) as Any[]) {

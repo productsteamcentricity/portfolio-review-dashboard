@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { REPO, loadSheetJS } from '../helpers/sheetjs.ts';
+import { REPO, loadSheetJS, writeXlsx } from '../helpers/sheetjs.ts';
 import { syntheticFixtures, buildVariants, SYNTHETIC_BOOK } from '../fixtures/make-books.ts';
 import type { BookRow } from '../fixtures/make-books.ts';
 import { irrFixtures, standardSheets, toWorkbook } from '../fixtures/make-irr-files.ts';
@@ -37,6 +37,46 @@ export const PROBE_BOOK: readonly BookRow[] = [
   row({ client: 'Sample Client C', name: 'Sample Liquid Fund - Regular Plan - Growth', cat: 'Liquid Fund', asset: 'Debt', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-3001' }),
 ];
 
+/** The matching probe book (kit phase 2 (a)): holdings whose fund names are public scheme names taken from the measured
+ * changes of tests/parity/matching-corrections-ledger.json (stage "Normaliser v2", MF_PERF, measures self and amfi),
+ * each with its known answer there, plus one owner alias (PD-36), two listed shares (one found only by its ISIN), a
+ * REIT and an unlisted share. Clients, folios and amounts are invented; the AMC is blank where the ledger measured
+ * the name without one. `isin` goes into an ISIN column (the owner's heading of 25 Nov 2026). */
+export const MATCH_BOOK: ReadonlyArray<BookRow & { isin?: string }> = [
+  // self / other-answer / fixed: the live page picks another fund, the new build the right one
+  row({ client: 'Sample Client M', name: 'Aditya Birla SL Multi - Cap Fund - Reg(G)', cat: 'Multi Cap Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-5001' }),
+  row({ client: 'Sample Client M', name: 'ICICI Pru BSE Liquid Rate ETF(IDCW)', cat: 'ETF', asset: 'Debt', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-5002' }),
+  row({ client: 'Sample Client M', name: 'SBI Nifty 1D Rate Liquid ETF(IDCW)', cat: 'ETF', asset: 'Debt', amc: 'SBI', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-5003' }),
+  // amfi / other-answer / fixed: an AMFI-style name the live page sends to the index fund, the new build to the ETF
+  row({ client: 'Sample Client M', name: 'Tata Nifty 50 Exchange Traded Fund', cat: 'ETF', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-5004' }),
+  // self / to-null / neither: the live page picks the sibling Gold ETF for a Gold fund, the new build leaves it unmatched
+  row({ client: 'Sample Client M', name: 'Axis Gold -Reg(G)', cat: 'Gold FoF', asset: 'Commodity', amc: '', product: 'Mutual Funds', dist: 'Other Distributor', folio: 'SYN-5005' }),
+  row({ client: 'Sample Client M', name: 'Kotak Gold (G)', cat: 'Gold FoF', asset: 'Commodity', amc: '', product: 'Mutual Funds', dist: 'Other Distributor', folio: 'SYN-5006' }),
+  // amfi / to-null / regressed: the live page's answer is right, the stricter regime leaves it unmatched
+  row({ client: 'Sample Client N', name: 'UTI Focused Fund (30 stocks) - Regular Plan - Growth Option', cat: 'Focused Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-6001' }),
+  row({ client: 'Sample Client N', name: 'Kotak Infrastructure & Economic Reform Fund - Standard Plan-Growth', cat: 'Sectoral Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-6002' }),
+  // an owner alias (PD-36 line 1): the old scheme name resolves to the renamed fund
+  row({ client: 'Sample Client N', name: 'ICICI Pru Bluechip Fund(G)', cat: 'Large Cap Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-6003' }),
+  // parity: an exact reference name
+  row({ client: 'Sample Client N', name: 'Parag Parikh Flexi Cap Fund-Reg(G)', cat: 'Flexi Cap Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-6004' }),
+  // listed shares: one both builds find by the company name, one only the new build finds, by its ISIN (E-13)
+  { ...row({ client: 'Sample Client N', name: 'HDFC Bank Ltd.', cat: 'Large Cap', amc: '', product: 'Equity Shares', dist: 'Centricity', folio: 'SYN-6005' }), isin: 'INE040A01034' },
+  { ...row({ client: 'Sample Client N', name: 'Infosys Ltd - Equity Shares', cat: 'Large Cap', amc: '', product: 'Equity Shares', dist: 'Centricity', folio: 'SYN-6006' }), isin: 'INE009A01021' },
+  // non-MF classes (LP-16): no fund data by design on both sides
+  row({ client: 'Sample Client N', name: 'Sample Office REIT', cat: 'REIT', asset: 'Real Estate', amc: '', product: 'REIT', dist: 'Centricity', folio: 'SYN-6007', units: 500 }),
+  row({ client: 'Sample Client N', name: 'Sample Technologies Pvt Ltd', cat: 'Unlisted', amc: '', product: 'Unlisted Direct Equity', dist: 'Centricity', folio: 'SYN-6008', units: 100 }),
+];
+
+/** A base file's bytes with an ISIN column appended (heading "ISIN", one cell per holding row; blank when none). */
+function withIsinColumn(xlsx: ReturnType<typeof loadSheetJS>, bytes: Uint8Array, isins: ReadonlyArray<string | undefined>): Uint8Array {
+  const X = xlsx as unknown as { read: (b: Uint8Array, o: object) => { Sheets: Record<string, Record<string, unknown>>; SheetNames: string[] }; utils: { decode_range: (r: string) => { e: { c: number } }; sheet_add_aoa: (ws: unknown, d: unknown[][], o: object) => void } };
+  const wb = X.read(bytes, { type: 'array', cellDates: false });
+  const ws = wb.Sheets[wb.SheetNames[0]!]!;
+  const col = X.utils.decode_range(String(ws['!ref'])).e.c + 1;
+  X.utils.sheet_add_aoa(ws, [['ISIN'], ...isins.map((v) => [v ?? null])], { origin: { r: 0, c: col } });
+  return writeXlsx(xlsx, wb);
+}
+
 /** The synthetic cases: tools/make-sample-base.js's pair (written to test-data/side-by-side/), and the test fixtures'
  * standard book with and without the standard IRR file. Nothing here is real. */
 export function syntheticCases(): Case[] {
@@ -51,7 +91,9 @@ export function syntheticCases(): Case[] {
   // the standard IRR file with client A written with a salutation: the live page joins it as a name variant (KI-032),
   // the new build keys clients by their exact label (D9) and leaves it out as an IRR-only client (OD-4)
   const variantIrr = toWorkbook(xlsx, standardSheets().map((s) => ({ ...s, rows: s.rows.map((r, i) => (i > 0 && r[0] === 'Sample Client A' ? ['Mr. Sample Client A', ...r.slice(1)] : r)) })));
+  const match = withIsinColumn(xlsx, buildVariants(xlsx, MATCH_BOOK, 'match').find((f) => f.id === 'match-standard')!.bytes, MATCH_BOOK.map((h) => h.isin));
   return [
+    { id: 'matching-probe', input: { baseBytes: match, irrBytes: null, asOn: '30 Sep 2026', label: 'Matching probe' } },
     { id: 'syn-standard-irr-variant', input: { baseBytes: syn.bytes, irrBytes: variantIrr, asOn: '30 Sep 2026', label: 'Synthetic' } },
     { id: 'probe-irr-standard', input: { baseBytes: probe.bytes, irrBytes: irr.bytes, asOn: '30 Sep 2026', label: 'Probe' } },
     { id: 'sample-with-irr', input: { baseBytes: read('Sample_Base_File.xlsx'), irrBytes: read('Sample_IRR_Transactions.xlsx'), asOn: '30 Sep 2026', label: 'Sample Family' } },
@@ -155,7 +197,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
   const files = writeReport(out, results, { realFiles: Boolean(base), created });
   for (const r of results) {
     const c = Object.entries(r.counts).map(([s, n]) => `${s} ${n.compared}/${n.different}${n.notCompared ? ` (+${n.notCompared} not built)` : ''}`).join(', ');
-    console.log(`${r.fixture}: ${r.diffs.length} difference(s), ${r.unclassified} unclassified (compared/different: ${c})`);
+    console.log(`${r.fixture}: ${r.diffs.length} difference(s), ${r.unclassified} unclassified (compared/different: ${c}); fund matching ${r.matching.same}/${r.matching.compared} alike`);
   }
   console.log(`report: ${files.html}`);
   if (base) console.log('LOCAL ONLY: the report holds client data. Never commit, attach or send it.');

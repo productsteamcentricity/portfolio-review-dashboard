@@ -6,7 +6,8 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildImportReport, MATCHING_LINE } from '../../../app/src/views/import-report.ts';
+import { buildImportReport } from '../../../app/src/views/import-report.ts';
+import { MATCHING_NO_DATA } from '../../../app/src/views/matching.ts';
 import { SYNTHETIC_BOOK } from '../../fixtures/make-books.ts';
 import { sampleLoaded } from '../../helpers/sample-review.ts';
 import { loadSheetJS } from '../../helpers/sheetjs.ts';
@@ -102,10 +103,10 @@ describe('the import report', () => {
       ['Percent numbers (8.79 means 8.79%)', 'Fractions (0.0879 means 8.79%)']);
   });
 
-  test('matching arrives in M2, and no line holds an en or em dash', () => {
+  test('without a match report the matching section says the data is not there; no line holds an en or em dash', () => {
     const r = report('syn-skipped-rows');
-    assert.equal(r.matching, MATCHING_LINE);
-    assert.match(r.matching, /^Instrument matching arrives in M2/);
+    assert.equal(r.matching.summary, MATCHING_NO_DATA);
+    assert.deepEqual([r.matching.counts, r.matching.matchedTo, r.matching.unmatched], [[], [], []]);
     assert.ok(!/[\u2013\u2014]/.test(JSON.stringify(r)));
   });
 });

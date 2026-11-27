@@ -20,6 +20,7 @@ import { readWorkbook } from '../../app/src/ingest/workbook.ts';
 import { parseBaseFile } from '../../app/src/ingest/base-file.ts';
 import { STATUS } from '../../app/src/model/status.ts';
 import { REPO } from '../helpers/sheetjs.ts';
+import { holdingReportAoa } from '../fixtures/holding-report.ts';
 
 const ledger = JSON.parse(fs.readFileSync(path.join(REPO, 'tests', 'parity', 'base-file-ledger.json'), 'utf8')) as Ledger;
 const describeDiff = (d: Diff): string =>
@@ -36,6 +37,10 @@ const results: Array<{
 before(() => {
   host = loadLegacyHost();
   ({ fixtures, book } = sampleFixtures(host));
+  /* the platform's holding report layout (MOD-04, 26 Nov 2026), its header on row 1 so the legacy reads it: BF-27 */
+  const report = host.XLSX.utils.book_new();
+  host.XLSX.utils.book_append_sheet(report, host.XLSX.utils.aoa_to_sheet(holdingReportAoa(0)), 'Holdings');
+  fixtures = [...fixtures, { id: 'syn-holding-report', bytes: new Uint8Array(host.XLSX.write(report, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer) } as Fixture];
   for (const f of fixtures) {
     const legacy = legacyParse(host, f.bytes);
     const imp = parseBaseFile(readWorkbook(host.XLSX, f.bytes), {
