@@ -4,6 +4,28 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (records, registers-5, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **Chat registers** (`docs/project-control/CHAT_REGISTRY.md`, `docs/coordination/CHAT_SUCCESSION_REGISTER.md`,
+  `CONTEXT_COMPACTION_TRACKER.md`): CHAT-013 (MOD-04) handed over to CHAT-015 (MOD-05) on 26 Nov 2026 on the owner's
+  order; CHAT-013 is a historical record; CHAT-007 is retired; compactions recounted from the markers (CHAT-008 and
+  CHAT-009 at 2); next free number CHAT-016.
+- **`docs/coordination/FILE_OWNERSHIP_MAP.md`**: MOD-05 the Moderator and CHAT-014 EX-03 the live-page chat;
+  `tests/side-by-side/**` to EX-03; `engine/returns/{portfolio-returns,stock-cagr}.ts` to NB-04 (`performance.ts` stays
+  NB-02); no price-file reader in test build 1; `exports/xlsx/irr-template.ts` and `engine/returns/irr-aggregate.ts` to
+  NB-03.
+- **I-40 addendum** (`docs/coordination/INTERFACE_CONTRACTS.md`): the rule fields `nameAny` and `andAny`, the product
+  classes of the new build's model (P2P lending is OTHER, its Debt asset set by the live engine), and the import report
+  for a rule with an unknown field or class.
+- **`docs/coordination/CODING_MAP.md`, `CRITICAL_PATH.md`, `MODULE_DEPENDENCY_MAP.md`**: PRs #43 to #57 and their
+  module statuses; M11a (PR #41) corrected.
+- **`docs/project-control/DECISION_LOG.md`**: PD-67 (the 15-hour delegation of 26 Nov); the publishes of KI-032, LP-16b
+  and KI-301 under PD-30; the owner's decisions of 26 and 27 Nov in section 2.4.
+- **`docs/coordination/MODEL_ROUTING_LOG.md`**: the successor Moderator CHAT-015 (MOD-05) runs on the Fable model.
+- **`docs/project-control/README.md`**, Gate D: a live change that regenerates `data/refdata` changes `/next/` too (since
+  PR #49), so its Gate D states the expected `/next/` SHA-256.
+- **`docs/PROJECT_STATE.md`**: LP-16b live (`04079A77`); test build 1's status; the merged M2.1, M3a, M7a R1 and M11a
+  items.
+
 ### Changed (tests only: the side-by-side kit's ledger class and a KI-032 case; no change to `index.html`, `/next/` or `app/`)
 - **`tests/side-by-side/`**: SB-04 to SB-07, the decided difference of client names between the live page (KI-032's
   variant join) and the new build (exact labels, D9), are now class `accepted-difference`: an owner-accepted difference,

@@ -227,8 +227,11 @@ The gates are the owner's (27 Oct, section 13), mapped onto the practice this re
   message ([INTERFACE_CONTRACTS.md](INTERFACE_CONTRACTS.md) I-25); push `main` with the deny-list exported; then
   `release-check.mjs --after-push`.
 - **Exit:** CI green on `main`; the Pages run green when the path filter triggers it; the downloaded live `/` has the
-  MD5 of `git show origin/main:index.html`; `/next/` has the build's size and SHA-256, or is unchanged when the app did
-  not change; the merge SHA, run ids and hashes recorded; dependent tasks told to take `main`; the task's files
+  MD5 of `git show origin/main:index.html`; `/next/` has the build's size and SHA-256, or is unchanged when neither the
+  app nor `data/refdata` changed. Since PR #49 the `/next/` build embeds the reference-data manifest (the
+  `refdata-VINTAGE` block, `scripts/build.mjs`), so a live-page change that regenerates `data/refdata` changes `/next/`
+  too: its Gate D states the expected `/next/` SHA-256 (seen on PR #50, LP-16b: one manifest entry changed; registers-5,
+  27 Nov 2026); the merge SHA, run ids and hashes recorded; dependent tasks told to take `main`; the task's files
   released in [ACTIVE_CHANGE_REGISTER.md](ACTIVE_CHANGE_REGISTER.md); a new baseline row in the integration log.
 - **Status after:** VERIFIED COMPLETE, unless Gate E is still needed.
 - **Existing practice:** D-017 and D-020; the Pages checks of [`docs/DEPLOYMENT.md`](../DEPLOYMENT.md).
