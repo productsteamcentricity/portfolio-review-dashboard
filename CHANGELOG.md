@@ -12,10 +12,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   stays "without a 3Y return". The coverage share has a fixed one decimal ("63.0%" beside "89.8%"). Weights, values
   and coverage are unchanged; only the reason and the text change. Tests in `unit/returns/portfolio-returns.test.ts`.
 - **`app/src/engine/returns/stock-cagr.ts`** (E-148, not wired; the owner's answer to F1 on 27 Nov 2026, "As month
-  labels"): on month-end prices the no-look-ahead rule compares month labels, not calendar days: the point of the
-  review's month counts as on or before the review date (a 30 Oct or 31 Oct review, and a point dated 30 or 31 Oct,
-  give the same 1Y), the figure is dated by the month-end label, and the footnote adds "Dates are month-end labels".
-  Daily price data keeps true days. Tests pin the 30/31 Oct pair.
+  labels"): on a month-end source (the pack, by its kind; the analyst's file is daily unless declared) the
+  no-look-ahead rule compares month labels, not calendar days: the review month's point counts when the review date
+  lies in that month's last 7 days (a 30 Oct or 31 Oct review, and a point dated 30 or 31 Oct, give the same 1Y, 3Y and
+  5Y), otherwise the month before, so no price from after a mid-month review is used (the financial review's guard,
+  a conservative default while the owner is away). The figure is dated by the month-end label, marked "month-end label"
+  on that source's footnote clause; the true price day goes in the result's `notes`. Daily sources keep true days.
 
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,

@@ -463,12 +463,13 @@ export function coverageFootnote(figure: WeightedReturn, used: readonly UsedTabl
     while (j < used.length && used[j]!.source === s.source && used[j]!.plan === s.plan) j++;
     const head = `${SOURCE_NAME[s.source]}${s.plan ? (s.plan === 'regular' ? ', Regular plans' : ', Direct plans') : ''}, as on ${day(s.asOn)}`;
     const others = used.slice(i + 1, j).map((o) => `${day(o.asOn)}${o.count === undefined ? '' : `: ${cnt(o.count)}`}`);
-    const inner = [s.count === undefined ? '' : cnt(s.count), others.length ? `also ${others.join(', ')}` : ''].filter((x) => x).join('; ');
+    // a month-end label is marked on its own source's clause, so a true day of another source is never read as a label
+    const label = used.slice(i, j).some((u) => u.monthLabel) ? 'month-end label' : '';
+    const inner = [label, s.count === undefined ? '' : cnt(s.count), others.length ? `also ${others.join(', ')}` : ''].filter((x) => x).join('; ');
     named.push(inner ? `${head} (${inner})` : head);
     i = j;
   }
   if (named.length) parts.push(`Source: ${named.join('; ')}`);
-  if (used.some((u) => u.monthLabel)) parts.push('Dates are month-end labels');
   return parts.join('. ') + '.';
 }
 
