@@ -18,7 +18,7 @@ chats can code at once.
 | CHAT-013 MOD-04 | Moderator from 25 to 26 Nov 2026 (from CHAT-006 MOD-03) | historical record since 26 Nov 2026 |
 | CHAT-014 EX-03 | Live page (`index.html` patches), refresh, the side-by-side test kit, live-page records and runbook (from CHAT-007 EX-02, 26 Nov 2026) | active |
 | CHAT-007 EX-02 | Live page until 26 Nov 2026 | retired 26 Nov 2026 (three compactions) |
-| CHAT-016 ARC-04 | Guardian: Gate B and Gate D reviews; ARC-02's sole rule-10 successor from the merge of registers-7 (CHAT_REGISTRY); writes no product code (from CHAT-008 ARC-02, 27 Nov 2026) | active (opened 27 Nov 2026) |
+| CHAT-016 ARC-04 | Guardian: Gate B and Gate D reviews; the only chat named as ARC-01's rule-10 successor (through ARC-02) from the merge of registers-7 (CHAT_REGISTRY); writes no product code (from CHAT-008 ARC-02, 27 Nov 2026) | active (opened 27 Nov 2026) |
 | CHAT-008 ARC-02 | Guardian until 27 Nov 2026 | handed over to CHAT-016 on 27 Nov 2026 (three compactions) |
 | CHAT-017 NB-05 | New build: identifiers, ingest, classification, the M3b follow-up, then M4 (from CHAT-009 NB-02, 27 Nov 2026) | active (opened 27 Nov 2026) |
 | CHAT-009 NB-02 | New build until 27 Nov 2026 | handed over to CHAT-017 on 27 Nov 2026 (three compactions) |

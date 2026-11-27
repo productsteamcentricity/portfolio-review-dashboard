@@ -16,5 +16,5 @@ Every replacement of a chat by a numbered successor. Chat numbers are never reus
 | CHAT-009 (NB-02) | CHAT-017 (NB-05) | New-build implementer | three compactions (27 Nov 2026); ordered by the Moderator (MOD-05) | 27 Nov 2026 | complete: CHAT-017 opened on the owner's "Open both" of 27 Nov 2026 and took over that day |
 
 Next free chat number: **CHAT-018** (27 Nov 2026). CHAT-010 (NB-03), CHAT-011 (NB-04) and CHAT-012 (ARC-03) are new
-roles opened on 24 and 25 Nov 2026, not successors. ARC-04 (CHAT-016) is ARC-02's sole rule-10 successor from the merge of registers-7
-(CHAT_REGISTRY); until then ARC-02 (CHAT-008) holds it. ARC-03 is not the rule-10 Guardian.
+roles opened on 24 and 25 Nov 2026, not successors. ARC-04 (CHAT-016) is the only chat named as ARC-01's rule-10 successor (through ARC-02) from the merge of
+registers-7 (CHAT_REGISTRY); until then ARC-02 (CHAT-008) holds it. ARC-03 is not the rule-10 Guardian.

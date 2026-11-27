@@ -8,7 +8,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
   `docs/project-control/CHAT_REGISTRY.md`): CHAT-016 (ARC-04, Guardian, successor of CHAT-008) and CHAT-017 (NB-05, new
   build, successor of CHAT-009) opened on the owner's "Open both" of 27 Nov 2026 and took over that day; ARC-04 is
-  ARC-02's sole rule-10 successor from this record's merge; next free number CHAT-018.
+  the only chat named as ARC-01's rule-10 successor (through ARC-02) from this record's merge; next free number CHAT-018.
 - **`docs/project-control/DECISION_LOG.md`** 2.4: the owner's "Open both".
 - **`docs/PROJECT_STATE.md`**, **`docs/coordination/CRITICAL_PATH.md`**: the E-148 condition list closed before "tax round
   2" (CHAT-008's note N1 on registers-6).
