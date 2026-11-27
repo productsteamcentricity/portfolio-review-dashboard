@@ -4,6 +4,26 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M7b: the tax seam; not wired into the page yet)
+- **`engine/tax/review-tax.ts` (`reviewTax`, PLAN-07):** one pure call over the review's holdings and as-on day, the
+  accepted IRR file, the accepted capital-gains statement and the analyst's answers (TaxInputs, with or without a
+  statement). It runs today's engine in order and adds no arithmetic: the FIFO lots and their roll-ups by class,
+  product, asset, client and family; the harvest per client and the family sum, the exemption already used being the
+  analyst's entry, else the statement's person-year of the as-on year, else not applied (Q-52); the realised gains
+  derived from the IRR file; the statement's lots and person-year tax; the reconciliation; `tax.realisedFY` for each
+  financial year with a sale in either input up to the as-on year; the repeat evidence. Issues are de-duplicated by rule
+  and scope and ordered by severity, then rule. The output is engine-local, mapped to the I-37 types where they exist,
+  with the gaps marked `TODO(contracts-4)`; the I-41 wiring is to come.
+- **Q-49 for absent inputs:** without an IRR file every holding is unreconciled with its class shown, and the unrealised
+  split, the harvest and the derived gains are labelled missing values; without a statement the person-year tax is
+  missing and `tax.realisedFY` is the derived figure, labelled "derived from transactions"; with neither, the classes
+  only. The clock only through the caller's `now`.
+- **Tests:** `tests/integration/review-tax.test.ts` (four input sets on a book with no switch pair, so the tests do not
+  depend on the merger-candidate rule: all three, no IRR file, no statement, neither; H-1 to H-6 and R2-H7, KA-9 to
+  KA-13, KA-15, KA-18 and KA-20 to KA-22 and the reconcile cases through the seam; each part equal to its module called
+  directly; order independence; no client name or amount in an issue; no clock or browser global). No engine module
+  changed.
+
 ### Changed (new build, M7a tax engine, round 2c: Gate B of 5c9ae0a F1 to F4 and merger candidates; not wired into the page yet)
 - **Q-49 throughout: a gap is named, never estimated.** The owner has not said how the IRR export writes mergers,
   transfers or bonuses (Q-T1, Q-T5); nothing below assumes it.
