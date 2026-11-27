@@ -26,10 +26,10 @@ live-page chat (read "EX-02" below as EX-03); the status cells below are updated
 origin/main]. Test build 1 is complete on `/next/` since PR #59; the owner's acceptance (Gate E) is pending. The live
 page is unchanged (`04079A77`).
 
-**Update, 28 Nov 2026 (registers-8, drafted by EX-03 for MOD-05):** main is `2e63bed` (PR #68). Merged since registers-6
+**Update, 28 Nov 2026 (registers-8, drafted by EX-03 for MOD-05):** main is `83647ce` (PR #69). Merged since registers-6
 (PR #64, `9fe096d`), in merge order: the M3b follow-up (#65, `04bf700`), registers-7 with the kit's Gold rows (#66,
 `79f7a07`), the M7a tax engine round 2 (#67, `0d38184`, not wired) and the direct-equity CAGR's review conditions of
-PR #61 (#68, `2e63bed`, not wired) [V git log --first-parent origin/main]. Owners:
+PR #61 (#68, `2e63bed`, not wired) and the M10 store browser test (#69, `83647ce`, tests and docs only) [V git log --first-parent origin/main]. Owners:
 CHAT-016 ARC-04 is the Guardian and CHAT-017 NB-05 the new-build implementer since 27 Nov 2026 (read "ARC-02" below as
 ARC-04 and "NB-02" as NB-05).
 

@@ -4,6 +4,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M10 before wiring: the pack store in a real browser; tests only, `/next/` unchanged)
+- **`tests/browser/screener-store.cdp.mjs`** (ARC-03's condition for wiring M10): the MF Screener data pack reader and
+  browser store run in headless Edge or Chrome against the real IndexedDB, from a `file://` harness bundled by esbuild
+  (JSZip from the vendored PptxGenJS, as the app passes it) with a fresh profile; synthetic packs picked through a file
+  input. 13 checks: offer, read-back SHA-checked, re-offer no-op, older cycle refused, newer cycle replacing with
+  history kept, a damaged IndexedDB record refused and removed, a tampered pack refused, no exception and no request.
+  Local only, as the other `*.cdp.mjs` scripts; no real pack content (D-026). Listed in `docs/TESTING.md`.
+
 ### Changed (records, registers-8, 28 Nov 2026: docs and one test comment; no change to `index.html`, `app/` or data)
 - **The direct-equity CAGR rule** (`docs/PRD.md`, `new-build/{01-legacy-system-audit,02-capability-inventory,
   07-implementation-roadmap,observation-rule-bank,open-questions}.md`): the older "exact anniversaries" sentence replaced
@@ -16,7 +24,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   names marked answered in section 2.5, and the 26 Nov stricter-matching row updated (the aliases approved).
   **`docs/DECISIONS.md`**: a dated note under D-023 (its own text unchanged). **`docs/KNOWN_ISSUES.md`**: KI-302 answered
   by the owner (absolute, marked), open until built.
-- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,MODULE_DEPENDENCY_MAP,CRITICAL_PATH}.md`**: PRs #65 to #68 and
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,MODULE_DEPENDENCY_MAP,CRITICAL_PATH}.md`**: PRs #65 to #69 and
   what comes next (CHAT-016's note N4); decision log 2.5: the CAGR figure date in the code since PR #68.
 - **Compactions** recounted (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).
 - **`tests/unit/match/corpus.test.ts`**: a comment and a reason text no longer say the owner accepted losses it was not
