@@ -85,7 +85,7 @@ function bucketVM(b: PerfBucket, plan: PerformancePlan, directList: boolean): Pe
     else if (g.noBenchmarkReason === 'not-all-equity') notAllEquity.push(g.label);
   }
   const notes: string[] = [];
-  if (b.hasBenchmarks && b.benchAsOn) notes.push(`Benchmarks ${dateText(b.benchAsOn)}.`);
+  if (b.hasBenchmarks && b.benchAsOn) notes.push(b.benchAsOn.kind === 'value' ? `Benchmarks ${dateText(b.benchAsOn)}.` : `Benchmarks: ${dateText(b.benchAsOn)}.`);
   if (singlePlan > 0) {
     notes.push(directList
       ? `${DAGGER} ${plural(singlePlan, 'ETF has', 'ETFs have')} a single plan: the figures are the fund's own.`
@@ -94,7 +94,11 @@ function bucketVM(b: PerfBucket, plan: PerformancePlan, directList: boolean): Pe
   if (noTwin.length > 0) notes.push(`${plural(noTwin.length, 'fund has', 'funds have')} no Direct plan in the Direct data, so the row is blank: ${names(noTwin)}.`);
   if (missingBench.length > 0) notes.push(`Benchmark series not in the data, so not shown: ${names(missingBench)}.`);
   if (notNamed.length > 0) notes.push(`No benchmark is named yet for ${names(notNamed)}.`);
-  if (notRecognised.length > 0) notes.push(`The category ${names(notRecognised)} was not recognised, so no benchmark is shown for it.`);
+  if (notRecognised.length > 0) {
+    notes.push(notRecognised.length === 1
+      ? `The category ${names(notRecognised)} was not recognised, so no benchmark is shown for it.`
+      : `The categories ${names(notRecognised)} were not recognised, so no benchmark is shown for them.`);
+  }
   if (notAllEquity.length > 0) notes.push(`No benchmark is shown for ${names(notAllEquity)}: an equity index is used for a PMS or AIF group only when every holding in it is an equity holding.`);
   if (unmatched.length > 0) notes.push(`${plural(unmatched.length, 'fund is', 'funds are')} not matched to reference data and ${unmatched.length === 1 ? 'is' : 'are'} not shown: ${names(unmatched)}.`);
   if (noReturns.length > 0) notes.push(`${plural(noReturns.length, 'fund has', 'funds have')} no returns in the data and ${noReturns.length === 1 ? 'is' : 'are'} not shown: ${names(noReturns)}.`);

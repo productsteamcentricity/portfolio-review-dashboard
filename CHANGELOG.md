@@ -113,6 +113,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - S3: a scheme the Regular block carries only as a Direct plan is shown as a single plan, never "Regular".
   - S5: "YYYY-Mon-DD" dates are read, and an unreadable uploaded date is reported with its text.
   - N6 and N10: notes tell an unrecognised category and an unmatched fund apart.
+  - The delta's own financial review:
+    - S-A: gold and silver say "no benchmark named yet" (OD-7), not "not recognised".
+    - S-B: the category table test runs each category on its own, with exact equality.
+    - S-C: PF-05 is split into one ledger entry per list and bucket.
 ### Fixed (new build, base-file reader: the platform's full holding report)
 - **KI-300** (`app/src/ingest/base-file.ts`): a money heading that is exactly the field's (Invested Value, Market Value or
   Current Market Value, Total Gain/Loss, with any unit in brackets) is taken before a partial match, and a heading with

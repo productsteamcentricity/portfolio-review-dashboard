@@ -322,9 +322,11 @@ function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: Performanc
       else missingBenchmarks.push(n);
     }
     const noBenchmarkNamed = hasBenchmarks && names.length === 0;
+    /* Commodity MF has no member table: gold and silver have no benchmark named until the Products team names one (OD-7),
+       which is not an unrecognised label (S-A of the delta review, 27 Nov 2026) */
     const noBenchmarkReason = !noBenchmarkNamed ? null
       : alternative && !allEquity ? 'not-all-equity'
-        : g.members.length === 0 ? 'not-recognised' : 'not-named';
+        : g.members.length === 0 && bucket !== 'Commodity MF' ? 'not-recognised' : 'not-named';
     return { label: g.label, funds, benchmarks, missingBenchmarks, noBenchmarkNamed, noBenchmarkReason };
   });
   const benchAsOn = groups.some((g) => g.benchmarks.length > 0) ? (s.asOn.BENCH ?? missing(STATUS.NOT_AVAILABLE, 'BENCH_RET records no as-on date')) : null;

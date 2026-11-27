@@ -29,6 +29,8 @@ const TABLE: Array<[Holding['assetClass'], string, string[]]> = [
   ['Equity', 'Focused Fund', [N500]], ['Equity', 'ELSS', [N500]], ['Equity', 'Dividend Yield Fund', [N500]],
   ['Equity', 'Value Fund', [N500]], ['Equity', 'Contra Fund', [N500]], ['Equity', 'Sectoral/Thematic', [N500]],
   ['Equity', 'Index Funds', [N50]],
+  // OD-7: no benchmark named (not an unrecognised label)
+  ['Equity', 'Global Fund', []], ['Equity', 'Fund of Funds', []], ['Commodity', 'Gold', []], ['Commodity', 'Silver', []], ['Commodity', 'Gold ETF', []],
   // hybrid (the 7 SEBI hybrid categories)
   ['Hybrid', 'Conservative Hybrid Fund', [CONS]], ['Hybrid', 'Balanced Hybrid Fund', [AGGR]], ['Hybrid', 'Aggressive Hybrid Fund', [AGGR]],
   ['Hybrid', 'Dynamic Asset Allocation or Balanced Advantage', []], ['Hybrid', 'Multi Asset Allocation', []],
@@ -44,22 +46,19 @@ const TABLE: Array<[Holding['assetClass'], string, string[]]> = [
   ['Debt', 'Ultrashort', [LIQ]], ['Debt', 'Gsec', [GILT]], ['Debt', 'Banking PSU', [STB]], ['Debt', 'Floating Rate', [STB]],
 ];
 
-test('every SEBI category gets the benchmark the table names (legacy rules with OD-7 and Q-45)', () => {
-  let n = 0;
-  const holdings = TABLE.map(([asset, category]) => ({
-    id: `h${++n}`, instrumentName: `Synthetic ${category} Fund`, product: 'Mutual Funds', assetClass: asset, categoryLabel: category,
-    inclusion: { status: 'included' }, cmv: { kind: 'value', v: 1, unit: 'cr', prov: { sources: [], method: 't' } }, instrument: null,
-  }) as unknown as Holding);
-  const res = computePerformance(holdings, SRC);
-  const groups = res.regular.flatMap((b) => b.groups);
+test('every SEBI category, run on its own, gets exactly the benchmark the table names (legacy rules with OD-7 and Q-45)', () => {
+  /* one holding per run (S-B of the delta review, 27 Nov 2026): a category never shares a group with another, so a
+     changed benchmark for any one of them is seen; equality, not inclusion */
   const bad: string[] = [];
-  for (const [, category, want] of TABLE) {
-    /* Equity groups carry the brief's group labels: find the group by its category's holding */
-    const g = groups.find((x) => x.funds.some((f) => f.name === `Synthetic ${category} Fund`))!;
-    const got = [...g.benchmarks.map((b) => b.name), ...g.missingBenchmarks].map(benchKey);
-    const own = want.map(benchKey);
-    /* a Diversified group shows the union of its held categories' rows; each category's own row must be in it */
-    const ok = own.length === 0 ? g.noBenchmarkNamed : own.every((k) => got.includes(k)) && (g.label === 'Diversified Funds' || got.length === own.length);
+  for (const [asset, category, want] of TABLE) {
+    const holding = {
+      id: 'h1', instrumentName: `Synthetic ${category} Fund`, product: 'Mutual Funds', assetClass: asset, categoryLabel: category,
+      inclusion: { status: 'included' }, cmv: { kind: 'value', v: 1, unit: 'cr', prov: { sources: [], method: 't' } }, instrument: null,
+    } as unknown as Holding;
+    const g = computePerformance([holding], SRC).regular[0]!.groups[0]!;
+    const got = [...g.benchmarks.map((b) => b.name), ...g.missingBenchmarks].map(benchKey).sort();
+    const own = want.map(benchKey).sort();
+    const ok = JSON.stringify(got) === JSON.stringify(own) && (own.length > 0 || g.noBenchmarkReason === 'not-named');
     if (!ok) bad.push(`${category}: want ${JSON.stringify(want)} got ${JSON.stringify(got)} (${g.label}; ${g.noBenchmarkReason})`);
   }
   assert.deepEqual(bad, []);
