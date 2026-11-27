@@ -199,6 +199,19 @@ export function partsOf(items: readonly WeightedItem[], tagOf: (index: number) =
   return parts.map((p) => ({ source: p.source, asOn: p.asOn, share: p.share / total }));
 }
 
+/**
+ * One source per kind: parts, `used` and the footnote are grouped by the source's kind, so two sources of one kind (two
+ * analyst price files, two uploaded monitors) would make them order-dependent and list a date twice. A caller error:
+ * refused (the financial review of the E-148 round, finding 2; owner question whether a review can have two).
+ */
+export function assertOneSourcePerKind(kinds: readonly ReturnsSource[]): void {
+  const seen = new Set<ReturnsSource>();
+  for (const k of kinds) {
+    if (seen.has(k)) throw new RangeError(`two sources of one kind ("${k}"): pass one source per kind, merged by the caller`);
+    seen.add(k);
+  }
+}
+
 /** A source table whose figures a result used, for the footnote (source, plan, as-on date; E-148: count of stocks). */
 export type UsedTable = { source: ReturnsSource; plan?: FundPlan; asOn: Value<DayNumber>; count?: number };
 
@@ -223,6 +236,7 @@ export function weightedFundReturn(
   tenor: ReturnTenor,
   scope: ScopeKey,
 ): FundWeightedResult {
+  assertOneSourcePerKind(sources.map((s) => s.source));
   type Entry = { src: FundReturnSource; plan: FundPlan; table: FundReturnTable };
   const chains = new Map<FundPlan, Entry[]>();
   for (const plan of PLANS) {

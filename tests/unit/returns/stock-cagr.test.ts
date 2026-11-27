@@ -299,3 +299,66 @@ describe('ARC-03 delta review 2 (F2, F3) with MOD-05\'s F3 rule', () => {
     assert.equal(short.kind === 'missing' && short.prov?.asOf, '2026-10-31');
   });
 });
+
+describe('financial review of the E-148 round: required tests R1-R3, finding 2 and 3', () => {
+  const P5 = { sources: [], method: 'test' };
+  const h5 = (id: string, isin: string, cmv: number): StockHoldingInput => ({ holdingId: id as HoldingId, isin, cmvCr: present(cmv, 'cr', P5) });
+  const O = (y: number, d: number) => D(y, 10, d);
+  // pack: month-end data; file: daily data (two points a month). As-on Sat 31 Oct 2026.
+  const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, sourceIds: ['sha-pack'], series: {
+    INE000PACKP01: pts([O(2025, 31), 100], [O(2026, 30), 110]), // end 30 Oct 2026, start Oct 2025: 10%
+    INE000PACKP02: pts([O(2025, 29), 100], [O(2026, 29), 120]), // end 29 Oct 2026: 20%
+  } };
+  const file: PriceSource = { source: 'analyst-price-file', asOn: SRC_ON, sourceIds: ['sha-file'], series: {
+    INE000FILEF01: pts([O(2025, 24), 98], [O(2025, 31), 100], [O(2026, 23), 101], [O(2026, 30), 105]), // end 30 Oct: 5%
+    INE000FILEF02: pts([O(2025, 19), 90], [O(2025, 26), 100], [O(2026, 19), 95], [O(2026, 26), 130]), // end 26 Oct: 30%
+    INE000FILEF03: pts([O(2025, 19), 90], [O(2025, 26), 100], [O(2026, 19), 95], [O(2026, 26), 110]), // end 26 Oct: 10%
+  } };
+  const rows = [h5('p1', 'INE000PACKP01', 4), h5('p2', 'INE000PACKP02', 2), h5('f1', 'INE000FILEF01', 2), h5('f2', 'INE000FILEF02', 1), h5('f3', 'INE000FILEF03', 1)];
+  const perms = (xs: StockHoldingInput[]): StockHoldingInput[][] => xs.length <= 1 ? [xs] : xs.flatMap((x, i) => perms([...xs.slice(0, i), ...xs.slice(i + 1)]).map((p) => [x, ...p]));
+
+  test('R1: mixed sources, several end days each: value, date, used, parts, footnote, every order', () => {
+    const r = directEquityCagr(rows, [pack, file], AS_ON, '1y', 'family');
+    // (4 x 10 + 2 x 20 + 2 x 5 + 1 x 30 + 1 x 10) / 10 = 13.00
+    near(v(r.figure!.value), 13);
+    assert.equal(r.figure!.source, 'screener-pack');
+    assert.equal(v(r.figure!.asOn), O(2026, 30));
+    assert.deepEqual(r.used.map((u) => [u.source, v(u.asOn), u.count]), [
+      ['screener-pack', O(2026, 30), 1], ['screener-pack', O(2026, 29), 1], ['analyst-price-file', O(2026, 30), 1], ['analyst-price-file', O(2026, 26), 2],
+    ]);
+    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), Math.round(p.share * 1e9) / 1e9]), [
+      ['screener-pack', O(2026, 29), 0.2], ['screener-pack', O(2026, 30), 0.4], ['analyst-price-file', O(2026, 26), 0.2], ['analyst-price-file', O(2026, 30), 0.2],
+    ]);
+    assert.equal(footnoteOf(r), "1Y: weighted average return of current holdings. Source: MF Screener data pack, as on 2026-10-30 (1 stock; also 2026-10-29: 1 stock); analyst's price file, as on 2026-10-30 (1 stock; also 2026-10-26: 2 stocks).");
+    for (const p of perms(rows)) {
+      const q = directEquityCagr(p, [pack, file], AS_ON, '1y', 'family');
+      near(v(q.figure!.value), 13);
+      assert.deepEqual(q.figure!.asOn, r.figure!.asOn);
+      assert.deepEqual(q.figure!.parts, r.figure!.parts);
+      assert.deepEqual(q.used, r.used);
+      assert.equal(footnoteOf(q), footnoteOf(r));
+    }
+  });
+  test('R2: the primary source ends earlier than the second: the figure carries the primary date', () => {
+    const r = directEquityCagr([h5('p2', 'INE000PACKP02', 1), h5('f1', 'INE000FILEF01', 99)], [pack, file], AS_ON, '1y', 'family');
+    near(v(r.figure!.value), (1 * 20 + 99 * 5) / 100);
+    assert.equal(r.figure!.source, 'screener-pack');
+    assert.equal(v(r.figure!.asOn), O(2026, 29));
+    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), Math.round(p.share * 1e9) / 1e9]), [['screener-pack', O(2026, 29), 0.01], ['analyst-price-file', O(2026, 30), 0.99]]);
+    assert.match(footnoteOf(r)!, /Source: MF Screener data pack, as on 2026-10-29 \(1 stock\); analyst's price file, as on 2026-10-30 \(1 stock\)\.$/);
+  });
+  test('R3: a holding outside the base with a later end day moves neither the date nor the counts', () => {
+    const r = directEquityCagr([h5('f2', 'INE000FILEF02', 1), h5('f1', 'INE000FILEF01', 0)], [file], AS_ON, '1y', 'family');
+    assert.equal(v(r.figure!.asOn), O(2026, 26));
+    assert.deepEqual(r.used.map((u) => [v(u.asOn), u.count]), [[O(2026, 26), 1]]);
+    assert.equal(r.outsideBase, 1);
+    near(v(r.lines[1]!.cagr), 5); // its own line still shows its CAGR, dated 30 Oct
+  });
+  test('finding 2: two sources of one kind are refused', () => {
+    assert.throws(() => directEquityCagr(rows, [file, { ...file, sourceIds: ['sha-file-2'] }], AS_ON, '1y', 'family'), /two sources of one kind \("analyst-price-file"\)/);
+  });
+  test('finding 3: a line without an ISIN or a series keeps the review as-on', () => {
+    const r = directEquityCagr([{ holdingId: 'n' as HoldingId, isin: null, cmvCr: present(1, 'cr', P5) }, h5('z', 'INE000NOPRICE', 1)], [file], AS_ON, '1y', 'family');
+    assert.deepEqual(r.lines.map((l) => (l.cagr.kind === 'missing' ? l.cagr.prov?.asOf : null)), ['2026-10-31', '2026-10-31']);
+  });
+});

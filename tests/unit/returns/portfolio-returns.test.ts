@@ -112,7 +112,7 @@ describe('E-147: the source order', () => {
     const r = weightedFundReturn(book, [up, embedded], '3y', 'family');
     near(v(r.figure!.value), 20);
     // Delta is absent from the primary: the pack (same date) fills it, the September monitor (another date) cannot
-    const old = src('embedded-mf-monitor', SEP, { 'Sample Delta Fund-Reg(G)': r3(6) });
+    const old = src('uploaded-mf-monitor', SEP, { 'Sample Delta Fund-Reg(G)': r3(6) }); // one source per kind
     const book2 = [...book.slice(0, 2), fh('h4', 'Sample Delta Fund-Reg(G)', 2)];
     const r2 = weightedFundReturn(book2, [embedded, old, src('screener-pack', OCT, { 'Sample Delta Fund-Reg(G)': r3(4) })], '3y', 'family');
     near(v(r2.figure!.value), (5 * 14 + 3 * 6 + 2 * 4) / 10);
@@ -469,5 +469,11 @@ describe('ARC-03 delta review 2 (F3 for E-147 parts, F7)', () => {
     assert.match(footnoteOf(r)!, /; 1 holding not matched to a fund excluded\./);
     const r2 = weightedFundReturn([...book.slice(0, 2), fh('u', null, 1), fh('w', null, 1)], [embedded], '3y', 'family');
     assert.match(footnoteOf(r2)!, /; 2 holdings not matched to a fund excluded\./);
+  });
+});
+
+describe('financial review of the E-148 round: finding 2 for E-147', () => {
+  test('two fund sources of one kind are refused', () => {
+    assert.throws(() => weightedFundReturn(book, [embedded, { ...embedded }], '3y', 'family'), /two sources of one kind \("embedded-mf-monitor"\)/);
   });
 });

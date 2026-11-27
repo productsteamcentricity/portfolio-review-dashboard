@@ -41,7 +41,7 @@ import type { DayNumber, Value } from '../../model/value.ts';
 import { STATUS } from '../../model/status.ts';
 import { missing, present } from '../value.ts';
 import { dayToIso, dayToYmd, ymdToDay } from '../dates.ts';
-import { partsOf, weightItems, TENOR_KEY, WEIGHTED_RETURN_LABEL, type UsedTable, type WeightInput, type WeightedResult } from './portfolio-returns.ts';
+import { assertOneSourcePerKind, partsOf, weightItems, TENOR_KEY, WEIGHTED_RETURN_LABEL, type UsedTable, type WeightInput, type WeightedResult } from './portfolio-returns.ts';
 
 /** How far back from a wanted date a price may be taken (calendar days). */
 export const PRICE_LOOKBACK_DAYS = 7;
@@ -192,6 +192,7 @@ export function directEquityCagr(
   tenor: ReturnTenor,
   scope: ScopeKey,
 ): StockCagrResult {
+  assertOneSourcePerKind(sources.map((s) => s.source));
   const lines: StockCagrLine[] = [];
   const inputs: WeightInput[] = [];
   const srcOfInput: Array<PriceSource | null> = [];
@@ -205,7 +206,8 @@ export function directEquityCagr(
     const first = chain[0];
     if (!first || h.isin === null) {
       const why = h.isin === null ? 'the holding has no ISIN' : 'no price series for this ISIN';
-      lines.push({ holdingId: h.holdingId, isin: h.isin, cagr: missing(STATUS.NOT_AVAILABLE, why), source: null });
+      // a missing line keeps the review as-on as its date (F2)
+      lines.push({ holdingId: h.holdingId, isin: h.isin, cagr: missing(STATUS.NOT_AVAILABLE, why, { sources: [], method: 'no price series', asOf: dayToIso(asOn) }), source: null });
       inputs.push({ holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { excluded: h.isin === null ? 'unmatched' : 'no-return' } });
       srcOfInput.push(null);
       endOfInput.push(null);
