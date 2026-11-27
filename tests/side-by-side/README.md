@@ -2,7 +2,7 @@
 
 The same book runs through the live page's engine (`index.html`, through `tools/engine-host.js`) and through the new
 build (`app/src`). The kit compares the two field by field and lists every difference with its row in the
-[feature parity matrix](../../docs/new-build/05-feature-parity-matrix.md). Owner: EX-02 (MOD-04, 26 Nov 2026). It only
+[feature parity matrix](../../docs/new-build/05-feature-parity-matrix.md). Owner: EX-03 (MOD-04, 26 Nov 2026; phase 2 MOD-05, 27 Nov 2026). It only
 reads and calls `app/**`, `tests/helpers`, `tests/fixtures` and `tools/`, and changes nothing outside this folder.
 
 ## Run it
@@ -34,7 +34,7 @@ With `--base`, both `--out` and `--as-on` are required: the command refuses to g
 
 | Section | Rows | Fields | Matrix rows |
 |---|---|---|---|
-| holdings | each included holding, keyed by client, instrument name, folio, product and distributor; a key twice on one side is a `duplicate-key` difference | the route (the universe it is looked up in, or none), the matched fund and its universe (MF, PMS, AIF, SIF), the market value, the holding's XIRR and BMXIRR | E-15 (route: the kit's own check), E-13, E-14 (match), E-21, E-25 or E-28 (XIRR) |
+| holdings | each included holding, keyed by client, instrument name, folio, product and distributor; a key twice on one side is a `duplicate-key` difference | the route (MF, PMS, AIF, SIF, STOCK, or `other (<class>)` for a non-MF class), the matched reference entry and its universe (a STOCK_RET key for a listed share), the market value, the holding's XIRR and BMXIRR; the new build's method is shown, not compared | E-15 (route), E-13, E-14 (match), E-21, E-25 or E-28 (XIRR) |
 | performance | each fund row of the legacy performance view | 1Y/3Y/5Y and the benchmark's | E-31, E-30 |
 | scopes | the family, each client and each adviser, with an IRR file | XIRR and benchmark XIRR | E-27, E-142 |
 | contributions | the contributors, laggards and drags lists | rank, market value, contribution | E-29 |
@@ -43,11 +43,17 @@ How the kit reads each side:
 - **XIRRs are fractions.** With an IRR file, a holding's XIRR is the transaction XIRR of its own flows (its client and
   instrument), or its base-file XIRR when it has no flows. That is the live page's rule and the new build's (D11).
   Without an IRR file, no scope XIRR is compared: the live page's client total is then a weighted average, not an XIRR.
-- **Routing is not tested.** The new build does not route a holding yet (E-15), so the kit copies the live page's rule
-  for both sides: direct equity and LP-16's non-MF classes are not looked up; otherwise PMS, AIF, SIF or MF. A matching
-  difference is therefore a matcher difference, never a routing one. To catch the copy drifting from `index.html`, each
-  holding also carries its `route`: on the legacy side it comes from the engine's own `directEquity` and product class,
-  and on the new side from the copy. A `route` difference (E-15) means the copy is stale. Fix `next.ts`; never classify it.
+- **Routing and matching are the real thing (phase 2, 27 Nov 2026).** The new side runs the wired resolver that `/next/`
+  runs (`resolveHoldings` with `committedMatchContext()`: the shipped blocks and `data/owner/fund-aliases.json`), so
+  routing (E-15), ISIN first, the owner's aliases (PD-36) and the stricter regime (OD-5 option B) are all compared. The
+  legacy side reads its route from the engine's own `directEquity` and product class, and a listed share's key from
+  `h.stockRet` (found by identity in `STOCK_RET`, never recomputed). Both sides write the same route strings, so a
+  `route` difference is a real routing difference. The new build's method and confidence (`isin (exact)`,
+  `alias-pin (pinned)`, `name-match (exact)`, `none (unmatched)`) are shown in the report only.
+- **Fund matching summary.** The report has a "Fund matching" section per case: how many holdings match alike, the count
+  per class, and one line per holding that differs ("The live page matched A; the new build matched B by <method>. Why:
+  <class>, <reference>"). On the synthetic books it can be quoted in the owner's test sheet; on a real file it stays
+  on this PC like the rest of the report.
 - **Client XIRRs.** A client XIRR is compared only when both sides have one from the IRR file. The live page's Grand Total
   for a client it cannot resolve is a weighted average and is skipped (listed in the notes). So is a new-build client with
   no flows.
@@ -74,6 +80,7 @@ outside this list.
 |---|---|
 | SB-01 | performance not built in the new build yet (E-31, E-147) |
 | SB-02 | the adviser XIRR exists only in the new build (E-142, D15) |
+| SB-08 to SB-17 | case `matching-probe` (fund matching, phase 2): public scheme names from `tests/parity/matching-corrections-ledger.json`, each with its known answer there. **Corrections** (the live page matches another fund, the new build the right one): SB-08 the normaliser follow-up (Multi-Cap), SB-09 and SB-10 KI-036 (an IDCW plan matched to the Growth plan), SB-11 the normaliser (an AMFI "Exchange Traded Fund" name), SB-12 KI-050 with the owner's alias PD-36 line 1. **Accepted differences** under OD-5 option B (the owner's "Go ahead with the Stricter regime", 26 Nov 2026): SB-13 and SB-14, a Gold fund the live page matches to its sibling Gold ETF and the new build leaves unmatched; SB-15 and SB-16, two of the 4 names the ledger still lists as regressed (the live page is right, the new build leaves them unmatched). **Improvement** SB-17: a listed share found only by its ISIN (E-13; KI-184, the live page never reads the ISIN column) |
 | SB-04 to SB-07 | case `syn-standard-irr-variant`: the IRR file writes a client with a salutation. The live page joins it as a name variant (KI-032 fix), and the new build keys clients by their exact label (D9, kept by MOD-04 on 26 Nov 2026). So that client's holding XIRRs (SB-04), its client XIRR (SB-05), the family XIRR (SB-06; the new build leaves the IRR-only label out, OD-4) and the contributions (SB-07) differ. Class `accepted-difference` (owner-accepted difference; reviewed at M15): the owner decided on 26 Nov 2026 that the new build joins on exact names only, with a transactions template that carries them |
 
 SB-03 (a client without flows borrowing another client's flows through the old fuzzy name join) was retired with the
@@ -93,7 +100,9 @@ They are decided behaviour, not defects:
 - **Client names:** the live page joins an IRR client by its exact name or by an unambiguous variant (a salutation,
   initials, a middle name: KI-032); the new build uses the exact label only (D9). The synthetic case is SB-04 to SB-07;
   on a real file such a client shows the same differences, unclassified until a narrow entry names that fixture.
-- **Matching by ISIN first** in the new build (E-13, E-19).
+- **Matching differences** beyond the probe book's ten (the matching-corrections ledger measures thousands): each needs a
+  narrow entry with its class, as SB-08 to SB-17. Fund ISINs match only once `data/identifiers/amfi-isin.json` arrives
+  (December refresh); until then only listed shares match by ISIN.
 - **The all-negative guard of contributors** (E-29).
 
 Read the matrix row and the ledger reference of each difference before calling it a defect.
@@ -104,8 +113,8 @@ Read the matrix row and the ledger reference of each difference before calling i
 |---|---|
 | `shape.ts` | The common shape both sides are projected into. |
 | `legacy.ts` | The live page's engine. |
-| `next.ts` | The new build's modules. |
+| `next.ts` | The new build's modules (the wired matcher `resolveHoldings`). |
 | `compare.ts` | The comparison, the matrix tags and the ledger match. |
 | `report.ts` | Writes report.json and report.html. |
-| `run.ts` | The command, the synthetic cases, the probe book (two distributors, a share, an FD, an NCD, a client without flows) and the client-name variant case. |
+| `run.ts` | The command, the synthetic cases, the probe book (two distributors, a share, an FD, an NCD, a client without flows), the matching probe book (fund names with a known answer, an owner alias, two shares, one with an ISIN column, a REIT and an unlisted share) and the client-name variant case. |
 | `side-by-side.test.ts` | The test. |
