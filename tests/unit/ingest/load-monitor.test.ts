@@ -90,5 +90,9 @@ describe('loadMonitor', () => {
     assert.equal(refArea('$A$1:$XFD$1048576'), 16384 * 1048576);
     assert.equal(refArea(undefined), 0);
     assert.equal(refArea('not a range'), 0);
+    /* CHAT-008: a range without row numbers (a whole column) reads as 0, so such a sheet is not refused early and its
+       cells are counted after expansion, as before (the count after sheet_to_json still applies the limit) */
+    assert.equal(refArea('A:A'), 0);
+    assert.equal(refArea('A:XFD'), 0);
   });
 });

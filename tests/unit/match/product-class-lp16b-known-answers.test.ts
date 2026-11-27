@@ -2,7 +2,7 @@
 // LP-16b's own known answers for the product class (tools/regression/LP16b-platform-product-names.js on CHAT-014's
 // fix/lp16b-platform-product-names at 8eb4caa: section 1, the platform values; section 3, the edge cases that must not
 // move; and the bond labels), run through the new build's classifier (app/src/engine/match/product-class.ts and the
-// direct-equity rule of resolve-holdings.ts) on the same table (tests/fixtures/product-class-rules-lp16b.json). The
+// direct-equity rule of resolve-holdings.ts) on the same table, as committed (data/refdata/PRODUCT_CLASS_RULES.json). The
 // answers are copied as written there; the names are LP-16b's synthetic ones (two controls are real fund and share
 // names, as there). CHAT-008's Gate B finding B1 on the wiring (26 Nov 2026).
 
@@ -14,7 +14,7 @@ import { holdingClass, nonMfRule, parseProductClassRulesDetailed } from '../../.
 import { isDirectEquityProduct } from '../../../app/src/engine/match/resolve-holdings.ts';
 import { REPO } from '../../helpers/sheetjs.ts';
 
-const TABLE = JSON.parse(fs.readFileSync(path.join(REPO, 'tests', 'fixtures', 'product-class-rules-lp16b.json'), 'utf8')) as unknown;
+const TABLE = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'refdata', 'PRODUCT_CLASS_RULES.json'), 'utf8')) as unknown;
 const { rules: R, skipped } = parseProductClassRulesDetailed(TABLE);
 const USD = 'US-dollar bonds (through LRS)', RUPEE = 'Rupee bonds and NCDs';
 

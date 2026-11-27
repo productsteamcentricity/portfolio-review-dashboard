@@ -19,9 +19,9 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
   const ledger = loadLedger();
   const used = new Set<string>();
 
-  test('six synthetic cases, three with an IRR file', () => {
-    assert.equal(cases.length, 6);
-    assert.equal(cases.filter((c) => c.input.irrBytes !== null).length, 3);
+  test('seven synthetic cases, four with an IRR file', () => {
+    assert.equal(cases.length, 7);
+    assert.equal(cases.filter((c) => c.input.irrBytes !== null).length, 4);
   });
 
   for (const c of cases) {
@@ -65,7 +65,18 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
       assert.match(next.holdings.find((h) => name.test(h.name))!.method!, /^not-routed/);
     }
     assert.ok(!next.scopes.some((x) => x.label === 'Sample Client C'), 'new: Sample Client C has no flows, so no client XIRR');
-    assert.ok(result.diffs.some((d) => d.ledger === 'SB-03'));
+    // KI-032 fixed on the live page: Sample Client C no longer borrows another Sample Client's flows (SB-03 retired)
+    assert.ok(!legacy.scopes.some((x) => x.label === 'Sample Client C'), 'legacy: Sample Client C is not joined to another client');
+    assert.ok(!result.diffs.some((d) => /sample client c/.test(d.key)), 'no difference left for Sample Client C');
+  });
+
+  test('a client name variant in the IRR file: the live page joins it (KI-032), the new build does not (D9)', () => {
+    const { legacy, next, result } = runSides(cases.find((c) => c.id === 'syn-standard-irr-variant')!);
+    assert.ok(legacy.scopes.some((x) => x.kind === 'client' && x.label === 'Sample Client A' && x.xirr !== null), 'legacy: client A joined by variant');
+    assert.ok(!next.scopes.some((x) => x.kind === 'client' && x.label === 'Sample Client A'), 'new: no flows for the exact label');
+    const ids = new Set(result.diffs.map((d) => d.ledger));
+    for (const id of ['SB-04', 'SB-05', 'SB-06', 'SB-07']) assert.ok(ids.has(id), `${id} used`);
+    assert.equal(result.unclassified, 0);
   });
 
   test('a drifted routing copy is caught as an unclassified E-15 difference (financial review of 4966d49, note 1)', () => {

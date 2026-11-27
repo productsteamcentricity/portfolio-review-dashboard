@@ -31,7 +31,7 @@ merged) KI-160, KI-161 and KI-176, with KI-022, and the disclosure step of KI-17
 `fix/legacy-batch-3-tax-p3-r2`, not yet merged) KI-166 to KI-169, KI-171, KI-175, KI-181 and KI-182, with KI-130 and
 the PMS case of KI-064, and in T4 (the re-review of T3, the same branch) crypto kept out of set-off (KI-182); in tax
 batch part T5 (branch `fix/legacy-batch-3-tax-cr-0008`, the branch that merges the whole tax batch, not yet merged)
-KI-185 and KI-186. Fixes follow the order in the audit register. The owner's decisions are in
+KI-185 and KI-186; KI-032 (CR-0011, branch `fix/ki032-irr-client-join`, not yet merged). Fixes follow the order in the audit register. The owner's decisions are in
 [`audits/2026-10-19-decisions.md`](audits/2026-10-19-decisions.md): all recommendations accepted on 19 Oct 2026
 except OD-11 (D-021).
 
@@ -188,6 +188,15 @@ the IRR upload is cleared. Workaround: reload the page.
 **Reproduced** with the synthetic book (fix batch 1b review): when Sample Client B has no IRR transactions it
 resolves to Sample Client A on two shared tokens, and takes A's Grand Total and flows. Since fix batch 1b the
 § note shows that none of B's holdings matches an instrument, but the join itself still needs its own fix.
+**Fixed** on branch `fix/ki032-irr-client-join` (CR-0011; patch `tools/patches/2026-11-26-ki032-irr-client-join.js`;
+the owner's "Careful variant match", 26 Nov 2026). The join is decided once per review: the exact normalised name;
+else a unique name variant (salutations dropped; marker words such as HUF or Karta, trust, company, minor, guardian
+or Thru, Jr or Sr, Late or Deceased, or a joint "&" or "Joint" equal on both sides; every word of the shorter name in the longer one with
+initials; when the lengths differ, the first and last words equal and at most one more full word; one candidate each
+way); else no join. The client key keeps marker words written in brackets ("X (HUF)" was the individual X's key). A client not joined keeps the base file's CMV-weighted figures, and its
+§ note says why when a near name was refused. A variant join is named in the § note. The counts are in the review
+model (`irrJoin`). Known-answer test: `tools/regression/KI-032-irr-client-join.js` (180 checks). The new build keeps
+exact client labels (D9); the side-by-side kit classifies the difference (SB-04 to SB-07) and retired SB-03.
 
 ## Low
 
@@ -543,3 +552,9 @@ lines). Priorities are proposed.
 | KI-213 | P3 | ui text | OPEN | The AI Analyst's "Not assessed" reason carries a dash in a sentence (D-029 bars an en or em dash in a sentence): "Assessed on only N of 8 signals — no fund score, performance, risk-reward data." It is built in `aiaCompute` (`07_engine.js:3317` of the final page, 3318 of the page of stage S10, 3314 of the page of stage S9; the string is `" signals — no "`) and shown in the tab's "Why not" cell (`11_app_ui.js:4378`), in the "Not Assessed" slide of the AI Analyst deck (`08_exporters.js:1456`), in the Excel "AI Analyst" sheet (`08_exporters.js:2365`) and in `__AIA_DATA.notAssessed[].reason`. Pre-existing since the import of the production build (commit `511f554`, 14 Oct 2026; the same on `main`), not tax, not part of T5. Found by the browser acceptance of the T5 head. Fix: a colon or a full stop in place of the dash. No document or test quotes the string (searched in docs, tests, tools and scripts). Relates to D-029 and KI-204. |
 | KI-214 | P3 | tests | OPEN | `tools/run-regression.js` decides a file's verdict from its exit status only (`r.status === 0`), so a test file that runs no checks (an empty file prints "PASS ... (0 checks passed)") or whose asynchronous body never settles (the file prints "PASS ... (1 checks passed)" and exits 0) counts as a pass; the "checks passed" count also counts any line that contains PASS, including a FAIL line that quotes a child's PASS. No such file exists today (each of the 47 files closes with an explicit closing line and exit status, through `done()` of the tax harness or its own `process.exit`, and the test auditor found every await awaited). Fix: require the closing "all checks passed" line (the older files print "all KI-nnn checks passed"), or a minimum number of PASS lines, per file. Found by the gate review of the T5 tests (TQ-09). |
 | KI-300 | P1 | parsing | OPEN on the live page; the new build reads the right columns (feat/m2-reader-headings, base-file ledger BF-27 and BF-28) | The base-file readers take the first heading that contains a word, and the platform's full holding report (MOD-04, 26 Nov 2026) puts "Invested Price (₹)" before "Invested Value (₹)" and "Realized Gain/Loss (₹)" before "Total Gain/Loss (₹)". `parseBaseRows` (`07_engine.js`) therefore reads the invested PRICE as the invested value (so the invested value, the gain, the absolute return and every invested total are wrong) and the realised gain as the file's gain or loss. Its header search covers five rows, and the report's header is on row 11, so today the full report fails to load rather than loading wrong; a trimmed export with the header on top loads with the wrong columns. Until the live page is fixed, a base file must not carry the Invested Price or Realized Gain/Loss columns, or must list Invested Value and Total Gain/Loss before them. The new build prefers an exact heading, and never takes a heading with "price" or the word "realized"/"realised" as invested value or gain (`app/src/ingest/base-file.ts`; `tests/unit/ingest/holding-report-headings.test.ts`). |
+
+### Found 26 Nov 2026 (the IRR cashflow file)
+
+| ID | Pri | Area | Status | Issue |
+|---|---|---|---|---|
+| KI-301 | P1 | parsing / calculation | **Fixed** in PR #53 (27 Nov 2026, the owner's "Publish KI-301"; CR-0013; patch `tools/patches/2026-11-26-irr-si-sheets.js`) | The IRR reader (`parseIRR`, parsers script) chose its fund ("...Xirr") and benchmark ("...Bmxirr") sheets by name with the last match winning. The platform's cashflow file, uploaded as it is, holds SI Xirr, SI Bmxirr, YTD Xirr, YTD Bmxirr, QTD Xirr and QTD Bmxirr in that order, so the page read the QTD sheets: every transaction XIRR, client Grand Total, the Fund IRR tree and the tax lots came from quarter-to-date flows, with no error. Found by CHAT-010 (from the code), flagged by CHAT-012, confirmed at runtime by EX-03. Fixed: period sheets (YTD, QTD, MTD, FYTD) are never taken, an SI or "Since Inception" sheet is preferred ("SIP" is not SI), otherwise the last match as before. Known-answer test `tools/regression/IRR-SI-since-inception-sheets.js`. Reviews built from six-sheet files before the fix should be regenerated. Follow-ups in CR-0013; the new build's reader already prefers the SI sheets (PR #51). |

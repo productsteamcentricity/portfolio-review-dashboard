@@ -15,6 +15,7 @@ import { loadBaseFile, isLoaded } from '../../app/src/ingest/load-base.ts';
 import { computeReview } from '../../app/src/engine/review.ts';
 import { buildOverviewDeckDetailed, type DeckBuild } from '../../app/src/exports/pptx/deck.ts';
 import { buildOverviewWorkbook, workbookInputFrom } from '../../app/src/exports/xlsx/overview-workbook.ts';
+import { loadIrrFile } from '../../app/src/ingest/load-irr.ts'; // M3a returns (NB-03)
 import { sha256Hex } from '../../app/src/services/sha256.ts';
 import { fixedClock } from '../../app/src/services/clock.ts';
 import { auditExport } from '../../app/src/services/audit-log.ts';
@@ -80,6 +81,8 @@ export function nodeWiring(build: BuildStamp = NODE_BUILD, nowIso: string = NODE
       return finish('xlsx', vm, bytes, fileName);
     },
     now,
+    // M3a returns (NB-03): the transactions (IRR) file reader, as the browser wiring has it.
+    loadIrrFile: (bytes, fileName) => loadIrrFile(bytes, fileName, xlsx, { now }),
     matchHoldings: (loaded, overrides) => matchLoaded(loaded, committedMatchContext(overrides)),
     loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, xlsx as unknown as MonitorSheetJS, regular ?? (refdataBlock('MF_PERF') as never)),
   };
