@@ -326,15 +326,18 @@ export function reconcileRealised(derived: DerivedRealised, statement: Statement
     // the lots of the ordinary-switch reading it keeps, so the merger handling below is exactly as before round 2c.
     // Elsewhere it stays a gap. "Shows the merger": for the switch out, a non-taxable transfer of this scheme on its day;
     // for a sale of the scheme switched into, a non-taxable transfer of the candidate's own scheme A (its pair, by the
-    // key the marker carries, financial review V3) on the switch-in day, and the statement holds this scheme's lots in
-    // the sale's year (V4: otherwise nothing in the statement checks the ordinary-switch cost, which a merger contradicts).
+    // key the marker carries, financial review V3; every source of a many-into-one merger, Gate B of 4001f8f B1) on the
+    // switch-in day, and the statement holds this scheme's lots in the sale's year (V4: otherwise nothing in the statement
+    // checks the ordinary-switch cost, which a merger contradicts).
     const shown = (l: DerivedLot): boolean => {
       const c = l.mergerCandidate;
       if (!c || !l.asSwitch) return false;
       if (c.role === 'switch-out') return mergerDays.has(l.saleDate);
-      const ap = pairs.get(c.partnerKey);
-      return ap !== undefined && ap !== p && ap.stmt.some((g) => g.lotClass === 'non-taxable-transfer' && g.saleDate === c.day)
-        && p.stmt.some((g) => g.financialYear === l.financialYear);
+      const sourceShows = (key: string): boolean => {
+        const ap = pairs.get(key);
+        return ap !== undefined && ap !== p && ap.stmt.some((g) => g.lotClass === 'non-taxable-transfer' && g.saleDate === c.day);
+      };
+      return c.partnerKeys.length > 0 && c.partnerKeys.every(sourceShows) && p.stmt.some((g) => g.financialYear === l.financialYear);
     };
     const derivedLots = p.derived.flatMap((l) => (shown(l) ? l.asSwitch! : [l]));
     const years = [...new Set([...p.stmt.map((g) => g.financialYear), ...derivedLots.map((l) => l.financialYear)])].sort((a, b) => a - b);

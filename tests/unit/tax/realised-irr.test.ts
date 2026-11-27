@@ -767,7 +767,7 @@ describe('round 2c, the merger condition (MOD-05): merger candidates on the real
     assert.deepEqual(l.map((x) => x.gap), [null, 'merger-candidate']);
     near(v(l[0]!.realised), 400, 'before the switch in');
     // The marker carries scheme A's instrument key (financial review V3).
-    assert.deepEqual(l[1]!.mergerCandidate, { role: 'successor', day: day(2023, 11, 10), partnerKey: lotsOf(r, OLD)[0]!.instrumentKey });
+    assert.deepEqual(l[1]!.mergerCandidate, { role: 'successor', day: day(2023, 11, 10), partnerKeys: [lotsOf(r, OLD)[0]!.instrumentKey] });
     near(v(l[1]!.saleValue), 10000, 'sale value'); near(v(l[1]!.units), 50, 'units');
     assert.equal(l[1]!.realised.kind, 'missing'); assert.equal(l[1]!.purchaseDate.kind, 'missing');
     assert.deepEqual(l[1]!.asSwitch!.map((x) => v(x.realised)), [5000]);
@@ -853,5 +853,82 @@ describe('round 2c financial review V1, V2: a merger written as several rows, an
       flow(A, OLD, [2024, 1, 1], 'Purchase', 150, -1500),
     ]);
     assert.equal(later.counts.mergerCandidates, 0);
+  });
+});
+
+describe('Gate B of 4001f8f: many-into-one mergers (B1), a provably partial switch (D1), the successor reset', () => {
+  const OLD = 'Sample Contra Fund - Regular Plan - Growth';
+  const OLD2 = 'Sample Value Fund - Regular Plan - Growth';
+  const NEW = 'Sample Small Cap Fund - Regular Plan - Growth';
+  /** Contra 100 u at 100 and Value 100 u at 40, both switched out whole on 10 Nov 2023 (15,000 and 5,000). */
+  const twoIntoOne = (ins: number[], o: { valueOut?: number } = {}): DerivedRealised => run([
+    flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD2, [2019, 7, 1], 'Purchase', 40, -4000),
+    flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 15000), flow(A, OLD2, [2023, 11, 10], 'Switch Out', 50, o.valueOut ?? 5000),
+    ...ins.map((amt) => flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -amt)),
+    flow(A, NEW, [2026, 5, 4], 'Redemption', 180, 24000),
+  ]);
+
+  for (const ins of [[20000], [15000, 5000]]) {
+    test(`B1: Contra and Value merged into Small Cap (switch in written as ${ins.length} row${ins.length > 1 ? 's' : ''}): no computed gain`, () => {
+      // CHAT-012's case. Every scheme switched out that day is emptied (its last trade), every switch in goes to Small
+      // Cap, and out 20,000 equals in 20,000: a candidate (2 sources). 4001f8f computed Contra 5,000 and Value 1,000 in
+      // FY 2023-24 and Small Cap 4,000 (or 3,000 + 1,000) in FY 2026-27 on the merger-day cost; under a merger FY 2023-24
+      // is 0 and Small Cap's gain 24,000 - 14,000 = 10,000. Now every one of them is a 'merger-candidate' gap and both
+      // years are NOT AVAILABLE without a statement.
+      const r = twoIntoOne(ins);
+      for (const name of [OLD, OLD2]) {
+        assert.deepEqual(lotsOf(r, name).map((x) => [x.gap, x.mergerCandidate?.role, x.realised.kind]), [['merger-candidate', 'switch-out', 'missing']], name);
+      }
+      const nw = lotsOf(r, NEW);
+      assert.deepEqual(nw.map((x) => [x.gap, x.mergerCandidate?.role]), [['merger-candidate', 'successor']]);
+      assert.deepEqual([...nw[0]!.mergerCandidate!.partnerKeys].sort(), [lotsOf(r, OLD)[0]!.instrumentKey, lotsOf(r, OLD2)[0]!.instrumentKey].sort());
+      assert.equal(r.counts.mergerCandidates, 2);
+      assert.ok(r.schemeYears.every((s) => s.realised.kind === 'missing'));
+      // The review's figure from the IRR side alone (no base file here, so no client is left out as outside the review).
+      const all = { ...r, baseClients: null };
+      assert.equal(realisedForYear(2023, all, null).total.kind, 'missing');
+      assert.equal(realisedForYear(2026, all, null).total.kind, 'missing');
+      assert.match(r.issues.find((i) => i.ruleId === 'tax.derived-merger-candidates')!.message, /^2 switch pairs look like a scheme merger/);
+    });
+  }
+
+  test('B1, what stays computed: a source kept, or the totals unequal', () => {
+    // Value switched out 2,500 of its 5,000 (kept): not every source is emptied. Contra's 15,000 alone does not match
+    // the 17,500 in, so there is no one-into-one candidate either: all computed (Contra 5,000; Value 2,500 - 2,000 =
+    // 500). Totals unequal: Value whole but Small Cap in 19,000: computed.
+    const kept = twoIntoOne([17500], { valueOut: 2500 });
+    assert.equal(kept.counts.mergerCandidates, 0);
+    near(v(lotsOf(kept, OLD)[0]!.realised), 5000, 'Contra'); near(v(lotsOf(kept, OLD2)[0]!.realised), 500, 'Value');
+    const unequal = twoIntoOne([19000]);
+    assert.equal(unequal.counts.mergerCandidates, 0);
+    assert.ok(lotsOf(unequal, OLD).every((x) => x.gap === null));
+  });
+
+  test('D1: a switch that the priced lots prove partial stays computed even when A\'s units are not known', () => {
+    // The delta review's case: Contra 100 u at 100, then a purchase of 5,000 with no price (units not known, but only
+    // added); 30 u switched out for 4,500 on 10 Nov 2023 (Contra's last trade); Small Cap in for 4,500; Small Cap's 30 u
+    // redeemed 4 May 2026 at 180 (5,400). At least 70 u of Contra stay, so it is a partial switch: Contra 4,500 - 3,000
+    // = 1,500 and Small Cap 5,400 - 4,500 = 900, computed (4001f8f: both gaps).
+    const r = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD, [2020, 1, 1], 'Purchase', null, -5000),
+      flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 4500), flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -4500),
+      flow(A, NEW, [2026, 5, 4], 'Redemption', 180, 5400),
+    ]);
+    assert.equal(r.counts.mergerCandidates, 0);
+    assert.deepEqual(lotsOf(r, OLD).map((x) => [x.gap, v(x.realised)]), [[null, 1500]]);
+    assert.deepEqual(lotsOf(r, NEW).map((x) => [x.gap, v(x.realised)]), [[null, 900]]);
+  });
+
+  test('the successor marker ends once the scheme switched into is back to 0 units: a later fresh purchase and sale is computed', () => {
+    // The fixture merger (Contra into Small Cap, 100 u at 150), then Small Cap's 100 u redeemed 1 Jun 2024 at 160 (a
+    // successor gap), a fresh Purchase 1 Jan 2025 of 50 u at 200 and its Redemption 1 Jun 2025 at 220: 11,000 - 10,000 =
+    // 1,000, true under either reading, computed (4001f8f: still a gap).
+    const r = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 15000),
+      flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -15000), flow(A, NEW, [2024, 6, 1], 'Redemption', 160, 16000),
+      flow(A, NEW, [2025, 1, 1], 'Purchase', 200, -10000), flow(A, NEW, [2025, 6, 1], 'Redemption', 220, 11000),
+    ]);
+    assert.deepEqual(lotsOf(r, NEW).map((x) => [x.gap, x.mergerCandidate?.role ?? null]), [['merger-candidate', 'successor'], [null, null]]);
+    near(v(lotsOf(r, NEW)[1]!.realised), 1000, 'fresh purchase sold');
   });
 });

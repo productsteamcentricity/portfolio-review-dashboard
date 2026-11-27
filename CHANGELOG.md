@@ -35,6 +35,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   holds the successor's scheme in the sale's year (V4). The amount tolerance is worked from the sale-value sums in whole
   paise (V5). The oversell reason no longer says "this holding's share" when the apportionment failed (N1), and the
   candidate texts say the IRR file does not say whether it was a merger (N3). No parity figure changed.
+- **After CHAT-012's Gate B of 4001f8f (B1, D1, D2):** a many-into-one merger is a candidate too: on a client-day where
+  every scheme switched out is emptied (or its units are not known), every switch in goes to one other scheme and the
+  totals agree within the amount tolerance, all those switch outs and switch ins are the candidate's, on both sides
+  (B1; the one-into-one rule is kept). A switch that the scheme's priced trades prove partial stays an ordinary switch
+  even when its units are not known (D1: a lower bound of the units while every unknown trade is a purchase). A test
+  pins both holdings of a scheme switched into through two folios (D2). The successor gap ends once the scheme switched
+  into is back to 0 units, so a later fresh purchase and sale is computed. No parity figure changed.
 - **Parity:** book `tax-r2c`, ledger TX-13, TX-14 and TXR-19 to TXR-23, with its known answers; no other expected figure
   changed.
 - **Tests:** `tests/unit/tax/{realised-irr,fifo-lots}.test.ts`, `tests/integration/realised-gains-reconcile.test.ts`,
