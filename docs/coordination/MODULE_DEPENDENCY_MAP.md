@@ -65,7 +65,7 @@ code dependency [V roadmap §4]. The real dependencies below come from the modul
 | LP-02, LP-04, LP-06, LP-07, LP-11 | C | LP-04 PD-05; LP-07 PD-10; LP-11 PD-63 | Same blocks as LP-01; each after the previous merge |
 | LP-03, LP-17, LP-18, LP-23 | C | owner-blocked | `index.html` patches serialise behind LP-01 (CODING_MAP §2 rule). LP-03 dropped (owner, 25 Nov 2026: the ISIN column is for the new build only); LP-17 PD-36 per alias; LP-18 Q-24; LP-23 owner's yes to the download |
 | LP-05, LP-08, LP-09, LP-14 | C | owner-blocked | PD-28 (its own scope, C2-C6) and PD-36; PD-26; PD-31; PD-62 |
-| LP-10 TA-26 | B | owner-blocked | PD-55; and OPS-02 registers-4 merged, naming ARC-02 as ARC-01's sole rule-10 successor [V CLAUDE.md:83-84; CHAT_REGISTRY.md:37 still shows ARC-02 QUEUED]. ARC-03 is not the rule-10 Guardian. Guard test on its own new path |
+| LP-10 TA-26 | B | owner-blocked | PD-55. The registers condition is met: registers-4 (PR #42) names ARC-02 as ARC-01's sole rule-10 successor [V CHAT_REGISTRY]. ARC-03 is not the rule-10 Guardian. Guard test on its own new path |
 | LP-12 | A | needs phase approval (P02-S01) | Runbook step and reviewed tools |
 | LP-13 | C | owner-blocked: PHASE-02 approval, CR, D-2, D-4 [V tracker:181, 252; STAGE2_PLAN_DRAFT:78; scope note:56] | Synthetic fixtures only; no real grid content in the repo until D-2 is answered |
 | LP-19 | A | none | Docs and runbook; merges before about 13 Dec |

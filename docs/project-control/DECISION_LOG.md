@@ -7,11 +7,15 @@
 PD-57 to PD-66 added; the owner's answers given between 17 and 26 Nov 2026 recorded (PD-01, PD-04, PD-16 in part,
 PD-30, PD-36, PD-44, PD-54 confirmed, PD-56 changed); owner decisions without a PD number in section 2.4. Of the 66
 PDs, 26 have an answer on record (PD-16 only in part: item 4 is open) and 40 stay open. **Owner of this log from now on:** MOD-04.
+**Updated:** 27 Nov 2026 (IST), drafted by EX-03 (CHAT-014) for MOD-05 (CHAT-015) on branch `docs/registers-5` (base
+`main` 56a25fe). PD-67 added (the 15-hour delegation of 26 Nov); the publishes of KI-032, LP-16b and KI-301 added to
+PD-30; the owner's decisions of 26 and 27 Nov without a PD number added to section 2.4; the counts on the line above were not
+recounted in registers-5. **Owner of this log from now on:** MOD-05.
 
 This log has three parts, kept apart on purpose:
 1. **Approved decisions.** An index of D-001 to D-042 and the lead's handover rulings. The full text of every D
    entry is in [docs/DECISIONS.md](../DECISIONS.md), which stays authoritative. This index never replaces it.
-2. **Pending owner decisions** (PD-01 to PD-66): each has a table row; PD-01 to PD-49 and PD-57 to PD-66 are also explained in plain language below; the sections for PD-50 to PD-56 are still to be written (their table rows are complete). Section 2.4 lists the owner's decisions that have no PD number.
+2. **Pending owner decisions** (PD-01 to PD-67): each has a table row; PD-01 to PD-49 and PD-57 to PD-67 are also explained in plain language below; the sections for PD-50 to PD-56 are still to be written (their table rows are complete). Section 2.4 lists the owner's decisions that have no PD number.
 3. **Recommendations not yet approved.**
 
 Evidence labels: [VERIFIED] (with the evidence), [INFERRED], [UNCERTAIN], [UNKNOWN]. Related registers:
@@ -270,7 +274,7 @@ that builds it (EX-01 or NB-01).
 | PD-27 | Approve the new-build blueprint | Review after it is republished | TC-10 |
 | PD-28 | Your requests C2 to C6: live page or new build? | Calculation items live; presentation items new build | TA-09 |
 | PD-29 | Other second-export decisions | Answer before the October refresh | TA-10 |
-| PD-30 | Confirm the "publish" gate | **ANSWERED 9 Nov 2026**: "Confirm (Recommended)": nothing goes live before the owner replies "publish". Publishes given since: see PD-30 below (PRs #20 to #25, #28, #32, #33, #36); new-build sprints reach `/next/` under the standing rule of 25 Nov (section 2.4) | none |
+| PD-30 | Confirm the "publish" gate | **ANSWERED 9 Nov 2026**: "Confirm (Recommended)": nothing goes live before the owner replies "publish". Publishes given since: see PD-30 below (PRs #20 to #25, #28, #32, #33, #36, #47, #50, #53); new-build sprints reach `/next/` under the standing rule of 25 Nov (section 2.4) | none |
 | PD-31 | Live page: dashes in sentences and the overlap threshold | Leave both to the new build | TA-25 |
 | PD-32 | Which of the previous owner's 15 promised features you still want | Owner chooses | REQ-018 |
 | PD-33 | Use the Investment Reckoner as the product-bank source | Yes | TB-18 |
@@ -307,6 +311,7 @@ that builds it (EX-01 or NB-01).
 | PD-64 | Do TA-03 and M1.4 pause until Stage 0 and Stage 1 are approved, or keep their review gates moving without merging? | **ANSWERED 17 Nov 2026**: "Yes, gates only". Its approval style for routine items is superseded by PD-65 (24 Nov) | none |
 | PD-65 | The owner's operating charter: autonomous full-stack development, parallel execution and project continuity | **GIVEN 24 Nov 2026** (owner instruction): the Moderator is project manager, principal architect, lead full-stack developer and integration owner; routine technical decisions are the Moderator's; the owner is asked only for business and financial logic, scope, data integrity, security and privacy, irreversible actions, spend and sprint output approvals; three-compaction succession for every chat, the Moderator too; `docs/coordination/` | none |
 | PD-66 | Delegation while the owner was away | **GIVEN 25 Nov 2026, 00:57 IST** (owner instruction, about 12 hours, ended about 13:00 IST): the Moderator approves decisions on the owner's behalf ("approve all the decisions on my behalf"), recorded as "MOD-04 under PD-66", within fixed limits | none (ended) |
+| PD-67 | Delegation while the owner was away, again | **GIVEN 26 Nov 2026, about 19:30 IST** ("Yes, as on 25 Nov (Recommended)"; about 15 hours, ended about 10:30 IST on 27 Nov): as PD-66, recorded as "MOD-04 under delegation (PD-67)" and, after the Moderator change, "MOD-05 under delegation (PD-67)" | none (ended) |
 
 ### 2.3 Each decision explained
 
@@ -734,6 +739,9 @@ See the private supplement. **Blocks:** TC-20.
 | 25 Nov 2026 | "Publish when green (Recommended)" | LP-16, KI-051 non-MF classifier | #32 |
 | 25 Nov 2026 | "Publish after LP-16 (Recommended)" | CR-0010 A5 (Indian-ISIN shares domestic) | #33 |
 | 25 Nov 2026 | "Publish when green (Recommended)" | TA-03 tax batch | #36 |
+| 26 Nov 2026 | "Publish now (Recommended)" | KI-032, the IRR client join (CR-0011) | #47 |
+| 27 Nov 2026 | "Publish KI-301" | KI-301, the cashflow file's since-inception sheets (CR-0013); PD-67 had ended, so it waited for the owner's word | #53 |
+| 27 Nov 2026 | "Publish when green (Recommended)", given 26 Nov | LP-16b, the platform's Product Name values (CR-0012) | #50 |
 
 From 25 Nov 2026 new-build sprint outputs reach `/next/` under the owner's standing rule (section 2.4) without a separate "publish"; the live page still needs the owner's word each time.
 
@@ -976,7 +984,18 @@ PD-50 to PD-56: the plain-language sections are still to be written; their table
 - **Limits recorded with it.** Nothing prohibited (credentials, untrusted downloads, force-push, history rewrite, data deletion); no owner-only account settings; no Office runs (rule 10: owner-run only); live-page publishes only with every gate passed and low client risk; new-build outputs could merge to `/next/` but Gate E stayed with the owner; anything material and irreversible waited.
 - **Decisions taken under it** (recorded as "MOD-04 under PD-66"): the CR-0010 A4 publish (PR #28; one SWOT statement, low client risk); M2.1 sprint 1 to `/next/` (PR #30; the owner accepted it at Gate E later that morning); one privacy allow-list entry for LP-16's generated `data/refdata/PRODUCT_CLASS_RULES.json`, of the same class as the existing generated refdata entries, checked by the security reviewer at Gate B. The tax batch was not published under it: PD-01, PD-04, PD-44 and PD-54 were kept for the owner.
 
-### 2.4 Owner decisions without a PD number (17 to 26 Nov 2026)
+#### PD-67. The 15-hour delegation of 26 Nov 2026
+
+**GIVEN 26 Nov 2026, about 19:30 IST** (answer card: "Yes, as on 25 Nov (Recommended)"): while away for about 15 hours, the owner again handed routine approvals and business defaults with a recommended answer to the Moderator. It ended about 10:30 IST on 27 Nov.
+- **Limits recorded with it.** As PD-66: nothing prohibited, no account settings, no Office runs, no data deletion, nothing material and irreversible; new-build merges to `/next/` continued; Gate E acceptances waited for the owner.
+- **Across the Moderator change.** The delegation carried over to CHAT-015 (MOD-05) when it took over on 26 Nov; decisions after that were recorded as "MOD-05 under delegation (PD-67)".
+- **Decisions taken under it:**
+  - A price dated after the review's as-on date is never used in the new build's performance figures (no look-ahead); the latest point on or before it is used, labelled with its own date. (Moderator MOD-04, 26 Nov 2026.)
+  - P2P lending in the product-class rules: class OTHER, asset class Debt, following the owner's answer "Debt" of 26 Nov 2026. (Moderator MOD-04, 26 Nov 2026.)
+  - No live-page publish was made under PD-67. KI-301 (PR #53) was ready after the delegation ended and was published on the owner's own word of 27 Nov 2026 ("Publish KI-301"); LP-16b (PR #50) was published under the owner's own "Publish when green" of 26 Nov 2026.
+- PD-67 ended about 10:30 IST on 27 Nov 2026. Gate E acceptances were not taken under it.
+
+### 2.4 Owner decisions without a PD number (17 to 27 Nov 2026)
 
 Answers and instructions the owner gave in chat that have no PD number. Recorded from the Moderator's owner-decision record (MOD-03, then MOD-04). Quotes are the owner's words or the answer card chosen.
 
@@ -997,7 +1016,7 @@ Answers and instructions the owner gave in chat that have no PD number. Recorded
 | 25 Nov 2026 | ISIN in the client base file | "Yes, heading below" (ISIN first, name fallback); then "No ISIN column"; then, replacing that: the client file's column "will be ISIN", and the owner offered to update the template | The new build reads a column headed "ISIN" (letter case ignored), ISIN first, name fallback. Reference ISINs come from the AMFI NAV file (funds) and the stock-returns file (shares) |
 | 25 Nov 2026 | Scope of the revamped base file template | "Template only" (after: "Let the current dashboard stay as is as its soon going to be replaced") | The revamped Client Base File Template, with its "ISIN" column, is for the **new build only**; the live page and its template download stay as they are. LP-03 (TA-06, live-page ISIN reading, KI-184) is dropped. Live-page fixes already queued continue (A4, TA-03, LP-16, A5) |
 | 25 Nov 2026 | Labels for non-MF products (D-7) | "Use type you used to describe the funds above as Labels" | Six labels: "GIFT City funds", "Offshore funds", "US-dollar bonds (through LRS)", "Fixed deposits", "REITs and InvITs", "Unlisted shares"; never classed as MF. Live first (LP-16, PR #32), the new build ports the same answers (M2.2) |
-| 25 Nov 2026 | Rupee bonds and NCDs: a separate "Bonds and NCDs" label? | "No, keep as recorded" (not the recommendation) | Every bond, NCD and debenture keeps "US-dollar bonds (through LRS)"; the template proposal drops a separate "Bonds" value |
+| 25 Nov 2026 | Rupee bonds and NCDs: a separate "Bonds and NCDs" label? | "No, keep as recorded" (not the recommendation) | Every bond, NCD and debenture keeps "US-dollar bonds (through LRS)"; the template proposal drops a separate "Bonds" value. **Changed 26 Nov 2026** (the platform's Product Name values, below): rupee bonds and NCDs get their own label |
 | 25 Nov 2026 | Bonds and tax | "Yes, for now" | Bonds show no tax figure, with the reason, until tax-adviser question 27 (D-043) |
 | 25 Nov 2026 | Gate E, M2.1 sprint 1 | "Accept it" | Complete on `/next/` (PR #30) |
 | 25 Nov 2026 | Order of the fund-matching corrections: an exception to D-028 | "New build first (Recommended)" | The new build makes the matching corrections first (ties left unmatched, KI-036; approved aliases, KI-050; KI-051 as ported); the live page keeps today's matching until switch-over. KI-051 stays on the live page through LP-16 |
@@ -1009,6 +1028,15 @@ Answers and instructions the owner gave in chat that have no PD number. Recorded
 | 26 Nov 2026 | Q-12: SheetJS 0.20.2 | "Yes, download it (Recommended)" | One download from the official site, its SHA-256 recorded in `app/vendor/MANIFEST.json`, Guardian review; the pinned-version change is recorded against D-025 and D-034. Fixes CVE-2023-30533 and CVE-2024-22363 and allows the monitor upload buttons |
 | 26 Nov 2026 | Fund-matching strictness (OD-5), option B | "Go ahead with the Stricter regime" (the owner also asked why 21 funds would show as not matched) | Option B on in the new build; a follow-up fix to name normalisation ("S&P", "(Formerly Known as ...)", "And" against "&") recovers the 21 correct names, measured |
 | 26 Nov 2026 | Test build target | "I want to start testing on the new build within 2 weeks maximum" | Test build 1 on `/next/` by Thu 10 Dec 2026: matched holdings and the import report (M2 wired), performance (M3b), returns and XIRR (M3a wired), and their sheets |
+| 26 Nov 2026 | PD-16 item 5: repeated lot rows | "Can be genuine lots"; then "Repeating lot rows- this issue can be clarified against the total number of units from the holding report." | The Moderator's earlier reading (that the platform export does not repeat lot rows by design, with the suggested answer "once") is withdrawn. Owner, 26 Nov 2026: "Can be genuine lots". Repeated groups are checked against independent units evidence (redemption units in the transactions file for sold lots, the holding report's units for open lots); the supported reading is suggested with its evidence and the analyst confirms; with no evidence or conflicting evidence the analyst is asked with no suggestion |
+| 26 Nov 2026 | KI-032 live fix (the IRR client join) | "Careful variant match (Recommended)"; "Yes, counts only (Recommended)"; "Before 13 Dec (Recommended)" | Live page: the exact name first, else a unique name variant (salutations ignored, entity and holder words equal, unique both ways, named in a note), else no join, with a note. A local, read-only, counts-only measurement on real files was allowed and later waived. Target: live before 13 Dec; publish on the owner's word (PR #47) |
+| 26 Nov 2026 | Transactions (IRR) file template for the new build | "Easier fix for this is we can create an XIRR template as well similar to the base file template which will have the name of the client included in the file."; "Client Code might not be available; join just on the names as they would be unique" | The new build gets a blank transactions file template whose client names match the base file exactly; the join stays exact names only (D9); no client code column. A name in one file with no match in the other is listed with a note, never joined by similarity (PR #57) |
+| 26 Nov 2026 | KI-032 kept on the live page | "Yes, keep the live fix (Recommended)" | The live fix continues as a safety net until switch-over, beside the new build's exact join |
+| 26 Nov 2026 | New-build base file template, final | "design a template for the new build which can be downloaded from the platform so everyone knows what to upload"; "only keep columns which are absolutely necessary"; Portfolio Type: "Not needed in review" | A 17-column base file template for the new build, as the platform exports it; it replaces the 25 Nov proposal |
+| 26 Nov 2026 | The platform's Product Name values | "Treat Global Exposure as both Offshore Funds and Gift City Funds"; "Rupee bonds and NCDs (Recommended)"; P2P Lending: "Debt; but it won't be there in any of the portfolios" | Global Exposure: GIFT City funds when the name says GIFT or IFSC, else Offshore funds. "Bonds": rupee bonds and NCDs on the domestic listed bond rows; "US-dollar bonds (through LRS)" only when the product or name says USD, US or LRS. P2P Lending: Debt. Unlisted-Direct: unlisted shares; AIF-Listed: a Listed AIF (D-043). **Changes** the 25 Nov answer on bond labels (above). Live: LP-16b (PR #50); new build: M2.2 |
+| 26 Nov 2026 | Model of the next Moderator | "Yes, next chat on Fable" | The next Moderator chat (CHAT-015, MOD-05) runs on the Fable model; MOD-04 stayed on its model until the handover |
+| 26 Nov 2026 | Standby Moderator | "Yes, open it now (Recommended)" | CHAT-015 (MOD-05) opened on standby, to take over only on the active Moderator's handover message |
+| 26 Nov 2026 | Moderator change | "Handover to the new moderator" | CHAT-013 (MOD-04) handed over to CHAT-015 (MOD-05) on 26 Nov 2026, about 20:40 IST; CHAT-013 is a historical record that only forwards notes |
 
 ## 3. Recommendations not yet approved
 
@@ -1047,3 +1075,4 @@ These are Claude's recommendations. None is a decision until the named approver 
 | 2 Nov 2026 | MOD-02 | Rule 10 of CLAUDE.md sharpened after the security review (synthetic defined, Excel window, NOT RUN is never a pass); residual "planned, not in git yet" tags; TA-26 priority |
 | 9 Nov 2026 | MOD-02 | Owner answers PD-09, PD-20, PD-21, PD-30, PD-47 to PD-51 and PD-54 recorded; PD-52 and PD-53 (tax adviser) queued; R-14 (numbers) and R-15 (rule 10 amended, then reworded after the security review: Git Bash `//FI`, one pre-flight list, the copy folder, freshness, SHA-256 pin; then the Get-Process existence check and ARC-01's guard and script requirements); PD-55 (linked charts in the Outlook deck) queued; PD-56 (the day of the October performance) answered |
 | 26 Nov 2026 | MOD-04 (registers-4) | Owner answers of 17 to 26 Nov recorded: PD-01, PD-04 and PD-44 answered; PD-16 answered except item 4; PD-30 publishes listed; PD-36 answered for the renamed-scheme list; PD-54 confirmed; PD-56 changed; PD-07 still open. PD-57 to PD-66 added (PD-62 and PD-63 open). Section 2.4: owner decisions without a PD number (Stage 0, D-7 labels, the ISIN column for the new build only, the D-028 exception for matching corrections, the standing `/next/` rule, M12a defaults, Q-12, matching option B, the item 6 run, Gate E acceptances, the test build target). Owner of this log: MOD-04 |
+| 27 Nov 2026 | MOD-05 (registers-5, drafted by EX-03) | PD-67 added with its section; PD-30 publishes of KI-032 (#47), KI-301 (#53) and LP-16b (#50); section 2.4 rows of 26 and 27 Nov (PD-16 item 5 method, KI-032 rule and its keep, the IRR template, the final base file template, the platform product names, the Moderator model, standby and change) |

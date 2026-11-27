@@ -132,12 +132,17 @@
     `9C973F615E6601B08277F6F8227DB569`, 16,413,720 bytes.
   - KI-301 (IRR-SI), the cashflow file's since-inception sheets (CR-0013): merged in PR #53 (27 Nov 2026, the owner's
     "Publish KI-301"); page `6896AFEC8626BEB22357A258AB69508D`, 16,414,518 bytes.
-  - In review: LP-16b, the platform's Product Name values (CR-0012, branch `fix/lp16b-platform-product-names`): page
-    `04079A77756282B284016FBFB02212C0`, 16,416,337 bytes (on KI-301's page); live on the owner's "publish when green".
+  - LP-16b, the platform's Product Name values (CR-0012): merged in PR #50 (27 Nov 2026, the owner's "Publish when
+    green"); page `04079A77756282B284016FBFB02212C0`, 16,416,337 bytes: **the live page since 27 Nov 2026**.
   - After every deploy the live page is downloaded and its MD5 compared with `main` (batch 1a verified 19 Oct
     2026).
   - Data vintage: 31 Oct 2026 (October refresh: analytics, performance and risk), except ranks (15 Aug), fund managers
     (31 Aug), PMS returns (31 Jul) and AIF (30 Jun).
+- **Test build 1** (target Thu 10 Dec 2026 on `/next/`; registers-5, 27 Nov 2026). On `/next/` now: the returns view
+  (PR #51, M3a wiring), matched holdings with the import report and the monitor uploads (PR #54, M2.1 wiring), and the
+  blank transactions (IRR) file template (PR #57). In review: the holdings and performance views (M3b, NB-02) and the
+  M3b data side (NB-04; its refdata blocks merged in PR #49). Not in test build 1: a price-file reader (built after
+  it, once the owner supplies the file layout).
 - **Repository.** `C:\dev\portfolio-review`; `origin` =
   https://github.com/productsteamcentricity/portfolio-review-dashboard (**public**, D-008).
   - Commits use Products Team Centricity with the GitHub no-reply address. Since 19 Oct this laptop's global git
@@ -222,13 +227,13 @@
    read by header name: MF Monitor, its all-in expense ratio, SIF Monitor, PMS performance, the analytics files; and the
    base file's ISIN column, read only) merged in PR #31 and was accepted on 25 Nov 2026; the upload buttons wait for the
    SheetJS 0.20.2 upgrade (Q-12, approved by the owner on 26 Nov 2026). Sprint 2a (matcher corrections, under the owner's
-   "new build first" exception to D-028 of 25 Nov 2026) is on `feat/m2-2a-match-corrections`: the owner's 16 fund aliases
+   "new build first" exception to D-028 of 25 Nov 2026) merged in PR #46, with the name normaliser in PR #48: the owner's 16 fund aliases
    (PD-36), no answer decided by candidate order (KI-036), fund-house words never distinctive (KI-101), the re-key of ranks
    and risk ratios (KI-052, OD-23), the same-scheme Direct twin (KI-054), the fund ISIN map and code join, merged rows with
    different ISINs (S3-1), and the stricter regime (option B) the owner chose on 26 Nov 2026 (`NEW_BUILD_MATCHING`); all
-   opt-in at the engine, measured both ways (`tests/parity/matching-corrections-ledger.json`), not wired into the page
-   yet. Sprint 2b (the product-class table, after the live page's LP-16, now merged) follows. For test build 1 (MOD-04's plan, 26 Nov 2026)
-   the matcher is wired into section 1 on `feat/m2-wiring` (stacked on 2a and NB-04's `feat/refdata-blocks`): holdings
+   opt-in at the engine, measured both ways (`tests/parity/matching-corrections-ledger.json`), and wired into the page
+   by PR #54. Sprint 2b (the product-class table, after the live page's LP-16, now merged) follows. For test build 1 (MOD-04's plan, 26 Nov 2026)
+   the matcher is wired into section 1 (PR #54, merged 27 Nov 2026, after NB-04's refdata blocks, PR #49): holdings
    matched when the base file loads, the import report's matching section (E-19), and the monitor uploads (U-08, U-09,
    U-10).
    M3b for test build 1 (section 5) is on `feat/m3b-views`, stacked on `feat/m2-wiring`: the holding sheets (E-25) and
@@ -237,28 +242,28 @@
    Regular/Direct switch (U-41) and the Performance sheet (E-84); the weighted 3Y and 5Y returns (E-147, NB-04's
    `feat/m3b-data`) and the slides C-21 and C-22 are not on it yet.
    Beside M2, the data-platform items (NB-04): M10, the MF Screener data pack reader and browser store, merged in
-   PR #37 and accepted on 26 Nov 2026 (not wired); M11a, the monthly update engine core, on its own branch
-   (`feat/m11a-monthly-engine`); M12a, the drawdown engine on index data, merged in PR #38, owner Gate E pending (the
+   PR #37 and accepted on 26 Nov 2026 (not wired); M11a, the monthly update engine core, merged in
+   PR #41; M12a, the drawdown engine on index data, merged in PR #38, owner Gate E pending (the
    owner's answers of 25 Nov 2026 are its defaults;
    which index stands for each asset class, the part-month recovery rule, flagging missing months and the tie rule
    wait for the owner).
 
    **Claude: M3a**, the returns core (XIRR, the IRR file reader, the IRR tree, contributors and laggards, returns per
-   family, client and advisor scope), is merged (PR #34) and accepted by the owner (Gate E), not wired into the page yet. Open before it reaches
+   family, client and advisor scope), is merged (PR #34), accepted by the owner (Gate E) and wired into the page (PR #51, below). Open before it reaches
    the page: the reconcile tolerance (D13), how an instrument split between distributors is shared, and the owner
    questions in its Gate A report. The IRR parity ledger waits for a real export (TA-03, KI-186).
 
    **Claude: M7a**, the capital-gains statement reader (PAN removed at read time, repeated lots reported, blank cells
    reported) and the blank template, is merged (PR #35) and accepted by the owner (Gate E), not wired into the page yet. The
-   owner answered PD-16 on 26 Nov 2026 (item 4 stays with the tax adviser). **The M7a tax engine** is on
-   `feat/m7a-tax-engine`: round 1 (the statement lots: the dated rules, lot classes, per-lot tax and the tax per person
-   and year) is built; round 2 (the holdings: classification, FIFO lots, harvesting and the IRR reconciliation) follows.
+   owner answered PD-16 on 26 Nov 2026 (item 4 stays with the tax adviser). **The M7a tax engine**: round 1 (the
+   statement lots: the dated rules, lot classes, per-lot tax and the tax per person and year) merged in PR #52; round 2 (the holdings: classification, FIFO lots, harvesting and the IRR reconciliation) follows.
    Model contracts-1 (PR #29, types only): I-31, I-32, I-44, I-45 and decision C-01. Model contracts-2 (PR #40, types
    only): contract I-37 (`app/src/model/tax.ts`) and the analyst question as a union on its kind.
 
-   **Claude: M3a wiring** (test build 1, `feat/m3a-wiring`): the transactions (IRR) upload in section 1 and the returns
+   **Claude: M3a wiring** (test build 1, merged in PR #51): the transactions (IRR) upload in section 1 and the returns
    view in section 4 (family, client and adviser scopes; fund and benchmark XIRR; the IRR tree; contributors and
-   laggards) with a Fund IRR sheet, without a model change (PLAN-04 option B); I-41 follows test build 1.
+   laggards) with a Fund IRR sheet, without a model change (PLAN-04 option B); I-41 follows test build 1. The blank transactions (IRR) file template, with
+   client names that match the base file exactly (the owner, 26 Nov 2026), followed in PR #57.
 6. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;
