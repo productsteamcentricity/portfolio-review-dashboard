@@ -48,7 +48,9 @@ export type HoldingsSheetRow = {
   purchaseDate?: Value<DayNumber>;
 };
 
-export type HoldingsPartialNote = { withoutXirr: number; withoutBmXirr: number; xirrCoveragePct: number; bmXirrCoveragePct: number };
+/** The † note's counts, over the holdings of the rows marked † (MOD-05's review N2a: never the Grand Total's coverage when the
+ *  Grand Total comes from the IRR file). `byCount`: a market value among them is negative, so the coverage is in holdings (N3). */
+export type HoldingsPartialNote = { withoutXirr: number; withoutBmXirr: number; xirrCoveragePct: number; bmXirrCoveragePct: number; byCount: boolean };
 
 export type ClientHoldingsSheet = {
   clientId: ClientId | null;
@@ -69,33 +71,57 @@ const METHOD = {
   xirr: 'engine: CMV-weighted average XIRR over the holdings that have one (KI-006)',
   bmXirr: 'engine: CMV-weighted average BMXIRR over the holdings that have one (KI-006)',
   coverage: 'engine: CMV of the holdings with a value, as a percent of the CMV',
+  coverageByCount: 'engine: holdings with a value, as a percent of the holdings with a market value (by count: a market value is negative)',
 };
 
-type Weighted = { avg: Value<number>; coverage: Value<number>; with: number; covered: number };
+type Weighted = { avg: Value<number>; coverage: Value<number>; with: number; covered: number; byCount: boolean };
 
 /** CMV-weighted average of one rate over the members, with its coverage (07_engine.js:1831-1834). */
 function weighted(members: readonly Holding[], pick: (h: Holding) => Value<number>, method: string, what: string, groupCmv: Value<number>): Weighted {
   let w = 0;
   let c = 0;
   let n = 0;
+  let priced = 0;
+  let negative = false;
+  let negativeWeight = false;
   for (const h of members) {
+    if (h.cmv.kind !== 'value') continue;
+    priced++;
+    if (h.cmv.v < 0) negative = true;
     const x = pick(h);
-    if (x.kind !== 'value' || h.cmv.kind !== 'value') continue;
+    if (x.kind !== 'value') continue;
+    if (h.cmv.v < 0) negativeWeight = true;
     w += x.v * h.cmv.v;
     c += h.cmv.v;
     n++;
   }
   const prov = { sources: sourcesOf(members), method };
-  /* S2 (financial review of 27 Nov 2026): a rate that covers only part of the group's market value carries that share as
-     its coverage, as groupFigures does for the invested value, so the cell shows the "p" marker and the sheet's status
-     says PARTIAL COVERAGE. A share outside [0, 1) (negative market values) is left unmarked: see the follow-up (N3). */
-  const share = groupCmv.kind === 'value' && groupCmv.v > 0 ? c / groupCmv.v : undefined;
+  /* N3 (financial review of 27 Nov 2026): with a negative market value among the members, a CMV share can pass 100% or
+     go below 0, so it no longer says how much of the row the average covers. The coverage is then counted in holdings
+     (holdings with the rate over holdings with a market value). An average with a negative weight, or whose weights do
+     not sum to a positive number, is not given (NOT COMPARABLE): it can fall outside every member's rate and has no
+     meaning as a portfolio rate (CMVs of 1.0000001 and -1 gave -19,99,99,989.88%; weights summing to a positive number
+     do not prevent that, so any negative weight is refused). */
+  const coverage = negative
+    ? (priced > 0
+      ? present(n / priced * 100, 'pct', { sources: sourcesOf(members), method: METHOD.coverageByCount })
+      : missing(STATUS.NOT_APPLICABLE, `no holding in ${what} has a market value`, { sources: sourcesOf(members), method: METHOD.coverageByCount }))
+    : groupCmv.kind === 'value' && groupCmv.v !== 0
+      ? present(c / groupCmv.v * 100, 'pct', { sources: sourcesOf(members), method: METHOD.coverage })
+      : missing(STATUS.NOT_APPLICABLE, `the market value of ${what} is 0 or missing`, { sources: sourcesOf(members), method: METHOD.coverage });
+  /* S2 (financial review of 27 Nov 2026): a rate that covers only part of the row carries that share as its coverage, as
+     groupFigures does for the invested value, so the cell shows the "p" marker and the sheet's status says PARTIAL
+     COVERAGE. */
+  const share = coverage.kind === 'value' ? coverage.v / 100 : undefined;
   const extra = share !== undefined && share >= 0 && share < 1 ? { coverage: share } : undefined;
-  const avg = c !== 0 ? present(w / c, 'pct', prov, extra) : missing(STATUS.NOT_AVAILABLE, `no holding in ${what} has this rate with a market value`, prov);
-  const coverage = groupCmv.kind === 'value' && groupCmv.v !== 0
-    ? present(c / groupCmv.v * 100, 'pct', { sources: sourcesOf(members), method: METHOD.coverage })
-    : missing(STATUS.NOT_APPLICABLE, `the market value of ${what} is 0 or missing`, { sources: sourcesOf(members), method: METHOD.coverage });
-  return { avg, coverage, with: n, covered: c };
+  let avg: Value<number>;
+  if (n === 0 || (c === 0 && !negative)) avg = missing(STATUS.NOT_AVAILABLE, `no holding in ${what} has this rate with a market value`, prov);
+  else if (negativeWeight) {
+    avg = missing(STATUS.NOT_COMPARABLE, `a holding in ${what} that has this rate has a negative market value, so a weighted average by market value has no meaning`, prov);
+  } else if (c <= 0) {
+    avg = missing(STATUS.NOT_COMPARABLE, `the holdings in ${what} that have this rate have no positive market value, so a weighted average by market value has no meaning`, prov);
+  } else avg = present(w / c, 'pct', prov, extra);
+  return { avg, coverage, with: n, covered: c, byCount: negative };
 }
 
 function cmvOf(h: Holding): number {
@@ -133,7 +159,7 @@ export function computeHoldingsSheets(holdings: readonly Holding[], opts: { irr?
     const what = label ?? 'this client';
     const total = groupFigures(members, what);
     const rows: HoldingsSheetRow[] = [];
-    let partial = false;
+    const dagger = new Set<HoldingId>();
     let irrGrandBlank = false;
 
     const subtotal = (level: 'asset' | 'product' | 'grand', rowLabel: string, ms: readonly Holding[], scope: { asset?: string; product?: string }): HoldingsSheetRow => {
@@ -150,7 +176,7 @@ export function computeHoldingsSheets(holdings: readonly Holding[], opts: { irr?
       const x = weighted(ms, (h) => h.xirr, METHOD.xirr, rowLabel, f.cmv);
       const b = weighted(ms, (h) => h.bmXirr, METHOD.bmXirr, rowLabel, f.cmv);
       const short = (v: Value<number>): boolean => v.kind === 'value' && v.v < 99.995;
-      if (short(x.coverage) || short(b.coverage)) partial = true;
+      if (short(x.coverage) || short(b.coverage)) for (const h of ms) dagger.add(h.id);
       return { ...base, xirr: x.avg, bmXirr: b.avg, xirrCoveragePct: x.coverage, bmXirrCoveragePct: b.coverage, xirrSource: 'cmv-weighted' };
     };
 
@@ -175,14 +201,18 @@ export function computeHoldingsSheets(holdings: readonly Holding[], opts: { irr?
     rows.push(subtotal('grand', 'Grand Total', members, {}));
 
     let note: HoldingsPartialNote | null = null;
-    if (partial) {
-      const grand = rows[rows.length - 1]!;
-      const pct = (v: Value<number> | undefined): number => (v && v.kind === 'value' ? v.v : 0);
+    if (dagger.size > 0) {
+      const marked = members.filter((h) => dagger.has(h.id));
+      const cmv = groupFigures(marked, what).cmv;
+      const x = weighted(marked, (h) => h.xirr, METHOD.xirr, what, cmv);
+      const b = weighted(marked, (h) => h.bmXirr, METHOD.bmXirr, what, cmv);
+      const pct = (v: Value<number>): number => (v.kind === 'value' ? v.v : 0);
       note = {
-        withoutXirr: members.filter((h) => h.xirr.kind !== 'value').length,
-        withoutBmXirr: members.filter((h) => h.bmXirr.kind !== 'value').length,
-        xirrCoveragePct: pct(grand.xirrCoveragePct),
-        bmXirrCoveragePct: pct(grand.bmXirrCoveragePct),
+        withoutXirr: marked.filter((h) => h.xirr.kind !== 'value').length,
+        withoutBmXirr: marked.filter((h) => h.bmXirr.kind !== 'value').length,
+        xirrCoveragePct: pct(x.coverage),
+        bmXirrCoveragePct: pct(b.coverage),
+        byCount: x.byCount || b.byCount,
       };
     }
     return { clientId, clientLabel: label, cmv: total.cmv, rows, partial: note, irrGrandBlank };

@@ -363,7 +363,7 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
     try {
       const result = kind === 'pptx'
         ? await deps.wiring.exportDeck(review, s.vm, s.logo)
-        : await deps.wiring.exportWorkbook(review, s.vm, s.irr.vm, { performance: s.performance }); // M3a returns (NB-03): the Fund IRR sheet when present; M3b (NB-02): the Performance sheet
+        : await deps.wiring.exportWorkbook(review, s.vm, s.irr.vm, { performance: s.performance, irrReturns: s.irr.returns }); // M3a returns (NB-03): the Fund IRR sheet when present; M3b (NB-02): the Performance sheet, and the client sheets from the IRR file as section 5
       if (session === mySession) {
         const entry: AuditEntry = { ...result.audit, id: `export:${state.exportLog.length + 1}` };
         set({ ...state, exportLog: [...state.exportLog, entry], busy: null });

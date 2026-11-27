@@ -1,4 +1,4 @@
-// covers: U-23 E-25 KI-006 KI-007 KI-121 M3
+// covers: U-23 E-25 E-80 KI-006 KI-007 KI-048 KI-100 KI-121 M3
 // Section 5's holdings view-model (app/src/views/holdings.ts) on the sample reviews (tests/helpers/sample-review.ts):
 // the CZHOLD columns in the review's unit, one table per client by CMV with the analyst's label as title, the display
 // of the engine's figures, the double dagger and its note where a holding has no invested value (KI-007), the dagger
@@ -9,9 +9,16 @@ import assert from 'node:assert/strict';
 import type { Review } from '../../../app/src/model/review.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
 import { missing, present } from '../../../app/src/engine/value.ts';
-import { buildHoldingsVM } from '../../../app/src/views/holdings.ts';
+import { buildHoldingsVM, irrHookFrom } from '../../../app/src/views/holdings.ts';
+import { returnsForReview } from '../../../app/src/engine/returns/review-returns.ts';
+import { buildOverviewWorkbook, workbookInputFrom } from '../../../app/src/exports/xlsx/overview-workbook.ts';
+import { buildOverviewVM } from '../../../app/src/views/overview.ts';
 import { sampleReview } from '../../helpers/sample-review.ts';
+import { fixtureById, nodeWiring, reviewOf } from '../../helpers/node-wiring.ts';
+import { irrFixtures } from '../../fixtures/make-irr-files.ts';
+import { readXlsx, sheetByName, sheetTable } from '../../helpers/xlsx-read.ts';
 
+const SECTION = String.fromCharCode(0x00a7);
 const DAGGER = String.fromCharCode(0x2020);
 const DOUBLE_DAGGER = String.fromCharCode(0x2021);
 const DASHES = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
@@ -79,9 +86,11 @@ describe('markers and notes', () => {
     const blank = a.rows[2]!.cells;
     assert.doesNotMatch(blank.invested.text, /[0-9]/);
     assert.deepEqual([blank.gain.text, blank.absReturn.text], [blank.invested.text, blank.invested.text]);
-    assert.equal(a.notes.length, 1);
-    assert.match(a.notes[0]!, /^.+ Invested value, gain\/loss and absolute return count only the holdings that have an invested value: 2 holdings without one\.$/);
-    assert.ok(a.notes[0]!.startsWith(DOUBLE_DAGGER));
+    /* N5: the legacy's share of CMV (07_engine.js:1284): Bluechip 0.625 and Corporate Bond 0.896 of 1.973 Cr. = 77.09% */
+    assert.deepEqual(a.notes, [
+      `${DOUBLE_DAGGER} Invested value, gain/loss and absolute return count only the holdings that have an invested value: 2 holdings without one (77.09% of CMV).`,
+      'A figure marked p counts only part of its row\'s holdings; the notes above give the counts.',
+    ]);
   });
 
   test('a subtotal whose XIRR covers part of the CMV: the dagger on the subtotals, and the partial note (KI-006)', () => {
@@ -93,13 +102,61 @@ describe('markers and notes', () => {
     assert.equal(a.rows[3]!.name, 'Sample Flexi Cap Fund - Regular Plan - Growth');
     assert.doesNotMatch(a.rows[3]!.cells.xirr.text, /[0-9]/, 'the holding without XIRR shows the missing display');
     assert.ok(a.rows[3]!.markers.length === 0, 'a holding never carries the dagger');
-    assert.equal(a.notes.length, 1);
+    assert.equal(a.notes.length, 2);
     assert.ok(a.notes[0]!.startsWith(`${DAGGER} Averages only holdings with a value: 1 without XIRR (`));
     assert.match(a.notes[0]!, /0 without BMXIRR \(100\.00%\)\.$/);
+    assert.equal(a.notes[1], 'A figure marked p counts only part of its row\'s holdings; the notes above give the counts.', 'N5: the p legend');
   });
 
   test('no sentence of the view contains an en or em dash (D-029)', () => {
     const vm = buildHoldingsVM(sampleReview('blank-invested'));
     for (const c of vm.clients) for (const s of [c.caption, ...c.notes]) assert.doesNotMatch(s, DASHES, s);
+  });
+});
+
+describe('the IRR hook (MOD-05\'s review N2): syn-standard with the irr-standard transactions file', () => {
+  /* irr-standard's flows: client A's Equity is its Bluechip only (Flexi Cap has no flow), A's Debt has no benchmark
+     flows; client B has flows for its Hybrid fund only. irr-aggregate.test.ts works A's Equity node to 7.76%. */
+  const w = nodeWiring();
+  const run = reviewOf(w, fixtureById('syn-standard'));
+  const loaded = w.loadIrrFile!(irrFixtures().find((f) => f.id === 'irr-standard')!.bytes, 'irr.xlsx');
+  if (!('irr' in loaded)) throw new Error(loaded.kind);
+  const returns = returnsForReview(run.review, loaded.irr);
+  const vm = buildHoldingsVM(run.review, { irr: irrHookFrom(returns) });
+  const [a, b] = vm.clients;
+
+  test('without a file the hook is absent: the CMV-weighted path', () => {
+    assert.equal(irrHookFrom(null), undefined);
+    assert.deepEqual(buildHoldingsVM(run.review, { irr: irrHookFrom(null) }).clients.map((c) => c.caption), buildHoldingsVM(run.review).clients.map((c) => c.caption));
+  });
+
+  test('a line the node covers in part is a dash with its reason, never the CMV-weighted figure; one note per blank, a product sharing its asset\'s', () => {
+    const eq = a!.rows.find((r) => r.level === 'asset' && r.name === 'Equity')!;
+    assert.doesNotMatch(eq.cells.xirr.text, /[0-9]/);
+    assert.doesNotMatch(eq.cells.bmXirr.text, /[0-9]/);
+    assert.equal(a!.rows.find((r) => r.level === 'asset' && r.name === 'Debt')!.cells.xirr.text, '9.97%');
+    assert.equal(a!.caption, 'XIRR and BMXIRR: from the IRR file\'s transactions for this client.');
+    assert.deepEqual(a!.notes, [
+      'Equity and Equity / Mutual Funds: XIRR and BMXIRR from the IRR file are blank. XIRR covers 1 of 2 holdings on this line: 1 holding has no flow in the IRR file.',
+      'Debt and Debt / Mutual Funds: BMXIRR from the IRR file is blank. There are no benchmark flows.',
+      'Grand Total: XIRR and BMXIRR from the IRR file are blank. XIRR covers 2 of 3 holdings on this line: 1 holding has no flow in the IRR file.',
+    ]);
+    assert.ok(a!.rows.every((r) => !r.markers.includes(SECTION)), 'one basis in the table: no basis marker');
+  });
+
+  test('a table that mixes the two bases marks each IRR subtotal with the section sign and says so in the caption (N2b)', () => {
+    assert.equal(b!.caption, `XIRR and BMXIRR: the subtotals marked ${SECTION} are from the IRR file's transactions for this client; the others are the base file's figures, weighted by market value.`);
+    assert.deepEqual(b!.rows.filter((r) => r.markers.includes(SECTION)).map((r) => `${r.level}:${r.name}`), ['asset:Hybrid', 'product:Mutual Funds', 'grand:Grand Total']);
+    assert.deepEqual(b!.sheet.rows.filter((r) => r.level !== 'item').map((r) => r.xirrSource), ['cmv-weighted', 'cmv-weighted', 'irr', 'irr', 'cmv-weighted', 'cmv-weighted', 'irr']);
+  });
+
+  test('the client sheet: the blank cell\'s status and the basis per row; the reasons among its notes (the same hook as the screen)', () => {
+    const t = sheetTable(sheetByName(readXlsx(buildOverviewWorkbook({ ...workbookInputFrom(run.review, buildOverviewVM(run.review)), clientHoldings: vm })), 'Sample Client A'));
+    const head = t[0]!;
+    const eq = t.find((r) => r[0] === 'Asset class' && r[1] === 'Equity')!;
+    assert.equal(eq[head.indexOf('XIRR (%)')], null);
+    assert.equal(eq[head.indexOf('XIRR Status')], STATUS.PARTIAL);
+    assert.equal(eq[head.indexOf('XIRR Basis')], 'IRR file');
+    assert.ok(t.some((r) => r[0] === 'Note' && r[1] === a!.notes[0]));
   });
 });

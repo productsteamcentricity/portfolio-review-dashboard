@@ -16,7 +16,7 @@ import { computeReview } from '../../app/src/engine/review.ts';
 import { buildOverviewDeckDetailed, type DeckBuild } from '../../app/src/exports/pptx/deck.ts';
 import { buildOverviewWorkbook, workbookInputFrom } from '../../app/src/exports/xlsx/overview-workbook.ts';
 import { loadIrrFile } from '../../app/src/ingest/load-irr.ts'; // M3a returns (NB-03)
-import { buildHoldingsVM } from '../../app/src/views/holdings.ts';
+import { buildHoldingsVM, irrHookFrom } from '../../app/src/views/holdings.ts';
 import { sha256Hex } from '../../app/src/services/sha256.ts';
 import { fixedClock } from '../../app/src/services/clock.ts';
 import { auditExport } from '../../app/src/services/audit-log.ts';
@@ -88,7 +88,7 @@ export function nodeWiring(build: BuildStamp = NODE_BUILD, nowIso: string = NODE
       return finish('pptx', vm, deck.bytes, fileName);
     },
     exportWorkbook: async (review, vm, returns, extra) => {
-      const bytes = buildOverviewWorkbook({ ...workbookInputFrom(review, vm, returns), clientHoldings: buildHoldingsVM(review), ...(extra?.performance ? { performance: extra.performance } : {}) });
+      const bytes = buildOverviewWorkbook({ ...workbookInputFrom(review, vm, returns), clientHoldings: buildHoldingsVM(review, { irr: irrHookFrom(extra?.irrReturns) }), ...(extra?.performance ? { performance: extra.performance } : {}) });
       const fileName = workbookFileName(vm);
       last.xlsx = { fileName, bytes };
       return finish('xlsx', vm, bytes, fileName);

@@ -1,10 +1,11 @@
 // Section 5, Holdings and performance (BR-3.5; M3b, test build 1): the per-client holding tables (U-23) with column
-// chips, rendered from views/holdings.ts, then the performance tables (U-41, s5-performance.tsx).
+// chips, rendered from views/holdings.ts, then the performance tables (U-41, s5-performance.tsx). With an accepted IRR
+// file the subtotals' XIRR and BMXIRR come from it (KI-048), through the same hook as the workbook's client sheets.
 
 import { useMemo, useState } from 'preact/hooks';
 import type { AppState, Store } from '../store.ts';
 import type { HoldingsColumnId } from '../../views/holdings.ts';
-import { buildHoldingsVM } from '../../views/holdings.ts';
+import { buildHoldingsVM, irrHookFrom } from '../../views/holdings.ts';
 import { Group } from '../components/group.tsx';
 import { S5Performance } from './s5-performance.tsx';
 
@@ -12,7 +13,8 @@ const LEVEL_CLASS: Readonly<Record<string, string>> = { asset: 'row-asset', prod
 
 export function S5Holdings({ state }: { store: Store; state: AppState }) {
   const review = state.review;
-  const vm = useMemo(() => (review ? buildHoldingsVM(review) : null), [review]);
+  const irrReturns = state.irr.returns;
+  const vm = useMemo(() => (review ? buildHoldingsVM(review, { irr: irrHookFrom(irrReturns) }) : null), [review, irrReturns]);
   const [hidden, setHidden] = useState<ReadonlySet<HoldingsColumnId>>(new Set());
   if (!review || !vm) {
     return <p class="muted">The holdings appear once a base file is accepted in section 1.</p>;
