@@ -4,11 +4,15 @@
 //   - Per stock, CAGR(n) = (P(as-on) / P(as-on minus n years))^(1/n) - 1, for n = 1, 3, 5, as a percent number, on
 //     split- and bonus-adjusted prices (the Screener pack's month-end prices in M10u; else the analyst's price file).
 //   - No look-ahead (the no-look-ahead rule (Moderator decision of 26 Nov 2026 under PD-67)): a price dated after the review as-on is
-//     never used. P(as-on) is the latest price on or before the as-on, and the figure is dated by that price's own day.
+//     never used. P(as-on) is the latest price on or before the as-on.
 //     - Month-end data (one point per month, each in its month's last 7 days, as the pack's month-end prices): the
-//       latest month-end point on or before the as-on, from the as-on's month or the one before (as-on 15 Oct uses
-//       30 Sep; 2 Nov uses 31 Oct; 30 Oct with a 31 Oct point uses 30 Sep); the start is the point of the month of
-//       that end point's anniversary (28 Feb 2025 against 29 Feb 2024).
+//       rule compares MONTH LABELS, not calendar days (the owner's answer to F1, 27 Nov 2026: "As month labels"): a
+//       point labelled with the review month's end counts as on or before the review date. P(as-on) is the point of
+//       the review's month, else of the month before (as-on 15 Oct, 30 Oct or 31 Oct uses the October point, whether it
+//       is dated 30 or 31 Oct; 2 Nov uses October while November has no point); the start is the point of the month of
+//       that end point's anniversary (28 Feb 2025 against 29 Feb 2024). The figure is dated by the month-end label, and
+//       the footnote says "Dates are month-end labels".
+//     - Other (daily) data: true calendar days, and the figure is dated by the end price's own day.
 //     - Other data: the price on the as-on, or the nearest earlier one within 7 calendar days; the start the same at
 //       the exact anniversary of the review's as-on (29 Feb maps to 28 Feb in a year without it).
 //     Otherwise the tenor is missing for the stock: INSUFFICIENT EVIDENCE when the series starts after that date (not
@@ -113,10 +117,14 @@ function pointOfMonth(sorted: readonly PricePoint[], day: DayNumber): PricePoint
   return sorted.find((p) => monthIndex(p.day) === want) ?? null;
 }
 
-/** In month-end data, the latest point on or before `day`, from its month or the month before; or null. */
+/**
+ * In month-end data, the latest point whose MONTH LABEL is on or before the review's month (the owner's answer to F1,
+ * 27 Nov 2026: "As month labels"): a point labelled with the review month's end counts as on or before the review date,
+ * whatever its calendar day. From the review's month or the month before; or null.
+ */
 function monthEndOnOrBefore(sorted: readonly PricePoint[], day: DayNumber): PricePoint | null {
   let found: PricePoint | null = null;
-  for (const p of sorted) if (p.day <= day) found = p;
+  for (const p of sorted) if (monthIndex(p.day) <= monthIndex(day)) found = p;
   return found && monthIndex(day) - monthIndex(found.day) <= 1 ? found : null;
 }
 
@@ -137,8 +145,8 @@ export function stockCagr(points: readonly PricePoint[], asOn: DayNumber, tenor:
   return cagrDetail(points, asOn, tenor, sources).value;
 }
 
-/** The CAGR and the day of the end price it used (null when missing). */
-function cagrDetail(points: readonly PricePoint[], asOn: DayNumber, tenor: ReturnTenor, sources: readonly string[]): { value: Value<number>; endDay: DayNumber | null } {
+/** The CAGR, the date of the end price it used (null when missing) and whether the series is month-end data. */
+function cagrDetail(points: readonly PricePoint[], asOn: DayNumber, tenor: ReturnTenor, sources: readonly string[]): { value: Value<number>; endDay: DayNumber | null; monthly?: boolean } {
   const n = TENOR_YEARS[tenor];
   const t = TENOR_KEY[tenor];
   const prov = { sources: [...sources], method: `CAGR ${t} from adjusted prices (D-023 point 4)`, asOf: dayToIso(asOn) };
@@ -165,7 +173,9 @@ function cagrDetail(points: readonly PricePoint[], asOn: DayNumber, tenor: Retur
       : missing(STATUS.NOT_AVAILABLE, `no price ${where(startDay)}`, prov));
   }
   // a present value is dated by the end price it used (ARC-03 F2), not the review as-on
-  return { value: present((Math.pow(end.price / start.price, 1 / n) - 1) * 100, 'pct', { ...prov, asOf: dayToIso(end.day) }), endDay: end.day };
+  // the date of the price used: its month-end label on month-end data (F1: dates are month labels), its own day otherwise
+  const endDay = monthly ? monthEnd(end.day) : end.day;
+  return { value: present((Math.pow(end.price / start.price, 1 / n) - 1) * 100, 'pct', { ...prov, asOf: dayToIso(endDay) }), endDay, monthly };
 }
 
 /** One stock's line: the CAGR used (or why it is missing) and the source of its prices. */
@@ -197,6 +207,7 @@ export function directEquityCagr(
   const inputs: WeightInput[] = [];
   const srcOfInput: Array<PriceSource | null> = [];
   const endOfInput: Array<DayNumber | null> = [];
+  const monthlyOfInput: boolean[] = [];
   const used = new Set<PriceSource>();
   const consulted = new Set<PriceSource>();
   const has = (x: PriceSource, isin: string): boolean => Object.prototype.hasOwnProperty.call(x.series, isin) && (x.series[isin]?.length ?? 0) > 0;
@@ -230,6 +241,7 @@ export function directEquityCagr(
       inputs.push({ holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { returnPct: cagr.v, source: src.source } });
       srcOfInput.push(src);
       endOfInput.push(got.endDay);
+      monthlyOfInput[srcOfInput.length - 1] = got.monthly === true;
       if (h.cmvCr.kind === 'value' && h.cmvCr.v > 0) used.add(src);
     } else {
       inputs.push({ holdingId: h.holdingId, cmvCr: h.cmvCr, pick: { excluded: 'no-return' } });
@@ -242,20 +254,22 @@ export function directEquityCagr(
   const inBase = (i: number): boolean => inputs[i]!.cmvCr.kind === 'value' && (inputs[i]!.cmvCr as { v: number }).v > 0;
   // (source, end day) -> count of stocks in the base; then per source: the latest day first, the others ascending
   const counts = new Map<PriceSource, Map<DayNumber, number>>();
+  const labelled = new Set<string>(); // (source, day) pairs dated by a month-end label
   srcOfInput.forEach((s, i) => {
     const d = endOfInput[i];
     if (!s || d == null || !inBase(i)) return;
     const m = counts.get(s) ?? new Map<DayNumber, number>();
     m.set(d, (m.get(d) ?? 0) + 1);
     counts.set(s, m);
+    if (monthlyOfInput[i]) labelled.add(`${sources.indexOf(s)}:${d}`);
   });
-  const usedTags: Array<{ source: PriceSource; day: DayNumber; label: Value<DayNumber>; count: number }> = [];
+  const usedTags: Array<{ source: PriceSource; day: DayNumber; label: Value<DayNumber>; count: number; monthLabel: boolean }> = [];
   for (const s of sources) {
     const m = counts.get(s);
     if (!m) continue;
     const days = [...m.keys()].sort((a, b) => a - b);
     const latest = days[days.length - 1]!;
-    for (const d of [latest, ...days.slice(0, -1)]) usedTags.push({ source: s, day: d, label: labelOf(d), count: m.get(d)! });
+    for (const d of [latest, ...days.slice(0, -1)]) usedTags.push({ source: s, day: d, label: labelOf(d), count: m.get(d)!, monthLabel: labelled.has(`${sources.indexOf(s)}:${d}`) });
   }
   const usedInOrder = sources.filter((s) => used.has(s));
   const firstConsulted = sources.find((s) => consulted.has(s));
@@ -275,5 +289,5 @@ export function directEquityCagr(
     return s && d != null ? { source: s.source, asOn: labelOf(d), rank: sources.indexOf(s) } : null;
   });
   if (res.figure && parts) res.figure.parts = parts;
-  return { ...res, lines, used: usedTags.map((u) => ({ source: u.source.source, asOn: u.label, count: u.count })), mixed: parts !== undefined };
+  return { ...res, lines, used: usedTags.map((u) => ({ source: u.source.source, asOn: u.label, count: u.count, ...(u.monthLabel ? { monthLabel: true } : {}) })), mixed: parts !== undefined };
 }

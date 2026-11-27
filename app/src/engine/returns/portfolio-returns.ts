@@ -217,7 +217,14 @@ export function assertOneSourcePerKind(kinds: readonly ReturnsSource[]): void {
 }
 
 /** A source table whose figures a result used, for the footnote (source, plan, as-on date; E-148: count of stocks). */
-export type UsedTable = { source: ReturnsSource; plan?: FundPlan; asOn: Value<DayNumber>; count?: number };
+export type UsedTable = {
+  source: ReturnsSource;
+  plan?: FundPlan;
+  asOn: Value<DayNumber>;
+  count?: number;
+  /** E-148: the date is a month-end label of month-end prices (owner's F1 answer); the footnote says so. */
+  monthLabel?: boolean;
+};
 
 export type FundWeightedResult = WeightedResult & {
   used: UsedTable[];
@@ -461,6 +468,7 @@ export function coverageFootnote(figure: WeightedReturn, used: readonly UsedTabl
     i = j;
   }
   if (named.length) parts.push(`Source: ${named.join('; ')}`);
+  if (used.some((u) => u.monthLabel)) parts.push('Dates are month-end labels');
   return parts.join('. ') + '.';
 }
 

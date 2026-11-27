@@ -4,13 +4,18 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
-### Changed (new build, M3b: the E-147 footnote names other-date funds; one share format; `/next/` changes)
+### Changed (new build, M3b: the E-147 footnote names other-date funds; one share format; E-148 month labels; `/next/` changes)
 - **`app/src/engine/returns/portfolio-returns.ts`** (ARC-03's L3, moved to NB-04 by MOD-05; the follow-up's financial
   review S5): a fund absent from its plan's primary table and from every same-date table, whose return is only in a
   table of another date, is excluded as `other-date` and footnoted "not in the primary table (its 3Y return is only in
   a table of another date)" instead of "without a 3Y return"; a fund listed without the tenor, or absent everywhere,
   stays "without a 3Y return". The coverage share has a fixed one decimal ("63.0%" beside "89.8%"). Weights, values
   and coverage are unchanged; only the reason and the text change. Tests in `unit/returns/portfolio-returns.test.ts`.
+- **`app/src/engine/returns/stock-cagr.ts`** (E-148, not wired; the owner's answer to F1 on 27 Nov 2026, "As month
+  labels"): on month-end prices the no-look-ahead rule compares month labels, not calendar days: the point of the
+  review's month counts as on or before the review date (a 30 Oct or 31 Oct review, and a point dated 30 or 31 Oct,
+  give the same 1Y), the figure is dated by the month-end label, and the footnote adds "Dates are month-end labels".
+  Daily price data keeps true days. Tests pin the 30/31 Oct pair.
 
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,

@@ -172,11 +172,17 @@ describe('month-end data (MOD-04, 26 Nov 2026; ARC-03 M4)', () => {
     assert.equal(isMonthEndSeries(pts([D(2025, 10, 30), 1], [D(2025, 10, 31), 1])), false, 'two points in one month');
     assert.equal(isMonthEndSeries([]), false);
   });
-  test('PD-67: never a price after the as-on; 30 Oct with month-end points uses 30 Sep, not 31 Oct', () => {
-    const s = pts([D(2025, 9, 30), 100], [D(2025, 10, 31), 999], [D(2026, 9, 30), 110], [D(2026, 10, 31), 999]);
+  test('F1 (owner, month labels): a point labelled with the review month counts as on or before the review date', () => {
+    // as-on 30 Oct with month-end points of 30 Sep and 31 Oct: the October point is used (its label is the review month)
+    const s = pts([D(2025, 9, 30), 90], [D(2025, 10, 31), 100], [D(2026, 9, 30), 95], [D(2026, 10, 31), 110]);
     near(v(stockCagr(s, D(2026, 10, 30), '1y')), 10);
-    // with no September point, the as-on has no month-end price on or before it in its month or the month before
-    assert.equal(status(stockCagr(pts([D(2025, 10, 31), 100], [D(2026, 10, 31), 110]), D(2026, 10, 30), '1y')), STATUS.NOT_AVAILABLE);
+    // with only the October points, the same
+    near(v(stockCagr(pts([D(2025, 10, 31), 100], [D(2026, 10, 31), 110]), D(2026, 10, 30), '1y')), 10);
+  });
+  test('F1 pin: the 30/31 Oct pair gives the same 1Y whichever day is typed and whichever day the point carries', () => {
+    const on31 = pts([D(2025, 10, 31), 100], [D(2026, 10, 31), 110]);
+    const on30 = pts([D(2025, 10, 31), 100], [D(2026, 10, 30), 110]); // 31 Oct 2026 is a Saturday: the 30 Oct close
+    for (const series of [on31, on30]) for (const typed of [D(2026, 10, 30), D(2026, 10, 31)]) near(v(stockCagr(series, typed, '1y')), 10);
   });
   test('28 Feb 2025 uses the 29 Feb 2024 month-end point', () => {
     const s = pts([D(2024, 2, 29), 100], [D(2025, 2, 28), 110]);
@@ -228,27 +234,32 @@ describe('a short history falls through only to a source with the same as-on dat
 describe('ARC-03 delta review of 49e9a34 (M1, M2, pinned)', () => {
   const P3 = { sources: [], method: 'test' };
   const sh3 = (id: string, isin: string, cmv: number): StockHoldingInput => ({ holdingId: id as HoldingId, isin, cmvCr: present(cmv, 'cr', P3) });
-  test('M1 with PD-67: the figure is dated by the day of the prices used, not the raw as-on', () => {
-    const SEP30 = D(2026, 9, 30);
-    const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE1: pts([D(2025, 9, 30), 100], [SEP30, 110], [AS_ON, 999]) } };
-    const r = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [pack], D(2026, 10, 15), '1y', 'family');
+  test('M1 with F1: the figure is dated by the month-end label of the prices used, and the footnote says so', () => {
+    const pack: PriceSource = { source: 'screener-pack', asOn: SRC_ON, series: { INE000SAMPLE1: pts([D(2025, 10, 31), 100], [D(2026, 10, 30), 110]) } };
+    const r = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [pack], D(2026, 10, 30), '1y', 'family');
     near(v(r.figure!.value), 10);
-    assert.equal(v(r.figure!.asOn), SEP30);
-    assert.match(footnoteOf(r)!, /as on 2026-09-30 \(1 stock\)\.$/);
+    assert.equal(v(r.figure!.asOn), D(2026, 10, 31));
+    assert.match(footnoteOf(r)!, /as on 2026-10-31 \(1 stock\)\. Dates are month-end labels\.$/);
   });
-  test('M1: a file dated 20 Nov whose prices end on 29 Oct is footnoted as on 29 Oct, the day of the prices used', () => {
+  test('M1: a file dated 20 Nov whose month-end prices end in October is footnoted by the October label, never 20 Nov', () => {
     const file: PriceSource = { source: 'analyst-price-file', asOn: present(D(2026, 11, 20), 'date', P3), series: { INE000SAMPLE1: pts([D(2025, 10, 29), 100], [D(2026, 10, 29), 110]) } };
     const r = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [file], AS_ON, '1y', 'family');
-    assert.equal(v(r.figure!.asOn), D(2026, 10, 29));
+    assert.equal(v(r.figure!.asOn), D(2026, 10, 31));
     const foot = footnoteOf(r)!;
-    assert.match(foot, /as on 2026-10-29 \(1 stock\)\.$/);
-    assert.ok(!foot.includes('2026-11-20'));
+    assert.match(foot, /as on 2026-10-31 \(1 stock\)\. Dates are month-end labels\.$/);
+    assert.ok(!foot.includes('2026-11-20') && !foot.includes('2026-10-29'));
   });
-  test('M2 (PD-67): as-on 15 Oct uses 30 Sep; 2 Nov uses 31 Oct; a later point is never used', () => {
+  test('daily data keeps true days and no month-label note', () => {
+    const daily = pts([D(2025, 10, 22), 99], [D(2025, 10, 29), 100], [D(2026, 10, 22), 108], [D(2026, 10, 29), 110]);
+    const file: PriceSource = { source: 'analyst-price-file', asOn: SRC_ON, series: { INE000SAMPLE1: daily } };
+    const r = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [file], AS_ON, '1y', 'family');
+    assert.equal(v(r.figure!.asOn), D(2026, 10, 29));
+    assert.ok(!footnoteOf(r)!.includes('month-end labels'));
+  });
+  test('M2 with F1: as-on 15 Oct and 2 Nov use the October month-end point; two months on, nothing', () => {
     const s = pts([D(2025, 9, 30), 100], [D(2025, 10, 31), 200], [D(2026, 9, 30), 110], [AS_ON, 220]);
     near(v(stockCagr(s, D(2026, 10, 15), '1y')), 10);
     near(v(stockCagr(s, D(2026, 11, 2), '1y')), 10);
-    // an as-on two months past the last point has no month-end price: missing, never 0%
     assert.equal(status(stockCagr(s, D(2026, 12, 15), '1y')), STATUS.NOT_AVAILABLE);
   });
   test('pinned: 3Y on month-end data, 200 to 266.2 = 10.00%', () => {
@@ -265,7 +276,7 @@ describe('ARC-03 delta review 2 (F2, F3) with MOD-05\'s F3 rule', () => {
   const P4 = { sources: [], method: 'test' };
   const sh4 = (id: string, isin: string, cmv: number): StockHoldingInput => ({ holdingId: id as HoldingId, isin, cmvCr: present(cmv, 'cr', P4) });
   // daily data: the stocks end on different days before a 31 Oct as-on (a holiday-like gap for some)
-  const endOn = (end: number, start: number): PricePoint[] => pts([start, 100], [end, 110]);
+  const endOn = (end: number, start: number): PricePoint[] => pts([start - 7, 99], [start, 100], [end - 7, 109], [end, 110]); // daily data
   const S = (d: number) => D(2025, 10, d);
   const E = (d: number) => D(2026, 10, d);
   const file: PriceSource = {
@@ -322,14 +333,15 @@ describe('financial review of the E-148 round: required tests R1-R3, finding 2 a
     // (4 x 10 + 2 x 20 + 2 x 5 + 1 x 30 + 1 x 10) / 10 = 13.00
     near(v(r.figure!.value), 13);
     assert.equal(r.figure!.source, 'screener-pack');
-    assert.equal(v(r.figure!.asOn), O(2026, 30));
+    // the pack is month-end data: both its points carry the October label (F1); the file is daily: true days
+    assert.equal(v(r.figure!.asOn), O(2026, 31));
     assert.deepEqual(r.used.map((u) => [u.source, v(u.asOn), u.count]), [
-      ['screener-pack', O(2026, 30), 1], ['screener-pack', O(2026, 29), 1], ['analyst-price-file', O(2026, 30), 1], ['analyst-price-file', O(2026, 26), 2],
+      ['screener-pack', O(2026, 31), 2], ['analyst-price-file', O(2026, 30), 1], ['analyst-price-file', O(2026, 26), 2],
     ]);
     assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), Math.round(p.share * 1e9) / 1e9]), [
-      ['screener-pack', O(2026, 29), 0.2], ['screener-pack', O(2026, 30), 0.4], ['analyst-price-file', O(2026, 26), 0.2], ['analyst-price-file', O(2026, 30), 0.2],
+      ['screener-pack', O(2026, 31), 0.6], ['analyst-price-file', O(2026, 26), 0.2], ['analyst-price-file', O(2026, 30), 0.2],
     ]);
-    assert.equal(footnoteOf(r), "1Y: weighted average return of current holdings. Source: MF Screener data pack, as on 2026-10-30 (1 stock; also 2026-10-29: 1 stock); analyst's price file, as on 2026-10-30 (1 stock; also 2026-10-26: 2 stocks).");
+    assert.equal(footnoteOf(r), "1Y: weighted average return of current holdings. Source: MF Screener data pack, as on 2026-10-31 (2 stocks); analyst's price file, as on 2026-10-30 (1 stock; also 2026-10-26: 2 stocks). Dates are month-end labels.");
     for (const p of perms(rows)) {
       const q = directEquityCagr(p, [pack, file], AS_ON, '1y', 'family');
       near(v(q.figure!.value), 13);
@@ -339,13 +351,13 @@ describe('financial review of the E-148 round: required tests R1-R3, finding 2 a
       assert.equal(footnoteOf(q), footnoteOf(r));
     }
   });
-  test('R2: the primary source ends earlier than the second: the figure carries the primary date', () => {
+  test('R2: the primary source (month-end labels) and the second (true days): the figure carries the primary date', () => {
     const r = directEquityCagr([h5('p2', 'INE000PACKP02', 1), h5('f1', 'INE000FILEF01', 99)], [pack, file], AS_ON, '1y', 'family');
     near(v(r.figure!.value), (1 * 20 + 99 * 5) / 100);
     assert.equal(r.figure!.source, 'screener-pack');
-    assert.equal(v(r.figure!.asOn), O(2026, 29));
-    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), Math.round(p.share * 1e9) / 1e9]), [['screener-pack', O(2026, 29), 0.01], ['analyst-price-file', O(2026, 30), 0.99]]);
-    assert.match(footnoteOf(r)!, /Source: MF Screener data pack, as on 2026-10-29 \(1 stock\); analyst's price file, as on 2026-10-30 \(1 stock\)\.$/);
+    assert.equal(v(r.figure!.asOn), O(2026, 31));
+    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), Math.round(p.share * 1e9) / 1e9]), [['screener-pack', O(2026, 31), 0.01], ['analyst-price-file', O(2026, 30), 0.99]]);
+    assert.match(footnoteOf(r)!, /Source: MF Screener data pack, as on 2026-10-31 \(1 stock\); analyst's price file, as on 2026-10-30 \(1 stock\)\. Dates are month-end labels\.$/);
   });
   test('R3: a holding outside the base with a later end day moves neither the date nor the counts', () => {
     const r = directEquityCagr([h5('f2', 'INE000FILEF02', 1), h5('f1', 'INE000FILEF01', 0)], [file], AS_ON, '1y', 'family');
