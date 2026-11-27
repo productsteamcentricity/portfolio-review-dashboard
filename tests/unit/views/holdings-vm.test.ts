@@ -234,6 +234,27 @@ describe('the follow-up\'s financial review (27 Nov 2026): S1 to S4', () => {
     assert.equal(c.rows.find((r) => r.level === 'asset' && r.name === 'Debt')!.cells.xirr.text, '8.00%');
   });
 
+  test('M1: the count is "of the holdings on the line", also beside a holding without flows; and a product row under an asset the file has', () => {
+    /* the client node holds hg only (Hybrid / Mutual Funds). Commodity: hd has flows and is left out, he has no flow.
+       Hybrid / PMS: hf has flows and is left out, under an asset class the file does have */
+    const A0 = review.holdings.find((h) => h.instrumentName === 'Sample Bluechip Fund - Regular Plan - Growth')!;
+    const mk = (id: string, asset: string, product: string, x: number) => ({ ...A0, id, instrumentName: `Sample Fund ${id}`, assetClass: asset, product, xirr: present(x, 'pct'), bmXirr: present(x - 1, 'pct') });
+    const hs = [mk('hd', 'Commodity', 'Mutual Funds', 10), mk('he', 'Commodity', 'Mutual Funds', 20), mk('hf', 'Hybrid', 'PMS', 12), mk('hg', 'Hybrid', 'Mutual Funds', 9)];
+    const gap = missing(STATUS.NOT_AVAILABLE, 'one sign of flows');
+    const node = (level: string, key: string, parentKey: string | null, label: string, ids: string[]) => ({ level, key, parentKey, label, clientId: A0.clientId, holdingIds: ids, redeemed: false, benchmarkName: null, fund: { xirr: gap }, bench: { xirr: gap } });
+    const returns = { scopes: [{ scope: { kind: 'family' }, result: {
+      tree: [node('portfolio', 'p', null, 'P', ['hg']), node('client', 'c', 'p', 'Client', ['hg']), node('asset', 'c/H', 'c', 'Hybrid', ['hg']), node('product', 'c/H/MF', 'c/H', 'Mutual Funds', ['hg'])],
+      reconciliation: { holdingsWithoutFlows: ['he'] },
+    } }] };
+    const c = buildHoldingsVM({ ...review, holdings: hs } as unknown as Review, { irr: irrHookFrom(returns as never) }).clients[0]!;
+    const tail = 'so the line\'s XIRR cannot be read from the IRR file, and the base file\'s figure is not shown in its place.';
+    assert.ok(c.notes.includes(`Commodity and Commodity / Mutual Funds: XIRR and BMXIRR from the IRR file are blank. 1 holding of 2 on this line has flows in the IRR file that are left out of the IRR tree for an invalid benchmark, ${tail}`), JSON.stringify(c.notes));
+    assert.ok(c.notes.includes(`Hybrid / PMS: XIRR and BMXIRR from the IRR file are blank. 1 holding of 1 on this line has flows in the IRR file that are left out of the IRR tree for an invalid benchmark, ${tail}`), JSON.stringify(c.notes));
+    const pms = c.sheet.rows.find((r) => r.level === 'product' && r.label === 'PMS')!;
+    assert.ok(pms.xirrSource === 'irr' && pms.xirr.kind === 'missing' && pms.xirr.status === STATUS.NOT_COMPARABLE);
+    for (const r of c.rows.filter((x) => x.level !== 'item' && /Commodity|PMS/.test(x.name))) assert.doesNotMatch(r.cells.xirr.text + r.cells.bmXirr.text, /[0-9]/, r.name);
+  });
+
   test('L1 (Gate B of d93da80): the double-dagger share never reads 0.00% for a holding with a value, and is not given when a market value is negative', () => {
     const gap = missing(STATUS.NOT_AVAILABLE, 'not in the file');
     const FLEXI = 'Sample Flexi Cap Fund - Regular Plan - Growth';
@@ -252,6 +273,27 @@ describe('the follow-up\'s financial review (27 Nov 2026): S1 to S4', () => {
     }));
     assert.equal(neg, `${DOUBLE_DAGGER} Invested value, gain/loss and absolute return count only the holdings that have an invested value: 1 holding without one (their share of CMV is not given, as a market value is negative).`);
     assert.doesNotMatch(neg, /[0-9]%/);
+  });
+
+  test('L1, the boundaries: a share of exactly 0, one just above the "under 0.01%" bar, a client of no value, and the whole (never 99.99%)', () => {
+    const gap = missing(STATUS.NOT_AVAILABLE, 'not in the file');
+    const FLEXI = 'Sample Flexi Cap Fund - Regular Plan - Growth';
+    const note = (holdings: unknown, title = 'Sample Client A') => buildHoldingsVM({ ...review, holdings } as Review).clients.find((c) => c.title === title)!.notes.find((x) => x.startsWith(DOUBLE_DAGGER))!;
+    const head = `${DOUBLE_DAGGER} Invested value, gain/loss and absolute return count only the holdings that have an invested value: `;
+    const flexiAt = (v: number) => review.holdings.map((h) => (h.instrumentName === FLEXI && h.cmv.kind === 'value' ? { ...h, invested: gap, cmv: { ...h.cmv, v } } : h));
+    /* a holding of no value: 0 of 1.521 Cr is 0.00%, a true share */
+    assert.equal(note(flexiAt(0)), `${head}1 holding without one (0.00% of CMV).`);
+    /* 0.0003 of 1.5213 Cr = 0.0197%: above the bar, so the figure */
+    assert.equal(note(flexiAt(0.0003)), `${head}1 holding without one (0.02% of CMV).`);
+    /* every holding of client A at 0: no value to take a share of */
+    const zero = review.holdings.map((h) => (h.clientLabel === 'Sample Client A' && h.cmv.kind === 'value' ? { ...h, invested: gap, cmv: { ...h.cmv, v: 0 } } : h));
+    assert.equal(note(zero), `${head}3 holdings without one (their share of CMV is not given, as the CMV is 0).`);
+    /* the whole: four holdings, none with an invested value, 0.607 + 0.365 + 0.017 + 0.872 = 1.861 Cr. The table sums
+       them in another order than the total, and the ratio of the two sums falls a hair below 100 */
+    const A0 = review.holdings.find((h) => h.instrumentName === 'Sample Bluechip Fund - Regular Plan - Growth')!;
+    const mk = (id: string, asset: string, v: number) => ({ ...A0, id, instrumentName: `Sample Fund ${id}`, assetClass: asset, invested: gap, cmv: { ...A0.cmv, v } });
+    const all = [mk('w1', 'Equity', 0.607), mk('w2', 'Equity', 0.365), mk('w3', 'Debt', 0.017), mk('w4', 'Debt', 0.872)];
+    assert.equal(buildHoldingsVM({ ...review, holdings: all } as unknown as Review).clients[0]!.notes.find((x) => x.startsWith(DOUBLE_DAGGER)), `${head}4 holdings without one (100.00% of CMV).`);
   });
 
   test('S3: a CMV-weighted subtotal of market values of both signs is blank with its reason listed, product sharing its asset\'s note', () => {

@@ -59,8 +59,10 @@ const SECTION = String.fromCharCode(0x00a7);
  * a dash, NOT COMPARABLE, with that reason. A line none of whose holdings has a flow keeps the CMV-weighted path.
  * M1 of the Gate B of d93da80: "has a flow" is read from the file, not from the tree. A holding whose instrument has
  * flows but is left out of the IRR tree for an invalid benchmark (OD-4) is in no node, yet it is not without flows
- * (`reconciliation.holdingsWithoutFlows`); its line is a dash with that reason too, so a table never shows the base
- * file's figure for a line whose holdings have flows in the IRR file.
+ * (`reconciliation.holdingsWithoutFlows`); its line is a dash with that reason too, so a table that has rows from the
+ * IRR file never shows the base file's figure for a line whose holdings have flows in that file.
+ * Not covered: a client whose every instrument with flows is left out has no node at all, so the adapter answers null
+ * for every line and the whole table is the base file's, under the caption that says so (an owner question).
  */
 export function irrHookFrom(returns: ReviewReturns | null | undefined): IrrAggregateHook | undefined {
   if (!returns) return undefined;
@@ -154,8 +156,11 @@ function clientVM(s: ClientHoldingsSheet, review: Review, index: number): Holdin
     const part = noInvRows.reduce((a, r) => a + cmvOf(r.cmv), 0);
     /* L1 of the Gate B of d93da80: the figure is a share only when no market value of the client is negative and the
        total is above 0 (else it can pass 100% or fall below 0, so none is given); a share above 0 never reads 0.00% */
-    const negative = s.rows.some((r) => r.level === 'item' && r.cmv.kind === 'value' && r.cmv.v < 0);
-    const share = part / total * 100;
+    const items = s.rows.filter((r) => r.level === 'item');
+    const negative = items.some((r) => r.cmv.kind === 'value' && r.cmv.v < 0);
+    /* when no holding has an invested value the share is the whole, exactly (the two sums run in different orders,
+       so their ratio can fall a hair below 100 and would read 99.99%) */
+    const share = noInvRows.length === items.length ? 100 : part / total * 100;
     const shareText = negative ? 'their share of CMV is not given, as a market value is negative'
       : total <= 0 ? 'their share of CMV is not given, as the CMV is 0'
         : part > 0 && share < 0.005 ? 'under 0.01% of CMV'

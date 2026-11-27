@@ -235,4 +235,17 @@ describe('N2 of the Gate B of 80e875e: a PMS, AIF or SIF key whose record is not
     const row = sheet.rows.find((r) => (r[keys.indexOf('name')] as { v?: unknown } | null)?.v === 'Stray Strategy PMS')!;
     assert.equal(row[keys.indexOf('key')], null);
   });
+
+  test('the same for an AIF and a SIF; a key the bucket\'s book holds keeps it', () => {
+    const src = { ...SRC, AIF: { 'Gamma Growth AIF': rec(R) }, SIF: { 'Delta Long Short SIF': rec(R) } };
+    const res3 = computePerformance([
+      h('Stray Growth AIF', 'AIF', 'Equity', 'Category III', 'Stray Growth AIF'),
+      h('Gamma Growth AIF', 'AIF', 'Equity', 'Category III', 'Gamma Growth AIF'),
+      h('Stray Long Short SIF', 'SIF', 'Equity', 'Equity Long Short', 'Stray Long Short SIF'),
+      h('Delta Long Short SIF', 'SIF', 'Equity', 'Equity Long Short', 'Delta Long Short SIF'),
+    ], src);
+    const keysOf = (bucket: string) => res3.regular.find((b) => b.key === bucket)!.groups.flatMap((g) => g.funds).map((f) => [f.name, f.key]).sort();
+    assert.deepEqual(keysOf('AIF'), [['Gamma Growth AIF', 'Gamma Growth AIF'], ['Stray Growth AIF', null]]);
+    assert.deepEqual(keysOf('SIF'), [['Delta Long Short SIF', 'Delta Long Short SIF'], ['Stray Long Short SIF', null]]);
+  });
 });

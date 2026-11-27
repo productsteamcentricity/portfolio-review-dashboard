@@ -62,6 +62,13 @@ export function scopeName(r: WeightedReturnRow, labels: Readonly<Record<string, 
   return plainText(labels[r.clientId] ?? r.clientLabel ?? NOT_GIVEN.client.label);
 }
 
+/** The family row's note when some mutual-fund holdings have no client (screen and sheet); null when all have one. */
+export function withoutClientNote(r: WeightedReturnRow): string | null {
+  const n = r.clientId === null ? r.withoutClient ?? 0 : 0;
+  if (n === 0) return null;
+  return `${plural(n, 'mutual-fund holding has', 'mutual-fund holdings have')} no client in the base file: ${n === 1 ? 'it is' : 'they are'} counted in the Family row and in no client row.`;
+}
+
 function weightedVM(rows: readonly WeightedReturnRow[] | null | undefined, labels: Readonly<Record<string, string>>): WeightedReturnsVM | null {
   if (!rows || rows.length === 0) return null;
   const notes: string[] = [];
@@ -79,6 +86,7 @@ function weightedVM(rows: readonly WeightedReturnRow[] | null | undefined, label
     });
     return { name, cells };
   });
+  for (const r of rows) { const n = withoutClientNote(r); if (n !== null) notes.push(n); }
   if (out.some((r) => r.cells.some((c) => c.marker === PARTIAL_MARKER))) {
     notes.push(`A figure marked ${PARTIAL_MARKER} covers only part of the mutual-fund value; its note gives the share and what was left out.`);
   }

@@ -19,6 +19,7 @@ import { parseProductClassRules } from '../../../app/src/engine/match/product-cl
 import { fundReturnSourcesFrom } from '../../../app/src/data/performance-sources.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
 import { dayToExcelSerial } from '../../../app/src/engine/dates.ts';
+import { missing } from '../../../app/src/engine/value.ts';
 import { refdataBlock } from '../../helpers/legacy-engine.ts';
 import { FILE_BLOCK_TEXT } from '../../helpers/node-wiring.ts';
 
@@ -188,5 +189,78 @@ describe('B1 of the follow-up\'s financial review: a Direct-plan holding is read
     assert.ok(note.startsWith('The figures of this row do not share one as-on date, so As On is blank; each footnote gives its own. 3Y: '), note);
     assert.match(note, /Direct plans, as on 30 Sep 2026/);
     assert.match(note, /Regular plans, as on 31 Oct 2026/);
+  });
+
+  describe('L2, the boundaries of As On', () => {
+    const SEP30 = OCT31 - 31;
+    const none = missing(STATUS.NOT_AVAILABLE, 'the table states no date') as Value<DayNumber>;
+    const D3 = [h('K1 Fund - Direct Plan - Growth', 5, 'c1', 'K1 Fund-Reg(G)'), h('K3 Fund', 2, 'c1', 'K3 Fund-Reg(G)')];
+    const SENTENCE = 'The figures of this row do not share one as-on date';
+    const family = (holdings: Holding[], regular: Value<DayNumber>, direct: Value<DayNumber>, dir = DIR, mf = MF) => {
+      const r = computePerformance(holdings, { ...SRC2, MF: mf, MF_DIRECT: dir, asOn: { MF: regular, MF_DIRECT: direct } },
+        { fundSources: [{ source: 'embedded-mf-monitor', plans: { regular: { asOn: regular, funds: mf }, direct: { asOn: direct, funds: dir } } }] });
+      const sheet = performanceSheet(r);
+      const keys = sheet.columns.map((c) => c.key);
+      const at = (row: unknown[], k: string): unknown => { const c = row[keys.indexOf(k)] as { v?: unknown } | null; return c === null ? null : c?.v; };
+      const row = sheet.rows.filter((x) => at(x, 'row') === 'Weighted')[0]!;
+      return { fam: r.weighted![0]!, asOn: at(row, 'asOn'), y3: at(row, '3Y'), y5: at(row, '5Y'), note: String(at(row, 'note')) };
+    };
+
+    test('neither table states a date: As On is blank, and no sentence claims the dates differ', () => {
+      const x = family(D3, none, none);
+      assert.equal(x.asOn, null);
+      assert.ok(!x.note.includes(SENTENCE), x.note);
+      assert.ok(Math.abs((x.y3 as number) - 15) < 1e-9 && Math.abs((x.y5 as number) - 63 / 7) < 1e-9, 'the figures are still shown');
+    });
+
+    test('one table states no date: the dated figure\'s date does not stand for the row', () => {
+      /* 3Y is the Direct table's alone (no date); 5Y takes the Regular table's 31 Oct */
+      const x = family(D3, day(OCT31), none);
+      assert.equal(x.fam.byTenor['3y'].figure!.asOn.kind, 'missing');
+      assert.ok(x.fam.byTenor['5y'].figure!.asOn.kind === 'value');
+      assert.equal(x.asOn, null);
+      assert.ok(x.note.startsWith(SENTENCE), x.note);
+    });
+
+    test('a row with one figure shows that figure\'s date: a blank 3Y brings no date of its own', () => {
+      /* no fund has a 3Y return. K1's Direct plan has a 5Y, 11%, from the Direct table of 30 Sep; K9, a Regular
+         holding, has neither return in the Regular table of 31 Oct. The 3Y result has no value and is stamped with the
+         Regular table's date, which is the date of no figure */
+      const DIR5: Record<string, PerfRecord> = { 'K1 Fund(G)-Direct Plan': rec({ '3Y': null, '5Y': 11 }) };
+      const MF9 = { ...MF, 'K9 Fund-Reg(G)': rec({ '3Y': null, '5Y': null }) };
+      const x = family([h('K1 Fund - Direct Plan - Growth', 5, 'c1', 'K1 Fund-Reg(G)'), h('K9 Fund', 2, 'c1', 'K9 Fund-Reg(G)')], day(OCT31), day(SEP30), DIR5, MF9);
+      const d3 = x.fam.byTenor['3y'].figure!;
+      assert.ok(d3.value.kind === 'missing' && d3.asOn.kind === 'value' && d3.asOn.v === OCT31, 'the premise: a blank figure carrying another date');
+      assert.equal(x.y3, null);
+      assert.ok(Math.abs((x.y5 as number) - 11) < 1e-9);
+      assert.equal(x.asOn, dayToExcelSerial(SEP30 as DayNumber), 'the 5Y figure\'s own date, 30 Sep 2026');
+      assert.ok(!x.note.includes(SENTENCE), x.note);
+    });
+  });
+});
+
+describe('L5 (Gate B of d93da80): mutual-fund holdings with no client are in the Family row and in no client row, and the table says so', () => {
+  const NOTE = '1 mutual-fund holding has no client in the base file: it is counted in the Family row and in no client row.';
+  const orphan = { ...h('K2 Fund', 3, 'c1', 'K2 Fund-Reg(G)'), clientId: null, clientLabel: null } as unknown as Holding;
+  const r = computePerformance([h('K1 Fund', 5, 'c1', 'K1 Fund-Reg(G)'), orphan], SRC, { fundSources: FUNDS });
+
+  test('the family counts it, (5 x 14 + 3 x 6) / 8 = 11.00%; the one client row is K1 alone, 14.00%; the note gives the count', () => {
+    assert.deepEqual(r.weighted!.map((x) => x.clientId), [null, 'c1']);
+    assert.ok(Math.abs(pct(r.weighted![0]!.byTenor['3y'].figure!.value) - 11) < 1e-9);
+    assert.ok(Math.abs(pct(r.weighted![1]!.byTenor['3y'].figure!.value) - 14) < 1e-9);
+    assert.equal(r.weighted![0]!.withoutClient, 1);
+    const vm = buildPerformanceVM(r, 'regular').weighted!;
+    assert.equal(vm.notes.filter((x) => x === NOTE).length, 1, JSON.stringify(vm.notes));
+  });
+
+  test('the sheet: the note is on the Family row only; with a client on every holding there is no such note', () => {
+    const sheet = performanceSheet(r);
+    const keys = sheet.columns.map((c) => c.key);
+    const at = (row: unknown[], k: string): unknown => { const c = row[keys.indexOf(k)] as { v?: unknown } | null; return c === null ? null : c?.v; };
+    const rows = sheet.rows.filter((x) => at(x, 'row') === 'Weighted');
+    assert.ok(String(at(rows[0]!, 'note')).endsWith(NOTE));
+    assert.ok(!String(at(rows[1]!, 'note')).includes('no client in the base file'));
+    assert.ok(!buildPerformanceVM(res, 'regular').weighted!.notes.some((x) => x.includes('no client in the base file')));
+    assert.equal(res.weighted![0]!.withoutClient, 0);
   });
 });
