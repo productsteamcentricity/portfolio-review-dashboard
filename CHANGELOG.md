@@ -12,7 +12,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **`docs/project-control/DECISION_LOG.md`**: PD-68, the owner's delegation of 28 Nov 2026, with the owner's words; the
   owner's six answers of 28 Nov 2026 in section 2.4 (the five alias lines, the returns note, a new fund's return as
   absolute, no price-day line, month labels, the base-file XIRR for a line without transactions); the four unmatched
-  names marked answered in section 2.5. **`docs/DECISIONS.md`**: a dated note under D-023 (its own text unchanged).
+  names marked answered in section 2.5, and the 26 Nov stricter-matching row updated (the aliases approved).
+  **`docs/DECISIONS.md`**: a dated note under D-023 (its own text unchanged). **`docs/KNOWN_ISSUES.md`**: KI-302 answered
+  by the owner (absolute, marked), open until built.
 - **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,MODULE_DEPENDENCY_MAP,CRITICAL_PATH}.md`**: PRs #65 to #67 and
   what comes next (CHAT-016's note N4).
 - **Compactions** recounted (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).
