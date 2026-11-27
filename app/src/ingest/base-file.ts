@@ -31,7 +31,11 @@
 //     fund whose name only begins with "Total" is still a holding;
 //   - merged folios' purchase date and holding days (D-041 point 2, KI-148): the earliest purchase date, whatever
 //     the row order; holding days recomputed from it when the folios count to one date, else blank with a notice;
-//   - a negative market value is read as written (the legacy figures) and warned (D-039).
+//   - a negative market value is read as written (the legacy figures) and warned (D-039);
+//   - Account Name (the 17-column template of 26 Nov 2026; D1 (a)): a column headed exactly "Account Name" is kept on
+//     the holding as given and shown; no figure, no grouping and no id uses it, and the merge key has no account, so
+//     merged folios under more than one account name stay one holding, with an Information result. The legacy reads
+//     no such column, so nothing is compared in the ledger. "Valuation Date" is not read (KI-320).
 // Column aliases, the money-unit precedence (Cr., then Lakh, then rupees) and the merge key (client, instrument,
 // product, distributor) are the legacy ones. Pure function: no globals, no network, no clock unless injected.
 
@@ -125,6 +129,9 @@ const FIELD_PREDICATES: ReadonlyArray<readonly [BaseField, (h: string) => boolea
   /* the owner's answer of 25 Nov 2026: the column is headed "ISIN" (any letter case); a heading with ISIN as a whole word
      ("ISIN Code") is also read, the first such column winning */
   ['isin', (h) => h === 'isin' || /(^|[^a-z0-9])isin([^a-z0-9]|$)/.test(h)],
+  /* the 17-column template (the owner's layout of 26 Nov 2026): the column headed exactly "Account Name"; "Account Source
+     Code" and any other heading are not it. Read, kept and shown only (D1 (a)). */
+  ['accountName', (h) => h === 'account name'],
 ];
 
 /** A money field's exact headings, with any trailing unit in brackets dropped: preferred over a partial match. */
@@ -275,6 +282,8 @@ type RowRecord = {
   liquidity: string | null;
   /** A well-formed ISIN of the row (12 characters, upper case), or null. */
   isin: string | null;
+  /** "Account Name" as given (whitespace collapsed), or null. */
+  accountName: string | null;
   purchaseDate: Value<DayNumber>;
   units: Value<number>;
   invested: Value<number>;
@@ -335,6 +344,13 @@ function isinOfMembers(members: ReadonlyArray<{ isin: string | null }>): { isin?
 /** True when a holding's member rows carry more than one ISIN. */
 function isinsDisagree(members: ReadonlyArray<{ isin: string | null }>): boolean {
   return new Set(members.map((m) => m.isin).filter((i): i is string => i !== null)).size > 1;
+}
+
+/** The Account Names of a holding's member rows: each different name once, in file order. No field at all when no row
+ * carries one, so a file without the column reads exactly as before. Kept and shown only (D1 (a)). */
+function accountNamesOfMembers(members: ReadonlyArray<{ accountName: string | null }>): { accountNames?: string[] } {
+  const found = [...new Set(members.map((m) => m.accountName).filter((a): a is string => a !== null))];
+  return found.length > 0 ? { accountNames: found } : {};
 }
 
 function textOrNull(row: Cell[], col: number | undefined): string | null {
@@ -842,6 +858,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       distributorLabel: textOrNull(row, cols.dist),
       liquidity: textOrNull(row, cols.liq),
       isin: isinOrNull(row, cols.isin),
+      accountName: textOrNull(row, cols.accountName),
       purchaseDate,
       units: readPlainNumber(row, cols.units, header('units'), 'units', 'Units', prov, invalid),
       invested: money.invested.value,
@@ -997,6 +1014,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       mergeGaps,
       inclusion,
       ...isinOfMembers(members),
+      ...accountNamesOfMembers(members),
     };
   };
   const built: Array<{ firstRow: number; h: Holding }> = [];
@@ -1137,6 +1155,13 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
     issues.add('base-file.isin-disagree', 'Warning', { kind: 'holdings', holdingIds: [...isinConflicts] },
       `${plural(isinConflicts.length, 'merged holding has rows', 'merged holdings have rows')} with different ISINs: no ISIN is kept for ${isinConflicts.length === 1 ? 'it' : 'them'}, and the instrument name decides the match.`,
       { decision: 'S3-1', count: isinConflicts.length, resolution: 'auto-resolved', status: 'resolved' });
+  }
+  // Merged folios in different accounts: the holding stays one line (the merge key has no account) and keeps every name.
+  const manyAccounts = includedHoldings.filter((h) => (h.accountNames?.length ?? 0) > 1);
+  if (manyAccounts.length) {
+    issues.add('base-file.merged-accounts', 'Information', { kind: 'holdings', holdingIds: manyAccounts.map((h) => h.id) },
+      `${plural(manyAccounts.length, 'merged holding has folios', 'merged holdings have folios')} under more than one Account Name: ${manyAccounts.length === 1 ? 'it stays one holding' : 'each stays one holding'}, with every account name kept.`,
+      { decision: 'E-02', count: manyAccounts.length, resolution: 'auto-resolved', status: 'resolved' });
   }
   if (daysBlank.length) {
     // The live page's sentence (D-041 point 2): the merged holding days are blank, never one folio's figure.

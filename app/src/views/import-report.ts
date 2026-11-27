@@ -130,6 +130,11 @@ export function buildImportReport(source: SourceFile, base: BaseFileImport, matc
       reason: exclusionReasonText(h),
     }));
 
+  // NB-05: the Account Name column, when the file has one: how many different names were read. Kept and shown only.
+  const accountCounts: ImportCount[] = base.columns.some((col) => col.field === 'accountName')
+    ? [{ id: 'account-names', label: 'Account names read (kept and shown; no figure uses them)', value: new Set(base.holdings.flatMap((h) => h.accountNames ?? [])).size }]
+    : [];
+
   return {
     fileName: plainText(source.fileName),
     bytes: source.bytes,
@@ -146,6 +151,7 @@ export function buildImportReport(source: SourceFile, base: BaseFileImport, matc
       { id: 'holdings', label: 'Holdings', value: c.holdings },
       { id: 'included', label: 'Included in every total', value: c.included },
       { id: 'excluded', label: 'Excluded and listed (no market value)', value: c.excluded },
+      ...accountCounts,
     ],
     skipped,
     excluded,

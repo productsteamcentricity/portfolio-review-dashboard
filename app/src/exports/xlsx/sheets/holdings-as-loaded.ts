@@ -1,7 +1,8 @@
 // Holdings (as loaded): one row per holding, excluded ones included with their reason; 43 columns A to AQ; values
 // only, no formulas (architecture §14 sheet 3; DATA_DICTIONARY §5.13). A missing number is a blank cell with its
 // status in the next column. The file's own gain/loss appears only here (OD-18). The key columns join the
-// formulas of the other sheets to these rows.
+// formulas of the other sheets to these rows. When the base file gave an Account Name for any holding, a 44th column
+// "Account Name" (AR) follows, last so that no other column moves: the names as given, shown only (NB-05, D1 (a)).
 
 import type { BuildContext, HoldingRowInput } from '../overview-workbook.ts';
 import type { CellSpec, ColumnSpec, SheetSpec, StyleSpec } from '../spec.ts';
@@ -87,9 +88,13 @@ function rowOf(h: HoldingRowInput): CellSpec[] {
   ];
 }
 
+/** The last column, written only when a holding carries an Account Name. */
+export const ACCOUNT_NAME_COLUMN: ColumnSpec = { header: 'Account Name', key: 'accountNames', width: 28 };
+
 export function holdingsSheet(ctx: BuildContext): SheetSpec {
-  const columns = holdingsColumns(ctx.unitHeader);
-  const rows = ctx.input.holdings.map(rowOf);
+  const withAccounts = ctx.input.holdings.some((h) => h.accountNames !== undefined);
+  const columns = withAccounts ? [...holdingsColumns(ctx.unitHeader), ACCOUNT_NAME_COLUMN] : holdingsColumns(ctx.unitHeader);
+  const rows = ctx.input.holdings.map((h) => (withAccounts ? [...rowOf(h), text(h.accountNames ?? null)] : rowOf(h)));
   for (const r of rows) if (r.length !== columns.length) throw new Error(`workbook: a holdings row has ${r.length} cells, not ${columns.length}`);
   return {
     name: SHEETS.holdings,
