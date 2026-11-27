@@ -13,7 +13,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,MODULE_DEPENDENCY_MAP,CRITICAL_PATH}.md`**: PRs #59 to #63;
   test build 1 complete on `/next/` (owner Gate E pending) and what follows.
 - **`docs/coordination/CONTEXT_COMPACTION_TRACKER.md`**, **`docs/project-control/CHAT_REGISTRY.md`**: compactions
-  recounted; CHAT-008 and CHAT-009 at their third (succession due, the Moderator's decision).
+  recounted; CHAT-008 and CHAT-009 at their third: succession ordered by MOD-05 on 27 Nov 2026 (successors ARC-04 and
+  NB-05, not yet opened), also in `CHAT_SUCCESSION_REGISTER.md`.
+- **`docs/project-control/FILE_OWNERSHIP_AND_CHANGE_CONTROL.md`**: KI ranges for the current chats (EX-03 KI-302 to KI-319,
+  NB-02 and its successor KI-320 to KI-339, NB-03 KI-340 to KI-359, NB-04 KI-360 to KI-379).
 - **`docs/KNOWN_ISSUES.md`**: KI-302 (a young fund's annualised since-inception return) and KI-303 (loosely matched PMS
   and AIF benchmark words), both open with an owner question.
 
