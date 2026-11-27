@@ -38,8 +38,9 @@ export type Holding = {
   isin?: string;
   /** The "Account Name" of the holding's rows, as given: each different name once, in file order (more than one when
    * merged folios sit in different accounts). Absent when the file has no such column or no row of the holding has a
-   * name. Read, kept and shown only (D1 (a), 27 Nov 2026): no figure, no grouping and no identity uses it; `accountId`
-   * stays client + distributor. Client data: never on slides or in logs. */
+   * name; a PAN in the cell is removed at read. Read, kept and shown only (the Moderator's default D1 (a) of 27 Nov
+   * 2026, not yet the owner's ruling): no figure, no grouping and no identity uses it; `accountId` stays client +
+   * distributor. Client data: never on slides or in logs. */
   accountNames?: string[];
   clientLabel: string | null;
   clientId: ClientId | null;

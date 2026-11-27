@@ -132,7 +132,7 @@ export function buildImportReport(source: SourceFile, base: BaseFileImport, matc
 
   // NB-05: the Account Name column, when the file has one: how many different names were read. Kept and shown only.
   const accountCounts: ImportCount[] = base.columns.some((col) => col.field === 'accountName')
-    ? [{ id: 'account-names', label: 'Account names read (kept and shown; no figure uses them)', value: new Set(base.holdings.flatMap((h) => h.accountNames ?? [])).size }]
+    ? [{ id: 'account-names', label: 'Different account names read (listed in the workbook; no figure uses them)', value: new Set(base.holdings.flatMap((h) => h.accountNames ?? [])).size }]
     : [];
 
   return {

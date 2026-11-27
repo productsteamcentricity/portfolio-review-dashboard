@@ -1,6 +1,7 @@
-// The blank base file template and its Read Me (NB-05; parity rows U-06, E-01; the owner's answers of 26 Nov 2026:
-// "a minimal template that every analyst can download", only the columns that are necessary). Generated on request from
-// the Templates group of section 1; no binary is committed. The template is the platform's holding report cut to 17
+// The blank base file template and its Read Me (NB-05; parity rows U-06, E-01). The owner asked on 26 Nov 2026 for a
+// template of the new build that every analyst can download, with only the columns that are necessary; the 17 columns
+// are MOD-04's selection under that answer (its note of 26 Nov 2026, section 6.2). Generated on request from the
+// Templates group of section 1; no binary is committed. The template is the platform's holding report cut to those 17
 // columns, the headings exactly as the platform writes them (the rupee sign and the trailing space of the two money
 // headings included), so a filled template and the platform's own export are read by the same reader
 // (ingest/base-file.ts).
@@ -43,6 +44,13 @@ type TemplateColumn = {
   read: boolean;
 };
 
+/**
+ * The Read Me's sentence on the ISIN. True while the page carries share ISINs and no fund ISIN table (ui/wiring.ts passes
+ * no AMFI_ISIN to the match context): a test pins it to the committed context, so it is reworded when the fund ISIN
+ * table arrives (the financial review's T-1).
+ */
+export const BASE_TEMPLATE_ISIN_TEXT = 'The ISIN of the fund or share. A listed share is found by its ISIN before its name. A fund\'s ISIN is read and kept; in this version a fund is found by its name.';
+
 /** The Asset Name values the reader knows (engine/classify/asset.ts), as the Read Me lists them. */
 export const BASE_TEMPLATE_ASSETS: readonly string[] = ['Equity', 'Debt', 'Hybrid', 'Commodity', 'REITs/InvITs'];
 /** The two other spellings read as Debt (OD-7). */
@@ -52,12 +60,12 @@ const COLUMN_TABLE: readonly TemplateColumn[] = [
   { id: 'client', header: 'Client Name', kind: 'text', required: 'Yes', width: 30, accepted: null, read: true,
     what: 'The client\'s name. Holdings are grouped by client on this name, and the transactions (IRR) file is joined on it, letter for letter.' },
   { id: 'accountName', header: 'Account Name', kind: 'text', required: 'No', width: 30, accepted: null, read: true,
-    what: 'The account the holding sits in, for example a joint, minor or HUF account. Read and kept with the holding, and shown in the import report and on the workbook\'s Holdings (as loaded) sheet. No figure and no grouping uses it in this version.' },
+    what: 'The account the holding sits in, for example a joint, minor or HUF account. Read and kept with the holding: the import report counts the different names, and the workbook\'s Holdings (as loaded) sheet lists them. No figure and no grouping uses it in this version. Never enter a PAN: one found in this column is removed when the file is read.' },
   { id: 'name', header: 'Instrument Name', kind: 'text', required: 'Yes', width: 46, accepted: null, read: true,
     what: 'The scheme, strategy or security name, as the platform writes it. A row without one is skipped and reported.' },
   { id: 'isin', header: 'Isin Code', kind: 'text', required: 'No', width: 16, accepted: 'Twelve characters: two letters, nine letters or digits, one digit.',
     read: true,
-    what: 'The ISIN of the fund or share. When it is given and well formed, the fund or share is found by its ISIN before its name.' },
+    what: BASE_TEMPLATE_ISIN_TEXT },
   { id: 'category', header: 'Category Name', kind: 'text', required: 'No', width: 26, accepted: null, read: true,
     what: 'The scheme category, for example Flexi Cap Fund.' },
   { id: 'asset', header: 'Asset Name', kind: 'text', required: 'Yes, for the allocation', width: 16, read: true,
@@ -66,7 +74,7 @@ const COLUMN_TABLE: readonly TemplateColumn[] = [
   { id: 'folio', header: 'Folio No', kind: 'text', required: 'No', width: 18, accepted: null, read: true,
     what: 'The folio number. Rows with the same client, instrument, product and distributor are merged into one holding.' },
   { id: 'product', header: 'Product Name', kind: 'text', required: 'No', width: 20, accepted: 'See the product names below.', read: true,
-    what: 'The product, as the platform names it. A blank is read as Mutual Funds, and the import report says so.' },
+    what: 'The product, as the platform names it. A blank is read as Mutual Funds, and a validation result says so.' },
   { id: 'distributor', header: 'Distributor Name', kind: 'text', required: 'No', width: 26, accepted: null, read: true,
     what: 'The distributor (the adviser) of the holding.' },
   { id: 'units', header: 'Units', kind: 'units', required: 'No', width: 16, accepted: null, read: true,
@@ -78,7 +86,7 @@ const COLUMN_TABLE: readonly TemplateColumn[] = [
   { id: 'valuationDate', header: 'Valuation Date', kind: 'date', required: 'No', width: 14, accepted: null, read: false,
     what: 'The date of the market value. Kept in the layout as the platform exports it; this version does not read it. The review\'s as-on date is set on the page.' },
   { id: 'purchaseDate', header: 'Purchase Date', kind: 'date', required: 'No', width: 14, accepted: null, read: true,
-    what: 'The date the holding was bought, as an Excel date or as the platform writes it (day, month, year).' },
+    what: 'The date the holding was bought, as an Excel date, or as text the way the platform writes it: day, month, then a four-digit year (15-06-2023).' },
   { id: 'holdingDays', header: 'Avg. Holding Days', kind: 'days', required: 'No', width: 14, accepted: null, read: true,
     what: 'The average number of days the holding has been held, as a whole number.' },
   { id: 'xirr', header: 'XIRR (%)', kind: 'plain', required: 'No', width: 12, read: true,
@@ -106,11 +114,20 @@ const FORMAT_BY_KIND: Readonly<Record<ColumnKind, NumFmtKey | null>> = {
  */
 export type BaseTemplateProduct = {
   product: string;
-  /** The condition on the instrument name, when the product name alone does not decide; null otherwise. */
+  /** The condition, when the product name alone does not decide; null otherwise. */
   when: string | null;
+  /** The words of the condition, lower case, as the rule of PRODUCT_CLASS_RULES lists them (its nameAny or andAny): a
+   * test compares them with the committed table, so the Read Me cannot drift from the rule. */
+  whenWords?: readonly string[];
   example: string;
   kind: 'MF' | 'PMS' | 'AIF' | 'SIF' | 'STOCK' | { label: string };
 };
+
+/** The words that make a Global Exposure holding a GIFT City fund (the rule's nameAny). */
+export const BASE_TEMPLATE_GIFT_WORDS: readonly string[] = ['gift', 'ifsc'];
+/** The words that make a bond a US-dollar bond (the rule's andAny). */
+export const BASE_TEMPLATE_DOLLAR_WORDS: readonly string[] = ['usd', 'us$', 'us', 'dollar', 'dollars', 'lrs'];
+const wordList = (words: readonly string[]): string => words.map((w) => (w.length <= 4 ? w.toUpperCase() : w)).join(', ');
 
 export const BASE_TEMPLATE_PRODUCTS: readonly BaseTemplateProduct[] = [
   { product: 'Mutual Funds', when: null, example: 'Sample Flexi Cap Fund - Regular Plan - Growth', kind: 'MF' },
@@ -119,9 +136,9 @@ export const BASE_TEMPLATE_PRODUCTS: readonly BaseTemplateProduct[] = [
   { product: 'AIF-Listed', when: null, example: 'Sample Opportunities Fund', kind: 'AIF' },
   { product: 'SIF', when: null, example: 'Sample Equity Long-Short SIF', kind: 'SIF' },
   { product: 'Unlisted-Direct', when: null, example: 'Sample Tech Pvt Ltd', kind: { label: 'Unlisted shares' } },
-  { product: 'Global Exposure', when: 'the instrument name has GIFT or IFSC', example: 'Sample GIFT City Global Fund', kind: { label: 'GIFT City funds' } },
+  { product: 'Global Exposure', when: `the instrument name has one of the words ${wordList(BASE_TEMPLATE_GIFT_WORDS)}`, whenWords: BASE_TEMPLATE_GIFT_WORDS, example: 'Sample GIFT City Global Fund', kind: { label: 'GIFT City funds' } },
   { product: 'Global Exposure', when: 'any other instrument name', example: 'Sample US Equity Feeder Fund', kind: { label: 'Offshore funds' } },
-  { product: 'Bonds', when: 'the instrument name has a dollar word (USD, US$, US, dollar)', example: 'Sample Corp 5.25% USD Bond 2030', kind: { label: 'US-dollar bonds (through LRS)' } },
+  { product: 'Bonds', when: `the product name or the instrument name has one of the words ${wordList(BASE_TEMPLATE_DOLLAR_WORDS)}`, whenWords: BASE_TEMPLATE_DOLLAR_WORDS, example: 'Sample Corp 5.25% USD Bond 2030', kind: { label: 'US-dollar bonds (through LRS)' } },
   { product: 'Bonds', when: 'any other instrument name', example: 'Sample Housing Finance NCD 2028', kind: { label: 'Rupee bonds and NCDs' } },
   { product: 'P2P Lending', when: null, example: 'Sample P2P Pool', kind: { label: 'P2P lending' } },
   { product: 'Fixed Deposits', when: null, example: 'Sample Bank Deposit 2027', kind: { label: 'Fixed deposits' } },
@@ -146,15 +163,15 @@ export const BASE_TEMPLATE_RULES: readonly string[] = [
   'Write each Client Name the same way on every row, and exactly as the CLIENT of the transactions (IRR) file, letter for letter. The two files are joined on the client name only, never by a similar name.',
   'Enter rupees as plain numbers, without a rupee sign or a unit word. The Invested Value and Market Value columns are in rupees.',
   'Enter XIRR and BMXIRR as percent numbers: 8.79 means 8.79%. Do not format the two columns as percentages.',
-  'Enter dates as Excel dates, or as the platform writes them (day, month, year).',
-  'Give one row per holding and folio. Leave out total rows: a row named Total or Grand Total is skipped and reported.',
+  'Enter dates as Excel dates, or as text the way the platform writes them: day, month, then a four-digit year. A date that cannot be read is not guessed.',
+  'Give one row per holding and folio, and leave out every total and subtotal row. Only a row whose Instrument Name is exactly Total or Grand Total is skipped and reported; any other total row is read as a holding and counted twice.',
   'Keep the headings in row 1 as they are. A column that is not required may be left empty. The platform\'s full holding report can also be uploaded as it comes.',
   'Valuation Date is not read by this version. Every value is taken as of the review\'s as-on date, which is set on the page.',
-  'Nothing is guessed: a blank or unreadable cell stays not available, with its reason, and the import report lists what was skipped or left out.',
+  'No number or date is guessed: a blank or unreadable amount, date or XIRR stays missing, with its reason, and the import report lists the rows skipped and the holdings left out.',
 ];
 
 /** The sentence under the product list. */
-export const BASE_TEMPLATE_PRODUCT_NOTE = 'A blank Product Name is read as Mutual Funds, and so is a product name the application does not recognise.';
+export const BASE_TEMPLATE_PRODUCT_NOTE = 'A blank Product Name is read as Mutual Funds. Use one of the names above: a name the application does not recognise is looked up as a mutual fund and will usually show as not matched.';
 
 /** The "Base File" sheet: the 17 headings, frozen, no data rows, with the column formats as column defaults. */
 export function baseTemplateSheet(): SheetSpec {

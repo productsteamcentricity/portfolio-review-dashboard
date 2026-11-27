@@ -186,7 +186,7 @@ point 9).
 | id | per-review holding id | rule bank §2 (`holdings[i].id`) |
 | instrument | `InstrumentRef` | `03` §6.1 |
 | isin | string, optional | the ISIN the base file gives (a column whose heading contains "ISIN"), trimmed, upper case, only in the ISIN form; absent when the file has no such column or the cell is not an ISIN; read only until the crosswalk is wired in (the owner's answer of 25 Nov 2026, M2) |
-| accountNames | list of strings, optional | the "Account Name" of the holding's rows as given (a column headed exactly "Account Name"), each different name once, in file order; absent when the file has no such column or no row of the holding has a name. Read, kept and shown only (the import report's count line and the last column of Holdings (as loaded)); no figure, grouping or identity uses it: `accountId` stays client + distributor (the Moderator's default D1 (a), 27 Nov 2026; not yet ruled on by the owner) |
+| accountNames | list of strings, optional | the "Account Name" of the holding's rows as given (a column headed exactly "Account Name"), each different name once, in file order, with any PAN removed at read (the capital-gains reader's rule); absent when the file has no such column or no row of the holding has a name. Read, kept and shown only (the import report's count line and the last column of Holdings (as loaded)); no figure, grouping or identity uses it: `accountId` stays client + distributor (the Moderator's default D1 (a), 27 Nov 2026; not yet ruled on by the owner) |
 | clientId, accountId, distributorId, folio | the holding's client, account (client + distributor + plan), distributor and folio | `03` §6.8 |
 | assetClass | canonical asset; a blank asset is unknown, with a notice (never Equity); "Fixed Income" and "Debt Funds" are Debt | `03` §8 (OD-7) |
 | category | canonical category | rule bank §2 |
@@ -393,7 +393,8 @@ makes a note.
 
 Added with the base file template (28 Nov 2026): the base-file Information result `merged-accounts` (auto-resolved,
 resolved): merged folios under more than one Account Name stay one holding, with every account name kept. Scoped to
-those holdings; no note.
+those holdings; no note. And `account-pan-removed` (Information, auto-resolved, resolved): the number of Account Name
+cells that held a PAN, removed at read and kept nowhere.
 
 Added in M2.1 sprint 2a (CHAT-008's S3-1): the base-file Warning `isin-disagree` (auto-resolved, resolved): a merged
 holding whose rows carry different ISINs keeps no ISIN (never guessed, rule 3; its name decides the match). Scoped to

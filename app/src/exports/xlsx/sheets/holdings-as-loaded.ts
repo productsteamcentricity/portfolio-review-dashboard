@@ -2,7 +2,8 @@
 // only, no formulas (architecture §14 sheet 3; DATA_DICTIONARY §5.13). A missing number is a blank cell with its
 // status in the next column. The file's own gain/loss appears only here (OD-18). The key columns join the
 // formulas of the other sheets to these rows. When the base file gave an Account Name for any holding, a 44th column
-// "Account Name" (AR) follows, last so that no other column moves: the names as given, shown only (NB-05, D1 (a)).
+// "Account Name" (AR) follows, last so that no other column moves: the names as given, shown only (NB-05; the Moderator's default D1 (a), not
+// yet the owner's ruling).
 
 import type { BuildContext, HoldingRowInput } from '../overview-workbook.ts';
 import type { CellSpec, ColumnSpec, SheetSpec, StyleSpec } from '../spec.ts';

@@ -7,7 +7,11 @@
 //     column but "Valuation Date" used (KI-320), and each value as typed (rupees to Crore by hand);
 //   - the Read Me's product list against data/refdata/PRODUCT_CLASS_RULES.json as committed: every row's example
 //     classifies as the row says, every label of the table is in the list, and no other label is;
-//   - the Read Me's asset values and its two sentences on a blank and an unknown product against the reader.
+//   - the Read Me's asset values and its two sentences on a blank and an unknown product against the reader;
+//   - the Read Me's ISIN sentence against the committed match context (the financial review's T-1): a listed share
+//     is found by its ISIN whatever its name, and a fund is not, while the context holds no fund ISIN;
+//   - the words of the two conditional product rows against the rule's own word lists, and every row through the real
+//     matcher (matchLoaded on the committed context), not a copy of its routing (T-2, T-7).
 // Also the Templates group's download through the store and the wiring.
 
 import { describe, test } from 'node:test';
@@ -16,13 +20,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   baseTemplateReadAs, baseTemplateReadMe, baseTemplateSheet, buildBaseTemplate, BASE_TEMPLATE_ASSETS, BASE_TEMPLATE_ASSET_SYNONYMS,
-  BASE_TEMPLATE_COLUMNS, BASE_TEMPLATE_FILE_NAME, BASE_TEMPLATE_HEADERS, BASE_TEMPLATE_PRODUCTS, BASE_TEMPLATE_PRODUCT_NOTE,
+  BASE_TEMPLATE_COLUMNS, BASE_TEMPLATE_DOLLAR_WORDS, BASE_TEMPLATE_FILE_NAME, BASE_TEMPLATE_GIFT_WORDS, BASE_TEMPLATE_HEADERS,
+  BASE_TEMPLATE_ISIN_TEXT, BASE_TEMPLATE_PRODUCTS, BASE_TEMPLATE_PRODUCT_NOTE,
   BASE_TEMPLATE_README, BASE_TEMPLATE_RULES, BASE_TEMPLATE_SHEET, BASE_TEMPLATE_UNREAD_HEADERS,
 } from '../../../app/src/exports/xlsx/base-template.ts';
 import { readWorkbook, cellText } from '../../../app/src/ingest/workbook.ts';
 import { DEFAULT_PRODUCT, parseBaseFile, PREFERRED_SHEET, XIRR_FRACTION_LIMIT } from '../../../app/src/ingest/base-file.ts';
 import { holdingClass, nonMfRule, parseProductClassRulesDetailed } from '../../../app/src/engine/match/product-class.ts';
-import { isDirectEquityProduct } from '../../../app/src/engine/match/resolve-holdings.ts';
+import { isDirectEquityProduct, matchLoaded } from '../../../app/src/engine/match/resolve-holdings.ts';
+import { isLoaded, loadBaseFile } from '../../../app/src/ingest/load-base.ts';
+import { committedMatchContext } from '../../helpers/match-blocks.ts';
+import { refdataBlock } from '../../helpers/legacy-engine.ts';
 import { readAssetLabel } from '../../../app/src/engine/classify/asset.ts';
 import { ymdToDay } from '../../../app/src/engine/dates.ts';
 import type { SourceFileId } from '../../../app/src/model/ids.ts';
@@ -117,6 +125,10 @@ describe('blank base file template', () => {
     const what = new Map(colRows.map((r) => [cellText(r[0]), cellText(r[2])]));
     assert.ok(what.get('Valuation Date')!.includes('this version does not read it'));
     assert.ok(what.get('Account Name')!.includes('No figure and no grouping uses it in this version'));
+    assert.ok(what.get('Account Name')!.includes('the import report counts the different names'));
+    assert.ok(what.get('Account Name')!.includes('Never enter a PAN'));
+    assert.equal(what.get('Isin Code'), BASE_TEMPLATE_ISIN_TEXT);
+    assert.ok(what.get('Purchase Date')!.includes('four-digit year'));
     assert.ok(what.get('Market Value (₹)')!.includes('left out of every total and listed'));
     const accepted = new Map(colRows.map((r) => [cellText(r[0]), cellText(r[3])]));
     for (const a of [...BASE_TEMPLATE_ASSETS, ...BASE_TEMPLATE_ASSET_SYNONYMS]) assert.ok(accepted.get('Asset Name')!.includes(a), a);
@@ -129,7 +141,8 @@ describe('blank base file template', () => {
     assert.ok(BASE_TEMPLATE_RULES[0]!.includes('exactly as the CLIENT of the transactions (IRR) file, letter for letter'));
     const rules = BASE_TEMPLATE_RULES.join('\n');
     for (const t of ['plain numbers', 'percent numbers: 8.79 means 8.79%', 'Do not format the two columns as percentages', 'as Excel dates',
-      'Total or Grand Total is skipped and reported', 'Keep the headings in row 1', 'Valuation Date is not read by this version', 'Nothing is guessed']) {
+      'leave out every total and subtotal row', 'exactly Total or Grand Total is skipped and reported', 'any other total row is read as a holding and counted twice',
+      'four-digit year', 'Keep the headings in row 1', 'Valuation Date is not read by this version', 'No number or date is guessed']) {
       assert.ok(rules.includes(t), t);
     }
 
@@ -254,11 +267,45 @@ describe('the Read Me\'s product names against PRODUCT_CLASS_RULES as committed'
       [['Mutual Funds', 'MF'], ['Direct Equity', 'STOCK'], ['PMS', 'PMS'], ['AIF-Listed', 'AIF'], ['SIF', 'SIF']]);
   });
 
-  test('the note: a blank product is Mutual Funds, and so is a product the application does not recognise', () => {
+  test('the words of the two conditional rows are the rule\'s own word lists (T-2, T-7)', () => {
+    const rule = (label: string, field: 'nameAny' | 'andAny'): string[] => {
+      const hits = (TABLE as Array<Record<string, unknown>>).filter((r) => r.label === label && Array.isArray(r[field]));
+      assert.equal(hits.length, 1, `${label}: one rule with ${field}`);
+      return hits[0]![field] as string[];
+    };
+    assert.deepEqual([...BASE_TEMPLATE_GIFT_WORDS], rule('GIFT City funds', 'nameAny'));
+    assert.deepEqual([...BASE_TEMPLATE_DOLLAR_WORDS], rule('US-dollar bonds (through LRS)', 'andAny'));
+    const gift = BASE_TEMPLATE_PRODUCTS.find((p) => typeof p.kind !== 'string' && p.kind.label === 'GIFT City funds')!;
+    const usd = BASE_TEMPLATE_PRODUCTS.find((p) => typeof p.kind !== 'string' && p.kind.label === 'US-dollar bonds (through LRS)')!;
+    assert.equal(gift.when, 'the instrument name has one of the words GIFT, IFSC');
+    assert.equal(usd.when, 'the product name or the instrument name has one of the words USD, US$, US, dollar, dollars, LRS');
+    assert.deepEqual([gift.whenWords, usd.whenWords], [BASE_TEMPLATE_GIFT_WORDS, BASE_TEMPLATE_DOLLAR_WORDS]);
+    // Each word alone decides: a Bonds row with only that word in its name is a US-dollar bond; with none, a rupee bond.
+    for (const w of BASE_TEMPLATE_DOLLAR_WORDS) assert.equal(readAs('Bonds', `Sample Corp ${w} Bond 2030`), 'label:US-dollar bonds (through LRS)', w);
+    assert.equal(readAs('Bonds', 'Sample Corp Bond 2030'), 'label:Rupee bonds and NCDs');
+    for (const w of BASE_TEMPLATE_GIFT_WORDS) assert.equal(readAs('Global Exposure', `Sample ${w} Fund`), 'label:GIFT City funds', w);
+  });
+
+  test('every row through the real matcher on the committed reference data: its route and class label (T-7)', () => {
+    const ctx = committedMatchContext();
+    // "matched to the ... data": the page carries each of the five universes the Read Me names.
+    assert.deepEqual(Object.keys(ctx.universes).sort(), ['AIF', 'MF', 'PMS', 'SIF', 'STOCK']);
+    const rows = BASE_TEMPLATE_PRODUCTS.map((p) => ['Sample Template Client', null, p.example, null, null, 'Equity', null, p.product, null, null, null, 100000, null, null, null, null, null]);
+    const loaded = loadBaseFile(filledBaseTemplate(rows), 'products.xlsx', xlsx, { now: NOW });
+    assert.ok(isLoaded(loaded));
+    const { report } = matchLoaded(loaded, ctx);
+    assert.ok(report && !report.failed);
+    assert.equal(loaded.base.holdings.length, BASE_TEMPLATE_PRODUCTS.length);
+    const got = loaded.base.holdings.map((h) => { const e = report.entries.find((x) => x.holdingId === h.id)!; return [h.product, h.instrumentName, e.route, e.classLabel]; });
+    assert.deepEqual(got, BASE_TEMPLATE_PRODUCTS.map((p) => [p.product, p.example, typeof p.kind === 'string' ? p.kind : 'other', typeof p.kind === 'string' ? null : p.kind.label]));
+  });
+
+  test('the note: a blank product is Mutual Funds, and a product the application does not recognise is looked up as a mutual fund', () => {
     assert.equal(DEFAULT_PRODUCT, 'Mutual Funds');
     assert.equal(readAs('', 'Sample Fund'), 'MF');
     assert.equal(readAs('Something Else', 'Sample Holding'), 'MF');
     assert.ok(BASE_TEMPLATE_PRODUCT_NOTE.includes('A blank Product Name is read as Mutual Funds'));
+    assert.ok(BASE_TEMPLATE_PRODUCT_NOTE.includes('a name the application does not recognise is looked up as a mutual fund and will usually show as not matched'));
   });
 
   test('the asset values: each reads as itself; the two other spellings and Commodities as the Read Me says; another value stays unknown', () => {
@@ -267,6 +314,39 @@ describe('the Read Me\'s product names against PRODUCT_CLASS_RULES as committed'
     assert.equal(readAssetLabel('Commodities').assetClass, 'Commodity');
     assert.equal(readAssetLabel('Gold').assetClass, null);
     assert.equal(readAssetLabel(null).assetClass, null);
+  });
+});
+
+describe('the Read Me\'s ISIN sentence against the committed match context (T-1)', () => {
+  const ctx = committedMatchContext();
+  const stock = refdataBlock('STOCK_RET') as Record<string, { isin?: string }>;
+  const shareKey = Object.keys(stock).find((k) => /^INE[A-Z0-9]{8}[0-9]$/.test(stock[k]?.isin ?? ''))!;
+  const shareIsin = stock[shareKey]!.isin!;
+  const row = (name: string, isin: string | null, product: string): unknown[] => ['Sample Template Client', null, name, isin, null, 'Equity', null, product, null, null, null, 100000, null, null, null, null, null];
+  const entries = (rows: unknown[][]) => {
+    const loaded = loadBaseFile(filledBaseTemplate(rows), 'isin.xlsx', xlsx, { now: NOW });
+    assert.ok(isLoaded(loaded));
+    return { holdings: loaded.base.holdings, entries: matchLoaded(loaded, ctx).report!.entries };
+  };
+
+  test('the sentence, and the fact it rests on: the context holds share ISINs and no fund ISIN', () => {
+    assert.equal(BASE_TEMPLATE_ISIN_TEXT, 'The ISIN of the fund or share. A listed share is found by its ISIN before its name. A fund\'s ISIN is read and kept; in this version a fund is found by its name.');
+    // When the fund ISIN table arrives (the December identifiers), this fails and the sentence is reworded.
+    assert.equal(ctx.crosswalk.codeByFundIsin.size, 0);
+    assert.ok(ctx.crosswalk.stockKeyByIsin.size > 0);
+  });
+
+  test('a share with a name that matches nothing is found by its ISIN; a fund with a well-formed ISIN is read, kept and not matched', () => {
+    const r = entries([
+      row('A Name That Matches Nothing Ltd', shareIsin, 'Direct Equity'),
+      row('A Fund Name That Matches Nothing', 'INF000S01AB1', 'Mutual Funds'),
+      row('Another Name That Matches Nothing Ltd', null, 'Direct Equity'),
+    ]);
+    assert.deepEqual(r.entries.map((e) => [e.route, e.ref?.resolution.method, e.ref?.resolution.confidence]), [
+      ['STOCK', 'isin', 'exact'], ['MF', 'none', 'unmatched'], ['STOCK', 'none', 'unmatched'],
+    ]);
+    assert.equal(r.entries[0]!.ref!.vendorKey, shareKey);
+    assert.deepEqual(r.holdings.map((h) => h.isin), [shareIsin, 'INF000S01AB1', undefined], 'the fund\'s ISIN is read and kept');
   });
 });
 

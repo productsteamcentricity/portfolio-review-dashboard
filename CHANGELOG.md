@@ -6,8 +6,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ### Added (new build: the base file template, the Templates group and Account Name, 28 Nov 2026; no change to `index.html` or data; `/next/` changes)
 - **A blank base file template** (`app/src/exports/xlsx/base-template.ts`, parity row U-06): "Base file template.xlsx",
-  built in the browser on request, no binary committed. Sheet "Base File" holds the 17 headings of the platform's holding
-  report that the owner kept on 26 Nov 2026, exactly as the platform writes them, with column formats as column defaults
+  built in the browser on request, no binary committed. Sheet "Base File" holds 17 headings of the platform's holding
+  report (MOD-04's selection of 26 Nov 2026 under the owner's answer of that day: only the columns that are necessary),
+  exactly as the platform writes them, with column formats as column defaults
   (none on the two XIRR columns: a percent format on a pasted 8.79 would read as 879%). Sheet "Read Me" has one row per
   column, eight rules, and the product names the application knows with what each is read as.
 - **A Templates group in section 1** (`app/src/ui/components/templates-group.tsx`; one line each in `s1-uploads.tsx`,
@@ -15,7 +16,9 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   The IRR slot keeps its own template button.
 - **Account Name is read, kept and shown** (`app/src/ingest/base-file.ts`; the Moderator's default D1 (a) of 27 Nov 2026,
   not yet ruled on by the owner): a column headed exactly "Account Name" is kept on each holding (`Holding.accountNames`,
-  each different name once for merged folios). It is shown as one count line in the import report and as a last column
+  each different name once for merged folios; a PAN in the cell is removed at read, as the capital-gains reader removes
+  it, with an Information result `base-file.account-pan-removed`). It is shown as one count line in the import report
+  (the number of different names) and as a last column
   "Account Name" on the workbook's Holdings (as loaded) sheet, written only when a holding has a name, so a workbook from a
   file without the column is unchanged. No figure, no grouping and no account identity uses it. Merged folios under more
   than one account name stay one holding, with an Information result (`base-file.merged-accounts`).

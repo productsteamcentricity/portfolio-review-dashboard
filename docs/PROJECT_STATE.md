@@ -253,7 +253,8 @@
    - the weighted 3Y and 5Y returns (E-147) shown with their coverage footnotes;
    - the financial review's notes (N2, N3, N5, N8, N9, N11).
    The templates PR is on `feat/base-template` (28 Nov 2026): the blank 17-column base file template with its Read Me
-   (U-06), a Templates group in section 1, and the base file's Account Name read, kept and shown only (no figure uses it);
+   (U-06), a Templates group in section 1, and the base file's Account Name read, kept and shown only (no figure uses it;
+   the Moderator's default, not yet ruled on by the owner);
    "Valuation Date" is in the template and not read (KI-320).
    Beside M2, the data-platform items (NB-04): M10, the MF Screener data pack reader and browser store, merged in
    PR #37 and accepted on 26 Nov 2026 (not wired); M11a, the monthly update engine core, merged in
