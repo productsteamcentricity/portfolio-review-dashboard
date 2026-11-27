@@ -83,7 +83,7 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
       [/multi - cap/i, 'SB-08', 'correction'], [/icici pru bse liquid/i, 'SB-09', 'correction'], [/sbi nifty 1d/i, 'SB-10', 'correction'],
       [/tata nifty 50 exchange/i, 'SB-11', 'correction'], [/icici pru bluechip/i, 'SB-12', 'correction'],
       [/axis gold/i, 'SB-13', 'accepted-difference'], [/kotak gold/i, 'SB-14', 'accepted-difference'],
-      [/uti focused/i, 'SB-15', 'accepted-difference'], [/kotak infrastructure/i, 'SB-16', 'accepted-difference'],
+      [/uti focused/i, 'SB-15', 'known-gap'], [/kotak infrastructure/i, 'SB-16', 'known-gap'],
       [/infosys/i, 'SB-17', 'improvement'],
     ];
     for (const [re, id, cls] of expect) {
@@ -104,14 +104,14 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     assert.equal(by(next, /hdfc bank/i).matched, 'hdfc bank');
     assert.equal(by(next, /office reit/i).route, 'other (REITs and InvITs)');
     assert.equal(by(next, /sample technologies/i).route, 'other (Unlisted shares)');
-    // the report's "Fund matching" summary: 14 holdings, 4 alike, 10 differ (5 corrections, 1 improvement, 4 accepted)
+    // the report's "Fund matching" summary: 14 holdings, 4 alike, 10 differ (5 corrections, 1 improvement, 2 accepted, 2 known gaps)
     const m = result.matching;
     assert.deepEqual([m.compared, m.same, m.rows.length], [14, 4, 10]);
     const per = (c: string): number => m.rows.filter((x) => x.class === c).length;
-    assert.deepEqual([per('correction'), per('improvement'), per('accepted-difference')], [5, 1, 4]);
+    assert.deepEqual([per('correction'), per('improvement'), per('accepted-difference'), per('known-gap')], [5, 1, 2, 2]);
     const html = fundMatching(m);
     assert.match(html, /The live page matched ICICI Pru US Bluechip Equity Fund\(G\); the new build matched ICICI Pru Large Cap Fund\(G\) by alias-pin \(pinned\)\. Why: correction/);
-    assert.match(html, /The live page matched UTI Focused Fund-Reg\(G\); the new build matched nothing\. Why: accepted difference/);
+    assert.match(html, /The live page matched UTI Focused Fund-Reg\(G\); the new build matched nothing\. Why: known gap/);
     // the entries pin each field's exact answer (CHAT-008 N1): another live-page fund for the Gold holding is unclassified
     const moved = { ...legacy, holdings: legacy.holdings.map((h) => (/axis gold/i.test(h.name) ? { ...h, matched: 'Axis Gold Fund-Reg(G)' } : h)) };
     const r2 = compareSides('matching-probe', false, moved, next, ledger);
@@ -193,9 +193,11 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
   });
 
   test('every ledger class is a known one; the decided D9 difference is an accepted difference, not an improvement', () => {
-    const CLASSES = ['correction', 'improvement', 'not-built', 'regression', 'accepted-difference'];
+    const CLASSES = ['correction', 'improvement', 'not-built', 'regression', 'accepted-difference', 'known-gap'];
     assert.deepEqual(ledger.filter((e) => !CLASSES.includes(e.class)).map((e) => e.id), []);
     assert.deepEqual(ledger.filter((e) => e.class === 'regression').map((e) => e.id), [], 'a regression is never merged');
     for (const id of ['SB-04', 'SB-05', 'SB-06', 'SB-07']) assert.equal(ledger.find((e) => e.id === id)?.class, 'accepted-difference', id);
+    // a known gap passes only while it says the owner has not ruled (MOD-05, 27 Nov 2026)
+    for (const e of ledger.filter((x) => x.class === 'known-gap')) assert.match(e.description, /not yet ruled on by the owner/, e.id);
   });
 });

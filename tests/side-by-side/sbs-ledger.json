@@ -182,9 +182,9 @@
       "fixtures": ["matching-probe"],
       "legacy": { "byField": { "matched": "UTI Focused Fund-Reg(G)", "universe": "MF" } },
       "new": null,
-      "class": "accepted-difference",
+      "class": "known-gap",
       "reference": "E-13; OD-5 option B, the owner's \"Go ahead with the Stricter regime\" (26 Nov 2026); tests/parity/matching-corrections-ledger.json stage 3 and 4, MF_PERF amfi, to-null, regressed",
-      "description": "The live page is right here (UTI Focused Fund). The stricter regime leaves the AMFI-style name with \"(30 stocks)\" unmatched; the normaliser follow-up did not recover it. One of the 4 names the ledger still lists as regressed: inside the owner's acceptance of 26 Nov 2026 (stricter regime); the 4 names are offered to the owner as alias candidates (PD-36)."
+      "description": "The live page is right here (UTI Focused Fund). The stricter regime leaves the AMFI-style name with \"(30 stocks)\" unmatched; the normaliser follow-up did not recover it. One of the 4 names the ledger still lists as regressed. A known gap under the stricter regime (OD-5 option B, owner 26 Nov 2026): the live page is right and the new build leaves the name unmatched; not yet ruled on by the owner (asked 27 Nov 2026); alias candidate (PD-36)."
     },
     {
       "id": "SB-16",
@@ -195,9 +195,9 @@
       "fixtures": ["matching-probe"],
       "legacy": { "byField": { "matched": "Kotak Infra & Eco Reform Fund(G)", "universe": "MF" } },
       "new": null,
-      "class": "accepted-difference",
-      "reference": "E-13; the normaliser follow-up of OD-5 option B (26 Nov 2026), not option B itself; tests/parity/matching-corrections-ledger.json stage 4 only, MF_PERF amfi, to-null, regressed (stage 3 still matched it); inside the owner's acceptance of 26 Nov 2026 (stricter regime); the 4 names are offered to the owner as alias candidates (PD-36)",
-      "description": "The live page is right here (Kotak Infra & Eco Reform Fund, an abbreviated reference name). The normaliser follow-up lost it (option B alone still matched it), so the new build leaves the full AMFI name unmatched. One of the 4 names the ledger still lists as regressed: inside the owner's acceptance of 26 Nov 2026 (stricter regime); the 4 names are offered to the owner as alias candidates (PD-36)."
+      "class": "known-gap",
+      "reference": "E-13; the normaliser follow-up of OD-5 option B (26 Nov 2026), not option B itself; tests/parity/matching-corrections-ledger.json stage 4 only, MF_PERF amfi, to-null, regressed (stage 3 still matched it); not yet ruled on by the owner (asked 27 Nov 2026)",
+      "description": "The live page is right here (Kotak Infra & Eco Reform Fund, an abbreviated reference name). The normaliser follow-up lost it (option B alone still matched it), so the new build leaves the full AMFI name unmatched. One of the 4 names the ledger still lists as regressed, newly lost by the follow-up. A known gap under the stricter regime (OD-5 option B, owner 26 Nov 2026): the live page is right and the new build leaves the name unmatched; not yet ruled on by the owner (asked 27 Nov 2026); alias candidate (PD-36)."
     },
     {
       "id": "SB-17",

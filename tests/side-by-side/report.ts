@@ -32,11 +32,12 @@ const delta = (u: string, a: unknown, b: unknown): string => {
   return (b - a).toPrecision(6);
 };
 
-const CLASS_ORDER = ['correction', 'improvement', 'accepted-difference', 'not-built', 'regression'] as const;
+const CLASS_ORDER = ['correction', 'improvement', 'accepted-difference', 'known-gap', 'not-built', 'regression'] as const;
 const CLASS_TEXT: Record<string, string> = {
   correction: 'correction (the live page is wrong, the new build right)',
   improvement: 'improvement (the new build adds what the live page lacks)',
   'accepted-difference': 'accepted difference (the builds differ by an owner decision)',
+  'known-gap': 'known gap (the live page is right, the new build is not; the owner has not ruled yet)',
   'not-built': 'not built yet',
   regression: 'regression',
 };

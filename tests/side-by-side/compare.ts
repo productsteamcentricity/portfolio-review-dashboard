@@ -55,8 +55,10 @@ export type LedgerEntry = {
   fixtures: string[] | '*';
   legacy: Pattern;
   new: Pattern;
-  /** accepted-difference: the owner accepted that the two builds differ here (reviewed at M15); never a defect. */
-  class: 'correction' | 'improvement' | 'not-built' | 'regression' | 'accepted-difference';
+  /** accepted-difference: the owner accepted that the two builds differ here (reviewed at M15); never a defect.
+   * known-gap: the live page is right and the new build is not, under a decided regime, with the owner's ruling still
+   * open; it passes the test but its entry must say so ("not yet ruled on by the owner"). */
+  class: 'correction' | 'improvement' | 'not-built' | 'regression' | 'accepted-difference' | 'known-gap';
   reference: string;
   description: string;
 };

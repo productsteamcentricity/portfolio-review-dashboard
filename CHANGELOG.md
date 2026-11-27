@@ -12,9 +12,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   is shown, not compared.
 - New case `matching-probe`: public scheme names from `tests/parity/matching-corrections-ledger.json`, each with its
   known answer, plus an owner alias, two listed shares (one with an ISIN column), a REIT and an unlisted share. Its ten
-  differences: SB-08 to SB-12 corrections (KI-036, KI-050 with PD-36, the normaliser follow-up), SB-13 to SB-16
-  accepted differences inside the owner's acceptance of the stricter regime (26 Nov 2026; the 4 names still unmatched
-  are offered to the owner as alias candidates), SB-17 an improvement (a share found by its ISIN; KI-184). Entries over
+  differences: SB-08 to SB-12 corrections (KI-036, KI-050 with PD-36, the normaliser follow-up), SB-13 and SB-14
+  accepted differences (a Gold fund the live page matches to its sibling ETF), SB-15 and SB-16 known gaps (the live
+  page is right and the new build leaves the name unmatched; not yet ruled on by the owner, asked 27 Nov 2026; alias
+  candidates under PD-36; new non-failing class `known-gap`), SB-17 an improvement (a share found by its ISIN; KI-184). Entries over
   two fields pin each field's value (`byField`).
 - The report has a "Fund matching" section per case: holdings matched alike, the count per class, and one quotable line
   per differing holding. 19 tests, in IST and UTC.
