@@ -329,6 +329,10 @@ export async function buildNext(options = {}) {
   const used = new Set();
   const result = await esbuild.build({
     absWorkingDir: root,
+    // Paths stay as written (root/node_modules/...), never resolved through a symlink or junction: esbuild names each
+    // module in a comment by its path, so a node_modules that is a junction to another folder (a second worktree)
+    // would otherwise change the page's bytes (28 Nov 2026; docs/new-build/toolchain.md §4).
+    preserveSymlinks: true,
     entryPoints: [opt.entry],
     bundle: true,
     write: false,
