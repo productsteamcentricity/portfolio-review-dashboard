@@ -1,6 +1,7 @@
-// covers: E-13 E-14 E-19 E-26 E-27 E-28 E-29 E-31 E-142 (the side-by-side kit, test build 1)
+// covers: E-13 E-14 E-15 E-19 E-26 E-27 E-28 E-29 E-31 E-142 (the side-by-side kit, test build 1)
 // The legacy engine (index.html through tools/engine-host.js) and the new build (app/src) on the same synthetic books:
-// holdings matches, holding XIRRs, scope XIRRs and contributions compared field by field. A difference passes only when
+// holding routes and matches (the new build's wired resolver), holding XIRRs, scope XIRRs and contributions compared
+// field by field. A difference passes only when
 // an entry of sbs-ledger.json classifies it (as the parity tests: an unclassified difference fails). Synthetic data
 // only; a real file is run locally with run.ts and never committed.
 
@@ -12,6 +13,7 @@ import path from 'node:path';
 import { REPO } from '../helpers/sheetjs.ts';
 import { syntheticCases, runSides, outRefusal, workingTrees } from './run.ts';
 import { compareSides, loadLedger } from './compare.ts';
+import { fundMatching } from './report.ts';
 import type { SbsSide } from './shape.ts';
 
 describe('side-by-side: the legacy engine and the new build on the same synthetic books', () => {
@@ -19,8 +21,8 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
   const ledger = loadLedger();
   const used = new Set<string>();
 
-  test('seven synthetic cases, four with an IRR file', () => {
-    assert.equal(cases.length, 7);
+  test('eight synthetic cases, four with an IRR file', () => {
+    assert.equal(cases.length, 8);
     assert.equal(cases.filter((c) => c.input.irrBytes !== null).length, 4);
   });
 
@@ -58,16 +60,62 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     const mid = (s: typeof legacy) => s.holdings.filter((h) => /sample midcap fund/i.test(h.name));
     assert.equal(mid(legacy).length, 2);
     assert.equal(mid(next).length, 2);
-    for (const name of [/sample industries/i, /fixed deposit/i, /ncd/i]) {
+    // the routes agree (E-15); the legacy ones come from the engine's own h.directEquity / h.pcls (note 1)
+    for (const [name, route] of [[/sample industries/i, 'STOCK'], [/fixed deposit/i, 'other (Fixed deposits)'], [/ncd/i, 'other (Rupee bonds and NCDs)']] as const) {
       for (const s of [legacy, next]) assert.equal(s.holdings.find((h) => name.test(h.name))?.matched, null, `${s.engine} ${name}`);
-      // the route is 'none' on both sides; the legacy one comes from the engine's own h.directEquity / h.pcls (note 1)
-      for (const s of [legacy, next]) assert.equal(s.holdings.find((h) => name.test(h.name))?.route, 'none', `${s.engine} ${name} route`);
-      assert.match(next.holdings.find((h) => name.test(h.name))!.method!, /^not-routed/);
+      for (const s of [legacy, next]) assert.equal(s.holdings.find((h) => name.test(h.name))?.route, route, `${s.engine} ${name} route`);
     }
+    assert.equal(next.holdings.find((h) => /sample industries/i.test(h.name))!.method, 'none (unmatched)', 'an unknown share is looked up and not found');
+    for (const name of [/fixed deposit/i, /ncd/i]) assert.match(next.holdings.find((h) => name.test(h.name))!.method!, /^not-routed/);
     assert.ok(!next.scopes.some((x) => x.label === 'Sample Client C'), 'new: Sample Client C has no flows, so no client XIRR');
     // KI-032 fixed on the live page: Sample Client C no longer borrows another Sample Client's flows (SB-03 retired)
     assert.ok(!legacy.scopes.some((x) => x.label === 'Sample Client C'), 'legacy: Sample Client C is not joined to another client');
     assert.ok(!result.diffs.some((d) => /sample client c/.test(d.key)), 'no difference left for Sample Client C');
+  });
+
+  test('the matching probe: each fund-matching difference has the class of its known answer (kit phase 2 (a))', () => {
+    const { legacy, next, result } = runSides(cases.find((c) => c.id === 'matching-probe')!);
+    const by = (s: SbsSide, re: RegExp) => s.holdings.find((h) => re.test(h.name))!;
+    // every holding is looked up on both sides with the same route; no route difference at all
+    assert.equal(result.diffs.filter((d) => d.field === 'route').length, 0);
+    // each probe row's difference is classified by its own entry, with the class its ledger answer gives
+    const expect: Array<[RegExp, string, string]> = [
+      [/multi - cap/i, 'SB-08', 'correction'], [/icici pru bse liquid/i, 'SB-09', 'correction'], [/sbi nifty 1d/i, 'SB-10', 'correction'],
+      [/tata nifty 50 exchange/i, 'SB-11', 'correction'], [/icici pru bluechip/i, 'SB-12', 'correction'],
+      [/axis gold/i, 'SB-13', 'accepted-difference'], [/kotak gold/i, 'SB-14', 'accepted-difference'],
+      [/uti focused/i, 'SB-15', 'known-gap'], [/kotak infrastructure/i, 'SB-16', 'known-gap'],
+      [/infosys/i, 'SB-17', 'improvement'],
+    ];
+    for (const [re, id, cls] of expect) {
+      const ds = result.diffs.filter((d) => d.section === 'holdings' && re.test(d.key));
+      assert.ok(ds.length >= 1, `${id}: no difference`);
+      for (const d of ds) assert.equal(d.ledger, id, `${id}: ${d.key} ${d.field}`);
+      assert.equal(ledger.find((e) => e.id === id)!.class, cls, id);
+    }
+    assert.equal(result.unclassified, 0);
+    // methods shown, not compared: the alias, ISIN first and the exact name
+    assert.equal(by(next, /icici pru bluechip/i).method, 'alias-pin (pinned)');
+    assert.equal(by(next, /infosys/i).method, 'isin (exact)');
+    assert.equal(by(legacy, /infosys/i).matched, null, 'the live page never reads the ISIN column (KI-184)');
+    // parity rows: a fund by its exact name, a share by name (legacy) and by ISIN (new), two non-MF classes
+    for (const re of [/parag parikh/i, /hdfc bank/i, /office reit/i, /sample technologies/i]) {
+      assert.ok(!result.diffs.some((d) => d.section === 'holdings' && re.test(d.key)), `${re}: parity expected`);
+    }
+    assert.equal(by(next, /hdfc bank/i).matched, 'hdfc bank');
+    assert.equal(by(next, /office reit/i).route, 'other (REITs and InvITs)');
+    assert.equal(by(next, /sample technologies/i).route, 'other (Unlisted shares)');
+    // the report's "Fund matching" summary: 14 holdings, 4 alike, 10 differ (5 corrections, 1 improvement, 2 accepted, 2 known gaps)
+    const m = result.matching;
+    assert.deepEqual([m.compared, m.same, m.rows.length], [14, 4, 10]);
+    const per = (c: string): number => m.rows.filter((x) => x.class === c).length;
+    assert.deepEqual([per('correction'), per('improvement'), per('accepted-difference'), per('known-gap')], [5, 1, 2, 2]);
+    const html = fundMatching(m);
+    assert.match(html, /The live page matched ICICI Pru US Bluechip Equity Fund\(G\); the new build matched ICICI Pru Large Cap Fund\(G\) by alias-pin \(pinned\)\. Why: correction/);
+    assert.match(html, /The live page matched UTI Focused Fund-Reg\(G\); the new build matched nothing\. Why: known gap/);
+    // the entries pin each field's exact answer (CHAT-008 N1): another live-page fund for the Gold holding is unclassified
+    const moved = { ...legacy, holdings: legacy.holdings.map((h) => (/axis gold/i.test(h.name) ? { ...h, matched: 'Axis Gold Fund-Reg(G)' } : h)) };
+    const r2 = compareSides('matching-probe', false, moved, next, ledger);
+    assert.deepEqual(r2.diffs.filter((d) => d.section === 'holdings' && /axis gold/i.test(d.key)).map((d) => [d.field, d.ledger]), [['matched', null], ['universe', 'SB-13']]);
   });
 
   test('a client name variant in the IRR file: the live page joins it (KI-032), the new build does not (D9)', () => {
@@ -79,7 +127,7 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     assert.equal(result.unclassified, 0);
   });
 
-  test('a drifted routing copy is caught as an unclassified E-15 difference (financial review of 4966d49, note 1)', () => {
+  test('a route difference is caught as an unclassified E-15 difference (financial review of 4966d49, note 1)', () => {
     const { legacy, next } = runSides(cases.find((c) => c.id === 'probe-irr-standard')!);
     const drifted = { ...next, holdings: next.holdings.map((h) => (/ncd/i.test(h.name) ? { ...h, route: 'MF' } : h)) };
     const r = compareSides('probe-irr-standard', true, legacy, drifted, ledger);
@@ -145,9 +193,11 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
   });
 
   test('every ledger class is a known one; the decided D9 difference is an accepted difference, not an improvement', () => {
-    const CLASSES = ['correction', 'improvement', 'not-built', 'regression', 'accepted-difference'];
+    const CLASSES = ['correction', 'improvement', 'not-built', 'regression', 'accepted-difference', 'known-gap'];
     assert.deepEqual(ledger.filter((e) => !CLASSES.includes(e.class)).map((e) => e.id), []);
     assert.deepEqual(ledger.filter((e) => e.class === 'regression').map((e) => e.id), [], 'a regression is never merged');
     for (const id of ['SB-04', 'SB-05', 'SB-06', 'SB-07']) assert.equal(ledger.find((e) => e.id === id)?.class, 'accepted-difference', id);
+    // a known gap passes only while it says the owner has not ruled (MOD-05, 27 Nov 2026)
+    for (const e of ledger.filter((x) => x.class === 'known-gap')) assert.match(e.description, /not yet ruled on by the owner/, e.id);
   });
 });

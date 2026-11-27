@@ -13,16 +13,18 @@ export type SbsHolding = {
   cmvCr: number | null;
   /** The holding's XIRR in the base file (fraction), before any IRR file: not compared, used to show the IRR path ran. */
   baseXirr: number | null;
-  /** The matched reference entry (a key of MF_PERF, PMS_PERF, AIF_PERF or SIF_PERF), or null when unmatched. */
+  /** The matched reference entry (a key of MF_PERF, PMS_PERF, AIF_PERF, SIF_PERF or, for a listed share, STOCK_RET), or
+   * null when unmatched. */
   matched: string | null;
-  /** The universe the match was looked up in: 'MF' | 'PMS' | 'AIF' | 'SIF', or null. */
+  /** The universe the match was found in: 'MF' | 'PMS' | 'AIF' | 'SIF' | 'STOCK', or null when unmatched. */
   universe: string | null;
-  /** Where the holding is looked up for performance: 'MF' | 'PMS' | 'AIF' | 'SIF', or 'none' (direct equity; LP-16's
-   * non-MF classes). Legacy: read from the engine's own h.directEquity and h.pcls. New: the kit's copy of that rule
-   * (next.ts legacyRoute, until E-15). A difference means the copy has drifted from index.html (financial review of
-   * 4966d49, note 1): fix next.ts, never classify it. */
+  /** Where the holding is looked up (E-15): 'MF' | 'PMS' | 'AIF' | 'SIF' | 'STOCK' (a listed share), or
+   * 'other (<class label>)' for a non-MF class of PRODUCT_CLASS_RULES (LP-16: no fund data by design). Legacy: from the
+   * engine's own h.directEquity and h.pcls. New: the wired resolver's route (resolveHoldings). A difference is a real
+   * routing difference between the builds and fails unless the ledger classifies it. */
   route: string;
-  /** How the new side matched (isin, alias-pin, vendor-key, name-match); the legacy has no such field (null). */
+  /** How the new side matched, with its confidence ("isin (exact)", "alias-pin (pinned)", "name-match (exact)",
+   * "none (unmatched)", "not-routed (a non-MF class)"); shown, never compared. The legacy has no such field (null). */
   method: string | null;
   /** The holding's XIRR as each engine shows it (the transaction XIRR when an IRR file is given), as a fraction. */
   xirr: number | null;
