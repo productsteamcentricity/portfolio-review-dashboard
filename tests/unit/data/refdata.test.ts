@@ -11,6 +11,7 @@ import { asOnOf, blockId, blockOf, readBlock, BLOCK_NAMES, type BlockText, type 
 import { STATUS } from '../../../app/src/model/status.ts';
 import { parseDayText } from '../../../app/src/engine/dates.ts';
 import { REPO } from '../../helpers/pptxgenjs.ts';
+import { REFDATA_BLOCKS } from '../../../scripts/build.mjs';
 
 /** A page holding every committed block, counting reads. */
 function committedPage(): { text: BlockText; reads: Map<string, number> } {
@@ -18,7 +19,8 @@ function committedPage(): { text: BlockText; reads: Map<string, number> } {
   const text: BlockText = (id) => {
     reads.set(id, (reads.get(id) ?? 0) + 1);
     const name = id.replace(/^refdata-/, '');
-    const f = path.join(REPO, 'data', 'refdata', `${name}.json`);
+    const listed = REFDATA_BLOCKS.find(([n]) => n === name);
+    const f = path.join(REPO, listed ? listed[1] : path.join('data', 'refdata', `${name}.json`));
     return fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : null;
   };
   return { text, reads };
