@@ -82,7 +82,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   for a scheme switched out only in part. An unequal chain stays computed. No parity figure changed.
 - **Parity:** book `tax-r2c`, ledger TX-13, TX-14 and TXR-19 to TXR-23, with its known answers; no other expected figure
   changed.
-- **Open limit (B2, CHAT-012's Gate B of a031769; KI-304): the merger condition is not fully met yet.** A many-into-one
+- **Open limit (B2, CHAT-012's Gate B of a031769; KI-340): the merger condition is not fully met yet.** A many-into-one
   merger on a client-day that also holds any other switch by the same client (for example the scheme switched into is
   itself partly switched out that day, or a second merger the same day) is still computed as a sale: no merger
   candidate is found. Binding before the engine is wired; the next tax round tests many-into-one per receiving scheme.
