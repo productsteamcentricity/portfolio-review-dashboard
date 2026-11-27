@@ -29,6 +29,7 @@ import type { Holding } from '../model/holding.ts';
 import { buildMatchContext, matchLoaded, type MatchContext, type MatchReport } from '../engine/match/resolve-holdings.ts';
 import { loadMonitor, type LoadedMonitor, type MonitorBlocks, type MonitorLoadError, type MonitorSheetJS, type MonitorUploadKind } from '../ingest/load-monitor.ts';
 import type { MonitorScheme } from '../ingest/vendor/mf-monitor.ts';
+import { buildIrrTemplate, IRR_TEMPLATE_FILE_NAME } from '../exports/xlsx/irr-template.ts'; // PLAN-05: the blank IRR file template (NB-03)
 
 export type LogoAsset = { id: string; label: string; dataUri: string; widthPx: number; heightPx: number };
 export type ExportResult = { kind: 'pptx' | 'xlsx'; fileName: string; bytes: number; sha256: string; audit: Omit<AuditEntry, 'id'> };
@@ -46,6 +47,8 @@ export type Wiring = {
   matchHoldings?(loaded: LoadedBaseFile, overrides?: MonitorBlocks): { loaded: LoadedBaseFile; report: MatchReport | null };
   /** M2.1: reads an uploaded monitor (U-08, U-09, U-10); `regular` maps a Direct issue's sheets. */
   loadMonitor?(kind: MonitorUploadKind, bytes: Uint8Array, fileName: string, regular?: Readonly<Record<string, MonitorScheme>>): LoadedMonitor | MonitorLoadError;
+  /** PLAN-05 (NB-03): saves the blank transactions (IRR) file template; optional, so the test fakes stay valid. */
+  downloadIrrTemplate?(): void;
   /** M3b: section 5's performance tables of the matched holdings, the uploaded monitors standing in for their blocks. */
   performance?(holdings: readonly Holding[], uploads: MonitorUploads): PerformanceResult;
 };
@@ -87,6 +90,7 @@ export function browserWiring(build: BuildStamp): Wiring {
     loadIrrFile: (bytes, fileName) => loadIrrFile(bytes, fileName, XLSX as SheetJSLike, { now }),
     matchHoldings: (loaded, overrides) => matchLoaded(loaded, pageMatchContext(overrides)),
     loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, XLSX as unknown as MonitorSheetJS, regular ?? readBlock('MF_PERF') ?? undefined),
+    downloadIrrTemplate: () => downloadBytes(buildIrrTemplate(), IRR_TEMPLATE_FILE_NAME, XLSX_MIME), // PLAN-05 (NB-03): no client data, no audit entry
     performance: (holdings, uploads) => computePerformance(holdings, performanceSourcesFrom(uploads)),
   };
 }

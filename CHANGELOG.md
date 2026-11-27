@@ -4,6 +4,22 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (tests only: the side-by-side kit's ledger class and a KI-032 case; no change to `index.html`, `/next/` or `app/`)
+- **`tests/side-by-side/`**: SB-04 to SB-07, the decided difference of client names between the live page (KI-032's
+  variant join) and the new build (exact labels, D9), are now class `accepted-difference`: an owner-accepted difference,
+  reviewed at M15 (MOD-04, 26 Nov 2026), neither an improvement nor a regression. The test fails on a class outside the
+  list and on any regression entry (17 tests).
+- **`tools/regression/KI-032-irr-client-join.js`**: initials "U. G." read as the guardian marker; the same spelling joins
+  exactly, the full name never joins (the safe direction; CHAT-008's Gate B note N2). 193 checks.
+
+### Changed (docs: the refresh runbook's risk-ratio chain for the December refresh; no change to `index.html` or `app/`)
+- **`docs/MONTHLY_REFRESH.md` step 4** names the month-parameterised scripts of item 6 (`ReconcileMonth`, `BuildMonth`,
+  `VerifyMonth`, `GenMonthMetrics`, `VerifyPRMonth`; installed 26 Nov 2026, reviewed by ARC-02 with a known-answer run)
+  in place of the October ones, with their arguments and SHA-256 prefixes. `BuildPRSep.ps1` is reviewed now too. The
+  review's conditions are in the launch rule: local `C:\Temp` work folders only, `BuildPRSep` always with explicit
+  arguments and checked by `VerifyPRMonth` at once, and the regression output never over last month's metrics.
+- `docs/PROJECT_STATE.md`: nothing toolchain-side is left before the December window.
+
 ### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `04079A77756282B284016FBFB02212C0`, 16,416,337 bytes, on KI-301's page)
 - **The platform's own Product Name values are classed as the owner decided** (CR-0012; 26 Nov 2026):
   - "Global Exposure" is a GIFT City fund when the instrument name says GIFT or IFSC, otherwise an Offshore fund (it was
@@ -562,6 +578,21 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     - a refused IRR file;
     - a synthetic IRR file whose distributors match the base book, so adviser scopes have flows;
     - the browser check `tests/browser/irr-slot.cdp.mjs`.
+
+### Added (new build, the transactions (IRR) file template and two reader rules for the platform's cashflow file; PLAN-05)
+- **The blank template** (`exports/xlsx/irr-template.ts`): the platform's six-sheet cashflow layout (SI, YTD and QTD
+  pairs, the export's exact headings) with a Read Me. Client names must be written exactly as in the holding report:
+  the two files are joined on the exact name only, never by similarity (the owner, 26 Nov 2026). It is downloaded from
+  the IRR slot in section 1.
+- **The reader** (`ingest/irr-file.ts`):
+  - It reads the since-inception pair of the six-sheet file: a sheet whose first word is "SI" is preferred over the
+    legacy last match, which would take the QTD sheets. Recorded as a difference from the live parseIRR, which CR-0013
+    corrects there.
+  - The fund and benchmark sheets must name the same period (SI, YTD or QTD), or no benchmark is read and a Warning
+    names both sheets (CR-0013 follow-up).
+- **On screen and on the Fund IRR sheet:** the base-file clients with no rows in the transactions file are listed.
+- **For the M3b holdings sheet:** `engine/returns/irr-aggregate.ts` gives the IRR tree's client, asset and product
+  XIRRs, or nothing when the IRR file has no such line.
 
 ### Added (new build, M7a: the capital-gains statement reader and the blank template; not wired into the page yet)
 - **`app/src/ingest/capital-gains.ts`** (E-150, D-036, design `docs/new-build/capital-gains-upload.md` §2 to §4, §6, §7,

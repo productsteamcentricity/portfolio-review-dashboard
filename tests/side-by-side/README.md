@@ -65,14 +65,16 @@ Every difference must match an entry, or the test fails ("unclassified"). The fi
 - `section`: holdings, performance, scopes, contributions or `*`;
 - `kind`: field, only-legacy, only-new, not-built or `*`.
 
-The class is `correction`, `improvement`, `not-built` or `regression`; a regression is never merged. An entry that no
-case uses fails the test too.
+The class is `correction`, `improvement`, `not-built`, `accepted-difference` or `regression`; a regression is never
+merged. `accepted-difference` is an owner-accepted difference; reviewed at M15: the builds differ by an owner's decision,
+and neither side is a defect (MOD-04, 26 Nov 2026). An entry that no case uses fails the test too, and so does a class
+outside this list.
 
 | Entry | Difference |
 |---|---|
 | SB-01 | performance not built in the new build yet (E-31, E-147) |
 | SB-02 | the adviser XIRR exists only in the new build (E-142, D15) |
-| SB-04 to SB-07 | case `syn-standard-irr-variant`: the IRR file writes a client with a salutation. The live page joins it as a name variant (KI-032 fix), and the new build keys clients by their exact label (D9, kept by MOD-04 on 26 Nov 2026). So that client's holding XIRRs (SB-04), its client XIRR (SB-05), the family XIRR (SB-06; the new build leaves the IRR-only label out, OD-4) and the contributions (SB-07) differ |
+| SB-04 to SB-07 | case `syn-standard-irr-variant`: the IRR file writes a client with a salutation. The live page joins it as a name variant (KI-032 fix), and the new build keys clients by their exact label (D9, kept by MOD-04 on 26 Nov 2026). So that client's holding XIRRs (SB-04), its client XIRR (SB-05), the family XIRR (SB-06; the new build leaves the IRR-only label out, OD-4) and the contributions (SB-07) differ. Class `accepted-difference` (owner-accepted difference; reviewed at M15): the owner decided on 26 Nov 2026 that the new build joins on exact names only, with a transactions template that carries them |
 
 SB-03 (a client without flows borrowing another client's flows through the old fuzzy name join) was retired with the
 KI-032 fix: the live page no longer joins Sample Client C to another Sample Client, and the probe book agrees.
