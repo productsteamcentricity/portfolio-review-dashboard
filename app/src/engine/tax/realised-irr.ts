@@ -36,8 +36,9 @@
 //   - 'after-earlier-gap': a sale after any other gap in the same instrument, since which units remain is
 //     then not known (an oversell included, R2 B-1: the missing purchases' units would be sold first under FIFO);
 //   - 'merger-candidate' (round 2c, MOD-05's merger condition): the switch out of a merger candidate (lots.ts
-//     `mergerCandidates`: within one client and day, a switch out that empties scheme A, paired with exactly one switch in
-//     to another scheme B of the same amount), with no sale value; and every sale of B after the candidate's switch in,
+//     `mergerCandidates`: within one client and day, the switch outs that empty scheme A, or leave A not known after its
+//     last trade, paired by the day's sums with the switch ins to exactly one other scheme B; one row or several,
+//     financial review V1, V2), with no sale value; and every sale of B after the candidate's switch in,
 //     whose cost and date then carry over from A (a merger is not a sale, s.47(xviii)) and are not in the IRR file. It
 //     takes precedence over the other gaps of the row. The lots the ordinary-switch rule gives for the row are kept on the
 //     gap lot (`asSwitch`), never counted: reconcile.ts uses them only where the statement shows the merger, so its
@@ -90,7 +91,7 @@ const GAP_TEXT: Readonly<Record<DerivedGap, string>> = {
   'bonus-row': 'the sale reaches bonus units: bonus units have nil cost by law, and how the IRR file writes a bonus row is not confirmed',
   'sale-without-amount': 'a sale row with an amount of 0: the units it sold are not known',
   'after-earlier-gap': 'an earlier gap in this scheme leaves the units remaining not known',
-  'merger-candidate': 'a switch pair that looks like a scheme merger (the whole of one scheme switched into one other scheme on the same day for the same amount) moved these units: a merger is not a sale (s.47(xviii)) and cost and date carry over, which the IRR file does not give, so no gain is computed until the analyst confirms it',
+  'merger-candidate': 'a switch pair that looks like a scheme merger (the whole of one scheme switched into one other scheme on the same day for the same amount) moved these units, and the IRR file does not say whether it was a merger: a merger is not a sale (s.47(xviii)) and cost and date carry over, so no gain is computed until the analyst confirms it',
 };
 
 /** TR-21 (s.94(8)): units bought within this many months before the record date... */
@@ -201,9 +202,10 @@ export type DerivedLot = RealisedGain & {
   financialYearLabel: string;
   /**
    * Round 2c: on a 'merger-candidate' gap lot, its role (the candidate's switch out, or a sale of the scheme switched
-   * into, on or after the candidate's switch in) and the candidate's day; null otherwise.
+   * into, on or after the candidate's switch in), the candidate's day, and the partner scheme's instrument key (for a
+   * switch out, scheme B; for a successor, scheme A: financial review V3); null otherwise.
    */
-  mergerCandidate: { role: 'switch-out' | 'successor'; day: DayNumber } | null;
+  mergerCandidate: { role: 'switch-out' | 'successor'; day: DayNumber; partnerKey: string } | null;
   /**
    * Round 2c: on a 'merger-candidate' gap lot, the lots the ordinary-switch rule gives for the row (as before round 2c).
    * Never counted in a figure: reconcile.ts uses them only where the statement shows the merger. Null otherwise.
@@ -358,7 +360,7 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
   }
   // Round 2c (MOD-05's merger condition; Q-49): the switch pairs that look like a scheme merger.
   const merger = mergerCandidates(used);
-  counts.mergerCandidates = merger.outs.size;
+  counts.mergerCandidates = merger.pairs;
   // TODO(contracts-4): the analyst's answer to a merger candidate (a merger, or an ordinary switch) needs a model field;
   // until then every candidate stays a 'merger-candidate' gap without a statement.
 
@@ -394,13 +396,15 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
     let afterTransferIn = false;
     // Delta review N-3, F2 (TR-21): the dates of the instrument's bonus rows, each standing for a record date.
     const bonusDays = trades.filter((t) => t.direction === 'in' && BONUS_KINDS.has(t.kind)).map((t) => t.day);
-    // Round 2c: the day of a merger candidate's switch in to this instrument, once it has entered (null before).
-    let successorDay: DayNumber | null = null;
+    // Round 2c: the day of a merger candidate's switch in to this instrument and its scheme A's key (financial review V3),
+    // once it has entered (null before).
+    let successor: { day: DayNumber; partnerKey: string } | null = null;
     for (const t of trades) {
       const amt = Math.abs(t.amountRupees);
       const px = tradePriceOf(t);
       if (t.direction === 'in') {
-        if (merger.ins.has(t)) successorDay = t.day;
+        const from = merger.ins.get(t);
+        if (from !== undefined) successor = { day: t.day, partnerKey: from };
         // B1, B2 (Gate B of aa67a45; Q-49): a transfer in, stock in, demerger in or bonus row is a lot not known, never
         // costed at its amount or dated by the row, until the owner rules how the IRR export writes such rows.
         const why = TRANSFER_IN_KINDS.has(t.kind) ? 'transfer' as const : BONUS_KINDS.has(t.kind) ? 'bonus' as const : px === null ? 'price' as const : null;
@@ -521,12 +525,13 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
       // into after the candidate's switch in, is one 'merger-candidate' gap lot. The ledger above ran as before, so the
       // lots it gave for the row (the ordinary-switch reading) are kept on the gap lot, never counted (`asSwitch`).
       const out = merger.outs.get(t);
-      const role = out !== undefined ? 'switch-out' as const : successorDay !== null ? 'successor' as const : null;
-      if (role !== null) {
+      const marker = out !== undefined ? { role: 'switch-out' as const, day: t.day, partnerKey: out }
+        : successor !== null ? { role: 'successor' as const, ...successor } : null;
+      if (marker !== null) {
         const asSwitch = lots.splice(start);
-        const gapSale = role === 'switch-out' || t.kind === 'transfer-out' || amt <= EPS ? null : amt;
+        const gapSale = marker.role === 'switch-out' || t.kind === 'transfer-out' || amt <= EPS ? null : amt;
         const g = base({ units: px !== null && amt > EPS ? amt / px : null, sale: gapSale, buy: null, cost: null, gap: 'merger-candidate' });
-        lots.push({ ...g, mergerCandidate: { role, day: role === 'switch-out' ? t.day : successorDay! }, asSwitch });
+        lots.push({ ...g, mergerCandidate: marker, asSwitch });
       }
     }
   }

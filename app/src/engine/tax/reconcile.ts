@@ -51,7 +51,7 @@
 // Pure. Messages carry counts and financial years only: never a client, scheme, folio or amount. No en or em dash.
 
 import type { CgImport } from '../../ingest/capital-gains.ts';
-import { amountTolerance, financialYearOf, totalsTolerance } from '../../ingest/capital-gains.ts';
+import { financialYearOf, totalsTolerance } from '../../ingest/capital-gains.ts';
 import type { ClientId } from '../../model/ids.ts';
 import type { GainSource, Term } from '../../model/tax.ts';
 import type { Provenance, Value } from '../../model/value.ts';
@@ -133,9 +133,14 @@ export type RealisedReconciliation = {
 
 export const TOLERANCE_RULE = 'the larger of Rs 1 or 0.01% of the larger sale value summed over the scheme-year (design section 4), and Rs 1 plus Rs 0.005 per statement lot row (design section 7)';
 
-/** The tolerance of one scheme-year (see the header). */
+/**
+ * The tolerance of one scheme-year (see the header). The amount part is worked from the larger sale-value sum rounded to
+ * whole paise: max(Rs 1, paise / 1,000,000), which is ingest/capital-gains.ts `amountTolerance` of that sum in exact
+ * terms, so the float noise of a sum of many paise rows does not move it (round 2c financial review V5).
+ */
 export function reconcileTolerance(statementSale: number, derivedSale: number, statementRows: number): number {
-  return Math.max(amountTolerance(Math.max(Math.abs(statementSale), Math.abs(derivedSale))), totalsTolerance(statementRows));
+  const paise = Math.round(Math.max(Math.abs(statementSale), Math.abs(derivedSale)) * 100);
+  return Math.max(Math.max(1, paise / 1e6), totalsTolerance(statementRows));
 }
 
 /** F1: statement minus derived, from each side's sum rounded to whole paise (rupees, an exact count of paise / 100). */
@@ -317,15 +322,19 @@ export function reconcileRealised(derived: DerivedRealised, statement: Statement
     const mergerDays = new Map<number, number>();
     for (const g of p.stmt) if (g.lotClass === 'non-taxable-transfer') mergerDays.set(g.saleDate, keptShareOf(g, realised.events));
     const mergerShare = (l: DerivedLot): number | null => (mergerDays.has(l.saleDate) ? mergerDays.get(l.saleDate)! : null);
-    // Round 2c (MOD-05's merger condition): where the statement shows the merger (a non-taxable transfer of this scheme on
-    // the candidate's switch-out day, or, for the scheme switched into, one of the same client in another scheme on the
-    // switch-in day), a 'merger-candidate' gap lot stands for the lots of the ordinary-switch reading it keeps, so the
-    // merger handling below is exactly as before round 2c. Elsewhere it stays a gap.
+    // Round 2c (MOD-05's merger condition): where the statement shows the merger, a 'merger-candidate' gap lot stands for
+    // the lots of the ordinary-switch reading it keeps, so the merger handling below is exactly as before round 2c.
+    // Elsewhere it stays a gap. "Shows the merger": for the switch out, a non-taxable transfer of this scheme on its day;
+    // for a sale of the scheme switched into, a non-taxable transfer of the candidate's own scheme A (its pair, by the
+    // key the marker carries, financial review V3) on the switch-in day, and the statement holds this scheme's lots in
+    // the sale's year (V4: otherwise nothing in the statement checks the ordinary-switch cost, which a merger contradicts).
     const shown = (l: DerivedLot): boolean => {
       const c = l.mergerCandidate;
       if (!c || !l.asSwitch) return false;
-      return c.role === 'switch-out' ? mergerDays.has(l.saleDate)
-        : clientMergers.some((m) => m.pair !== p && m.clientId === p.clientId && m.day === c.day);
+      if (c.role === 'switch-out') return mergerDays.has(l.saleDate);
+      const ap = pairs.get(c.partnerKey);
+      return ap !== undefined && ap !== p && ap.stmt.some((g) => g.lotClass === 'non-taxable-transfer' && g.saleDate === c.day)
+        && p.stmt.some((g) => g.financialYear === l.financialYear);
     };
     const derivedLots = p.derived.flatMap((l) => (shown(l) ? l.asSwitch! : [l]));
     const years = [...new Set([...p.stmt.map((g) => g.financialYear), ...derivedLots.map((l) => l.financialYear)])].sort((a, b) => a - b);

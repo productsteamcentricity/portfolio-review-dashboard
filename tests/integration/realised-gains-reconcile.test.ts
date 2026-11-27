@@ -12,7 +12,7 @@ import { emptyTaxInputs, realiseLots } from '../../app/src/engine/tax/realised.t
 import { deriveRealisedGains } from '../../app/src/engine/tax/realised-irr.ts';
 import type { DerivedRealised } from '../../app/src/engine/tax/realised-irr.ts';
 import {
-  MIXED_SOURCE, OUTSIDE_REVIEW_REASON, TOLERANCE_RULE, realisedForYear, reconcileRealised, reconcileTolerance,
+  MIXED_SOURCE, OUTSIDE_REVIEW_REASON, TOLERANCE_RULE, paiseDifference, realisedForYear, reconcileRealised, reconcileTolerance, withinTolerance,
 } from '../../app/src/engine/tax/reconcile.ts';
 import type { ReconcileRow, RealisedReconciliation, StatementSide } from '../../app/src/engine/tax/reconcile.ts';
 import { readWorkbook } from '../../app/src/ingest/workbook.ts';
@@ -523,5 +523,62 @@ describe('round 2c, the merger condition (MOD-05): a merger candidate is never c
     assert.equal(a.schemesLeftOut, 2);
     near(v(a.total), 1700, 'A total');
     assert.ok(a.total.kind === 'value' && a.total.coverage === 0.25, JSON.stringify(a.total));
+  });
+
+  test('V3: a statement showing another scheme\'s merger on the day does not show this one; the successor stays a gap', () => {
+    // The statement holds the Small Cap sale (original cost carried, 8,000) and no Contra row; instead its Value lot is
+    // written as a non-taxable merger on 10 Nov 2023 (bought 1 Jul 2019, Acquisition Date = Sale Date). The candidate's
+    // scheme A is Contra, whose pair shows no merger, so the Small Cap row is not reconciled for the derived gap.
+    // 0e860c3 read any merger of the client that day: the row compared 8,000 with the ordinary-switch 3,000 (differs).
+    const lots = mismatchStatementLots({ sellNew: 'carried' }).filter((l) => l.scheme !== SCHEME.OLD).map((l) => (l.scheme === SCHEME.VALUE
+      ? { ...l, buy: [2019, 7, 1] as const, sell: [2023, 11, 10] as const, over: { acqDate: [2023, 11, 10] as const, acqPrice: 55, ltcg: 0, stcg: 0 } } : l));
+    const imp = parseLots(lots, {}, xlsx);
+    const st: StatementSide = { imp, realised: realiseLots(imp, emptyTaxInputs(), { asOnDay: AS_ON_DAY, now: NOW }) };
+    assert.ok(st.realised.gains.some((g) => g.schemeLabel === SCHEME.VALUE && g.lotClass === 'non-taxable-transfer'));
+    const r = rowOf(reconcileRealised(derivedNew(), st), 2026, SCHEME.NEW);
+    assert.equal(r.outcome, 'not-reconciled');
+    assert.equal(r.reason, 'derived-gaps');
+    assert.equal(r.mergerSuccessorLots, 0);
+  });
+
+  test('V4: a statement that shows the merger but not the successor\'s sale year leaves the successor a gap', () => {
+    // The mismatch statement shows the Contra merger (FY 2023-24) and holds no Small Cap lot. The Small Cap Tax year
+    // 2026-27 row is IRR-only; its derived figure is NOT AVAILABLE (one lot unknown). 0e860c3 showed the ordinary-switch
+    // 3,000 at the merger-day cost, which a non-taxable merger contradicts (the cost carries over: 8,000).
+    const r = rowOf(reconcileRealised(derivedNew(), statementOf()), 2026, SCHEME.NEW);
+    assert.equal(r.outcome, 'irr-only');
+    assert.equal(r.derived!.realised.kind, 'missing');
+    assert.equal(r.derived!.lotsUnknown, 1);
+    // Contra's own row still reads the merger as before (0 against 0, reconciled).
+    assert.equal(rowOf(reconcileRealised(derivedNew(), statementOf()), 2023, SCHEME.OLD).outcome, 'reconciled');
+  });
+});
+
+describe('round 2c financial review V5: the amount tolerance from sale-value sums in whole paise', () => {
+  test('probe 3b: statement sale values summed over 20 to 420 paise rows, at an exact 0.01% boundary, all reconcile', () => {
+    // The review's probe 3b, as written: 20,000 synthetic statement years (a fixed pseudo-random sequence, seed 7), each
+    // of 20 to 419 rows of up to Rs 50,000 in whole paise, the total a multiple of Rs 100 so 0.01% of it is a whole paisa
+    // T; the difference is exactly T. The sale-value sum carries float noise; 0e860c3 fed it to the 0.01% straight and read
+    // 755 of these as "differs" (the smallest at 160 rows; no case under that size did). Rounded to paise first: none.
+    let seed = 7;
+    const rnd = (): number => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    let tried = 0;
+    let differs = 0;
+    for (let k = 0; k < 20000; k++) {
+      const rows = 20 + Math.floor(rnd() * 400);
+      const paise = Array.from({ length: rows - 1 }, () => 1 + Math.floor(rnd() * 5000000));
+      const partial = paise.reduce((s, x) => s + x, 0);
+      const target = Math.ceil((partial + 1) / 10000) * 10000;
+      paise.push(target - partial);
+      const saleSum = paise.reduce((s, x) => s + x / 100, 0);
+      const exactTol = target / 1000000;
+      if (exactTol < 1 + 0.005 * rows + 0.011) continue;
+      tried++;
+      if (!withinTolerance(paiseDifference(1e5 + exactTol, 1e5), reconcileTolerance(saleSum, 0, rows))) differs++;
+    }
+    assert.equal(tried, 20000);
+    assert.equal(differs, 0);
+    // One paisa beyond still differs.
+    assert.equal(withinTolerance(paiseDifference(1e5 + 1.59, 1e5), reconcileTolerance(15800.5, 0, 2)), false);
   });
 });

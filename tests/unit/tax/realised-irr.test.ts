@@ -766,7 +766,8 @@ describe('round 2c, the merger condition (MOD-05): merger candidates on the real
     const l = lotsOf(r, NEW);
     assert.deepEqual(l.map((x) => x.gap), [null, 'merger-candidate']);
     near(v(l[0]!.realised), 400, 'before the switch in');
-    assert.deepEqual(l[1]!.mergerCandidate, { role: 'successor', day: day(2023, 11, 10) });
+    // The marker carries scheme A's instrument key (financial review V3).
+    assert.deepEqual(l[1]!.mergerCandidate, { role: 'successor', day: day(2023, 11, 10), partnerKey: lotsOf(r, OLD)[0]!.instrumentKey });
     near(v(l[1]!.saleValue), 10000, 'sale value'); near(v(l[1]!.units), 50, 'units');
     assert.equal(l[1]!.realised.kind, 'missing'); assert.equal(l[1]!.purchaseDate.kind, 'missing');
     assert.deepEqual(l[1]!.asSwitch!.map((x) => v(x.realised)), [5000]);
@@ -774,5 +775,83 @@ describe('round 2c, the merger condition (MOD-05): merger candidates on the real
     assert.equal(sy.realised.kind, 'missing');
     assert.deepEqual(sy.gaps, { 'merger-candidate': 1 });
     assert.match(r.issues.find((i) => i.ruleId === 'tax.derived-gaps')!.message, /looks like a scheme merger/);
+    // N3 (financial review): the file does not say whether the pair was a merger.
+    assert.match(r.issues.find((i) => i.ruleId === 'tax.derived-gaps')!.message, /the IRR file does not say whether it was a merger/);
+  });
+});
+
+describe('round 2c financial review V1, V2: a merger written as several rows, and a merger out of a scheme whose units are not known', () => {
+  const OLD = 'Sample Contra Fund - Regular Plan - Growth';
+  const NEW = 'Sample Small Cap Fund - Regular Plan - Growth';
+  /** Small Cap redeemed 4 May 2026, 100 u at 180 (18,000): after the switch in, so a candidate's successor. */
+  const sellNew = flow(A, NEW, [2026, 5, 4], 'Redemption', 180, 18000, { folio: 'F9' });
+  const noComputedOld = (r: DerivedRealised): void => {
+    const l = lotsOf(r, OLD);
+    assert.ok(l.length > 0 && l.every((x) => x.gap === 'merger-candidate' && x.realised.kind === 'missing' && x.saleValue.kind === 'missing'),
+      JSON.stringify(l.map((x) => [x.gap, x.realised.kind])));
+  };
+  const newIsGap = (r: DerivedRealised): void => {
+    assert.deepEqual(lotsOf(r, NEW).map((x) => [x.gap, x.mergerCandidate?.role]), [['merger-candidate', 'successor']]);
+  };
+
+  test('M1a: Contra in two folios (60 u and 40 u) switched out in two rows, two matching switch ins: no computed gain on A', () => {
+    // Folio F1: Purchase 1 Jul 2019 60 u at 100; F2: 40 u at 100. 10 Nov 2023: Switch Outs of 9,000 (60 u at 150) and
+    // 6,000 (40 u at 150), Contra's last trades, leaving 0 u after the day's switch outs; Small Cap Switch Ins of 9,000
+    // and 6,000 the same day. The day's sums: out of Contra 15,000, in to Small Cap 15,000, one partner each way: one
+    // candidate. 0e860c3 computed the 60 u row (realised 3,000): only the 40 u row emptied Contra by itself.
+    const r = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -6000, { folio: 'F1' }), flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -4000, { folio: 'F2' }),
+      flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 9000, { folio: 'F1' }), flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 6000, { folio: 'F2' }),
+      flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -9000, { folio: 'F9' }), flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -6000, { folio: 'F9' }),
+      sellNew,
+    ]);
+    noComputedOld(r);
+    assert.equal(lotsOf(r, OLD).length, 2);
+    newIsGap(r);
+    assert.equal(r.counts.mergerCandidates, 1);
+  });
+
+  test('M1b: the same two switch outs against one switch in of 15,000: a candidate, and Small Cap\'s later sale a gap', () => {
+    // 0e860c3: nothing paired; both switch outs computed (3,000 and 2,000) and the Small Cap sale computed at 3,000 on
+    // the merger-day cost.
+    const r = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -6000, { folio: 'F1' }), flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -4000, { folio: 'F2' }),
+      flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 9000, { folio: 'F1' }), flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 6000, { folio: 'F2' }),
+      flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -15000, { folio: 'F9' }),
+      sellNew,
+    ]);
+    noComputedOld(r);
+    newIsGap(r);
+    assert.equal(r.counts.mergerCandidates, 1);
+    // A partial switch in two rows (60 u of the 100 u, Contra kept) stays computed.
+    const partial = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000),
+      flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 4500), flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 4500),
+      flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -9000),
+    ]);
+    assert.deepEqual(lotsOf(partial, OLD).map((x) => x.gap), [null, null]);
+    assert.equal(partial.counts.mergerCandidates, 0);
+  });
+
+  test('M2: Contra with an unpriced purchase (units not known), switched out whole as its last trade: a candidate (V2)', () => {
+    // Purchase 1 Jul 2019 100 u at 100; Purchase 1 Jan 2020 of 5,000 with no price (units not known); Switch Out
+    // 10 Nov 2023 of 22,500 at 150, Contra's last trade; Small Cap Switch In of 22,500 the same day, the one partner.
+    // 0e860c3: realised 5,000 on the priced lot (PARTIAL, beside a purchase-without-price gap) and the Small Cap sale
+    // computed at 3,000. Now the whole switch out is one 'merger-candidate' gap and the Small Cap sale too.
+    const r = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD, [2020, 1, 1], 'Purchase', null, -5000),
+      flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 22500), flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -22500),
+      sellNew,
+    ]);
+    noComputedOld(r);
+    assert.equal(lotsOf(r, OLD).length, 1);
+    newIsGap(r);
+    // Units not known but a later trade of Contra: not its last trade, so an ordinary switch (the existing gaps apply).
+    const later = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD, [2020, 1, 1], 'Purchase', null, -5000),
+      flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 22500), flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -22500),
+      flow(A, OLD, [2024, 1, 1], 'Purchase', 150, -1500),
+    ]);
+    assert.equal(later.counts.mergerCandidates, 0);
   });
 });

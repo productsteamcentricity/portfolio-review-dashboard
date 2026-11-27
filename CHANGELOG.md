@@ -27,6 +27,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   statement shows the merger, the reconciliation reads the candidate as before (its existing merger handling is
   unchanged). The fixture's Contra to Small Cap merger (5,000 in FY 2023-24 from the IRR side) is now a gap without a
   statement. The analyst's answer needs a model field (contracts-4).
+- **After the financial review of 0e860c3 (V1 to V5, N1, N3):** a merger written as several switch rows (one per folio
+  or distributor) is a candidate: emptiness is tested after all of the day's switch outs of the scheme, and the pairing
+  is by the day's sums per scheme, exactly one partner scheme both ways (V1); when the scheme's units are not known, a
+  switch out that is its last trade with exactly one equal-sum partner is a candidate too (V2). The reconciliation reads
+  a successor's ordinary-switch lots only where the statement shows the merger in the candidate's own scheme (V3) and
+  holds the successor's scheme in the sale's year (V4). The amount tolerance is worked from the sale-value sums in whole
+  paise (V5). The oversell reason no longer says "this holding's share" when the apportionment failed (N1), and the
+  candidate texts say the IRR file does not say whether it was a merger (N3). No parity figure changed.
 - **Parity:** book `tax-r2c`, ledger TX-13, TX-14 and TXR-19 to TXR-23, with its known answers; no other expected figure
   changed.
 - **Tests:** `tests/unit/tax/{realised-irr,fifo-lots}.test.ts`, `tests/integration/realised-gains-reconcile.test.ts`,

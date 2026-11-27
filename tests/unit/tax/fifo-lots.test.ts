@@ -614,4 +614,47 @@ describe('round 2c (Gate B of 5c9ae0a F3, F4; MOD-05\'s merger condition) on the
     assert.equal(y.status, 'ok');
     near(y.lt.cmv, 9000, 'long'); near(y.lt.gain, 1500, 'gain');
   });
+
+  test('financial review V1, V2: the merger in two rows (M1b) and out of a scheme whose units are not known (M2): not split', () => {
+    // M1b: Contra in folios F1 (60 u) and F2 (40 u) at 100, switched out 10 Nov 2023 in two rows (9,000 and 6,000 at
+    // 150), one Small Cap Switch In of 15,000. Base Small Cap 100 u, invested 15,000, CMV 18,000. 0e860c3 split it long
+    // 18,000 on a lot dated at the merger; now unreconciled 'mergerCandidate', 18,000 and 3,000 unclassified.
+    const m1b = run([hold(SMALL, 'Small Cap Fund', 'Equity', 100, 15000, 18000)], [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -6000, { folio: 'F1' }), flow(OLD, [2019, 7, 1], 'Purchase', 100, -4000, { folio: 'F2' }),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 9000, { folio: 'F1' }), flow(OLD, [2023, 11, 10], 'Switch Out', 150, 6000, { folio: 'F2' }),
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -15000, { folio: 'F9' }),
+    ]);
+    const x = one(m1b, SMALL);
+    assert.equal(x.unreconciledKind, 'mergerCandidate');
+    near(x.unclassified.cmv, 18000, 'unclassified'); near(x.unclassified.gain, 3000, 'gain');
+    // M2: Contra 100 u at 100 and 5,000 with no price, switched out whole (22,500 at 150) as its last trade into Small
+    // Cap (22,500). Base 150 u, invested 22,500, CMV 27,000: 0e860c3 split it long 27,000; now 'mergerCandidate'.
+    const m2 = run([hold(SMALL, 'Small Cap Fund', 'Equity', 150, 22500, 27000)], [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(OLD, [2020, 1, 1], 'Purchase', null, -5000),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 22500), flow(SMALL, [2023, 11, 10], 'Switch In', 150, -22500),
+    ]);
+    const z = one(m2, SMALL);
+    assert.equal(z.unreconciledKind, 'mergerCandidate');
+    near(z.unclassified.cmv, 27000, 'unclassified');
+    // N3: the reason says the file does not say whether it was a merger.
+    assert.match(z.reason!, /the IRR file does not say whether it was a merger/);
+  });
+
+  test('financial review N1: when the apportionment fails, the oversell reason does not call it this holding\'s share', () => {
+    // The F3 case with D2's units blank: the lots cannot be apportioned (OD-15), so D1 is unreconciled 'apportion' with
+    // the scheme's whole oversell (50 u); its reason says that, not "this holding's share".
+    const r = run([
+      hold(MID, 'Mid Cap Fund', 'Equity', 300, 36000, 39000, { dist: D1 }),
+      hold(MID, 'Mid Cap Fund', 'Equity', null, 12000, 13000, { dist: D2 }),
+    ], [
+      flow(MID, [2024, 2, 1], 'Purchase', 100, -10000, { dist: null }),
+      flow(MID, [2024, 6, 1], 'Redemption', 100, 15000, { dist: null }),
+      flow(MID, [2025, 2, 1], 'Purchase', 120, -48000, { dist: null }),
+    ]);
+    const d1 = recsOf(r, MID).find((x) => x.baseUnits === 300)!;
+    assert.equal(d1.unreconciledKind, 'apportion');
+    near(d1.oversoldUnits, 50, 'the whole scheme\'s oversell');
+    assert.doesNotMatch(d1.reason!, /this holding's share by units/);
+    assert.match(d1.reason!, /\(50 units beyond, for the scheme's whole history: this holding's share is not known \(OD-15\)\)/);
+  });
 });
