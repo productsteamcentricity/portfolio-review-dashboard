@@ -20,9 +20,11 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { CANDIDATE_SETS, candidateKeys, refdataBlock } from '../helpers/legacy-engine.ts';
 import { firstWord, perturb } from './matching-queries.ts';
-import { matchInstrument, referenceVocabulary, type MatchOptions, type TokenCache } from '../../app/src/engine/match/instrument.ts';
+import { matchInstrument, type MatchOptions, type TokenCache } from '../../app/src/engine/match/instrument.ts';
 import { nameKey } from '../../app/src/engine/match/normalize.ts';
 import { AMFI_NAMES, type AmfiNames } from './amfi-names.ts';
+import { buildMatchContext } from '../../app/src/engine/match/resolve-holdings.ts';
+import { committedBlocks } from '../helpers/match-blocks.ts';
 
 export type ChangeKind = 'to-null' | 'from-null' | 'other-answer';
 export type Change = { set: string; measure: 'self' | 'loo' | 'amfi'; query: string; amc: string; legacy: string | null; corrected: string | null; kind: ChangeKind; correct: 'fixed' | 'regressed' | 'neither' };
@@ -101,13 +103,14 @@ export function measure(opts: MatchOptions, stride = 1): Report {
   return r;
 }
 
-/** The vocabulary of every instrument candidate set's names (normalizeV2 tokens), as the wiring builds it. In the
- * leave-one-out measure it can include a removed fund's own words from another set (its Direct twin, its risk row): the
- * guard then rejects more, never less, and the official-names measure is unaffected. */
+/** The vocabulary the page matches with: buildMatchContext's knownWords on the committed blocks, the names of the
+ * instrument universes the page carries (MF_PERF, SIF_PERF, AIF_PERF). The measure uses exactly what ships, so the
+ * vocabulary and this ledger change together when a universe joins the page. In the leave-one-out measure it includes
+ * the removed fund's own words: the guard then rejects more, never less, and the official-names measure is unaffected. */
 export function knownWordsOfReference(): ReadonlySet<string> {
-  const sets: string[][] = [];
-  for (const s of CANDIDATE_SETS) if (s.matcher === 'instrument') sets.push(candidateKeys(refdataBlock(s.universe), s));
-  return referenceVocabulary(sets);
+  const k = buildMatchContext(committedBlocks()).options.knownWords;
+  if (!k) throw new Error('the page match context carries no knownWords');
+  return k;
 }
 
 /** The corrections in the order they land; each stage is measured with everything before it switched on. */

@@ -21,6 +21,10 @@ import { deckFileName, workbookFileName } from '../views/labels.ts';
 // M3a returns (NB-03): the transactions (IRR) file reader and the returns view-model the workbook takes.
 import type { ReturnsVM } from '../views/returns-vm.ts';
 import { loadIrrFile, type LoadedIrrFile } from '../ingest/load-irr.ts';
+import { readBlock } from '../data/refdata.ts';
+import { buildMatchContext, matchLoaded, type MatchContext, type MatchReport } from '../engine/match/resolve-holdings.ts';
+import { loadMonitor, type LoadedMonitor, type MonitorBlocks, type MonitorLoadError, type MonitorSheetJS, type MonitorUploadKind } from '../ingest/load-monitor.ts';
+import type { MonitorScheme } from '../ingest/vendor/mf-monitor.ts';
 
 export type LogoAsset = { id: string; label: string; dataUri: string; widthPx: number; heightPx: number };
 export type ExportResult = { kind: 'pptx' | 'xlsx'; fileName: string; bytes: number; sha256: string; audit: Omit<AuditEntry, 'id'> };
@@ -32,7 +36,28 @@ export type Wiring = {
   now(): string;
   /** M3a returns (NB-03): reads a transactions (IRR) file; optional, so the test fakes stay valid. TODO(I-41): the IRR file joins ReviewRequest. */
   loadIrrFile?(bytes: Uint8Array, fileName: string): LoadedIrrFile | LoadError;
+  /** M2.1: the holdings matched to the reference data the page carries (E-19); absent in fakes that do not match. */
+  matchHoldings?(loaded: LoadedBaseFile, overrides?: MonitorBlocks): { loaded: LoadedBaseFile; report: MatchReport | null };
+  /** M2.1: reads an uploaded monitor (U-08, U-09, U-10); `regular` maps a Direct issue's sheets. */
+  loadMonitor?(kind: MonitorUploadKind, bytes: Uint8Array, fileName: string, regular?: Readonly<Record<string, MonitorScheme>>): LoadedMonitor | MonitorLoadError;
 };
+
+/** The match context from the page's refdata blocks, an uploaded monitor standing in for its block; built once for the
+ * embedded data, again for each set of uploads. Null when there is no fund data. */
+let pageContext: MatchContext | null | undefined;
+function pageMatchContext(overrides?: MonitorBlocks): MatchContext | null {
+  const up = overrides && (overrides.MF_PERF || overrides.SIF_PERF);
+  if (!up && pageContext !== undefined) return pageContext;
+  const mf = overrides?.MF_PERF ?? readBlock('MF_PERF');
+  const ctx = mf === null ? null : buildMatchContext({
+    MF_PERF: mf, SIF_PERF: overrides?.SIF_PERF ?? readBlock('SIF_PERF'), AIF_PERF: readBlock('AIF_PERF'), PMS_PERF: readBlock('PMS_PERF'),
+    STOCK_RET: readBlock('STOCK_RET'), FUND_RANKS_CODES: readBlock('FUND_RANKS_CODES'),
+    PRODUCT_CLASS_RULES: readBlock('PRODUCT_CLASS_RULES'), OWNER_FUND_ALIASES: readBlock('OWNER_FUND_ALIASES'),
+  });
+  if (!up) pageContext = ctx;
+  return ctx;
+}
+
 
 export function browserWiring(build: BuildStamp): Wiring {
   const now = systemClock;
@@ -50,5 +75,7 @@ export function browserWiring(build: BuildStamp): Wiring {
     now,
     // M3a returns (NB-03). TODO(I-41): the loaded IRR file becomes ReviewRequest.irr, and its returns Review.returns (computeReview)
     loadIrrFile: (bytes, fileName) => loadIrrFile(bytes, fileName, XLSX as SheetJSLike, { now }),
+    matchHoldings: (loaded, overrides) => matchLoaded(loaded, pageMatchContext(overrides)),
+    loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, XLSX as unknown as MonitorSheetJS, regular ?? readBlock('MF_PERF') ?? undefined),
   };
 }

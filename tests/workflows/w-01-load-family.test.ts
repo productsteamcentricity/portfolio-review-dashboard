@@ -21,7 +21,8 @@ import { createStore, reviewBar } from '../../app/src/ui/store.ts';
 import { ASSET_ORDER } from '../../app/src/model/review.ts';
 import { STATUS } from '../../app/src/model/status.ts';
 import { parseDayText } from '../../app/src/engine/dates.ts';
-import { buildImportReport, MATCHING_LINE } from '../../app/src/views/import-report.ts';
+import { buildImportReport } from '../../app/src/views/import-report.ts';
+import { MATCHING_NO_DATA } from '../../app/src/views/matching.ts';
 import { buildSourceRegister, ROLE_TEXT } from '../../app/src/views/source-register.ts';
 import { buildValidationPanel } from '../../app/src/views/validation-panel.ts';
 import { builtInLogos, decodeBase64, logoFromBytes } from '../../app/src/views/logo.ts';
@@ -104,7 +105,7 @@ describe('W-1: open the page, upload the base file, set the date and logo, read 
       [count['data-rows'], count['holding-rows'], count['merged-rows'], count['holdings'], count['included'], count['excluded']],
       [holdings, holdings, 0, holdings, holdings, 0]);
     assert.deepEqual([report.excluded, report.skipped, report.questions], [[], [], []]);
-    assert.equal(report.matching, MATCHING_LINE, 'the report says matching arrives in M2');
+    assert.equal(report.matching.summary, MATCHING_NO_DATA, 'without a match report the section says so');
 
     // The source register: the base file, its SHA-256 in full, client data (class N).
     const register = buildSourceRegister([loaded.source]);
@@ -203,7 +204,7 @@ describe('W-1: open the page, upload the base file, set the date and logo, read 
     assert.deepEqual(report.excluded.map((e) => [e.name, e.rows]), [[left[0], [3]], [left[1], [5]]]);
     const count = Object.fromEntries(report.counts.map((c) => [c.id, c.value]));
     assert.deepEqual([count['holdings'], count['included'], count['excluded']], [13, 11, 2]);
-    assert.equal(report.matching, MATCHING_LINE);
+    assert.equal(report.matching.summary, MATCHING_NO_DATA);
     const excluded = loaded.base.holdings.filter((h) => h.inclusion.status === 'excluded');
     assert.deepEqual(excluded.map((h) => (h.cmv.kind === 'missing' ? h.cmv.status : 'value')), [STATUS.NOT_AVAILABLE, STATUS.NOT_AVAILABLE]);
     const panel = buildValidationPanel(loaded.base.issues);

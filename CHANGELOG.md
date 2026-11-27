@@ -66,6 +66,37 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     checks). Side-by-side kit: SB-03 retired; SB-04 to SB-07 for the client-name variant case (the new build keeps exact
     client labels, D9); 16 tests.
 
+### Fixed (new build, base-file reader: the platform's full holding report)
+- **KI-300** (`app/src/ingest/base-file.ts`): a money heading that is exactly the field's (Invested Value, Market Value or
+  Current Market Value, Total Gain/Loss, with any unit in brackets) is taken before a partial match, and a heading with
+  "price" is never the invested value, nor one with the word "realized" or "realised" the gain or loss. In the platform's
+  holding report "Invested Price" and "Realized Gain/Loss" come first, and the live page reads them instead (KI-300, open
+  there). Synthetic test in the report's layout (`tests/fixtures/holding-report.ts`); base-file ledger BF-27 and BF-28.
+
+### Added (new build, M2.1 wiring for test build 1: holdings matched in section 1)
+- **Section 1 matches the base file's holdings** when the file loads (`engine/match/resolve-holdings.ts`): each holding goes to one
+  universe as the live page routes it (listed shares to STOCK_RET by ISIN or company name; LP-16's non-MF classes unmatched with
+  their class; PMS, AIF, SIF, else MF) and resolves through the crosswalk with `NEW_BUILD_MATCHING` and the owner's aliases. The
+  product class is a port of the live page's rule on PRODUCT_CLASS_RULES (`engine/match/product-class.ts`).
+- **The import report's matching section** (E-19, `views/matching.ts`) replaces the M2 placeholder: counts by how each holding
+  resolved, the non-fund classes, a "matched to a differently named fund" table and the unmatched list. Matching never blocks
+  a file.
+- **Monitor uploads** (U-08, U-09, U-10; `ingest/load-monitor.ts`, "Fund monitor files" in section 1): an MF Monitor (Regular,
+  Direct) or SIF Monitor read in the browser stands in for the embedded block and re-matches the holdings; the monitors stay when
+  the family changes.
+- The page carries five more refdata blocks through NB-04's loader (AIF_PERF, PMS_PERF, FUND_RANKS_CODES, PRODUCT_CLASS_RULES,
+  OWNER_FUND_ALIASES); the alias evidence links move to `data/owner/fund-aliases-evidence.json` (the page carries no remote URL).
+- **Product classes read LP-16b's table** (`engine/match/product-class.ts`; CHAT-008's Gate B finding B1): `nameAny` (the
+  instrument name must say it: Global Exposure is a GIFT City fund only for GIFT or IFSC, else Offshore) and `andAny` (the
+  product or the name: a bond is US-dollar only with USD, US$, US, dollar or LRS, else a rupee bond or NCD), ported from the
+  live page; LP-16b's own known answers pass. A rule with a field or class the reader does not know is skipped and named in
+  the import report, never applied loosely and never taking matching down; P2P lending is class OTHER (MOD-04, 26 Nov
+  2026), so a DEBT rule is skipped.
+- **A matching failure is said, never silent:** the file still loads and the import report shows an error card with the
+  reason, instead of every holding reading as unmatched.
+- An uploaded monitor is refused before a sheet is expanded when the sheet's declared range exceeds the cell limit; an
+  uploaded monitor's names also rebuild the matcher's known words, a vocabulary the ledger has not measured.
+
 ### Added (new build, M2.1 sprint 2a: matcher corrections, opt-in; not wired into the page yet)
 - **Owner fund aliases** (`data/owner/fund-aliases.json`, `engine/match/owner-aliases.ts`; KI-050, PD-36): the 16 renames the
   owner approved on 25 Nov 2026, each with public evidence and Regular and Direct targets; line 17 applies only to names
