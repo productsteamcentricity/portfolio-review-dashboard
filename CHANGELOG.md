@@ -23,6 +23,24 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   KA-13, KA-15, KA-18 and KA-20 to KA-22 and the reconcile cases through the seam; each part equal to its module called
   directly; order independence; no client name or amount in an issue; no clock or browser global). No engine module
   changed.
+- **After the financial review of 75561f0 (F-1 to F-5, N-2):**
+  - **F-1 (Q-52, the seam):** the harvest reads the statement's exemption already used only for a client whose as-on
+    year realised figure is the statement's, known and complete. A PARTIAL figure (the IRR file shows sales the
+    statement leaves out, or a lot's gain is unknown) or a missing one means "exemption not applied", with a label; the
+    analyst's entry still comes first. The reviewer's book: tax before 112.50 (75561f0: 0).
+  - **F-2 (`holdings-rollup.ts`, the seam):** without an IRR file the roll-up's legacy `tax.unrealised.{st,lt}` is NOT
+    AVAILABLE, never Rs 0, and a record not split has no contract `TaxPosition` (its long-term gain would read 0).
+  - **F-3 (`holdings-rollup.ts`, `harvest.ts`):** holdings unreconciled with the IRR file make the legacy unrealised
+    figures and the harvest (per client and the family) PARTIAL COVERAGE, with the count left out and a label
+    (`unreconciled`).
+  - **F-4 (`reconcile.ts`):** a client-year with a counted gain whose term is not known gives its long and short figures
+    as NOT AVAILABLE (the total and the unknown-term figure stand); the family's long and short are then PARTIAL.
+  - **F-5:** wiring tests on hand-set inputs (the classify context, the as-on boundary, the repeat evidence, the derived
+    issues; deep equality for the no-IRR and no-statement sets) kill the reviewer's 8 surviving mutants.
+  - **N-2:** the seam's Warning `tax.statement-after-as-on` (counts only) when statement lots are sold after the as-on
+    date: they count as stated while the IRR side leaves later trades out (owner question).
+  - No parity figure changed. Tests: `tests/integration/review-tax.test.ts` (49),
+    `tests/integration/realised-gains-reconcile.test.ts`, and `tests/unit/tax/{harvest,holdings-rollup}.test.ts`.
 
 ### Changed (new build, M7a tax engine, round 2c: Gate B of 5c9ae0a F1 to F4 and merger candidates; not wired into the page yet)
 - **Q-49 throughout: a gap is named, never estimated.** The owner has not said how the IRR export writes mergers,

@@ -26,6 +26,8 @@
 //     person-year `exemption.applied` (rollup.ts `values.exemptionApplied`) of the as-on financial year for the person
 //     whose only review client is this client. Otherwise the result is labelled "exemption not applied" and no exemption
 //     enters the tax figures. The live assumed Rs 0 used.
+// M7b financial review F-3: the client's holdings not split because they are unreconciled with the IRR file are left out
+// of the pools as before, but now counted (`unreconciled`) and the figures marked PARTIAL with them, with a label.
 // The exemption limit is the as-on year's threshold of table v1 (data/owner/tax-rules.json §10.2: Rs 1,25,000 from FY
 // 2024-25); a year whose exemption is to be confirmed applies none ("exemption not applied").
 // Money in rupees, unrounded (the live works in Crore: the same figures x 1e7). Pure.
@@ -163,6 +165,8 @@ export type HarvestLocal = Omit<HarvestResult, 'clientId'> & {
   candidateDetail: HarvestCandidate[];
   /** Split holdings of the client whose gain is unknown (no invested value): left out of the pools (PARTIAL). */
   gainUnknown: number;
+  /** Holdings of the client not split, unreconciled with the IRR file: left out of the pools (PARTIAL; M7b F-3). */
+  unreconciled: number;
   /** DATA_DICTIONARY §6 `tax.harvestableLoss[p]`: the candidates' losses (long plus short term). */
   harvestableLoss: number;
   labels: string[];
@@ -183,6 +187,8 @@ export type FamilyHarvest = {
   /** Clients whose exemption is not applied (Q-52). */
   exemptionNotApplied: number;
   gainUnknown: number;
+  /** Holdings not split, unreconciled with the IRR file, over the clients (PARTIAL; M7b F-3). */
+  unreconciled: number;
 };
 
 /** The statement roll-up as the harvest reads it (rollup.ts RollupResult or RollupOutput). */
@@ -359,11 +365,16 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
     }))
     .sort((a, b) => (b.ltLoss + b.stLoss) - (a.ltLoss + a.stLoss));
   const gainUnknown = client.byClass.reduce((s, g) => s + g.gainUnknown, 0);
+  // M7b financial review F-3: the client's holdings not split because the IRR file does not reconcile them are left out
+  // of the pools too, so the figures are PARTIAL with them (never read as complete).
+  const unreconciled = client.unreconciled.length;
   const p: Provenance = prov ?? { sources: [], method: 'tax-loss harvest per client (E-43)' };
-  const note = gainUnknown > 0 ? `; ${STATUS.PARTIAL}: ${gainUnknown} holding${gainUnknown === 1 ? '' : 's'} with an unknown gain left out of the pools` : '';
+  const leftOut = [gainUnknown > 0 ? `${gainUnknown} holding${gainUnknown === 1 ? '' : 's'} with an unknown gain` : null,
+    unreconciled > 0 ? `${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (unreconciled with the IRR file)` : null].filter((x): x is string => x !== null);
+  const note = leftOut.length ? `; ${STATUS.PARTIAL}: ${leftOut.join(' and ')} left out of the pools` : '';
   const val = (x: number | null, what: string): Value<number> => (x === null
     ? missing(STATUS.NOT_AVAILABLE, `${SLAB_NOT_SET}: the ${what} depends on the order of set-off against slab-rate gains`, p)
-    : present(x, 'inr', { ...p, method: `${p.method}; ${what}${note}` }, gainUnknown > 0 ? { coverage: coverageOf(client, gainUnknown) } : undefined));
+    : present(x, 'inr', { ...p, method: `${p.method}; ${what}${note}` }, leftOut.length ? { coverage: coverageOf(client, gainUnknown, unreconciled) } : undefined));
   const labels = [...HARVEST_BASE_LABELS];
   if (!applied) labels.push(EXEMPTION_NOT_APPLIED);
   else if (known.source === 'statement') labels.push('exemption already used read from the capital-gains statement; gains outside the statement are not included');
@@ -373,6 +384,7 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   if (dash !== null) labels.push(`${SLAB_NOT_SET}: the figures after set-off depend on the slab rate`);
   if (c.nsoGain + c.nsoLoss > EPS) labels.push('crypto kept out of set-off (PD-03)');
   if (gainUnknown > 0) labels.push(`${gainUnknown} holding${gainUnknown === 1 ? '' : 's'} with an unknown gain left out (${STATUS.PARTIAL})`);
+  if (unreconciled > 0) labels.push(`${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (unreconciled with the IRR file) left out (${STATUS.PARTIAL})`);
   const pools: HarvestPool[] = c.pools.map((x) => ({
     term: x.b, cls: x.cls, clientId: client.clientId, gross: x.gross, left: dash === null ? x.left : null, rate: x.rate, label: x.label,
     s198: x.s198, noSetOff: x.noSetOff,
@@ -389,16 +401,20 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
     usedLosses: { st: figures.stUsed ?? 0, lt: figures.ltUsed ?? 0 },
     unusedLosses: { st: figures.stUnused ?? 0, lt: figures.ltUnused ?? 0 },
     unquantifiedPools: slabP.map((x) => `${x.cls}, ${x.b === 'LT' ? 'long term' : 'short term'}`),
-    pools, candidateDetail, gainUnknown,
+    pools, candidateDetail, gainUnknown, unreconciled,
     harvestableLoss: candidateDetail.reduce((s, x) => s + x.ltLoss + x.stLoss, 0),
     labels,
   };
 }
 
-/** The share of a client's split holdings whose gain is known (the coverage of a PARTIAL harvest figure). */
-function coverageOf(client: ClientTaxSummary, unknown: number): number {
+/**
+ * The coverage of a PARTIAL harvest figure: the client's split holdings whose gain is known, over the split holdings and
+ * the holdings not split because unreconciled with the IRR file (F-3; `unreconciled` 0 gives the round 2 share).
+ */
+function coverageOf(client: ClientTaxSummary, unknown: number, unreconciled = 0): number {
   const split = client.positions.filter((r) => r.notSplit === null && r.splitPart !== 'pre-2023').length;
-  return split > 0 ? Math.max(0, Math.min(1, (split - unknown) / split)) : 0;
+  const base = split + unreconciled;
+  return base > 0 ? Math.max(0, Math.min(1, (split - unknown) / base)) : 0;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -414,9 +430,16 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
   const fp: Provenance = { ...p, method: `${p.method}; family: ${FAMILY_LABEL}` };
   const dashed = list.filter((h) => h.afterSetOffDash !== null).length;
   const gainUnknown = list.reduce((s, h) => s + h.gainUnknown, 0);
+  const unreconciled = list.reduce((s, h) => s + h.unreconciled, 0);
+  // F-3: holdings not split (unreconciled with the IRR file) make the family figure PARTIAL, with the lowest client coverage.
+  const familyNote = [gainUnknown > 0 ? `${gainUnknown} holdings with an unknown gain` : null,
+    unreconciled > 0 ? `${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (unreconciled with the IRR file)` : null].filter((x): x is string => x !== null);
+  const familyCoverage = Math.min(1, ...list.map((h) => (h.taxBefore.kind === 'value' ? h.taxBefore.coverage ?? 1 : 1)));
   const v = (x: number | null, what: string): Value<number> => (x === null
     ? missing(STATUS.NOT_AVAILABLE, `${SLAB_NOT_SET} for ${dashed} client${dashed === 1 ? '' : 's'}: the family ${what} is not available`, fp)
-    : present(x, 'inr', gainUnknown > 0 ? { ...fp, method: `${fp.method}; ${STATUS.PARTIAL}: ${gainUnknown} holdings with an unknown gain left out` } : fp));
+    : familyNote.length === 0 ? present(x, 'inr', fp)
+      : present(x, 'inr', { ...fp, method: `${fp.method}; ${STATUS.PARTIAL}: ${familyNote.join(' and ')} left out` },
+        unreconciled > 0 ? { coverage: familyCoverage } : undefined));
   return {
     label: FAMILY_LABEL, byClient: [...list], figures,
     taxBefore: v(figures.taxBefore, 'tax before harvesting'), taxAfter: v(figures.taxAfter, 'tax after harvesting'), saving: v(figures.saving, 'saving'),
@@ -424,7 +447,7 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
     candidates: list.flatMap((h) => h.candidateDetail).sort((a, b) => (b.ltLoss + b.stLoss) - (a.ltLoss + a.stLoss)),
     exRate: list.reduce((m, h) => Math.max(m, h.exRate), 0),
     exemptionNotApplied: list.filter((h) => h.exemptionApplied === EXEMPTION_NOT_APPLIED).length,
-    gainUnknown,
+    gainUnknown, unreconciled,
   };
 }
 

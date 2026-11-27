@@ -9,7 +9,10 @@
 //   2. rollupHoldings (holdings-rollup.ts): by class, product, asset, client and family;
 //   3. buildHarvests (harvest.ts): per client and the family sum; the exemption already used (Q-52, exemptionUsedFor) is
 //      the analyst's entry, else the statement's person-year `values.exemptionApplied` of the as-on financial year,
-//      else not applied and labelled "exemption not applied" (PLAN-07 section 5, as round 2 built it);
+//      else not applied and labelled "exemption not applied" (PLAN-07 section 5, as round 2 built it). Financial review
+//      F-1: the statement's figure is offered only for a client whose as-on-year realised figure (realisedForYear) is the
+//      statement's, known and complete; a PARTIAL figure (the IRR file shows sales the statement leaves out, or a lot's
+//      gain is unknown) or a missing one is not known, so the exemption is not applied, with a label (`statementForHarvest`);
 //   4. deriveRealisedGains (realised-irr.ts): realised gains derived from the IRR file (the base file's holdings given,
 //      so the term and the review's clients are known);
 //   5. realiseLots (realised.ts) and rollupPersonYears (rollup.ts): the statement's lots and person-year tax;
@@ -20,18 +23,24 @@
 // Missing inputs (Q-49: never a figure from a missing input). A part that needs an input is a labelled missing value
 // (`TaxPart`, a MissingValue naming the input) when the input is absent:
 //   - no IRR file: computeTaxLots runs on no flow, so every holding is unreconciled 'noLots' (its CMV and gain
-//     unclassified, the class shown); the unrealised long and short gains, the harvest and the derived gains are missing;
+//     unclassified, the class shown); the unrealised long and short gains (here and in the roll-up's legacy figures,
+//     F-2), the harvest and the derived gains are missing; an IRR file that reconciles only some holdings makes the
+//     unrealised split and the harvest PARTIAL with the count left out (F-3, holdings-rollup.ts and harvest.ts);
 //   - no statement: the person-year tax and the repeat evidence are missing; `realisedFY` is the derived figure, labelled;
 //   - neither: the holdings' classes only; every other part is missing, `realisedFY` included.
 // Financial years shown (PLAN-07 section 5): those with a sale in either input (a statement lot or a derived lot, gap
 // lots included), up to the as-on financial year. Issues: every step's ValidationResults, de-duplicated by rule and scope
 // (the first kept), ordered by severity then rule, and numbered `${ruleId}:${n}` so each id is unique in the list. The
-// readers' own issues stay with their uploads. Pure: no global, no I/O, and the clock only through `opts.now` (the audit
-// entries of the statement steps).
+// readers' own issues stay with their uploads, except one seam Warning (financial review N-2, counts only):
+// `tax.statement-after-as-on` when statement lots are sold after the as-on date, which are counted as stated while the
+// IRR side leaves its later trades out (the rule itself is an owner question). Pure: no global, no I/O, and the clock
+// only through `opts.now` (the audit entries of the statement steps).
 //
 // TODO(I-41): this output becomes Review.tax and this function is called from computeReview
 // TODO(contracts-4): TaxPosition gains become nullable (I-37 notes item 10); `positions[].position` is null until then
-//   whenever a gain is unknown, and the engine's TaxPositionRecord carries the figures
+//   whenever the record's long or short gain is not known: an unknown gain (KI-007), and every record not split
+//   (unreconciled, unmapped, not split by law, fund level), whose contract form would read a long-term gain of 0 (F-2);
+//   the engine's TaxPositionRecord carries the figures
 // TODO(contracts-4): HarvestResult takes the HarvestLocal lines and a null clientId (item 11)
 // TODO(contracts-4): GainSource gets the mixed family source, a 'derived-not-taxed' reason, and tax.realisedFY its
 //   unknown term and per-client entries (item 12; reconcile.ts MIXED_SOURCE and RealisedFY meanwhile)
@@ -43,7 +52,7 @@
 import type { Holding } from '../../model/holding.ts';
 import type { IrrFileImport } from '../../model/transactions.ts';
 import type { FyStart, TaxInputs, TaxPosition } from '../../model/tax.ts';
-import type { SourceFileId } from '../../model/ids.ts';
+import type { ClientId, SourceFileId } from '../../model/ids.ts';
 import type { DayNumber, MissingValue, Value } from '../../model/value.ts';
 import type { AuditEntry } from '../../model/audit.ts';
 import type { ValidationResult } from '../../model/validation.ts';
@@ -205,6 +214,49 @@ export function yearsShown(derived: DerivedRealised | null, realised: RealiseRes
   return [...ys].filter((y) => y <= asOnFy).sort((a, b) => a - b);
 }
 
+/** F-1: why the statement's exemption already used is withheld from the harvest (Q-52). */
+export const WITHHELD_REASON = 'the as-on year\'s realised figure of this client is PARTIAL or not known (the IRR file shows sales the capital-gains statement leaves out, a statement lot has an unknown gain, or the year is INSUFFICIENT EVIDENCE), so the exemption already used is not known (Q-52)';
+/** F-1: the label of a harvest whose statement exemption was withheld. */
+export const EXEMPTION_WITHHELD = 'exemption not applied: the as-on year\'s realised figure is PARTIAL or not known, so the exemption already used is not known (Q-52)';
+
+/**
+ * F-1 (Q-52): the statement's person-years as the harvest reads them. In the as-on year, a review person's
+ * `values.exemptionApplied` stays only when that client's as-on-year realised figure (realisedForYear) is the statement's,
+ * present and complete (no coverage mark); otherwise it becomes a missing value with WITHHELD_REASON, so the harvest
+ * applies no exemption for the client (unless the analyst entered one). No figure is changed or added.
+ */
+export function statementForHarvest(years: readonly RollupFamilyYear[], asOnFy: FyStart, asOnRealised: RealisedFY | null):
+  { years: RollupFamilyYear[]; withheld: ClientId[] } {
+  const withheld: ClientId[] = [];
+  const out = years.map((y) => (y.fy !== asOnFy ? y : {
+    ...y,
+    persons: y.persons.map((p) => {
+      if (!p.inReview || p.clientId === null || p.values.exemptionApplied.kind === 'missing') return p;
+      const c = asOnRealised?.clients.find((x) => x.clientId === p.clientId);
+      if (c !== undefined && c.source === 'statement' && c.total.kind === 'value' && c.total.coverage === undefined) return p;
+      withheld.push(p.clientId);
+      return { ...p, values: { ...p.values, exemptionApplied: missing(STATUS.NOT_AVAILABLE, WITHHELD_REASON) } };
+    }),
+  }));
+  return { years: out, withheld };
+}
+
+/**
+ * Financial review N-2 (a label, counts only; the rule is an owner question): statement lots sold after the as-on date
+ * count as stated in their year's realised figure and in the exemption already used, while the IRR side leaves its
+ * trades after the as-on date out.
+ */
+export function afterAsOnIssue(realised: Pick<RealiseResult, 'gains'>, asOnDay: DayNumber, sourceId: SourceFileId): ValidationResult[] {
+  const n = realised.gains.filter((g) => g.saleDate > asOnDay).length;
+  if (n === 0) return [];
+  const one = n === 1;
+  return [{
+    id: 'tax.statement-after-as-on:1', ruleId: 'tax.statement-after-as-on', scope: { kind: 'file', sourceId },
+    message: `${n} ${one ? 'lot' : 'lots'} of the capital-gains statement ${one ? 'is' : 'are'} sold after the review's as-on date: ${one ? 'it is' : 'they are'} counted as stated in ${one ? 'its' : 'their'} year's realised figure and in the exemption already used, while sales in the IRR file after the as-on date are left out. Whether to count them is an owner question.`,
+    severity: 'Warning', blocksPublication: false, resolution: 'none', status: 'open', decision: 'E-141', count: n,
+  }];
+}
+
 /** The tax of a review over the accepted IRR file and capital-gains statement, either or both absent. Pure. */
 export function reviewTax(input: ReviewTaxInput, opts: ReviewTaxOptions): ReviewTax {
   const { holdings, asOnDay, irr, statement, inputs, classifyContext } = input;
@@ -228,23 +280,33 @@ export function reviewTax(input: ReviewTaxInput, opts: ReviewTaxOptions): Review
     };
   }
 
-  // 3. The harvest (Q-52: the analyst's entry, else the statement's person-year of the as-on year, else not applied).
-  const harvest = irr
-    ? value(buildHarvests(rollup, {
-      asOn: asOnDay,
-      inputs: { personYear: inputs.personYear, exemptionUsed: inputs.exemptionUsed },
-      statement: stmt ? { years: stmt.years } : null,
-    }))
-    : na(MISSING_TEXT.harvest);
-
-  // 4. The realised gains derived from the IRR file.
+  // 4. The realised gains derived from the IRR file (before the harvest, for F-1's as-on-year figure).
   const derived = irr ? deriveRealisedGains(irr.fund, { holdings, asOn: asOnDay, classifyContext, sourceId: irr.sourceId }) : null;
 
-  // 6. The reconciliation; 7. the realised figure of each year shown; 8. the repeat evidence.
-  const reconciliation = derived && side ? reconcileRealised(derived, side) : null;
+  // 7. The realised figure of each year shown.
   const years = yearsShown(derived, stmt?.realised ?? null, fy);
-  const realisedFY = derived || side ? value(years.map((y) => realisedForYear(y, derived, side))) : na(MISSING_TEXT.realisedFY);
+  const fyFigures = derived || side ? years.map((y) => realisedForYear(y, derived, side)) : null;
+
+  // 3. The harvest (Q-52: the analyst's entry, else the statement's person-year of the as-on year where the as-on year's
+  // realised figure is known and complete (F-1), else not applied).
+  let harvest: TaxPart<ReviewTaxHarvest> = na(MISSING_TEXT.harvest);
+  if (irr) {
+    const offered = stmt ? statementForHarvest(stmt.years, fy, fyFigures?.find((y) => y.fy === fy) ?? null) : null;
+    const h = buildHarvests(rollup, {
+      asOn: asOnDay,
+      inputs: { personYear: inputs.personYear, exemptionUsed: inputs.exemptionUsed },
+      statement: offered ? { years: offered.years } : null,
+    });
+    // The label of a client whose statement figure was withheld and who has no analyst entry (labels only, no figure).
+    for (const c of h.clients) if (c.clientId !== null && c.exemption.source === null && offered?.withheld.includes(c.clientId)) c.labels.push(EXEMPTION_WITHHELD);
+    harvest = value(h);
+  }
+
+  // 6. The reconciliation; 8. the repeat evidence.
+  const reconciliation = derived && side ? reconcileRealised(derived, side) : null;
+  const realisedFY = fyFigures ? value(fyFigures) : na(MISSING_TEXT.realisedFY);
   const evidence = statement ? value(repeatEvidence(statement, irr, holdings, asOnDay)) : missing(STATUS.NOT_APPLICABLE, MISSING_TEXT.repeatEvidence);
+  const late = statement && stmt ? afterAsOnIssue(stmt.realised, asOnDay, statement.sourceId) : [];
 
   const absent = [irr ? null : NO_IRR, statement ? null : NO_STATEMENT].filter((x): x is string => x !== null);
   return {
@@ -259,7 +321,8 @@ export function reviewTax(input: ReviewTaxInput, opts: ReviewTaxOptions): Review
     },
     holdings: {
       lots,
-      positions: records.map((record) => ({ record, position: toTaxPosition(record) })),
+      // F-2: the contract form only where the long and short gains are known (a record not split would read 0).
+      positions: records.map((record) => ({ record, position: record.lt.gain !== null && record.st.gain !== null ? toTaxPosition(record) : null })),
       rollup,
       unrealised: irr ? rollup.legacy.unrealised : { st: na(MISSING_TEXT.unrealised), lt: na(MISSING_TEXT.unrealised) },
     },
@@ -269,6 +332,6 @@ export function reviewTax(input: ReviewTaxInput, opts: ReviewTaxOptions): Review
     reconciliation: reconciliation ? value(reconciliation) : na(MISSING_TEXT.reconciliation(irr !== null, statement !== null)),
     realisedFY,
     repeatEvidence: evidence,
-    issues: mergeIssues([stmt?.realised.issues ?? [], stmt?.issues ?? [], derived?.issues ?? [], reconciliation?.issues ?? []]),
+    issues: mergeIssues([stmt?.realised.issues ?? [], stmt?.issues ?? [], derived?.issues ?? [], reconciliation?.issues ?? [], late]),
   };
 }

@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MISSING_TEXT, NO_IRR, NO_STATEMENT, mergeIssues, reviewTax, yearsShown } from '../../app/src/engine/tax/review-tax.ts';
+import { EXEMPTION_WITHHELD, MISSING_TEXT, NO_IRR, NO_STATEMENT, WITHHELD_REASON, mergeIssues, reviewTax, statementForHarvest, yearsShown } from '../../app/src/engine/tax/review-tax.ts';
 import type { ReviewTax, ReviewTaxInput, TaxPart } from '../../app/src/engine/tax/review-tax.ts';
 import { computeTaxLots } from '../../app/src/engine/tax/lots.ts';
 import { rollupHoldings } from '../../app/src/engine/tax/holdings-rollup.ts';
@@ -564,5 +564,216 @@ describe('order independence, messages, purity', () => {
     assert.deepStrictEqual(out, ALL);
     const src = fs.readFileSync(path.join(ROOT, 'app/src/engine/tax/review-tax.ts'), 'utf8');
     assert.doesNotMatch(src, /Date\.now|new Date\(|\b(window|document|globalThis|localStorage|sessionStorage|indexedDB)\./);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// The financial review of 75561f0 (FIN-REVIEW-M7b-TAX-SEAM.md): F-1 to F-5 and N-2, on the reviewer's book
+
+describe('financial review of 75561f0: the reviewer\'s book (KA-P1, KA-P2, P3, P6)', () => {
+  // A holds Bluechip 60 u (the 10 Jun 2024 lot at 125 left: invested 7,500), CMV 8,400. The IRR file: Bluechip as
+  // irr-realised; A's Flexi Cap bought 1 Apr 2023 200 u at 50, all sold 1 Jun 2026 at 700 (1,40,000; no holding left);
+  // C (no holding) buys Contra 1 Jul 2019 100 u at 100 and sells all 1 Jun 2023 at 120. A's statement: the two Bluechip
+  // FIFO lots of 15 Mar 2025 and a Value lot sold 4 May 2026 (3,000 long).
+  const CLIENT_C = 'Sample Client C';
+  const P_HOLD = baseOf([hold(CLIENT_A, SCHEME.BLUE, 'Large Cap Fund', 60, 7500, 8400)]);
+  const PA = idOf(P_HOLD, CLIENT_A);
+  const P_IRR = irrImport([
+    flow(CLIENT_A, SCHEME.BLUE, [2024, 1, 10], 'SIP', 100, -10000),
+    flow(CLIENT_A, SCHEME.BLUE, [2024, 6, 10], 'SIP', 125, -10000),
+    flow(CLIENT_A, SCHEME.BLUE, [2025, 3, 15], 'Redemption', 132, 15840),
+    flow(CLIENT_A, SCHEME.FLEXI, [2023, 4, 1], 'Purchase', 50, -10000),
+    flow(CLIENT_A, SCHEME.FLEXI, [2026, 6, 1], 'Redemption', 700, 140000),
+    flow(CLIENT_C, SCHEME.OLD, [2019, 7, 1], 'Purchase', 100, -10000),
+    flow(CLIENT_C, SCHEME.OLD, [2023, 6, 1], 'Redemption', 120, 12000),
+  ], xlsx);
+  const P_LOTS: KaLot[] = [
+    { scheme: SCHEME.BLUE, asset: 'Equity', category: 'Large Cap Fund', folio: '91600001', buy: [2024, 1, 10], sell: [2025, 3, 15], units: 100, buyNav: 100, sellNav: 132 },
+    { scheme: SCHEME.BLUE, asset: 'Equity', category: 'Large Cap Fund', folio: '91600001', buy: [2024, 6, 10], sell: [2025, 3, 15], units: 20, buyNav: 125, sellNav: 132 },
+    VALUE_2026,
+  ];
+  const P_STMT = statementFor(P_LOTS, P_HOLD);
+  const p = (o: Partial<ReviewTaxInput> = {}): ReviewTax => reviewTax({ holdings: P_HOLD, asOnDay: AS_ON_DAY, irr: P_IRR, statement: P_STMT, inputs: emptyTaxInputs(), ...o }, { now: NOW });
+
+  test('F-1 (KA-P1): a PARTIAL as-on year withholds the statement\'s exemption: "exemption not applied", tax before 112.50', () => {
+    // Tax year 2026-27 for A: the statement covers A (Value, 3,000 long) but not the Flexi Cap sale the IRR file shows
+    // (derived 1,30,000), so A's realised figure is the statement's, PARTIAL (coverage 1 / 2): the exemption already used
+    // is not known. The harvest applies none: Sec 198 gain 900 (8,400 less 7,500) x 12.5% = 112.50 before and after,
+    // labelled. 75561f0 read the statement's 3,000 as the whole year's: available 1,22,000, tax 0.
+    const t = p();
+    const a = fyOf(t, 2026).clients.find((c) => c.clientId === PA)!;
+    assert.equal(a.source, 'statement');
+    assert.equal(a.total.kind === 'value' ? a.total.coverage : -1, 0.5);
+    const h = harvestOf(t, PA);
+    assert.equal(h.exemptionApplied, EXEMPTION_NOT_APPLIED);
+    assert.equal(h.exemption.source, null);
+    near(h.exemption.available, 0, 'available');
+    near(h.figures.taxBefore, 112.5, 'before'); near(h.figures.taxAfter, 112.5, 'after');
+    assert.ok(h.labels.includes(EXEMPTION_WITHHELD));
+    assert.equal(h.exemption.reason, `the statement's exemption used is not available: ${WITHHELD_REASON}`);
+  });
+
+  test('F-1: the analyst\'s entry still comes first; a complete statement year is still read', () => {
+    // The analyst enters 3,000 used for A in Tax year 2026-27: available 1,22,000 covers the 900, tax 0, source analyst,
+    // no withheld label. (The seam's own book, where the statement covers A's whole year, keeps source 'statement'.)
+    const inputs: TaxInputs = { ...emptyTaxInputs(), exemptionUsed: [{ clientId: PA, fy: 2026, amount: 3000 }] };
+    const h = harvestOf(p({ inputs }), PA);
+    assert.equal(h.exemption.source, 'analyst');
+    near(h.exemption.available, 122000, 'available'); near(h.figures.taxBefore, 0, 'before');
+    assert.ok(!h.labels.includes(EXEMPTION_WITHHELD));
+    assert.equal(harvestOf(ALL, A_ID).exemption.source, 'statement');
+    // statementForHarvest itself: only the as-on year's review persons whose figure is not complete are withheld.
+    const st = part(p().statement, 'statement');
+    const off = statementForHarvest(st.years, 2026, fyOf(p(), 2026));
+    assert.deepEqual(off.withheld, [PA]);
+    assert.deepStrictEqual(off.years.filter((y) => y.fy !== 2026), st.years.filter((y) => y.fy !== 2026));
+    assert.deepEqual(statementForHarvest(st.years, 2026, null).withheld, [PA]);
+  });
+
+  test('F-4 (KA-P2, no statement): long and short are missing when a counted gain\'s term is unknown; the total stands', () => {
+    // Tax year 2026-27, derived: the Flexi Cap sale (1,40,000 less 10,000 = 1,30,000) joins no holding, so its term is
+    // not known: unknown term 1,30,000, total 1,30,000, long and short NOT AVAILABLE (75561f0: present 0 and 0). FY
+    // 2024-25 (Bluechip, terms known): long 3,200, short 140.
+    const t = p({ statement: null });
+    const y26 = fyOf(t, 2026);
+    near(v(y26.total), 130000, 'total'); near(v(y26.unknownTerm), 130000, 'unknown term');
+    for (const x of [y26.lt, y26.st, y26.clients[0]!.lt, y26.clients[0]!.st]) assert.equal(x.kind, 'missing');
+    assert.match((y26.clients[0]!.lt as { reason: string }).reason, /^the term of 1 counted lot is not known/);
+    const y24 = fyOf(t, 2024);
+    near(v(y24.lt), 3200, '2024 lt'); near(v(y24.st), 140, '2024 st');
+    near(harvestOf(t, PA).figures.taxBefore, 112.5, 'harvest without a statement');
+  });
+
+  test('F-5: the derived issues reach the seam\'s list (tax.derived-term-unknown)', () => {
+    // A's Flexi Cap and C's Contra join no holding: two schemes with sales whose term is not known, an Information result.
+    for (const t of [p(), p({ statement: null })]) {
+      const i = t.issues.find((x) => x.ruleId === 'tax.derived-term-unknown');
+      assert.ok(i, 'derived-term-unknown');
+      assert.equal(i!.severity, 'Information'); assert.equal(i!.count, 2);
+    }
+  });
+
+  test('F-2 (P3, P4): without an IRR file no unrealised figure reads Rs 0, and no record shows a long-term gain of 0', () => {
+    for (const t of [p({ irr: null }), p({ irr: null, statement: null })]) {
+      for (const x of [t.holdings.rollup.legacy.unrealised.st, t.holdings.rollup.legacy.unrealised.lt, t.holdings.unrealised.st, t.holdings.unrealised.lt]) {
+        assert.equal(x.kind, 'missing');
+      }
+      assert.match((t.holdings.rollup.legacy.unrealised.lt as { reason: string }).reason, /^no holding is split into long and short term: 1 holding not split/);
+      for (const r of t.holdings.positions) { assert.equal(r.record.status, 'unreconciled'); assert.equal(r.position, null); }
+    }
+    // With the IRR file the split record keeps its contract form.
+    assert.ok(p().holdings.positions.every((r) => r.position !== null));
+  });
+
+  test('F-3 (P6): an IRR file covering one of two holdings makes the unrealised split and the harvest PARTIAL', () => {
+    // A also holds Focused 50 u (invested 1,000, CMV 6,000), which the IRR file does not cover: unreconciled noLots. The
+    // unrealised long gain stays 900 (Bluechip) but PARTIAL: 1 of 2 holdings split, coverage 0.5. The harvest: tax before
+    // 112.50 on the 900, PARTIAL (coverage 0.5), labelled; the family sum too. 75561f0: both complete, no label.
+    const hs = baseOf([hold(CLIENT_A, SCHEME.BLUE, 'Large Cap Fund', 60, 7500, 8400), hold(CLIENT_A, SCHEME.FOCUSED, 'Focused Fund', 50, 1000, 6000)]);
+    const t = reviewTax({ holdings: hs, asOnDay: AS_ON_DAY, irr: P_IRR, statement: null, inputs: emptyTaxInputs() }, { now: NOW });
+    assert.equal(recOf(t, SCHEME.FOCUSED).record.unreconciledKind, 'noLots');
+    const lt = t.holdings.unrealised.lt;
+    near(v(lt), 900, 'unrealised lt');
+    assert.equal(lt.kind === 'value' ? lt.coverage : -1, 0.5);
+    assert.match(lt.kind === 'value' ? lt.prov.method : '', /PARTIAL COVERAGE: 1 holding not split \(unreconciled with the IRR file\) left out/);
+    const h = harvestOf(t, idOf(hs, CLIENT_A));
+    near(h.figures.taxBefore, 112.5, 'before');
+    assert.equal(h.unreconciled, 1);
+    assert.equal(h.taxBefore.kind === 'value' ? h.taxBefore.coverage : -1, 0.5);
+    assert.ok(h.labels.includes('1 holding not split (unreconciled with the IRR file) left out (PARTIAL COVERAGE)'));
+    const fam = part(t.harvest, 'harvest').family;
+    assert.equal(fam.unreconciled, 1);
+    assert.equal(fam.taxBefore.kind === 'value' ? fam.taxBefore.coverage : -1, 0.5);
+  });
+});
+
+describe('financial review of 75561f0, F-5: wiring known answers on hand-set inputs', () => {
+  test('the classify context reaches the lots and the derivation (an AIF whose category only the reference data gives)', () => {
+    // A holds "Sample Special Situations AIF" (product AIF, no category in the base file): without reference data it is a
+    // Category I or II AIF by assumption (pass-through, not split); the classify context names the matched AIF_PERF entry
+    // as Category III, so it is "Equity AIF Cat III (Listed Equity)", at fund level. The IRR file buys it 1 Jan 2024
+    // (1,000 u at 100) and redeems 200 u at 120 on 1 Jun 2025: the derived lot's I-21 class follows the same context.
+    const AIF = 'Sample Special Situations AIF';
+    const hs = baseOf([hold(CLIENT_A, AIF, 'Others', 800, 80000, 96000, { product: 'AIF', amc: 'Sample Advisors' })]);
+    const irr = irrImport([flow(CLIENT_A, AIF, [2024, 1, 1], 'Purchase', 100, -100000), flow(CLIENT_A, AIF, [2025, 6, 1], 'Redemption', 120, 24000)], xlsx);
+    const ctx = (h: Holding) => (h.product === 'AIF' ? { aifEntry: { key: h.instrumentName, category: 'Category III' } } : {});
+    const run2 = (classifyContext?: ReviewTaxInput['classifyContext']): ReviewTax =>
+      reviewTax({ holdings: hs, asOnDay: AS_ON_DAY, irr, statement: null, inputs: emptyTaxInputs(), classifyContext }, { now: NOW });
+    const withCtx = run2(ctx);
+    assert.equal(recOf(withCtx, AIF).record.taxRule, INST.equityAif3Listed);
+    assert.equal(recOf(withCtx, AIF).record.status, 'fund-level');
+    assert.deepEqual(part(withCtx.derived, 'derived').lots.map((l) => l.i21), [INST.equityAif3Listed]);
+    const without = run2();
+    assert.equal(recOf(without, AIF).record.taxRule, INST.equityAif12);
+    assert.equal(recOf(without, AIF).record.status, 'not-split');
+    assert.deepEqual(part(without.derived, 'derived').lots.map((l) => l.i21), [INST.equityAif12]);
+  });
+
+  test('the as-on boundary: an IRR trade after it is left out; statement sales after it are flagged; a later year is not shown', () => {
+    // As on 30 Sep 2026. IRR: the seam book's flows plus a Bluechip redemption on 15 Nov 2026 (after the as-on date):
+    // left out (counted as later), no derived lot after the as-on date. Statement: the seam book's lots plus two lots sold
+    // after the as-on date: Midcap 15 Nov 2026 (Tax year 2026-27) and Focused 1 May 2027 (Tax year 2027-28). Both carry
+    // the reader's flag after-as-on-date (its Warning raised), the seam's Warning counts 2, and the years shown stop at
+    // 2026 (2027 is after the as-on year).
+    const irr = irrImport([...irrRealisedRows().filter(NO_PAIR), flow(CLIENT_A, SCHEME.BLUE, [2026, 11, 15], 'Redemption', 150, 4500)], xlsx);
+    const lateMid: KaLot = { scheme: SCHEME.MID, asset: 'Equity', category: 'Mid Cap Fund', folio: '91600009', buy: [2023, 1, 10], sell: [2026, 11, 15], units: 100, buyNav: 100, sellNav: 200 };
+    const late27: KaLot = { scheme: SCHEME.FOCUSED, asset: 'Equity', category: 'Focused Fund', folio: '91600010', buy: [2023, 1, 10], sell: [2027, 5, 1], units: 10, buyNav: 100, sellNav: 150 };
+    const st = statementFor([...mismatchStatementLots().filter((l) => l.scheme !== SCHEME.OLD), VALUE_2026, lateMid, late27]);
+    const t = run({ irr, statement: st });
+    const d = part(t.derived, 'derived');
+    assert.equal(d.counts.later, 1);
+    assert.ok(d.lots.every((l) => l.saleDate <= AS_ON_DAY));
+    const gains = part(t.statement, 'statement').realised.gains.filter((g) => g.saleDate > AS_ON_DAY);
+    assert.equal(gains.length, 2);
+    assert.ok(gains.every((g) => g.flags.includes('after-as-on-date')));
+    assert.ok(t.issues.some((i) => i.ruleId === 'capital-gains.after-as-on-date'));
+    assert.deepEqual(t.basis.years, [2024, 2025, 2026]);
+    assert.deepEqual(part(t.realisedFY, 'realisedFY').map((y) => y.fy), [2024, 2025, 2026]);
+    const w = t.issues.find((i) => i.ruleId === 'tax.statement-after-as-on')!;
+    assert.equal(w.severity, 'Warning'); assert.equal(w.count, 2);
+    assert.match(w.message, /^2 lots of the capital-gains statement are sold after the review's as-on date: they are counted as stated/);
+    assert.doesNotMatch(w.message.slice(1), /Sample|\d{3,}/);
+    assert.ok(!ALL.issues.some((i) => i.ruleId === 'tax.statement-after-as-on'));
+  });
+
+  test('the repeat evidence reads the IRR file and the as-on date (a repeated sale with both pieces of evidence)', () => {
+    // Statement: Flexi Cap lots X (100 u, bought 10 Jan 2022) and Y (50 u, bought 10 Feb 2022), sold 12 Mar 2025 at 80,
+    // each written twice (a repeat event: 150 u once, 300 as stated). IRR (folio 91000001): X and Y bought at 50, the
+    // redemption of 12 Mar 2025, 150 u at 80 (12,000), and 25 u bought 15 Jan 2026 at 80. Base: 25 u (invested 2,000).
+    // Evidence 1: 150 u redeemed, once. Evidence 2: 175 bought to the as-on date less 150 sold leaves the 25 held, once.
+    // Suggested: once. (Without the IRR file there is no evidence; with an as-on date a year earlier the 15 Jan 2026
+    // purchase falls outside and Evidence 2 no longer agrees.)
+    const FOLIO = '91000001';
+    const X: KaLot = { scheme: SCHEME.FLEXI, asset: 'Equity', category: 'Flexi Cap Fund', folio: FOLIO, buy: [2022, 1, 10], sell: [2025, 3, 12], units: 100, buyNav: 50, sellNav: 80 };
+    const Y: KaLot = { ...X, buy: [2022, 2, 10], units: 50 };
+    const hs = baseOf([hold(CLIENT_A, SCHEME.FLEXI, 'Flexi Cap Fund', 25, 2000, 2500, { folio: FOLIO })]);
+    const irr = irrImport([
+      flow(CLIENT_A, SCHEME.FLEXI, [2022, 1, 10], 'Purchase', 50, -5000, { folio: FOLIO }),
+      flow(CLIENT_A, SCHEME.FLEXI, [2022, 2, 10], 'SIP', 50, -2500, { folio: FOLIO }),
+      flow(CLIENT_A, SCHEME.FLEXI, [2025, 3, 12], 'Redemption', 80, 12000, { folio: FOLIO }),
+      flow(CLIENT_A, SCHEME.FLEXI, [2026, 1, 15], 'Purchase', 80, -2000, { folio: FOLIO }),
+    ], xlsx);
+    const t = reviewTax({ holdings: hs, asOnDay: AS_ON_DAY, irr, statement: statementFor([X, Y, X, Y], hs), inputs: emptyTaxInputs() }, { now: NOW });
+    const ev = part(t.repeatEvidence, 'repeat evidence');
+    assert.equal(ev.length, 1);
+    assert.deepEqual(ev[0]!.readings, { once: 150, asStated: 300 });
+    assert.deepEqual(ev[0]!.evidence.map((e) => [e.source, e.supports]), [['transactions', 'once'], ['holding', 'once']]);
+    assert.equal(ev[0]!.suggested, 'once');
+  });
+
+  test('the no-IRR and no-statement sets equal the modules called directly', () => {
+    const noIrrLots = computeTaxLots(HOLDINGS, [], { asOn: AS_ON_DAY });
+    assert.deepStrictEqual(NO_IRR_RUN.holdings.lots, noIrrLots);
+    assert.deepStrictEqual(NO_IRR_RUN.holdings.rollup, rollupHoldings(noIrrLots, HOLDINGS));
+    const realised = realiseLots(STATEMENT, emptyTaxInputs(), { asOnDay: AS_ON_DAY, now: NOW });
+    const side = { imp: STATEMENT, realised };
+    assert.deepStrictEqual(part(NO_IRR_RUN.realisedFY, 'realisedFY'), [2024, 2025, 2026].map((y) => realisedForYear(y, null, side)));
+    assert.deepStrictEqual(part(NO_IRR_RUN.repeatEvidence, 'repeat evidence'), repeatEvidence(STATEMENT, null, HOLDINGS, AS_ON_DAY));
+    const lots = computeTaxLots(HOLDINGS, IRR.fund, { asOn: AS_ON_DAY });
+    const derived = deriveRealisedGains(IRR.fund, { holdings: HOLDINGS, asOn: AS_ON_DAY, sourceId: IRR.sourceId });
+    assert.deepStrictEqual(part(NO_STMT_RUN.derived, 'derived'), derived);
+    assert.deepStrictEqual(part(NO_STMT_RUN.realisedFY, 'realisedFY'), [2024, 2025].map((y) => realisedForYear(y, derived, null)));
+    assert.deepStrictEqual(part(NO_STMT_RUN.harvest, 'harvest'), buildHarvests(rollupHoldings(lots, HOLDINGS), { asOn: AS_ON_DAY, inputs: { personYear: [], exemptionUsed: [] }, statement: null }));
+    assert.deepStrictEqual(NO_STMT_RUN.issues, mergeIssues([derived.issues]));
   });
 });
