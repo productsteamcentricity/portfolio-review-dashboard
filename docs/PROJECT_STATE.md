@@ -1,6 +1,10 @@
 # Project state
 
-**Last updated:** 26 Nov 2026 (registers-4, MOD-04).
+**Last updated:** 27 Nov 2026 (registers-6, drafted by EX-03 for MOD-05).
+- **Records (27 Nov 2026, registers-6, docs only):** test build 1 complete on `/next/` (below); PRs #59 to #63 in the
+  coordination docs; the decision log's stricter-matching row corrected to the measured result (4 correct names unmatched,
+  a known gap, owner asked); the Moderator's decisions of 27 Nov with a financial meaning (decision log 2.5); the
+  financial review required in Gate A and checked at Gate B intake; KI-302 and KI-303 filed; compactions recounted.
 - **Records (26 Nov 2026, registers-4, docs only):** the decision log carries the owner's answers of 17 to 26 Nov
   (PD-01, PD-04, PD-44 accepted; PD-16 answered except item 4; PD-36 for the renamed-scheme list; PD-54 confirmed;
   PD-56 changed; PD-57 to PD-66; and the decisions without a PD number: the D-7 labels, the "ISIN" column for the new
@@ -138,11 +142,14 @@
     2026).
   - Data vintage: 31 Oct 2026 (October refresh: analytics, performance and risk), except ranks (15 Aug), fund managers
     (31 Aug), PMS returns (31 Jul) and AIF (30 Jun).
-- **Test build 1** (target Thu 10 Dec 2026 on `/next/`; registers-5, 27 Nov 2026). On `/next/` now: the returns view
-  (PR #51, M3a wiring), matched holdings with the import report and the monitor uploads (PR #54, M2.1 wiring), and the
-  blank transactions (IRR) file template (PR #57). In review: the holdings and performance views (M3b, NB-02) and the
-  M3b data side (NB-04; its refdata blocks merged in PR #49). Not in test build 1: a price-file reader (built after
-  it, once the owner supplies the file layout).
+- **Test build 1** (target Thu 10 Dec 2026 on `/next/`): **complete on `/next/` since 27 Nov 2026** (main `66742e7`,
+  PR #59): the returns view (PR #51, M3a wiring), matched holdings with the import report and the monitor uploads
+  (PR #54, M2.1 wiring), the blank transactions (IRR) file template (PR #57), and the holdings and performance views
+  (PR #59, M3b). The M3b data engines (weighted 3Y and 5Y returns E-147, direct-equity CAGR E-148) merged in PR #61,
+  not yet wired. The owner's acceptance (Gate E) is pending. The side-by-side kit compares the live page and the new
+  build on fund matching and every performance bucket (PRs #60, #62, #63). Next on the new build: the M3b follow-up (the
+  IRR file's XIRRs in the holdings tables, the weighted 3Y and 5Y display), the E-148 conditions and tax round 2. Not
+  in test build 1: a price-file reader (built after it, once the owner supplies the file layout).
 - **Repository.** `C:\dev\portfolio-review`; `origin` =
   https://github.com/productsteamcentricity/portfolio-review-dashboard (**public**, D-008).
   - Commits use Products Team Centricity with the GitHub no-reply address. Since 19 Oct this laptop's global git
@@ -236,7 +243,7 @@
    the matcher is wired into section 1 (PR #54, merged 27 Nov 2026, after NB-04's refdata blocks, PR #49): holdings
    matched when the base file loads, the import report's matching section (E-19), and the monitor uploads (U-08, U-09,
    U-10).
-   M3b for test build 1 (section 5) is on `feat/m3b-views` (PR #59, after its financial review): the holding sheets
+   M3b for test build 1 (section 5) merged in PR #59 (27 Nov 2026, main `66742e7`, after its financial review): the holding sheets
    (E-25) and their tables with column chips (U-23), the client holdings sheets of the workbook (E-80), the performance
    tables with one benchmark table and the Direct list by the same scheme only (E-31, E-32, E-30), their section 5 view
    with one Regular/Direct switch (U-41) and the Performance sheet (E-84). The weighted 3Y and 5Y returns engine
