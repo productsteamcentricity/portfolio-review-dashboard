@@ -422,3 +422,23 @@ describe('financial review of the E-148 round: required tests R1-R3, finding 2 a
     assert.deepEqual(r.lines.map((l) => (l.cagr.kind === 'missing' ? l.cagr.prov?.asOf : null)), ['2026-10-31', '2026-10-31']);
   });
 });
+
+describe('rule c2 helpers: weekdayOf and lastWeekdayOfMonth (the delta review, finding 2)', () => {
+  test('known weekdays (0 Sunday ... 6 Saturday), also before 1970', async () => {
+    const { weekdayOf } = await import('../../../app/src/engine/returns/stock-cagr.ts');
+    assert.equal(weekdayOf(D(1970, 1, 1)), 4); // Thursday
+    assert.equal(weekdayOf(D(1969, 12, 31)), 3); // Wednesday (a negative DayNumber)
+    assert.equal(weekdayOf(D(2028, 2, 29)), 2); // Tuesday
+    assert.equal(weekdayOf(D(2026, 12, 31)), 4); // Thursday
+    assert.equal(weekdayOf(D(2026, 10, 31)), 6); // Saturday
+    assert.equal(weekdayOf(D(2026, 5, 31)), 0); // Sunday
+  });
+  test('the last weekday of a month ending on a Saturday, a Sunday and a weekday', async () => {
+    const { lastWeekdayOfMonth } = await import('../../../app/src/engine/returns/stock-cagr.ts');
+    assert.equal(lastWeekdayOfMonth(D(2026, 2, 10)), D(2026, 2, 27)); // February 2026 ends on Saturday 28
+    assert.equal(lastWeekdayOfMonth(D(2026, 5, 3)), D(2026, 5, 29)); // May 2026 ends on Sunday 31
+    assert.equal(lastWeekdayOfMonth(D(2026, 9, 1)), D(2026, 9, 30)); // September 2026 ends on Wednesday 30
+    assert.equal(lastWeekdayOfMonth(D(2026, 10, 15)), D(2026, 10, 30)); // October 2026 ends on Saturday 31
+    assert.equal(lastWeekdayOfMonth(D(2028, 2, 1)), D(2028, 2, 29)); // a leap February ending on Tuesday 29
+  });
+});
