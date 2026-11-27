@@ -23,11 +23,12 @@ const ACCEPTED_REGRESSIONS: Readonly<Record<string, string>> = {
 };
 /** The AMFI losses of the follow-up stage in the full sweep (set from the ledger). */
 const MAX_V2_LOSSES = 4;
-/** A stage whose AMFI losses the owner accepted as a whole, with the most the full sweep may show (the normaliser
- * follow-up of sprint 2a aims to bring it down without new wrong matches). */
+/** A stage whose AMFI losses this test allows as a whole, with the most the full sweep may show. The owner chose the
+ * stricter regime (option B) on 26 Nov 2026 after asking why 21 correct names would become unmatched; the 4 names still
+ * unmatched after the follow-up are a known gap, not yet ruled on by the owner (asked 27 Nov 2026; decision log 2.4). */
 const ACCEPTED_AMFI_LOSSES: Readonly<Record<string, { max: number; reason: string }>> = {
-  'Option B, the stricter regime (the owner, 26 Nov 2026)': { max: 22, reason: 'the owner chose the stricter regime knowing 21 of 1,206 correct names become unmatched (MOD-04, 26 Nov 2026)' },
-  'Normaliser v2 and the candidate-side word guard (follow-up, 26 Nov 2026)': { max: MAX_V2_LOSSES, reason: 'within the losses the owner accepted for the stricter regime; the follow-up recovers most of them' },
+  'Option B, the stricter regime (the owner, 26 Nov 2026)': { max: 22, reason: 'the owner chose the stricter regime on 26 Nov 2026 after asking why 21 of 1,206 correct names would become unmatched' },
+  'Normaliser v2 and the candidate-side word guard (follow-up, 26 Nov 2026)': { max: MAX_V2_LOSSES, reason: 'a known gap, not yet ruled on by the owner (asked 27 Nov 2026): the follow-up recovers 20 of option B\'s 22 and loses 2 others' },
 };
 const unaccepted = (r: Report, stage?: string): Change[] => r.changes.filter((c) => c.correct === 'regressed' && !(`${c.measure}|${c.query}` in ACCEPTED_REGRESSIONS) && !(c.measure === 'amfi' && stage !== undefined && stage in ACCEPTED_AMFI_LOSSES));
 const sig = (c: Change): string => [c.set, c.measure, c.query, c.amc, c.legacy, c.corrected].join(String.fromCharCode(1));
