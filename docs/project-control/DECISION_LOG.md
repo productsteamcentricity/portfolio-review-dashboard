@@ -1040,6 +1040,7 @@ Answers and instructions the owner gave in chat that have no PD number. Recorded
 | 26 Nov 2026 | Model of the next Moderator | "Yes, next chat on Fable" | The next Moderator chat (CHAT-015, MOD-05) runs on the Fable model; MOD-04 stayed on its model until the handover |
 | 26 Nov 2026 | Standby Moderator | "Yes, open it now (Recommended)" | CHAT-015 (MOD-05) opened on standby, to take over only on the active Moderator's handover message |
 | 26 Nov 2026 | Moderator change | "Handover to the new moderator" | CHAT-013 (MOD-04) handed over to CHAT-015 (MOD-05) on 26 Nov 2026, about 20:40 IST; CHAT-013 is a historical record that only forwards notes |
+| 27 Nov 2026 | Successor chats for the Guardian and NB-02 | "Open both" | CHAT-016 (ARC-04, successor of CHAT-008) and CHAT-017 (NB-05, successor of CHAT-009) opened on 27 Nov 2026; both took over that day |
 
 ### 2.5 Moderator decisions with a financial meaning (27 Nov 2026)
 
@@ -1093,3 +1094,4 @@ These are Claude's recommendations. None is a decision until the named approver 
 | 26 Nov 2026 | MOD-04 (registers-4) | Owner answers of 17 to 26 Nov recorded: PD-01, PD-04 and PD-44 answered; PD-16 answered except item 4; PD-30 publishes listed; PD-36 answered for the renamed-scheme list; PD-54 confirmed; PD-56 changed; PD-07 still open. PD-57 to PD-66 added (PD-62 and PD-63 open). Section 2.4: owner decisions without a PD number (Stage 0, D-7 labels, the ISIN column for the new build only, the D-028 exception for matching corrections, the standing `/next/` rule, M12a defaults, Q-12, matching option B, the item 6 run, Gate E acceptances, the test build target). Owner of this log: MOD-04 |
 | 27 Nov 2026 | MOD-05 (registers-5, drafted by EX-03) | PD-67 added with its section; PD-30 publishes of KI-032 (#47), KI-301 (#53) and LP-16b (#50); section 2.4 rows of 26 and 27 Nov (PD-16 item 5 method, KI-032 rule and its keep, the IRR template, the final base file template, the platform product names, the Moderator model, standby and change) |
 | 27 Nov 2026 | MOD-05 (registers-6, drafted by EX-03) | Section 2.4: the stricter-matching row corrected to the measured result (20 of 22 recovered, 2 lost, 4 named and unmatched: a known gap, owner asked 27 Nov 2026); section 2.5 added: the Moderator's decisions of 27 Nov 2026 with a financial meaning |
+| 27 Nov 2026 | MOD-05 (registers-7, drafted by EX-03) | Section 2.4: the owner's "Open both" (CHAT-016 ARC-04 and CHAT-017 NB-05) |

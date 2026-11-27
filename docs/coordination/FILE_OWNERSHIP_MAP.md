@@ -18,8 +18,10 @@ chats can code at once.
 | CHAT-013 MOD-04 | Moderator from 25 to 26 Nov 2026 (from CHAT-006 MOD-03) | historical record since 26 Nov 2026 |
 | CHAT-014 EX-03 | Live page (`index.html` patches), refresh, the side-by-side test kit, live-page records and runbook (from CHAT-007 EX-02, 26 Nov 2026) | active |
 | CHAT-007 EX-02 | Live page until 26 Nov 2026 | retired 26 Nov 2026 (three compactions) |
-| CHAT-008 ARC-02 | Guardian: Gate B and Gate D reviews; ARC-01's sole rule-10 successor (CHAT_REGISTRY, registers-4); writes no product code | active |
-| CHAT-009 NB-02 | New build: identifiers, ingest, classification, then M3b and M4 | active |
+| CHAT-016 ARC-04 | Guardian: Gate B and Gate D reviews; the only chat named as ARC-01's rule-10 successor (through ARC-02) from the merge of registers-7 (CHAT_REGISTRY); writes no product code (from CHAT-008 ARC-02, 27 Nov 2026) | active (opened 27 Nov 2026) |
+| CHAT-008 ARC-02 | Guardian until 27 Nov 2026 | handed over to CHAT-016 on 27 Nov 2026 (three compactions) |
+| CHAT-017 NB-05 | New build: identifiers, ingest, classification, the M3b follow-up, then M4 (from CHAT-009 NB-02, 27 Nov 2026) | active (opened 27 Nov 2026) |
+| CHAT-009 NB-02 | New build until 27 Nov 2026 | handed over to CHAT-017 on 27 Nov 2026 (three compactions) |
 | CHAT-010 NB-03 | New build: financial engines (returns core, capital gains and tax); also `app/src/engine/scope.ts` | active (opened 24 Nov 2026) |
 | CHAT-011 NB-04 | New build: data platform (Screener pack, monthly engine, drawdown, FoF) | active (opened 24 Nov 2026) |
 | CHAT-012 ARC-03 | Second Guardian for the new build, same definition files, SHA-bound verdicts. **Not** the rule-10 Guardian (CLAUDE.md:83-84) | active (opened 24 Nov 2026) |
@@ -31,6 +33,11 @@ no number yet. Next free number: CHAT-014. Read "MOD-03" below as the Moderator 
 **Update (registers-5, 27 Nov 2026).** CHAT-014 is EX-03, the successor of CHAT-007 EX-02 (26 Nov 2026), and holds both
 the EX-02 paths and the EX-03 paths below: read "EX-02" in §2 as EX-03 (CHAT-014). CHAT-015 MOD-05 is the Moderator
 since 26 Nov 2026: read "MOD-03" below as MOD-05. Next free number: CHAT-016.
+
+**Update (registers-7, 27 Nov 2026).** CHAT-016 ARC-04 is the Guardian (successor of CHAT-008 ARC-02) and CHAT-017 NB-05
+the new-build implementer (successor of CHAT-009 NB-02), both opened on the owner's "Open both" of 27 Nov 2026 and in charge that day: read
+"ARC-02" below as ARC-04 (CHAT-016) and "NB-02" in §2 as NB-05 (CHAT-017); their paths and scope move with them. Next free
+number: CHAT-018.
 
 Chat numbers are never reused; the Moderator confirms each number when the chat opens. If MOD-03 cannot open a chat, it prepares the title and prompt and asks the owner to open it [V charter:27-28];
 until a PROPOSED chat opens, its paths stay with MOD-03 and its items show "waits on CHAT-0xx opening".

@@ -148,7 +148,7 @@
   (PR #59, M3b). The M3b data engines (weighted 3Y and 5Y returns E-147, direct-equity CAGR E-148) merged in PR #61,
   not yet wired. The owner's acceptance (Gate E) is pending. The side-by-side kit compares the live page and the new
   build on fund matching and every performance bucket (PRs #60, #62, #63). Next on the new build: the M3b follow-up (the
-  IRR file's XIRRs in the holdings tables, the weighted 3Y and 5Y display), the conditions set at the review of PR #61 before the direct-equity CAGR (E-148) is wired: the per-stock provenance date, a figure date that does not depend on row order, wording, and the owner's answers on month labels against true days and tax round 2. Not
+  IRR file's XIRRs in the holdings tables, the weighted 3Y and 5Y display), the conditions set at the review of PR #61 before the direct-equity CAGR (E-148) is wired (the per-stock provenance date, a figure date that does not depend on row order, wording, and the owner's answers on month labels against true days); and tax round 2. Not
   in test build 1: a price-file reader (built after it, once the owner supplies the file layout).
 - **Repository.** `C:\dev\portfolio-review`; `origin` =
   https://github.com/productsteamcentricity/portfolio-review-dashboard (**public**, D-008).
@@ -253,7 +253,8 @@
    - the weighted 3Y and 5Y returns (E-147) shown with their coverage footnotes;
    - the financial review's notes (N2, N3, N5, N8, N9, N11).
    Its Gate B's condition and notes are on `fix/m3b-followup-round2`: a line whose holdings have flows in the IRR file
-   never shows the base file's figure (M1), and the notes' shares and dates (L1, L2, L5; N2 of the M3b Gate B).
+   no longer shows the base file's figure beside rows from that file (M1), and the notes' shares and dates (L1, L2,
+   L5; N2 of the M3b Gate B).
    Beside M2, the data-platform items (NB-04): M10, the MF Screener data pack reader and browser store, merged in
    PR #37 and accepted on 26 Nov 2026 (not wired); M11a, the monthly update engine core, merged in
    PR #41; M12a, the drawdown engine on index data, merged in PR #38, owner Gate E pending (the
@@ -268,8 +269,10 @@
 
    **Claude: M7a**, the capital-gains statement reader (PAN removed at read time, repeated lots reported, blank cells
    reported) and the blank template, is merged (PR #35) and accepted by the owner (Gate E), not wired into the page yet. The
-   owner answered PD-16 on 26 Nov 2026 (item 4 stays with the tax adviser). **The M7a tax engine**: round 1 (the
-   statement lots: the dated rules, lot classes, per-lot tax and the tax per person and year) merged in PR #52; round 2 (the holdings: classification, FIFO lots, harvesting and the IRR reconciliation) follows.
+   owner answered PD-16 on 26 Nov 2026 (item 4 stays with the tax adviser). **The M7a tax engine:** round 1 (the
+   statement lots: the dated rules, lot classes, per-lot tax and the tax per person and year) is merged (PR #52); round 2
+   (the holdings: classification, FIFO lots, harvesting and the IRR reconciliation) is on `feat/m7a-tax-engine`. Neither
+   is wired into the page yet.
    Model contracts-1 (PR #29, types only): I-31, I-32, I-44, I-45 and decision C-01. Model contracts-2 (PR #40, types
    only): contract I-37 (`app/src/model/tax.ts`) and the analyst question as a union on its kind.
 

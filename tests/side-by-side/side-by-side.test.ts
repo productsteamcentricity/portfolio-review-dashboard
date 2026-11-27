@@ -95,7 +95,7 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     const expect: Array<[RegExp, string, string]> = [
       [/multi - cap/i, 'SB-08', 'correction'], [/icici pru bse liquid/i, 'SB-09', 'correction'], [/sbi nifty 1d/i, 'SB-10', 'correction'],
       [/tata nifty 50 exchange/i, 'SB-11', 'correction'], [/icici pru bluechip/i, 'SB-12', 'correction'],
-      [/axis gold/i, 'SB-13', 'accepted-difference'], [/kotak gold/i, 'SB-14', 'accepted-difference'],
+      [/axis gold/i, 'SB-13', 'correction'], [/kotak gold/i, 'SB-14', 'correction'],
       [/uti focused/i, 'SB-15', 'known-gap'], [/kotak infrastructure/i, 'SB-16', 'known-gap'],
       [/infosys/i, 'SB-17', 'improvement'],
     ];
@@ -117,11 +117,11 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     assert.equal(by(next, /hdfc bank/i).matched, 'hdfc bank');
     assert.equal(by(next, /office reit/i).route, 'other (REITs and InvITs)');
     assert.equal(by(next, /sample technologies/i).route, 'other (Unlisted shares)');
-    // the report's "Fund matching" summary: 17 holdings, 7 alike, 10 differ (5 corrections, 1 improvement, 2 accepted, 2 known gaps)
+    // the report's "Fund matching" summary: 17 holdings, 7 alike, 10 differ (7 corrections, 1 improvement, 2 known gaps)
     const m = result.matching;
     assert.deepEqual([m.compared, m.same, m.rows.length], [17, 7, 10]);
     const per = (c: string): number => m.rows.filter((x) => x.class === c).length;
-    assert.deepEqual([per('correction'), per('improvement'), per('accepted-difference'), per('known-gap')], [5, 1, 2, 2]);
+    assert.deepEqual([per('correction'), per('improvement'), per('accepted-difference'), per('known-gap')], [7, 1, 0, 2]);
     const html = fundMatching(m);
     assert.match(html, /The live page matched ICICI Pru US Bluechip Equity Fund\(G\); the new build matched ICICI Pru Large Cap Fund\(G\) by alias-pin \(pinned\)\. Why: correction/);
     assert.match(html, /The live page matched UTI Focused Fund-Reg\(G\); the new build matched nothing\. Why: known gap/);
@@ -165,7 +165,7 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     }
     assert.ok(checked.regular >= 40 && checked.direct >= 40, `only ${checked.regular} Regular and ${checked.direct} Direct figures checked`);
     // the gold rows of the Direct list (SB-40, SB-41): the live page shows the holding's own scheme's Direct plan, the
-    // new build nothing: the reason they are known gaps, not accepted differences
+    // new build nothing, while the live page's Regular list picks the ETF (SB-40, SB-41: accepted differences, KI-036 ties left unmatched)
     for (const [name, own] of [['axis gold -reg(g)', 'Axis Gold Fund(G)-Direct Plan'], ['kotak gold (g)', 'Kotak Gold Fund(G)-Direct Plan']] as const) {
       const key = `direct | commodity mf | fund | ${name}`;
       assert.equal(rowOf(legacy, key).ref, own, `legacy Direct record of ${name}`);
@@ -239,6 +239,18 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     assert.ok(Object.values(dy.returns).every((v) => v === null));
     assert.ok(next.notes.some((n) => /no Direct twin.*HDFC Dividend Yield Fund-Reg\(G\)/.test(n)), 'new: noted as having no Direct twin');
     assert.equal(rowOf(legacy, 'direct | equity mf | fund | hdfc dividend yield fund-reg(g)'), undefined);
+    // the matching probe's synthetic Gold spellings (SB-13, SB-14) under their real names: both builds match the Gold fund
+    // itself, with the same rows and figures in both lists (no difference)
+    for (const [real, key, direct] of [['Axis Gold Fund-Reg(G)', 'Axis Gold Fund-Reg(G)', 'Axis Gold Fund(G)-Direct Plan'], ['Kotak Gold Fund(G)', 'Kotak Gold Fund(G)', 'Kotak Gold Fund(G)-Direct Plan']] as const) {
+      for (const s of [legacy, next]) {
+        assert.equal(s.holdings.find((h) => h.name === real)!.matched, key, `${s.engine} ${real}`);
+        assert.equal(rowOf(s, `regular | commodity mf | fund | ${real.toLowerCase()}`)!.ref, key, `${s.engine} ${real} regular`);
+        assert.equal(rowOf(s, `direct | commodity mf | fund | ${real.toLowerCase()}`)!.ref, direct, `${s.engine} ${real} direct`);
+        // a figure on each row (parity of two blank rows would prove nothing; financial review of bd6db3e)
+        for (const list of ['regular', 'direct']) assert.ok(Object.values(rowOf(s, `${list} | commodity mf | fund | ${real.toLowerCase()}`)!.returns).some((v) => v !== null), `${s.engine} ${real} ${list}: no figure`);
+      }
+      assert.ok(!result.diffs.some((d) => d.key.includes(real.toLowerCase())), `${real}: parity expected`);
+    }
     assert.equal(result.unclassified, 0);
   });
 
