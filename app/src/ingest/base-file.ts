@@ -36,7 +36,8 @@
 //     owner's ruling): a column headed exactly "Account Name" is kept on the holding as given and shown; no figure, no
 //     grouping and no id uses it, and the merge key has no account, so merged folios under more than one account name
 //     stay one holding, with an Information result. A PAN in the cell is removed at read, as the capital-gains reader
-//     removes it, and counted in an Information result; the PAN is kept nowhere. The legacy reads no such column, so
+//     removes it, and counted in an Information result; no account name, result or skipped-row label holds it (the
+//     file's own bytes stay in memory for a re-read, as for every upload). The legacy reads no such column, so
 //     nothing is compared in the ledger. "Valuation Date" is not read (KI-320).
 // Column aliases, the money-unit precedence (Cr., then Lakh, then rupees) and the merge key (client, instrument,
 // product, distributor) are the legacy ones. Pure function: no globals, no network, no clock unless injected.
@@ -1178,7 +1179,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
   if (accountPans.cells > 0) {
     const n = accountPans.cells;
     issues.add('base-file.account-pan-removed', 'Information', { kind: 'sheet', sourceId, sheet: sheetName },
-      `${plural(n, 'Account Name cell', 'Account Name cells')} held a PAN: ${n === 1 ? 'it was' : 'each was'} removed when the file was read and is kept nowhere.`,
+      `${plural(n, 'Account Name cell', 'Account Name cells')} held a PAN or text shaped like one, which was removed from what was read.`,
       { count: n, resolution: 'auto-resolved', status: 'resolved' });
   }
   // Merged folios in different accounts: the holding stays one line (the merge key has no account) and keeps every name.
@@ -1216,7 +1217,9 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
   // 7. Skipped rows (never dropped silently).
   const skipped: SkippedRow[] = scan.skipped.map((s) => {
     const first = (sheet.rows[s.r] ?? []).map((c) => cellText(c)).find((t) => t !== '') ?? null;
-    return { at: at(s.r), reason: s.reason, label: first === null ? null : first.slice(0, 60), hasMoney: s.hasMoney };
+    // The label may be the row's Account Name cell (the first cell that is not blank): a PAN in it is removed here too.
+    const label = first === null ? null : scrubText(first).text.replace(/\s+/g, ' ').trim().slice(0, 60);
+    return { at: at(s.r), reason: s.reason, label: label === '' ? null : label, hasMoney: s.hasMoney };
   });
   const skipCounts = EMPTY_COUNTS();
   for (const s of skipped) skipCounts[s.reason]++;

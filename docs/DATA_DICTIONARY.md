@@ -394,7 +394,8 @@ makes a note.
 Added with the base file template (28 Nov 2026): the base-file Information result `merged-accounts` (auto-resolved,
 resolved): merged folios under more than one Account Name stay one holding, with every account name kept. Scoped to
 those holdings; no note. And `account-pan-removed` (Information, auto-resolved, resolved): the number of Account Name
-cells that held a PAN, removed at read and kept nowhere.
+cells that held a PAN or text shaped like one, removed from what is read (account names, results and skipped-row
+labels).
 
 Added in M2.1 sprint 2a (CHAT-008's S3-1): the base-file Warning `isin-disagree` (auto-resolved, resolved): a merged
 holding whose rows carry different ISINs keeps no ISIN (never guessed, rule 3; its name decides the match). Scoped to

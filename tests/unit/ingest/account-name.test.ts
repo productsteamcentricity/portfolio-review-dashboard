@@ -283,11 +283,20 @@ describe('a PAN in Account Name is removed at read and kept nowhere (T-9)', () =
     const r = l.base.issues.filter((i) => i.ruleId === 'base-file.account-pan-removed');
     assert.equal(r.length, 1);
     assert.deepEqual([r[0]!.severity, r[0]!.count, r[0]!.status], ['Information', 3, 'resolved']);
-    assert.equal(r[0]!.message, '3 Account Name cells held a PAN: each was removed when the file was read and is kept nowhere.');
+    assert.equal(r[0]!.message, '3 Account Name cells held a PAN or text shaped like one, which was removed from what was read.');
     const all = JSON.stringify(l.base).toLowerCase();
     for (const p of [p1, p2, p3]) assert.ok(!all.includes(p.toLowerCase()));
     assert.ok(!hasPanShape(JSON.stringify(l.base.holdings.map((h) => h.accountNames ?? []))));
     assert.equal(buildImportReport(l.source, l.base).counts.find((c) => c.id === 'account-names')!.value, 3);
+  });
+
+  test('a skipped row whose first cell is its Account Name: the label keeps no PAN (the re-check\'s R-1)', () => {
+    const p4 = panToken(4);
+    const b = baseOf([...rows, [null, `Sample Client A - Held Away[PAN: ${p4}]`, null, null, null, 500000]]);
+    assert.deepEqual(b.skipped.map((s) => [s.reason, s.label, s.hasMoney]), [['no-instrument-name', 'Sample Client A - Held Away', true]]);
+    assert.ok(!JSON.stringify(b).toLowerCase().includes(p4.toLowerCase()));
+    // The count is of holding rows: the skipped row is not a holding, so the result still says 3.
+    assert.equal(b.issues.find((i) => i.ruleId === 'base-file.account-pan-removed')!.count, 3);
   });
 
   test('a file with no PAN in the column: no such result, the names as given', () => {

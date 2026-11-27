@@ -1,6 +1,6 @@
 // covers: U-06 E-01 E-15 M2.2 (NB-05: the blank base file template, the platform's holding report cut to 17 columns)
-// The template read back as zip/XML and through SheetJS: the two sheets, the 17 headings exactly as the owner's layout
-// of 26 Nov 2026 lists them (typed here by hand; each is also a heading of the full holding report, in its order), the
+// The template read back as zip/XML and through SheetJS: the two sheets, the 17 headings exactly as the layout of
+// 26 Nov 2026 lists them (MOD-04's selection under the owner's answer of that day; typed here by hand; each is also a heading of the full holding report, in its order), the
 // frozen header, no data rows, the column-default number formats (none on the two XIRR columns), the Read Me (one row
 // per column, the rules, the product list), no en or em dash, deterministic bytes. Then the known answers:
 //   - the blank template filled with two synthetic rows reads back through the real reader with no result at all, every
@@ -47,7 +47,7 @@ const wb = readWorkbook(xlsx, bytes);
 const SRC = 'c'.repeat(64) as SourceFileId;
 const NOW = (): string => '2026-11-28T00:00:00.000Z';
 
-// The owner's 17-column layout (MOD-04's note of 26 Nov 2026, section 6.2), typed here by hand; the two rupee headings
+// The 17-column layout (MOD-04's note of 26 Nov 2026, section 6.2: its selection under the owner's answer), typed here by hand; the two rupee headings
 // with the platform's trailing space.
 const HEADINGS = ['Client Name', 'Account Name', 'Instrument Name', 'Isin Code', 'Category Name', 'Asset Name', 'Folio No',
   'Product Name', 'Distributor Name', 'Units', 'Invested Value (₹) ', 'Market Value (₹) ', 'Valuation Date', 'Purchase Date',
@@ -141,7 +141,7 @@ describe('blank base file template', () => {
     assert.ok(BASE_TEMPLATE_RULES[0]!.includes('exactly as the CLIENT of the transactions (IRR) file, letter for letter'));
     const rules = BASE_TEMPLATE_RULES.join('\n');
     for (const t of ['plain numbers', 'percent numbers: 8.79 means 8.79%', 'Do not format the two columns as percentages', 'as Excel dates',
-      'leave out every total and subtotal row', 'exactly Total or Grand Total is skipped and reported', 'any other total row is read as a holding and counted twice',
+      'leave out every total and subtotal row', 'exactly Total or Grand Total is skipped and reported', 'a total row under any other name is read as a holding and counted twice',
       'four-digit year', 'Keep the headings in row 1', 'Valuation Date is not read by this version', 'No number or date is guessed']) {
       assert.ok(rules.includes(t), t);
     }
@@ -225,6 +225,22 @@ describe('round trip: the filled template reads back through parseBaseFile', () 
     assert.equal(num(b!.purchaseDate), ymdToDay(2023, 6, 15));
     assert.equal(b!.assetClass, 'Debt');
     assert.equal(a!.fileGain.kind, 'missing', 'the template has no gain column: the app computes the gain');
+  });
+
+  test('rule 5 is the reader\'s: only Total and Grand Total are skipped; a total row under another name is read as a holding', () => {
+    const total = (name: string, mv: number): unknown[] => ['Sample Template Client', null, name, null, null, null, null, null, null, null, null, mv, null, null, null, null, null];
+    const imp2 = parseBaseFile(readWorkbook(xlsx, filledBaseTemplate([...ROWS, total('Client Total', 440000), total('Sub Total', 440000), total('Grand Total', 440000), total('Total', 440000)])), { sourceId: SRC, now: NOW });
+    assert.deepEqual(imp2.holdings.map((h) => h.instrumentName).slice(2), ['Client Total', 'Sub Total']);
+    assert.equal(imp2.counts.skipped['total-row'], 2);
+    assert.deepEqual(imp2.issues.filter((i) => i.ruleId === 'base-file.total-row-skipped').map((i) => [i.severity, i.count]), [['Warning', 2]]);
+    // "Sub Total" is warned as total-like; "Client Total" is read with no result at all (the reader's rule, D-041): the
+    // Read Me therefore says to leave every such row out.
+    const like = imp2.issues.filter((i) => i.ruleId === 'base-file.total-like-name');
+    assert.deepEqual(like.map((i) => i.count), [1]);
+    assert.ok(like[0]!.message.includes('"Sub Total"') && !like[0]!.message.includes('Client Total'));
+    // 2,80,000 + 1,60,000 = 4,40,000 rupees are the two real holdings; each total row read as a holding adds the same again.
+    const sum = imp2.holdings.reduce((a, h) => a + (h.cmv.kind === 'value' ? h.cmv.v : 0), 0);
+    assert.ok(Math.abs(sum - 3 * 0.044) < 1e-12, String(sum));
   });
 
   test('the Read Me\'s XIRR sentence is the reader\'s limit', () => {
