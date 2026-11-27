@@ -255,9 +255,12 @@ describe('ARC-03 delta review of 49e9a34 (M1, M2, pinned)', () => {
     const file: PriceSource = { source: 'analyst-price-file', asOn: SRC_ON, series: { INE000SAMPLE1: pts([D(2025, 11, 28), 100], [D(2026, 11, 27), 130]) } };
     const r = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [file], D(2026, 11, 24), '1y', 'family');
     assert.equal(status(r.lines[0]!.cagr), STATUS.NOT_AVAILABLE);
-    // declared month-end, the same file follows the month-label rule (24 Nov is in November's last 7 days)
-    const r2 = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [{ ...file, frequency: 'month-end' }], D(2026, 11, 24), '1y', 'family');
-    near(v(r2.lines[0]!.cagr), 30);
+    // declared month-end, the same file follows rule c2: 27 Nov is after a 24 Nov review and November's last weekday
+    // (Mon 30 Nov) is later still, so November does not count (and there is no October point): missing
+    const declared: PriceSource = { ...file, frequency: 'month-end' };
+    assert.equal(status(directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [declared], D(2026, 11, 24), '1y', 'family').lines[0]!.cagr), STATUS.NOT_AVAILABLE);
+    // a 30 Nov review: the point's own date (27 Nov) is on or before it
+    near(v(directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [declared], D(2026, 11, 30), '1y', 'family').lines[0]!.cagr), 30);
   });
   test('daily data keeps true days and no month-label note', () => {
     const daily = pts([D(2025, 10, 22), 99], [D(2025, 10, 29), 100], [D(2026, 10, 22), 108], [D(2026, 10, 29), 110]);
@@ -266,15 +269,24 @@ describe('ARC-03 delta review of 49e9a34 (M1, M2, pinned)', () => {
     assert.equal(v(r.figure!.asOn), D(2026, 10, 29));
     assert.ok(!footnoteOf(r)!.includes('month-end labels'));
   });
-  test('M2 with F1 (conservative): a mid-month or early-month review never uses a later month-end price', () => {
-    // September and October differ, so the month used shows: Sep 100 -> 110 = 10%; Oct 100 -> 150 = 50%
+  test('rule c2 (MOD-05, 28 Nov 2026): 15, 25 and 29 Oct use September; 30 Oct (last weekday) and 31 Oct use October', () => {
+    // September and October differ, so the month used shows: Sep 100 -> 110 = 10%; Oct 100 -> 150 = 50%. The October
+    // point is labelled 31 Oct 2026 (a Saturday); October's last weekday is Friday 30 Oct.
     const s = pts([D(2025, 9, 30), 100], [D(2025, 10, 31), 100], [D(2026, 9, 30), 110], [D(2026, 10, 31), 150], [D(2026, 11, 30), 999]);
-    near(v(stockCagr(s, D(2026, 10, 15), '1y', [], 'month-end')), 10); // 15 Oct: September
-    near(v(stockCagr(s, D(2026, 10, 24), '1y', [], 'month-end')), 10); // 24 Oct: not in October's last 7 days
-    near(v(stockCagr(s, D(2026, 10, 25), '1y', [], 'month-end')), 50); // 25 Oct: October's last 7 days
-    near(v(stockCagr(s, D(2026, 10, 30), '1y', [], 'month-end')), 50);
+    for (const d of [15, 25, 29]) near(v(stockCagr(s, D(2026, 10, d), '1y', [], 'month-end')), 10);
+    for (const d of [30, 31]) near(v(stockCagr(s, D(2026, 10, d), '1y', [], 'month-end')), 50);
     near(v(stockCagr(s, D(2026, 11, 2), '1y', [], 'month-end')), 50); // 2 Nov: October, never the 30 Nov point
     assert.equal(status(stockCagr(s, D(2027, 1, 15), '1y', [], 'month-end')), STATUS.NOT_AVAILABLE); // two months on: nothing
+  });
+  test('rule c2 for a month whose last day is a weekday (September 2026 ends on Wednesday 30 Sep)', () => {
+    const s = pts([D(2025, 8, 29), 100], [D(2025, 9, 30), 100], [D(2026, 8, 31), 105], [D(2026, 9, 30), 140]);
+    // a 29 Sep review: the 30 Sep point is after it and 30 Sep is a weekday after it: August (105 / 100 = 5%)
+    near(v(stockCagr(s, D(2026, 9, 29), '1y', [], 'month-end')), 5);
+    // a 30 Sep review: September (140 / 100 = 40%)
+    near(v(stockCagr(s, D(2026, 9, 30), '1y', [], 'month-end')), 40);
+    // a September point dated 29 Sep (an earlier close): on or before a 29 Sep review, so it counts
+    const early = pts([D(2025, 9, 30), 100], [D(2026, 8, 31), 105], [D(2026, 9, 29), 140]);
+    near(v(stockCagr(early, D(2026, 9, 29), '1y', [], 'month-end')), 40);
   });
   test('F1 pin on 1Y, 3Y and 5Y, both review days and both point days', () => {
     for (const lastDay of [30, 31]) {

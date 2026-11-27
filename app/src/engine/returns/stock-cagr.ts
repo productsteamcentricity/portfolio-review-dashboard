@@ -8,12 +8,13 @@
 //     - Month-end sources (the pack's month-end prices; a source is month-end or daily by its kind, not by the shape of
 //       one series: PriceSource.frequency, default month-end for the pack and daily for the analyst's file): the rule
 //       compares MONTH LABELS (the owner's answer to F1, 27 Nov 2026: "As month labels"), so a 30 Oct and a 31 Oct
-//       review use the October point, whether it is dated 30 or 31 Oct. The review month's point counts only when the
-//       review date lies in that month's last 7 days; otherwise the month before (as-on 15 Oct uses September, 2 Nov
-//       uses October): no price from after a mid-month or early-month review is used (conservative default of
-//       28 Nov 2026 while the owner is away; owner question whether "month labels" reaches further). The start is the
-//       point of the month of that end point's anniversary (28 Feb 2025 against 29 Feb 2024). The figure is dated by
-//       the month-end label; the footnote marks those dates as month-end labels; the true price day goes in `notes`.
+//       review use the October point, whether it is dated 30 or 31 Oct. Rule c2 (MOD-05 under the owner's delegation
+//       PD-68, 28 Nov 2026): the review month's point counts when its own date is on or before the review date, or when
+//       the review date is on or after the month's last weekday (no weekday of the month falls after it; no holiday
+//       calendar); otherwise the point of the month before. So 30 Oct 2026 (Friday, October's last weekday) and 31 Oct
+//       use the point labelled 31 Oct; 29, 25 and 15 Oct use September; 2 Nov uses October. The start is the point of
+//       the month of that end point's anniversary (28 Feb 2025 against 29 Feb 2024). The figure is dated by the
+//       month-end label; the footnote marks those dates as month-end labels; the true price day goes in `notes`.
 //     - Daily sources: true calendar days: the price on the as-on, or the nearest earlier one within 7 calendar days;
 //       the start the same at the exact anniversary of the review's as-on (29 Feb maps to 28 Feb in a year without it);
 //       the figure is dated by the end price's own day.
@@ -126,16 +127,32 @@ function pointOfMonth(sorted: readonly PricePoint[], day: DayNumber): PricePoint
   return sorted.find((p) => monthIndex(p.day) === want) ?? null;
 }
 
+/** The day of the week of a DayNumber: 0 Sunday ... 6 Saturday (day 0, 1 Jan 1970, was a Thursday). */
+export function weekdayOf(day: DayNumber): number {
+  return (((day + 4) % 7) + 7) % 7;
+}
+
+/** The last Monday-to-Friday day of a day's month (no holiday calendar). */
+export function lastWeekdayOfMonth(day: DayNumber): DayNumber {
+  let d = monthEnd(day);
+  while (weekdayOf(d) === 0 || weekdayOf(d) === 6) d--;
+  return d;
+}
+
 /**
- * In month-end data, the end point by MONTH LABEL (the owner's answer to F1, 27 Nov 2026: "As month labels"): the point
- * of the review's month when the review date lies in that month's last 7 days (so 30 Oct and 31 Oct both use the
- * October point), otherwise of the month before; nothing older than the month before the review's month; or null.
+ * In month-end data, the end point by MONTH LABEL (the owner's answer to F1, 27 Nov 2026: "As month labels"), rule c2
+ * (MOD-05, 28 Nov 2026): the review month's point counts when its own date is on or before the review date, or when
+ * the review date is on or after the month's last weekday; otherwise the point of the month before; nothing older; or
+ * null. Never a price from after the review date except the month's own close on a review dated on or after its last
+ * weekday.
  */
 function monthEndOnOrBefore(sorted: readonly PricePoint[], day: DayNumber): PricePoint | null {
-  const target = monthEnd(day) - day < PRICE_LOOKBACK_DAYS ? monthIndex(day) : monthIndex(day) - 1;
-  let found: PricePoint | null = null;
-  for (const p of sorted) if (monthIndex(p.day) <= target) found = p;
-  return found && monthIndex(day) - monthIndex(found.day) <= 1 ? found : null;
+  const m = monthIndex(day);
+  const inMonth = sorted.filter((p) => monthIndex(p.day) === m);
+  const own = inMonth.length ? inMonth[inMonth.length - 1]! : null;
+  if (own && (own.day <= day || day >= lastWeekdayOfMonth(day))) return own;
+  const before = sorted.filter((p) => monthIndex(p.day) === m - 1);
+  return before.length ? before[before.length - 1]! : null;
 }
 
 /** The points sorted by day, or the reason the series cannot be used (a price that is not a positive number, a day twice). */

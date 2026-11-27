@@ -39,11 +39,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   and coverage are unchanged; only the reason and the text change. Tests in `unit/returns/portfolio-returns.test.ts`.
 - **`app/src/engine/returns/stock-cagr.ts`** (E-148, not wired; the owner's answer to F1 on 27 Nov 2026, "As month
   labels"): on a month-end source (the pack, by its kind; the analyst's file is daily unless declared) the
-  no-look-ahead rule compares month labels, not calendar days: the review month's point counts when the review date
-  lies in that month's last 7 days (a 30 Oct or 31 Oct review, and a point dated 30 or 31 Oct, give the same 1Y, 3Y and
-  5Y), otherwise the month before, so no price from after a mid-month review is used (the financial review's guard,
-  a conservative default while the owner is away). The figure is dated by the month-end label, marked "month-end label"
-  on that source's footnote clause; the true price day goes in the result's `notes`. Daily sources keep true days.
+  no-look-ahead rule compares month labels, not calendar days, under rule c2 (MOD-05 under the owner's delegation
+  PD-68): the review month's point counts when its own date is on or before the review date, or when the review date
+  is on or after the month's last weekday (no holiday calendar); otherwise the month before. A 30 Oct 2026 review
+  (October's last weekday) and a 31 Oct review use the point labelled 31 Oct and give the same 1Y, 3Y and 5Y; 29, 25
+  and 15 Oct use September. The figure is dated by the month-end label, marked "month-end label" on that source's
+  footnote clause; the true price day goes in the result's `notes`. Daily sources keep true days.
 
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
