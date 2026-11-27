@@ -110,10 +110,13 @@ export function directTwinIndex(directKeys: readonly string[]): DirectTwinIndex 
 }
 
 /** KI-054: the Direct key of the same scheme as a Regular key, or null (no twin: a blank row, never a substitute).
- * `directKeys` may be given as its index (directTwinIndex), so a block is normalised once. */
+ * `directKeys` may be given as its index (directTwinIndex), so a block is normalised once; a list is scanned. */
 export function directTwin(regularKey: string, directKeys: readonly string[] | DirectTwinIndex): string | null {
-  const index = Array.isArray(directKeys) ? directTwinIndex(directKeys as readonly string[]) : directKeys as DirectTwinIndex;
-  const hits = index.get(`${nameKey(regularKey)}|${optionOf(regularKey)}`) ?? [];
+  const want = nameKey(regularKey);
+  const opt = optionOf(regularKey);
+  const hits = Array.isArray(directKeys)
+    ? (directKeys as readonly string[]).filter((d) => nameKey(d.replace(ADJUSTED, ' ')) === want && optionOf(d) === opt)
+    : (directKeys as DirectTwinIndex).get(`${want}|${opt}`) ?? [];
   if (hits.length === 1) return hits[0]!;
   if (hits.length > 1) {
     /* the plain row before an "(Adjusted)" duplicate of the same scheme */
