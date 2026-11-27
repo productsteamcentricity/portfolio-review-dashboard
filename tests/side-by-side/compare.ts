@@ -39,7 +39,8 @@ export type LedgerEntry = {
   fixtures: string[] | '*';
   legacy: Pattern;
   new: Pattern;
-  class: 'correction' | 'improvement' | 'not-built' | 'regression';
+  /** accepted-difference: the owner accepted that the two builds differ here (reviewed at M15); never a defect. */
+  class: 'correction' | 'improvement' | 'not-built' | 'regression' | 'accepted-difference';
   reference: string;
   description: string;
 };
