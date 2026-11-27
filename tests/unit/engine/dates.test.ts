@@ -86,3 +86,11 @@ test('the house date format is D Mon YYYY (D-029)', () => {
   assert.equal(formatDay(ymdToDay(2023, 1, 5)!), '5 Jan 2023');
   assert.equal(formatDay(excelSerialToDay(1)!), '1 Jan 1900');
 });
+
+test('parseDayText reads YYYY-Mon-DD (the Regular MF Monitor\'s "As on 2026-Nov-02"; financial review S5), and refuses an impossible one', () => {
+  assert.equal(iso(parseDayText('2026-Nov-02')), '2026-11-02');
+  assert.equal(iso(parseDayText('2026-November-2')), '2026-11-02');
+  assert.equal(iso(parseDayText('2026 Nov 02')), '2026-11-02');
+  assert.equal(parseDayText('2026-Feb-30'), null);
+  assert.equal(parseDayText('2026-Xyz-02'), null);
+});

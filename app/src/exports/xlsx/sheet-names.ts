@@ -14,11 +14,22 @@ export const SHEETS = {
   overview: 'Portfolio Overview',
   clients: 'Client Allocation',
   distributors: 'Distributor Allocation',
+  // M3b (NB-02): architecture §14 sheet 12, written only when the performance tables are passed.
+  performance: 'Performance',
   // M3a returns (NB-03): architecture §14 sheet 13, written only when a transactions (IRR) file is accepted.
   fundIrr: 'Fund IRR',
   audit: 'Audit Log',
   manifest: '_manifest',
 } as const;
+
+/**
+ * The client holdings sheets' names (E-80; KI-021): each client's title, sanitised, unique ignoring letter case among
+ * themselves and against every name in SHEETS (written or not), so a client called "Audit Log" gets "Audit Log (2)".
+ */
+export function clientSheetNames(titles: readonly string[]): string[] {
+  const reserved = Object.values(SHEETS);
+  return uniqueSheetNames([...reserved, ...titles]).slice(reserved.length);
+}
 
 /** True when Excel accepts the name as it is. */
 export function isValidSheetName(name: string): boolean {

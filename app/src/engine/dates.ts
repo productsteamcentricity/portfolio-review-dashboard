@@ -86,7 +86,8 @@ const MONTH_INDEX = new Map<string, number>([
  * A date written as text, or null when the text is not a date this reader accepts.
  * Accepted, as in the legacy reader (07_engine.js fmtPD): "YYYY-MM-DD" (also with "/" or "."), optionally
  * followed by a time; "DD-MM-YYYY" (also "/" or "."), read as day first, and as month first only when the
- * middle number is above 12 (the legacy swap). Added: "D Mon YYYY" and "D-Mon-YYYY" (month names in English).
+ * middle number is above 12 (the legacy swap). Added: "D Mon YYYY" and "D-Mon-YYYY" (month names in English), and
+ * "YYYY-Mon-DD" (the Regular MF Monitor's "As on 2026-Nov-02"; financial review of 27 Nov 2026, S5).
  * Unlike the legacy reader an impossible date (31-02-2024) is refused instead of rolling into March.
  */
 export function parseDayText(text: string): DayNumber | null {
@@ -104,6 +105,11 @@ export function parseDayText(text: string): DayNumber | null {
   if (m) {
     const mon = MONTH_INDEX.get(m[2]!.toLowerCase());
     return mon === undefined ? null : ymdToDay(Number(m[3]), mon, Number(m[1]));
+  }
+  m = /^(\d{4})[ -]([A-Za-z]{3,9})[ -](\d{1,2})$/.exec(s);
+  if (m) {
+    const mon = MONTH_INDEX.get(m[2]!.toLowerCase());
+    return mon === undefined ? null : ymdToDay(Number(m[1]), mon, Number(m[3]));
   }
   return null;
 }

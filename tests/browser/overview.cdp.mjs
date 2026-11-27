@@ -530,6 +530,53 @@ async function runMode({ browser, mode, files, opt, expect }) {
   await page.viewport(1440, 900);
   await sleep(500);
 
+  // 7b. Section 5 (M3b): the holdings tables with their column chips, and the performance tables
+  await tab('holdings');
+  await sleep(400);
+  const S5 = `(() => {
+    const tables = [...document.querySelectorAll('table.holdings')];
+    const heads = tables[0] ? [...tables[0].querySelectorAll('thead th')].map((th) => th.textContent.trim()) : [];
+    const perf = [...document.querySelectorAll('table.performance')];
+    return {
+      captions: tables.map((x) => x.querySelector('caption')?.textContent.trim() ?? ''),
+      heads,
+      chips: [...document.querySelectorAll('#group-holdings .chip-toggle')].map((b) => b.textContent.trim()),
+      perfGroup: Boolean(document.getElementById('group-performance')),
+      perfCaptions: perf.map((x) => x.querySelector('caption')?.textContent.trim() ?? ''),
+      planSwitch: document.querySelectorAll('#group-performance .chip-toggle').length,
+      notes: [...document.querySelectorAll('#holdings .notes li')].map((li) => li.textContent.trim()),
+    };
+  })()`;
+  const s5 = await page.eval(S5);
+  expect('section 5: one holdings table per client, highest CMV first, with the CZHOLD columns (U-23)',
+    JSON.stringify(s5.captions) === JSON.stringify(['Holdings of Sample Client A', 'Holdings of Sample Client B']) && s5.heads[0] === 'Instrument Name' && s5.heads.includes('Distributor') && s5.heads.length === 10, s5);
+  const distributorChip = await page.eval(`(() => { const b = [...document.querySelectorAll('#group-holdings .chip-toggle')].find((x) => x.textContent.trim() === 'Distributor'); if (!b) return null; b.id = 'chip-distributor-test'; return '#chip-distributor-test'; })()`);
+  if (distributorChip) await page.click(await page.eval(CENTRE(distributorChip)));
+  await sleep(300);
+  const hidden = await page.eval(S5);
+  if (distributorChip) await page.click(await page.eval(CENTRE(distributorChip)));
+  await sleep(300);
+  const restored = await page.eval(S5);
+  expect('a column chip hides its column and shows it again (U-23)',
+    distributorChip !== null && !hidden.heads.includes('Distributor') && hidden.heads.length === 9 && restored.heads.length === 10, { hidden: hidden.heads, restored: restored.heads });
+  expect('section 5: the performance tables, each captioned with its data date (U-41, KI-083); no Direct switch when no fund is matched',
+    s5.perfGroup && s5.perfCaptions.length > 0 && s5.perfCaptions.every((c) => / as on [0-9]+ [A-Z][a-z]{2} [0-9]{4}$| as-on date not given in the data$/.test(c)) && s5.planSwitch === 0, s5);
+  // N10: the sample's funds are not in the reference data, so each table names them as not matched (not as matched
+  // funds with no returns); the same six funds the page hid before the notes were split.
+  const NOT_MATCHED = [
+    '2 funds are not matched to reference data and are not shown: Sample Bluechip Fund - Regular Plan - Growth and Sample Flexi Cap Fund - Regular Plan - Growth.',
+    '1 fund is not matched to reference data and is not shown: Sample Balanced Advantage Fund - Regular Plan - Growth.',
+    '1 fund is not matched to reference data and is not shown: Sample Corporate Bond Fund - Regular Plan - Growth.',
+    '1 fund is not matched to reference data and is not shown: Sample Gold ETF Fund of Fund - Growth.',
+    '1 fund is not matched to reference data and is not shown: Sample Value Strategy PMS.',
+  ];
+  const shownNotMatched = s5.notes.filter((n) => / not matched to reference data /.test(n));
+  expect('section 5: each table names the funds not matched to reference data, and none as "no returns in the data" (N10)',
+    JSON.stringify(shownNotMatched) === JSON.stringify(NOT_MATCHED) && !s5.notes.some((n) => / no returns in the data /.test(n)), s5.notes);
+  await page.screenshot(path.join(out, '1440-section-5.png'));
+  await tab('overview');
+  await sleep(400);
+
   // 8. Downloads (real clicks) [L13]
   const before8 = page.requests.length;
   for (const [button, fileName] of [['#download-deck', DECK_NAME], ['#download-workbook', BOOK_NAME]]) {
@@ -549,6 +596,10 @@ async function runMode({ browser, mode, files, opt, expect }) {
       const res = checkWorkbookBytes(new Uint8Array(bytes));
       expect('the downloaded workbook passes the evaluator-only check (run-acceptance --check-file)', res.pass,
         res.pass ? `${res.formulas} formulas` : res.checks.filter((c) => !c.ok).map((c) => `${c.name}: ${c.detail.slice(0, 3).join('; ')}`));
+      const { readXlsx } = await import(pathToFileURL(path.join(ROOT, 'tests', 'helpers', 'xlsx-read.ts')).href);
+      const sheetNames = readXlsx(new Uint8Array(bytes)).sheets.map((s) => s.name);
+      expect('the downloaded workbook has a holdings sheet per client and the Performance sheet (E-80, E-84)',
+        sheetNames.includes('Sample Client A') && sheetNames.includes('Sample Client B') && sheetNames.includes('Performance'), sheetNames);
     }
   }
   const during = page.requests.slice(before8);

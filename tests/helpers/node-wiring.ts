@@ -16,6 +16,7 @@ import { computeReview } from '../../app/src/engine/review.ts';
 import { buildOverviewDeckDetailed, type DeckBuild } from '../../app/src/exports/pptx/deck.ts';
 import { buildOverviewWorkbook, workbookInputFrom } from '../../app/src/exports/xlsx/overview-workbook.ts';
 import { loadIrrFile } from '../../app/src/ingest/load-irr.ts'; // M3a returns (NB-03)
+import { buildHoldingsVM } from '../../app/src/views/holdings.ts';
 import { sha256Hex } from '../../app/src/services/sha256.ts';
 import { fixedClock } from '../../app/src/services/clock.ts';
 import { auditExport } from '../../app/src/services/audit-log.ts';
@@ -26,6 +27,18 @@ import { committedMatchContext } from './match-blocks.ts';
 import { matchLoaded } from '../../app/src/engine/match/resolve-holdings.ts';
 import { loadMonitor, type MonitorSheetJS } from '../../app/src/ingest/load-monitor.ts';
 import { refdataBlock } from './legacy-engine.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import { REPO } from './sheetjs.ts';
+import { performanceSourcesFrom } from '../../app/src/data/performance-sources.ts';
+import { computePerformance } from '../../app/src/engine/returns/performance.ts';
+
+/** The page's refdata blocks from the committed files (data/refdata/<NAME>.json), as data/refdata.ts reads them. */
+export const FILE_BLOCK_TEXT = (id: string): string | null => {
+  const name = id.replace(/^refdata-/, '');
+  const p = path.join(REPO, 'data', 'refdata', `${name}.json`);
+  return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+};
 import { loadPptxGenJS } from './pptxgenjs.ts';
 import { slideInventory } from './slide-inventory.ts';
 import { NUM_FMT_CODES } from '../../app/src/exports/xlsx/styles.ts';
@@ -74,8 +87,8 @@ export function nodeWiring(build: BuildStamp = NODE_BUILD, nowIso: string = NODE
       last.pptx = { fileName, bytes: deck.bytes, deck };
       return finish('pptx', vm, deck.bytes, fileName);
     },
-    exportWorkbook: async (review, vm) => {
-      const bytes = buildOverviewWorkbook(workbookInputFrom(review, vm));
+    exportWorkbook: async (review, vm, returns, extra) => {
+      const bytes = buildOverviewWorkbook({ ...workbookInputFrom(review, vm, returns), clientHoldings: buildHoldingsVM(review), ...(extra?.performance ? { performance: extra.performance } : {}) });
       const fileName = workbookFileName(vm);
       last.xlsx = { fileName, bytes };
       return finish('xlsx', vm, bytes, fileName);
@@ -84,6 +97,7 @@ export function nodeWiring(build: BuildStamp = NODE_BUILD, nowIso: string = NODE
     // M3a returns (NB-03): the transactions (IRR) file reader, as the browser wiring has it.
     loadIrrFile: (bytes, fileName) => loadIrrFile(bytes, fileName, xlsx, { now }),
     matchHoldings: (loaded, overrides) => matchLoaded(loaded, committedMatchContext(overrides)),
+    performance: (holdings, uploads) => computePerformance(holdings, performanceSourcesFrom(uploads, FILE_BLOCK_TEXT)),
     loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, xlsx as unknown as MonitorSheetJS, regular ?? (refdataBlock('MF_PERF') as never)),
   };
 }
