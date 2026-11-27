@@ -268,11 +268,12 @@ export function weightedFundReturn(
       entryOfInput[entryOfInput.length - 1] = e;
       return { ...at, pick: { returnPct: found.v, source: e.src.source } };
     }
-    // absent from every table the rule may use, but with a return in a table of another date: say so (ARC-03 L3)
-    if (!listed) {
+    // absent from every table the rule may use, but with a return in a table of another date: say so (ARC-03 L3).
+    // Only when both dates are known: an undated table is not known to be "of another date" (stays 'no-return').
+    if (!listed && chain[0] && chain[0].table.asOn.kind === 'value') {
       const elsewhere = sources.some((src) => {
         const t = src.plans[h.plan!];
-        return t !== undefined && !chain.some((e) => e.table === t) && fundLookup(t, h.schemeName!, tenor).kind === 'value';
+        return t !== undefined && !chain.some((e) => e.table === t) && t.asOn.kind === 'value' && fundLookup(t, h.schemeName!, tenor).kind === 'value';
       });
       if (elsewhere) return { ...at, pick: { excluded: 'other-date' } };
     }
@@ -413,13 +414,13 @@ export function excludedBy(items: readonly WeightedItem[]): ExcludedBy {
 
 const REASON_ORDER: ReadonlyArray<Exclude<ExclusionReason, 'no-value'>> = ['no-return', 'other-date', 'unmatched', 'no-plan', 'plan-mismatch'];
 
-function reasonText(reason: Exclude<ExclusionReason, 'no-value'>, basis: ReturnsCoverage['basis'], t: string): string {
+function reasonText(reason: Exclude<ExclusionReason, 'no-value'>, basis: ReturnsCoverage['basis'], t: string, n: number): string {
   switch (reason) {
     case 'no-return': return `without a ${t} return`;
     case 'unmatched': return basis === 'equity-value' ? 'without an ISIN' : 'not matched to a fund';
     case 'no-plan': return 'with no known plan';
     case 'plan-mismatch': return 'whose plan differs from the account';
-    case 'other-date': return `not in the primary table (its ${t} return is only in a table of another date)`;
+    case 'other-date': return n === 1 ? `not in the primary table (its ${t} return is only in a table of another date)` : `not in the primary table (their ${t} returns are only in a table of another date)`;
   }
 }
 
@@ -440,7 +441,7 @@ export function coverageFootnote(figure: WeightedReturn, used: readonly UsedTabl
       const n = excluded[r]!;
       // a fund that is not matched is a holding, not yet a fund (ARC-03 F7)
       const [o, m] = r === 'unmatched' && c.basis === 'mf-value' ? ['holding', 'holdings'] : [one, many];
-      return `${n} ${n === 1 ? o : m} ${reasonText(r, c.basis, t)} excluded`;
+      return `${n} ${n === 1 ? o : m} ${reasonText(r, c.basis, t, n)} excluded`;
     });
     parts.push([`${t} covers ${sharePct(c.share)} of ${BASE_NAME[c.basis]}`, ...clauses].join('; '));
   }
