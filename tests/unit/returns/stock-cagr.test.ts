@@ -234,14 +234,14 @@ describe('ARC-03 delta review of 49e9a34 (M1, M2, pinned)', () => {
     const r = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [pack], D(2026, 10, 15), '1y', 'family');
     near(v(r.figure!.value), 10);
     assert.equal(v(r.figure!.asOn), SEP30);
-    assert.match(footnoteOf(r)!, /as on 2026-09-30\.$/);
+    assert.match(footnoteOf(r)!, /as on 2026-09-30 \(1 stock\)\.$/);
   });
   test('M1: a file dated 20 Nov whose prices end on 29 Oct is footnoted as on 29 Oct, the day of the prices used', () => {
     const file: PriceSource = { source: 'analyst-price-file', asOn: present(D(2026, 11, 20), 'date', P3), series: { INE000SAMPLE1: pts([D(2025, 10, 29), 100], [D(2026, 10, 29), 110]) } };
     const r = directEquityCagr([sh3('s', 'INE000SAMPLE1', 1)], [file], AS_ON, '1y', 'family');
     assert.equal(v(r.figure!.asOn), D(2026, 10, 29));
     const foot = footnoteOf(r)!;
-    assert.match(foot, /as on 2026-10-29\.$/);
+    assert.match(foot, /as on 2026-10-29 \(1 stock\)\.$/);
     assert.ok(!foot.includes('2026-11-20'));
   });
   test('M2 (PD-67): as-on 15 Oct uses 30 Sep; 2 Nov uses 31 Oct; a later point is never used', () => {
@@ -258,5 +258,44 @@ describe('ARC-03 delta review of 49e9a34 (M1, M2, pinned)', () => {
     const file: PriceSource = { source: 'analyst-price-file', asOn: SRC_ON, series: { INE000SAMPLE1: pts([D(2025, 10, 31), 100], [AS_ON, 110]) } };
     const r = directEquityCagr([sh3('a', 'INE000SAMPLE1', 2), { holdingId: 'b' as HoldingId, isin: null, cmvCr: present(1, 'cr', P3) }, sh3('c', 'INE000NOPRICE', 1)], [file], AS_ON, '1y', 'family');
     assert.match(footnoteOf(r)!, /1Y covers 50% of direct-equity value; 1 stock without a 1Y return excluded; 1 stock without an ISIN excluded\./);
+  });
+});
+
+describe('ARC-03 delta review 2 (F2, F3) with MOD-05\'s F3 rule', () => {
+  const P4 = { sources: [], method: 'test' };
+  const sh4 = (id: string, isin: string, cmv: number): StockHoldingInput => ({ holdingId: id as HoldingId, isin, cmvCr: present(cmv, 'cr', P4) });
+  // daily data: the stocks end on different days before a 31 Oct as-on (a holiday-like gap for some)
+  const endOn = (end: number, start: number): PricePoint[] => pts([start, 100], [end, 110]);
+  const S = (d: number) => D(2025, 10, d);
+  const E = (d: number) => D(2026, 10, d);
+  const file: PriceSource = {
+    source: 'analyst-price-file', asOn: SRC_ON, sourceIds: ['sha-file'],
+    series: { INE000SAMPLEA: endOn(E(29), S(29)), INE000SAMPLEB: endOn(E(30), S(30)), INE000SAMPLEC: endOn(E(29), S(29)), INE000SAMPLED: endOn(E(28), S(28)) },
+  };
+  const rows = [sh4('a', 'INE000SAMPLEA', 1), sh4('b', 'INE000SAMPLEB', 1), sh4('c', 'INE000SAMPLEC', 1), sh4('d', 'INE000SAMPLED', 1)];
+  test('F3: the figure carries the latest end day of the primary source; the others ascend with counts', () => {
+    const r = directEquityCagr(rows, [file], AS_ON, '1y', 'family');
+    assert.equal(v(r.figure!.asOn), E(30));
+    assert.deepEqual(r.used.map((u) => [v(u.asOn), u.count]), [[E(30), 1], [E(28), 1], [E(29), 2]]);
+    assert.equal(footnoteOf(r), "1Y: weighted average return of current holdings. Source: analyst's price file, as on 2026-10-30 (1 stock; also 2026-10-28: 1 stock, 2026-10-29: 2 stocks).");
+  });
+  test('F3: nothing depends on the order of the holdings (every permutation of four rows)', () => {
+    const perms = (xs: StockHoldingInput[]): StockHoldingInput[][] => xs.length <= 1 ? [xs] : xs.flatMap((x, i) => perms([...xs.slice(0, i), ...xs.slice(i + 1)]).map((p) => [x, ...p]));
+    const base = directEquityCagr(rows, [file], AS_ON, '1y', 'family');
+    for (const p of perms(rows)) {
+      const r = directEquityCagr(p, [file], AS_ON, '1y', 'family');
+      assert.deepEqual(r.figure!.asOn, base.figure!.asOn);
+      assert.deepEqual(r.figure!.parts, base.figure!.parts);
+      assert.deepEqual(r.used, base.used);
+      assert.equal(footnoteOf(r), footnoteOf(base));
+    }
+  });
+  test('F2: a present stock value is dated by its end day; a missing one keeps the review as-on', () => {
+    const r = directEquityCagr([...rows, sh4('z', 'INE000NOPRICE', 1)], [file], AS_ON, '1y', 'family');
+    const asOf = (i: number) => { const c = r.lines[i]!.cagr; return c.kind === 'value' ? c.prov.asOf : null; };
+    assert.deepEqual([0, 1, 2, 3].map(asOf), ['2026-10-29', '2026-10-30', '2026-10-29', '2026-10-28']);
+    assert.equal(r.lines[4]!.cagr.kind, 'missing');
+    const short = stockCagr(pts([D(2025, 1, 31), 100], [AS_ON, 120]), AS_ON, '3y');
+    assert.equal(short.kind === 'missing' && short.prov?.asOf, '2026-10-31');
   });
 });
