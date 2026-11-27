@@ -317,7 +317,7 @@ that builds it (EX-01 or NB-01).
 | PD-65 | The owner's operating charter: autonomous full-stack development, parallel execution and project continuity | **GIVEN 24 Nov 2026** (owner instruction): the Moderator is project manager, principal architect, lead full-stack developer and integration owner; routine technical decisions are the Moderator's; the owner is asked only for business and financial logic, scope, data integrity, security and privacy, irreversible actions, spend and sprint output approvals; three-compaction succession for every chat, the Moderator too; `docs/coordination/` | none |
 | PD-66 | Delegation while the owner was away | **GIVEN 25 Nov 2026, 00:57 IST** (owner instruction, about 12 hours, ended about 13:00 IST): the Moderator approves decisions on the owner's behalf ("approve all the decisions on my behalf"), recorded as "MOD-04 under PD-66", within fixed limits | none (ended) |
 | PD-67 | Delegation while the owner was away, again | **GIVEN 26 Nov 2026, about 19:30 IST** ("Yes, as on 25 Nov (Recommended)"; about 15 hours, ended about 10:30 IST on 27 Nov): as PD-66, recorded as "MOD-04 under delegation (PD-67)" and, after the Moderator change, "MOD-05 under delegation (PD-67)" | none (ended) |
-| PD-68 | Delegation while the owner was away, 28 Nov 2026 | **GIVEN 28 Nov 2026, about 02:05 IST** (until about 11:00 IST): the Moderator (MOD-05) takes every decision needed to keep the new build moving and may open successor chats itself; unchanged limits (nothing prohibited, no Office runs, no account settings, the live page not changed, Gate E the owner's); recorded as "MOD-05 under delegation (PD-68)" | none (ends about 11:00 IST, 28 Nov) |
+| PD-68 | Delegation while the owner was away, 28 Nov 2026 | **GIVEN 28 Nov 2026, about 02:05 IST** (until about 11:00 IST): the Moderator (MOD-05) takes every decision needed to keep the new build moving and may open successor chats itself; unchanged limits (nothing that is prohibited (credentials, untrusted downloads, force-push, history rewrite, data or branch deletion), no Office runs, no account settings, the live page not changed, Gate E the owner's); recorded as "MOD-05 under delegation (PD-68)" | none (ends about 11:00 IST, 28 Nov) |
 
 ### 2.3 Each decision explained
 
@@ -1005,8 +1005,8 @@ PD-50 to PD-56: the plain-language sections are still to be written; their table
 
 **GIVEN 28 Nov 2026, about 02:05 IST** (one message typed in the Moderator's chat): "I will not be available for the next 8-9 hours; work and coding on the new build shouldn't stop in the meantime; I want moderator to handle all the decisions in that time and choose the most logical and best course of action keeping the end goal and user and use case in mind." "I want moderator to start new chat in case context is full for some chats in the meantime as well"
 - **Effect.** The Moderator (MOD-05) takes every decision needed to keep the new build moving until about 11:00 IST on
-  28 Nov 2026 and may open successor chats itself. Unchanged limits: nothing prohibited, no Office runs, no account
-  settings, the live page not changed, Gate E the owner's.
+  28 Nov 2026 and may open successor chats itself. Unchanged limits: nothing that is prohibited (credentials, untrusted downloads, force-push, history rewrite, data or branch deletion),
+  no Office runs, no account settings, the live page not changed, Gate E the owner's.
 - **Decisions taken under it:** listed in the records update that follows the window.
 
 ### 2.4 Owner decisions without a PD number (17 to 28 Nov 2026)
