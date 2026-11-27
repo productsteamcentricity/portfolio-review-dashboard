@@ -398,7 +398,11 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
       fifoU = L.reduce((s, x) => s + x.u, 0);
       baseU = amtMode ? inv : unitBase;
     };
-    const drift = (): number => (baseU !== null && baseU !== 0 ? Math.abs(fifoU - baseU) / Math.abs(baseU) : fifoU > 0 ? 0 : 1);
+    // R2 S-2: a base figure of 0 (the rupee ledger with an invested value of 0) against lots above 0 is full drift, so the
+    // holding is unreconciled and its CMV lands in unclassified (long + short + unclassified = CMV, AC-18). The live
+    // returns 0 here and scales every lot to 0 units, so the CMV vanished from all three buckets.
+    const drift = (): number => (baseU !== null && baseU !== 0 ? Math.abs(fifoU - baseU) / Math.abs(baseU)
+      : baseU === 0 ? (fifoU > 0 ? 1 : 0) : fifoU > 0 ? 0 : 1);
     load();
     if (!amtMode && !unitsGap && ledger?.noPxBuy && (!L.length || drift() > 0.01)) { amtMode = true; pxGap = true; load(); }
     const swIn = !!ledger?.swIn;

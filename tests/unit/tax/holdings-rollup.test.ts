@@ -88,6 +88,18 @@ describe('byClass pools per position', () => {
     // The bond fund's two records are one class, n counts records (as the live).
     assert.equal(fam.byClass.find((c) => c.cls === INST.debtMf)!.n, 2);
   });
+  test('R2 S-4: gainUnknown counts holdings: a split holding with an unknown gain counts once', () => {
+    // The bond fund split at 1 Apr 2023 into two records of one holding, both with an unknown gain: 1 holding, not 2
+    // records. n still counts records (the live clsTot).
+    const r = build([
+      { client: A, name: 'Sample Bond Fund', cls: 'debtMf', cmv: 10000, lt: null, st: null, splitPart: 'from-2023', id: 'holding:9' },
+      { client: A, name: 'Sample Bond Fund', cls: 'debtMf', cmv: 10000, lt: null, st: null, splitPart: 'pre-2023', id: 'holding:9' },
+    ]);
+    const debt = r.family.byClass.find((c) => c.cls === INST.debtMf)!;
+    assert.equal(debt.n, 2);
+    assert.equal(debt.gainUnknown, 1);
+    assert.equal(r.clients[0]!.byClass.reduce((s, c) => s + c.gainUnknown, 0), 1);
+  });
 });
 
 describe('taxRollup: by product and by asset', () => {

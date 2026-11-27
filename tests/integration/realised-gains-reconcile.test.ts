@@ -12,13 +12,18 @@ import { emptyTaxInputs, realiseLots } from '../../app/src/engine/tax/realised.t
 import { deriveRealisedGains } from '../../app/src/engine/tax/realised-irr.ts';
 import type { DerivedRealised } from '../../app/src/engine/tax/realised-irr.ts';
 import {
-  MIXED_SOURCE, TOLERANCE_RULE, realisedForYear, reconcileRealised, reconcileTolerance,
+  MIXED_SOURCE, OUTSIDE_REVIEW_REASON, TOLERANCE_RULE, realisedForYear, reconcileRealised, reconcileTolerance,
 } from '../../app/src/engine/tax/reconcile.ts';
 import type { ReconcileRow, RealisedReconciliation, StatementSide } from '../../app/src/engine/tax/reconcile.ts';
+import { readWorkbook } from '../../app/src/ingest/workbook.ts';
+import { parseBaseFile } from '../../app/src/ingest/base-file.ts';
 import { STATUS } from '../../app/src/model/status.ts';
+import type { SourceFileId } from '../../app/src/model/ids.ts';
 import type { Value } from '../../app/src/model/value.ts';
 import { loadSheetJS } from '../helpers/sheetjs.ts';
+import { bookBytes } from '../fixtures/make-books.ts';
 import { AS_ON_DAY, NOW, parseLots } from '../fixtures/make-cg-tax-lots.ts';
+import { CLIENT_A } from '../fixtures/make-cg-statements.ts';
 import { SCHEME, irrImport, irrRealisedRows, mismatchStatementLots } from '../fixtures/make-realised-reconcile.ts';
 
 const xlsx = loadSheetJS();
@@ -254,5 +259,39 @@ describe('the review figure tax.realisedFY: the statement where it covers the ye
     assert.equal(fy.source, null);
     assert.equal(fy.clients.length, 0);
     near(v(fy.total), 0, 'total');
+    assert.deepEqual(fy.outsideReview.clients, []);
+  });
+});
+
+describe('R2 S-5 (OD-4): an IRR client with no holding in the base file is left out of the family figure, and listed', () => {
+  // The base file holds client A only (Bluechip, 60 u). Client B is in the IRR file (Midcap, derived 400 in FY 2025-26)
+  // but holds nothing in the base file: outside the review, as the statement side leaves out a person not in the
+  // review. B is listed with a count, never added.
+  const base = parseBaseFile(readWorkbook(xlsx, bookBytes(xlsx, [{
+    client: CLIENT_A, name: SCHEME.BLUE, cat: 'Large Cap Fund', asset: 'Equity', folio: '', amc: 'Sample Mutual Fund', product: 'Mutual Funds',
+    dist: 'Sample Distributor 1', units: 60, invested: 7500, mv: 8400, xirr: 10, bmxirr: 9, days: 300, purchase: [2024, 1, 10],
+  }])), { sourceId: 'b'.repeat(64) as SourceFileId, now: NOW });
+  const der = deriveRealisedGains(irrImport(irrRealisedRows(), xlsx).fund, { asOn: AS_ON_DAY, holdings: base.holdings });
+
+  test('without a statement: A only, 2,000; B listed outside the review', () => {
+    // FY 2025-26: A Flexi Cap 1,500 + Focused 500 = 2,000 (no holding joins either: term not known). B Midcap 400 is
+    // left out (the old figure was 2,400). One client outside, with its one lot.
+    const fy = realisedForYear(2025, der, null);
+    assert.equal(fy.clients.length, 1);
+    near(v(fy.total), 2000, 'total');
+    assert.equal(fy.outsideReview.count, 1);
+    assert.deepEqual(fy.outsideReview.clients.map((c) => [c.clientLabel, c.lots]), [['Sample Client B', 1]]);
+    assert.equal(fy.outsideReview.reason, OUTSIDE_REVIEW_REASON);
+    assert.match(fy.total.kind === 'value' ? fy.total.prov.method : '', /1 client of the IRR file with no holding in the base file left out \(OD-4\)/);
+  });
+
+  test('with the statement: one rule on both sides, so the figure is the statement\'s alone', () => {
+    // FY 2025-26: A from the statement, 1,700 long; B (derived 400) outside the review: total 1,700, source statement
+    // (was 2,100, mixed).
+    const fy = realisedForYear(2025, der, statementOf());
+    assert.equal(fy.source, 'statement');
+    near(v(fy.total), 1700, 'total');
+    near(v(fy.unknownTerm), 0, 'unknown term');
+    assert.equal(fy.outsideReview.count, 1);
   });
 });

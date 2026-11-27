@@ -72,7 +72,11 @@ export type ClassPool = {
   stNeg: number;
   /** The class has no investor-level split (D-040 d, h): never pooled. */
   notSplit: NotSplitKind | null;
-  /** Split records of the class whose gain is unknown (no invested value, KI-007): left out of the pools. */
+  /**
+   * Split holdings of the class whose gain is unknown (no invested value, KI-007): left out of the pools. A holding, not
+   * a record (R2 S-4): a holding split at 1 Apr 2023 is counted once in the summary, in the class of its first record,
+   * so the classes add up to the holdings with an unknown gain (harvest.ts reads that sum and its coverage).
+   */
   gainUnknown: number;
 };
 
@@ -235,6 +239,8 @@ export function summariseRecords(
   };
   type C = { p: ClassPool; gain: Acc; lt: Acc; st: Acc; order: number };
   const cls = new Map<string, C>();
+  /** Holdings already counted in a class's gainUnknown (a split holding's two records count once, R2 S-4). */
+  const gainUnknownSeen = new Set<HoldingId>();
   for (const r of pos) {
     t.cmv += r.cmv;
     add(A.gain, r.holdingId, r.gain);
@@ -275,7 +281,7 @@ export function summariseRecords(
       if (r.lt.cmv > 0) { add(A.lt, r.holdingId, null); add(c.lt, r.holdingId, null); }
       if (r.st.cmv > 0) { add(A.st, r.holdingId, null); add(c.st, r.holdingId, null); }
       if (r.unclassified.cmv > 0) add(A.unc, r.holdingId, null);
-      g.gainUnknown++;
+      if (!gainUnknownSeen.has(r.holdingId)) { gainUnknownSeen.add(r.holdingId); g.gainUnknown++; }
     }
   }
   // Unreconciled and unmapped holdings hold real money: in CMV and gain, and all of it unclassified.

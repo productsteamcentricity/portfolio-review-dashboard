@@ -1,6 +1,6 @@
 // covers: E-43 D-040 PD-03 PD-07 Q-52 KI-130 KI-007
-// Tax-loss harvesting per client (app/src/engine/tax/harvest.ts, NB-M7a S4b): the hand-worked answers H-1 to H-6 of
-// tests/fixtures/harvest-known-answers.json (origin NB-03, for the financial review; the working is in each case's
+// Tax-loss harvesting per client (app/src/engine/tax/harvest.ts, NB-M7a S4b): the hand-worked answers H-1 to H-6 and R2-H7 of
+// tests/fixtures/harvest-known-answers.json (origin NB-03; R2-H7 the financial reviewer's, round 2; the working is in each case's
 // note), and the new-build rules: PD-07 (no slab default, the one named parameter), Q-52 (the exemption only when the
 // amount already used is known: the analyst's entry, else the statement's person-year for the client's only person),
 // crypto out of set-off (PD-03), per client never pooled, unknown gains PARTIAL. Synthetic records
@@ -96,10 +96,13 @@ function checkCase(id: string, positions: PositionSpec[], inputs: Inputs, expect
   }
 }
 
-describe('known answers H-1 to H-6 (harvest-known-answers.json, origin NB-03)', () => {
-  test('the file holds H-1 to H-6, each marked as NB-03\'s and in the harvest group', () => {
-    assert.deepEqual(KA.cases.map((c: { id: string }) => c.id), ['H-1', 'H-2', 'H-3', 'H-4', 'H-5', 'H-6']);
-    for (const c of KA.cases) { assert.equal(c.origin, 'NB-03'); assert.equal(c.group, 'harvest'); assert.ok(c.note.length > 40); }
+describe('known answers H-1 to H-6 (origin NB-03) and R2-H7 (the financial reviewer\'s, round 2)', () => {
+  test('the file holds H-1 to H-6 (NB-03) and R2-H7 (FIN-R2), each in the harvest group', () => {
+    assert.deepEqual(KA.cases.map((c: { id: string }) => c.id), ['H-1', 'H-2', 'H-3', 'H-4', 'H-5', 'H-6', 'R2-H7']);
+    for (const c of KA.cases) {
+      assert.equal(c.origin, c.id.startsWith('R2-') ? 'FIN-R2' : 'NB-03');
+      assert.equal(c.group, 'harvest'); assert.ok(c.note.length > 40);
+    }
   });
   for (const c of KA.cases) {
     test(c.id, () => checkCase(c.id, c.positions, c.inputs, c.expect));
@@ -221,6 +224,21 @@ describe('per client, the family a sum; the contract shape', () => {
     assert.equal((h.taxBefore as { coverage?: number }).coverage, 0.5);
     assert.match((h.taxBefore as { prov: { method: string } }).prov.method, /PARTIAL COVERAGE/);
     assert.ok(h.labels.some((l) => /unknown gain/.test(l)));
+  });
+  test('R2 S-4: a holding split at 1 Apr 2023 with an unknown gain counts once, so coverage is 1 of 2 holdings', () => {
+    // One known holding and one Specified debt holding split at 1 Apr 2023 (two records, one holding id) with a blank
+    // invested value. Holdings: 2, of which 1 has an unknown gain: gainUnknown 1, coverage (2 - 1) / 2 = 0.5, the label
+    // "1 holding". (The old count took the two records: gainUnknown 2, coverage (2 - 2) / 2 = 0, "2 holdings".)
+    const { clients, family } = run([
+      { client: A, name: 'Sample Fund One', cls: 'equityMf', cmv: 300000, lt: 100000 },
+      { client: A, name: 'Sample Bond Fund', cls: 'debtMf', cmv: 10000, lt: null, st: null, splitPart: 'from-2023', id: 'holding:9' },
+      { client: A, name: 'Sample Bond Fund', cls: 'debtMf', cmv: 10000, lt: null, st: null, splitPart: 'pre-2023', id: 'holding:9' },
+    ], ctxOf({ slab: { [A]: 30 }, exemptionUsed: { [A]: 'unused-confirmed' } }));
+    const h = clients[0]!;
+    assert.equal(h.gainUnknown, 1);
+    assert.equal((h.taxBefore as { coverage?: number }).coverage, 0.5);
+    assert.ok(h.labels.includes('1 holding with an unknown gain left out (PARTIAL COVERAGE)'), JSON.stringify(h.labels));
+    assert.equal(family.gainUnknown, 1);
   });
   test('an unsplit holding (Category II AIF) is never a pool or a candidate', () => {
     const { clients } = run([

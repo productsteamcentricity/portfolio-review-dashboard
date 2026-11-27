@@ -210,8 +210,19 @@ const KI065: Book = {
   ] as const).map(([asset, product, cat, name], i) => hold(A, name, cat, asset, product, 100, 10000 + i * 1000, 11000 + i * 1000)),
 };
 
+/**
+ * R2 S-2 (R2-F5): units blank and an invested value of 0, one purchase of 10,000. The rupee ledger's base is 0, so the
+ * new engine reads full drift: unreconciled ('value'), the CMV of 12,000 unclassified at a gain of 12,000. The live
+ * reads 0 drift and scales the lot to 0, so its long, short and unclassified CMV are all 0 (ledger TX-05).
+ */
+const INVESTED_ZERO: Book = {
+  id: 'tax-invested-zero', asOn: day(2026, 9, 30),
+  book: [hold(A, N.flexi, 'Flexi Cap Fund', 'Equity', MF, null, 0, 12000)],
+  flows: [flow(A, N.flexi, [2024, 8, 1], 'Purchase', 100, -10000)],
+};
+
 const BOOKS: Book[] = [CORE, OD16, OD15, annivBook('tax-anniv-on', day(2026, 9, 30)), annivBook('tax-anniv-after', day(2026, 10, 1)),
-  annivBook('tax-leap-on', day(2025, 2, 28)), annivBook('tax-leap-after', day(2025, 3, 1)), USUAL_BEFORE, LISTED_ETF, KI065];
+  annivBook('tax-leap-on', day(2025, 2, 28)), annivBook('tax-leap-after', day(2025, 3, 1)), USUAL_BEFORE, LISTED_ETF, KI065, INVESTED_ZERO];
 
 // ---------------------------------------------------------------------------------------------------------------
 // Both sides in one shape
@@ -356,7 +367,7 @@ describe('holdings tax parity with the live computeTaxation and taxClassify (E-4
     assert.deepEqual(LEDGER.entries.filter((e) => !used.has(e.id)).map((e) => e.id), []);
     for (const e of LEDGER.entries) {
       assert.equal(e.class, 'correction', e.id);
-      assert.match(e.reference, /\b(OD-12|OD-15|OD-16|OD-2|KI-065|KI-099|KI-037)\b/, e.id);
+      assert.match(e.reference, /\b(OD-12|OD-15|OD-16|OD-2|KI-065|KI-099|KI-037|AC-18)\b/, e.id);
     }
   });
   test('the books agree on most of what they compare (a guard against an empty comparison)', () => {
@@ -374,7 +385,8 @@ describe('holdings tax parity with the live computeTaxation and taxClassify (E-4
 // exemption CONFIRMED unused for every client (equal inputs). Compared field by field, in rupees to Rs 0.005, per scope
 // (the family and each client by label): the totals, byClass (with the per-position pools), byProduct, byAsset and the
 // harvest (the live TAX_HARVEST_SUM fields and the candidates). Every difference must match exactly one entry of the
-// ledger's `rollupEntries` (a recorded correction), and every entry must be used.
+// ledger's `rollupEntries` (a recorded correction), and every entry must be used. Entries are field level (R2 S-6),
+// except TXR-11; the books whose figures differ by correction carry hand-worked known answers (R2-R1) below.
 
 /** A book for the harvest: losses inside positive classes, a slab-rate gain, crypto, and two clients. */
 const HARVEST: Book = {
@@ -406,8 +418,17 @@ const HARVEST: Book = {
 };
 
 const ROLLUP_BOOKS: Book[] = [...BOOKS, HARVEST];
+/**
+ * A roll-up entry is field-level (R2 S-6): `scopes` and `fields` list exactly the scopes and fields that differ, and
+ * every pair of them must be used; or, for a difference that is genuinely a whole area (TXR-11), one `scope` ('*' or a
+ * label) and one `field` (exact, or a prefix ending in "*").
+ */
+type RollupEntry = {
+  id: string; book: string; class: string; reference: string; description: string;
+  scope?: string; field?: string; scopes?: string[]; fields?: string[];
+};
 const RLEDGER = (JSON.parse(fs.readFileSync(path.join(REPO, 'tests', 'parity', 'tax-ledger.json'), 'utf8')) as {
-  rollupEntries: Array<{ id: string; book: string; scope: string; field: string; class: string; reference: string; description: string }>;
+  rollupEntries: RollupEntry[];
 }).rollupEntries;
 
 type Flat = Map<string, number | string | null>;
@@ -528,6 +549,10 @@ function flatDiffs(l: Flat, o: Flat): string[] {
 
 /** A ledger field matches a difference's field exactly, or as a prefix when it ends with "*". */
 const fieldMatch = (pattern: string, field: string): boolean => (pattern.endsWith('*') ? field.startsWith(pattern.slice(0, -1)) : pattern === field);
+/** Whether a roll-up entry covers a difference (scope, field). Field-level entries match exactly, never by prefix. */
+const entryCovers = (e: RollupEntry, scope: string, field: string): boolean => (e.fields
+  ? (e.scopes ?? []).includes(scope) && e.fields.includes(field)
+  : (e.scope === '*' || e.scope === scope) && fieldMatch(e.field ?? '', field));
 
 /** The live's inputs, entered: slab 30% and the exemption confirmed unused, for every client of the as-on year. */
 const enteredLikeLive = (asOn: DayNumber) => (clients: Array<ClientId | null>): HarvestContext => {
@@ -544,6 +569,8 @@ const enteredLikeLive = (asOn: DayNumber) => (clients: Array<ClientId | null>): 
 
 describe('roll-ups and harvest parity with the live summarise, taxRollup and taxBuildHarvest (E-43), equal inputs', () => {
   const used = new Set<string>();
+  /** Field-level use: "id|scope|field" for each difference a field-level entry covered. */
+  const usedPairs = new Set<string>();
   const counts: Array<{ id: string; fields: number; diffs: number }> = [];
   for (const b of ROLLUP_BOOKS) {
     test(b.id, () => {
@@ -555,10 +582,13 @@ describe('roll-ups and harvest parity with the live summarise, taxRollup and tax
       counts.push({ id: b.id, fields: L.flat.size, diffs: diffs.length });
       const unexplained: string[] = [];
       for (const x of diffs) {
-        const [scope, field] = x.split('|') as [string, string];
-        const hit = RLEDGER.filter((e) => e.book === b.id && (e.scope === '*' || e.scope === scope) && fieldMatch(e.field, field));
+        // The field keeps a "|presence" suffix: a field on one side only is told apart from a value that differs.
+        const [scope, ...rest] = x.split('|') as [string, ...string[]];
+        const field = rest.join('|');
+        const hit = RLEDGER.filter((e) => e.book === b.id && entryCovers(e, scope, field));
         if (hit.length !== 1) { unexplained.push(`${x}${hit.length > 1 ? ' (matches more than one entry)' : ''}`); continue; }
         used.add(hit[0]!.id);
+        if (hit[0]!.fields) usedPairs.add(`${hit[0]!.id}|${scope}|${field}`);
       }
       assert.deepEqual(unexplained, [], `${b.id}: roll-up or harvest differences not in tests/parity/tax-ledger.json rollupEntries`);
     });
@@ -567,13 +597,68 @@ describe('roll-ups and harvest parity with the live summarise, taxRollup and tax
     assert.deepEqual(RLEDGER.filter((e) => !used.has(e.id)).map((e) => e.id), []);
     for (const e of RLEDGER) {
       assert.equal(e.class, 'correction', e.id);
-      assert.match(e.reference, /\b(OD-12|OD-15|OD-16|OD-2|OD-7|KI-065|KI-099|KI-037|KI-069|KI-070)\b/, e.id);
+      assert.match(e.reference, /\b(OD-12|OD-15|OD-16|OD-2|OD-7|KI-065|KI-099|KI-037|KI-069|KI-070|AC-18)\b/, e.id);
     }
+  });
+  test('field-level entries (R2 S-6): every listed scope and field differs, so no entry hides a field that agrees', () => {
+    const stale: string[] = [];
+    for (const e of RLEDGER.filter((x) => x.fields)) {
+      assert.ok(e.scopes && e.scopes.length > 0 && e.fields!.length > 0 && e.scope === undefined && e.field === undefined, e.id);
+      for (const s of e.scopes!) for (const f of e.fields!) if (!usedPairs.has(`${e.id}|${s}|${f}`)) stale.push(`${e.id}|${s}|${f}`);
+    }
+    assert.deepEqual(stale, []);
+    // The wildcard form is kept only for TXR-11 (a whole area by OD-7).
+    assert.deepEqual(RLEDGER.filter((x) => !x.fields).map((x) => x.id), ['TXR-11']);
   });
   test('the harvest book is compared in full and agrees (a guard against an empty comparison)', () => {
     const h = counts.find((c) => c.id === 'tax-harvest');
     assert.ok(h && h.fields >= 150 && h.diffs === 0, JSON.stringify(h));
     assert.equal(counts.length, ROLLUP_BOOKS.length);
+  });
+});
+
+describe('known answers R2-R1 for the books the ledger covers by correction (financial review round 2, S-6)', () => {
+  // The roll-up and harvest of tax-od15 and tax-od16 differ from the live by correction (TX-01 to TX-04), so parity
+  // cannot check their figures: they are asserted here against the hand working (slab 30% entered, exemption confirmed
+  // unused, as on 30 Sep 2026, tax year 2026-27: exemption Rs 1,25,000, equity short term 20%).
+  const fig = (b: Book): Flat => {
+    const baseBytes = bookBytes(xlsx, b.book, b.blankInvested ?? []);
+    const irrBytes = toWorkbook(xlsx, [{ name: 'Tax Xirr', rows: [FUND_HEADER, ...b.flows] }]);
+    return newFlat(b, baseBytes, irrBytes, enteredLikeLive(b.asOn)).flat;
+  };
+  const expectFig = (f: Flat, want: Record<string, number>, id: string): void => {
+    for (const scope of ['family', A]) {
+      for (const [k, x] of Object.entries(want)) {
+        const got = f.get(`${scope}|${k}`);
+        assert.ok(typeof got === 'number' && Math.abs(got - x) <= 0.01, `${id} ${scope} ${k}: ${String(got)} != ${x}`);
+      }
+    }
+  };
+
+  test('tax-od15: long gain 6,000, short gain 2,000, tax 400', () => {
+    // 300 u and 100 u of one scheme, lots of 200 u at 100 (1 Feb 2024, long) and 200 u at 120 (1 Feb 2026, short)
+    // apportioned 0.75 / 0.25 (OD-15). NAV 39,000 / 300 = 130. Holding 1: long 150 u = 19,500 less cost 15,000 = 4,500;
+    // short 19,500 less 18,000 = 1,500. Holding 2: long 6,500 less 5,000 = 1,500; short 6,500 less 6,000 = 500.
+    // Long 26,000 / 6,000; short 26,000 / 2,000. Harvest: Sec 198 gains 6,000 inside the exemption (used 6,000, tax 0);
+    // short-term 2,000 x 20% = 400 before and after, saving 0.
+    expectFig(fig(OD15), {
+      'totals.cmv': 52000, 'totals.ltCmv': 26000, 'totals.ltGain': 6000, 'totals.stCmv': 26000, 'totals.stGain': 2000,
+      'totals.unclassCmv': 0, 'totals.unclassGain': 0, 'harvest.s198Gains': 6000, 'harvest.exBefore': 6000,
+      'harvest.taxBefore': 400, 'harvest.taxAfter': 400, 'harvest.saving': 0,
+    }, 'tax-od15');
+  });
+
+  test('tax-od16: long gain 4,250, short gain 1,250, tax 250', () => {
+    // Bluechip: Top-Up 1 Jan 2025 100 u at 100, STP In 1 Jul 2025 100 u at 100, SWP 1 Aug 2025 50 u (FIFO from the
+    // first lot): 50 u and 100 u left, both past 12 months on 30 Sep 2026: long 18,000 less 15,000 = 3,000. Flexi Cap:
+    // SIP 1 Feb 2025 50 u (long) and 1 Feb 2026 50 u (short) at 100, NAV 125: long 6,250 less 5,000 = 1,250, short
+    // 6,250 less 5,000 = 1,250. Long 24,250 / 4,250; short 6,250 / 1,250. Harvest: Sec 198 gains 4,250 inside the
+    // exemption; short-term 1,250 x 20% = 250 before and after, saving 0.
+    expectFig(fig(OD16), {
+      'totals.cmv': 30500, 'totals.ltCmv': 24250, 'totals.ltGain': 4250, 'totals.stCmv': 6250, 'totals.stGain': 1250,
+      'totals.unclassCmv': 0, 'totals.unclassGain': 0, 'harvest.s198Gains': 4250, 'harvest.exBefore': 4250,
+      'harvest.taxBefore': 250, 'harvest.taxAfter': 250, 'harvest.saving': 0,
+    }, 'tax-od16');
   });
 });
 

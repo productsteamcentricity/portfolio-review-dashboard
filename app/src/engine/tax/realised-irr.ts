@@ -12,16 +12,20 @@
 //     units, oldest lots first; each lot it reaches gives one derived lot: the purchase date, the cost (units taken x
 //     the buy price, which is the buy row's amount share), the sale value share (|amount| x units taken / units sold),
 //     realised = sale share minus cost, the financial year of the sale (ingest/capital-gains.ts `financialYearOf`) and
-//     the term by the I-21 class's months to the sale date (strictly after the anniversary, OD-2) when the instrument
-//     joins a holding (classify.ts `classifyHolding`), else the term is not known;
+//     the term by the law at the SALE date (R2 B-2): the joined holding's I-21 class (classify.ts `classifyHolding` at
+//     the sale date) mapped to the dated tax-rule table v1 key (`V1_OF_I21`: tax class by the fund type's dated
+//     default, listed flag, sub-type) and the row of `rules.ts ruleFor` for the purchase and sale dates (strictly after
+//     the anniversary, OD-2). The term is not known when no holding joins, when the class is not a mutual-fund unit
+//     table v1 covers (shares, bonds, AIF, REIT, SGB, crypto, PMS and the like: never a guess), or when table v1 gives
+//     the fund type no class for the lot's dates;
 //   - untyped and unrecognised rows (OD-16) and valuation rows move no lot; they are counted (the type labels named);
 //   - a trade dated after `asOn`, when given, is left out and counted (D-040 a).
 // Never a guessed figure (Q-49): a gap gives a derived lot whose cost and realised gain are missing, with the gap named:
 //   - 'sale-without-price': a sale without a price (its units are not known);
 //   - 'purchase-without-price': the sale reaches a purchase without a price (its units are not known);
 //   - 'units-beyond-held': the sale sells more units than the earlier purchases hold (beyond UNITS_TOLERANCE);
-//   - 'after-earlier-gap': a sale after one of the first two gaps in the same instrument, since which units remain is
-//     then not known.
+//   - 'after-earlier-gap': a sale after any of the first three gaps in the same instrument, since which units remain is
+//     then not known (an oversell included, R2 B-1: the missing purchases' units would be sold first under FIFO).
 // Output: the engine-local DerivedLot (the contract's RealisedGain with `source: 'derived from transactions'` and the
 // lines the contract does not hold), and per scheme and financial year the totals. Derived lots carry no tax
 // computation in S5: the tax class, rule and taxable gain are missing (notComputed 'tax-class-not-set').
@@ -29,7 +33,7 @@
 
 import type { Holding } from '../../model/holding.ts';
 import type { Transaction, TransactionKind } from '../../model/transactions.ts';
-import type { RealisedGain, Term } from '../../model/tax.ts';
+import type { RealisedGain, TaxClass, Term } from '../../model/tax.ts';
 import type { ClientId, HoldingId, SourceFileId } from '../../model/ids.ts';
 import type { RowRef } from '../../model/source.ts';
 import type { DayNumber, Provenance, Value } from '../../model/value.ts';
@@ -40,9 +44,12 @@ import { keyOf, normaliseLabel } from '../ids.ts';
 import { missing, present } from '../value.ts';
 import type { HoldingJoin } from '../returns/irr-tree.ts';
 import { matcherJoin } from '../returns/scope.ts';
-import { consumeFifo, isTradeFlow, lotTerm, tradePriceOf } from './lots.ts';
-import { TAX_RULES_I21, classifyHolding, i21ByInst, i21Day, isListedEtf } from './classify.ts';
+import { ymdToDay } from '../dates.ts';
+import { consumeFifo, isTradeFlow, tradePriceOf } from './lots.ts';
+import { INST, TAX_RULES_I21, classifyHolding, i21ByInst, isListedEtf } from './classify.ts';
 import type { ClassifyContext, I21Row } from './classify.ts';
+import { TAX_RULES_V1, ruleFor } from './rules.ts';
+import type { DayWindow, SubType, TaxRuleTable } from './rules.ts';
 
 /** Units sold beyond the units held up to this many are rounding (3 decimals, as repeat-evidence.ts compares units). */
 export const UNITS_TOLERANCE = 0.0005;
@@ -61,6 +68,66 @@ const GAP_TEXT: Readonly<Record<DerivedGap, string>> = {
   'after-earlier-gap': 'an earlier gap in this scheme leaves the units remaining not known',
 };
 
+// ---------------------------------------------------------------------------------------------------------------
+// The term of a derived lot by the law at its sale date (R2 B-2)
+
+/** Units bought from this day can be Specified (s.50AA, now s.76); for units bought before it the two rows coincide. */
+const SPECIFIED_FROM: DayNumber = ymdToDay(2023, 4, 1)!;
+/** TR-18 (table v1 keyValidity): the 90/90 ETF fund of funds is equity-oriented for sales from this day, other before. */
+const FOF_9090_EQUITY_FROM: DayNumber = ymdToDay(2018, 4, 1)!;
+
+/**
+ * How an I-21 class (a mutual-fund row) reads as a table v1 key: the fund type of table v1 `fundTypes` whose dated
+ * step-2 default gives the tax class at the lot's dates (null: the 90/90 rule of TR-18), the listed flag ('etf': the
+ * joined holdings are all listed ETFs, classify.ts `isListedEtf`) and the sub-type. `neverEquity`: a fund type with no
+ * default that is never equity-oriented, so units bought before SPECIFIED_FROM take the other non-equity rows (the
+ * Specified rows are the same lines for them). The rows follow the I-21 agreement test (tests/unit/tax/rules.test.ts).
+ * Classes not listed here (shares, bonds, AIF, REIT, InvIT, SGB, G-Secs, MLD, crypto, PMS, SIF, foreign shares) are
+ * outside table v1: their term is not known.
+ */
+export type V1ClassOf = { fundType: string | null; listed: boolean | 'etf'; subType: SubType; neverEquity?: true };
+
+const DEBT_PRE_2023 = 'Debt MF bought before 1 Apr 2023';
+const CONSERVATIVE_PRE_2023 = 'Hybrid MF (conservative) bought before 1 Apr 2023';
+
+export const V1_OF_I21: Readonly<Record<string, V1ClassOf>> = {
+  [INST.equityMf]: { fundType: 'domestic-equity', listed: false, subType: 'none' },
+  [INST.equityEtf]: { fundType: 'domestic-equity', listed: true, subType: 'none' },
+  [INST.elss]: { fundType: 'domestic-equity', listed: false, subType: 'elss' },
+  [INST.hybridEquity]: { fundType: 'aggressive-hybrid', listed: false, subType: 'none' },
+  [INST.etfFof9090]: { fundType: null, listed: false, subType: 'etf-fof-90-90' },
+  [INST.debtMf]: { fundType: 'debt-funds', listed: 'etf', subType: 'none' },
+  [DEBT_PRE_2023]: { fundType: 'debt-funds', listed: 'etf', subType: 'none' },
+  [INST.hybridSpecified]: { fundType: 'conservative-hybrid', listed: false, subType: 'none' },
+  [CONSERVATIVE_PRE_2023]: { fundType: 'conservative-hybrid', listed: false, subType: 'none' },
+  [INST.hybridGeneral]: { fundType: 'balanced-hybrid', listed: false, subType: 'none' },
+  [INST.fofGeneral]: { fundType: 'fof-active-equity', listed: false, subType: 'none', neverEquity: true },
+  [INST.global]: { fundType: 'international-fof', listed: false, subType: 'none' },
+  [INST.intlEtf]: { fundType: 'international-etf', listed: true, subType: 'none' },
+  [INST.commodityEtf]: { fundType: 'gold-silver-etf', listed: true, subType: 'none' },
+  [INST.commodityMf]: { fundType: 'gold-silver-fof', listed: false, subType: 'none' },
+};
+
+const inDays = (d: DayNumber, w: DayWindow): boolean => (w.from === null || d >= w.from) && (w.to === null || d <= w.to);
+
+/** The table v1 key of a lot of an I-21 class at its purchase and sale dates, or why there is none. */
+export function v1KeyOf(inst: string, listedEtf: boolean, purchaseDay: DayNumber, saleDay: DayNumber, table: TaxRuleTable = TAX_RULES_V1):
+  { key: { taxClass: TaxClass; listed: boolean; subType: SubType } } | { why: string } {
+  const m = V1_OF_I21[inst];
+  if (m === undefined) return { why: `the dated tax-rule table v1 covers mutual-fund units only, and the class "${inst}" is not one` };
+  const listed = m.listed === 'etf' ? listedEtf : m.listed;
+  if (m.fundType === null) {
+    return { key: { taxClass: saleDay < FOF_9090_EQUITY_FROM ? 'other-non-equity' : 'equity-oriented', listed, subType: m.subType } };
+  }
+  const ft = table.fundTypes.get(m.fundType);
+  if (ft === undefined) return { why: `table v1 has no fund type "${m.fundType}"` };
+  const windows = ft.stepTwoDefault ?? [];
+  const w = windows.find((x) => inDays(saleDay, x.sale) && (x.purchaseFrom === null || purchaseDay >= x.purchaseFrom));
+  if (w) return { key: { taxClass: w.taxClass, listed, subType: w.subType ?? m.subType } };
+  if (!windows.length && m.neverEquity && purchaseDay < SPECIFIED_FROM) return { key: { taxClass: 'other-non-equity', listed, subType: m.subType } };
+  return { why: `table v1 gives the fund type "${ft.label}" no class for these dates (the class depends on what the scheme held)` };
+}
+
 /** One derived lot: the contract's RealisedGain (source 'derived from transactions') and the lines it does not hold. */
 export type DerivedLot = RealisedGain & {
   source: typeof DERIVED_SOURCE;
@@ -73,8 +140,10 @@ export type DerivedLot = RealisedGain & {
   /** The purchase row the lot came from; null for a gap lot that reached no purchase. */
   buyAt: RowRef | null;
   buyKind: TransactionKind | null;
-  /** The I-21 row whose months gave the term; null when no holding joins or the joined holdings have no one class. */
+  /** The joined holdings' one I-21 class at the sale date; null when no holding joins or they have no one class. */
   i21: string | null;
+  /** The table v1 row (rules.ts ruleFor) whose holding period gave the term at the sale date; null when not known. */
+  termRule: string | null;
   /** Null for a computed lot; the gap otherwise (cost and realised missing). */
   gap: DerivedGap | null;
   financialYearLabel: string;
@@ -99,7 +168,7 @@ export type DerivedSchemeYear = {
   realisedComputed: number;
   st: number;
   lt: number;
-  /** Realised of computed lots whose term is not known (no joined holding, or a row without a holding period). */
+  /** Realised of computed lots whose term is not known (no joined holding, a class outside table v1, no class at the dates). */
   unknownTerm: number;
   holdingIds: HoldingId[];
 };
@@ -120,6 +189,8 @@ export type DerivedCounts = {
   purchasesWithoutPrice: number;
   /** Instruments with sales whose term is not known (no joined holding, or no one class). */
   instrumentsTermUnknown: number;
+  /** Instruments with sales whose class is not a mutual-fund unit table v1 covers: their term is not known (R2 B-2). */
+  instrumentsOutsideTable: number;
 };
 
 /** One client's instrument as the derivation saw it (all instruments with trades, sold or not). */
@@ -139,10 +210,16 @@ export type DerivedRealised = {
   instruments: DerivedInstrument[];
   counts: DerivedCounts;
   issues: ValidationResult[];
+  /**
+   * The clients of the base file's holdings (the review's clients, OD-4; as engine/returns/scope.ts), for
+   * reconcile.ts realisedForYear, which leaves IRR clients outside them out of the family figure (R2 S-5). Null when no
+   * holdings were given: the review's clients are then not known and nothing is left out.
+   */
+  baseClients: ClientId[] | null;
 };
 
 export type DeriveOptions = {
-  /** The base file's holdings, for the term (classification); without them every term is not known. */
+  /** The base file's holdings, for the term (classification) and the review's clients; without them every term is not known. */
   holdings?: readonly Holding[];
   /** The holdings join; defaults to the returns' join (engine/returns/scope.ts matcherJoin), as lots.ts. */
   join?: HoldingJoin;
@@ -152,6 +229,8 @@ export type DeriveOptions = {
   classifyContext?: (h: Holding) => Omit<ClassifyContext, 'refDay'>;
   /** The I-21 table; defaults to data/refdata/TAX_RULES.json. */
   table?: readonly I21Row[];
+  /** The dated tax-rule table for the term at the sale date; defaults to table v1 (data/owner/tax-rules.json). */
+  rules?: TaxRuleTable;
   /** The IRR file's source id, for the validation results' scope (default: the first flow's). */
   sourceId?: SourceFileId;
 };
@@ -177,8 +256,9 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
   const holdingById = new Map(holdings.map((h) => [h.id, h]));
   const counts: DerivedCounts = {
     flows: fund.length, trades: 0, sales: 0, purchases: 0, valuation: 0, untyped: 0, unrecognised: [], later: 0,
-    salesWithoutPrice: 0, purchasesWithoutPrice: 0, instrumentsTermUnknown: 0,
+    salesWithoutPrice: 0, purchasesWithoutPrice: 0, instrumentsTermUnknown: 0, instrumentsOutsideTable: 0,
   };
+  const rules = opts.rules ?? TAX_RULES_V1;
   const sourceId = opts.sourceId ?? fund[0]?.at.sourceId ?? null;
 
   // 1. Trades in day order (file order within a day), grouped by client and instrument; the rest counted.
@@ -225,6 +305,7 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
       holdingIds, i21: instRule?.rule.inst ?? null,
     });
     if (firstSale && (instRule === null)) counts.instrumentsTermUnknown++;
+    else if (firstSale && V1_OF_I21[instRule!.rule.inst] === undefined) counts.instrumentsOutsideTable++;
 
     const ledger: LedgerLot[] = [];
     let broken = false;
@@ -246,15 +327,20 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
         const gapWhy = o.gap !== null ? `not computed: ${GAP_TEXT[o.gap]}` : null;
         const buy = o.buy;
         let term: Value<Term>;
+        let termRule: string | null = null;
         if (buy === null || !buy.known) term = missing(STATUS.NOT_AVAILABLE, gapWhy ?? 'no purchase date');
         else if (ra === null) term = missing(STATUS.NOT_AVAILABLE, 'term not known: the scheme joins no holding of the base file with one tax class', prov);
         else {
-          const sfDay = ra.rule.specifiedFrom && ra.rule.before ? i21Day(ra.rule.specifiedFrom) : null;
-          const pre = sfDay !== null && buy.day < sfDay ? byInst.get(ra.rule.before!) ?? null : null;
-          const r = pre ?? ra.rule;
-          const tm = lotTerm(r, buy.day, t.day, ra.etf);
-          term = tm === null ? missing(STATUS.NOT_AVAILABLE, 'term not known: the tax row has no holding period', prov)
-            : present(tm, 'label', { ...prov, method: `term by the I-21 row "${r.inst}" to the sale date, long strictly after the anniversary (OD-2)` });
+          // R2 B-2: the law at the sale date (table v1), never today's I-21 holding periods for a past sale.
+          const k = v1KeyOf(ra.rule.inst, ra.etf, buy.day, t.day, rules);
+          const rr = 'key' in k ? ruleFor(rules, { ...k.key, purchaseDay: buy.day, saleDay: t.day }) : null;
+          if (rr === null) term = missing(STATUS.NOT_AVAILABLE, `term not known: ${(k as { why: string }).why}`, prov);
+          else if (rr.kind === 'none') term = missing(STATUS.NOT_AVAILABLE, `term not known: ${rr.detail}`, prov);
+          else {
+            termRule = rr.rule.id;
+            const how = rr.deemedShort ? 'deemed short term' : `long strictly after ${rr.holdingMonths} months (OD-2)`;
+            term = present(rr.term, 'label', { ...prov, method: `term by the dated tax-rule table v1 row ${rr.rule.id} at the sale date (${how}); I-21 class "${ra.rule.inst}"` });
+          }
         }
         const realised: Value<number> = o.cost !== null && o.gap === null
           ? present(o.sale - o.cost, 'inr', prov) : missing(STATUS.NOT_AVAILABLE, gapWhy ?? 'cost not known', prov);
@@ -276,7 +362,7 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
           costBasis: 'none', taxableGain: noTax, notComputed: 'tax-class-not-set', legs: null, anniversaryLongTerm: null,
           duplicateOf: null, excludedAsRepeat: false, statement: null, flags: o.gap !== null ? ['tax.derived-gaps'] : [],
           instrumentKey: key, instrumentName: t.instrumentName, clientLabel: t.clientLabel, saleKind: t.kind,
-          buyAt: buy?.at ?? null, buyKind: buy?.kind ?? null, i21: ra?.rule.inst ?? null, gap: o.gap,
+          buyAt: buy?.at ?? null, buyKind: buy?.kind ?? null, i21: ra?.rule.inst ?? null, termRule, gap: o.gap,
         };
       };
       if (broken) {
@@ -302,7 +388,9 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
       if (gapped) {
         const reached = firstUnknown >= 0 ? ledger[firstUnknown]! : null;
         lots.push(base({ units: short, sale: amt * short / saleUnits, buy: reached, cost: null, gap: reached ? 'purchase-without-price' : 'units-beyond-held' }));
-        if (reached) broken = true;
+        // Either gap breaks the ledger (R2 B-1): an oversell shows purchases (or a bonus or split) missing from the file,
+        // and FIFO would sell their remaining units before any later purchase, so no later sale's cost is known.
+        broken = true;
       }
       // Lots used up leave the ledger (a lot without known units stays until a gap breaks the ledger).
       for (let i = ledger.length - 1; i >= 0; i--) if (ledger[i]!.known && ledger[i]!.u <= EPS) ledger.splice(i, 1);
@@ -343,7 +431,8 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
   schemeYears.sort((a, b) => a.fy - b.fy || (a.clientId < b.clientId ? -1 : a.clientId > b.clientId ? 1 : 0)
     || normaliseLabel(a.instrumentName).localeCompare(normaliseLabel(b.instrumentName)));
 
-  return { source: DERIVED_SOURCE, lots, schemeYears, instruments, counts, issues: deriveIssues(lots, counts, sourceId) };
+  const baseClients = opts.holdings ? [...new Set(holdings.map((h) => h.clientId).filter((c): c is ClientId => c !== null))] : null;
+  return { source: DERIVED_SOURCE, lots, schemeYears, instruments, counts, issues: deriveIssues(lots, counts, sourceId), baseClients };
 }
 
 function sourceOf(lots: readonly DerivedLot[]): string[] {
@@ -387,6 +476,11 @@ function deriveIssues(lots: readonly DerivedLot[], counts: DerivedCounts, source
     add('derived-term-unknown', 'Information',
       `${plural(counts.instrumentsTermUnknown, 'scheme with sales joins', 'schemes with sales join')} no holding of the base file with one tax class, so the term of the realised gains derived for ${counts.instrumentsTermUnknown === 1 ? 'it' : 'them'} is not known.`,
       counts.instrumentsTermUnknown);
+  }
+  if (counts.instrumentsOutsideTable) {
+    add('derived-term-outside-table', 'Information',
+      `${plural(counts.instrumentsOutsideTable, 'scheme with sales is', 'schemes with sales are')} of a class the dated tax-rule table v1 does not cover (not a mutual-fund unit), so the term of the realised gains derived for ${counts.instrumentsOutsideTable === 1 ? 'it' : 'them'} is not known.`,
+      counts.instrumentsOutsideTable);
   }
   return out;
 }

@@ -163,6 +163,27 @@
         }
       ],
       "note": "The s.198 slot: two Sec 198 classes (Equity MF 2,00,000; listed shares 50,000; G = 2,50,000), 25,000 of the exemption already used (analyst entry), so 1,00,000 unused. Slots: 1,50,000 above the exemption at 12.5%, 1,00,000 inside at 0%. Before: 2,50,000 x 12.5% = 31,250 less 1,00,000 x 12.5% = 12,500: 18,750. The LT loss 90,000 is spent above the exemption first; left 1,60,000, of which 1,00,000 is inside: after 1,60,000 x 12.5% = 20,000 less 12,500 = 7,500. Saving 11,250 = 90,000 x 12.5%."
+    },
+    {
+      "id": "R2-H7",
+      "group": "harvest",
+      "origin": "FIN-R2",
+      "positions": [
+        { "client": "Sample Client A", "name": "Sample Global Fund", "cls": "global", "cmv": 400000, "lt": 100000 },
+        { "client": "Sample Client A", "name": "Sample Large Cap Fund", "cls": "equityMf", "cmv": 900000, "lt": 200000 },
+        { "client": "Sample Client A", "name": "Sample Flexi Cap Fund", "cls": "equityMf", "cmv": 130000, "st": 30000 },
+        { "client": "Sample Client A", "name": "Sample Mid Cap Fund", "cls": "equityMf", "cmv": 220000, "lt": -80000 },
+        { "client": "Sample Client A", "name": "Sample Small Cap Fund", "cls": "equityMf", "cmv": 350000, "st": -150000 }
+      ],
+      "inputs": { "exemptionUsed": { "Sample Client A": "unused-confirmed" } },
+      "expect": {
+        "clients": [
+          { "client": "Sample Client A", "exemptionApplied": "applied", "exemptionAvailable": 125000, "taxBefore": 27875, "taxAfter": 0, "saving": 27875,
+            "ltLosses": 80000, "stLosses": 150000, "ltUsed": 80000, "stUsed": 150000, "ltUnused": 0, "stUnused": 0, "s198Gains": 200000, "s198Left": 100000,
+            "candidates": ["Sample Small Cap Fund", "Sample Mid Cap Fund"] }
+        ]
+      },
+      "note": "The financial reviewer's independent answer (FIN-REVIEW-TAX-R2, probe4), checked by hand by NB-03 before it was added. No slab is needed: no slab-rate gain is left after set-off. Before: the Sec 198 gain 2,00,000 less the unused exemption 1,25,000 = 75,000 x 12.5% = 9,375; the global fund (not Sec 198) 1,00,000 x 12.5% = 12,500; the equity short-term gain 30,000 x 20% = 6,000; total 27,875. Set-off (rank, then non-s.198, then short before long): the LT loss 80,000 can meet only LT slots and goes to the global fund first (non-s.198 at the same 12.5% rank), leaving it 20,000. The ST loss 1,50,000: the 20% short-term slot 30,000, then the global fund's 20,000, then the Sec 198 slot above the exemption 75,000, and the last 25,000 inside the exemption (0%), which saves nothing. After: 0. Sec 198 left 2,00,000 - 75,000 - 25,000 = 1,00,000, all inside the exemption. Saving 27,875."
     }
   ]
 }

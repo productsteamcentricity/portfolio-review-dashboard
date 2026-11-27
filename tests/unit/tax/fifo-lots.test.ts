@@ -330,6 +330,25 @@ describe('FIFO lots (hand-worked)', () => {
     near(total, book.reduce((s, h) => s + h.mv, 0), 'book');
   });
 
+  test('R2 S-2 (R2-F5): units blank and invested 0, the identity still holds: the CMV lands in unclassified', () => {
+    // Units blank: the rupee ledger, whose base figure is the invested value, 0 here. One Purchase of 10,000 gives a
+    // rupee lot of 10,000 against a base of 0: full drift (not "0 drift" as the live reads it), so the holding is
+    // unreconciled ('value') and keeps its whole CMV unclassified: 12,000 at a gain of 12,000 - 0 = 12,000. Long and
+    // short hold 0. long + short + unclassified = 0 + 0 + 12,000 = CMV. (The old code scaled the lot to 0 rupees, so all
+    // three were 0 and the 12,000 vanished; the live does the same: ledger entry TX-05.)
+    const r = run([hold(FLEXI, 'Flexi Cap Fund', 'Equity', null, 0, 12000)], [flow(FLEXI, [2024, 8, 1], 'Purchase', 100, -10000)]);
+    const x = one(r, FLEXI);
+    assert.equal(x.status, 'unreconciled');
+    assert.equal(x.unreconciledKind, 'value');
+    assert.equal(x.ledger, 'rupees');
+    near(x.unclassified.cmv, 12000, 'unclassified cmv');
+    near(x.unclassified.gain, 12000, 'unclassified gain');
+    near(x.gain, 12000, 'gain');
+    assert.equal(x.lt.cmv + x.st.cmv, 0);
+    near(x.lt.cmv + x.st.cmv + x.unclassified.cmv, 12000, 'identity');
+    assert.ok(x.reason !== null && x.reason.length > 0);
+  });
+
   test('a blank invested value leaves every gain missing, never 0 (KI-007)', () => {
     const r = run([hold(BLUE, 'Large Cap Fund', 'Equity', 100, 10000, 12000)], [flow(BLUE, [2024, 1, 1], 'Purchase', 100, -10000)], AS_ON, [0]);
     const x = one(r, BLUE);

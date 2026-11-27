@@ -37,7 +37,9 @@
 // that client's year (at least one lot of the client sold in the year: the source of record), else the derived figure
 // labelled "derived from transactions"; never the two added inside one client-year, so never inside one scheme-year.
 // The family figure is the clients' figures added up ("sum of separate computations"); statement lots of a person not in
-// the review are left out of it, as the roll-up's familySum.
+// the review are left out of it, as the roll-up's familySum. One rule on both sides (R2 S-5, OD-4): derived gains of an
+// IRR client with no holding in the base file are left out of it too, and listed with a count (`outsideReview`). Whether
+// a client who sold everything in the year belongs in the family's realised figure is owner question Q-4 of the review.
 //
 // Pure. Messages carry counts and financial years only: never a client, scheme, folio or amount. No en or em dash.
 
@@ -386,6 +388,8 @@ export type RealisedFigure = { st: Value<number>; lt: Value<number>; unknownTerm
 
 export type RealisedFYClient = RealisedFigure & { clientId: ClientId; source: GainSource; lots: number };
 
+export type OutsideReviewClient = { clientId: ClientId; clientLabel: string; lots: number };
+
 export type RealisedFY = RealisedFigure & {
   fy: number;
   fyLabel: string;
@@ -393,7 +397,14 @@ export type RealisedFY = RealisedFigure & {
   source: GainSource | typeof MIXED_SOURCE | null;
   clients: RealisedFYClient[];
   label: typeof FAMILY_SUM_LABEL;
+  /**
+   * IRR clients with derived lots in the year and no holding in the base file (OD-4, R2 S-5): left out of every figure
+   * above and listed here with their count. Empty when the derivation was given no base-file holdings.
+   */
+  outsideReview: { count: number; clients: OutsideReviewClient[]; reason: string };
 };
+
+export const OUTSIDE_REVIEW_REASON = 'clients of the IRR file with no holding in the base file are left out of the family\'s realised figure (OD-4); owner question Q-4';
 
 function figureOf(parts: ReadonlyArray<{ st: number; lt: number; unk: number }>, lots: number, unknownLots: number, prov: Provenance, ie: boolean): RealisedFigure {
   if (ie) {
@@ -440,8 +451,17 @@ export function realisedForYear(fy: number, derived: DerivedRealised | null, sta
     stmtBy.set(c, l);
   }
   const derBy = new Map<ClientId, DerivedLot[]>();
+  // OD-4 (R2 S-5): an IRR client with no holding in the base file is outside the review, as on the statement side.
+  const inBase = derived?.baseClients ? new Set(derived.baseClients) : null;
+  const outside = new Map<ClientId, OutsideReviewClient>();
   for (const l of derived?.lots ?? []) {
     if (l.financialYear !== fy || l.clientId === null) continue;
+    if (inBase !== null && !inBase.has(l.clientId)) {
+      const o = outside.get(l.clientId) ?? { clientId: l.clientId, clientLabel: l.clientLabel, lots: 0 };
+      o.lots++;
+      outside.set(l.clientId, o);
+      continue;
+    }
     const x = derBy.get(l.clientId) ?? [];
     x.push(l);
     derBy.set(l.clientId, x);
@@ -461,7 +481,7 @@ export function realisedForYear(fy: number, derived: DerivedRealised | null, sta
       clients.push({ clientId: c, source: 'statement', lots: used.length, ...figureOf(parts, used.length, unknown, prov, ie) });
     } else {
       const dl = derBy.get(c)!;
-      const prov: Provenance = { sources: [...new Set(dl.map((l) => l.at.sourceId))], method: 'realised gains derived from transactions (FIFO on the IRR file), split by the I-21 term' };
+      const prov: Provenance = { sources: [...new Set(dl.map((l) => l.at.sourceId))], method: 'realised gains derived from transactions (FIFO on the IRR file), split by the term of table v1 at the sale date' };
       const parts = dl.filter((l) => l.gap === null).map((l) => {
         const v = num(l.realised)!;
         const t = l.term.kind === 'value' ? l.term.v : null;
@@ -471,9 +491,12 @@ export function realisedForYear(fy: number, derived: DerivedRealised | null, sta
     }
   }
   const sources = [...new Set(clients.map((c) => c.source))];
-  const prov: Provenance = { sources: [...new Set(clients.flatMap((c) => (c.total.kind === 'value' ? c.total.prov.sources : c.total.prov?.sources ?? [])))], method: `family view: the clients' realised gains added up (${FAMILY_SUM_LABEL})` };
+  const outsideList = [...outside.values()].sort((a, b) => (a.clientId < b.clientId ? -1 : a.clientId > b.clientId ? 1 : 0));
+  const outNote = outsideList.length ? `; ${plural(outsideList.length, 'client', 'clients')} of the IRR file with no holding in the base file left out (OD-4)` : '';
+  const prov: Provenance = { sources: [...new Set(clients.flatMap((c) => (c.total.kind === 'value' ? c.total.prov.sources : c.total.prov?.sources ?? [])))], method: `family view: the clients' realised gains added up (${FAMILY_SUM_LABEL})${outNote}` };
   return {
     fy, fyLabel, source: sources.length === 0 ? null : sources.length === 1 ? sources[0]! : MIXED_SOURCE, clients, label: FAMILY_SUM_LABEL,
+    outsideReview: { count: outsideList.length, clients: outsideList, reason: OUTSIDE_REVIEW_REASON },
     st: sumValues(clients.map((c) => c.st), prov), lt: sumValues(clients.map((c) => c.lt), prov),
     unknownTerm: sumValues(clients.map((c) => c.unknownTerm), prov), total: sumValues(clients.map((c) => c.total), prov),
   };

@@ -252,3 +252,148 @@ describe('FIFO derivations (hand-worked)', () => {
     }
   });
 });
+
+describe('R2 B-1: an oversell breaks the ledger (financial review round 2, R2-F1)', () => {
+  test('a later purchase and sale after an oversell are a gap, never computed on a guess', () => {
+    // Purchase 1 Jun 2024 100 u at 20 (2,000). Redemption 1 Jul 2025 3,750 at 25 = 150 u: 100 u from the purchase
+    // (cost 2,000, sale 3,750 x 100/150 = 2,500, realised 500) and 50 u beyond the purchases in the file (a gap
+    // 'units-beyond-held'). The oversell shows purchases missing from the file; under FIFO their remaining units would
+    // be sold before the purchase of 1 Aug 2025 (100 u at 30), and how many remain is not known. So the redemption of
+    // 1 Dec 2025 (2,000 at 40 = 50 u) is 'after-earlier-gap': cost and realised NOT AVAILABLE (the old code took them
+    // from the 1 Aug 2025 lot: 50 x (40 - 30) = 500). FY 2025-26 (both sales): 3 lots, 2 gaps: realised 500 from the
+    // one computed lot, PARTIAL COVERAGE 1/3 (not 1,000 at 2/3).
+    const r = run([
+      flow(A, SCHEME.FOCUSED, [2024, 6, 1], 'Purchase', 20, -2000),
+      flow(A, SCHEME.FOCUSED, [2025, 7, 1], 'Redemption', 25, 3750),
+      flow(A, SCHEME.FOCUSED, [2025, 8, 1], 'Purchase', 30, -3000),
+      flow(A, SCHEME.FOCUSED, [2025, 12, 1], 'Redemption', 40, 2000),
+    ]);
+    const l = lotsOf(r, SCHEME.FOCUSED);
+    assert.deepEqual(l.map((x) => x.gap), [null, 'units-beyond-held', 'after-earlier-gap']);
+    near(v(l[0]!.realised), 500, 'computed lot');
+    near(v(l[2]!.units), 50, 'units known from the price');
+    near(v(l[2]!.saleValue), 2000, 'sale value kept');
+    assert.equal(l[2]!.realised.kind, 'missing');
+    assert.equal(l[2]!.purchaseValue.kind, 'missing');
+    assert.equal(l[2]!.purchaseDate.kind, 'missing');
+    assert.equal(r.schemeYears.length, 1);
+    const sy = r.schemeYears[0]!;
+    assert.equal(sy.fy, 2025);
+    assert.equal(sy.lots, 3);
+    assert.equal(sy.gapLots, 2);
+    assert.deepEqual(sy.gaps, { 'units-beyond-held': 1, 'after-earlier-gap': 1 });
+    near(v(sy.realised), 500, 'FY 2025-26');
+    assert.ok(sy.realised.kind === 'value' && Math.abs(sy.realised.coverage! - 1 / 3) < 1e-9, 'coverage 1/3');
+  });
+
+  test('when the later sale falls in a later financial year, that year is not shown complete', () => {
+    // The same file with the last redemption on 1 May 2026 (Tax year 2026-27): that year's only lot is a gap, so its
+    // realised figure is NOT AVAILABLE, never 500 shown as complete.
+    const r = run([
+      flow(A, SCHEME.FOCUSED, [2024, 6, 1], 'Purchase', 20, -2000),
+      flow(A, SCHEME.FOCUSED, [2025, 7, 1], 'Redemption', 25, 3750),
+      flow(A, SCHEME.FOCUSED, [2025, 8, 1], 'Purchase', 30, -3000),
+      flow(A, SCHEME.FOCUSED, [2026, 5, 1], 'Redemption', 40, 2000),
+    ]);
+    const later = r.schemeYears.find((s) => s.fy === 2026)!;
+    assert.equal(later.gapLots, 1);
+    assert.equal(later.realised.kind, 'missing');
+  });
+});
+
+describe('R2 B-2: a derived lot takes the law at its sale date (table v1), not today\'s I-21 periods', () => {
+  const holdAt = (name: string, cat: string, o: Partial<BookRow> = {}): BookRow => ({ ...hold(A, name, cat, 500, 5000, 6000), ...o });
+  const BOND = 'Sample Corporate Bond Fund - Regular Plan - Growth';
+  const GOLD = 'Sample Gold Exchange Traded Fund';
+  const SHARE = 'Sample Industries Limited';
+  const termOf = (x: DerivedLot): string | null => (x.term.kind === 'value' ? x.term.v : null);
+
+  test('R2-F2: a debt fund bought 1 Jan 2021 and sold 1 Jun 2023 is short term (36 months then)', () => {
+    // Purchase 1 Jan 2021 10,000 at 10 = 1,000 u; Redemption 1 Jun 2023 6,000 at 12 = 500 u: cost 5,000, realised
+    // 1,000, FY 2023-24. Class: Debt MF (I-21), table v1 fund type debt-funds: Specified, bought before 1 Apr 2023, so
+    // the NE rows for the sale date: a sale from 2014-07-11 to 2024-07-22 is long only strictly after 36 months
+    // (anniversary 1 Jan 2024). Held 29 months: SHORT, row NE-ST-2. (Today's I-21 row, 24 months, said long.)
+    const r = run([
+      flow(A, BOND, [2021, 1, 1], 'Purchase', 10, -10000),
+      flow(A, BOND, [2023, 6, 1], 'Redemption', 12, 6000),
+    ], [holdAt(BOND, 'Corporate Bond Fund', { asset: 'Debt' })]);
+    const [x] = lotsOf(r, BOND);
+    near(v(x!.realised), 1000, 'realised');
+    assert.equal(x!.financialYearLabel, 'FY 2023-24');
+    assert.equal(x!.i21, INST.debtMf);
+    assert.equal(termOf(x!), 'short');
+    assert.equal(x!.termRule, 'NE-ST-2');
+    const sy = r.schemeYears[0]!;
+    near(sy.st, 1000, 'short'); near(sy.lt, 0, 'long'); near(sy.unknownTerm, 0, 'unknown');
+  });
+
+  test('R2-F3: a gold ETF bought 1 Jan 2022 and sold 1 Sep 2023 is short term (36 months then)', () => {
+    // Purchase 1 Jan 2022 10,000 at 500 = 20 u; Redemption 1 Sep 2023 6,000 at 600 = 10 u: cost 5,000, realised 1,000.
+    // Class: Commodity ETF (I-21), table v1 fund type gold-silver-etf: bought before 1 Apr 2023, so other non-equity
+    // (the Specified window needs units bought from 1 Apr 2023); sale before 2024-07-23: 36 months (anniversary 1 Jan
+    // 2025). Held 20 months: SHORT, NE-ST-2. (Today's I-21 row, 12 months for a listed ETF, said long.)
+    const r = run([
+      flow(A, GOLD, [2022, 1, 1], 'Purchase', 500, -10000),
+      flow(A, GOLD, [2023, 9, 1], 'Redemption', 600, 6000),
+    ], [holdAt(GOLD, 'Gold ETF', { asset: 'Commodity', product: 'ETF' })]);
+    const [x] = lotsOf(r, GOLD);
+    near(v(x!.realised), 1000, 'realised');
+    assert.equal(x!.i21, INST.commodityEtf);
+    assert.equal(termOf(x!), 'short');
+    assert.equal(x!.termRule, 'NE-ST-2');
+  });
+
+  test('a gold ETF bought from 1 Apr 2023 and sold before 1 Apr 2025 was Specified: deemed short term', () => {
+    // Purchase 1 Jun 2023 10,000 at 500 = 20 u; Redemption 1 Mar 2025 6,000 at 600 = 10 u (realised 1,000, held 21
+    // months). Table v1 gold-silver-etf: units bought from 2023-04-01 and sold from 2023-04-01 to 2025-03-31 are
+    // Specified (the 35% test), deemed short term whatever the holding (NE-50AA-1). Today's I-21 row (12 months) would
+    // say long; table v1's other non-equity row for a listed unit after 2024-07-23 would too.
+    const r = run([
+      flow(A, GOLD, [2023, 6, 1], 'Purchase', 500, -10000),
+      flow(A, GOLD, [2025, 3, 1], 'Redemption', 600, 6000),
+    ], [holdAt(GOLD, 'Gold ETF', { asset: 'Commodity', product: 'ETF' })]);
+    const [x] = lotsOf(r, GOLD);
+    assert.equal(termOf(x!), 'short');
+    assert.equal(x!.termRule, 'NE-50AA-1');
+  });
+
+  test('an equity fund keeps the 12-month rule: short on the anniversary, long the day after', () => {
+    // Purchase 1 Feb 2023 10,000 at 100 = 100 u. Redemption 1 Feb 2024 6,000 at 120 = 50 u (cost 5,000, realised
+    // 1,000): on the 12-month anniversary, so short (EQ-ST-2). Redemption 2 Feb 2024 6,000 at 120 = 50 u (realised
+    // 1,000): strictly after it, long (EQ-LT-3, bought from 2018-02-01). Equity-oriented rows are 12 months in every
+    // window, as I-21 says.
+    const r = run([
+      flow(A, SCHEME.BLUE, [2023, 2, 1], 'Purchase', 100, -10000),
+      flow(A, SCHEME.BLUE, [2024, 2, 1], 'Redemption', 120, 6000),
+      flow(A, SCHEME.BLUE, [2024, 2, 2], 'Redemption', 120, 6000),
+    ], [hold(A, SCHEME.BLUE, 'Large Cap Fund', 10, 1000, 1200)]);
+    const l = lotsOf(r, SCHEME.BLUE);
+    assert.deepEqual(l.map(termOf), ['short', 'long']);
+    assert.deepEqual(l.map((x) => x.termRule), ['EQ-ST-2', 'EQ-LT-3']);
+    const sy = r.schemeYears[0]!;
+    near(sy.st, 1000, 'short'); near(sy.lt, 1000, 'long');
+  });
+
+  test('a class table v1 does not cover (a share held directly) has its term NOT KNOWN, counted in unknownTerm', () => {
+    // Buy 1 Nov 2023 40,000 at 1,000 = 40 shares; Sell 1 Dec 2024 12,000 at 1,200 = 10 shares: cost 10,000, realised
+    // 2,000. I-21 class Listed Equity Shares: not a mutual-fund unit, outside table v1, so the term is NOT AVAILABLE
+    // (never a guess), the 2,000 in unknownTerm, and the scheme is counted with an Information result.
+    const r = run([
+      flow(A, SHARE, [2023, 11, 1], 'Buy', 1000, -40000),
+      flow(A, SHARE, [2024, 12, 1], 'Sell', 1200, 12000),
+    ], [holdAt(SHARE, 'Direct Equity', { product: 'Equity', amc: '' })]);
+    const [x] = lotsOf(r, SHARE);
+    assert.equal(x!.i21, INST.listedShares);
+    near(v(x!.realised), 2000, 'realised');
+    assert.equal(x!.term.kind, 'missing');
+    assert.match(x!.term.kind === 'missing' ? x!.term.reason : '', /table v1 covers mutual-fund units only/);
+    assert.equal(x!.termRule, null);
+    const sy = r.schemeYears[0]!;
+    near(sy.unknownTerm, 2000, 'unknown term'); near(sy.lt + sy.st, 0, 'no term');
+    assert.equal(r.counts.instrumentsOutsideTable, 1);
+    assert.equal(r.counts.instrumentsTermUnknown, 0);
+    const i = r.issues.find((y) => y.ruleId === 'tax.derived-term-outside-table');
+    assert.ok(i && i.severity === 'Information' && i.count === 1);
+    assert.ok(!DASH.test(i.message));
+  });
+});
