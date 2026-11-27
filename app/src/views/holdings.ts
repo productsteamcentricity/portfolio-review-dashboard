@@ -179,7 +179,10 @@ function clientVM(s: ClientHoldingsSheet, review: Review, index: number): Holdin
   }
   const rows = s.rows.map((r) => rowVM(r, review.displayUnit, mixed));
   if (rows.some((r) => Object.values(r.cells).some((c) => c.marker === PARTIAL_MARKER))) {
-    notes.push(`A figure marked ${PARTIAL_MARKER} counts only part of its row's holdings; the ${DAGGER} and ${DOUBLE_DAGGER} notes above give the counts.`);
+    /* the legend names the notes the table has (the ‡ note for invested values, the † note for XIRR and BMXIRR) */
+    const named = [s.partial ? DAGGER : null, noInvRows.length > 0 ? DOUBLE_DAGGER : null].filter((x): x is string => x !== null);
+    const which = named.length === 2 ? `the ${DAGGER} and ${DOUBLE_DAGGER} notes above give` : named.length === 1 ? `the ${named[0]} note above gives` : 'the notes above give';
+    notes.push(`A figure marked ${PARTIAL_MARKER} counts only part of its row's holdings; ${which} the counts.`);
   }
   return { key: s.clientId ?? `no-client-${index}`, title, caption, rows, notes, sheet: s };
 }

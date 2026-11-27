@@ -90,7 +90,7 @@ describe('markers and notes', () => {
     /* N5: the legacy's share of CMV (07_engine.js:1284): Bluechip 0.625 and Corporate Bond 0.896 of 1.973 Cr. = 77.09% */
     assert.deepEqual(a.notes, [
       `${DOUBLE_DAGGER} Invested value, gain/loss and absolute return count only the holdings that have an invested value: 2 holdings without one (77.09% of CMV).`,
-      'A figure marked p counts only part of its row\'s holdings; the † and ‡ notes above give the counts.',
+      'A figure marked p counts only part of its row\'s holdings; the ‡ note above gives the counts.',
     ]);
   });
 
@@ -106,7 +106,7 @@ describe('markers and notes', () => {
     assert.equal(a.notes.length, 2);
     assert.ok(a.notes[0]!.startsWith(`${DAGGER} The rows marked ${DAGGER} average only the holdings with a value: 1 without XIRR (`));
     assert.match(a.notes[0]!, /0 without BMXIRR \(100\.00%\)\.$/);
-    assert.equal(a.notes[1], 'A figure marked p counts only part of its row\'s holdings; the † and ‡ notes above give the counts.', 'N5: the p legend');
+    assert.equal(a.notes[1], 'A figure marked p counts only part of its row\'s holdings; the † note above gives the counts.', 'N5: the p legend');
   });
 
   test('no sentence of the view contains an en or em dash (D-029)', () => {
@@ -193,10 +193,10 @@ describe('the follow-up\'s financial review (27 Nov 2026): S1 to S4', () => {
   });
 
   test('S2 and S4: a residual holding without XIRR gives the dagger whenever the figure carries p, and the share never reads 100.00%', () => {
-    /* Bluechip keeps its XIRR; the Flexi Cap's market value is cut to a residual 0.0001 Cr with no XIRR */
+    /* Bluechip keeps its XIRR; the Flexi Cap's market value is cut to a residual 0.00001 Cr with no XIRR (99.998%: above the old 99.995% threshold) */
     const gap = missing(STATUS.NOT_AVAILABLE, 'not in the file');
     const holdings = review.holdings.map((h) => (h.instrumentName === 'Sample Flexi Cap Fund - Regular Plan - Growth' && h.cmv.kind === 'value'
-      ? { ...h, xirr: gap, cmv: { ...h.cmv, v: 0.0001 } } : h));
+      ? { ...h, xirr: gap, cmv: { ...h.cmv, v: 0.00001 } } : h));
     const a = buildHoldingsVM({ ...review, holdings } as Review).clients.find((c) => c.title === 'Sample Client A')!;
     const grand = a.rows.at(-1)!;
     assert.equal(grand.cells.xirr.marker, 'p');
