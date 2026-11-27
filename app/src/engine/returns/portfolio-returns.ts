@@ -433,7 +433,7 @@ function reasonText(reason: Exclude<ExclusionReason, 'no-value'>, basis: Returns
 
 /**
  * The coverage footnote of a weighted figure, one text for screen, slide and sheet; it goes with every rendering of
- * the figure: the label; the coverage and the items excluded, each reason counted apart ("3Y covers 80% of MF value;
+ * the figure: the label; the coverage and the items excluded, each reason counted apart ("3Y covers 80.0% of MF value;
  * 1 fund without a 3Y return excluded; 1 fund with no known plan excluded", ARC-03 delta M3); the holdings outside the
  * base; every table used with its plan and as-on label (`used` of the result). Never prints an excluded item as 0%,
  * and never the true price day (PD-58). `footnoteOf(result)` passes a result's own fields.
