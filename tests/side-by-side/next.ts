@@ -47,31 +47,39 @@ function matchSetup(): { u: Record<'MF' | 'PMS' | 'AIF' | 'SIF', Universe>; cw: 
 // The live page's routing rule, copied from index.html (isDirectEquity :1533; _pcrRe, nonMfClass, productClass
 // :2003-2026; the performance branch :2088-2095) as a stand-in until the new build has E-15. The kit does not test
 // routing: both sides route alike, so a difference is a matcher difference.
-type Rule = { label: string; first: boolean; kw: RegExp | null; unless: RegExp | null; not: RegExp | null };
+type Rule = { label: string; first: boolean; kw: RegExp | null; unless: RegExp | null; not: RegExp | null; name: RegExp | null; and: RegExp | null };
 const pcrRe = (list: unknown): RegExp | null => {
   if (!Array.isArray(list) || !list.length) return null;
-  return new RegExp('(^|[^a-z0-9])(' + list.map((k) => String(k).toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/[\s-]+/g, '[\\s-]*')).join('|') + ')(?![a-z0-9])', 'i');
+  // LP-16b: a "$" in a keyword is kept; a currency word (usd, us, us$) may be followed by a figure
+  return new RegExp('(^|[^a-z0-9])(' + list.map((k) => {
+    const w = String(k).toLowerCase().replace(/[^a-z0-9\s$-]/g, '').replace(/\$/g, '\\$').replace(/[\s-]+/g, '[\\s-]*');
+    return w + (/\\\$$/.test(w) || w === 'usd' || w === 'us' ? '(?![a-z])' : '(?![a-z0-9])');
+  }).join('|') + ')', 'i');
 };
 let rules: Rule[] | null = null;
 function productRules(): Rule[] {
   rules ??= (refdataBlock('PRODUCT_CLASS_RULES') as unknown as Array<Record<string, unknown>>).map((r) => ({
     label: String(r.label), first: Boolean(r.beforePmsAifSif), kw: pcrRe(r.keywords), unless: pcrRe(r.unlessAny), not: pcrRe(r.notIf),
+    name: pcrRe(r.nameAny), and: pcrRe(r.andAny),   // LP-16b: the name must say / the product or the name must say
   }));
   return rules;
 }
-function nonMfClass(product: string): Rule | null {
-  for (const r of productRules()) if (r.kw && r.kw.test(product) && !(r.unless && r.unless.test(product)) && !(r.not && r.not.test(product))) return r;
+function nonMfClass(product: string, name: string): Rule | null {
+  for (const r of productRules()) {
+    if (r.kw && r.kw.test(product) && !(r.unless && r.unless.test(product)) && !(r.not && r.not.test(product)) &&
+      !(r.name && !r.name.test(name)) && !(r.and && !r.and.test(product) && !r.and.test(name))) return r;
+  }
   return null;
 }
 function isDirectEquity(product: string): boolean {
   const p = product.toLowerCase();
   if (/mutual fund|pms|aif|index fund|^etf$|bond|debenture|ncd|fixed deposit|\bfd\b/.test(p)) return false;
-  return /direct equity|^equity$|^equities$|stock|shares?|listed equity|scrip|sip/.test(p);
+  return /direct equity|^equity$|^equities$|stock|shares?|listed equity|scrip|sip|unlisted[\s-]*direct|direct[\s-]*unlisted/.test(p);   // LP-16b
 }
 /** Where the live page looks a holding up for performance: a universe, or 'none' (direct equity; LP-16's non-MF classes). */
-export function legacyRoute(product: string | null | undefined): 'MF' | 'PMS' | 'AIF' | 'SIF' | 'none' {
+export function legacyRoute(product: string | null | undefined, name: string | null | undefined = ''): 'MF' | 'PMS' | 'AIF' | 'SIF' | 'none' {
   const raw = String(product ?? '');
-  const nm = nonMfClass(raw);
+  const nm = nonMfClass(raw, String(name ?? ''));
   if (isDirectEquity(raw) && !nm) return 'none';
   const p = raw.toUpperCase();
   let cls: string;
@@ -117,7 +125,7 @@ export function runNew(input: SbsInput): SbsSide {
 
   let fellBack = 0;
   const holdings: SbsHolding[] = included.map((h: Holding) => {
-    const route = legacyRoute(h.product as string | null);
+    const route = legacyRoute(h.product as string | null, h.instrumentName);
     const ref = route === 'none' ? null
       : resolveInstrument({ name: h.instrumentName, amc: route === 'SIF' ? '' : (h.amcLabel ?? ''), isin: h.isin ?? undefined }, u[route], cw);
     const matched = !ref || ref.resolution.method === 'none' ? null : (ref.vendorKey ?? null);

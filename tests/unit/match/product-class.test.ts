@@ -1,7 +1,8 @@
-// covers: E-15 KI-051 M2.1
+// covers: E-15 KI-051 M2.1 M2.2
 // The product class of a holding as the live page decides it (app/src/engine/match/product-class.ts and the direct-equity
 // rule of resolve-holdings.ts), on LP-16's own known answers (tools/regression/LP16-KI051-product-classes.js, sections
-// 1, 2, 5 and 7) and the committed table data/refdata/PRODUCT_CLASS_RULES.json.
+// 1, 2, 5 and 7) and the committed table data/refdata/PRODUCT_CLASS_RULES.json, which since LP-16b (PR #50) labels a
+// bond US-dollar only with a dollar word, else a rupee bond, and adds P2P lending.
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,7 +24,10 @@ describe('product class (LP-16 known answers)', () => {
     const WANT: Record<string, string[]> = {
       'GIFT City funds': ['GIFT City funds', 'gift city fund', 'GIFT City AIF', 'IFSC Fund', 'GIFT IFSC'],
       'Offshore funds': ['Offshore funds', 'OFFSHORE FUND', 'Off-shore Fund'],
-      'US-dollar bonds (through LRS)': ['US-dollar bonds (through LRS)', 'Bonds', 'bond', 'NCD', 'NCDs', 'LRS', 'Debenture', 'Corporate Bonds'],
+      /* LP-16b (PR #50): a bond is US-dollar only with a dollar word in the product or the name, else a rupee bond */
+      'US-dollar bonds (through LRS)': ['US-dollar bonds (through LRS)', 'LRS', 'USD Bonds', 'US$ Bonds'],
+      'Rupee bonds and NCDs': ['Rupee bonds and NCDs', 'Bonds', 'bond', 'NCD', 'NCDs', 'Debenture', 'Corporate Bonds'],
+      'P2P lending': ['P2P Lending', 'Peer to Peer Lending'],
       'Fixed deposits': ['Fixed deposits', 'Fixed Deposit', 'FD', 'fds', 'Bank FD'],
       'REITs and InvITs': ['REITs and InvITs', 'REIT', 'reits', 'InvIT', 'InvITs', 'REITs & InvITs'],
       'Unlisted shares': ['Unlisted shares', 'Unlisted Equity', 'UNLISTED SHARES', 'Equity Shares - Unlisted'],
@@ -51,7 +55,8 @@ describe('product class (LP-16 known answers)', () => {
   });
 
   test('the table is read in its order; a table that is not a list is refused', () => {
-    assert.deepEqual(RULES.map((r) => r.label), ['GIFT City funds', 'Offshore funds', 'US-dollar bonds (through LRS)', 'Fixed deposits', 'REITs and InvITs', 'Unlisted shares']);
+    assert.deepEqual(RULES.map((r) => r.label), ['GIFT City funds', 'GIFT City funds', 'Offshore funds', 'US-dollar bonds (through LRS)', 'Rupee bonds and NCDs',
+      'Fixed deposits', 'REITs and InvITs', 'Unlisted shares', 'P2P lending']);
     assert.throws(() => parseProductClassRules({}), /not an array/);
   });
 

@@ -8,8 +8,8 @@
 //   - P2P lending is class OTHER (MOD-04, 26 Nov 2026); a rule with the class DEBT is skipped, there being no DEBT class;
 //   - a rule with a field or class the reader does not know, or a malformed field, is skipped with its reason and never
 //     applied loosely; the skipped rules reach the import report's matching section.
-// The table is LP-16b's (tests/fixtures/product-class-rules-lp16b.json, a copy of data/refdata/PRODUCT_CLASS_RULES.json
-// on CHAT-014's fix/lp16b-platform-product-names at 8eb4caa); every holding name is invented.
+// The table is the committed data/refdata/PRODUCT_CLASS_RULES.json, LP-16b's final table (PR #50, on main; it equals
+// CHAT-014's 8eb4caa); every holding name is invented.
 
 import { describe, test } from 'node:test';
 import fs from 'node:fs';
@@ -21,7 +21,7 @@ import { buildMatchContext, isDirectEquityProduct, resolveHoldings } from '../..
 import { buildMatchingSection } from '../../../app/src/views/matching.ts';
 import type { Holding } from '../../../app/src/model/holding.ts';
 
-const LP16B = JSON.parse(fs.readFileSync(path.join(REPO, 'tests', 'fixtures', 'product-class-rules-lp16b.json'), 'utf8')) as unknown[];
+const LP16B = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'refdata', 'PRODUCT_CLASS_RULES.json'), 'utf8')) as unknown[];
 const parsed = parseProductClassRulesDetailed(LP16B);
 const R = parsed.rules;
 

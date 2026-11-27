@@ -4,6 +4,68 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `04079A77756282B284016FBFB02212C0`, 16,416,337 bytes, on KI-301's page)
+- **The platform's own Product Name values are classed as the owner decided** (CR-0012; 26 Nov 2026):
+  - "Global Exposure" is a GIFT City fund when the instrument name says GIFT or IFSC, otherwise an Offshore fund (it was
+    looked up as a mutual fund).
+  - "Bonds", and every bond, NCD or debenture without USD, US$, US, dollar or LRS in its product or name, are "Rupee bonds and
+    NCDs" on the listed bond tax rows. The label "US-dollar bonds (through LRS)" (and no tax row) is kept for those that
+    say so. This changes the 25 Nov 2026 rule, which labelled every bond US-dollar.
+  - "P2P Lending" is its own class, "P2P lending" (product class OTHER in the shared table), not looked up as a fund, and
+    a Debt asset whatever its Asset Name says (asset allocation, debt look-through); still no tax row.
+  - "Unlisted-Direct" is an unlisted share held directly (no fund fee), as "Unlisted Shares" is.
+  - "AIF-Listed" is a Listed AIF: Category III with its note (D-043), as the category "Listed AIF" is.
+  - The tax rule reads USD, US$, US (a whole word: not "Plus" or "Bus"), dollar or LRS in the name only for a product or
+    category that says bond, NCD or debenture, so a fund, AIF or PMS named "... Bond ..." keeps its own row; a currency
+    word may be followed by a figure ("US$500mn", "USD5.25").
+  - Mutual Funds, Direct Equity, PMS and SIF are unchanged.
+- `PRODUCT_CLASS_RULES` (contract I-40) gains two optional fields, `nameAny` and `andAny`; `data/refdata` is regenerated.
+- `tools/patches/2026-11-26-lp16b-platform-product-names.js`; `tools/regression/LP16b-platform-product-names.js` (105
+  known-answer checks); the LP-16 test follows the new bond rule; the side-by-side kit's routing copy reads the new fields.
+
+### Fixed (live page, KI-301 (IRR-SI): the cashflow file's since-inception sheets; `index.html` `6896AFEC8626BEB22357A258AB69508D`, 16,414,518 bytes, on 9C973F61)
+- **Transaction XIRRs come from the since-inception sheets** (CR-0013; found by CHAT-010, flagged by CHAT-012, MOD-04's
+  order, 26 Nov 2026). The platform's cashflow file holds SI Xirr, SI Bmxirr, YTD Xirr, YTD Bmxirr, QTD Xirr and QTD
+  Bmxirr, in that order. The IRR reader took the last matching sheet names, QTD Xirr and QTD Bmxirr, so every transaction
+  XIRR, the client sheets, the Fund IRR tree and the tax lots used quarter-to-date flows only, with no error.
+  - A sheet named YTD, QTD, MTD or FYTD is never taken, by name or by content. A sheet named SI or "Since Inception" is
+    preferred ("SIP Xirr" is not SI). Otherwise the last match wins, as before. A file with period sheets only gives no
+    fund rows, and the upload asks for an SI Xirr sheet.
+  - `tools/patches/2026-11-26-irr-si-sheets.js` (parsers script only); `tools/regression/IRR-SI-since-inception-sheets.js`
+    (19 known-answer checks: the six-sheet file's review equals the SI pair's, and each holding's XIRR an independent XIRR of
+    its SI flows; 7 of the checks fail on the page before the fix).
+
+### Added (new build, M3b data side: the reference data embedded in the page; not read by any screen yet)
+- **`scripts/build.mjs`** writes each file of its `REFDATA_BLOCKS` list whole as a data block
+  `<script type="application/json" id="refdata-<NAME>">`: MF_PERF, MF_PERF_DIRECT, SIF_PERF, BENCH_RET, STOCK_RET and
+  VINTAGE (format agreed by NB-02 and NB-04, 26 Nov 2026; NB-02 adds the matcher's blocks); a block file must be a
+  .json file directly inside `data/refdata/` or `data/owner/`, else the build stops. Data blocks are not hashed
+  into the build id or the CSP: the build id is unchanged, the page grows from 2,003,823 to 4,656,615 bytes (the
+  check-next budget is 25 MB). The build id names the code, not the data: the data's provenance is `VINTAGE.json`
+  (each file's SHA-256 and the data month), in the page as `refdata-VINTAGE`. The data is what `index.html` already
+  publishes (class P).
+- **`app/src/data/refdata.ts`**: `readBlock(name)` parses a block once and keeps it; `blockOf(name, overrides)` returns
+  an uploaded MF or SIF Monitor in place of the embedded block (for the matcher and the views); `asOnOf(name)` dates a
+  block from VINTAGE (STOCK_RET: NOT AVAILABLE IN SUPPLIED DATA). Not a pure layer: engines get blocks as arguments.
+- Tests: `tests/next/refdata-blocks.test.mjs` (each block equals its committed file, in list order, the same names as
+  `BLOCK_NAMES`; the page passes check-next; a data change leaves the build id and the CSP unchanged; deterministic),
+  `tests/unit/data/refdata.test.ts`.
+
+### Fixed (live page, KI-032: the IRR client join; `index.html` `9C973F615E6601B08277F6F8227DB569`, 16,413,720 bytes)
+- **A client never takes another client's transaction figures** (CR-0011; the owner's "Careful variant match", 26 Nov
+  2026). The IRR client join is now the exact name, else a unique name variant (a salutation, initials, one middle name or
+  the word order; marker words such as HUF, Karta, trust, company, minor, guardian, Jr, Late or Deceased, or a joint "&" or "Joint" equal on both
+  sides; the first and last words equal when the lengths differ; one candidate each way), else no join. The client key
+  keeps marker words written in brackets, so "X (HUF)" is no longer the individual X's key (an IRR file holding both
+  merged their flows on the client sheet). Before, a client without an exact name took whichever IRR client shared two
+  name words, so it could show a family member's or an HUF's Grand Total and holding XIRRs.
+  - A client not joined keeps the base file's CMV-weighted figures; its § note says why when a near name was refused,
+    and names no one. A variant join is named in the § note. The counts are in the review model (`irrJoin`).
+  - Clients whose names are in the IRR file exactly, and the family Fund IRR tree, are unchanged.
+  - `tools/patches/2026-11-26-ki032-irr-client-join.js`; `tools/regression/KI-032-irr-client-join.js` (180 known-answer
+    checks). Side-by-side kit: SB-03 retired; SB-04 to SB-07 for the client-name variant case (the new build keeps exact
+    client labels, D9); 16 tests.
+
 ### Added (new build, M3b for test build 1: section 5 holdings and performance)
 - **Holding sheets** (E-25, `engine/aggregate/holdings-sheet.ts`): per client, asset, product and holding rows with CMV-weighted
   XIRR and coverage (KI-006), invested and gain only over holdings with an invested value (KI-007, OD-18), and a hook for
@@ -92,19 +154,6 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ### Fixed (new build)
 - **S3-1:** a merged holding whose rows carry different ISINs keeps none, with the Warning `base-file.isin-disagree`.
 
-### Added (new build, M3b data side: the reference data embedded in the page; not read by any screen yet)
-- **`scripts/build.mjs`** writes each file of its `REFDATA_BLOCKS` list whole as a data block
-  `<script type="application/json" id="refdata-<NAME>">`: MF_PERF, MF_PERF_DIRECT, SIF_PERF, BENCH_RET, STOCK_RET and
-  VINTAGE (format agreed by NB-02 and NB-04, 26 Nov 2026; NB-02 adds the matcher's blocks). Data blocks are not hashed
-  into the build id or the CSP: the build id is unchanged, the page grows from 2,003,823 to 4,656,615 bytes (the
-  check-next budget is 25 MB). The data is what `index.html` already publishes (class P).
-- **`app/src/data/refdata.ts`**: `readBlock(name)` parses a block once and keeps it; `blockOf(name, overrides)` returns
-  an uploaded MF or SIF Monitor in place of the embedded block (for the matcher and the views); `asOnOf(name)` dates a
-  block from VINTAGE (STOCK_RET: NOT AVAILABLE IN SUPPLIED DATA). Not a pure layer: engines get blocks as arguments.
-- Tests: `tests/next/refdata-blocks.test.mjs` (each block equals its committed file, in list order, the same names as
-  `BLOCK_NAMES`; the page passes check-next; a data change leaves the build id and the CSP unchanged; deterministic),
-  `tests/unit/data/refdata.test.ts`.
-
 ### Changed (new build, model contracts-3: two additive type changes; types only, `/next/` build byte-identical)
 - **`app/src/model/tax.ts`** (I-37): `NotComputed` gains `'amount-missing'` (a lot whose Sell Amount is blank, the
   reader's `required-cell-blank`; a blank Invested Value stays `'cost-input-missing'`). DATA_DICTIONARY §5.5 lists it.
@@ -112,6 +161,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   the weights) for a figure built from more than one source or date, such as Regular and Direct plans read from
   monitors of different dates; a rendering names every part. Asked for by NB-03 (M7a engine) and ARC-03's review of
   NB-04's M3b data side.
+
 ### Added (side-by-side kit for test build 1: tests only; no change to `index.html`, `/next/` or `app/`)
 - **`tests/side-by-side/`** runs the same book through the legacy engine (`tools/engine-host.js`) and the new build
   (`app/src`: base file, matcher, IRR file, scope returns, contributions). It compares the holdings matches, the holding
@@ -480,6 +530,39 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `tests/parity/contributions.parity.test.ts` against the legacy contribLag. The IRR parity ledger waits for a real
   export (TA-03, KI-186).
 
+### Added (new build, M3a wiring for test build 1: the IRR upload and the returns view on `/next/`)
+- **Section 1:** a "Transactions (IRR) file" upload with the base file's stages, usable once a base file is accepted
+  and cleared when a new base file is picked. It shows the file's import notes and says plainly that issues in the
+  transactions file do not block the workbook download yet.
+- **Section 4 (Analytics):** the returns view with a scope picker (the family, each client, and each adviser when the
+  file has a DISTRIBUTOR column). It shows fund XIRR against benchmark XIRR, the IRR tree, and contributors, laggards
+  and drags labelled "allocation x XIRR (an approximation, not an attribution)". The reconciliation notes cover
+  IRR-only clients, redeemed instruments, invalid benchmarks, holdings without flows, the unassigned line, and the
+  reconcile rule not yet set (D13).
+- **Workbook:** a "Fund IRR" sheet before the Audit Log, only when an IRR file is accepted. Its values are labelled as
+  computed by the app; the Excel XIRR check column waits (Q-60). Workbooks without an IRR file are byte-identical.
+- **Without a model change** (PLAN-04 option B): `engine/returns/review-returns.ts` gives the output that
+  `Review.returns` will hold once I-41 is written.
+- **Tests:** `unit/views/returns`, `unit/engine/review-returns`, `exports/xlsx/fund-irr`, `workflows/w-02-irr`,
+  `integration/returns-cross-output`.
+- **After the Gate B review and MOD-04's answers:**
+  - **Benchmark coverage:** the benchmark XIRR shows its coverage when it is partial.
+  - **Dates:** the IRR file's last flow date is shown beside the as-on date, with a count of any flows after it. No
+    figure changes.
+  - **One row per line:** the Fund IRR sheet writes each contributor, laggard and drag once, with a Role column, so no
+    percentage-point sum counts a line twice.
+  - **Unassigned share:** it has its own column, "Share of Money Paid In".
+  - **Missing figures:** the sheet's note says a missing figure is a blank cell with its status, where the screen
+    shows the dash.
+  - **Read Me:** it names the transactions file.
+  - **Spelling:** "Adviser" in user text.
+  - **New tests:**
+    - hand-worked known answers on screen and in the sheet (`integration/returns-known-answers`);
+    - cross-output for every figure cell;
+    - a refused IRR file;
+    - a synthetic IRR file whose distributors match the base book, so adviser scopes have flows;
+    - the browser check `tests/browser/irr-slot.cdp.mjs`.
+
 ### Added (new build, M7a: the capital-gains statement reader and the blank template; not wired into the page yet)
 - **`app/src/ingest/capital-gains.ts`** (E-150, D-036, design `docs/new-build/capital-gains-upload.md` §2 to §4, §6, §7,
   §11): the wealth platform's capital-gains export read as produced. Columns are found by header name in any order, and
@@ -499,6 +582,23 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Lot classes, the tax rules and the tax engine (E-152, E-154, E-155) stay owner-gated (PD-16, LP-01).
 - **Tests:** `tests/unit/ingest/capital-gains.test.ts`, `tests/exports/xlsx/cg-template.test.ts` and
   `tests/exports/xlsx/column-default-style.test.ts`, on synthetic statements only (`tests/fixtures/make-cg-statements.ts`).
+
+### Added (new build, M7a tax engine, round 1: the indicative tax of capital-gains statement lots; not wired into the page yet)
+- **`data/owner/tax-rules.json` and `engine/tax/rules.ts`** (E-154, E-106, E-144): the dated rule table v1 of the design
+  (§10, approved 27 Oct 2026) as data, from 1 Oct 2004: the rate rows, exemptions, both Cost Inflation Index series,
+  cess, surcharge maxima and caps, and the category map; the rule key to exactly one rate row.
+- **`engine/tax/tax-class.ts`, `lot-class.ts` and `realised.ts`** (E-152): per lot, the tax class, lot class (mergers
+  and successors), term, cost for tax, taxable gain and rule; NE-LT-1 both legs per lot.
+- **`engine/tax/rollup.ts`** (E-155): per person and financial year, never pooled: set-off, the exemption, tax,
+  surcharge, cess, the statement's split and the alternatives; the family sum as the sum of separate computations.
+- **The owner's PD-16 answers of 26 Nov 2026:** the dated table (item 1); an anniversary-day sale short term with the
+  long-term figure beside it (item 2); persons numbered by PAN per file in memory only, never from the PAN itself
+  (item 3); repeated rows decided by the analyst, with the units evidence beside each question (item 5); the FY 2024-25
+  exemption on the 12.5% gains first (item 6); the usual buckets from tax year 2026-27 (item 7). Item 4 stays with the
+  tax adviser.
+- **The slab rate** is the analyst's per person and year; the default is one named parameter while PD-07 is open.
+- **Tests:** `tests/unit/tax/{rules,lots,rollup,repeat-evidence,statement-engine}.test.ts` and the known answers KA-1
+  to KA-22 (`tests/fixtures/cg-known-answers.json`), to Rs 0.01.
 
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage

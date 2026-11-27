@@ -128,6 +128,12 @@
   - It serves `index.html` on `main`. After PR #36 (TA-03, 26 Nov 2026): MD5 `08CAC338E0F4468FDC82D032DACA7B5D`,
     16,408,172 bytes, with the October 2026 refresh, CR-0010, LP-16, A5 and the tax batch. (After PR #16 it was
     `12B5E5727FCA01EF2EA162C59913F01D`.) New-build merges leave `index.html` unchanged.
+  - KI-032, the IRR client join (CR-0011): merged in PR #47 (26 Nov 2026, the owner's "Publish now"); page
+    `9C973F615E6601B08277F6F8227DB569`, 16,413,720 bytes.
+  - KI-301 (IRR-SI), the cashflow file's since-inception sheets (CR-0013): merged in PR #53 (27 Nov 2026, the owner's
+    "Publish KI-301"); page `6896AFEC8626BEB22357A258AB69508D`, 16,414,518 bytes.
+  - In review: LP-16b, the platform's Product Name values (CR-0012, branch `fix/lp16b-platform-product-names`): page
+    `04079A77756282B284016FBFB02212C0`, 16,416,337 bytes (on KI-301's page); live on the owner's "publish when green".
   - After every deploy the live page is downloaded and its MD5 compared with `main` (batch 1a verified 19 Oct
     2026).
   - Data vintage: 31 Oct 2026 (October refresh: analytics, performance and risk), except ranks (15 Aug), fund managers
@@ -241,10 +247,16 @@
    questions in its Gate A report. The IRR parity ledger waits for a real export (TA-03, KI-186).
 
    **Claude: M7a**, the capital-gains statement reader (PAN removed at read time, repeated lots reported, blank cells
-   reported) and the blank template, is merged (PR #35) and accepted by the owner (Gate E), not wired into the page yet. Lot classes,
-   the tax rules and the tax engine stay owner-gated (PD-16, LP-01).
+   reported) and the blank template, is merged (PR #35) and accepted by the owner (Gate E), not wired into the page yet. The
+   owner answered PD-16 on 26 Nov 2026 (item 4 stays with the tax adviser). **The M7a tax engine** is on
+   `feat/m7a-tax-engine`: round 1 (the statement lots: the dated rules, lot classes, per-lot tax and the tax per person
+   and year) is built; round 2 (the holdings: classification, FIFO lots, harvesting and the IRR reconciliation) follows.
    Model contracts-1 (PR #29, types only): I-31, I-32, I-44, I-45 and decision C-01. Model contracts-2 (PR #40, types
    only): contract I-37 (`app/src/model/tax.ts`) and the analyst question as a union on its kind.
+
+   **Claude: M3a wiring** (test build 1, `feat/m3a-wiring`): the transactions (IRR) upload in section 1 and the returns
+   view in section 4 (family, client and adviser scopes; fund and benchmark XIRR; the IRR tree; contributors and
+   laggards) with a Fund IRR sheet, without a model change (PLAN-04 option B); I-41 follows test build 1.
 6. **When the second export arrives:**
    - Claude verifies and files it;
    - restores the risk toolchain into the repository;

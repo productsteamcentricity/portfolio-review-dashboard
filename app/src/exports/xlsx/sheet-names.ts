@@ -16,6 +16,8 @@ export const SHEETS = {
   distributors: 'Distributor Allocation',
   // M3b (NB-02): architecture §14 sheet 12, written only when the performance tables are passed.
   performance: 'Performance',
+  // M3a returns (NB-03): architecture §14 sheet 13, written only when a transactions (IRR) file is accepted.
+  fundIrr: 'Fund IRR',
   audit: 'Audit Log',
   manifest: '_manifest',
 } as const;

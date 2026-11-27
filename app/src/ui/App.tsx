@@ -16,6 +16,7 @@ import { useStore } from './use-store.ts';
 import { ReviewBar } from './components/review-bar.tsx';
 import { S1Uploads } from './sections/s1-uploads.tsx';
 import { S2Overview } from './sections/s2-overview.tsx';
+import { S4Analytics } from './sections/s4-analytics.tsx'; // M3a returns (NB-03)
 import { S5Holdings } from './sections/s5-holdings.tsx';
 
 export type Arriving = { milestone: string; what: string };
@@ -245,8 +246,9 @@ export function App({ build, store, logos, chart }: {
 
   const content = active.id === 'uploads' ? <S1Uploads store={store} state={state} logos={logos} />
     : active.id === 'overview' ? <S2Overview store={store} state={state} chart={chart} />
-      : active.id === 'holdings' ? <S5Holdings store={store} state={state} />
-        : null;
+      : active.id === 'analytics' ? <S4Analytics store={store} state={state} /> // M3a returns (NB-03)
+      : active.id === 'holdings' ? <S5Holdings store={store} state={state} /> // M3b (NB-02)
+      : null;
 
   return (
     <>

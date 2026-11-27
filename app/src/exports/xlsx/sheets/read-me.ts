@@ -33,6 +33,11 @@ export function readMeSheet(ctx: BuildContext): SheetSpec {
     add('Base file', s.fileName);
     add('Base file SHA-256', s.id);
   }
+  // M3a returns (NB-03): the transactions (IRR) file, as the base file; no row when none is accepted (bytes as before).
+  for (const s of sources.filter((x) => x.role === 'irr-file')) {
+    add('Transactions (IRR) file', s.fileName);
+    add('Transactions (IRR) file SHA-256', s.id);
+  }
   add('Reference data', 'Not used in this version.');
   add('MF Screener', 'Not loaded.');
   add('Build id', build.buildId);

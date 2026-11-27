@@ -29,6 +29,9 @@ import { portfolioOverviewSheet } from './sheets/portfolio-overview.ts';
 import { entityAllocationSheet } from './sheets/entity-allocation.ts';
 import { auditLogSheet } from './sheets/audit-log.ts';
 import { manifestSheet } from './sheets/manifest-sheet.ts';
+// M3a returns (NB-03): the Fund IRR sheet, written only when the input carries returns.
+import type { ReturnsVM } from '../../views/returns-vm.ts';
+import { fundIrrSheet } from './sheets/fund-irr.ts';
 // M3b (NB-02): the client holdings sheets, written only when the input carries the holdings view-model.
 import type { HoldingsVM } from '../../views/holdings.ts';
 import { clientHoldingsSheet } from './sheets/client-holdings.ts';
@@ -93,6 +96,8 @@ export type WorkbookInput = {
   results: Array<Pick<ValidationResult, 'id' | 'ruleId' | 'severity' | 'status' | 'decision' | 'count'>>;
   /** Client and distributor column ids to their keys (C01, D01, C00 and D00 for not given). */
   entityKeys: { client: EntityKey[]; distributor: EntityKey[] };
+  /** M3a returns (NB-03): the returns view-model; the Fund IRR sheet is written only when it is present. */
+  returns?: ReturnsVM;
   /** M3b (NB-02): the holdings view-model; one client holdings sheet per client is written only when it is present. */
   clientHoldings?: HoldingsVM;
   /** M3b (NB-02): the performance tables (the store's); the Performance sheet is written only when they are present. */
@@ -138,7 +143,7 @@ function missingValue(reason: string): Value<number> {
 
 /** The workbook's input from the review and its view-model: money scaled to the display unit, keys by first
  * appearance in the holdings. */
-export function workbookInputFrom(review: Review, vm: OverviewVM): WorkbookInput {
+export function workbookInputFrom(review: Review, vm: OverviewVM, returns?: ReturnsVM | null): WorkbookInput {
   const unit = vm.meta.unit;
   const scale = (x: Value<number>): Value<number> => (x.kind === 'value' ? { ...x, v: fromCrore(x.v, unit) } : x);
   const holdings: readonly Holding[] = review.holdings;
@@ -223,6 +228,8 @@ export function workbookInputFrom(review: Review, vm: OverviewVM): WorkbookInput
       client: [...clientKeys].map(([id, key]) => ({ id, key })),
       distributor: [...distributorKeys].map(([id, key]) => ({ id, key })),
     },
+    // M3a returns (NB-03): the returns and the IRR file's source record, only when an IRR file is accepted.
+    ...(returns ? { returns, sources: returns.source ? [...review.sources, returns.source] : review.sources } : {}),
   };
 }
 
@@ -248,6 +255,7 @@ export function buildContext(input: WorkbookInput): BuildContext {
   const clientSheets = input.clientHoldings ? clientSheetNames(input.clientHoldings.clients.map((c) => c.title)) : [];
   sheets.push(...clientSheets); // M3b (NB-02): architecture §14 sheet 11, one per client
   if (input.performance) sheets.push(SHEETS.performance); // M3b (NB-02): sheet 12
+  if (input.returns) sheets.push(SHEETS.fundIrr); // M3a returns (NB-03): no "Sheet left out" row when absent
   sheets.push(SHEETS.audit, SHEETS.manifest);
   const figures: FigureCell[] = [];
   const seen = new Set<string>();
@@ -282,6 +290,7 @@ export function overviewSheets(input: WorkbookInput): { ctx: BuildContext; sheet
   if (input.vm.matrices.distributor.shown) sheets.push(entityAllocationSheet(ctx, 'distributor'));
   if (input.clientHoldings) input.clientHoldings.clients.forEach((c, i) => sheets.push(clientHoldingsSheet(ctx, c, ctx.clientSheets[i]!))); // M3b (NB-02)
   if (input.performance) sheets.push(performanceSheet(input.performance)); // M3b (NB-02)
+  if (input.returns) sheets.push(fundIrrSheet(ctx, input.returns)); // M3a returns (NB-03)
   sheets.push(auditLogSheet(ctx));
   return { ctx, sheets };
 }

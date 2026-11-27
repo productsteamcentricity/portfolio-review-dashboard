@@ -23,6 +23,8 @@ import { LogoPicker } from '../components/logo-picker.tsx';
 import { Disclaimer } from '../components/disclaimer.tsx';
 import { registerSources, sizeText, slotView } from '../upload-slot.ts';
 import { focusFirst, useKeepFocus } from '../focus.ts';
+import { IrrSlot } from '../components/irr-slot.tsx'; // M3a returns (NB-03)
+import { irrSlotView } from '../../views/returns.ts'; // M3a returns (NB-03)
 
 const BASE_FILE_ACCEPT = '.xlsx,.xlsm,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
 
@@ -91,6 +93,9 @@ export function S1Uploads({ store, state, logos }: { store: Store; state: AppSta
   const loaded = state.upload.loaded;
   const report = loaded ? buildImportReport(loaded.source, loaded.base, state.match) : null;
   const sources: SourceFile[] = registerSources(state.upload, state.review ? state.review.sources : null);
+  // M3a returns (NB-03): the IRR file joins the register at the stage its strip shows.
+  const irrStage = irrSlotView(state.irr, true).stage;
+  if (state.irr.loaded && irrStage) sources.push({ ...state.irr.loaded.source, stage: irrStage });
   const issues = state.review ? state.review.issues : loaded ? loaded.base.issues : [];
   const panel = buildValidationPanel(issues);
   const clients: readonly Client[] = state.review ? state.review.clients : loaded ? loaded.base.clients : [];
@@ -108,6 +113,11 @@ export function S1Uploads({ store, state, logos }: { store: Store; state: AppSta
     <>
       <Group id="group-base-file" title="Base file" note="Upload, Validate, Preview, Review">
         <UploadSlot state={state} store={store} />
+      </Group>
+
+      {/* M3a returns (NB-03) */}
+      <Group id="group-irr-file" title="Transactions (IRR) file" note="Upload, Validate, Preview, Review">
+        <IrrSlot state={state} store={store} />
       </Group>
 
       <Group id="group-monitors" title="Fund monitor files" note="Optional: the month's data is embedded">

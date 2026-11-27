@@ -71,9 +71,9 @@ test('a holding with no invested value: blank with its status, the double dagger
   assert.ok(t.some((r) => r[0] === 'Note' && String(r[1]).includes('2 holdings without one')));
 });
 
-test('client sheet names: sanitised, unique ignoring case and against every workbook sheet (KI-021)', () => {
+test('client sheet names: sanitised, unique ignoring case and against every workbook sheet, the Fund IRR sheet included (KI-021)', () => {
   assert.deepEqual(clientSheetNames(['Audit Log', 'a/b:c', 'X'.repeat(40), 'x'.repeat(40), 'History', 'Fund IRR']),
-    ['Audit Log (2)', 'a b c', 'X'.repeat(31), `${'x'.repeat(27)} (2)`, 'History (sheet)', 'Fund IRR']);
+    ['Audit Log (2)', 'a b c', 'X'.repeat(31), `${'x'.repeat(27)} (2)`, 'History (sheet)', 'Fund IRR (2)']);
 });
 
 test('the workbook passes the evaluator-only check; without the holdings view-model it has no client sheet', () => {
