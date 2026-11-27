@@ -81,14 +81,15 @@ describe('owner fund aliases: each approved line (real data/refdata)', () => {
     });
   }
 
-  /* Without its alias, what the new build's matcher (NEW_BUILD_MATCHING: KI-036, KI-101 and the stricter regime the
-   * owner chose on 26 Nov 2026) gives each old name. Nine give no match. Seven still give another fund (the
-   * contained-name rule with generic words): these are why the aliases exist; any change here shows. */
+  /* Without its alias, what the new build's matcher (NEW_BUILD_MATCHING: KI-036, KI-101, the stricter regime the owner
+   * chose on 26 Nov 2026, the second normaliser and the candidate-side word guard) gives each old name. Fourteen give no
+   * match; two (lines 12 and 13, the Multicap renames) still give another fund, which their aliases cover. Any change
+   * here shows. */
   const WITHOUT_ALIAS: Readonly<Record<number, string | null>> = {
-    1: 'ICICI Pru US Bluechip Equity Fund(G)', 2: null, 3: null, 4: null,
-    5: 'HDFC Equity Savings Fund(G)', 6: 'UTI Equity Savings Fund-Reg(G)', 7: 'Kotak Global Emerging Market Overseas Equity Active FOF(G)',
+    1: null, 2: null, 3: null, 4: null,
+    5: null, 6: null, 7: null,
     8: null, 9: null, 11: null, 12: 'Kotak Multi Cap Fund-Reg(G)', 13: 'Motilal Oswal Multi Cap Fund-Reg(G)', 14: null, 15: null, 16: null,
-    17: 'ICICI Pru Equity Savings Fund-Reg(G)',
+    17: null,
   };
   test('per line: without the alias, the corrected matcher gives no match or the recorded other fund; with it, the right fund', (t) => {
     const corrected = { ...NEW_BUILD_MATCHING };

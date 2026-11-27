@@ -4,7 +4,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
-### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `BFAA3F1DA58A032D495DBA5870B83E93`, 16,415,539 bytes, on KI-032's page)
+### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `04079A77756282B284016FBFB02212C0`, 16,416,337 bytes, on KI-301's page)
 - **The platform's own Product Name values are classed as the owner decided** (CR-0012; 26 Nov 2026):
   - "Global Exposure" is a GIFT City fund when the instrument name says GIFT or IFSC, otherwise an Offshore fund (it was
     looked up as a mutual fund).
@@ -22,6 +22,34 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - `PRODUCT_CLASS_RULES` (contract I-40) gains two optional fields, `nameAny` and `andAny`; `data/refdata` is regenerated.
 - `tools/patches/2026-11-26-lp16b-platform-product-names.js`; `tools/regression/LP16b-platform-product-names.js` (105
   known-answer checks); the LP-16 test follows the new bond rule; the side-by-side kit's routing copy reads the new fields.
+
+### Fixed (live page, KI-301 (IRR-SI): the cashflow file's since-inception sheets; `index.html` `6896AFEC8626BEB22357A258AB69508D`, 16,414,518 bytes, on 9C973F61)
+- **Transaction XIRRs come from the since-inception sheets** (CR-0013; found by CHAT-010, flagged by CHAT-012, MOD-04's
+  order, 26 Nov 2026). The platform's cashflow file holds SI Xirr, SI Bmxirr, YTD Xirr, YTD Bmxirr, QTD Xirr and QTD
+  Bmxirr, in that order. The IRR reader took the last matching sheet names, QTD Xirr and QTD Bmxirr, so every transaction
+  XIRR, the client sheets, the Fund IRR tree and the tax lots used quarter-to-date flows only, with no error.
+  - A sheet named YTD, QTD, MTD or FYTD is never taken, by name or by content. A sheet named SI or "Since Inception" is
+    preferred ("SIP Xirr" is not SI). Otherwise the last match wins, as before. A file with period sheets only gives no
+    fund rows, and the upload asks for an SI Xirr sheet.
+  - `tools/patches/2026-11-26-irr-si-sheets.js` (parsers script only); `tools/regression/IRR-SI-since-inception-sheets.js`
+    (19 known-answer checks: the six-sheet file's review equals the SI pair's, and each holding's XIRR an independent XIRR of
+    its SI flows; 7 of the checks fail on the page before the fix).
+
+### Added (new build, M3b data side: the reference data embedded in the page; not read by any screen yet)
+- **`scripts/build.mjs`** writes each file of its `REFDATA_BLOCKS` list whole as a data block
+  `<script type="application/json" id="refdata-<NAME>">`: MF_PERF, MF_PERF_DIRECT, SIF_PERF, BENCH_RET, STOCK_RET and
+  VINTAGE (format agreed by NB-02 and NB-04, 26 Nov 2026; NB-02 adds the matcher's blocks); a block file must be a
+  .json file directly inside `data/refdata/` or `data/owner/`, else the build stops. Data blocks are not hashed
+  into the build id or the CSP: the build id is unchanged, the page grows from 2,003,823 to 4,656,615 bytes (the
+  check-next budget is 25 MB). The build id names the code, not the data: the data's provenance is `VINTAGE.json`
+  (each file's SHA-256 and the data month), in the page as `refdata-VINTAGE`. The data is what `index.html` already
+  publishes (class P).
+- **`app/src/data/refdata.ts`**: `readBlock(name)` parses a block once and keeps it; `blockOf(name, overrides)` returns
+  an uploaded MF or SIF Monitor in place of the embedded block (for the matcher and the views); `asOnOf(name)` dates a
+  block from VINTAGE (STOCK_RET: NOT AVAILABLE IN SUPPLIED DATA). Not a pure layer: engines get blocks as arguments.
+- Tests: `tests/next/refdata-blocks.test.mjs` (each block equals its committed file, in list order, the same names as
+  `BLOCK_NAMES`; the page passes check-next; a data change leaves the build id and the CSP unchanged; deterministic),
+  `tests/unit/data/refdata.test.ts`.
 
 ### Fixed (live page, KI-032: the IRR client join; `index.html` `9C973F615E6601B08277F6F8227DB569`, 16,413,720 bytes)
 - **A client never takes another client's transaction figures** (CR-0011; the owner's "Careful variant match", 26 Nov
@@ -54,6 +82,15 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `NEW_BUILD_MATCHING`, the preset the wiring will use): rejects a candidate that leaves a known rare word of the holding's
   name unmatched; measured 2,725 to 1,594 wrong matches for absent funds and 21 of 1,206 correct official names unmatched
   (mostly normaliser gaps; a measured follow-up aims to recover them).
+- **Second normaliser and candidate-side word guard** (`MatchOptions.normaliserV2`, `candidateWordGuard`; on in
+  `NEW_BUILD_MATCHING`): matching tokens drop "(Formerly Known as ...)" and "S&P" before "BSE", split letters from digits,
+  collapse spaces before the compounds and add a few synonyms; the guard also checks the candidate's own rare words.
+  A word of the holding's name the reference data knows elsewhere counts too (`knownWords`, `referenceVocabulary`: every set's words
+  less its fund-house words). The legacy normaliser, the alias keys and the name lists are unchanged. Full sweep against the
+  legacy: self regressions 0; leave-one-out wrong matches 3,932 to 1,094 (0 added); official AMFI names right 1,195 to 1,198,
+  wrong 8 to 1. Four official names now get no match (all to null, none to another fund): two were already among the
+  stricter regime's 22 losses (UTI Focused Fund (30 stocks), Navi Nifty Smallcap 250 Momentum Quality) and two are new
+  (Kotak Infrastructure & Economic Reform Fund, Standard Plan; Baroda BNP Paribas Best-in-Class Strategy Fund).
 - **KI-052, OD-23, KI-054** (`engine/match/rekey.ts`): FUND_RANKS_CODES and MF_RISK re-keyed onto MF_PERF keys by spelling
   and owner alias, never by fuzzy match (`tests/parity/rekey-ledger.json`, also the FUND_RANKS_CODES vintage record);
   the Direct twin only for the same scheme; the look-through key.
@@ -441,6 +478,39 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   `tests/parity/contributions.parity.test.ts` against the legacy contribLag. The IRR parity ledger waits for a real
   export (TA-03, KI-186).
 
+### Added (new build, M3a wiring for test build 1: the IRR upload and the returns view on `/next/`)
+- **Section 1:** a "Transactions (IRR) file" upload with the base file's stages, usable once a base file is accepted
+  and cleared when a new base file is picked. It shows the file's import notes and says plainly that issues in the
+  transactions file do not block the workbook download yet.
+- **Section 4 (Analytics):** the returns view with a scope picker (the family, each client, and each adviser when the
+  file has a DISTRIBUTOR column). It shows fund XIRR against benchmark XIRR, the IRR tree, and contributors, laggards
+  and drags labelled "allocation x XIRR (an approximation, not an attribution)". The reconciliation notes cover
+  IRR-only clients, redeemed instruments, invalid benchmarks, holdings without flows, the unassigned line, and the
+  reconcile rule not yet set (D13).
+- **Workbook:** a "Fund IRR" sheet before the Audit Log, only when an IRR file is accepted. Its values are labelled as
+  computed by the app; the Excel XIRR check column waits (Q-60). Workbooks without an IRR file are byte-identical.
+- **Without a model change** (PLAN-04 option B): `engine/returns/review-returns.ts` gives the output that
+  `Review.returns` will hold once I-41 is written.
+- **Tests:** `unit/views/returns`, `unit/engine/review-returns`, `exports/xlsx/fund-irr`, `workflows/w-02-irr`,
+  `integration/returns-cross-output`.
+- **After the Gate B review and MOD-04's answers:**
+  - **Benchmark coverage:** the benchmark XIRR shows its coverage when it is partial.
+  - **Dates:** the IRR file's last flow date is shown beside the as-on date, with a count of any flows after it. No
+    figure changes.
+  - **One row per line:** the Fund IRR sheet writes each contributor, laggard and drag once, with a Role column, so no
+    percentage-point sum counts a line twice.
+  - **Unassigned share:** it has its own column, "Share of Money Paid In".
+  - **Missing figures:** the sheet's note says a missing figure is a blank cell with its status, where the screen
+    shows the dash.
+  - **Read Me:** it names the transactions file.
+  - **Spelling:** "Adviser" in user text.
+  - **New tests:**
+    - hand-worked known answers on screen and in the sheet (`integration/returns-known-answers`);
+    - cross-output for every figure cell;
+    - a refused IRR file;
+    - a synthetic IRR file whose distributors match the base book, so adviser scopes have flows;
+    - the browser check `tests/browser/irr-slot.cdp.mjs`.
+
 ### Added (new build, M7a: the capital-gains statement reader and the blank template; not wired into the page yet)
 - **`app/src/ingest/capital-gains.ts`** (E-150, D-036, design `docs/new-build/capital-gains-upload.md` §2 to §4, §6, §7,
   §11): the wealth platform's capital-gains export read as produced. Columns are found by header name in any order, and
@@ -460,6 +530,23 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - Lot classes, the tax rules and the tax engine (E-152, E-154, E-155) stay owner-gated (PD-16, LP-01).
 - **Tests:** `tests/unit/ingest/capital-gains.test.ts`, `tests/exports/xlsx/cg-template.test.ts` and
   `tests/exports/xlsx/column-default-style.test.ts`, on synthetic statements only (`tests/fixtures/make-cg-statements.ts`).
+
+### Added (new build, M7a tax engine, round 1: the indicative tax of capital-gains statement lots; not wired into the page yet)
+- **`data/owner/tax-rules.json` and `engine/tax/rules.ts`** (E-154, E-106, E-144): the dated rule table v1 of the design
+  (§10, approved 27 Oct 2026) as data, from 1 Oct 2004: the rate rows, exemptions, both Cost Inflation Index series,
+  cess, surcharge maxima and caps, and the category map; the rule key to exactly one rate row.
+- **`engine/tax/tax-class.ts`, `lot-class.ts` and `realised.ts`** (E-152): per lot, the tax class, lot class (mergers
+  and successors), term, cost for tax, taxable gain and rule; NE-LT-1 both legs per lot.
+- **`engine/tax/rollup.ts`** (E-155): per person and financial year, never pooled: set-off, the exemption, tax,
+  surcharge, cess, the statement's split and the alternatives; the family sum as the sum of separate computations.
+- **The owner's PD-16 answers of 26 Nov 2026:** the dated table (item 1); an anniversary-day sale short term with the
+  long-term figure beside it (item 2); persons numbered by PAN per file in memory only, never from the PAN itself
+  (item 3); repeated rows decided by the analyst, with the units evidence beside each question (item 5); the FY 2024-25
+  exemption on the 12.5% gains first (item 6); the usual buckets from tax year 2026-27 (item 7). Item 4 stays with the
+  tax adviser.
+- **The slab rate** is the analyst's per person and year; the default is one named parameter while PD-07 is open.
+- **Tests:** `tests/unit/tax/{rules,lots,rollup,repeat-evidence,statement-engine}.test.ts` and the known answers KA-1
+  to KA-22 (`tests/fixtures/cg-known-answers.json`), to Rs 0.01.
 
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage

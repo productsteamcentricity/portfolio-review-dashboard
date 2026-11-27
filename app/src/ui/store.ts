@@ -19,6 +19,14 @@ import { DEFAULT_FAMILY_LABEL, checkLabel } from '../views/labels.ts';
 import { imageSize } from '../views/logo.ts';
 import { formatDay } from '../engine/dates.ts';
 import { barFileName, canAccept } from './upload-slot.ts';
+// M3a returns (NB-03): the transactions (IRR) file, its returns and their view-model (the block at the end of this file).
+import type { UploadStage } from '../model/source.ts';
+import type { UploadError } from './upload-slot.ts';
+import type { LoadedIrrFile } from '../ingest/load-irr.ts';
+import type { ReviewReturns } from '../engine/returns/review-returns.ts';
+import type { ReturnsVM } from '../views/returns-vm.ts';
+import { returnsForReview } from '../engine/returns/review-returns.ts';
+import { buildReturnsVM, canAcceptIrr } from '../views/returns.ts';
 
 export type AppState = {
   /**
@@ -36,6 +44,8 @@ export type AppState = {
   inputKey: number;
   exportLog: AuditEntry[];
   busy: 'pptx' | 'xlsx' | null;
+  /** M3a returns (NB-03). TODO(I-41): the IRR file moves into ReviewRequest and its returns into Review.returns. */
+  irr: IrrState;
 };
 
 export type Action =
@@ -48,7 +58,8 @@ export type Action =
   | { type: 'family-label'; label: string }
   | { type: 'client-label'; clientId: string; label: string }
   | { type: 'acknowledge'; resultId: string }
-  | { type: 'logo'; logo: LogoAsset | null };
+  | { type: 'logo'; logo: LogoAsset | null }
+  | IrrAction; // M3a returns (NB-03)
 
 export type Store = {
   get(): AppState;
@@ -78,6 +89,7 @@ function initialState(logo: LogoAsset | null, inputKey: number): AppState {
     inputKey,
     exportLog: [],
     busy: null,
+    irr: emptyIrr(0), // M3a returns (NB-03): a new family clears the IRR file
   };
 }
 
@@ -128,6 +140,7 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
   const subscribers = new Set<() => void>();
 
   const set = (next: AppState): void => {
+    next = withReturns(state, next); // M3a returns (NB-03): the returns follow every review the store computes
     state = next;
     for (const fn of [...subscribers]) fn();
   };
@@ -238,6 +251,10 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
         set({ ...state, logo: a.logo });
         return;
       }
+      // M3a returns (NB-03)
+      case 'irr-picked': case 'irr-unreadable': case 'irr-accept': case 'irr-remove': case 'scope-picked':
+        set(irrReduce(state, a, deps.wiring));
+        return;
     }
   };
 
@@ -253,7 +270,7 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
     try {
       const result = kind === 'pptx'
         ? await deps.wiring.exportDeck(review, s.vm, s.logo)
-        : await deps.wiring.exportWorkbook(review, s.vm);
+        : await deps.wiring.exportWorkbook(review, s.vm, s.irr.vm); // M3a returns (NB-03): the Fund IRR sheet when present
       if (session === mySession) {
         const entry: AuditEntry = { ...result.audit, id: `export:${state.exportLog.length + 1}` };
         set({ ...state, exportLog: [...state.exportLog, entry], busy: null });
@@ -275,4 +292,99 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
     exportDeck: () => runExport('pptx'),
     exportWorkbook: () => runExport('xlsx'),
   };
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// M3a returns (NB-03; PLAN-04 option B). The transactions (IRR) file is a second upload of section 1, beside the base
+// file: it is read only once a base file is accepted, a new base file clears it (one family at a time), and its issues
+// do not gate the exports. Its returns are recomputed whenever the review is. The reader is reached through the
+// Wiring; the returns and their view-model are pure functions, called here as buildOverviewVM is.
+// TODO(I-41): this state becomes ReviewRequest.irr and Review.returns, computed by computeReview.
+
+/** The IRR file through its Upload, Validate, Preview and Review stages, its returns and the scope on screen. */
+export type IrrState = {
+  stage: UploadStage | null;
+  fileName: string | null;
+  size: number;
+  loaded: LoadedIrrFile | null;
+  error: UploadError | null;
+  returns: ReviewReturns | null;
+  vm: ReturnsVM | null;
+  /** The scope key the returns view shows; "family" by default. */
+  scopeKey: string;
+  /** Remounts the IRR file input after a pick or Remove, so the same file can be picked again (KI-089). */
+  inputKey: number;
+};
+
+export type IrrAction =
+  | { type: 'irr-picked'; fileName: string; bytes: Uint8Array }
+  | { type: 'irr-unreadable'; fileName: string; size: number }
+  | { type: 'irr-accept' }
+  | { type: 'irr-remove' }
+  | { type: 'scope-picked'; key: string };
+
+function emptyIrr(inputKey: number): IrrState {
+  return { stage: null, fileName: null, size: 0, loaded: null, error: null, returns: null, vm: null, scopeKey: 'family', inputKey };
+}
+
+/** True when a base file is accepted and reviewed: the IRR slot works only then. */
+export function baseAccepted(s: AppState): boolean {
+  return s.upload.stage === 'review' && s.upload.loaded !== null && s.review !== null;
+}
+
+function irrReduce(s: AppState, a: IrrAction, wiring: Wiring): AppState {
+  const base = baseAccepted(s);
+  switch (a.type) {
+    case 'irr-picked': {
+      if (!base) return s;
+      const picked: IrrState = { ...emptyIrr(s.irr.inputKey + 1), stage: 'upload', fileName: a.fileName, size: a.bytes.length };
+      const failed = (message: string): AppState => ({ ...s, irr: { ...picked, error: { kind: 'review-failed', message } } });
+      if (!wiring.loadIrrFile) return failed('this build has no reader for a transactions file');
+      let result: LoadedIrrFile | LoadError;
+      try {
+        result = wiring.loadIrrFile(a.bytes, a.fileName);
+      } catch (err) {
+        return failed(messageOf(err));
+      }
+      if (!('irr' in result)) return { ...s, irr: { ...picked, error: result } };
+      return { ...s, irr: { ...picked, stage: 'validate', loaded: result } };
+    }
+    case 'irr-unreadable':
+      if (!base) return s;
+      return {
+        ...s,
+        irr: {
+          ...emptyIrr(s.irr.inputKey + 1), stage: 'upload', fileName: a.fileName, size: a.size,
+          error: { kind: 'unreadable', message: 'the browser could not read the file' },
+        },
+      };
+    case 'irr-accept':
+      // withReturns (in set) computes the returns of the accepted file.
+      return canAcceptIrr(s.irr, base) ? { ...s, irr: { ...s.irr, stage: 'review' } } : s;
+    case 'irr-remove':
+      return { ...s, irr: emptyIrr(s.irr.inputKey + 1) };
+    case 'scope-picked':
+      return s.irr.vm && s.irr.vm.scopes.some((x) => x.key === a.key) ? { ...s, irr: { ...s.irr, scopeKey: a.key } } : s;
+  }
+}
+
+/**
+ * The returns of an accepted IRR file over the review of `next`: recomputed when the review or the file changes,
+ * cleared when either is gone. An exception of the engine is the app's own failure, shown on the IRR slot.
+ */
+function withReturns(prev: AppState, next: AppState): AppState {
+  const irr = next.irr;
+  const loaded = irr.loaded;
+  if (irr.stage !== 'review' || loaded === null || irr.error !== null || next.review === null) {
+    return irr.returns === null && irr.vm === null ? next : { ...next, irr: { ...irr, returns: null, vm: null } };
+  }
+  if (irr.returns !== null && prev.review === next.review && prev.irr.loaded === loaded) return next;
+  try {
+    const returns = returnsForReview(next.review, loaded.irr);
+    const vm = buildReturnsVM(returns, next.review, { source: { ...loaded.source, stage: 'review' } });
+    const scopeKey = vm.scopes.some((x) => x.key === irr.scopeKey) ? irr.scopeKey : 'family';
+    return { ...next, irr: { ...irr, returns, vm, scopeKey } };
+  } catch (err) {
+    return { ...next, irr: { ...irr, stage: 'validate', returns: null, vm: null, error: { kind: 'review-failed', message: messageOf(err) } } };
+  }
 }

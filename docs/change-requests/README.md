@@ -27,3 +27,4 @@ Monthly data refreshes are recorded separately in [`../refresh-log/`](../refresh
 | [CR-0010](CR-0010-other-funds-october.md) | 22 Nov 2026 | Other Funds October update: the 40 carried children's and retirement funds to 31 Oct 2026 (A1); three wrong matches (A2) and the SWOT "international" test (A3) fixed | In review |
 | [CR-0011](CR-0011-ki032-irr-client-join.md) | 26 Nov 2026 | KI-032: the IRR client join, exact or a unique name variant, never a family member's or an HUF's flows | In review |
 | [CR-0012](CR-0012-lp16b-platform-product-names.md) | 26 Nov 2026 | LP-16b: the platform's Product Name values (Global Exposure, Bonds, P2P Lending, Unlisted-Direct, AIF-Listed); rupee bonds and NCDs | In review |
+| [CR-0013](CR-0013-irr-si-sheets.md) | 26 Nov 2026 | KI-301 (IRR-SI): the IRR cashflow file's since-inception sheets, never its YTD or QTD sheets | Live (PR #53, 27 Nov 2026) |

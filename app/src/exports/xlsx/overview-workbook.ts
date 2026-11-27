@@ -29,6 +29,9 @@ import { portfolioOverviewSheet } from './sheets/portfolio-overview.ts';
 import { entityAllocationSheet } from './sheets/entity-allocation.ts';
 import { auditLogSheet } from './sheets/audit-log.ts';
 import { manifestSheet } from './sheets/manifest-sheet.ts';
+// M3a returns (NB-03): the Fund IRR sheet, written only when the input carries returns.
+import type { ReturnsVM } from '../../views/returns-vm.ts';
+import { fundIrrSheet } from './sheets/fund-irr.ts';
 
 /** 'overview-workbook@1', written in the _manifest sheet. */
 export { OVERVIEW_WORKBOOK_SCHEMA } from './sheets/manifest-sheet.ts';
@@ -87,6 +90,8 @@ export type WorkbookInput = {
   results: Array<Pick<ValidationResult, 'id' | 'ruleId' | 'severity' | 'status' | 'decision' | 'count'>>;
   /** Client and distributor column ids to their keys (C01, D01, C00 and D00 for not given). */
   entityKeys: { client: EntityKey[]; distributor: EntityKey[] };
+  /** M3a returns (NB-03): the returns view-model; the Fund IRR sheet is written only when it is present. */
+  returns?: ReturnsVM;
 };
 
 /** Where a figure of the view-model is written (the _manifest "figure" rows; the cross-output join). */
@@ -126,7 +131,7 @@ function missingValue(reason: string): Value<number> {
 
 /** The workbook's input from the review and its view-model: money scaled to the display unit, keys by first
  * appearance in the holdings. */
-export function workbookInputFrom(review: Review, vm: OverviewVM): WorkbookInput {
+export function workbookInputFrom(review: Review, vm: OverviewVM, returns?: ReturnsVM | null): WorkbookInput {
   const unit = vm.meta.unit;
   const scale = (x: Value<number>): Value<number> => (x.kind === 'value' ? { ...x, v: fromCrore(x.v, unit) } : x);
   const holdings: readonly Holding[] = review.holdings;
@@ -211,6 +216,8 @@ export function workbookInputFrom(review: Review, vm: OverviewVM): WorkbookInput
       client: [...clientKeys].map(([id, key]) => ({ id, key })),
       distributor: [...distributorKeys].map(([id, key]) => ({ id, key })),
     },
+    // M3a returns (NB-03): the returns and the IRR file's source record, only when an IRR file is accepted.
+    ...(returns ? { returns, sources: returns.source ? [...review.sources, returns.source] : review.sources } : {}),
   };
 }
 
@@ -233,6 +240,7 @@ export function buildContext(input: WorkbookInput): BuildContext {
   else leftOut.push({ sheet: SHEETS.clients, reason: 'fewer than two clients hold included holdings (OD-21)' });
   if (vm.matrices.distributor.shown) sheets.push(SHEETS.distributors);
   else leftOut.push({ sheet: SHEETS.distributors, reason: 'fewer than two distributors hold included holdings (OD-21)' });
+  if (input.returns) sheets.push(SHEETS.fundIrr); // M3a returns (NB-03): no "Sheet left out" row when absent
   sheets.push(SHEETS.audit, SHEETS.manifest);
   const figures: FigureCell[] = [];
   const seen = new Set<string>();
@@ -264,6 +272,7 @@ export function overviewSheets(input: WorkbookInput): { ctx: BuildContext; sheet
   const sheets: SheetSpec[] = [readMeSheet(ctx), sourceRegisterSheet(ctx), holdingsSheet(ctx), portfolioOverviewSheet(ctx)];
   if (input.vm.matrices.client.shown) sheets.push(entityAllocationSheet(ctx, 'client'));
   if (input.vm.matrices.distributor.shown) sheets.push(entityAllocationSheet(ctx, 'distributor'));
+  if (input.returns) sheets.push(fundIrrSheet(ctx, input.returns)); // M3a returns (NB-03)
   sheets.push(auditLogSheet(ctx));
   return { ctx, sheets };
 }
