@@ -4,6 +4,18 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (new build, M3b: E-148 conditions before wiring; not wired into the page yet, `/next/` unchanged)
+- **`app/src/engine/returns/stock-cagr.ts`** (ARC-03's Gate B of the M3b engines, F2, F3, F7; MOD-05's rulings of
+  27 Nov 2026): a present stock CAGR's provenance carries the end day it used (F2); the figure carries the latest end
+  day among the primary source's stocks, and every other end day used is listed with its count, ascending, in `used`
+  and the footnote ("as on 2026-10-30 (1 stock; also 2026-10-28: 1 stock, 2026-10-29: 2 stocks)") (F3); parts of both
+  engines are ordered by source, then date, so no figure depends on the order of the holdings; an unmatched holding
+  reads "1 holding not matched to a fund" (F7). The rule is named "the no-look-ahead rule (Moderator decision of
+  26 Nov 2026 under PD-67)" in code and docs, and the three old "exact anniversaries ... within 7 days" sentences
+  (DATA_DICTIONARY §7, architecture §8, this file) are replaced (F8).
+- Tests: every permutation of four holdings gives the same figure, parts, `used` and footnote; end days and counts;
+  F2 dates; F7 wording.
+
 ### Changed (tests only: side-by-side kit phase 2 (a), fund matching, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
 - **`tests/side-by-side/`**: the new side runs the new build's wired matcher (`resolveHoldings` with the shipped blocks
   and the owner's aliases, as `/next/` does) instead of the kit's copy of the live routing rule, so routing (E-15), ISIN
@@ -108,12 +120,11 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   table's date is the month-end label, its true price day only in the notes (PD-57, PD-58; `monitorAsOn()`); an
   explicit "no 3Y" in the primary is never overridden by another source.
 - **`app/src/engine/returns/stock-cagr.ts`** (E-148, D-023 point 4): each stock's 1Y/3Y/5Y CAGR from split- and
-  bonus-adjusted prices at the exact anniversaries of the review's as-on date (29 Feb maps to 28 Feb), a price on that
-  date or up to 7 days earlier, else the tenor is missing (INSUFFICIENT EVIDENCE when the series starts later, never
-  0%); the direct-equity figure weighted by direct-equity value (60/40% at 10% and 20%: 14.00%; without the 40%
+  bonus-adjusted prices under the no-look-ahead rule below, else the tenor is missing (INSUFFICIENT EVIDENCE when the
+  series starts later, never 0%); the direct-equity figure weighted by direct-equity value (60/40% at 10% and 20%: 14.00%; without the 40%
   stock's 3Y: 10.00% at 60%). A stock takes the first price source with a non-empty series for it, labelled with that
   source; the figure names the source used, and with no price source at all there is no figure. No look-ahead
-  (PD-67): a price after the review as-on is never used; the end price is the latest on or before the as-on (on
+  (the no-look-ahead rule, Moderator decision of 26 Nov 2026 under PD-67): a price after the review as-on is never used; the end price is the latest on or before the as-on (on
   month-end data the latest month-end point in the as-on's month or the one before: 15 Oct and 30 Oct use 30 Sep,
   2 Nov uses 31 Oct; the start is the point of the month of that point's anniversary, so 28 Feb 2025 uses 29 Feb 2024).
   A series too short for the tenor is filled by a later source only at the same as-on date. The figure, its parts and
