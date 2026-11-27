@@ -560,8 +560,19 @@ async function runMode({ browser, mode, files, opt, expect }) {
   expect('a column chip hides its column and shows it again (U-23)',
     distributorChip !== null && !hidden.heads.includes('Distributor') && hidden.heads.length === 9 && restored.heads.length === 10, { hidden: hidden.heads, restored: restored.heads });
   expect('section 5: the performance tables, each captioned with its data date (U-41, KI-083); no Direct switch when no fund is matched',
-    s5.perfGroup && s5.perfCaptions.length > 0 && s5.perfCaptions.every((c) => / as on [0-9]+ [A-Z][a-z]{2} [0-9]{4}$| as-on date not given in the data$/.test(c)) && s5.planSwitch === 0
-      && s5.notes.some((n) => / no returns in the data and /.test(n)), s5);
+    s5.perfGroup && s5.perfCaptions.length > 0 && s5.perfCaptions.every((c) => / as on [0-9]+ [A-Z][a-z]{2} [0-9]{4}$| as-on date not given in the data$/.test(c)) && s5.planSwitch === 0, s5);
+  // N10: the sample's funds are not in the reference data, so each table names them as not matched (not as matched
+  // funds with no returns); the same six funds the page hid before the notes were split.
+  const NOT_MATCHED = [
+    '2 funds are not matched to reference data and are not shown: Sample Bluechip Fund - Regular Plan - Growth and Sample Flexi Cap Fund - Regular Plan - Growth.',
+    '1 fund is not matched to reference data and is not shown: Sample Balanced Advantage Fund - Regular Plan - Growth.',
+    '1 fund is not matched to reference data and is not shown: Sample Corporate Bond Fund - Regular Plan - Growth.',
+    '1 fund is not matched to reference data and is not shown: Sample Gold ETF Fund of Fund - Growth.',
+    '1 fund is not matched to reference data and is not shown: Sample Value Strategy PMS.',
+  ];
+  const shownNotMatched = s5.notes.filter((n) => / not matched to reference data /.test(n));
+  expect('section 5: each table names the funds not matched to reference data, and none as "no returns in the data" (N10)',
+    JSON.stringify(shownNotMatched) === JSON.stringify(NOT_MATCHED) && !s5.notes.some((n) => / no returns in the data /.test(n)), s5.notes);
   await page.screenshot(path.join(out, '1440-section-5.png'));
   await tab('overview');
   await sleep(400);
