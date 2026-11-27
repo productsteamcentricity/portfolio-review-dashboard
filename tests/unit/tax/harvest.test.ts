@@ -257,6 +257,26 @@ describe('per client, the family a sum; the contract shape', () => {
     assert.equal(family.unreconciled, 1);
     assert.equal((family.taxBefore as { coverage?: number }).coverage, 0.5);
   });
+  test('M7b D-1: a client with no holding split (all unreconciled) has no harvest; the family leaves it out with a count', () => {
+    // A: one split holding (long gain 1,00,000, unused exemption confirmed: tax 0). B: one unreconciled holding only. B's
+    // Values are NOT AVAILABLE with the reason (before: 0 at coverage 0); the family is A's alone, PARTIAL, 1 client left
+    // out, coverage 1 split holding of 2 = 0.5. With B alone the family is NOT AVAILABLE.
+    const specs: PositionSpec[] = [
+      { client: A, name: 'Sample Fund One', cls: 'equityMf', cmv: 300000, lt: 100000 },
+      { client: B, name: 'Sample Fund Two', cls: 'equityMf', cmv: 80000, status: 'unreconciled', gain: 8000 },
+    ];
+    const { clients, family } = run(specs, ctxOf({ exemptionUsed: { [A]: 'unused-confirmed' } }));
+    const b = clients.find((c) => c.clientLabel === B)!;
+    assert.equal(b.taxBefore.kind, 'missing');
+    assert.equal(b.notWorked, 'no holding of this client is split into long and short term (1 holding not split, unreconciled with the IRR file), so no harvest is worked');
+    assert.equal(clients.find((c) => c.clientLabel === A)!.notWorked, null);
+    assert.equal(family.clientsNotWorked, 1);
+    assert.equal(family.taxBefore.kind, 'value');
+    assert.equal((family.taxBefore as { coverage?: number }).coverage, 0.5);
+    const alone = run([specs[1]!], ctxOf({})).family;
+    assert.equal(alone.taxBefore.kind, 'missing');
+    assert.equal(alone.clientsNotWorked, 1);
+  });
   test('an unsplit holding (Category II AIF) is never a pool or a candidate', () => {
     const { clients } = run([
       { client: A, name: 'Sample AIF Category II', cls: 'equityAif12', cmv: 300000, notSplit: 'pass-through', gain: -50000 },

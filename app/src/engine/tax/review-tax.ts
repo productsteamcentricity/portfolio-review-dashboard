@@ -33,8 +33,9 @@
 // (the first kept), ordered by severity then rule, and numbered `${ruleId}:${n}` so each id is unique in the list. The
 // readers' own issues stay with their uploads, except one seam Warning (financial review N-2, counts only):
 // `tax.statement-after-as-on` when statement lots are sold after the as-on date, which are counted as stated while the
-// IRR side leaves its later trades out (the rule itself is an owner question). Pure: no global, no I/O, and the clock
-// only through `opts.now` (the audit entries of the statement steps).
+// IRR side leaves its later trades out (the rule itself is an owner question); it takes the place of the lot engine's
+// `capital-gains.after-as-on-date` in the list, so one Warning is raised (delta review N-6). Pure: no global, no I/O,
+// and the clock only through `opts.now` (the audit entries of the statement steps).
 //
 // TODO(I-41): this output becomes Review.tax and this function is called from computeReview
 // TODO(contracts-4): TaxPosition gains become nullable (I-37 notes item 10); `positions[].position` is null until then
@@ -214,6 +215,9 @@ export function yearsShown(derived: DerivedRealised | null, realised: RealiseRes
   return [...ys].filter((y) => y <= asOnFy).sort((a, b) => a - b);
 }
 
+/** The lot engine's rule for a statement lot sold after the as-on date; the seam's own Warning replaces it in `issues`. */
+export const AFTER_AS_ON_RULE = 'capital-gains.after-as-on-date';
+
 /** F-1: why the statement's exemption already used is withheld from the harvest (Q-52). */
 export const WITHHELD_REASON = 'the as-on year\'s realised figure of this client is PARTIAL or not known (the IRR file shows sales the capital-gains statement leaves out, a statement lot has an unknown gain, or the year is INSUFFICIENT EVIDENCE), so the exemption already used is not known (Q-52)';
 /** F-1: the label of a harvest whose statement exemption was withheld. */
@@ -332,6 +336,11 @@ export function reviewTax(input: ReviewTaxInput, opts: ReviewTaxOptions): Review
     reconciliation: reconciliation ? value(reconciliation) : na(MISSING_TEXT.reconciliation(irr !== null, statement !== null)),
     realisedFY,
     repeatEvidence: evidence,
-    issues: mergeIssues([stmt?.realised.issues ?? [], stmt?.issues ?? [], derived?.issues ?? [], reconciliation?.issues ?? [], late]),
+    // Delta review N-6: one Warning for statement sales after the as-on date: the seam's (it also names the IRR side),
+    // in place of the lot engine's `capital-gains.after-as-on-date` (that issue and the lot flags stay in `statement`).
+    issues: mergeIssues([
+      (stmt?.realised.issues ?? []).filter((i) => late.length === 0 || i.ruleId !== AFTER_AS_ON_RULE),
+      stmt?.issues ?? [], derived?.issues ?? [], reconciliation?.issues ?? [], late,
+    ]),
   };
 }

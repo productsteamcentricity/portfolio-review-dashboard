@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { EXEMPTION_WITHHELD, MISSING_TEXT, NO_IRR, NO_STATEMENT, WITHHELD_REASON, mergeIssues, reviewTax, statementForHarvest, yearsShown } from '../../app/src/engine/tax/review-tax.ts';
+import { AFTER_AS_ON_RULE, EXEMPTION_WITHHELD, MISSING_TEXT, NO_IRR, NO_STATEMENT, WITHHELD_REASON, mergeIssues, reviewTax, statementForHarvest, yearsShown } from '../../app/src/engine/tax/review-tax.ts';
 import type { ReviewTax, ReviewTaxInput, TaxPart } from '../../app/src/engine/tax/review-tax.ts';
 import { computeTaxLots } from '../../app/src/engine/tax/lots.ts';
 import { rollupHoldings } from '../../app/src/engine/tax/holdings-rollup.ts';
@@ -685,6 +685,35 @@ describe('financial review of 75561f0: the reviewer\'s book (KA-P1, KA-P2, P3, P
     assert.equal(fam.unreconciled, 1);
     assert.equal(fam.taxBefore.kind === 'value' ? fam.taxBefore.coverage : -1, 0.5);
   });
+
+  test('D-1 (delta review): a client none of whose holdings the IRR file reconciles has no harvest; the family leaves it out', () => {
+    // A holds Bluechip (covered: Sec 198 gain 900); B holds Focused 50 u (invested 1,000, CMV 6,000), which the IRR file
+    // does not cover: B has no holding split. B's harvest is NOT AVAILABLE with the reason (9d2b242: Rs 0 at coverage 0),
+    // as B's part of the unrealised figure would be. The family: A's 112.50 alone, PARTIAL, 1 client left out, coverage 1
+    // split holding of 2 holdings = 0.5 (9d2b242: coverage 0). With A's holding gone too, the family is NOT AVAILABLE.
+    const hs = baseOf([hold(CLIENT_A, SCHEME.BLUE, 'Large Cap Fund', 60, 7500, 8400), hold(CLIENT_B, SCHEME.FOCUSED, 'Focused Fund', 50, 1000, 6000)]);
+    const t = reviewTax({ holdings: hs, asOnDay: AS_ON_DAY, irr: P_IRR, statement: null, inputs: emptyTaxInputs() }, { now: NOW });
+    const b = harvestOf(t, idOf(hs, CLIENT_B));
+    for (const x of [b.taxBefore, b.taxAfter, b.saving]) {
+      assert.equal(x.kind, 'missing');
+      assert.equal(x.kind === 'missing' && x.reason, 'no holding of this client is split into long and short term (1 holding not split, unreconciled with the IRR file), so no harvest is worked');
+    }
+    assert.equal(b.notWorked, (b.taxBefore as { reason: string }).reason);
+    assert.ok(b.labels.includes(b.notWorked!));
+    const a = harvestOf(t, idOf(hs, CLIENT_A));
+    assert.equal(a.notWorked, null);
+    near(v(a.taxBefore), 112.5, 'A before'); assert.equal(a.taxBefore.kind === 'value' ? a.taxBefore.coverage : -1, undefined);
+    const fam = part(t.harvest, 'harvest').family;
+    assert.equal(fam.clientsNotWorked, 1);
+    near(v(fam.taxBefore), 112.5, 'family before');
+    assert.equal(fam.taxBefore.kind === 'value' ? fam.taxBefore.coverage : -1, 0.5);
+    assert.match(fam.taxBefore.kind === 'value' ? fam.taxBefore.prov.method : '', /PARTIAL COVERAGE: 1 client with no holding split \(no harvest worked\)/);
+    const onlyB = baseOf([hold(CLIENT_B, SCHEME.FOCUSED, 'Focused Fund', 50, 1000, 6000)]);
+    const t2 = reviewTax({ holdings: onlyB, asOnDay: AS_ON_DAY, irr: P_IRR, statement: null, inputs: emptyTaxInputs() }, { now: NOW });
+    const f2 = part(t2.harvest, 'harvest').family;
+    for (const x of [f2.taxBefore, f2.taxAfter, f2.saving]) assert.equal(x.kind, 'missing');
+    assert.match((f2.taxBefore as { reason: string }).reason, /^no holding of any client is split into long and short term/);
+  });
 });
 
 describe('financial review of 75561f0, F-5: wiring known answers on hand-set inputs', () => {
@@ -726,7 +755,11 @@ describe('financial review of 75561f0, F-5: wiring known answers on hand-set inp
     const gains = part(t.statement, 'statement').realised.gains.filter((g) => g.saleDate > AS_ON_DAY);
     assert.equal(gains.length, 2);
     assert.ok(gains.every((g) => g.flags.includes('after-as-on-date')));
-    assert.ok(t.issues.some((i) => i.ruleId === 'capital-gains.after-as-on-date'));
+    // Delta review N-6: exactly one Warning about them in the seam's list, the seam's; the lot engine's own issue stays in
+    // the statement part (and its lot flags above).
+    assert.deepEqual(t.issues.filter((i) => i.ruleId === AFTER_AS_ON_RULE || i.ruleId === 'tax.statement-after-as-on').map((i) => i.ruleId),
+      ['tax.statement-after-as-on']);
+    assert.ok(part(t.statement, 'statement').realised.issues.some((i) => i.ruleId === AFTER_AS_ON_RULE));
     assert.deepEqual(t.basis.years, [2024, 2025, 2026]);
     assert.deepEqual(part(t.realisedFY, 'realisedFY').map((y) => y.fy), [2024, 2025, 2026]);
     const w = t.issues.find((i) => i.ruleId === 'tax.statement-after-as-on')!;

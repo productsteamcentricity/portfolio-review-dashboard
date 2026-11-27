@@ -41,6 +41,16 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     date: they count as stated while the IRR side leaves later trades out (owner question).
   - No parity figure changed. Tests: `tests/integration/review-tax.test.ts` (49),
     `tests/integration/realised-gains-reconcile.test.ts`, and `tests/unit/tax/{harvest,holdings-rollup}.test.ts`.
+- **After the delta review of 9d2b242 (D-1, N-6):**
+  - **D-1 (`harvest.ts`):** a client none of whose holdings the IRR file reconciles has no harvest worked: its figures
+    are NOT AVAILABLE with the reason (`notWorked`), as its unrealised figure is, not Rs 0 at coverage 0. The family
+    leaves such a client out with a count (`clientsNotWorked`), with a coverage of the family's holdings in the pools
+    (split holdings with a known gain over split and unreconciled holdings), and is NOT AVAILABLE when every client is
+    left out.
+  - **N-6 (the seam):** one Warning for statement sales after the as-on date in the seam's issues, its own
+    `tax.statement-after-as-on`, in place of the lot engine's `capital-gains.after-as-on-date` (which stays with the
+    statement's lots).
+  - Tests: `tests/integration/review-tax.test.ts` (50), `tests/unit/tax/harvest.test.ts`.
 
 ### Changed (new build, M7a tax engine, round 2c: Gate B of 5c9ae0a F1 to F4 and merger candidates; not wired into the page yet)
 - **Q-49 throughout: a gap is named, never estimated.** The owner has not said how the IRR export writes mergers,
