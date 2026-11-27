@@ -143,4 +143,11 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     const stale = ledger.map((e) => e.id).filter((id) => !used.has(id));
     assert.deepEqual(stale, []);
   });
+
+  test('every ledger class is a known one; the decided D9 difference is an accepted difference, not an improvement', () => {
+    const CLASSES = ['correction', 'improvement', 'not-built', 'regression', 'accepted-difference'];
+    assert.deepEqual(ledger.filter((e) => !CLASSES.includes(e.class)).map((e) => e.id), []);
+    assert.deepEqual(ledger.filter((e) => e.class === 'regression').map((e) => e.id), [], 'a regression is never merged');
+    for (const id of ['SB-04', 'SB-05', 'SB-06', 'SB-07']) assert.equal(ledger.find((e) => e.id === id)?.class, 'accepted-difference', id);
+  });
 });

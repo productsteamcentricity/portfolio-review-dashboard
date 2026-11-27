@@ -41,7 +41,7 @@
       "fixtures": ["syn-standard-irr-variant"],
       "legacy": "*",
       "new": "*",
-      "class": "improvement",
+      "class": "accepted-difference",
       "reference": "D9; KI-032 (live variant join, owner 26 Nov 2026); MOD-04 26 Nov 2026 (the new build keeps D9)",
       "description": "The IRR file writes client A with a salutation (Mr. Sample Client A). The live page joins it to the base client as a name variant (KI-032 fix) and its holdings take their transaction XIRR. The new build keys clients by their exact label (D9), finds no flows for Sample Client A, and its holdings keep the base file's XIRR and BMXIRR. Here the live page is the more complete: a salutation alone costs the new build the client's own transaction XIRR. Follow-up for the new build (MOD-04 to log): a salutation-aware join or an IRR-client mapping."
     },
@@ -53,7 +53,7 @@
       "fixtures": ["syn-standard-irr-variant"],
       "legacy": true,
       "new": null,
-      "class": "improvement",
+      "class": "accepted-difference",
       "reference": "D9; KI-032; MOD-04 26 Nov 2026",
       "description": "The same case: the live page shows a client XIRR for Sample Client A from the variant-joined flows; the new build has no flows for the exact label and shows none."
     },
@@ -66,7 +66,7 @@
       "fixtures": ["syn-standard-irr-variant"],
       "legacy": "*",
       "new": "*",
-      "class": "improvement",
+      "class": "accepted-difference",
       "reference": "OD-4; D9",
       "description": "The same case: the new build leaves the IRR-only client (Mr. Sample Client A, no exact base-file label) out of the family XIRR and lists it (OD-4); the live page's family tree takes every client of the IRR file."
     },
@@ -78,7 +78,7 @@
       "fixtures": ["syn-standard-irr-variant"],
       "legacy": "*",
       "new": "*",
-      "class": "improvement",
+      "class": "accepted-difference",
       "reference": "D9; OD-4 (follows SB-04)",
       "description": "The same case: client A's holdings carry different XIRRs on the two sides (SB-04), so their contributions and the ranks of the contributors list differ."
     }

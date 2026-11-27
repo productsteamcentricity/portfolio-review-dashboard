@@ -4,6 +4,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (tests only: the side-by-side kit's ledger class and a KI-032 case; no change to `index.html`, `/next/` or `app/`)
+- **`tests/side-by-side/`**: SB-04 to SB-07, the decided difference of client names between the live page (KI-032's
+  variant join) and the new build (exact labels, D9), are now class `accepted-difference`: an owner-accepted difference,
+  reviewed at M15 (MOD-04, 26 Nov 2026), neither an improvement nor a regression. The test fails on a class outside the
+  list and on any regression entry (17 tests).
+- **`tools/regression/KI-032-irr-client-join.js`**: initials "U. G." read as the guardian marker; the same spelling joins
+  exactly, the full name never joins (the safe direction; CHAT-008's Gate B note N2). 193 checks.
+
 ### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `04079A77756282B284016FBFB02212C0`, 16,416,337 bytes, on KI-301's page)
 - **The platform's own Product Name values are classed as the owner decided** (CR-0012; 26 Nov 2026):
   - "Global Exposure" is a GIFT City fund when the instrument name says GIFT or IFSC, otherwise an Offshore fund (it was
