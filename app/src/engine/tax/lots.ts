@@ -289,6 +289,13 @@ export type MergerCandidates = { outs: ReadonlyMap<Transaction, string>; ins: Re
  *   - many into one: no one-into-one candidate that day; every scheme switched out that day is emptied (two or more);
  *     every switch in that day goes to one scheme B, not one of them; and the day's total out equals the total in,
  *     within the amount tolerance.
+ * A same-day chain is tested first (E1, the delta review of 8ed1dc7): when a scheme both receives a switch in and is
+ * switched out whole that day (a pass-through), the switches are followed through it. If no scheme receives a switch in
+ * and is switched out only in part (the B1d guard), every starting scheme (switched out, receiving nothing) is emptied,
+ * and the chain ends in exactly one scheme (the one recipient that is not a pass-through, or, with no such recipient, the
+ * one pass-through), and the starting schemes' total out equals the end scheme's total in within the amount tolerance,
+ * then every switch out of the chain is the candidate's, and every switch in of a pass-through and of the end scheme
+ * enters its ledger as a lot not known (X and Y into B with B switched out whole the same day; X into B into C).
  * Several possible partners, a partial switch, unequal sums or a scheme kept: an ordinary switch, as before. All of the
  * sources' switch outs that day are the candidate's, and all of B's switch ins that day.
  * `trades`: the trades (direction in or out) in day order, file order within a day, already limited to the as-on date.
@@ -341,6 +348,24 @@ export function mergerCandidates(trades: readonly Transaction[]): MergerCandidat
   let pairs = 0;
   const same = (x: number, y: number): boolean => Math.abs(x - y) <= amountTolerance(Math.max(x, y));
   for (const d of days.values()) {
+    // Same-day chains (E1): followed through the pass-through schemes, if any.
+    const through = [...d.out].filter(([k, o]) => d.in.has(k) && o.emptied).map(([k]) => k);
+    if (through.length) {
+      const partial = [...d.out].some(([k, o]) => d.in.has(k) && !o.emptied);
+      const starts = [...d.out.keys()].filter((k) => !d.in.has(k));
+      const ends = [...d.in.keys()].filter((k) => !through.includes(k));
+      const end = ends.length === 1 ? ends[0]! : ends.length === 0 && through.length === 1 ? through[0]! : null;
+      const startsEmptied = starts.length > 0 && starts.every((k) => d.out.get(k)!.emptied && d.out.get(k)!.sum > EPS);
+      if (!partial && end !== null && startsEmptied
+        && same(starts.reduce((x, k) => x + d.out.get(k)!.sum, 0), d.in.get(end)!.sum)) {
+        const feeders = [...starts, ...through.filter((k) => k !== end)];
+        for (const k of [...starts, ...through]) for (const r of d.out.get(k)!.rows) outs.set(r, end);
+        for (const k of through) if (k !== end) for (const r of d.in.get(k)!.rows) ins.set(r, starts);
+        for (const r of d.in.get(end)!.rows) ins.set(r, feeders);
+        pairs += feeders.length;
+        continue;
+      }
+    }
     let found = false;
     // One into one.
     for (const [a, o] of d.out) {
