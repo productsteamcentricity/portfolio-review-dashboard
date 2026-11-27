@@ -65,6 +65,12 @@ export const MATCH_BOOK: ReadonlyArray<BookRow & { isin?: string }> = [
   // non-MF classes (LP-16): no fund data by design on both sides
   row({ client: 'Sample Client N', name: 'Sample Office REIT', cat: 'REIT', asset: 'Real Estate', amc: '', product: 'REIT', dist: 'Centricity', folio: 'SYN-6007', units: 500 }),
   row({ client: 'Sample Client N', name: 'Sample Technologies Pvt Ltd', cat: 'Unlisted', amc: '', product: 'Unlisted Direct Equity', dist: 'Centricity', folio: 'SYN-6008', units: 100 }),
+  // performance probes (kit phase 2 (b), financial review of bc32ba8): a hybrid PMS written with an equity category
+  // (KI-024: no equity index unless every holding of the group is Equity), an ELSS fund (its group), and a scheme the
+  // Regular block carries only as a Direct plan (S3: a single plan, the same figures in both lists)
+  row({ client: 'Sample Client N', name: 'NJ-BALANCED ADVANTAGE PORTFOLIO', cat: 'Multi Cap', asset: 'Hybrid', amc: '', product: 'PMS', dist: 'Centricity', folio: 'SYN-6009', units: null }),
+  row({ client: 'Sample Client N', name: 'Axis ELSS-Tax Saver Fund-Reg(G)', cat: 'ELSS', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-6010' }),
+  row({ client: 'Sample Client N', name: 'Zerodha Arbitrage Fund(G)-Direct Plan', cat: 'Arbitrage Fund', asset: 'Hybrid', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-6011' }),
 ];
 
 /** A base file's bytes with an ISIN column appended (heading "ISIN", one cell per holding row; blank when none). */

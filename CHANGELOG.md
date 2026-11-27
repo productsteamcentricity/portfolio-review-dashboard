@@ -4,6 +4,19 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (tests only: side-by-side kit phase 2 (b), the performance tables, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
+- **`tests/side-by-side/`**: the performance tables are compared on both sides now that M3b is merged (PR #59): the new
+  build's `computePerformance` with the sources `/next/` reads, against the live page's Regular and Direct lists; fund
+  rows and benchmark rows per bucket, each tenor on its own with the kit's tolerance, and a fund's group. SB-01 (not
+  built) is retired.
+- SB-18 to SB-29 classify the tables' decisions, each a correction already in `tests/parity/performance-ledger.json`
+  (PF-02, PF-03, PF-04, PF-06, PF-11, PF-13 to PF-16; KI-024, KI-072, KI-073, OD-7); SB-42 to SB-45 from three new
+  probe holdings (a hybrid PMS with an equity category, an ELSS fund, a Direct-only scheme) and an arbitrage fund's
+  all-dash index; SB-45 (no benchmark for a multi-asset fund, OD-7) is an accepted difference. SB-30 to SB-39: on the
+  matching probe, each fund row follows its holding's match (SB-08 to SB-17) with the same class; SB-40 and SB-41: the
+  Gold holdings in the Direct list are known gaps (the live page shows their own Direct plans). The test checks every
+  followed figure, Regular and Direct, against the record its row came from. 20 tests, in IST and UTC.
+
 ### Added (new build, M3b follow-up for test build 1: the IRR file in section 5, the weighted 3Y and 5Y returns, and the financial review's notes; `/next/` only, no change to `index.html`)
 - **The IRR file in section 5 and the client sheets** (MOD-05's financial review of M3b, N2; KI-048, KI-100):
   - With an accepted IRR file, a subtotal's XIRR and BMXIRR come from it, through NB-03's `irrAggregateFor`
