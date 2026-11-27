@@ -1003,4 +1003,23 @@ describe('E1 (delta review of 8ed1dc7): same-day merger chains', () => {
     assert.deepEqual(lotsOf(r, OLD).map((x) => [x.gap, v(x.realised)]), [[null, 5000]]);
     assert.deepEqual(lotsOf(r, OLD2).map((x) => [x.gap, v(x.realised)]), [[null, 1000]]);
   });
+
+  test('a pass-through that held units before sells some the same day: that sale is a successor gap (mutant E1h)', () => {
+    // The delta review's G1 case. Small Cap held 50 u bought 1 Jan 2022 at 100. On 10 Nov 2023 Contra (100 u at 100) is
+    // switched out whole into Small Cap (15,000 = 100 u at 150); Small Cap redeems 50 u (7,500); then Small Cap is
+    // switched out whole (15,000) into Focused (15,000). The starts' 15,000 equals Focused's 15,000: a chain through
+    // Small Cap. The redemption comes after Small Cap's candidate switch in, so it is a successor gap: under a merger
+    // Contra's carried 2019 lots could be the ones sold, so its figure is not known. Leaving the pass-through's switch in
+    // unmarked would compute it at 7,500 - 5,000 = 2,500 on the ordinary FIFO reading (the unsafe direction).
+    const r = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, NEW, [2022, 1, 1], 'Purchase', 100, -5000),
+      flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 15000), flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -15000),
+      flow(A, NEW, [2023, 11, 10], 'Redemption', 150, 7500), flow(A, NEW, [2023, 11, 10], 'Switch Out', 150, 15000),
+      flow(A, LAST, [2023, 11, 10], 'Switch In', 150, -15000),
+    ]);
+    assert.deepEqual(gapsOf(r, NEW), [['merger-candidate', 'successor'], ['merger-candidate', 'switch-out']]);
+    assert.equal(lotsOf(r, NEW)[0]!.realised.kind, 'missing');
+    assert.deepEqual(lotsOf(r, NEW)[0]!.asSwitch!.map((x) => v(x.realised)), [2500]);
+    assert.deepEqual(gapsOf(r, OLD), [['merger-candidate', 'switch-out']]);
+  });
 });
