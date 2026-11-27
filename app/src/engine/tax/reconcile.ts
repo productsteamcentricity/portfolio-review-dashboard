@@ -36,6 +36,9 @@
 // The review's figure (`tax.realisedFY`, realisedForYear): per client and financial year, the statement where it covers
 // that client's year (at least one lot of the client sold in the year: the source of record), else the derived figure
 // labelled "derived from transactions"; never the two added inside one client-year, so never inside one scheme-year.
+// When the statement covers the client's year but not every IRR scheme with gains derived in it (no statement lot of
+// the year matches the scheme), the statement figure is marked PARTIAL (coverage below 1, the schemes left out counted,
+// `schemesLeftOut`): Gate B of aa67a45 item 8; the rule itself is an owner question.
 // The family figure is the clients' figures added up ("sum of separate computations"); statement lots of a person not in
 // the review are left out of it, as the roll-up's familySum. One rule on both sides (R2 S-5, OD-4): derived gains of an
 // IRR client with no holding in the base file are left out of it too, and listed with a count (`outsideReview`). Whether
@@ -386,7 +389,23 @@ export const MIXED_SOURCE = 'statement and derived from transactions' as const;
 
 export type RealisedFigure = { st: Value<number>; lt: Value<number>; unknownTerm: Value<number>; total: Value<number> };
 
-export type RealisedFYClient = RealisedFigure & { clientId: ClientId; source: GainSource; lots: number };
+export type RealisedFYClient = RealisedFigure & {
+  clientId: ClientId;
+  source: GainSource;
+  lots: number;
+  /**
+   * Item 8 of Gate B of aa67a45: on a statement figure, the IRR schemes of the client with gains derived in the year that
+   * no statement lot of the year matches (the statement covers only part of the client-year). Their derived gains are not
+   * added (never the two sides in one client-year); the figure is PARTIAL instead. The rule is an owner question. 0 on a
+   * derived figure.
+   */
+  schemesLeftOut: number;
+};
+
+/** The PARTIAL text of a statement figure that leaves out `n` IRR schemes with derived gains in the year (item 8). */
+export function partialStatementReason(n: number): string {
+  return `${plural(n, 'scheme', 'schemes')} with gains derived from the IRR file in this year ${n === 1 ? 'is' : 'are'} not in the capital-gains statement, left out (the statement covers part of the client-year; owner question)`;
+}
 
 export type OutsideReviewClient = { clientId: ClientId; clientLabel: string; lots: number };
 
@@ -466,6 +485,14 @@ export function realisedForYear(fy: number, derived: DerivedRealised | null, sta
     x.push(l);
     derBy.set(l.clientId, x);
   }
+  const namesOf = new Map<ClientId, string[]>();
+  for (const x of derived?.instruments ?? []) {
+    if (x.instrumentName === null) continue;
+    const l = namesOf.get(x.clientId) ?? [];
+    if (!l.includes(x.instrumentName)) l.push(x.instrumentName);
+    namesOf.set(x.clientId, l);
+  }
+  const cache: TokenCache = new Map();
   const clients: RealisedFYClient[] = [];
   for (const c of [...new Set([...stmtBy.keys(), ...derBy.keys()])].sort()) {
     const sl = stmtBy.get(c);
@@ -478,7 +505,27 @@ export function realisedForYear(fy: number, derived: DerivedRealised | null, sta
         return { st: t === 'short' ? v : 0, lt: t === 'long' ? v : 0, unk: t === null ? v : 0 };
       });
       const unknown = used.length - parts.length;
-      clients.push({ clientId: c, source: 'statement', lots: used.length, ...figureOf(parts, used.length, unknown, prov, ie) });
+      // Item 8 (Gate B of aa67a45): IRR schemes with derived gains in the year that no statement lot of the year matches
+      // (the reconciliation's own matcher). Not added; the figure is marked PARTIAL so it never looks complete.
+      const names = namesOf.get(c) ?? [];
+      const covered = new Set<string>();
+      for (const g of sl) {
+        const hit = names.length ? matchInstrument(g.schemeLabel, '', names, cache) : null;
+        if (hit !== null) covered.add(derivedInstrumentKey(c, hit));
+      }
+      const leftLotsBy = new Map<string, number>();
+      for (const l of derBy.get(c) ?? []) if (!covered.has(l.instrumentKey)) leftLotsBy.set(l.instrumentKey, (leftLotsBy.get(l.instrumentKey) ?? 0) + 1);
+      const leftLots = [...leftLotsBy.values()].reduce((s, n) => s + n, 0);
+      const fig = figureOf(parts, used.length, unknown, prov, ie);
+      const schemesLeftOut = leftLotsBy.size;
+      if (schemesLeftOut > 0) {
+        const why = partialStatementReason(schemesLeftOut);
+        const share = used.length / (used.length + leftLots);
+        const mark = (x: Value<number>): Value<number> => (x.kind !== 'value' ? x
+          : present(x.v, 'inr', { ...x.prov, method: `${x.prov.method}; PARTIAL: ${why}` }, { coverage: Math.min(x.coverage ?? 1, share, 1 - 1e-9) }));
+        fig.st = mark(fig.st); fig.lt = mark(fig.lt); fig.unknownTerm = mark(fig.unknownTerm); fig.total = mark(fig.total);
+      }
+      clients.push({ clientId: c, source: 'statement', lots: used.length, schemesLeftOut, ...fig });
     } else {
       const dl = derBy.get(c)!;
       const prov: Provenance = { sources: [...new Set(dl.map((l) => l.at.sourceId))], method: 'realised gains derived from transactions (FIFO on the IRR file), split by the term of table v1 at the sale date' };
@@ -487,7 +534,7 @@ export function realisedForYear(fy: number, derived: DerivedRealised | null, sta
         const t = l.term.kind === 'value' ? l.term.v : null;
         return { st: t === 'short' ? v : 0, lt: t === 'long' ? v : 0, unk: t === null ? v : 0 };
       });
-      clients.push({ clientId: c, source: DERIVED_SOURCE, lots: dl.length, ...figureOf(parts, dl.length, dl.length - parts.length, prov, false) });
+      clients.push({ clientId: c, source: DERIVED_SOURCE, lots: dl.length, schemesLeftOut: 0, ...figureOf(parts, dl.length, dl.length - parts.length, prov, false) });
     }
   }
   const sources = [...new Set(clients.map((c) => c.source))];

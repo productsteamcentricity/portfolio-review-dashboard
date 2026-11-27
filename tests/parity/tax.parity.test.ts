@@ -221,8 +221,44 @@ const INVESTED_ZERO: Book = {
   flows: [flow(A, N.flexi, [2024, 8, 1], 'Purchase', 100, -10000)],
 };
 
+/**
+ * Gate B of aa67a45 (ARC-03 B2, B3 and the should-fix items; Q-49): the rows the new engine no longer splits or now
+ * names, against the live, which buys a transfer in, demerger in or bonus at its row's amount and date (TAX_BUY), skips
+ * a stock in (not in TAX_BUY), clamps an oversell silently and reads a sale of 0 as moving nothing. Ledger TX-06 to
+ * TX-12, roll-up TXR-14 onward.
+ */
+const GATE_B: Book = {
+  id: 'tax-gate-b', asOn: day(2026, 9, 30),
+  book: [
+    hold(A, N.focused, 'Focused Fund', 'Equity', MF, 100, 15000, 15500),
+    hold(A, N.value, 'Contra Fund', 'Equity', MF, 150, 15000, 16500),
+    hold(A, N.multi, 'Multi Cap Fund', 'Equity', MF, 110, 10200, 13200),
+    hold(A, N.mid, 'Mid Cap Fund', 'Equity', MF, 200, 10000, 30000),
+    hold(A, N.small, 'Small Cap Fund', 'Equity', MF, 200, 10000, 26000),
+    hold(A, N.flexi, 'Flexi Cap Fund', 'Equity', MF, 100, 12000, 13000),
+    hold(A, N.blue, 'Large Cap Fund', 'Equity', MF, 50, 5000, 6000),
+  ],
+  flows: [
+    // B3, ARC-03's case: bought elsewhere, transferred in on 1 Jul 2026 (the live: all short term).
+    flow(A, N.focused, [2026, 7, 1], 'Transfer In', 150, -15000),
+    // B3: a stock in after a purchase (the live skips the stock in: fewer units, unreconciled short).
+    flow(A, N.value, [2024, 6, 1], 'Purchase', 100, -10000), flow(A, N.value, [2025, 1, 1], 'Stock In', 100, -5000),
+    // B3: a demerger in after a purchase (the live buys it at its row's value and date).
+    flow(A, N.multi, [2024, 1, 1], 'Purchase', 100, -10000), flow(A, N.multi, [2025, 3, 1], 'Demerger In', 20, -200),
+    // B2, ARC-03's case: a bonus written with an amount (the live: LT 10,454.55 / ST 9,545.45).
+    flow(A, N.mid, [2024, 1, 10], 'Purchase', 100, -10000), flow(A, N.mid, [2026, 1, 10], 'Bonus', 120, -12000),
+    // B2: a bonus written with an amount of 0 (the live: no units, unreconciled short).
+    flow(A, N.small, [2024, 1, 10], 'Purchase', 100, -10000), flow(A, N.small, [2026, 1, 10], 'Bonus', 120, 0),
+    // Item 6: an oversell of 50 u (the live clamps it silently; both split the 2025 lot).
+    flow(A, N.flexi, [2024, 1, 10], 'Purchase', 100, -10000), flow(A, N.flexi, [2024, 6, 10], 'Redemption', 100, 15000),
+    flow(A, N.flexi, [2025, 1, 10], 'Purchase', 120, -12000),
+    // Item 7: a sale written with an amount of 0 (the live: excess).
+    flow(A, N.blue, [2024, 1, 1], 'Purchase', 100, -10000), flow(A, N.blue, [2025, 1, 1], 'Redemption', 110, 0),
+  ],
+};
+
 const BOOKS: Book[] = [CORE, OD16, OD15, annivBook('tax-anniv-on', day(2026, 9, 30)), annivBook('tax-anniv-after', day(2026, 10, 1)),
-  annivBook('tax-leap-on', day(2025, 2, 28)), annivBook('tax-leap-after', day(2025, 3, 1)), USUAL_BEFORE, LISTED_ETF, KI065, INVESTED_ZERO];
+  annivBook('tax-leap-on', day(2025, 2, 28)), annivBook('tax-leap-after', day(2025, 3, 1)), USUAL_BEFORE, LISTED_ETF, KI065, INVESTED_ZERO, GATE_B];
 
 // ---------------------------------------------------------------------------------------------------------------
 // Both sides in one shape
@@ -659,6 +695,18 @@ describe('known answers R2-R1 for the books the ledger covers by correction (fin
       'totals.unclassCmv': 0, 'totals.unclassGain': 0, 'harvest.s198Gains': 4250, 'harvest.exBefore': 4250,
       'harvest.taxBefore': 250, 'harvest.taxAfter': 250, 'harvest.saving': 0,
     }, 'tax-od16');
+  });
+
+  test('tax-gate-b: only the Flexi Cap holding is split (long gain 1,000); the rest unclassified, tax 0', () => {
+    // Gate B of aa67a45 (TX-06 to TX-12): the transfer in (15,500, gain 500), stock in (16,500, 1,500), demerger in
+    // (13,200, 3,000), bonus (30,000, 20,000), zero bonus (26,000, 16,000) and zero-amount sale (6,000, 1,000) holdings
+    // are unreconciled: unclassified 107,200 at a gain of 42,000. Flexi Cap: the 2025 lot (100 u at 120), long on 30 Sep
+    // 2026: 13,000 less 12,000 = 1,000. CMV 120,200. Harvest: Sec 198 gains 1,000 inside the exemption: tax 0, saving 0.
+    expectFig(fig(GATE_B), {
+      'totals.cmv': 120200, 'totals.ltCmv': 13000, 'totals.ltGain': 1000, 'totals.stCmv': 0, 'totals.stGain': 0,
+      'totals.unclassCmv': 107200, 'totals.unclassGain': 42000, 'harvest.s198Gains': 1000, 'harvest.exBefore': 1000,
+      'harvest.taxBefore': 0, 'harvest.taxAfter': 0, 'harvest.saving': 0,
+    }, 'tax-gate-b');
   });
 });
 

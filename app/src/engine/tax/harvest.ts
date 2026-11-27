@@ -51,6 +51,16 @@ export const SLAB_MAX_PCT_HARVEST = 30;
 /** The label of a result whose exemption is not applied (Q-52). */
 export const EXEMPTION_NOT_APPLIED = 'exemption not applied';
 export const FAMILY_LABEL = 'sum of separate computations';
+/**
+ * The labels every harvest carries (Gate B of aa67a45 item 9 added the four after "indicative, not tax advice"): the
+ * figures are tax before surcharge and cess, on the terms as on the as-on date, as if every gain were sold in the as-on
+ * year, and leave out the year's realised gains and carried-forward losses.
+ */
+export const HARVEST_BASE_LABELS: readonly string[] = [
+  'indicative, not tax advice', 'before surcharge and cess', 'terms as on the as-on date', 'all gains assumed sold in the as-on year',
+  'realised gains and carried-forward losses left out', 'resident individual assumed',
+  'per client: set-off and the exemption are never pooled across the family',
+];
 const SLAB_NOT_SET = 'slab rate not set';
 const EPS = 1e-9;
 
@@ -354,7 +364,7 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   const val = (x: number | null, what: string): Value<number> => (x === null
     ? missing(STATUS.NOT_AVAILABLE, `${SLAB_NOT_SET}: the ${what} depends on the order of set-off against slab-rate gains`, p)
     : present(x, 'inr', { ...p, method: `${p.method}; ${what}${note}` }, gainUnknown > 0 ? { coverage: coverageOf(client, gainUnknown) } : undefined));
-  const labels = ['indicative, not tax advice', 'resident individual assumed', 'per client: set-off and the exemption are never pooled across the family'];
+  const labels = [...HARVEST_BASE_LABELS];
   if (!applied) labels.push(EXEMPTION_NOT_APPLIED);
   else if (known.source === 'statement') labels.push('exemption already used read from the capital-gains statement; gains outside the statement are not included');
   if (slab.source === 'not set' && slabP.length > 0) labels.push(`${SLAB_NOT_SET}: slab-rate gains have no tax figure`);

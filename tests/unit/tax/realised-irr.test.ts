@@ -11,6 +11,7 @@ import { parseBaseFile } from '../../../app/src/ingest/base-file.ts';
 import { deriveRealisedGains, DERIVED_SOURCE, UNITS_TOLERANCE } from '../../../app/src/engine/tax/realised-irr.ts';
 import type { DerivedLot, DerivedRealised, DeriveOptions } from '../../../app/src/engine/tax/realised-irr.ts';
 import { consumeFifo } from '../../../app/src/engine/tax/lots.ts';
+import { realisedForYear } from '../../../app/src/engine/tax/reconcile.ts';
 import { INST } from '../../../app/src/engine/tax/classify.ts';
 import { ymdToDay } from '../../../app/src/engine/dates.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
@@ -395,5 +396,179 @@ describe('R2 B-2: a derived lot takes the law at its sale date (table v1), not t
     const i = r.issues.find((y) => y.ruleId === 'tax.derived-term-outside-table');
     assert.ok(i && i.severity === 'Information' && i.count === 1);
     assert.ok(!DASH.test(i.message));
+  });
+});
+
+describe('Gate B of aa67a45 (ARC-03): transfer, bonus and zero-amount rows are named gaps, never figures (Q-49)', () => {
+  const termOf = (x: DerivedLot): string | null => (x.term.kind === 'value' ? x.term.v : null);
+  const gapsOf = (r: DerivedRealised, name: string): Array<string | null> => lotsOf(r, name).map((x) => x.gap);
+
+  test('B1, ARC-03 case: a transfer out is not a sale (bought 2019, transferred out 2025: no realised 3,000)', () => {
+    // Purchase 1 Apr 2019 5,000 at 50 = 100 u; Transfer Out 1 May 2025 8,000 at 80 = 100 u. The old code sold the 100 u:
+    // sale 8,000 less cost 5,000 = a derived realised gain of 3,000, long term. A change of folio or account, or a gift
+    // (s.47(iii)), is not a sale, and what carries over is not known: one lot, gap 'transfer-row', cost, sale value and
+    // realised missing; FY 2025-26 realised NOT AVAILABLE; the review's derived figure for the year is not 3,000.
+    const r = run([
+      flow(A, SCHEME.BLUE, [2019, 4, 1], 'Purchase', 50, -5000),
+      flow(A, SCHEME.BLUE, [2025, 5, 1], 'Transfer Out', 80, 8000),
+    ], [hold(A, SCHEME.BLUE, 'Large Cap Fund', 1, 50, 60)]);
+    const l = lotsOf(r, SCHEME.BLUE);
+    assert.equal(l.length, 1);
+    assert.equal(l[0]!.gap, 'transfer-row');
+    assert.equal(l[0]!.saleKind, 'transfer-out');
+    assert.equal(l[0]!.realised.kind, 'missing');
+    assert.equal(l[0]!.purchaseValue.kind, 'missing');
+    assert.equal(l[0]!.saleValue.kind, 'missing');
+    assert.equal(l[0]!.term.kind, 'missing');
+    near(v(l[0]!.units), 100, 'units known from the price');
+    const sy = r.schemeYears[0]!;
+    assert.equal(sy.fyLabel, 'FY 2025-26');
+    assert.deepEqual(sy.gaps, { 'transfer-row': 1 });
+    assert.equal(sy.realised.kind, 'missing');
+    const fy = realisedForYear(2025, r, null);
+    assert.equal(fy.total.kind, 'missing');
+    assert.equal(fy.lt.kind, 'missing');
+    const w = r.issues.find((i) => i.ruleId === 'tax.derived-gaps')!;
+    assert.match(w.message, /a transfer out of a folio or account, or a gift, is not a sale/);
+    assert.ok(!DASH.test(w.message));
+  });
+
+  test('B1: a transfer out breaks the ledger: a later sale is a gap', () => {
+    // Purchase 1 Apr 2023 200 u at 50; Transfer Out 1 Jun 2024 of 100 u at 60 (6,000); Redemption 1 Jun 2025 3,500 at
+    // 70 = 50 u. Which units the transfer moved is not known, so the redemption is 'after-earlier-gap'.
+    const r = run([
+      flow(A, SCHEME.FLEXI, [2023, 4, 1], 'Purchase', 50, -10000),
+      flow(A, SCHEME.FLEXI, [2024, 6, 1], 'Transfer Out', 60, 6000),
+      flow(A, SCHEME.FLEXI, [2025, 6, 1], 'Redemption', 70, 3500),
+    ]);
+    assert.deepEqual(gapsOf(r, SCHEME.FLEXI), ['transfer-row', 'after-earlier-gap']);
+    assert.ok(lotsOf(r, SCHEME.FLEXI).every((x) => x.realised.kind === 'missing'));
+  });
+
+  test('B1: a sale reaching a transfer in lot is a gap; the earlier purchase is still computed', () => {
+    // Purchase 1 Apr 2023 50 u at 100 (5,000); Transfer In 1 Jun 2024 12,000 at 120 = 100 u (dated and valued by the
+    // transfer, not the original purchase: cost and date not known). Redemption 1 Aug 2025 13,500 at 150 = 90 u: 50 u of
+    // the purchase (cost 5,000, sale 13,500 x 50/90 = 7,500, realised 2,500, long), then 40 u reach the transfer lot: a
+    // gap 'transfer-row' (40 u, sale 6,000), purchase date and cost missing (the old code took cost 4,800, date 1 Jun
+    // 2024: realised 1,200, short). A later redemption (1 Sep 2025, 10 u) is 'after-earlier-gap'.
+    const r = run([
+      flow(A, SCHEME.MID, [2023, 4, 1], 'Purchase', 100, -5000),
+      flow(A, SCHEME.MID, [2024, 6, 1], 'Transfer In', 120, -12000),
+      flow(A, SCHEME.MID, [2025, 8, 1], 'Redemption', 150, 13500),
+      flow(A, SCHEME.MID, [2025, 9, 1], 'Redemption', 150, 1500),
+    ], [hold(A, SCHEME.MID, 'Mid Cap Fund', 50, 5000, 7500)]);
+    const l = lotsOf(r, SCHEME.MID);
+    assert.deepEqual(l.map((x) => x.gap), [null, 'transfer-row', 'after-earlier-gap']);
+    near(v(l[0]!.realised), 2500, 'purchase part');
+    assert.equal(termOf(l[0]!), 'long');
+    near(v(l[1]!.units), 40, 'gap units'); near(v(l[1]!.saleValue), 6000, 'gap sale value');
+    assert.equal(l[1]!.buyKind, 'transfer-in');
+    assert.equal(l[1]!.purchaseDate.kind, 'missing');
+    assert.equal(l[1]!.purchasePrice.kind, 'missing');
+    assert.equal(l[1]!.purchaseValue.kind, 'missing');
+    const sy = r.schemeYears[0]!;
+    near(v(sy.realised), 2500, 'PARTIAL');
+    assert.ok(sy.realised.kind === 'value' && Math.abs(sy.realised.coverage! - 1 / 3) < 1e-9);
+  });
+
+  test('B1: stock in and demerger in are lots not known too; a sale met by earlier known lots stays computed', () => {
+    // Purchase 1 Jan 2024 100 u at 100; Stock In 1 Feb 2024 50 u at 110; Demerger In 1 Mar 2024 20 u at 10. Redemption
+    // 1 Jun 2025 7,200 at 120 = 60 u: all from the purchase (cost 6,000, realised 1,200): computed, no gap. Redemption
+    // 1 Jul 2025 6,000 at 120 = 50 u: 40 u left of the purchase (cost 4,000, sale 4,800, realised 800), then 10 u reach
+    // the stock in lot: 'transfer-row'.
+    const r = run([
+      flow(B, SCHEME.FOCUSED, [2024, 1, 1], 'Purchase', 100, -10000),
+      flow(B, SCHEME.FOCUSED, [2024, 2, 1], 'Stock In', 110, -5500),
+      flow(B, SCHEME.FOCUSED, [2024, 3, 1], 'Demerger In', 10, -200),
+      flow(B, SCHEME.FOCUSED, [2025, 6, 1], 'Redemption', 120, 7200),
+      flow(B, SCHEME.FOCUSED, [2025, 7, 1], 'Redemption', 120, 6000),
+    ]);
+    const l = lotsOf(r, SCHEME.FOCUSED);
+    assert.deepEqual(l.map((x) => x.gap), [null, null, 'transfer-row']);
+    near(v(l[0]!.realised), 1200, 'first sale'); near(v(l[1]!.realised), 800, 'second sale, known part');
+    assert.equal(l[2]!.buyKind, 'stock-in');
+    near(v(l[2]!.units), 10, 'gap units');
+  });
+
+  test('B2, ARC-03 case: a bonus row with an amount is never costed at it (old total 0; the bonus part is a gap)', () => {
+    // Purchase 1 Apr 2024 5,000 at 50 = 100 u; Bonus 1 Jun 2025 100 u written at 40 (-4,000); Redemption 1 Sep 2025
+    // 9,000 at 45 = 200 u. The old code costed the bonus at 4,000: LT -500 (100 u: 4,500 less 5,000) and ST +500 (100 u:
+    // 4,500 less 4,000), total 0. By law bonus units have nil cost (the design's rule table): LT -500, ST +4,500, total
+    // 4,000; how the export writes the row is not confirmed, so the bonus part is a gap 'bonus-row' (100 u, sale
+    // 4,500), never +500. FY 2025-26: realised -500 from the computed lot, PARTIAL (coverage 0.5).
+    const r = run([
+      flow(A, SCHEME.BLUE, [2024, 4, 1], 'Purchase', 50, -5000),
+      flow(A, SCHEME.BLUE, [2025, 6, 1], 'Bonus', 40, -4000),
+      flow(A, SCHEME.BLUE, [2025, 9, 1], 'Redemption', 45, 9000),
+    ], [hold(A, SCHEME.BLUE, 'Large Cap Fund', 1, 50, 60)]);
+    const l = lotsOf(r, SCHEME.BLUE);
+    assert.deepEqual(l.map((x) => x.gap), [null, 'bonus-row']);
+    near(v(l[0]!.realised), -500, 'purchase lot'); assert.equal(termOf(l[0]!), 'long');
+    near(v(l[1]!.units), 100, 'bonus units'); near(v(l[1]!.saleValue), 4500, 'bonus sale value');
+    assert.equal(l[1]!.buyKind, 'bonus');
+    assert.equal(l[1]!.purchaseValue.kind, 'missing');
+    assert.equal(l[1]!.realised.kind, 'missing');
+    const sy = r.schemeYears[0]!;
+    near(v(sy.realised), -500, 'realised'); near(sy.st, 0, 'no short-term figure from the bonus'); near(sy.lt, -500, 'long');
+    assert.ok(sy.realised.kind === 'value' && sy.realised.coverage === 0.5);
+    assert.deepEqual(sy.gaps, { 'bonus-row': 1 });
+    assert.match(r.issues.find((i) => i.ruleId === 'tax.derived-gaps')!.message, /bonus units have nil cost by law/);
+  });
+
+  test('B2: a bonus row with an amount of 0 is the same gap (not units beyond those held)', () => {
+    // The same file with the bonus written at 40 for 0: the bonus lot's units are not known. The sale of 200 u takes
+    // 100 u of the purchase (realised -500) and reaches the bonus lot: 'bonus-row' (100 u, sale 4,500).
+    const r = run([
+      flow(A, SCHEME.BLUE, [2024, 4, 1], 'Purchase', 50, -5000),
+      flow(A, SCHEME.BLUE, [2025, 6, 1], 'Bonus', 40, 0),
+      flow(A, SCHEME.BLUE, [2025, 9, 1], 'Redemption', 45, 9000),
+    ], [hold(A, SCHEME.BLUE, 'Large Cap Fund', 1, 50, 60)]);
+    const l = lotsOf(r, SCHEME.BLUE);
+    assert.deepEqual(l.map((x) => x.gap), [null, 'bonus-row']);
+    near(v(l[0]!.realised), -500, 'purchase lot');
+    near(v(l[1]!.units), 100, 'units beyond the purchase');
+  });
+
+  test('item 7: a sale row with an amount of 0 is a gap sale-without-amount and breaks the ledger', () => {
+    // Purchase 1 Jan 2024 100 u at 100; Redemption 1 Jan 2025 written at 110 for 0 (units sold not known); Redemption
+    // 1 Jun 2025 6,000 at 120 = 50 u. The old code moved no units and computed the second sale from the purchase
+    // (realised 1,000) with no flag. Now: 'sale-without-amount', then 'after-earlier-gap'; FY 2024-25 and 2025-26 NOT
+    // AVAILABLE.
+    const r = run([
+      flow(A, SCHEME.VALUE, [2024, 1, 1], 'Purchase', 100, -10000),
+      flow(A, SCHEME.VALUE, [2025, 1, 1], 'Redemption', 110, 0),
+      flow(A, SCHEME.VALUE, [2025, 6, 1], 'Redemption', 120, 6000),
+    ]);
+    const l = lotsOf(r, SCHEME.VALUE);
+    assert.deepEqual(l.map((x) => x.gap), ['sale-without-amount', 'after-earlier-gap']);
+    assert.equal(l[0]!.units.kind, 'missing');
+    assert.equal(l[0]!.saleValue.kind, 'missing');
+    assert.ok(l.every((x) => x.realised.kind === 'missing'));
+    assert.ok(r.schemeYears.every((s) => s.realised.kind === 'missing'));
+    assert.match(r.issues.find((i) => i.ruleId === 'tax.derived-gaps')!.message, /a sale row with an amount of 0/);
+  });
+
+  test('B4: the units tolerance is pinned: an oversell of 0.0004 u is absorbed, 0.0006 u is a gap', () => {
+    // Purchase 1 Apr 2024 5,000 at 50 = 100 u. Redemption 1 Jun 2025 at 60 of 6,000.024 = 100.0004 u: 0.0004 u beyond,
+    // within UNITS_TOLERANCE (0.0005): one computed lot with the whole sale value, realised 1,000.024. Of 6,000.036 =
+    // 100.0006 u: 0.0006 u beyond, a gap 'units-beyond-held' (0.0006 u, sale 0.036); the 100 u lot takes 6,000 (sale
+    // shared over the units sold), realised 1,000.
+    assert.equal(UNITS_TOLERANCE, 0.0005);
+    const inside = run([
+      flow(A, SCHEME.BLUE, [2024, 4, 1], 'Purchase', 50, -5000),
+      flow(A, SCHEME.BLUE, [2025, 6, 1], 'Redemption', 60, 6000.024),
+    ]);
+    const li = lotsOf(inside, SCHEME.BLUE);
+    assert.deepEqual(li.map((x) => x.gap), [null]);
+    near(v(li[0]!.saleValue), 6000.024, 'whole sale'); near(v(li[0]!.realised), 1000.024, 'realised');
+    const outside = run([
+      flow(A, SCHEME.BLUE, [2024, 4, 1], 'Purchase', 50, -5000),
+      flow(A, SCHEME.BLUE, [2025, 6, 1], 'Redemption', 60, 6000.036),
+    ]);
+    const lo = lotsOf(outside, SCHEME.BLUE);
+    assert.deepEqual(lo.map((x) => x.gap), [null, 'units-beyond-held']);
+    assert.ok(Math.abs(v(lo[1]!.units)! - 0.0006) < 1e-9, 'gap units');
+    near(v(lo[0]!.realised), 1000, 'computed part');
+    assert.ok(outside.schemeYears[0]!.realised.kind === 'value' && outside.schemeYears[0]!.realised.coverage === 0.5);
   });
 });

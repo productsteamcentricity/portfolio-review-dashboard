@@ -248,3 +248,19 @@ describe('per client, the family a sum; the contract shape', () => {
     assert.equal(clients[0]!.candidateDetail.length, 0);
   });
 });
+
+describe('Gate B of aa67a45 item 9: the harvest says what its figures leave out', () => {
+  test('every harvest carries the four labels after "indicative, not tax advice"', () => {
+    // Before surcharge and cess; terms as on the as-on date; all gains assumed sold in the as-on year; realised gains
+    // and carried-forward losses left out. On every client, whatever the inputs.
+    const want = ['indicative, not tax advice', 'before surcharge and cess', 'terms as on the as-on date', 'all gains assumed sold in the as-on year',
+      'realised gains and carried-forward losses left out'];
+    for (const ctx of [ctxOf({}), ctxOf({ slab: { [A]: 30 }, exemptionUsed: { [A]: 'unused-confirmed' } })]) {
+      const { clients } = run([
+        { client: A, name: 'Sample Fund One', cls: 'equityMf', cmv: 300000, lt: 100000 },
+        { client: B, name: 'Sample Fund Two', cls: 'equityMf', cmv: 100000, lt: 0, st: -20000, ltCmv: 0 },
+      ], ctx);
+      for (const h of clients) assert.deepEqual(h.labels.slice(0, want.length), want, JSON.stringify(h.labels));
+    }
+  });
+});

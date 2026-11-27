@@ -8,7 +8,10 @@
 // `consumeFifo`, `tradePriceOf`, `isTradeFlow`):
 //   - a purchase (direction 'in', OD-16) with a price is a lot of |amount| / price units at that price; one without a
 //     price is a lot whose units are not known;
-//   - a sale (direction 'out': redemption, SWP, switch out, STP out, transfer out) with a price sells |amount| / price
+//   - a transfer in, stock in or demerger in, and a bonus row, is a lot whose cost and date are not known (Gate B of
+//     aa67a45, B1 and B2): the row is dated and valued by the transfer or allotment, not by the original purchase, and how
+//     the IRR export writes such rows is not confirmed (owner question), so it is never costed at its amount;
+//   - a sale (direction 'out': redemption, SWP, switch out, STP out) with a price sells |amount| / price
 //     units, oldest lots first; each lot it reaches gives one derived lot: the purchase date, the cost (units taken x
 //     the buy price, which is the buy row's amount share), the sale value share (|amount| x units taken / units sold),
 //     realised = sale share minus cost, the financial year of the sale (ingest/capital-gains.ts `financialYearOf`) and
@@ -24,7 +27,12 @@
 //   - 'sale-without-price': a sale without a price (its units are not known);
 //   - 'purchase-without-price': the sale reaches a purchase without a price (its units are not known);
 //   - 'units-beyond-held': the sale sells more units than the earlier purchases hold (beyond UNITS_TOLERANCE);
-//   - 'after-earlier-gap': a sale after any of the first three gaps in the same instrument, since which units remain is
+//   - 'transfer-row': a transfer out (a change of folio or account, or a gift, is not a sale, s.47(iii)), or a sale that
+//     reaches a transfer in, stock in or demerger in lot (B1);
+//   - 'bonus-row': the sale reaches a bonus lot (bonus units have nil cost by law; the export's row is not confirmed, B2);
+//   - 'sale-without-amount': a sale row whose amount is 0 (it moves no units we can count, so later sales would take
+//     the wrong lots);
+//   - 'after-earlier-gap': a sale after any other gap in the same instrument, since which units remain is
 //     then not known (an oversell included, R2 B-1: the missing purchases' units would be sold first under FIFO).
 // Output: the engine-local DerivedLot (the contract's RealisedGain with `source: 'derived from transactions'` and the
 // lines the contract does not hold), and per scheme and financial year the totals. Derived lots carry no tax
@@ -45,26 +53,31 @@ import { missing, present } from '../value.ts';
 import type { HoldingJoin } from '../returns/irr-tree.ts';
 import { matcherJoin } from '../returns/scope.ts';
 import { ymdToDay } from '../dates.ts';
-import { consumeFifo, isTradeFlow, tradePriceOf } from './lots.ts';
+import { BONUS_KINDS, TRANSFER_IN_KINDS, UNITS_TOLERANCE, consumeFifo, isTradeFlow, tradePriceOf } from './lots.ts';
 import { INST, TAX_RULES_I21, classifyHolding, i21ByInst, isListedEtf } from './classify.ts';
 import type { ClassifyContext, I21Row } from './classify.ts';
 import { TAX_RULES_V1, ruleFor } from './rules.ts';
 import type { DayWindow, SubType, TaxRuleTable } from './rules.ts';
 
-/** Units sold beyond the units held up to this many are rounding (3 decimals, as repeat-evidence.ts compares units). */
-export const UNITS_TOLERANCE = 0.0005;
+/** Units sold beyond the units held up to this many are rounding (lots.ts; re-exported here, where S5 introduced it). */
+export { UNITS_TOLERANCE };
 
 export const DERIVED_SOURCE = 'derived from transactions' as const;
 
 /** Why a derived lot's cost and realised gain are not computed. */
-export type DerivedGap = 'sale-without-price' | 'purchase-without-price' | 'units-beyond-held' | 'after-earlier-gap';
+export type DerivedGap = 'sale-without-price' | 'purchase-without-price' | 'units-beyond-held' | 'transfer-row' | 'bonus-row'
+  | 'sale-without-amount' | 'after-earlier-gap';
 
-export const DERIVED_GAPS: readonly DerivedGap[] = ['sale-without-price', 'purchase-without-price', 'units-beyond-held', 'after-earlier-gap'];
+export const DERIVED_GAPS: readonly DerivedGap[] = ['sale-without-price', 'purchase-without-price', 'units-beyond-held', 'transfer-row', 'bonus-row',
+  'sale-without-amount', 'after-earlier-gap'];
 
 const GAP_TEXT: Readonly<Record<DerivedGap, string>> = {
   'sale-without-price': 'a sale without a price: the units it sold are not known',
   'purchase-without-price': 'the sale reaches a purchase without a price: the units of that purchase are not known',
   'units-beyond-held': 'the sale sells more units than the earlier purchases in the IRR file hold',
+  'transfer-row': 'a transfer out of a folio or account, or a gift, is not a sale, and a transfer in, stock in or demerger in is dated and valued by the transfer: what cost and date carry over is not known',
+  'bonus-row': 'the sale reaches bonus units: bonus units have nil cost by law, and how the IRR file writes a bonus row is not confirmed',
+  'sale-without-amount': 'a sale row with an amount of 0: the units it sold are not known',
   'after-earlier-gap': 'an earlier gap in this scheme leaves the units remaining not known',
 };
 
@@ -237,7 +250,16 @@ export type DeriveOptions = {
 
 const EPS = 1e-9;
 
-type LedgerLot = { u: number; known: boolean; px: number | null; day: DayNumber; at: RowRef; kind: TransactionKind };
+/**
+ * A lot of the ledger. `known`: its units and cost are known (a priced purchase). Otherwise `why` names what is not known:
+ * 'price' (a purchase without a price), 'transfer' (a transfer in, stock in or demerger in: cost and date not known),
+ * 'bonus' (a bonus row: never costed at its amount). A lot not known stops FIFO: a sale reaching it is a gap.
+ */
+type LedgerLot = { u: number; known: boolean; why: 'price' | 'transfer' | 'bonus' | null; px: number | null; day: DayNumber; at: RowRef; kind: TransactionKind };
+
+const REACHED_GAP: Readonly<Record<'price' | 'transfer' | 'bonus', DerivedGap>> = {
+  price: 'purchase-without-price', transfer: 'transfer-row', bonus: 'bonus-row',
+};
 
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
@@ -313,8 +335,11 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
       const amt = Math.abs(t.amountRupees);
       const px = tradePriceOf(t);
       if (t.direction === 'in') {
+        // B1, B2 (Gate B of aa67a45; Q-49): a transfer in, stock in, demerger in or bonus row is a lot not known, never
+        // costed at its amount or dated by the row, until the owner rules how the IRR export writes such rows.
+        const why = TRANSFER_IN_KINDS.has(t.kind) ? 'transfer' as const : BONUS_KINDS.has(t.kind) ? 'bonus' as const : px === null ? 'price' as const : null;
         if (px === null) counts.purchasesWithoutPrice++;
-        ledger.push({ u: px === null ? 0 : amt / px, known: px !== null, px, day: t.day, at: t.at, kind: t.kind });
+        ledger.push({ u: px === null ? 0 : amt / px, known: why === null, why, px: why === null ? px : null, day: t.day, at: t.at, kind: t.kind });
         continue;
       }
       if (px === null) counts.salesWithoutPrice++;
@@ -322,7 +347,7 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
       const prov: Provenance = { sources: [t.at.sourceId], method: 'realised gain derived from the IRR file by FIFO on the units ledger (architecture section 6.7)' };
       const ra = ruleAt(t.day);
       const base = (o: {
-        units: number | null; sale: number; buy: LedgerLot | null; cost: number | null; gap: DerivedGap | null;
+        units: number | null; sale: number | null; buy: LedgerLot | null; cost: number | null; gap: DerivedGap | null;
       }): DerivedLot => {
         const gapWhy = o.gap !== null ? `not computed: ${GAP_TEXT[o.gap]}` : null;
         const buy = o.buy;
@@ -342,21 +367,23 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
             term = present(rr.term, 'label', { ...prov, method: `term by the dated tax-rule table v1 row ${rr.rule.id} at the sale date (${how}); I-21 class "${ra.rule.inst}"` });
           }
         }
-        const realised: Value<number> = o.cost !== null && o.gap === null
+        const realised: Value<number> = o.cost !== null && o.sale !== null && o.gap === null
           ? present(o.sale - o.cost, 'inr', prov) : missing(STATUS.NOT_AVAILABLE, gapWhy ?? 'cost not known', prov);
+        // The purchase date is known for a purchase row; a transfer in or bonus lot is dated by the row, not the purchase.
+        const buyDated = buy !== null && (buy.why === null || buy.why === 'price');
         const noTax = missing(STATUS.NOT_AVAILABLE, 'tax not computed on a lot derived from transactions (S5)');
         return {
           source: DERIVED_SOURCE, at: t.at, scheme: t.instrument, schemeLabel: t.instrumentName ?? '', folio: t.folio,
           tagAsset: null, category: t.categoryLabel, statementAsset: null, clientId: t.clientId, accountId: null,
           distributorId: t.distributorId, accountLabel: t.accountLabel, accountNote: null, saleDate: t.day,
           units: o.units !== null ? present(o.units, 'units', prov) : missing(STATUS.NOT_AVAILABLE, gapWhy ?? 'units not known', prov),
-          saleValue: present(o.sale, 'inr', prov),
+          saleValue: o.sale !== null ? present(o.sale, 'inr', prov) : missing(STATUS.NOT_AVAILABLE, gapWhy ?? 'no sale value', prov),
           salePrice: px !== null ? present(px, 'inr-per-unit', prov) : missing(STATUS.NOT_AVAILABLE, 'the sale carries no price', prov),
           salePriceDerived: false,
           purchasePrice: buy !== null && buy.px !== null ? present(buy.px, 'inr-per-unit', prov) : missing(STATUS.NOT_AVAILABLE, gapWhy ?? 'no purchase price', prov),
           purchasePriceDerived: false,
           purchaseValue: o.cost !== null && o.gap === null ? present(o.cost, 'inr', prov) : missing(STATUS.NOT_AVAILABLE, gapWhy ?? 'cost not known', prov),
-          purchaseDate: buy !== null ? present(buy.day, 'date', prov) : missing(STATUS.NOT_AVAILABLE, gapWhy ?? 'no purchase', prov),
+          purchaseDate: buyDated ? present(buy!.day, 'date', prov) : missing(STATUS.NOT_AVAILABLE, gapWhy ?? 'no purchase', prov),
           realised, financialYear: fy.start, financialYearLabel: fy.label,
           taxClass: noTax, listed: noTax, subType: 'none', lotClass: 'standard', term, ruleId: null, costForTax: noTax,
           costBasis: 'none', taxableGain: noTax, notComputed: 'tax-class-not-set', legs: null, anniversaryLongTerm: null,
@@ -366,7 +393,19 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
         };
       };
       if (broken) {
-        lots.push(base({ units: px !== null ? amt / px : null, sale: amt, buy: null, cost: null, gap: 'after-earlier-gap' }));
+        lots.push(base({ units: px !== null ? amt / px : null, sale: t.kind === 'transfer-out' || amt <= EPS ? null : amt, buy: null, cost: null, gap: 'after-earlier-gap' }));
+        continue;
+      }
+      if (t.kind === 'transfer-out') {
+        // B1 (Gate B of aa67a45; Q-49): a transfer out is not a sale; what leaves and what carries over is not known.
+        lots.push(base({ units: px !== null ? amt / px : null, sale: null, buy: null, cost: null, gap: 'transfer-row' }));
+        broken = true;
+        continue;
+      }
+      if (amt <= EPS) {
+        // Item 7 (Gate B of aa67a45): a sale row with an amount of 0 moves no units we can count.
+        lots.push(base({ units: null, sale: null, buy: null, cost: null, gap: 'sale-without-amount' }));
+        broken = true;
         continue;
       }
       if (px === null) {
@@ -387,8 +426,8 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
       }
       if (gapped) {
         const reached = firstUnknown >= 0 ? ledger[firstUnknown]! : null;
-        lots.push(base({ units: short, sale: amt * short / saleUnits, buy: reached, cost: null, gap: reached ? 'purchase-without-price' : 'units-beyond-held' }));
-        // Either gap breaks the ledger (R2 B-1): an oversell shows purchases (or a bonus or split) missing from the file,
+        lots.push(base({ units: short, sale: amt * short / saleUnits, buy: reached, cost: null, gap: reached ? REACHED_GAP[reached.why ?? 'price'] : 'units-beyond-held' }));
+        // Any gap breaks the ledger (R2 B-1): an oversell shows purchases (or a bonus or split) missing from the file,
         // and FIFO would sell their remaining units before any later purchase, so no later sale's cost is known.
         broken = true;
       }

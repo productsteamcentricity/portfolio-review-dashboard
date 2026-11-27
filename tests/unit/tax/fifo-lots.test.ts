@@ -13,6 +13,10 @@ import { parseIrrFile } from '../../../app/src/ingest/irr-file.ts';
 import { computeTaxLots, lotLocked, lotTerm, toTaxPosition } from '../../../app/src/engine/tax/lots.ts';
 import type { TaxLotsResult, TaxPositionRecord } from '../../../app/src/engine/tax/lots.ts';
 import { INST, TAX_RULES_I21, i21ByInst } from '../../../app/src/engine/tax/classify.ts';
+import { rollupHoldings } from '../../../app/src/engine/tax/holdings-rollup.ts';
+import { buildHarvests } from '../../../app/src/engine/tax/harvest.ts';
+import { financialYearOf } from '../../../app/src/engine/tax/rules.ts';
+import type { ClientId } from '../../../app/src/model/ids.ts';
 import { ymdToDay } from '../../../app/src/engine/dates.ts';
 import type { SourceFileId } from '../../../app/src/model/ids.ts';
 import type { DayNumber } from '../../../app/src/model/value.ts';
@@ -373,5 +377,131 @@ describe('FIFO lots (hand-worked)', () => {
     const u = one(r, BLUE);
     assert.equal(u.unreconciledKind, 'short');
     assert.match(u.reason!, /gives fewer units/);
+  });
+});
+
+describe('Gate B of aa67a45 (ARC-03): transfer and bonus rows, oversells and zero-amount sales on the holdings side (Q-49)', () => {
+  const FOCUSED = 'Sample Focused Fund - Regular Plan - Growth';
+  /** The lots, the roll-up and the harvest of a book (slab 30% entered, exemption confirmed unused). */
+  function full(book: BookRow[], flows: Cell[][]) {
+    const base = parseBaseFile(readWorkbook(xlsx, bookBytes(xlsx, book)), { sourceId: 'b'.repeat(64) as SourceFileId, now: NOW });
+    const irr = parseIrrFile(readWorkbook(xlsx, toWorkbook(xlsx, [{ name: 'Tax Xirr', rows: [FUND_HEADER, ...flows] }])), { sourceId: 'c'.repeat(64) as SourceFileId, now: NOW });
+    const lots = computeTaxLots(base.holdings, irr.fund, { asOn: AS_ON });
+    const rollup = rollupHoldings(lots, base.holdings);
+    const fy = financialYearOf(AS_ON);
+    const ids = rollup.clients.map((c) => c.clientId).filter((c): c is ClientId => c !== null);
+    const harvest = buildHarvests(rollup, {
+      asOn: AS_ON,
+      inputs: {
+        personYear: ids.map((clientId) => ({ clientId, fy, slabPct: 30, surchargePct: null, regime: null, assesseeMark: null })),
+        exemptionUsed: ids.map((clientId) => ({ clientId, fy, amount: 'unused-confirmed' as const })),
+      },
+    });
+    return { lots, rollup, harvest };
+  }
+
+  test('B3, ARC-03 case: a transfer in is not split by the transfer date (old: all 15,500 short term)', () => {
+    // Units bought elsewhere in 2019 and transferred in on 1 Jul 2026 at NAV 150 (-15,000 = 100 u). Base 100 u, invested
+    // 15,000, CMV 15,500. The old code dated the lot by the transfer: short term 15,500, gain 500, no flag (OD-16 wants a
+    // label). Now unreconciled 'transferRow': the whole CMV 15,500 and gain 500 unclassified, long and short 0.
+    const r = run([hold(FOCUSED, 'Focused Fund', 'Equity', 100, 15000, 15500)], [flow(FOCUSED, [2026, 7, 1], 'Transfer In', 150, -15000)]);
+    const x = one(r, FOCUSED);
+    assert.equal(x.status, 'unreconciled');
+    assert.equal(x.unreconciledKind, 'transferRow');
+    near(x.unclassified.cmv, 15500, 'unclassified cmv'); near(x.unclassified.gain, 500, 'unclassified gain');
+    assert.equal(x.lt.cmv + x.st.cmv, 0);
+    assert.match(x.reason!, /transfer in, stock in or demerger in\. Its lots would be dated and costed by the transfer/);
+    assert.equal(toTaxPosition(x)!.status, 'unreconciled');
+  });
+
+  test('B3: stock in and demerger in rows are unreconciled the same way, even when the units reconcile', () => {
+    const r = run([
+      hold(BLUE, 'Large Cap Fund', 'Equity', 150, 15000, 18000),
+      hold(MID, 'Mid Cap Fund', 'Equity', 110, 10200, 13200),
+    ], [
+      flow(BLUE, [2024, 1, 1], 'Purchase', 100, -10000), flow(BLUE, [2024, 6, 1], 'Stock In', 100, -5000),
+      flow(MID, [2024, 1, 1], 'Purchase', 100, -10000), flow(MID, [2025, 3, 1], 'Demerger In', 20, -200),
+    ]);
+    assert.deepEqual([one(r, BLUE).unreconciledKind, one(r, MID).unreconciledKind], ['transferRow', 'transferRow']);
+  });
+
+  test('B3: a transfer-in holding stays out of the harvest; long + short + unclassified = CMV in the roll-up', () => {
+    // Focused: transferred in 1 Jul 2026 (100 u at 150), CMV 12,000 against invested 15,000: the old code split it as a
+    // short-term loss of 3,000, a harvest candidate that offset Bluechip's short-term gain (100 u bought 1 Feb 2026 at
+    // 100, CMV 13,000: gain 3,000): tax before 3,000 x 20% = 600, after 0, saving 600. Now the Focused holding is
+    // unreconciled: no candidate, no short-term loss; tax before 600, after 600, saving 0. Family totals: CMV 25,000 =
+    // long 0 + short 13,000 + unclassified 12,000.
+    const { lots, rollup, harvest } = full([
+      hold(FOCUSED, 'Focused Fund', 'Equity', 100, 15000, 12000),
+      hold(BLUE, 'Large Cap Fund', 'Equity', 100, 10000, 13000),
+    ], [flow(FOCUSED, [2026, 7, 1], 'Transfer In', 150, -15000), flow(BLUE, [2026, 2, 1], 'Purchase', 100, -10000)]);
+    assert.equal(one(lots, FOCUSED).unreconciledKind, 'transferRow');
+    const t = rollup.family.totals;
+    near(t.cmv, 25000, 'cmv');
+    near(t.lt.cmv + t.st.cmv + t.unclassified.cmv, t.cmv, 'long + short + unclassified = CMV');
+    near(t.st.cmv, 13000, 'short'); near(t.unclassified.cmv, 12000, 'unclassified');
+    const h = harvest.clients[0]!;
+    assert.deepEqual(h.candidateDetail.map((c) => c.name), []);
+    near(h.figures.stLosses, 0, 'no short-term loss');
+    near(h.figures.taxBefore, 600, 'tax before'); near(h.figures.taxAfter, 600, 'tax after'); near(h.figures.saving, 0, 'saving');
+  });
+
+  test('B2, ARC-03 case: a bonus row with an amount is not split at that cost (old LT 10,454.55 / ST 9,545.45)', () => {
+    // Purchase 10 Jan 2024 100 u at 100 (10,000); Bonus 10 Jan 2026 100 u written at 120 (-12,000). Base 200 u, invested
+    // 10,000, CMV 30,000. The old code costed the bonus at 12,000 and scaled costs to 10,000: LT gain 10,454.55, ST
+    // 9,545.45 (with nil cost it would be 5,000 / 15,000). Now unreconciled 'bonusRow': CMV 30,000 and gain 20,000
+    // unclassified, long and short 0; the roll-up identity holds.
+    const { lots, rollup } = full([hold(MID, 'Mid Cap Fund', 'Equity', 200, 10000, 30000)], [
+      flow(MID, [2024, 1, 10], 'Purchase', 100, -10000), flow(MID, [2026, 1, 10], 'Bonus', 120, -12000),
+    ]);
+    const x = one(lots, MID);
+    assert.equal(x.unreconciledKind, 'bonusRow');
+    near(x.unclassified.cmv, 30000, 'unclassified cmv'); near(x.unclassified.gain, 20000, 'unclassified gain');
+    assert.equal(x.lt.cmv + x.st.cmv, 0);
+    assert.match(x.reason!, /Bonus units have nil cost by law, and how the IRR file writes a bonus row is not confirmed/);
+    const t = rollup.family.totals;
+    near(t.lt.cmv + t.st.cmv + t.unclassified.cmv, 30000, 'identity');
+  });
+
+  test('B2: a bonus row with an amount of 0 is unreconciled bonusRow (old: short)', () => {
+    const r = run([hold(MID, 'Mid Cap Fund', 'Equity', 200, 10000, 30000)], [
+      flow(MID, [2024, 1, 10], 'Purchase', 100, -10000), flow(MID, [2026, 1, 10], 'Bonus', 120, 0),
+    ]);
+    assert.equal(one(r, MID).unreconciledKind, 'bonusRow');
+  });
+
+  test('item 6: an oversell on the unit ledger is flagged, never clamped silently', () => {
+    // Purchase 10 Jan 2024 100 u at 100; Redemption 10 Jun 2024 15,000 at 100 = 150 u (50 u beyond the 100 held);
+    // Purchase 10 Jan 2025 100 u at 120. Base 100 u, invested 12,000, CMV 13,000. FIFO leaves the 2025 lot (100 u), which
+    // reconciles, so the split stands (long 13,000, gain 1,000), but the record names the oversell: 50 u, and a reason.
+    // Within UNITS_TOLERANCE (0.0004 u beyond) there is no flag.
+    const r = run([hold(FLEXI, 'Flexi Cap Fund', 'Equity', 100, 12000, 13000)], [
+      flow(FLEXI, [2024, 1, 10], 'Purchase', 100, -10000),
+      flow(FLEXI, [2024, 6, 10], 'Redemption', 100, 15000),
+      flow(FLEXI, [2025, 1, 10], 'Purchase', 120, -12000),
+    ]);
+    const x = one(r, FLEXI);
+    assert.equal(x.status, 'ok');
+    near(x.lt.cmv, 13000, 'long'); near(x.lt.gain, 1000, 'gain');
+    near(x.oversoldUnits, 50, 'oversold units');
+    assert.match(x.reason!, /sells more units than its earlier purchases hold/);
+    const ok = run([hold(FLEXI, 'Flexi Cap Fund', 'Equity', 100, 12000, 13000)], [
+      flow(FLEXI, [2024, 1, 10], 'Purchase', 100, -10000),
+      flow(FLEXI, [2024, 6, 10], 'Redemption', 100, 10000.04),
+      flow(FLEXI, [2025, 1, 10], 'Purchase', 120, -12000),
+    ]);
+    assert.equal(one(ok, FLEXI).oversoldUnits, null);
+    assert.equal(one(ok, FLEXI).reason, null);
+  });
+
+  test('item 7: a sale row with an amount of 0 counts as a sale whose units are not known (noPxSell, its own text)', () => {
+    // Purchase 1 Jan 2024 100 u at 100; Redemption 1 Jan 2025 written at 110 for 0. Base 50 u: the history gives more
+    // units (100). The old code read 'excess' (an event missing); now 'noPxSell', the reason naming the amount of 0.
+    const r = run([hold(BLUE, 'Large Cap Fund', 'Equity', 50, 5000, 6000)], [
+      flow(BLUE, [2024, 1, 1], 'Purchase', 100, -10000), flow(BLUE, [2025, 1, 1], 'Redemption', 110, 0),
+    ]);
+    const x = one(r, BLUE);
+    assert.equal(x.unreconciledKind, 'noPxSell');
+    assert.match(x.reason!, /carries an amount of 0, so the units it sold could not be counted/);
   });
 });

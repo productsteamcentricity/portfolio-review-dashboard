@@ -53,7 +53,7 @@ export function makeRecord(s: PositionSpec, i: number): TaxPositionRecord {
     unclassifiedGain: split ? (known ? 0 : null) : fl ? null : gain,
     lots: 1, instrumentName: s.name, locked: null, fundLevel: fl ? { cmv: s.cmv, gain } : null, notSplit: s.notSplit ?? null,
     unreconciledKind: s.status === 'unreconciled' ? 'short' : null, usual: false, catAssumed: false, catRuled: false,
-    baseUnits: null, fifoUnits: null, pxGap: false, viaSwitchIn: false, gfLots: 0, oldest: null, newest: null, laterTrades: 0, lotDetail: [],
+    baseUnits: null, fifoUnits: null, pxGap: false, viaSwitchIn: false, oversoldUnits: null, gfLots: 0, oldest: null, newest: null, laterTrades: 0, lotDetail: [],
   };
 }
 

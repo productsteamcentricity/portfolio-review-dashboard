@@ -692,6 +692,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   is stated, never guessed), reconciled with the statement per scheme and financial year. The tolerance is the larger
   of the amount tolerance on the sale value and Rs 1 plus Rs 0.005 per statement row (MOD-04, 26 Nov 2026). Beyond it,
   a High result with both figures kept. The statement is the source of record for a year it covers.
+- **After ARC-03's Gate B of aa67a45 (Q-49: a gap is named, never estimated):** until the owner rules how the IRR
+  export writes transfer and bonus rows, a transfer out is not a sale and a sale reaching a transfer in, stock in,
+  demerger in or bonus lot is a named gap (`transfer-row`, `bonus-row`); a holding with such a row is unreconciled
+  (`transferRow`, `bonusRow`), never split; a sale of 0 is a gap (`sale-without-amount`; `noPxSell` on the holdings
+  side); a holdings-ledger oversell is named on the record; a statement covering part of a client-year is PARTIAL; the
+  harvest labels say what the figures leave out. Tests pin the units tolerance (0.0004 absorbed, 0.0006 a gap) and the
+  reconcile tolerance's per-row part and its boundary. Parity ledger TX-06 to TX-12 and TXR-14 to TXR-18 (book
+  `tax-gate-b`).
 - **Tests:** `tests/unit/tax/{fifo-lots,holdings-rollup,harvest,realised-irr}.test.ts`,
   `tests/parity/tax.parity.test.ts` with its ledger, `tests/regression/ki-065-debt-mf-tax.test.ts`,
   `tests/integration/realised-gains-reconcile.test.ts`.

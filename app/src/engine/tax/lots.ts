@@ -24,6 +24,11 @@
 //   - the lots are valued at the base file's CMV per unit, and their costs scaled to the base Invested, so long + short
 //     + unclassified = the holding's CMV and gain exactly: an apportionment of the base file's own figures, never a
 //     recomputation.
+// Gate B of aa67a45 (Q-49; parity ledger TX-06 to TX-10): a holding whose history (to the as-on date) holds a transfer
+// in, stock in or demerger in is unreconciled 'transferRow' (B3, OD-16), one with a bonus row 'bonusRow' (B2), never
+// split, until the owner rules how the IRR export writes such rows; an oversell on the unit ledger is named in the
+// reason (`oversoldUnits`), never clamped silently; a sale row with an amount of 0 counts as a sale the units of which
+// are not known (the noPxSell kind, with its own reason text).
 // One correction (OD-15, KI-069): when one IRR instrument joins more than one holding (the same scheme with two
 // distributors) and the flows carry no folio that tells them apart, the instrument's lots are apportioned by units (by
 // invested value on the rupee ledger) across those holdings and labelled `apportioned`; the live gives every such
@@ -55,8 +60,21 @@ export type LotBucket = 'long' | 'short' | 'locked' | 'unknown';
 /** Why a holding is not split into long and short term (D-040 d, h; OD-12). */
 export type NotSplitKind = 'fund-level' | 'pass-through' | 'per-security';
 
-/** The live `unrec` kinds, plus 'apportion' (OD-15: the lots of a shared instrument cannot be apportioned). */
-export type UnreconciledKind = 'unitsGap' | 'noLots' | 'value' | 'short' | 'excess' | 'noPxSell' | 'apportion';
+/**
+ * The live `unrec` kinds, plus 'apportion' (OD-15: the lots of a shared instrument cannot be apportioned), and two kinds
+ * of Gate B of aa67a45 (Q-49; owner question on how the IRR export writes these rows): 'transferRow' (B3: the history
+ * holds a transfer in, stock in or demerger in, so its lots would be dated and costed by the transfer, OD-16) and
+ * 'bonusRow' (B2: the history holds a bonus row, never costed at its amount).
+ */
+export type UnreconciledKind = 'unitsGap' | 'noLots' | 'value' | 'short' | 'excess' | 'noPxSell' | 'apportion' | 'transferRow' | 'bonusRow';
+
+/** Units sold beyond the units held up to this many are rounding (3 decimals, as repeat-evidence.ts compares units). */
+export const UNITS_TOLERANCE = 0.0005;
+
+/** The in-kinds whose lot would be dated and costed by a transfer, not the original purchase (B1, B3; OD-16). */
+export const TRANSFER_IN_KINDS: ReadonlySet<Transaction['kind']> = new Set(['transfer-in', 'stock-in', 'demerger-in']);
+/** The in-kind of a bonus allotment (B2): never costed at the row's amount. */
+export const BONUS_KINDS: ReadonlySet<Transaction['kind']> = new Set(['bonus']);
 
 /** One open lot of a record, after scaling: units (rupees on the rupee ledger), value and cost in rupees. */
 export type LotDetail = {
@@ -103,6 +121,11 @@ export type TaxPositionRecord = Omit<TaxPosition, 'gain' | 'lt' | 'st' | 'unclas
   /** A buy without a price moved the holding to the rupee ledger (and whether it was a switch-in). */
   pxGap: boolean;
   viaSwitchIn: boolean;
+  /**
+   * Units the IRR history sells beyond the units its earlier purchases hold (beyond UNITS_TOLERANCE), on the unit
+   * ledger; null when none or on the rupee ledger. Never silent (Gate B of aa67a45): the reason says so.
+   */
+  oversoldUnits: number | null;
   /** TX-18: open lots bought before 1 Feb 2018 in a grandfathering class. */
   gfLots: number;
   oldest: DayNumber | null;
@@ -176,7 +199,13 @@ export function lotLocked(rule: I21Row, buy: DayNumber, asOn: DayNumber): boolea
 
 type UnitLot = { day: DayNumber; u: number; px: number };
 type RupeeLot = { day: DayNumber; u: number };
-type Ledger = { units: UnitLot[]; rupees: RupeeLot[]; noPxBuy: boolean; swIn: boolean; noPxSell: boolean; later: number };
+type Ledger = {
+  units: UnitLot[]; rupees: RupeeLot[]; noPxBuy: boolean; swIn: boolean; noPxSell: boolean; later: number;
+  /** Gate B of aa67a45: a transfer in, stock in or demerger in (B3), a bonus row (B2), a sale row with an amount of 0. */
+  transferRow: boolean; bonusRow: boolean; zeroSell: boolean;
+  /** Units sold beyond the unit ledger's lots (each shortfall beyond UNITS_TOLERANCE, added up). */
+  oversold: number;
+};
 
 const EPS = 1e-9;
 const priceOf = (t: Transaction): number | null => (t.price.kind === 'value' && t.price.v > 0 ? t.price.v : null);
@@ -212,11 +241,15 @@ function consume(lots: Array<{ u: number }>, need: number): void {
 
 /** One pass over trades sorted by day (file order within a day): both FIFO ledgers. */
 function runLedger(trades: readonly Transaction[], asOn: DayNumber): Ledger {
-  const L: Ledger = { units: [], rupees: [], noPxBuy: false, swIn: false, noPxSell: false, later: 0 };
+  const L: Ledger = { units: [], rupees: [], noPxBuy: false, swIn: false, noPxSell: false, later: 0, transferRow: false, bonusRow: false, zeroSell: false, oversold: 0 };
   for (const t of trades) {
     if (t.day > asOn) { L.later++; continue; }
     const amt = Math.abs(t.amountRupees);
     const buy = t.direction === 'in';
+    if (buy && TRANSFER_IN_KINDS.has(t.kind)) L.transferRow = true;
+    if (buy && BONUS_KINDS.has(t.kind)) L.bonusRow = true;
+    // Item 7 (Gate B of aa67a45): a sale row with an amount of 0 moves no units; the reason treats it as a sale without a price.
+    if (!buy && amt <= EPS) { L.noPxSell = true; L.zeroSell = true; }
     if (buy) L.rupees.push({ day: t.day, u: amt }); else consume(L.rupees, amt);
     const px = priceOf(t);
     if (px === null) {
@@ -224,7 +257,12 @@ function runLedger(trades: readonly Transaction[], asOn: DayNumber): Ledger {
       continue;
     }
     const u = amt / px;
-    if (buy) L.units.push({ day: t.day, u, px }); else consume(L.units, u);
+    if (buy) L.units.push({ day: t.day, u, px });
+    else {
+      // Gate B of aa67a45: an oversell is flagged, never clamped silently (the realised side's B-1 rule names it a gap).
+      const { short } = consumeFifo(L.units, u);
+      if (short > UNITS_TOLERANCE) L.oversold += short;
+    }
   }
   return L;
 }
@@ -246,12 +284,17 @@ const REASON = {
     ? `No purchase transactions in the IRR history. ${swIn ? 'The switch-in' : 'A purchase'} for this holding carries no price, so units could not be derived from it.`
     : amtMode ? 'No purchase transactions in the IRR history (this holding has no units, so it is matched on invested value)'
       : 'No purchase transactions in the IRR history'),
-  drift: (pxGap: boolean, swIn: boolean, amtMode: boolean, fewer: boolean, noPxSell: boolean): string => (pxGap
+  drift: (pxGap: boolean, swIn: boolean, amtMode: boolean, fewer: boolean, noPxSell: boolean, zeroSell = false): string => (pxGap
     ? `Invested value does not reconcile to the base file. ${swIn ? 'The switch-in' : 'A purchase'} for this holding carries no price, so it was matched on invested value rather than units, and that does not reconcile either.`
     : amtMode ? 'Invested value does not reconcile to the base file: the transaction history is incomplete for this holding.'
       : fewer ? 'Units do not reconcile to the base file: the transaction history gives fewer units, so it is missing an event, such as a bonus or split, or a purchase made elsewhere.'
-        : noPxSell ? 'Units do not reconcile to the base file: the transaction history gives more units, and a sale, switch out or transfer out in it carries no price, so the units it sold could not be counted.'
-          : 'Units do not reconcile to the base file: the transaction history gives more units, so it is missing an event, such as a sale, a transfer out or a consolidation of units.'),
+        : noPxSell && zeroSell ? 'Units do not reconcile to the base file: the transaction history gives more units, and a sale, switch out or transfer out in it carries an amount of 0, so the units it sold could not be counted.'
+          : noPxSell ? 'Units do not reconcile to the base file: the transaction history gives more units, and a sale, switch out or transfer out in it carries no price, so the units it sold could not be counted.'
+            : 'Units do not reconcile to the base file: the transaction history gives more units, so it is missing an event, such as a sale, a transfer out or a consolidation of units.'),
+  // Gate B of aa67a45 (Q-49; owner question on how the IRR export writes these rows).
+  transferRow: 'The transaction history of this holding holds a transfer in, stock in or demerger in. Its lots would be dated and costed by the transfer, not by the original purchase, and what cost and date carry over is not known, so no split is shown (OD-16).',
+  bonusRow: 'The transaction history of this holding holds a bonus row. Bonus units have nil cost by law, and how the IRR file writes a bonus row is not confirmed, so no split is shown rather than one costed at the row\'s amount.',
+  oversold: 'The transaction history sells more units than its earlier purchases hold, so a purchase, bonus or split is missing from the IRR file; the lots shown are those left after the sale.',
   apportion: 'The IRR history of this scheme covers more than one holding and gives no folio that tells them apart, and not every one of those holdings has the units (or invested value) to apportion its lots by, so no split is shown (OD-15).',
   noRow: (inst: string): string => `No row in the tax rules covers the class "${inst}".`,
 } as const;
@@ -414,13 +457,17 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
       st: { cmv: 0, gain: null }, unclassified: { cmv, gain: gl }, unclassifiedGain: gl, lots: L.length,
       instrumentName: h.instrumentName, locked: null, fundLevel: null, notSplit: null, unreconciledKind: null,
       usual: !!cls.usual, catAssumed: !!cls.catAssumed, catRuled: !!cls.catRuled,
-      baseUnits: amtMode ? null : baseU, fifoUnits: amtMode ? null : fifoU, pxGap, viaSwitchIn: pxGap && swIn, gfLots: 0,
+      baseUnits: amtMode ? null : baseU, fifoUnits: amtMode ? null : fifoU, pxGap, viaSwitchIn: pxGap && swIn,
+      oversoldUnits: !amtMode && ledger && ledger.oversold > 0 ? ledger.oversold : null, gfLots: 0,
       oldest: null, newest: null, laterTrades: later, lotDetail: [],
     };
+    /** Gate B of aa67a45: an oversell on the unit ledger is named in the reason, never silent. */
+    const withOversold = (reason: string | null): string | null => (rec.oversoldUnits === null ? reason
+      : reason === null ? REASON.oversold : `${reason.replace(/\.?\s*$/, '.')} ${REASON.oversold}`);
     const unreconciled = (kind: UnreconciledKind, reason: string): void => {
       rec.status = 'unreconciled';
       rec.unreconciledKind = kind;
-      rec.reason = later ? withLater(reason, later, asOn) : reason;
+      rec.reason = withOversold(later ? withLater(reason, later, asOn) : reason);
       out.unreconciled.push(rec);
     };
     const notSplit = (kind: NotSplitKind): void => {
@@ -447,16 +494,21 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
     if (rule.fundLevel || rule.passThrough) { notSplit(rule.fundLevel ? 'fund-level' : 'pass-through'); continue; }
     if (unitsGap) { unreconciled('unitsGap', REASON.unitsGap); continue; }
     if (apportionFailed) { unreconciled('apportion', REASON.apportion); continue; }
+    // B3, B2 (Gate B of aa67a45; Q-49): never split on lots dated and costed by a transfer, or a bonus costed at its
+    // amount. A per-security row (PMS) is never split anyway and keeps its own path.
+    if (!rule.perSecurity && ledger?.transferRow) { unreconciled('transferRow', REASON.transferRow); continue; }
+    if (!rule.perSecurity && ledger?.bonusRow) { unreconciled('bonusRow', REASON.bonusRow); continue; }
     if (!L.length) { unreconciled('noLots', REASON.noLots(pxGap, swIn, amtMode)); continue; }
     const rel = drift();
     if (baseU !== null && rel > 0.01) {
       const fewer = fifoU < baseU;
       const kind: UnreconciledKind = amtMode ? 'value' : fewer ? 'short' : ledger?.noPxSell ? 'noPxSell' : 'excess';
-      unreconciled(kind, REASON.drift(pxGap, swIn, amtMode, fewer, !!ledger?.noPxSell));
+      unreconciled(kind, REASON.drift(pxGap, swIn, amtMode, fewer, !!ledger?.noPxSell, !!ledger?.zeroSell));
       continue;
     }
     if (rule.perSecurity) { notSplit('per-security'); continue; }
     if (src?.group) counts.apportioned++;
+    rec.reason = withOversold(rec.reason);
 
     // The split.
     const scale = baseU !== null && fifoU > 0 ? baseU / fifoU : 1;

@@ -24,7 +24,7 @@ import { loadSheetJS } from '../helpers/sheetjs.ts';
 import { bookBytes } from '../fixtures/make-books.ts';
 import { AS_ON_DAY, NOW, parseLots } from '../fixtures/make-cg-tax-lots.ts';
 import { CLIENT_A } from '../fixtures/make-cg-statements.ts';
-import { SCHEME, irrImport, irrRealisedRows, mismatchStatementLots } from '../fixtures/make-realised-reconcile.ts';
+import { SCHEME, flow, irrImport, irrRealisedRows, mismatchStatementLots } from '../fixtures/make-realised-reconcile.ts';
 
 const xlsx = loadSheetJS();
 /** An en or em dash (built from code points, so this file holds none, D-029). */
@@ -293,5 +293,82 @@ describe('R2 S-5 (OD-4): an IRR client with no holding in the base file is left 
     near(v(fy.total), 1700, 'total');
     near(v(fy.unknownTerm), 0, 'unknown term');
     assert.equal(fy.outsideReview.count, 1);
+  });
+});
+
+describe('Gate B of aa67a45 (ARC-03): the tolerance pairs (Q4, Q5) and a statement covering part of a client-year (item 8)', () => {
+  /** The mismatch statement with Bluechip lot 0 sold for `blueOffset` rupees more and Flexi Cap sold at `flexiNav`. */
+  function recPair(blueOffset: number, flexiNav: number): RealisedReconciliation {
+    const lots = mismatchStatementLots({ flexiSellNav: flexiNav });
+    lots[0] = { ...lots[0]!, sellOffset: blueOffset };
+    const imp = parseLots(lots, {}, xlsx);
+    return reconcileRealised(derivedOf(), { imp, realised: realiseLots(imp, emptyTaxInputs(), { asOnDay: AS_ON_DAY, now: NOW }) });
+  }
+
+  test('Q4: the Rs 1 + Rs 0.005 per statement row part of the tolerance', () => {
+    // One statement row on a sale of about 4,000: the amount part is max(1, 0.40) = 1, the rows part 1 + 0.005 = 1.005:
+    // the tolerance is 1.005, exactly. 400 rows on a sale of 5,000: max(1, 0.5) against 1 + 2 = 3: 3. Two rows on a
+    // sale of 1 crore: the amount part, 1,000.
+    assert.equal(reconcileTolerance(4001.005, 4000, 1), 1 + 0.005);
+    assert.equal(reconcileTolerance(5000, 5000, 400), 3);
+    assert.equal(reconcileTolerance(1e7, 1e7, 2), 1000);
+    const r = rowOf(recPair(1.58, 80.02), 2025, SCHEME.FLEXI);
+    assert.ok(Math.abs(r.tolerance! - 1.005) < 1e-12, `Flexi Cap tolerance ${r.tolerance}`);
+  });
+
+  test('the review pairs: Bluechip 1.58 against 1.584158 reconciled, 1.59 against 1.584159 differs; Flexi Cap 1.00 against 1.005 reconciled, 1.01 differs', () => {
+    // Bluechip FY 2024-25: derived 3,340 on a sale of 15,840; the statement's lot 0 sold for x more. Tolerance max(1,
+    // (15,840 + x) x 0.0001, 1 + 0.005 x 2): x = 1.58 gives 1.584158 and a difference of 1.58: reconciled; x = 1.59 gives
+    // 1.584159 and 1.59: differs. Flexi Cap FY 2025-26: derived 1,500 on 4,000, one statement row (tolerance 1.005);
+    // NAV 80.02 sells 50 u for 4,001.00 (difference 1.00): reconciled; NAV 80.0202 for 4,001.01 (1.01): differs.
+    const lo = recPair(1.58, 80.02);
+    const hi = recPair(1.59, 80.0202);
+    const b1 = rowOf(lo, 2024, SCHEME.BLUE); const b2 = rowOf(hi, 2024, SCHEME.BLUE);
+    assert.ok(Math.abs(b1.tolerance! - 1.584158) < 1e-9 && Math.abs(b1.difference! - 1.58) < 1e-6, `${b1.tolerance} ${b1.difference}`);
+    assert.equal(b1.outcome, 'reconciled');
+    assert.ok(Math.abs(b2.tolerance! - 1.584159) < 1e-9 && Math.abs(b2.difference! - 1.59) < 1e-6, `${b2.tolerance} ${b2.difference}`);
+    assert.equal(b2.outcome, 'differs');
+    const f1 = rowOf(lo, 2025, SCHEME.FLEXI); const f2 = rowOf(hi, 2025, SCHEME.FLEXI);
+    assert.ok(Math.abs(f1.difference! - 1) < 1e-6, String(f1.difference));
+    assert.equal(f1.outcome, 'reconciled');
+    assert.ok(Math.abs(f2.difference! - 1.01) < 1e-6, String(f2.difference));
+    assert.equal(f2.outcome, 'differs');
+  });
+
+  test('Q5: a difference exactly at the tolerance is reconciled (<=)', () => {
+    // A scheme of A in both files, amounts exact in binary. IRR: Purchase 1 Apr 2024 6,400 at 100 = 64 u; Redemption
+    // 2 Jun 2025 19,998 at 312.46875 = 64 u: derived realised 13,598. Statement: 64 u bought at 100, sold at 312.5 =
+    // 20,000: realised 13,600. Difference 2; tolerance max(max(1, 20,000 x 0.0001 = 2), 1.005) = 2: exactly at it,
+    // reconciled.
+    const X = 'Sample Large and Midcap Fund - Regular Plan - Growth';
+    const der = deriveRealisedGains(irrImport([
+      flow(CLIENT_A, X, [2024, 4, 1], 'Purchase', 100, -6400),
+      flow(CLIENT_A, X, [2025, 6, 2], 'Redemption', 312.46875, 19998),
+    ], xlsx).fund, { asOn: AS_ON_DAY });
+    const imp = parseLots([{ scheme: X, asset: 'Equity', category: 'Large & Mid Cap Funds', buy: [2024, 4, 1], sell: [2025, 6, 2], units: 64, buyNav: 100, sellNav: 312.5 }], {}, xlsx);
+    const rec = reconcileRealised(der, { imp, realised: realiseLots(imp, emptyTaxInputs(), { asOnDay: AS_ON_DAY, now: NOW }) });
+    const r = rowOf(rec, 2025, X);
+    assert.equal(r.difference, 2);
+    assert.equal(r.tolerance, 2);
+    assert.equal(r.outcome, 'reconciled');
+  });
+
+  test('item 8: a statement that covers part of a client-year is PARTIAL, never complete', () => {
+    // FY 2025-26, client A: the statement has the Flexi Cap lot (1,700) and no Focused lot, while the IRR file derives a
+    // Focused gain of 500 that year. The 500 is not added (never both sides in one client-year), so A's figure stays
+    // 1,700, but it is PARTIAL: one scheme left out, coverage 1 statement lot / (1 + 1 derived lot) = 0.5. The family
+    // figure is PARTIAL too. FY 2024-25 (every derived scheme of A in the statement) is complete.
+    const fy = realisedForYear(2025, derivedOf(), statementOf());
+    const a = fy.clients.find((c) => c.source === 'statement')!;
+    assert.equal(a.schemesLeftOut, 1);
+    near(v(a.total), 1700, 'A total');
+    assert.ok(a.total.kind === 'value' && a.total.coverage === 0.5, JSON.stringify(a.total));
+    assert.match(a.total.kind === 'value' ? a.total.prov.method : '', /PARTIAL: 1 scheme with gains derived from the IRR file in this year is not in the capital-gains statement/);
+    assert.ok(a.lt.kind === 'value' && a.lt.coverage === 0.5);
+    assert.ok(fy.total.kind === 'value' && fy.total.coverage !== undefined && fy.total.coverage < 1);
+    assert.equal(fy.clients.find((c) => c.source === 'derived from transactions')!.schemesLeftOut, 0);
+    const full = realisedForYear(2024, derivedOf(), statementOf());
+    assert.equal(full.clients[0]!.schemesLeftOut, 0);
+    assert.ok(full.total.kind === 'value' && full.total.coverage === undefined);
   });
 });

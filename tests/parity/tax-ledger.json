@@ -55,6 +55,69 @@
       "class": "correction",
       "reference": "AC-18 (long + short + unclassified = CMV); FIN-REVIEW-TAX-R2 S-2",
       "description": "Units blank and an invested value of 0, one Purchase of 10,000. On the rupee ledger the base figure is the invested value, 0 here. The new engine reads a base of 0 against lots above 0 as full drift: unreconciled (value), the CMV of 12,000 unclassified at a gain of 12,000, so long + short + unclassified = CMV, as the design requires (AC-18). The live reads 0 drift, scales the lot to 0 rupees and lists a split position whose long, short and unclassified CMV are all 0: the 12,000 vanished from the three buckets (financial review round 2, S-2)."
+    },
+    {
+      "id": "TX-06",
+      "book": "tax-gate-b",
+      "holding": "Sample Focused Equity Fund - Regular Plan - Growth @15500",
+      "field": "status",
+      "class": "correction",
+      "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, B3",
+      "description": "B3, ARC-03's case: units bought elsewhere and transferred in on 1 Jul 2026 at NAV 150 (100 u, 15,000). The live buys the Transfer In as a purchase dated by the transfer, so the whole CMV of 15,500 is short term (gain 500) with no label. The new engine does not split a holding whose history holds a transfer in, stock in or demerger in (its lots would be dated and costed by the transfer, not the original purchase, OD-16): unreconciled (transferRow), the 15,500 unclassified at a gain of 500, until the owner rules how the IRR export writes transfers (Q-49)."
+    },
+    {
+      "id": "TX-07",
+      "book": "tax-gate-b",
+      "holding": "Sample Contra Value Fund - Regular Plan - Growth @16500",
+      "field": "status",
+      "class": "correction",
+      "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, B3",
+      "description": "B3: a Purchase of 100 u and a Stock In of 50 u, base 150 u. The live TAX_BUY does not name a stock in, so it finds 100 u against 150 and lists the holding as unreconciled (short). The new engine reads the stock in (OD-16) and, as for a transfer in, does not split: unreconciled (transferRow), CMV 16,500 unclassified at a gain of 1,500."
+    },
+    {
+      "id": "TX-08",
+      "book": "tax-gate-b",
+      "holding": "Sample Diversified Multicap Fund - Regular Plan - Growth @13200",
+      "field": "status",
+      "class": "correction",
+      "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, B3",
+      "description": "B3: a Purchase of 100 u on 1 Jan 2024 and a Demerger In of 10 u at 20 on 1 Mar 2025, base 110 u. The live buys the demerger in at its row's value and date and splits the holding (long 13,200, gain 3,000). The new engine does not split on a lot dated and costed by the demerger: unreconciled (transferRow), CMV 13,200 unclassified at a gain of 3,000."
+    },
+    {
+      "id": "TX-09",
+      "book": "tax-gate-b",
+      "holding": "Sample Midcap Opportunities Fund - Regular Plan - Growth @30000",
+      "field": "status",
+      "class": "correction",
+      "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, B2",
+      "description": "B2, ARC-03's case: a Purchase of 100 u at 100 (10 Jan 2024) and a Bonus of 100 u written at 120 (-12,000, 10 Jan 2026), base 200 u, invested 10,000, CMV 30,000. The live costs the bonus at 12,000 and scales the costs to the invested value: long 15,000 at a gain of 10,454.55, short 15,000 at 9,545.45 (with nil cost by law: 5,000 and 15,000). The new engine never costs a bonus at its amount: unreconciled (bonusRow), CMV 30,000 unclassified at a gain of 20,000, until the owner rules how the export writes a bonus row (Q-49)."
+    },
+    {
+      "id": "TX-10",
+      "book": "tax-gate-b",
+      "holding": "Sample Emerging Smallcap Fund - Regular Plan - Growth @26000",
+      "field": "status",
+      "class": "correction",
+      "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, B2",
+      "description": "B2: a bonus written with an amount of 0 after a Purchase of 100 u, base 200 u. The live finds 100 u against 200 and lists the holding as unreconciled (short). The new engine names the bonus row: unreconciled (bonusRow), CMV 26,000 unclassified at a gain of 16,000."
+    },
+    {
+      "id": "TX-11",
+      "book": "tax-gate-b",
+      "holding": "Sample Flexi Cap Fund - Regular Plan - Growth @13000",
+      "field": "reason",
+      "class": "correction",
+      "reference": "Q-49; AC-18; ARC-03 Gate B of aa67a45, should-fix (holdings-ledger oversell)",
+      "description": "An oversell: a Purchase of 100 u, a Redemption of 150 u, then a Purchase of 100 u at 120; base 100 u. Both sides split the 2025 lot (long 13,000, gain 1,000). The live clamps the 50 u sold beyond the purchases silently; the new engine names it in the reason (oversoldUnits 50), as the realised side names an oversell a gap (R2 B-1). The figures agree."
+    },
+    {
+      "id": "TX-12",
+      "book": "tax-gate-b",
+      "holding": "Sample Bluechip Fund - Regular Plan - Growth @6000",
+      "field": "status",
+      "class": "correction",
+      "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, should-fix (zero-amount out row)",
+      "description": "A Redemption written at 110 with an amount of 0 after a Purchase of 100 u; base 50 u. Both find 100 u against 50. The live reads the sale as moving nothing and lists the holding as unreconciled (excess, an event missing). The new engine counts a sale with an amount of 0 as a sale whose units are not known: unreconciled (noPxSell), the reason naming the amount of 0. CMV 6,000 unclassified on both sides."
     }
   ],
   "rollupEntries": [
@@ -314,6 +377,107 @@
       "class": "correction",
       "reference": "AC-18; FIN-REVIEW-TAX-R2 S-2",
       "description": "Follows from TX-05 (units blank and an invested value of 0: the new engine reads full drift and keeps the holding unreconciled, its CMV of 12,000 unclassified; the live reads no drift and keeps a split position whose long, short and unclassified CMV are all 0). The live's split position makes an Equity Mutual Funds class (all pools 0); the new engine has no split position, so the class's fields are on the live side only and the class order differs."
+    },
+    {
+      "id": "TXR-14",
+      "book": "tax-gate-b",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "totals.ltCmv",
+        "totals.stCmv",
+        "totals.unclassCmv",
+        "totals.ltGain",
+        "totals.stGain",
+        "totals.unclassGain",
+        "totals.nPos"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, B2 and B3",
+      "description": "Follows from TX-06 to TX-10 (B2, B3: the new engine does not split the transfer in, stock in, demerger in and bonus holdings, so their CMV of 101,200 and gain of 41,000 are unclassified; the live splits three of them and lists two as unreconciled short). Long 13,000 (gain 1,000) against 41,200 (14,454.55); short 0 (0) against 30,500 (10,045.45); unclassified 107,200 (42,000) against 48,500 (18,500); nPos 1 against 4. The CMV (120,200) and the gain agree; long + short + unclassified = CMV on both sides (AC-18)."
+    },
+    {
+      "id": "TXR-15",
+      "book": "tax-gate-b",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "byClass[Equity Mutual Funds].cmv",
+        "byClass[Equity Mutual Funds].ltCmv",
+        "byClass[Equity Mutual Funds].stCmv",
+        "byClass[Equity Mutual Funds].gl",
+        "byClass[Equity Mutual Funds].ltGain",
+        "byClass[Equity Mutual Funds].stGain",
+        "byClass[Equity Mutual Funds].ltPos",
+        "byClass[Equity Mutual Funds].stPos",
+        "byClass[Equity Mutual Funds].n"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, B2 and B3",
+      "description": "Follows from TX-06 to TX-10 (B2, B3: the new engine does not split the transfer in, stock in, demerger in and bonus holdings, so their CMV of 101,200 and gain of 41,000 are unclassified; the live splits three of them and lists two as unreconciled short). The Equity Mutual Funds class holds split positions only: the Flexi Cap holding (CMV 13,000, long gain 1,000) in the new engine against four in the live (CMV 71,700, long 14,454.55, short 10,045.45)."
+    },
+    {
+      "id": "TXR-16",
+      "book": "tax-gate-b",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "byProduct[Mutual Funds].ltCmv",
+        "byProduct[Mutual Funds].stCmv",
+        "byProduct[Mutual Funds].ltGain",
+        "byProduct[Mutual Funds].stGain",
+        "byProduct[Mutual Funds].unclassGain"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, B2 and B3",
+      "description": "Follows from TX-06 to TX-10 (B2, B3: the new engine does not split the transfer in, stock in, demerger in and bonus holdings, so their CMV of 101,200 and gain of 41,000 are unclassified; the live splits three of them and lists two as unreconciled short). By product (Mutual Funds): the long and short CMV and gains move to the unclassified gain, as in the totals."
+    },
+    {
+      "id": "TXR-17",
+      "book": "tax-gate-b",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "byAsset[Equity].ltCmv",
+        "byAsset[Equity].stCmv",
+        "byAsset[Equity].ltGain",
+        "byAsset[Equity].stGain",
+        "byAsset[Equity].unclassGain"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, B2 and B3",
+      "description": "Follows from TX-06 to TX-10 (B2, B3: the new engine does not split the transfer in, stock in, demerger in and bonus holdings, so their CMV of 101,200 and gain of 41,000 are unclassified; the live splits three of them and lists two as unreconciled short). By asset (Equity): the long and short CMV and gains move to the unclassified gain, as in the totals."
+    },
+    {
+      "id": "TXR-18",
+      "book": "tax-gate-b",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "harvest.taxBefore",
+        "harvest.taxAfter",
+        "harvest.ltGains",
+        "harvest.stGains",
+        "harvest.s198Gains",
+        "harvest.s198Left",
+        "harvest.exBefore",
+        "harvest.exAfter",
+        "harvest.exBeforeTax",
+        "harvest.exAfterTax"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, B2 and B3",
+      "description": "Follows from TX-06 to TX-10 (B2, B3: the new engine does not split the transfer in, stock in, demerger in and bonus holdings, so their CMV of 101,200 and gain of 41,000 are unclassified; the live splits three of them and lists two as unreconciled short). The harvest pools only split positions: long-term gains 1,000 (inside the exemption, tax 0) against the live 14,454.55 long and 10,045.45 short (tax 2,009.09 = 10,045.45 x 20%, partly from the bonus costed at its amount and the transfer dated by the transfer). Slab 30% entered and the exemption confirmed unused on both sides."
     }
   ]
 }
