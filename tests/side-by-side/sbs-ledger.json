@@ -144,7 +144,7 @@
       "legacy": "ICICI Pru US Bluechip Equity Fund(G)",
       "new": "ICICI Pru Large Cap Fund(G)",
       "class": "correction",
-      "reference": "E-13; KI-050; PD-36 (owner aliases, approved 25 Nov 2026), data/owner/fund-aliases.json line 1",
+      "reference": "E-13; KI-050; PD-36 (owner aliases, approved 25 Nov 2026), data/owner/fund-aliases.json alias line 1 (file line 9)",
       "description": "The scheme's old name: the live page matches it to an overseas fund (US Bluechip Equity). The new build applies the owner's alias and matches the renamed fund (Large Cap)."
     },
     {
@@ -158,7 +158,7 @@
       "new": null,
       "class": "accepted-difference",
       "reference": "E-13; KI-036; OD-5 option B, the owner's \"Go ahead with the Stricter regime\" (26 Nov 2026); tests/parity/matching-corrections-ledger.json stage 1 to 4, MF_PERF self, to-null, neither",
-      "description": "The live page matches the Gold fund to the Gold ETF of the same house (a sibling, not the holding). The new build finds no single answer and leaves it unmatched. Neither shows the holding's own fund; the new build shows no figures instead of the ETF's."
+      "description": "The live page matches the Gold fund to the Gold ETF of the same house (a sibling, not the holding). The new build finds no single answer and leaves it unmatched. Neither shows the holding's own fund, which is in MF_PERF (Axis Gold Fund-Reg(G)); the new build shows no figures instead of the ETF's (whose returns also leave out the fund of fund's own cost). An alias candidate for the owner (PD-36)."
     },
     {
       "id": "SB-14",
@@ -171,7 +171,7 @@
       "new": null,
       "class": "accepted-difference",
       "reference": "E-13; KI-036; OD-5 option B (26 Nov 2026); tests/parity/matching-corrections-ledger.json stage 1 to 4, MF_PERF self, to-null, neither",
-      "description": "The same case for another house: the live page matches the Gold fund to the Gold ETF; the new build leaves it unmatched."
+      "description": "The same case for another house: the live page matches the Gold fund to the Gold ETF; the new build leaves it unmatched. The holding's own fund is in MF_PERF (Kotak Gold Fund(G)): an alias candidate for the owner (PD-36)."
     },
     {
       "id": "SB-15",
@@ -184,7 +184,7 @@
       "new": null,
       "class": "accepted-difference",
       "reference": "E-13; OD-5 option B, the owner's \"Go ahead with the Stricter regime\" (26 Nov 2026); tests/parity/matching-corrections-ledger.json stage 3 and 4, MF_PERF amfi, to-null, regressed",
-      "description": "The live page is right here (UTI Focused Fund). The stricter regime leaves the AMFI-style name with \"(30 stocks)\" unmatched; the normaliser follow-up did not recover it. One of the 4 names the ledger still lists as regressed."
+      "description": "The live page is right here (UTI Focused Fund). The stricter regime leaves the AMFI-style name with \"(30 stocks)\" unmatched; the normaliser follow-up did not recover it. One of the 4 names the ledger still lists as regressed, which have not yet been put to the owner; class pending the owner's ruling (alias under PD-36 or accepted)."
     },
     {
       "id": "SB-16",
@@ -196,8 +196,8 @@
       "legacy": { "type": "string" },
       "new": null,
       "class": "accepted-difference",
-      "reference": "E-13; OD-5 option B (26 Nov 2026); tests/parity/matching-corrections-ledger.json stage 4, MF_PERF amfi, to-null, regressed",
-      "description": "The live page is right here (Kotak Infra & Eco Reform Fund, an abbreviated reference name). The new build leaves the full AMFI name unmatched. One of the 4 names the ledger still lists as regressed."
+      "reference": "E-13; the normaliser follow-up of OD-5 option B (26 Nov 2026), not option B itself; tests/parity/matching-corrections-ledger.json stage 4 only, MF_PERF amfi, to-null, regressed (stage 3 still matched it); class pending the owner's ruling (alias under PD-36 or accepted)",
+      "description": "The live page is right here (Kotak Infra & Eco Reform Fund, an abbreviated reference name). The normaliser follow-up lost it (option B alone still matched it), so the new build leaves the full AMFI name unmatched. One of the 4 names the ledger still lists as regressed, which have not yet been put to the owner."
     },
     {
       "id": "SB-17",
