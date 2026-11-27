@@ -948,3 +948,59 @@ describe('Gate B of 4001f8f: many-into-one mergers (B1), a provably partial swit
     assert.deepEqual(lotsOf(r, NEW).map((x) => [x.gap, x.mergerCandidate?.role]), [['merger-candidate', 'successor']]);
   });
 });
+
+describe('E1 (delta review of 8ed1dc7): same-day merger chains', () => {
+  const OLD = 'Sample Contra Fund - Regular Plan - Growth';
+  const OLD2 = 'Sample Value Fund - Regular Plan - Growth';
+  const NEW = 'Sample Small Cap Fund - Regular Plan - Growth';
+  const LAST = 'Sample Focused Fund - Regular Plan - Growth';
+  /** Contra 100 u at 100 and Value 100 u at 40 switched out whole on 10 Nov 2023 into Small Cap (20,000). */
+  const intoNew = (extra: Cell[][]): DerivedRealised => run([
+    flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD2, [2019, 7, 1], 'Purchase', 40, -4000),
+    flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 15000), flow(A, OLD2, [2023, 11, 10], 'Switch Out', 50, 5000),
+    flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -20000),
+    ...extra,
+  ]);
+  const gapsOf = (r: DerivedRealised, name: string): Array<[string | null, string | null]> =>
+    lotsOf(r, name).map((x) => [x.gap, x.mergerCandidate?.role ?? null]);
+
+  test('(a) Small Cap itself switched out whole the same day: Contra, Value and Small Cap\'s switch out are all gaps', () => {
+    // Small Cap's 20,000 (133.33 u at 150) is switched out whole the same day. Small Cap both receives a switch in and is
+    // switched out whole: a pass-through; with no other recipient it is the chain's end. Contra and Value are emptied and
+    // their 20,000 equals Small Cap's 20,000 in: a candidate. 8ed1dc7 computed Contra 5,000 and Value 1,000 (B1d guard).
+    const r = intoNew([flow(A, NEW, [2023, 11, 10], 'Switch Out', 150, 20000)]);
+    assert.deepEqual(gapsOf(r, OLD), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, OLD2), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, NEW), [['merger-candidate', 'switch-out']]);
+    assert.equal(r.counts.mergerCandidates, 2);
+    assert.ok(r.schemeYears.every((s) => s.realised.kind === 'missing'));
+  });
+
+  test('(b) the chain Contra and Value into Small Cap into Focused the same day: every switch a gap, Focused\'s later sale too', () => {
+    // Small Cap switched out whole (20,000) into Focused (20,000) the same day; Focused redeemed 4 May 2026 for 24,000.
+    // Followed through Small Cap, the chain ends in Focused, whose 20,000 in equals Contra and Value's 20,000 out: Contra,
+    // Value and Small Cap's switch outs are gaps, and Focused's sale is a successor gap (its lots are not known). 8ed1dc7
+    // computed Contra 5,000 and Value 1,000 (the Small Cap to Focused pair hid them) and Focused's sale was a gap.
+    const r = intoNew([
+      flow(A, NEW, [2023, 11, 10], 'Switch Out', 150, 20000), flow(A, LAST, [2023, 11, 10], 'Switch In', 150, -20000),
+      flow(A, LAST, [2026, 5, 4], 'Redemption', 180, 24000),
+    ]);
+    assert.deepEqual(gapsOf(r, OLD), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, OLD2), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, NEW), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, LAST), [['merger-candidate', 'successor']]);
+    assert.equal(r.counts.mergerCandidates, 3);
+    assert.ok(r.schemeYears.every((s) => s.realised.kind === 'missing'));
+  });
+
+  test('a same-day chain that does not fit (unequal totals) stays computed', () => {
+    // As (b) but Focused receives 19,000: the chain's ends do not agree (20,000 out against 19,000 in), and no other shape
+    // fits, so Contra 5,000 and Value 1,000 stay computed.
+    const r = intoNew([
+      flow(A, NEW, [2023, 11, 10], 'Switch Out', 150, 20000), flow(A, LAST, [2023, 11, 10], 'Switch In', 150, -19000),
+    ]);
+    assert.equal(r.counts.mergerCandidates, 0);
+    assert.deepEqual(lotsOf(r, OLD).map((x) => [x.gap, v(x.realised)]), [[null, 5000]]);
+    assert.deepEqual(lotsOf(r, OLD2).map((x) => [x.gap, v(x.realised)]), [[null, 1000]]);
+  });
+});

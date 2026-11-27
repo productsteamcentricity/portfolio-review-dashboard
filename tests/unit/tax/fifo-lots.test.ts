@@ -727,4 +727,33 @@ describe('round 2c (Gate B of 5c9ae0a F3, F4; MOD-05\'s merger condition) on the
     assert.equal(recs.length, 2);
     assert.deepEqual(recs.map((x) => [x.unreconciledKind, Math.round(x.unclassified.cmv)]).sort(), [['mergerCandidate', 18000], ['mergerCandidate', 6000]].sort());
   });
+
+  test('E1, same-day chains on the holdings side: the end scheme of a chain is not split', () => {
+    // (b) Contra 100 u at 100 and Value 100 u at 40 switched out whole on 10 Nov 2023 into Small Cap (20,000), Small Cap
+    // switched out whole the same day into Focused (20,000 = 133.3333 u at 150). Base Focused 133.3333 u, invested 20,000,
+    // CMV 24,000: unreconciled 'mergerCandidate' (8ed1dc7 too, through its Small Cap to Focused pair). In (a), with Small
+    // Cap switched out to nowhere, no scheme of the chain is held at the as-on date, so the holdings side has nothing to
+    // split. The variant with two pass-throughs, Contra into Small Cap (15,000) and Value into Emerging Smallcap (5,000),
+    // both switched out whole into Focused (20,000) the same day: no older rule fits it (8ed1dc7 split Focused long
+    // 24,000 at 4,000); followed through both, the chain ends in Focused with 20,000 out against 20,000 in: unreconciled.
+    const VALUE = 'Sample Value Fund - Regular Plan - Growth';
+    const FOCUSED = 'Sample Focused Fund - Regular Plan - Growth';
+    const EMERGING = 'Sample Emerging Smallcap Fund - Regular Plan - Growth';
+    const starts = [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(VALUE, [2019, 7, 1], 'Purchase', 40, -4000),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 15000), flow(VALUE, [2023, 11, 10], 'Switch Out', 50, 5000),
+    ];
+    const focused = hold(FOCUSED, 'Focused Fund', 'Equity', 20000 / 150, 20000, 24000);
+    const b = run([focused], [...starts,
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -20000), flow(SMALL, [2023, 11, 10], 'Switch Out', 150, 20000),
+      flow(FOCUSED, [2023, 11, 10], 'Switch In', 150, -20000)]);
+    assert.equal(one(b, FOCUSED).unreconciledKind, 'mergerCandidate');
+    near(one(b, FOCUSED).unclassified.cmv, 24000, 'Focused unclassified');
+    const two = run([focused], [...starts,
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -15000), flow(EMERGING, [2023, 11, 10], 'Switch In', 150, -5000),
+      flow(SMALL, [2023, 11, 10], 'Switch Out', 150, 15000), flow(EMERGING, [2023, 11, 10], 'Switch Out', 150, 5000),
+      flow(FOCUSED, [2023, 11, 10], 'Switch In', 150, -20000)]);
+    assert.equal(one(two, FOCUSED).unreconciledKind, 'mergerCandidate');
+    near(one(two, FOCUSED).unclassified.gain, 4000, 'Focused unclassified gain');
+  });
 });

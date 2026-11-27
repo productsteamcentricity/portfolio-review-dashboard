@@ -42,6 +42,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   even when its units are not known (D1: a lower bound of the units while every unknown trade is a purchase). A test
   pins both holdings of a scheme switched into through two folios (D2). The successor gap ends once the scheme switched
   into is back to 0 units, so a later fresh purchase and sale is computed. No parity figure changed.
+- **Same-day merger chains (E1, the delta review of 8ed1dc7):** the switches of a client-day are followed through any
+  scheme that both receives a switch in and is switched out whole that day. When every starting scheme is emptied (or
+  its units are not known), the chain ends in exactly one scheme, and the starting total out equals that scheme's total
+  in within the amount tolerance, every switch of the chain is a 'merger-candidate' gap and the end scheme's switch ins
+  are lots not known (two schemes into B with B switched out whole the same day; A into B into C). The B1d guard stays
+  for a scheme switched out only in part. An unequal chain stays computed. No parity figure changed.
 - **Parity:** book `tax-r2c`, ledger TX-13, TX-14 and TXR-19 to TXR-23, with its known answers; no other expected figure
   changed.
 - **Tests:** `tests/unit/tax/{realised-irr,fifo-lots}.test.ts`, `tests/integration/realised-gains-reconcile.test.ts`,
