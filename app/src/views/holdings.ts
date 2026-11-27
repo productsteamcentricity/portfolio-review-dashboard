@@ -4,10 +4,13 @@
 //   - the columns of the live page: Instrument Name (always shown), Purchase Date, Distributor, Invested Value, Current
 //     Market Value, Total Gain/Loss (in the review's unit), Allocation %, XIRR %, BMXIRR %, Absolute Return %;
 //   - markers: ‡ where a holding has no invested value (KI-007), † where a subtotal's XIRR or BMXIRR averages only part
-//     of the CMV (KI-006); each marker's note is given once per client, with counts;
+//     of the CMV (KI-006; whenever the figure carries "p", S4 of the follow-up's review); each marker's note is given
+//     once per client, with counts, and the dagger note says what its share is of (the rows marked †, S2);
 //   - the XIRR caption is per client (KI-121): the IRR file's transactions, or the base file's figures CMV-weighted;
 //     when one table mixes the two, each subtotal from the IRR file carries § and the caption says so (MOD-05's review
-//     N2b); a subtotal the IRR file cannot give is a dash, its reason listed under the table, with no CMV fallback;
+//     N2b); a subtotal the IRR file cannot give is a dash, its reason listed under the table, with no CMV fallback; a
+//     line whose holdings have flows in the IRR file under another label is a dash too (NOT COMPARABLE, S1); a line
+//     none of whose holdings has a flow keeps the base file's CMV-weighted figure (the adapter's null);
 //   - the IRR hook (irrHookFrom) is NB-03's adapter (engine/returns/irr-aggregate.ts) over the accepted IRR file's
 //     returns; section 5 and the workbook's client sheets use the same one (the cross-output rule).
 // Sentences never contain an en or em dash (D-029).
@@ -17,6 +20,8 @@ import type { ClientHoldingsSheet, HoldingsSheetRow, IrrAggregateHook } from '..
 import type { CellDisplay } from './format.ts';
 import type { Value } from '../model/value.ts';
 import type { ReviewReturns } from '../engine/returns/review-returns.ts';
+import { STATUS } from '../model/status.ts';
+import { missing } from '../engine/value.ts';
 import { computeHoldingsSheets } from '../engine/aggregate/holdings-sheet.ts';
 import { irrAggregateFor } from '../engine/returns/irr-aggregate.ts';
 import { PARTIAL_MARKER } from '../config/formats.ts';
@@ -45,10 +50,28 @@ const DAGGER = String.fromCharCode(0x2020);
 const DOUBLE_DAGGER = String.fromCharCode(0x2021);
 const SECTION = String.fromCharCode(0x00a7);
 
-/** The holdings sheet's IRR hook over the accepted IRR file's returns, or undefined (no file: the CMV-weighted path). */
+/**
+ * The holdings sheet's IRR hook over the accepted IRR file's returns, or undefined (no file: the CMV-weighted path).
+ * S1 of the follow-up's financial review: the adapter answers null for an asset or product label the IRR file does not
+ * use under the client. When some of the line's holdings nevertheless have flows under that client (filed under another
+ * asset or product label), the base file's figure would stand beside an IRR file that holds those flows, so the line is
+ * a dash, NOT COMPARABLE, with that reason. A line none of whose holdings has a flow keeps the CMV-weighted path.
+ */
 export function irrHookFrom(returns: ReviewReturns | null | undefined): IrrAggregateHook | undefined {
   if (!returns) return undefined;
-  return (clientId, scope) => (clientId === null ? null : irrAggregateFor(returns, clientId, { ...scope, holdingIds: [...scope.holdingIds] }));
+  const family = returns.scopes.find((x) => x.scope.kind === 'family');
+  return (clientId, scope) => {
+    if (clientId === null) return null;
+    const ids = [...scope.holdingIds];
+    const r = irrAggregateFor(returns, clientId, { ...scope, holdingIds: ids });
+    if (r !== null || scope.asset === undefined || !family) return r;
+    const client = family.result.tree.find((n) => n.level === 'client' && n.clientId === clientId);
+    if (!client) return null;
+    const flowing = ids.filter((id) => client.holdingIds.includes(id)).length;
+    if (flowing === 0) return null;
+    const m = missing(STATUS.NOT_COMPARABLE, `${plural(flowing, 'holding', 'holdings')} of ${ids.length} on this line ${flowing === 1 ? 'has' : 'have'} flows in the IRR file under another asset or product label, so the line's XIRR cannot be read from the IRR file, and the base file's figure is not shown in its place.`);
+    return { fund: m, bench: m, basis: 'irr-tree' };
+  };
 }
 
 export function holdingsColumns(unit: Review['displayUnit']): HoldingsColumn[] {
@@ -67,7 +90,8 @@ export function holdingsColumns(unit: Review['displayUnit']): HoldingsColumn[] {
   ];
 }
 
-const short = (v: Value<number> | undefined): boolean => v !== undefined && v.kind === 'value' && v.v < 99.995;
+/* S4: the dagger whenever the figure carries "p" (a share below 100%), so the "p" legend always has its note */
+const short = (v: Value<number> | undefined): boolean => v !== undefined && v.kind === 'value' && v.v < 100;
 
 function rowVM(r: HoldingsSheetRow, unit: Review['displayUnit'], mixed: boolean): HoldingsRowVM {
   const markers: string[] = [];
@@ -103,7 +127,8 @@ function clientVM(s: ClientHoldingsSheet, review: Review, index: number): Holdin
     : fromIrr > 0
       ? 'XIRR and BMXIRR: from the IRR file\'s transactions for this client.'
       : 'XIRR and BMXIRR: the base file\'s figures, weighted by market value.';
-  const f = (v: number): string => (Math.round(v * 100) / 100).toFixed(2);
+  /* a share below 100% never reads 100.00% (S4) */
+  const f = (v: number): string => { const x = (Math.round(v * 100) / 100).toFixed(2); return v < 100 && x === '100.00' ? '99.99' : x; };
   const notes: string[] = [];
   const noInvRows = s.rows.filter((r) => r.level === 'item' && r.invested.kind !== 'value');
   if (noInvRows.length > 0) {
@@ -115,41 +140,46 @@ function clientVM(s: ClientHoldingsSheet, review: Review, index: number): Holdin
   }
   if (s.partial) {
     notes.push(s.partial.byCount
-      ? `${DAGGER} Averages only holdings with a value: ${s.partial.withoutXirr} without XIRR (${f(s.partial.xirrCoveragePct)}% of the holdings covered), ${s.partial.withoutBmXirr} without BMXIRR (${f(s.partial.bmXirrCoveragePct)}%); counted in holdings, as a market value is negative.`
-      : `${DAGGER} Averages only holdings with a value: ${s.partial.withoutXirr} without XIRR (${f(s.partial.xirrCoveragePct)}% of CMV covered), ${s.partial.withoutBmXirr} without BMXIRR (${f(s.partial.bmXirrCoveragePct)}%).`);
+      ? `${DAGGER} The rows marked ${DAGGER} average only the holdings with a value: ${s.partial.withoutXirr} without XIRR (${f(s.partial.xirrCoveragePct)}% of their holdings covered), ${s.partial.withoutBmXirr} without BMXIRR (${f(s.partial.bmXirrCoveragePct)}%); counted in holdings, as a market value is negative.`
+      : `${DAGGER} The rows marked ${DAGGER} average only the holdings with a value: ${s.partial.withoutXirr} without XIRR (${f(s.partial.xirrCoveragePct)}% of their CMV covered), ${s.partial.withoutBmXirr} without BMXIRR (${f(s.partial.bmXirrCoveragePct)}%).`);
   }
-  /* N2: a subtotal the IRR file cannot give is blank with its reason, per row; never the CMV-weighted figure instead */
-  /* A product row that holds exactly its asset row's holdings, with the same blanks, shares the asset row's note. */
-  const why = (v: Value<number>): string | null => (v.kind === 'missing' ? sentence(v.reason) : null);
-  type Blank = { paths: string[]; fx: string | null; bx: string | null; ids: readonly string[] };
+  /* N2: a subtotal the IRR file cannot give is blank with its reason, per row; never the CMV-weighted figure instead.
+     S3 (the follow-up's financial review): a CMV-weighted subtotal that is NOT COMPARABLE (market values of both signs,
+     N3) is listed the same way; its other blanks are counted by the dagger note.
+     A product row that holds exactly its asset row's holdings, with the same blanks, shares the asset row's note. */
+  const why = (v: Value<number>, irr: boolean): string | null =>
+    (v.kind === 'missing' && (irr || v.status === STATUS.NOT_COMPARABLE) ? sentence(v.reason) : null);
+  type Blank = { paths: string[]; fx: string | null; bx: string | null; ids: readonly string[]; irr: boolean };
   const blanks: Blank[] = [];
   let asset: HoldingsSheetRow | null = null;
   let assetBlank: Blank | null = null;
   for (const r of s.rows) {
     if (r.level === 'asset') { asset = r; assetBlank = null; }
-    if (r.xirrSource !== 'irr') continue;
-    const fx = why(r.xirr);
-    const bx = why(r.bmXirr);
+    if (r.level === 'item') continue;
+    const irr = r.xirrSource === 'irr';
+    const fx = why(r.xirr, irr);
+    const bx = why(r.bmXirr, irr);
     if (fx === null && bx === null) continue;
-    const sameAsAsset = r.level === 'product' && assetBlank !== null && assetBlank.fx === fx && assetBlank.bx === bx
+    const sameAsAsset = r.level === 'product' && assetBlank !== null && assetBlank.irr === irr && assetBlank.fx === fx && assetBlank.bx === bx
       && assetBlank.ids.length === r.holdingIds.length && r.holdingIds.every((id) => assetBlank!.ids.includes(id));
     const path = plainText(r.level === 'product' && asset ? `${asset.label} / ${r.label}` : r.label);
     if (sameAsAsset) { assetBlank!.paths.push(path); continue; }
-    const b: Blank = { paths: [path], fx, bx, ids: r.holdingIds };
+    const b: Blank = { paths: [path], fx, bx, ids: r.holdingIds, irr };
     blanks.push(b);
     if (r.level === 'asset') assetBlank = b;
   }
   for (const b of blanks) {
     const path = b.paths.join(' and ');
-    if (b.fx !== null && b.fx === b.bx) notes.push(`${path}: XIRR and BMXIRR from the IRR file are blank. ${b.fx}`);
+    const from = b.irr ? ' from the IRR file' : '';
+    if (b.fx !== null && b.fx === b.bx) notes.push(`${path}: XIRR and BMXIRR${from} are blank. ${b.fx}`);
     else {
-      if (b.fx !== null) notes.push(`${path}: XIRR from the IRR file is blank. ${b.fx}`);
-      if (b.bx !== null) notes.push(`${path}: BMXIRR from the IRR file is blank. ${b.bx}`);
+      if (b.fx !== null) notes.push(`${path}: XIRR${from} is blank. ${b.fx}`);
+      if (b.bx !== null) notes.push(`${path}: BMXIRR${from} is blank. ${b.bx}`);
     }
   }
   const rows = s.rows.map((r) => rowVM(r, review.displayUnit, mixed));
   if (rows.some((r) => Object.values(r.cells).some((c) => c.marker === PARTIAL_MARKER))) {
-    notes.push(`A figure marked ${PARTIAL_MARKER} counts only part of its row's holdings; the notes above give the counts.`);
+    notes.push(`A figure marked ${PARTIAL_MARKER} counts only part of its row's holdings; the ${DAGGER} and ${DOUBLE_DAGGER} notes above give the counts.`);
   }
   return { key: s.clientId ?? `no-client-${index}`, title, caption, rows, notes, sheet: s };
 }

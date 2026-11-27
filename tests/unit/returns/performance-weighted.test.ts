@@ -95,8 +95,8 @@ describe('E-147 on screen and in the sheet', () => {
   });
 
   test('one coverage footnote per figure (every rendering carries it), and the marker\'s legend', () => {
-    assert.equal(w.notes[0], 'Family, 3Y: weighted average return of current holdings. 3Y covers 80% of MF value; 1 fund without a 3Y return excluded. Source: MF Monitor (embedded monthly data), Regular plans, as on 2026-10-31.');
-    assert.equal(w.notes[1], 'Family, 5Y: weighted average return of current holdings. Source: MF Monitor (embedded monthly data), Regular plans, as on 2026-10-31.');
+    assert.equal(w.notes[0], 'Family, 3Y: weighted average return of current holdings. 3Y covers 80% of MF value; 1 fund without a 3Y return excluded. Source: MF Monitor (embedded monthly data), Regular plans, as on 31 Oct 2026.');
+    assert.equal(w.notes[1], 'Family, 5Y: weighted average return of current holdings. Source: MF Monitor (embedded monthly data), Regular plans, as on 31 Oct 2026.');
     assert.equal(w.notes.length, 7);
     assert.equal(w.notes[6], 'A figure marked p covers only part of the mutual-fund value; its note gives the share and what was left out.');
   });
@@ -132,5 +132,32 @@ describe('fundReturnSourcesFrom', () => {
     assert.deepEqual(up.map((s) => s.source), ['uploaded-mf-monitor', 'embedded-mf-monitor']);
     assert.equal(up[0]!.plans.direct, undefined, 'a Regular monitor alone has no Direct table');
     assert.ok(up[0]!.plans.regular!.asOn.kind === 'value' && up[0]!.plans.regular!.asOn.v === OCT31, 'the month-end label (PD-57), not the price day');
+  });
+});
+
+describe('B1 of the follow-up\'s financial review: a Direct-plan holding is read from its Direct plan, never the Regular figure', () => {
+  /* the matcher gives a Direct-plan holding the Regular key (it reads both names alike) */
+  const DIR: Record<string, PerfRecord> = { 'K1 Fund(G)-Direct Plan': rec({ '3Y': 15, '5Y': 11 }) };
+  const SRC2: PerformanceSources = { ...SRC, MF_DIRECT: DIR, asOn: { MF: day(OCT31), MF_DIRECT: day(OCT31) } };
+  const FUNDS2: FundReturnSource[] = [{ source: 'embedded-mf-monitor', plans: { regular: { asOn: day(OCT31), funds: MF }, direct: { asOn: day(OCT31), funds: DIR } } }];
+  const D = [
+    h('K1 Fund - Direct Plan - Growth', 5, 'c1', 'K1 Fund-Reg(G)'),
+    h('K2 Fund - Direct Plan - Growth', 3, 'c1', 'K2 Fund-Reg(G)'), /* no Direct twin in the data */
+    h('K3 Fund', 2, 'c1', 'K3 Fund-Reg(G)'),
+  ];
+  const r = computePerformance(D, SRC2, { fundSources: FUNDS2 }).weighted![0]!;
+
+  test('K1 Direct at its Direct 3Y 15% (never the Regular 14%); K2 Direct with no twin excluded and counted; K3 Regular has no 3Y', () => {
+    const items = r.byTenor['3y'].items;
+    assert.deepEqual(items.map((x) => [x.returnPct, x.excluded]), [[15, null], [null, 'plan-mismatch'], [null, 'no-return']]);
+    const f = r.byTenor['3y'].figure!;
+    assert.ok(Math.abs(pct(f.value) - 15) < 1e-9);
+    assert.ok(f.value.kind === 'value' && Math.abs(f.value.coverage! - 0.5) < 1e-12);
+  });
+
+  test('5Y: (5 x 11 + 2 x 4) / 7 = 9.00% at 70%; the footnote counts the Direct holding with no twin and names the Direct table', () => {
+    assert.ok(Math.abs(pct(r.byTenor['5y'].figure!.value) - 63 / 7) < 1e-9);
+    const w = buildPerformanceVM(computePerformance(D, SRC2, { fundSources: FUNDS2 }), 'regular').weighted!;
+    assert.equal(w.notes[1], 'Family, 5Y: weighted average return of current holdings. 5Y covers 70% of MF value; 1 fund whose plan differs from the account excluded. Source: MF Monitor (embedded monthly data), Regular plans, as on 31 Oct 2026; MF Monitor (embedded monthly data), Direct plans, as on 31 Oct 2026.');
   });
 });

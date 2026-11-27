@@ -369,17 +369,31 @@ function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: Performanc
  * E-147 (D-023 point 3; NB-04's engine/returns/portfolio-returns.ts): the weighted 3Y and 5Y returns of the scope's
  * mutual-fund holdings, the family and then each client in the order of first appearance. A mutual fund is a holding
  * routed to an MF bucket, or one left out as a mutual fund of no known class (it stays in the MF value and is counted as
- * not matched). The fund is the vendor key the matcher resolved in MF_PERF, so its plan is that table's: 'regular'
- * (FundHoldingInput.plan, never a guess). The sources are in the caller's order (the uploaded MF Monitor, then the
- * embedded one).
+ * not matched). The sources are in the caller's order (the uploaded MF Monitor, then the embedded one).
+ *
+ * The plan (B1 of the follow-up's financial review, 27 Nov 2026; CLAUDE.md rule 3: never another plan's figure): the
+ * matcher resolves a mutual fund in MF_PERF and reads Regular and Direct names alike, so a holding of a Direct plan
+ * ("... - Direct Plan - Growth") gets the Regular key. Its plan is then taken from its own name: a Direct-plan holding
+ * is read from the Direct twin of that key (directTwin, the same scheme only, KI-054) in the first Direct table of the
+ * sources, plan 'direct'; with no twin it is excluded and counted ('plan-mismatch': the account's plan has no figure),
+ * never weighted at the Regular figure. A key that itself names a Direct plan (a Direct-only scheme MF_PERF carries) is
+ * that scheme's own figure and is read as it is.
  */
 function weightedRows(routed: readonly Routed[], leftOut: PerformanceResult['leftOut'], holdings: readonly Holding[], sources: readonly FundReturnSource[]): WeightedReturnRow[] {
   const unknownMf = new Set(leftOut.filter((x) => x.reason === 'mf-class-unknown').map((x) => x.holdingId));
   const mf = holdings.filter((h) => unknownMf.has(h.id) || routed.some((x) => x.h === h && x.bucket.endsWith(' MF')));
   if (mf.length === 0) return [];
+  const directFunds = sources.find((x) => x.plans.direct)?.plans.direct?.funds;
   const input = (h: Holding): FundHoldingInput => {
     const key = h.instrument?.vendorKey ?? null;
-    return { holdingId: h.id, schemeName: key, plan: key === null ? null : 'regular', cmvCr: h.cmv };
+    if (key === null) return { holdingId: h.id, schemeName: null, plan: null, cmvCr: h.cmv };
+    if (isDirectKey(h.instrumentName) && !isDirectKey(key)) {
+      const twin = directFunds ? directTwin(key, twinIndexOf(directFunds)) : null;
+      return twin !== null
+        ? { holdingId: h.id, schemeName: twin, plan: 'direct', accountPlan: 'direct', cmvCr: h.cmv }
+        : { holdingId: h.id, schemeName: key, plan: 'regular', accountPlan: 'direct', cmvCr: h.cmv };
+    }
+    return { holdingId: h.id, schemeName: key, plan: 'regular', cmvCr: h.cmv };
   };
   const row = (scope: ScopeKey, clientId: ClientId | null, clientLabel: string | null, members: readonly Holding[]): WeightedReturnRow => {
     const ins = members.map(input);

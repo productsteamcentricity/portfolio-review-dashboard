@@ -22,7 +22,7 @@ import { dayToExcelSerial } from '../../../engine/dates.ts';
 import { STATUS } from '../../../model/status.ts';
 import { WEIGHTED_TENORS } from '../../../engine/returns/performance.ts';
 import { footnoteOf, TENOR_KEY, WEIGHTED_RETURN_LABEL } from '../../../engine/returns/portfolio-returns.ts';
-import { scopeName } from '../../../views/performance.ts';
+import { footnoteText, scopeName } from '../../../views/performance.ts';
 
 const TENORS: readonly Tenor[] = ['1M', '3M', '6M', '1Y', '2Y', '3Y', '5Y', '10Y', 'SI'];
 const PCT: StyleSpec = { fmt: 'pct', align: 'right' };
@@ -125,7 +125,7 @@ function weightedRows(push: (r: Row, style?: StyleSpec) => void, res: Performanc
       if (row.asOn === undefined) row.asOn = dateCell(res1.figure.asOn);
       if (val.kind === 'missing') statuses.push(val.status);
       else if (val.coverage !== undefined && val.coverage < 1) statuses.push(STATUS.PARTIAL);
-      notes.push(foot);
+      notes.push(footnoteText(foot));
     }
     if (statuses.length) row.status = strCell([...new Set(statuses)].join('; '));
     row.note = strCell(notes.join(' '));

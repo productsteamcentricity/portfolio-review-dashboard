@@ -119,9 +119,9 @@ function weighted(members: readonly Holding[], pick: (h: Holding) => Value<numbe
   let avg: Value<number>;
   if (n === 0 || (c === 0 && !negative)) avg = missing(STATUS.NOT_AVAILABLE, `no holding in ${what} has this rate with a market value`, prov);
   else if (posWeight && negWeight) {
-    avg = missing(STATUS.NOT_COMPARABLE, `the holdings in ${what} that have this rate have market values of both signs, so a weighted average by market value has no meaning`, prov);
+    avg = missing(STATUS.NOT_COMPARABLE, `the holdings on this line that have this rate have market values of both signs, so a weighted average by market value has no meaning`, prov);
   } else if (c === 0) {
-    avg = missing(STATUS.NOT_COMPARABLE, `the market values of the holdings in ${what} that have this rate sum to 0, so a weighted average by market value has no meaning`, prov);
+    avg = missing(STATUS.NOT_COMPARABLE, `the market values of the holdings on this line that have this rate sum to 0, so a weighted average by market value has no meaning`, prov);
   } else avg = present(w / c, 'pct', prov, extra);
   return { avg, coverage, with: n, covered: c, byCount: negative };
 }
@@ -177,7 +177,8 @@ export function computeHoldingsSheets(holdings: readonly Holding[], opts: { irr?
       }
       const x = weighted(ms, (h) => h.xirr, METHOD.xirr, rowLabel, f.cmv);
       const b = weighted(ms, (h) => h.bmXirr, METHOD.bmXirr, rowLabel, f.cmv);
-      const short = (v: Value<number>): boolean => v.kind === 'value' && v.v < 99.995;
+      /* S4 of the follow-up's review: any share below 100% (the figure carries "p") is counted in the dagger note */
+      const short = (v: Value<number>): boolean => v.kind === 'value' && v.v < 100;
       if (short(x.coverage) || short(b.coverage)) for (const h of ms) dagger.add(h.id);
       return { ...base, xirr: x.avg, bmXirr: b.avg, xirrCoveragePct: x.coverage, bmXirrCoveragePct: b.coverage, xirrSource: 'cmv-weighted' };
     };

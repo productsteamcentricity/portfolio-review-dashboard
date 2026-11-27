@@ -19,7 +19,7 @@ import type { BucketKey, FundRow, PerfBucket, PerformanceResult, Tenor, Weighted
 import type { CellDisplay } from './format.ts';
 import type { DayNumber, Value } from '../model/value.ts';
 import { displayPct, plainText, plural } from './format.ts';
-import { formatDay } from '../engine/dates.ts';
+import { formatDay, ymdToDay } from '../engine/dates.ts';
 import { STATUS } from '../model/status.ts';
 import { WEIGHTED_TENORS } from '../engine/returns/performance.ts';
 import { footnoteOf, TENOR_KEY, WEIGHTED_RETURN_LABEL } from '../engine/returns/portfolio-returns.ts';
@@ -47,6 +47,15 @@ export type PerformanceVM = {
 
 export const WEIGHTED_TITLE = `${WEIGHTED_RETURN_LABEL.charAt(0).toUpperCase()}${WEIGHTED_RETURN_LABEL.slice(1)} (mutual funds)`;
 
+/** NB-04's coverage footnote with its ISO dates ("as on 2026-10-31") in the screen's format ("as on 31 Oct 2026"), so
+ * one date reads one way across section 5 and the sheet (S5 of the follow-up's financial review). */
+export function footnoteText(text: string): string {
+  return plainText(text.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (m, y: string, mo: string, d: string) => {
+    const day = ymdToDay(Number(y), Number(mo), Number(d));
+    return day === null ? m : formatDay(day);
+  }));
+}
+
 /** The scope's name: "Family", the analyst's client label, else the file's, else "Client not given" (screen and sheet). */
 export function scopeName(r: WeightedReturnRow, labels: Readonly<Record<string, string>>): string {
   if (r.clientId === null) return 'Family';
@@ -65,7 +74,7 @@ function weightedVM(rows: readonly WeightedReturnRow[] | null | undefined, label
         notes.push(`${name}, ${TENOR_KEY[t]}: no source of fund returns, so no figure.`);
         return displayPct(missing(STATUS.NOT_AVAILABLE, 'no source'));
       }
-      notes.push(`${name}, ${plainText(foot)}`);
+      notes.push(`${name}, ${footnoteText(foot)}`);
       return displayPct(res.figure.value);
     });
     return { name, cells };

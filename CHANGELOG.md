@@ -22,10 +22,15 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - With an accepted IRR file, a subtotal's XIRR and BMXIRR come from it, through NB-03's `irrAggregateFor`
     (`views/holdings.ts` `irrHookFrom`). The same hook serves the workbook's client sheets, so screen and file agree.
   - A subtotal the IRR file cannot give is a dash, with its reason listed under the table ("XIRR covers 1 of 2 holdings
-    on this line: ..."). There is no market-value fallback.
+    on this line: ...").
+  - A line whose holdings have flows under another asset or product label is a dash too, NOT COMPARABLE.
+  - A line none of whose holdings has a flow keeps the base file's CMV-weighted figure, as NB-03's adapter defines. The
+    live page leaves such a line blank; this is recorded as an owner question.
   - A table that mixes the two bases marks each IRR subtotal with § and says so in its caption.
-- **The dagger note** counts the holdings of the rows marked †, so a Grand Total taken from the IRR file no longer reads
-  "0.00% of CMV covered" (N2a).
+- **The dagger note** counts the holdings of the rows marked † and says so ("of their CMV"), so a Grand Total taken from
+  the IRR file no longer reads "0.00% of CMV covered" (N2a).
+  - The dagger goes with every figure that carries "p", and a share below 100% never reads 100.00%.
+  - A CMV-weighted subtotal that is NOT COMPARABLE has its reason listed under the table.
 - **Negative market values** (N3):
   - The coverage is counted in holdings.
   - A subtotal whose holdings with the rate have market values of both signs is blank, NOT COMPARABLE: a CMV of
@@ -35,9 +40,11 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **E-147, the weighted average return of current holdings (mutual funds), 3Y and 5Y** (D-023 point 3; NB-04's
   `portfolio-returns.ts`):
   - Computed for the family and for each client.
+  - A holding of a Direct plan is read from its Direct twin. With no twin it is excluded and counted, never weighted at
+    the Regular plan's figure (the matcher reads both names alike).
   - The sources, in order: the uploaded MF Monitor, then the embedded `MF_PERF` and `MF_PERF_DIRECT`.
-  - Section 5 shows it as a table with one coverage footnote per figure. A figure with no source is the dash with "no
-    source".
+  - Section 5 shows it as a table with one coverage footnote per figure, its dates in the screen's format. A figure with
+    no source is the dash with "no source".
   - The Performance sheet ends with one Weighted row per scope.
 - **The Direct list's single-plan ETF rows** show the Regular block's figures under that block's date, on screen and in
   the sheet (N8).

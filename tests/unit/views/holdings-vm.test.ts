@@ -15,8 +15,9 @@ import { buildOverviewWorkbook, workbookInputFrom } from '../../../app/src/expor
 import { buildOverviewVM } from '../../../app/src/views/overview.ts';
 import { sampleReview } from '../../helpers/sample-review.ts';
 import { fixtureById, nodeWiring, reviewOf } from '../../helpers/node-wiring.ts';
-import { irrFixtures } from '../../fixtures/make-irr-files.ts';
+import { irrFixtures, standardSheets, toWorkbook } from '../../fixtures/make-irr-files.ts';
 import { readXlsx, sheetByName, sheetTable } from '../../helpers/xlsx-read.ts';
+import { loadSheetJS } from '../../helpers/sheetjs.ts';
 
 const SECTION = String.fromCharCode(0x00a7);
 const DAGGER = String.fromCharCode(0x2020);
@@ -89,7 +90,7 @@ describe('markers and notes', () => {
     /* N5: the legacy's share of CMV (07_engine.js:1284): Bluechip 0.625 and Corporate Bond 0.896 of 1.973 Cr. = 77.09% */
     assert.deepEqual(a.notes, [
       `${DOUBLE_DAGGER} Invested value, gain/loss and absolute return count only the holdings that have an invested value: 2 holdings without one (77.09% of CMV).`,
-      'A figure marked p counts only part of its row\'s holdings; the notes above give the counts.',
+      'A figure marked p counts only part of its row\'s holdings; the † and ‡ notes above give the counts.',
     ]);
   });
 
@@ -103,9 +104,9 @@ describe('markers and notes', () => {
     assert.doesNotMatch(a.rows[3]!.cells.xirr.text, /[0-9]/, 'the holding without XIRR shows the missing display');
     assert.ok(a.rows[3]!.markers.length === 0, 'a holding never carries the dagger');
     assert.equal(a.notes.length, 2);
-    assert.ok(a.notes[0]!.startsWith(`${DAGGER} Averages only holdings with a value: 1 without XIRR (`));
+    assert.ok(a.notes[0]!.startsWith(`${DAGGER} The rows marked ${DAGGER} average only the holdings with a value: 1 without XIRR (`));
     assert.match(a.notes[0]!, /0 without BMXIRR \(100\.00%\)\.$/);
-    assert.equal(a.notes[1], 'A figure marked p counts only part of its row\'s holdings; the notes above give the counts.', 'N5: the p legend');
+    assert.equal(a.notes[1], 'A figure marked p counts only part of its row\'s holdings; the † and ‡ notes above give the counts.', 'N5: the p legend');
   });
 
   test('no sentence of the view contains an en or em dash (D-029)', () => {
@@ -158,5 +159,63 @@ describe('the IRR hook (MOD-05\'s review N2): syn-standard with the irr-standard
     assert.equal(eq[head.indexOf('XIRR Status')], STATUS.PARTIAL);
     assert.equal(eq[head.indexOf('XIRR Basis')], 'IRR file');
     assert.ok(t.some((r) => r[0] === 'Note' && r[1] === a!.notes[0]));
+  });
+});
+
+describe('the follow-up\'s financial review (27 Nov 2026): S1 to S4', () => {
+  const w = nodeWiring();
+  const run = reviewOf(w, fixtureById('syn-standard'));
+  const review = run.review;
+
+  test('S1: a line whose holdings have flows under another label in the IRR file is a dash with that reason, never the base file\'s figure', () => {
+    const sheets = standardSheets();
+    for (const r of sheets[0]!.rows) if (r[0] === 'Sample Client B') r[4] = 'Equity'; /* B's Hybrid fund filed under Equity */
+    const loaded = w.loadIrrFile!(toWorkbook(loadSheetJS() as never, sheets), 'irr.xlsx');
+    if (!('irr' in loaded)) throw new Error(loaded.kind);
+    const b = buildHoldingsVM(review, { irr: irrHookFrom(returnsForReview(review, loaded.irr)) }).clients[1]!;
+    const hybrid = b.sheet.rows.find((r) => r.level === 'asset' && r.label === 'Hybrid')!;
+    assert.equal(hybrid.xirrSource, 'irr');
+    assert.ok(hybrid.xirr.kind === 'missing' && hybrid.xirr.status === STATUS.NOT_COMPARABLE);
+    assert.ok(b.notes.includes('Hybrid and Hybrid / Mutual Funds: XIRR and BMXIRR from the IRR file are blank. 1 holding of 1 on this line has flows in the IRR file under another asset or product label, so the line\'s XIRR cannot be read from the IRR file, and the base file\'s figure is not shown in its place.'), JSON.stringify(b.notes));
+    /* a line none of whose holdings has a flow keeps the base file's figure (the adapter's null) */
+    assert.equal(b.sheet.rows.find((r) => r.level === 'asset' && r.label === 'Commodity')!.xirrSource, 'cmv-weighted');
+  });
+
+  test('S3: a CMV-weighted subtotal of market values of both signs is blank with its reason listed, product sharing its asset\'s note', () => {
+    const holdings = review.holdings.map((h) => (h.instrumentName === 'Sample Flexi Cap Fund - Regular Plan - Growth' && h.cmv.kind === 'value'
+      ? { ...h, cmv: { ...h.cmv, v: -h.cmv.v } } : h));
+    const a = buildHoldingsVM({ ...review, holdings } as Review).clients.find((c) => c.title === 'Sample Client A')!;
+    const eq = a.sheet.rows.find((r) => r.level === 'asset' && r.label === 'Equity')!;
+    assert.ok(eq.xirr.kind === 'missing' && eq.xirr.status === STATUS.NOT_COMPARABLE);
+    const n = a.notes.filter((x) => /market values of both signs/.test(x));
+    assert.ok(n.length >= 1, JSON.stringify(a.notes));
+    assert.equal(n[0], 'Equity and Equity / Mutual Funds: XIRR and BMXIRR are blank. The holdings on this line that have this rate have market values of both signs, so a weighted average by market value has no meaning.');
+  });
+
+  test('S2 and S4: a residual holding without XIRR gives the dagger whenever the figure carries p, and the share never reads 100.00%', () => {
+    /* Bluechip keeps its XIRR; the Flexi Cap's market value is cut to a residual 0.0001 Cr with no XIRR */
+    const gap = missing(STATUS.NOT_AVAILABLE, 'not in the file');
+    const holdings = review.holdings.map((h) => (h.instrumentName === 'Sample Flexi Cap Fund - Regular Plan - Growth' && h.cmv.kind === 'value'
+      ? { ...h, xirr: gap, cmv: { ...h.cmv, v: 0.0001 } } : h));
+    const a = buildHoldingsVM({ ...review, holdings } as Review).clients.find((c) => c.title === 'Sample Client A')!;
+    const grand = a.rows.at(-1)!;
+    assert.equal(grand.cells.xirr.marker, 'p');
+    assert.ok(grand.markers.includes(DAGGER), 'p and the dagger go together');
+    assert.match(a.notes[0]!, /^† The rows marked † average only the holdings with a value: 1 without XIRR \(99\.99% of their CMV covered\), 0 without BMXIRR \(100\.00%\)\.$/);
+  });
+
+  test('a product row is merged into its asset row\'s note only when it holds the same holdings (N-2: the guard is tested)', () => {
+    /* client A: Equity holds Mutual Funds (Bluechip, Flexi Cap made negative: both signs) and Shares (the bond moved
+       there): Equity and Equity / Mutual Funds have the same reason but not the same holdings, so they are two notes */
+    const holdings = review.holdings.map((h) => {
+      if (h.cmv.kind !== 'value' || h.clientLabel !== 'Sample Client A') return h;
+      if (h.instrumentName === 'Sample Flexi Cap Fund - Regular Plan - Growth') return { ...h, cmv: { ...h.cmv, v: -h.cmv.v } };
+      if (h.instrumentName === 'Sample Corporate Bond Fund - Regular Plan - Growth') return { ...h, assetClass: 'Equity', product: 'Shares' };
+      return h;
+    });
+    const a = buildHoldingsVM({ ...review, holdings } as Review).clients.find((c) => c.title === 'Sample Client A')!;
+    assert.equal(a.sheet.rows.find((r) => r.level === 'asset' && r.label === 'Equity')!.holdingIds.length, 3);
+    const n = a.notes.filter((x) => /market values of both signs/.test(x));
+    assert.deepEqual(n.map((x) => x.split(':')[0]), ['Equity', 'Equity / Mutual Funds', 'Grand Total']);
   });
 });
