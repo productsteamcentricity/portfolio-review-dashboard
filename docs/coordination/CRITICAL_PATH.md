@@ -17,6 +17,12 @@ M2.1a S1 merge -> M3b performance -> M4b scopes and overlap -> M5b rules and sna
 M3a -> M7a engine; M7a and M7b cost/IPS/CVS/MFA feed M8; M6, M10, M11, M12, M13, M14 run off the path
 ```
 
+**Status, 27 Nov 2026 (registers-6) [V git log --first-parent origin/main]:** test build 1 is complete on `/next/`: M2.1
+(wired, PR #54), M3a (wired, PR #51) and M3b (views PR #59; data engines PR #61, not wired) are merged, and the side-by-side
+kit compares the two builds on fund matching and every performance bucket (PRs #60, #62, #63). The owner's acceptance
+(Gate E) is pending. Next on this path: the M3b follow-up, the conditions set at the review of PR #61 before the direct-equity CAGR (E-148) is wired: the per-stock provenance date, a figure date that does not depend on row order, wording, and the owner's answers on month labels against true days and M7a round 2 (tax). The table below is
+the draft's of 24 Nov.
+
 | Step | Gate to pass | Owner | Earliest | Blocked by |
 |---|---|---|---|---|
 | 1. M2.1 S1 merged | Gate B GO bound to `aa9c943` [V ARC-02-state.md:187-189]; Gates C, D next; owner demo and "publish" (Gate E) before the merge | NB-02, ARC-02, MOD-03, owner | target Fri 11 Dec [I from the M2 sprint plan] | OPS-01 merge identity; owner "publish" |
