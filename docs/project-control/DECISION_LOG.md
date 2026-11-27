@@ -1039,8 +1039,8 @@ Answers and instructions the owner gave in chat that have no PD number. Recorded
 | 26 Nov 2026 | The platform's Product Name values | "Treat Global Exposure as both Offshore Funds and Gift City Funds"; "Rupee bonds and NCDs (Recommended)"; P2P Lending: "Debt; but it won't be there in any of the portfolios" | Global Exposure: GIFT City funds when the name says GIFT or IFSC, else Offshore funds. "Bonds": rupee bonds and NCDs on the domestic listed bond rows; "US-dollar bonds (through LRS)" only when the product or name says USD, US or LRS. P2P Lending: Debt. Unlisted-Direct: unlisted shares; AIF-Listed: a Listed AIF (D-043). **Changes** the 25 Nov answer on bond labels (above). Live: LP-16b (PR #50); new build: M2.2 |
 | 26 Nov 2026 | Model of the next Moderator | "Yes, next chat on Fable" | The next Moderator chat (CHAT-015, MOD-05) runs on the Fable model; MOD-04 stayed on its model until the handover |
 | 26 Nov 2026 | Standby Moderator | "Yes, open it now (Recommended)" | CHAT-015 (MOD-05) opened on standby, to take over only on the active Moderator's handover message |
-| 27 Nov 2026 | Successor chats for the Guardian and NB-02 | "Open both" | CHAT-016 (ARC-04, successor of CHAT-008) and CHAT-017 (NB-05, successor of CHAT-009) opened on 27 Nov 2026; both took over that day |
 | 26 Nov 2026 | Moderator change | "Handover to the new moderator" | CHAT-013 (MOD-04) handed over to CHAT-015 (MOD-05) on 26 Nov 2026, about 20:40 IST; CHAT-013 is a historical record that only forwards notes |
+| 27 Nov 2026 | Successor chats for the Guardian and NB-02 | "Open both" | CHAT-016 (ARC-04, successor of CHAT-008) and CHAT-017 (NB-05, successor of CHAT-009) opened on 27 Nov 2026; both took over that day |
 
 ### 2.5 Moderator decisions with a financial meaning (27 Nov 2026)
 

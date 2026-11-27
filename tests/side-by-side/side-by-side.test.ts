@@ -165,7 +165,7 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     }
     assert.ok(checked.regular >= 40 && checked.direct >= 40, `only ${checked.regular} Regular and ${checked.direct} Direct figures checked`);
     // the gold rows of the Direct list (SB-40, SB-41): the live page shows the holding's own scheme's Direct plan, the
-    // new build nothing, while the live page's Regular list picks the ETF (SB-40, SB-41: accepted differences, OD-5 option B)
+    // new build nothing, while the live page's Regular list picks the ETF (SB-40, SB-41: accepted differences, KI-036 ties left unmatched)
     for (const [name, own] of [['axis gold -reg(g)', 'Axis Gold Fund(G)-Direct Plan'], ['kotak gold (g)', 'Kotak Gold Fund(G)-Direct Plan']] as const) {
       const key = `direct | commodity mf | fund | ${name}`;
       assert.equal(rowOf(legacy, key).ref, own, `legacy Direct record of ${name}`);
