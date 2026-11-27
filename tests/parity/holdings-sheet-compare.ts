@@ -8,7 +8,8 @@ import type { ClientHoldingsSheet } from '../../app/src/engine/aggregate/holding
 
 export type HsKind = 'client-order' | 'client-missing' | 'row-sequence' | 'row';
 export type HsDiff = { kind: HsKind; fixture: string; client: string; label: string; field: string; legacy: unknown; new: unknown };
-export type HsLedgerEntry = { id: string; kind: HsKind | '*'; field: string[] | '*'; fixtures: string[]; class: string; reference: string; description: string };
+/** `labels`, when given, narrows an entry to those rows ("level:label"), as the performance ledger's entries are. */
+export type HsLedgerEntry = { id: string; kind: HsKind | '*'; field: string[] | '*'; fixtures: string[]; labels?: string[]; class: string; reference: string; description: string };
 export type HsLedger = { schema: string; entries: HsLedgerEntry[] };
 
 const DASH = String.fromCharCode(0x2014);
@@ -52,5 +53,6 @@ export function compareSheets(fixture: string, legacy: ReturnType<typeof legacyS
 }
 
 export function entriesFor(d: HsDiff, ledger: HsLedger): HsLedgerEntry[] {
-  return ledger.entries.filter((e) => (e.kind === '*' || e.kind === d.kind) && (e.field === '*' || e.field.includes(d.field)) && e.fixtures.includes(d.fixture));
+  return ledger.entries.filter((e) => (e.kind === '*' || e.kind === d.kind) && (e.field === '*' || e.field.includes(d.field)) && e.fixtures.includes(d.fixture)
+    && (e.labels === undefined || e.labels.includes(d.label)));
 }

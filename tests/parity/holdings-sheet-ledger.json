@@ -29,6 +29,12 @@
       "fixtures": ["syn-merged-folios", "family-a-merged-folios", "syn-invalid-text", "family-a-invalid-text"],
       "class": "correction", "reference": "OD-18; KI-113; BF-17",
       "description": "Gain is CMV minus invested value over the holdings that have an invested value (OD-18); the legacy summed the file's own gain or loss column, which merged folios and unreadable cells make partial."
+    },
+    {
+      "id": "HS-05", "kind": "row", "field": ["xirr", "bmXirr"],
+      "fixtures": ["syn-negative-cmv", "family-a-negative-cmv"], "labels": ["asset:Equity", "grand:Grand Total"],
+      "class": "correction", "reference": "MOD-05's financial review of M3b, N3 (27 Nov 2026); KI-006",
+      "description": "A subtotal whose holdings with an XIRR (or BMXIRR) have market values of both signs is blank, NOT COMPARABLE: a CMV-weighted average with weights of both signs can fall outside every member's rate (CMVs of 1.0000001 and -1 gave -19,99,99,989.88%). The legacy printed the weighted figure. A subtotal whose holdings with the rate are of one sign keeps its average, as the legacy (a single holding of negative value gives its own rate)."
     }
   ]
 }

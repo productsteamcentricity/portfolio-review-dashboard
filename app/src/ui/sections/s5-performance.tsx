@@ -1,5 +1,6 @@
 // Section 5, the performance tables (U-41; M3b, test build 1): one Regular/Direct switch for the section (OD-10), one
-// table per bucket captioned with its plan and data date (KI-083, KI-034), rendered from views/performance.ts.
+// table per bucket captioned with its plan and data date (KI-083, KI-034), rendered from views/performance.ts; then the
+// weighted average return of current holdings (E-147), with one coverage footnote per figure.
 
 import { useMemo, useState } from 'preact/hooks';
 import type { AppState } from '../store.ts';
@@ -11,7 +12,8 @@ const PLAN_LABEL: Readonly<Record<PerformancePlan, string>> = { regular: 'Regula
 
 export function S5Performance({ state }: { state: AppState }) {
   const [plan, setPlan] = useState<PerformancePlan>('regular');
-  const vm = useMemo(() => buildPerformanceVM(state.performance, plan), [state.performance, plan]);
+  const labels = state.review?.labels.clients;
+  const vm = useMemo(() => buildPerformanceVM(state.performance, plan, { clientLabels: labels }), [state.performance, plan, labels]);
   if (state.review === null) return null;
   return (
     <>
@@ -53,6 +55,25 @@ export function S5Performance({ state }: { state: AppState }) {
           {b.notes.length ? <ul class="plain-list notes">{b.notes.map((n) => <li key={n}>{n}</li>)}</ul> : null}
         </Group>
       ))}
+      {vm.weighted ? (
+        <Group id="group-weighted-returns" title={vm.weighted.title}>
+          <div class="table-scroll" tabIndex={0} role="region" aria-label={vm.weighted.title}>
+            <table class="data weighted-returns">
+              <caption>{vm.weighted.title}</caption>
+              <thead><tr><th scope="col">Scope</th>{vm.weighted.cols.map((c) => <th scope="col" key={c} class="num">{c}</th>)}</tr></thead>
+              <tbody>
+                {vm.weighted.rows.map((r) => (
+                  <tr key={r.name} class={r.name === 'Family' ? 'row-total' : 'row-item'}>
+                    <th scope="row">{r.name}</th>
+                    {r.cells.map((d, i) => <td key={vm.weighted!.cols[i]} class={d.negative ? 'num neg' : 'num'}>{d.text}{d.marker ? <sup>{d.marker}</sup> : null}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ul class="plain-list notes">{vm.weighted.notes.map((n) => <li key={n}>{n}</li>)}</ul>
+        </Group>
+      ) : null}
     </>
   );
 }

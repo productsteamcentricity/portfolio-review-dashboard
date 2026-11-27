@@ -83,14 +83,16 @@ function weighted(members: readonly Holding[], pick: (h: Holding) => Value<numbe
   let n = 0;
   let priced = 0;
   let negative = false;
-  let negativeWeight = false;
+  let posWeight = false;
+  let negWeight = false;
   for (const h of members) {
     if (h.cmv.kind !== 'value') continue;
     priced++;
     if (h.cmv.v < 0) negative = true;
     const x = pick(h);
     if (x.kind !== 'value') continue;
-    if (h.cmv.v < 0) negativeWeight = true;
+    if (h.cmv.v > 0) posWeight = true;
+    if (h.cmv.v < 0) negWeight = true;
     w += x.v * h.cmv.v;
     c += h.cmv.v;
     n++;
@@ -98,10 +100,10 @@ function weighted(members: readonly Holding[], pick: (h: Holding) => Value<numbe
   const prov = { sources: sourcesOf(members), method };
   /* N3 (financial review of 27 Nov 2026): with a negative market value among the members, a CMV share can pass 100% or
      go below 0, so it no longer says how much of the row the average covers. The coverage is then counted in holdings
-     (holdings with the rate over holdings with a market value). An average with a negative weight, or whose weights do
-     not sum to a positive number, is not given (NOT COMPARABLE): it can fall outside every member's rate and has no
-     meaning as a portfolio rate (CMVs of 1.0000001 and -1 gave -19,99,99,989.88%; weights summing to a positive number
-     do not prevent that, so any negative weight is refused). */
+     (holdings with the rate over holdings with a market value). Weights of one sign give a true average, inside the
+     members' rates (a single holding of negative value gives its own rate, as the live page does). Weights of both signs
+     can put it outside every member's rate, whatever their sum (CMVs of 1.0000001 and -1 gave -19,99,99,989.88%), so
+     such an average is not given (NOT COMPARABLE); nor is one whose weights sum to 0. */
   const coverage = negative
     ? (priced > 0
       ? present(n / priced * 100, 'pct', { sources: sourcesOf(members), method: METHOD.coverageByCount })
@@ -116,10 +118,10 @@ function weighted(members: readonly Holding[], pick: (h: Holding) => Value<numbe
   const extra = share !== undefined && share >= 0 && share < 1 ? { coverage: share } : undefined;
   let avg: Value<number>;
   if (n === 0 || (c === 0 && !negative)) avg = missing(STATUS.NOT_AVAILABLE, `no holding in ${what} has this rate with a market value`, prov);
-  else if (negativeWeight) {
-    avg = missing(STATUS.NOT_COMPARABLE, `a holding in ${what} that has this rate has a negative market value, so a weighted average by market value has no meaning`, prov);
-  } else if (c <= 0) {
-    avg = missing(STATUS.NOT_COMPARABLE, `the holdings in ${what} that have this rate have no positive market value, so a weighted average by market value has no meaning`, prov);
+  else if (posWeight && negWeight) {
+    avg = missing(STATUS.NOT_COMPARABLE, `the holdings in ${what} that have this rate have market values of both signs, so a weighted average by market value has no meaning`, prov);
+  } else if (c === 0) {
+    avg = missing(STATUS.NOT_COMPARABLE, `the market values of the holdings in ${what} that have this rate sum to 0, so a weighted average by market value has no meaning`, prov);
   } else avg = present(w / c, 'pct', prov, extra);
   return { avg, coverage, with: n, covered: c, byCount: negative };
 }

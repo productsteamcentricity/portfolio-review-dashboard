@@ -143,7 +143,14 @@ describe('N3 (financial review of 27 Nov 2026): negative market values', () => {
     const eq = s.rows.find((r) => r.level === 'asset')!;
     assert.equal(eq.xirr.kind, 'missing');
     assert.ok(eq.xirr.kind === 'missing' && eq.xirr.status === STATUS.NOT_COMPARABLE);
-    assert.match(eq.xirr.kind === 'missing' ? eq.xirr.reason : '', /negative market value/);
+    assert.match(eq.xirr.kind === 'missing' ? eq.xirr.reason : '', /market values of both signs/);
+  });
+
+  test('weights of one sign keep the average: -2 at 10% and -3 at 20% give (-20 - 60) / -5 = 16%, inside the members\' rates', () => {
+    const s = computeHoldingsSheets(withCmv(-2, -3, 20))[0]!;
+    const eq = s.rows.find((r) => r.level === 'asset')!;
+    assert.ok(Math.abs(v(eq.xirr)! - 16) < 1e-9);
+    assert.equal(eq.xirr.kind === 'value' ? eq.xirr.coverage : 'x', undefined, 'every holding has the rate: no partial marker');
   });
 
   test('positive market values only: the figure and its CMV coverage are as before (10% at 10 / 11)', () => {

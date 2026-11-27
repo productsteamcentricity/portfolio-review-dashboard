@@ -24,7 +24,7 @@ import { deckFileName, workbookFileName } from '../views/labels.ts';
 import type { ReturnsVM } from '../views/returns-vm.ts';
 import { loadIrrFile, type LoadedIrrFile } from '../ingest/load-irr.ts';
 import { readBlock } from '../data/refdata.ts';
-import { performanceSourcesFrom, type MonitorUploads } from '../data/performance-sources.ts';
+import { fundReturnSourcesFrom, performanceSourcesFrom, type MonitorUploads } from '../data/performance-sources.ts';
 import { computePerformance, type PerformanceResult } from '../engine/returns/performance.ts';
 import type { Holding } from '../model/holding.ts';
 import { buildMatchContext, matchLoaded, type MatchContext, type MatchReport } from '../engine/match/resolve-holdings.ts';
@@ -93,6 +93,6 @@ export function browserWiring(build: BuildStamp): Wiring {
     matchHoldings: (loaded, overrides) => matchLoaded(loaded, pageMatchContext(overrides)),
     loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, XLSX as unknown as MonitorSheetJS, regular ?? readBlock('MF_PERF') ?? undefined),
     downloadIrrTemplate: () => downloadBytes(buildIrrTemplate(), IRR_TEMPLATE_FILE_NAME, XLSX_MIME), // PLAN-05 (NB-03): no client data, no audit entry
-    performance: (holdings, uploads) => computePerformance(holdings, performanceSourcesFrom(uploads)),
+    performance: (holdings, uploads) => computePerformance(holdings, performanceSourcesFrom(uploads), { fundSources: fundReturnSourcesFrom(uploads) }),
   };
 }

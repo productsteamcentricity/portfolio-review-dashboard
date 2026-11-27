@@ -30,7 +30,7 @@ import { refdataBlock } from './legacy-engine.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { REPO } from './sheetjs.ts';
-import { performanceSourcesFrom } from '../../app/src/data/performance-sources.ts';
+import { fundReturnSourcesFrom, performanceSourcesFrom } from '../../app/src/data/performance-sources.ts';
 import { computePerformance } from '../../app/src/engine/returns/performance.ts';
 
 /** The page's refdata blocks from the committed files (data/refdata/<NAME>.json), as data/refdata.ts reads them. */
@@ -97,7 +97,7 @@ export function nodeWiring(build: BuildStamp = NODE_BUILD, nowIso: string = NODE
     // M3a returns (NB-03): the transactions (IRR) file reader, as the browser wiring has it.
     loadIrrFile: (bytes, fileName) => loadIrrFile(bytes, fileName, xlsx, { now }),
     matchHoldings: (loaded, overrides) => matchLoaded(loaded, committedMatchContext(overrides)),
-    performance: (holdings, uploads) => computePerformance(holdings, performanceSourcesFrom(uploads, FILE_BLOCK_TEXT)),
+    performance: (holdings, uploads) => computePerformance(holdings, performanceSourcesFrom(uploads, FILE_BLOCK_TEXT), { fundSources: fundReturnSourcesFrom(uploads, FILE_BLOCK_TEXT) }),
     loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, xlsx as unknown as MonitorSheetJS, regular ?? (refdataBlock('MF_PERF') as never)),
   };
 }

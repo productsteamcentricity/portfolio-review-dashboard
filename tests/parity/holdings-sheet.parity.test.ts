@@ -56,6 +56,7 @@ describe(`holding sheets parity (TZ=${process.env.TZ ?? 'system'})`, () => {
 
   test('most fixtures agree exactly', () => {
     const exact = results.filter((r) => r.diffs.length === 0).length;
-    assert.ok(exact >= results.length - 16, `${exact} of ${results.length} fixtures agree exactly`);
+    /* 16, plus the two negative-CMV fixtures of HS-05 (N3) */
+    assert.ok(exact >= results.length - 18, `${exact} of ${results.length} fixtures agree exactly`);
   });
 });
