@@ -34,7 +34,8 @@
 // instrument the oversell is this holding's share (F3, OD-15); a sale row with an amount of 0 is named in the reason even
 // when the split stands (F4); a holding whose history holds the switch in of a merger candidate (`mergerCandidates`: the
 // day's switch outs that empty one scheme into exactly one other scheme on the same day for the same sum, one row or
-// several, financial review V1, V2) is unreconciled 'mergerCandidate', never split, since a scheme merger is not a sale
+// several, financial review V1, V2; or several emptied schemes into one, Gate B of 4001f8f B1) is unreconciled
+// 'mergerCandidate', never split, since a scheme merger is not a sale
 // (s.47(xviii)) and cost and date carry over.
 // One correction (OD-15, KI-069): when one IRR instrument joins more than one holding (the same scheme with two
 // distributors) and the flows carry no folio that tells them apart, the instrument's lots are apportioned by units (by
@@ -264,26 +265,32 @@ function consume(lots: Array<{ u: number }>, need: number): void {
 
 /**
  * The switch rows of the merger candidates. Each switch out maps to the instrument key (client and normalised name, as
- * `derivedInstrumentKey`) of its partner scheme B, each switch in to the key of its scheme A; `pairs` counts the
- * candidates (one per client, scheme A and day).
+ * `derivedInstrumentKey`) of its partner scheme B; each switch in maps to the keys of its source schemes (one, or
+ * several for a many-into-one merger: Gate B of 4001f8f, B1). `pairs` counts the source schemes of the candidates (one
+ * per client, scheme A and day).
  */
-export type MergerCandidates = { outs: ReadonlyMap<Transaction, string>; ins: ReadonlyMap<Transaction, string>; pairs: number };
+export type MergerCandidates = { outs: ReadonlyMap<Transaction, string>; ins: ReadonlyMap<Transaction, readonly string[]>; pairs: number };
 
 /**
  * The switches that look like a scheme merger. A scheme merger written as Switch Out / Switch In cannot be told from an
  * ordinary switch in the IRR file, and a merger is not a sale (s.47(xviii)): cost and date carry over. Within one client
  * and one day, the day's switch outs are summed per scheme, and so are the day's switch ins (a merger may be written as
- * several rows, one per folio or distributor: round 2c financial review V1). Scheme A's switch outs that day are a
- * candidate with scheme B's switch ins when:
- *   - A is left with no units after all of that day's switch outs of A, and the last of them is A's last trade: the units
- *     A's trades hold come to 0 within UNITS_TOLERANCE. When A's units are not known (a trade of A without a price or
- *     with an amount of 0), the last-trade test alone applies: A's side is then a gap anyway, and B is protected (V2);
- *   - B's switch ins that day sum to A's switch outs, within the reader's amount tolerance (Rs 1 or 0.01%, the larger;
- *     ingest/capital-gains.ts `amountTolerance`);
- *   - exactly one partner scheme both ways: B is the only other scheme whose switch-in sum matches A's switch-out sum,
- *     and A the only other scheme whose switch-out sum matches B's switch-in sum. Several possible partners, a partial
- *     switch, unequal sums or A kept: an ordinary switch, as before.
- * All of A's switch outs that day are the candidate's, and all of B's switch ins that day.
+ * several rows, one per folio or distributor: round 2c financial review V1). A scheme A switched out that day is
+ * "emptied" when the last of the day's switch outs of A is A's last trade and:
+ *   - A's units come to 0 within UNITS_TOLERANCE after it; or
+ *   - A's units are not known (a trade of A without a price or with an amount of 0; V2), unless A's priced trades prove
+ *     it kept units: while every trade of A whose units are not known is a purchase, the priced trades give a lower
+ *     bound of A's units, and a bound above UNITS_TOLERANCE after the day's switch outs means a partial switch, which
+ *     stays an ordinary switch (delta review D1).
+ * Two shapes are candidates (Gate B of 4001f8f, B1, keeps the first and adds the second):
+ *   - one into one: A emptied; B's switch ins that day sum to A's switch outs, within the reader's amount tolerance
+ *     (Rs 1 or 0.01%, the larger; ingest/capital-gains.ts `amountTolerance`); exactly one partner scheme both ways (B
+ *     the only other scheme whose switch-in sum matches A's, A the only other scheme whose switch-out sum matches B's);
+ *   - many into one: no one-into-one candidate that day; every scheme switched out that day is emptied (two or more);
+ *     every switch in that day goes to one scheme B, not one of them; and the day's total out equals the total in,
+ *     within the amount tolerance.
+ * Several possible partners, a partial switch, unequal sums or a scheme kept: an ordinary switch, as before. All of the
+ * sources' switch outs that day are the candidate's, and all of B's switch ins that day.
  * `trades`: the trades (direction in or out) in day order, file order within a day, already limited to the as-on date.
  */
 export function mergerCandidates(trades: readonly Transaction[]): MergerCandidates {
@@ -292,6 +299,8 @@ export function mergerCandidates(trades: readonly Transaction[]): MergerCandidat
   trades.forEach((t, i) => last.set(keyOfTrade(t), i));
   /** Units of each instrument after the trades so far; null once a trade's units are not known. */
   const held = new Map<string, number | null>();
+  /** D1: a lower bound of the units from the priced trades, while every trade whose units are not known is an 'in'. */
+  const low = new Map<string, number | null>();
   /** Per client and day, per scheme: the switch rows, their amount sums and, for the outs, A's state after the last. */
   type Side = { rows: Transaction[]; sum: number };
   type Day = { out: Map<string, Side & { emptied: boolean }>; in: Map<string, Side> };
@@ -299,18 +308,23 @@ export function mergerCandidates(trades: readonly Transaction[]): MergerCandidat
   trades.forEach((t, i) => {
     const k = keyOfTrade(t);
     const before = held.has(k) ? held.get(k)! : 0;
+    const lowBefore = low.has(k) ? low.get(k)! : 0;
     const px = priceOf(t);
     const amt = Math.abs(t.amountRupees);
     const u = px !== null && amt > EPS ? amt / px : null;
-    const after = before === null || u === null ? null : t.direction === 'in' ? before + u : before - u;
+    const isIn = t.direction === 'in';
+    const after = before === null || u === null ? null : isIn ? before + u : before - u;
     held.set(k, after);
-    const isOut = t.direction === 'out' && t.kind === 'switch-out';
-    const isIn = t.direction === 'in' && t.kind === 'switch-in';
-    if (!isOut && !isIn) return;
+    // An unknown purchase only adds units, so the bound holds; an unknown sale loses it.
+    const lowAfter = lowBefore === null ? null : u !== null ? (isIn ? lowBefore + u : lowBefore - u) : isIn ? lowBefore : null;
+    low.set(k, lowAfter);
+    const isSwitchOut = t.direction === 'out' && t.kind === 'switch-out';
+    const isSwitchIn = isIn && t.kind === 'switch-in';
+    if (!isSwitchOut && !isSwitchIn) return;
     const dk = keyOf([t.clientId, String(t.day)]);
     const d = days.get(dk) ?? { out: new Map(), in: new Map() };
     days.set(dk, d);
-    if (isIn) {
+    if (isSwitchIn) {
       const s = d.in.get(k) ?? { rows: [], sum: 0 };
       s.rows.push(t); s.sum += amt; d.in.set(k, s);
       return;
@@ -318,14 +332,17 @@ export function mergerCandidates(trades: readonly Transaction[]): MergerCandidat
     const s = d.out.get(k) ?? { rows: [], sum: 0, emptied: false };
     s.rows.push(t); s.sum += amt;
     // Read after each switch out; the last one of the day decides (it must be A's last trade).
-    s.emptied = last.get(k) === i && (after === null || Math.abs(after) <= UNITS_TOLERANCE);
+    const empty = after !== null ? Math.abs(after) <= UNITS_TOLERANCE : !(lowAfter !== null && lowAfter > UNITS_TOLERANCE);
+    s.emptied = last.get(k) === i && empty;
     d.out.set(k, s);
   });
   const outs = new Map<Transaction, string>();
-  const ins = new Map<Transaction, string>();
+  const ins = new Map<Transaction, readonly string[]>();
   let pairs = 0;
   const same = (x: number, y: number): boolean => Math.abs(x - y) <= amountTolerance(Math.max(x, y));
   for (const d of days.values()) {
+    let found = false;
+    // One into one.
     for (const [a, o] of d.out) {
       if (!o.emptied || !(o.sum > EPS)) continue;
       const partners = [...d.in].filter(([b, s]) => b !== a && same(o.sum, s.sum));
@@ -334,9 +351,20 @@ export function mergerCandidates(trades: readonly Transaction[]): MergerCandidat
       const rivals = [...d.out].filter(([c, x]) => c !== b && same(x.sum, s.sum));
       if (rivals.length !== 1) continue;
       for (const r of o.rows) outs.set(r, b);
-      for (const r of s.rows) ins.set(r, a);
+      for (const r of s.rows) ins.set(r, [a]);
       pairs++;
+      found = true;
     }
+    // Many into one (Gate B of 4001f8f, B1).
+    if (found || d.in.size !== 1 || d.out.size < 2) continue;
+    const [b, s] = [...d.in][0]!;
+    if (d.out.has(b) || ![...d.out.values()].every((o) => o.emptied && o.sum > EPS)) continue;
+    const total = [...d.out.values()].reduce((x, o) => x + o.sum, 0);
+    if (!same(total, s.sum)) continue;
+    const sources = [...d.out.keys()];
+    for (const o of d.out.values()) for (const r of o.rows) outs.set(r, b);
+    for (const r of s.rows) ins.set(r, sources);
+    pairs += sources.length;
   }
   return { outs, ins, pairs };
 }

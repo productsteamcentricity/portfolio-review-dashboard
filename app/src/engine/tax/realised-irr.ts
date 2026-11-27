@@ -202,10 +202,11 @@ export type DerivedLot = RealisedGain & {
   financialYearLabel: string;
   /**
    * Round 2c: on a 'merger-candidate' gap lot, its role (the candidate's switch out, or a sale of the scheme switched
-   * into, on or after the candidate's switch in), the candidate's day, and the partner scheme's instrument key (for a
-   * switch out, scheme B; for a successor, scheme A: financial review V3); null otherwise.
+   * into, on or after the candidate's switch in, until its units come back to 0), the candidate's day, and the partner
+   * schemes' instrument keys (for a switch out, scheme B; for a successor, its source scheme A, or every source of a
+   * many-into-one merger: financial review V3, Gate B of 4001f8f B1); null otherwise.
    */
-  mergerCandidate: { role: 'switch-out' | 'successor'; day: DayNumber; partnerKey: string } | null;
+  mergerCandidate: { role: 'switch-out' | 'successor'; day: DayNumber; partnerKeys: readonly string[] } | null;
   /**
    * Round 2c: on a 'merger-candidate' gap lot, the lots the ordinary-switch rule gives for the row (as before round 2c).
    * Never counted in a figure: reconcile.ts uses them only where the statement shows the merger. Null otherwise.
@@ -396,15 +397,19 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
     let afterTransferIn = false;
     // Delta review N-3, F2 (TR-21): the dates of the instrument's bonus rows, each standing for a record date.
     const bonusDays = trades.filter((t) => t.direction === 'in' && BONUS_KINDS.has(t.kind)).map((t) => t.day);
-    // Round 2c: the day of a merger candidate's switch in to this instrument and its scheme A's key (financial review V3),
-    // once it has entered (null before).
-    let successor: { day: DayNumber; partnerKey: string } | null = null;
+    // Round 2c: the day of a merger candidate's switch in to this instrument and its source schemes' keys (financial
+    // review V3; Gate B of 4001f8f B1), from the switch in until the instrument's units come back to 0 (null otherwise).
+    let successor: { day: DayNumber; partnerKeys: readonly string[] } | null = null;
+    /** Units of the instrument after the trades so far; null once a trade's units are not known (Gate B of 4001f8f). */
+    let heldUnits: number | null = 0;
     for (const t of trades) {
       const amt = Math.abs(t.amountRupees);
       const px = tradePriceOf(t);
+      const rowUnits = px !== null && amt > EPS ? amt / px : null;
+      heldUnits = heldUnits === null || rowUnits === null ? null : t.direction === 'in' ? heldUnits + rowUnits : heldUnits - rowUnits;
       if (t.direction === 'in') {
         const from = merger.ins.get(t);
-        if (from !== undefined) successor = { day: t.day, partnerKey: from };
+        if (from !== undefined) successor = { day: t.day, partnerKeys: from };
         // B1, B2 (Gate B of aa67a45; Q-49): a transfer in, stock in, demerger in or bonus row is a lot not known, never
         // costed at its amount or dated by the row, until the owner rules how the IRR export writes such rows.
         const why = TRANSFER_IN_KINDS.has(t.kind) ? 'transfer' as const : BONUS_KINDS.has(t.kind) ? 'bonus' as const : px === null ? 'price' as const : null;
@@ -525,7 +530,7 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
       // into after the candidate's switch in, is one 'merger-candidate' gap lot. The ledger above ran as before, so the
       // lots it gave for the row (the ordinary-switch reading) are kept on the gap lot, never counted (`asSwitch`).
       const out = merger.outs.get(t);
-      const marker = out !== undefined ? { role: 'switch-out' as const, day: t.day, partnerKey: out }
+      const marker = out !== undefined ? { role: 'switch-out' as const, day: t.day, partnerKeys: [out] }
         : successor !== null ? { role: 'successor' as const, ...successor } : null;
       if (marker !== null) {
         const asSwitch = lots.splice(start);
@@ -533,6 +538,9 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
         const g = base({ units: px !== null && amt > EPS ? amt / px : null, sale: gapSale, buy: null, cost: null, gap: 'merger-candidate' });
         lots.push({ ...g, mergerCandidate: marker, asSwitch });
       }
+      // Gate B of 4001f8f: once the instrument's units are known to be back to 0, the merged units have all been sold, so
+      // a later fresh purchase and sale is an ordinary trade again.
+      if (successor !== null && heldUnits !== null && Math.abs(heldUnits) <= UNITS_TOLERANCE) successor = null;
     }
   }
 
