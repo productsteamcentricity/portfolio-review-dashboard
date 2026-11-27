@@ -9,7 +9,10 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   inventory,03-architecture,07-implementation-roadmap,observation-rule-bank,open-questions}.md`): the older "exact
   anniversaries" sentence replaced by the rule on main: no look-ahead, the latest price on or before the as-on date, dated
   by its own day (Moderator decision of 26 Nov 2026 under PD-67; CHAT-011's finding).
-- **`docs/project-control/DECISION_LOG.md`**: PD-68, the owner's delegation of 28 Nov 2026 (its decisions listed by MOD-05).
+- **`docs/project-control/DECISION_LOG.md`**: PD-68, the owner's delegation of 28 Nov 2026, with the owner's words; the
+  owner's six answers of 28 Nov 2026 in section 2.4 (the five alias lines, the returns note, a new fund's return as
+  absolute, no price-day line, month labels, the base-file XIRR for a line without transactions); the four unmatched
+  names marked answered in section 2.5. **`docs/DECISIONS.md`**: a dated note under D-023 (its own text unchanged).
 - **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,MODULE_DEPENDENCY_MAP,CRITICAL_PATH}.md`**: PRs #65 to #67 and
   what comes next (CHAT-016's note N4).
 - **Compactions** recounted (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).

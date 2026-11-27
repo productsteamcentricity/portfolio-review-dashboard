@@ -12,7 +12,7 @@ PDs, 26 have an answer on record (PD-16 only in part: item 4 is open) and 40 sta
 PD-30; the owner's decisions of 26 and 27 Nov without a PD number added to section 2.4; the counts on the line above were not
 recounted in registers-5. **Owner of this log from now on:** MOD-05.
 **Updated:** 28 Nov 2026 (IST), drafted by EX-03 (CHAT-014) for MOD-05 (CHAT-015) on branch `docs/registers-8` (base
-`main` 0d38184). PD-68 added (the owner's delegation of 28 Nov 2026); its decisions are listed by MOD-05 before the merge.
+`main` 0d38184). PD-68 added (the owner's delegation of 28 Nov 2026); the owner's six answers of 28 Nov 2026 added to section 2.4.
 **Updated:** 27 Nov 2026 (IST), drafted by EX-03 (CHAT-014) for MOD-05 (CHAT-015) on branch `docs/registers-6` (base
 `main` 6973101). Section 2.4's row on the stricter matching corrected to the measured result; section 2.5 added (the
 Moderator's decisions of 27 Nov 2026 with a financial meaning). The counts on the first "Updated" line were not recounted.
@@ -317,7 +317,7 @@ that builds it (EX-01 or NB-01).
 | PD-65 | The owner's operating charter: autonomous full-stack development, parallel execution and project continuity | **GIVEN 24 Nov 2026** (owner instruction): the Moderator is project manager, principal architect, lead full-stack developer and integration owner; routine technical decisions are the Moderator's; the owner is asked only for business and financial logic, scope, data integrity, security and privacy, irreversible actions, spend and sprint output approvals; three-compaction succession for every chat, the Moderator too; `docs/coordination/` | none |
 | PD-66 | Delegation while the owner was away | **GIVEN 25 Nov 2026, 00:57 IST** (owner instruction, about 12 hours, ended about 13:00 IST): the Moderator approves decisions on the owner's behalf ("approve all the decisions on my behalf"), recorded as "MOD-04 under PD-66", within fixed limits | none (ended) |
 | PD-67 | Delegation while the owner was away, again | **GIVEN 26 Nov 2026, about 19:30 IST** ("Yes, as on 25 Nov (Recommended)"; about 15 hours, ended about 10:30 IST on 27 Nov): as PD-66, recorded as "MOD-04 under delegation (PD-67)" and, after the Moderator change, "MOD-05 under delegation (PD-67)" | none (ended) |
-| PD-68 | Delegation while the owner was away, 28 Nov 2026 | **GIVEN 28 Nov 2026, about 02:05 IST** (until about 11:00 IST): the Moderator takes every decision needed to keep the new build moving and may open successor chats; nothing changes on the live page; anything that needs the owner's own typed word waits; recorded as "MOD-05 under delegation (PD-68)" | none (ends about 11:00 IST, 28 Nov) |
+| PD-68 | Delegation while the owner was away, 28 Nov 2026 | **GIVEN 28 Nov 2026, about 02:05 IST** (until about 11:00 IST): the Moderator (MOD-05) takes every decision needed to keep the new build moving and may open successor chats itself; unchanged limits (nothing prohibited, no Office runs, no account settings, the live page not changed, Gate E the owner's); recorded as "MOD-05 under delegation (PD-68)" | none (ends about 11:00 IST, 28 Nov) |
 
 ### 2.3 Each decision explained
 
@@ -1003,15 +1003,13 @@ PD-50 to PD-56: the plain-language sections are still to be written; their table
 
 #### PD-68. The delegation of 28 Nov 2026
 
-**GIVEN 28 Nov 2026, about 02:05 IST** [UNCERTAIN: the owner's exact words, to be quoted by MOD-05 from its record]: while
-away until about 11:00 IST, the owner told the Moderator to take every decision needed so that work on the new build
-does not stop.
-- **Scope recorded with it.** The Moderator decides in the owner's place for the new build and may open successor chats
-  itself. Nothing changes on the live page. Anything that needs the owner's own typed word (a download, an Office run)
-  waits. A default is never presented as the owner's ruling. New-build merges to `/next/` continue after Gates A to D.
-- **Decisions taken under it:** [GAP: to be listed by MOD-05 from its record before this log merges].
+**GIVEN 28 Nov 2026, about 02:05 IST** (one message typed in the Moderator's chat): "I will not be available for the next 8-9 hours; work and coding on the new build shouldn't stop in the meantime; I want moderator to handle all the decisions in that time and choose the most logical and best course of action keeping the end goal and user and use case in mind." "I want moderator to start new chat in case context is full for some chats in the meantime as well"
+- **Effect.** The Moderator (MOD-05) takes every decision needed to keep the new build moving until about 11:00 IST on
+  28 Nov 2026 and may open successor chats itself. Unchanged limits: nothing prohibited, no Office runs, no account
+  settings, the live page not changed, Gate E the owner's.
+- **Decisions taken under it:** listed in the records update that follows the window.
 
-### 2.4 Owner decisions without a PD number (17 to 27 Nov 2026)
+### 2.4 Owner decisions without a PD number (17 to 28 Nov 2026)
 
 Answers and instructions the owner gave in chat that have no PD number. Recorded from the Moderator's owner-decision record (MOD-03, then MOD-04). Quotes are the owner's words or the answer card chosen.
 
@@ -1054,6 +1052,12 @@ Answers and instructions the owner gave in chat that have no PD number. Recorded
 | 26 Nov 2026 | Standby Moderator | "Yes, open it now (Recommended)" | CHAT-015 (MOD-05) opened on standby, to take over only on the active Moderator's handover message |
 | 26 Nov 2026 | Moderator change | "Handover to the new moderator" | CHAT-013 (MOD-04) handed over to CHAT-015 (MOD-05) on 26 Nov 2026, about 20:40 IST; CHAT-013 is a historical record that only forwards notes |
 | 27 Nov 2026 | Successor chats for the Guardian and NB-02 | "Open both" | CHAT-016 (ARC-04, successor of CHAT-008) and CHAT-017 (NB-05, successor of CHAT-009) opened on 27 Nov 2026; both took over that day |
+| 28 Nov 2026 (about 02:25 IST) | Five alias lines (18 to 22) for the four unmatched funds | "Approve all five (Recommended)" | Approved for the new build's alias file with a test per line; the live page is not touched |
+| 28 Nov 2026 (about 02:25 IST) | The returns note | "Yes, add it (Recommended)" | "Returns up to one year are absolute; returns over one year are annualised." under every performance table and in the workbook's Read Me, new build |
+| 28 Nov 2026 (about 02:25 IST) | A fund under one year old | "Absolute, and say so (Recommended)" | Its since-inception return is shown as an absolute return, marked (KI-302), new build; financial review required |
+| 28 Nov 2026 (about 02:25 IST) | A price-day line under the Direct tables | "No, one label only" | No change; the single "31 Oct 2026" label stays (PD-57, PD-58). Not the Moderator's recommendation |
+| 28 Nov 2026 (about 02:25 IST) | Review date against data dates | "As month labels (Recommended)" | A data point labelled with the review month's end counts as on or before the review date; the no-look-ahead rule compares month labels |
+| 28 Nov 2026 (about 02:25 IST) | A holdings line with no transactions in a loaded transactions file | "Base-file XIRR, marked (Recommended)" | As built |
 
 ### 2.5 Moderator decisions with a financial meaning (27 Nov 2026)
 
@@ -1066,7 +1070,7 @@ means or when one is shown. They are the Moderator's, not the owner's; where the
 | 27 Nov 2026 | Test build 1 has no price-file reader, and the direct-equity CAGR (E-148) is not wired, so no such figure is shown. When it is wired without a price source it shows a dash with its reason. The reader follows when the owner has supplied the price file's headings | Moderator MOD-05, routine, PD-65 | listed for the owner on 27 Nov 2026; not yet answered (the price file's headings) | PROJECT_STATE (test build 1) |
 | 27 Nov 2026 | The direct-equity CAGR figure is dated by the latest end day among the primary source's stocks, with the other end days listed in the footnote, and never depends on the order of the rows; in place before E-148 is wired | Moderator MOD-05, routine, PD-65 | - | `app/src/engine/returns/stock-cagr.ts` (PR #61). Not yet in the code: on `main` the figure takes the end day of the first stock in the primary source (a condition before E-148 is wired; the data-platform chat's follow-up) |
 | 27 Nov 2026 | `irrAggregateFor` returns an XIRR for a holdings line only when the transactions cover exactly that line's holdings; a transactions file with no since-inception sheet (its fund sheet of another period) is refused, so it gives no XIRR | Moderator MOD-05, routine, PD-65 | listed for the owner on 27 Nov 2026; not yet answered (whether a partly covered line may show a labelled partial XIRR) | `app/src/engine/returns/irr-aggregate.ts`, `app/src/ingest/irr-file.ts` (PR #57) |
-| 27 Nov 2026 | The side-by-side kit's class "known gap": a difference where the live page is right and the new build is not, not yet ruled on by the owner; never called accepted | Moderator MOD-05, routine, PD-65 | listed for the owner on 27 Nov 2026; not yet answered (the four unmatched names) | `tests/side-by-side/` (PR #60) |
+| 27 Nov 2026 | The side-by-side kit's class "known gap": a difference where the live page is right and the new build is not, not yet ruled on by the owner; never called accepted | Moderator MOD-05, routine, PD-65 | answered by the owner on 28 Nov 2026 (section 2.4): the four unmatched names (aliases approved) | `tests/side-by-side/` (PR #60) |
 
 ## 3. Recommendations not yet approved
 
@@ -1108,4 +1112,4 @@ These are Claude's recommendations. None is a decision until the named approver 
 | 27 Nov 2026 | MOD-05 (registers-5, drafted by EX-03) | PD-67 added with its section; PD-30 publishes of KI-032 (#47), KI-301 (#53) and LP-16b (#50); section 2.4 rows of 26 and 27 Nov (PD-16 item 5 method, KI-032 rule and its keep, the IRR template, the final base file template, the platform product names, the Moderator model, standby and change) |
 | 27 Nov 2026 | MOD-05 (registers-6, drafted by EX-03) | Section 2.4: the stricter-matching row corrected to the measured result (20 of 22 recovered, 2 lost, 4 named and unmatched: a known gap, owner asked 27 Nov 2026); section 2.5 added: the Moderator's decisions of 27 Nov 2026 with a financial meaning |
 | 27 Nov 2026 | MOD-05 (registers-7, drafted by EX-03) | Section 2.4: the owner's "Open both" (CHAT-016 ARC-04 and CHAT-017 NB-05) |
-| 28 Nov 2026 | MOD-05 (registers-8, drafted by EX-03) | PD-68 added with its section (the owner's delegation of 28 Nov 2026; its decisions to be listed by MOD-05) |
+| 28 Nov 2026 | MOD-05 (registers-8, drafted by EX-03) | PD-68 added with its section and the owner's words (the delegation of 28 Nov 2026); section 2.4: the owner's six answers of 28 Nov 2026; section 2.5: the four unmatched names marked answered |

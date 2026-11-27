@@ -152,8 +152,7 @@
   not yet wired. The owner's acceptance (Gate E) is pending. The side-by-side kit compares the live page and the new
   build on fund matching and every performance bucket (PRs #60, #62, #63). Since then (27 Nov 2026): the M3b follow-up
   merged (PR #65, main `04bf700`: the IRR file's XIRRs in the holdings tables and the client sheets, the weighted 3Y
-  and 5Y display) and the M7a tax engine round 2 (PR #67, main `0d38184`, not wired). Next on the new build: the
-  conditions set at the review of PR #61 before the direct-equity CAGR (E-148) is wired (the per-stock provenance date, a figure date that does not depend on row order, wording, and the owner's answers on month labels against true days), then its wiring; the tax engine's wiring. Not
+  and 5Y display) and the M7a tax engine round 2 (PR #67, main `0d38184`, not wired). Next on the new build: the holdings fix round (the reviewer's condition on the IRR rows), the owner-approved alias lines, the base-file template download, the returns note and the new-fund return, the direct-equity engine's conditions (not wired), the tax engine's next round and its review seam (not wired); then look-through and overlap (M4). Not
   in test build 1: a price-file reader (built after it, once the owner supplies the file layout).
 - **Repository.** `C:\dev\portfolio-review`; `origin` =
   https://github.com/productsteamcentricity/portfolio-review-dashboard (**public**, D-008).
