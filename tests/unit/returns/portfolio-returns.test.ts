@@ -477,3 +477,21 @@ describe('financial review of the E-148 round: finding 2 for E-147', () => {
     assert.throws(() => weightedFundReturn(book, [embedded, { ...embedded }], '3y', 'family'), /two sources of one kind \("embedded-mf-monitor"\)/);
   });
 });
+
+describe('ARC-03 Gate B of the E-148 round: T2 (footnote groups by source AND plan)', () => {
+  const SEP30 = ymdToDay(2026, 9, 30)!;
+  const fig = weightedFundReturn(book, [embedded], '3y', 'family').figure!;
+  const reg = { source: 'uploaded-mf-monitor' as const, plan: 'regular' as const, asOn: day(OCT) };
+  const dir = { source: 'uploaded-mf-monitor' as const, plan: 'direct' as const, asOn: day(SEP30) };
+  test('a Regular and a Direct table of one source with different dates are two entries, in either order', () => {
+    const tail = (t: string) => t.slice(t.indexOf('Source: '));
+    assert.equal(tail(coverageFootnote(fig, [reg, dir], 0, {})), 'Source: uploaded MF Monitor, Regular plans, as on 2026-10-31; uploaded MF Monitor, Direct plans, as on 2026-09-30.');
+    assert.equal(tail(coverageFootnote(fig, [dir, reg], 0, {})), 'Source: uploaded MF Monitor, Direct plans, as on 2026-09-30; uploaded MF Monitor, Regular plans, as on 2026-10-31.');
+  });
+  test('the same through the engine: an upload with both plans at different dates', () => {
+    const twin = 'Sample Twin Fund';
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { [twin]: r3(12) }), direct: table(SEP30, { [twin]: r3(13) }) } };
+    const r = weightedFundReturn([fh('a', twin, 1, 'regular'), fh('b', twin, 1, 'direct')], [up], '3y', 'family');
+    assert.match(footnoteOf(r)!, /Source: uploaded MF Monitor, Regular plans, as on 2026-10-31; uploaded MF Monitor, Direct plans, as on 2026-09-30\.$/);
+  });
+});

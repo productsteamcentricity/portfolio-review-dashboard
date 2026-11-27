@@ -97,7 +97,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **The Direct block's keys are normalised once per block** (`directTwinIndex`), not once per fund; the same twins
   for every `MF_PERF` key (N11).
 
-### Changed (new build, M3b: E-148 conditions before wiring; not wired into the page yet, `/next/` unchanged)
+### Changed (new build, M3b: E-148 conditions before wiring; E-148 not wired; `/next/` changes: E-147, on the page since PR #65, gets the F7 wording and the fixed part order)
 - **`app/src/engine/returns/stock-cagr.ts`** (ARC-03's Gate B of the M3b engines, F2, F3, F7; MOD-05's rulings of
   27 Nov 2026): a present stock CAGR's provenance carries the end day it used (F2); the figure carries the latest end
   day among the primary source's stocks, and every other end day used is listed with its count, ascending, in `used`
