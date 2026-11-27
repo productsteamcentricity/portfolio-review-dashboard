@@ -549,7 +549,7 @@
       "new": "Diversified Funds",
       "class": "correction",
       "reference": "E-31; brief 7.3 (ELSS, Dividend Yield, Contra and Value under Diversified); Q-45 (proceeding on the brief's default); PF-03",
-      "description": "An ELSS fund: the live page gives it its own group \"ELSS\"; the new build puts it under \"Diversified Funds\" as the brief orders. The figures are the same."
+      "description": "An ELSS fund: the live page gives it its own group \"ELSS\"; the new build puts it under \"Diversified Funds\" as the brief orders. The figures are the same. The group order follows the Q-45 default, not yet confirmed by the owner."
     },
     {
       "id": "SB-45",
