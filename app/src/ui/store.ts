@@ -81,6 +81,8 @@ export type Store = {
   subscribe(fn: () => void): () => void;
   exportDeck(): Promise<void>;
   exportWorkbook(): Promise<void>;
+  /** PLAN-05 (NB-03): saves the blank transactions (IRR) file template, at any stage; nothing when the wiring has none. */
+  downloadIrrTemplate(): void;
 };
 
 /** The label of an uploaded logo restored from the browser's storage. */
@@ -357,6 +359,7 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
     },
     exportDeck: () => runExport('pptx'),
     exportWorkbook: () => runExport('xlsx'),
+    downloadIrrTemplate: () => deps.wiring.downloadIrrTemplate?.(), // PLAN-05 (NB-03)
   };
 }
 
