@@ -4,6 +4,25 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Fixed (new build, M3b after the follow-up's Gate B: the IRR file's lines, and the shares and dates in the notes; `/next/` only, no change to `index.html`)
+- **A line whose holdings have flows in the IRR file never shows the base file's figure** (Gate B of the M3b follow-up,
+  condition M1; `views/holdings.ts` `irrHookFrom`):
+  - An instrument whose benchmark flows give no rate is left out of the IRR tree (OD-4). Its line then had no node, and
+    section 5 and the client sheets showed the base file's market-value-weighted XIRR for it beside rows from the IRR
+    file.
+  - Such a line is now a dash, NOT COMPARABLE, with its reason under the table ("1 holding of 1 on this line has flows
+    in the IRR file that are left out of the IRR tree for an invalid benchmark, ..."). Whether a holding has flows is
+    read from the file's reconciliation, not from the tree.
+  - A line none of whose holdings has a flow keeps the base file's figure, as before (an owner question is open).
+- **The ‡ note's share of CMV** (note L1): a holding that has a value never reads "0.00% of CMV"; it reads "under 0.01%
+  of CMV". When a market value of the client is negative, or the CMV is 0, no share is given and the note says why.
+- **The Performance sheet's Weighted rows** (note L2): As On holds a date only when the 3Y and the 5Y figure share it.
+  When they come from tables of different dates, the cell is blank and the Note says so before the two footnotes.
+- **A PMS, AIF or SIF holding whose key has no record in that bucket's data** is "not matched to reference data", as a
+  mutual fund already is, never a matched fund "with no returns" (Gate B of M3b, note N2).
+- The rows of the weighted-returns table and the notes lists are keyed by position, so two clients with one name cannot
+  share a row (note L5).
+
 ### Changed (records, registers-6, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/project-control/DECISION_LOG.md`**: the stricter-matching row of 26 Nov corrected to the measured result (the
   follow-up recovered 20 of option B's 22 lost names and lost 2 others; 4 correct names unmatched, named: a known gap,
