@@ -239,6 +239,16 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     assert.ok(Object.values(dy.returns).every((v) => v === null));
     assert.ok(next.notes.some((n) => /no Direct twin.*HDFC Dividend Yield Fund-Reg\(G\)/.test(n)), 'new: noted as having no Direct twin');
     assert.equal(rowOf(legacy, 'direct | equity mf | fund | hdfc dividend yield fund-reg(g)'), undefined);
+    // the matching probe's synthetic Gold spellings (SB-13, SB-14) under their real names: both builds match the Gold fund
+    // itself, with the same rows and figures in both lists (no difference)
+    for (const [real, key, direct] of [['Axis Gold Fund-Reg(G)', 'Axis Gold Fund-Reg(G)', 'Axis Gold Fund(G)-Direct Plan'], ['Kotak Gold Fund(G)', 'Kotak Gold Fund(G)', 'Kotak Gold Fund(G)-Direct Plan']] as const) {
+      for (const s of [legacy, next]) {
+        assert.equal(s.holdings.find((h) => h.name === real)!.matched, key, `${s.engine} ${real}`);
+        assert.equal(rowOf(s, `regular | commodity mf | fund | ${real.toLowerCase()}`)!.ref, key, `${s.engine} ${real} regular`);
+        assert.equal(rowOf(s, `direct | commodity mf | fund | ${real.toLowerCase()}`)!.ref, direct, `${s.engine} ${real} direct`);
+      }
+      assert.ok(!result.diffs.some((d) => d.key.includes(real.toLowerCase())), `${real}: parity expected`);
+    }
     assert.equal(result.unclassified, 0);
   });
 

@@ -49,7 +49,8 @@ export const MATCH_BOOK: ReadonlyArray<BookRow & { isin?: string }> = [
   row({ client: 'Sample Client M', name: 'SBI Nifty 1D Rate Liquid ETF(IDCW)', cat: 'ETF', asset: 'Debt', amc: 'SBI', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-5003' }),
   // amfi / other-answer / fixed: an AMFI-style name the live page sends to the index fund, the new build to the ETF
   row({ client: 'Sample Client M', name: 'Tata Nifty 50 Exchange Traded Fund', cat: 'ETF', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-5004' }),
-  // self / to-null / neither: the live page picks the sibling Gold ETF for a Gold fund, the new build leaves it unmatched
+  // self / to-null / neither: the live page picks the sibling Gold ETF for a Gold fund, the new build leaves it unmatched;
+  // these two are synthetic spellings (the vendor's name without the word "Fund", the ledger's measured query)
   row({ client: 'Sample Client M', name: 'Axis Gold -Reg(G)', cat: 'Gold FoF', asset: 'Commodity', amc: '', product: 'Mutual Funds', dist: 'Other Distributor', folio: 'SYN-5005' }),
   row({ client: 'Sample Client M', name: 'Kotak Gold (G)', cat: 'Gold FoF', asset: 'Commodity', amc: '', product: 'Mutual Funds', dist: 'Other Distributor', folio: 'SYN-5006' }),
   // amfi / to-null / regressed: the live page's answer is right, the stricter regime leaves it unmatched
@@ -90,6 +91,11 @@ export const PERF_BOOK: readonly BookRow[] = [
   row({ client: 'Sample Client P', name: 'Singularity Equity Fund I', cat: 'Small Cap', asset: 'Hybrid', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7010', units: null }),
   row({ client: 'Sample Client P', name: 'Kotak Iconic Fund II', cat: 'Category III', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7011', units: null }),
   row({ client: 'Sample Client P', name: 'Axis Value Fund-Reg(G)', cat: 'Value Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7007' }),
+  // the matching probe's two synthetic Gold spellings (SB-13, SB-14) under their real (vendor) names: both builds match
+  // the Gold fund itself, in both lists (kept out of the matching probe, where the live page's Direct list would show the
+  // synthetic and the real holding as one row of the same Direct record)
+  row({ client: 'Sample Client P', name: 'Axis Gold Fund-Reg(G)', cat: 'Gold FoF', asset: 'Commodity', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7012' }),
+  row({ client: 'Sample Client P', name: 'Kotak Gold Fund(G)', cat: 'Gold FoF', asset: 'Commodity', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7013' }),
   row({ client: 'Sample Client P', name: 'Parag Parikh Flexi Cap Fund-Reg(G)', cat: 'Flexi Cap Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7008' }),
 ];
 

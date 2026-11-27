@@ -146,8 +146,8 @@
       "legacy": { "byField": { "matched": "Axis Gold ETF", "universe": "MF" } },
       "new": null,
       "class": "accepted-difference",
-      "reference": "E-13; KI-036; OD-5 option B, the owner's \"Go ahead with the Stricter regime\" (26 Nov 2026); tests/parity/matching-corrections-ledger.json stage 1 to 4, MF_PERF self, to-null, neither",
-      "description": "The live page matches the Gold fund to the Gold ETF of the same house (a sibling, not the holding). The new build finds no single answer and leaves it unmatched. Neither shows the holding's own fund, which is in MF_PERF (Axis Gold Fund-Reg(G)); the new build shows no figures instead of the ETF's (whose returns also leave out the fund of fund's own cost). An alias candidate for the owner (PD-36)."
+      "reference": "E-13; KI-036; OD-5 option B, the owner's \"Go ahead with the Stricter regime\" (26 Nov 2026); tests/parity/matching-corrections-ledger.json stage 1 to 4, MF_PERF self, to-null, neither; the Moderator's correction of 27 Nov 2026 (synthetic spelling; real names match on both builds)",
+      "description": "The live page matches this name to the Gold ETF of the same house (a sibling, not the holding). The new build finds no single answer (the name fits the Gold fund, the Gold ETF and the Gold and Silver fund equally) and leaves it unmatched. The holding name is a synthetic spelling: the vendor's name (Axis Gold Fund-Reg(G)) with the word \"Fund\" left out, taken from the matching-corrections ledger's measured query. Under every real spelling (the AMFI Regular and Direct names, the vendor's name) both builds match the Gold fund itself, so no alias is needed (the evidence of 27 Nov 2026, kept by the Moderator)."
     },
     {
       "id": "SB-14",
@@ -159,8 +159,8 @@
       "legacy": { "byField": { "matched": "Kotak Gold ETF", "universe": "MF" } },
       "new": null,
       "class": "accepted-difference",
-      "reference": "E-13; KI-036; OD-5 option B (26 Nov 2026); tests/parity/matching-corrections-ledger.json stage 1 to 4, MF_PERF self, to-null, neither",
-      "description": "The same case for another house: the live page matches the Gold fund to the Gold ETF; the new build leaves it unmatched. The holding's own fund is in MF_PERF (Kotak Gold Fund(G)): an alias candidate for the owner (PD-36)."
+      "reference": "E-13; KI-036; OD-5 option B (26 Nov 2026); tests/parity/matching-corrections-ledger.json stage 1 to 4, MF_PERF self, to-null, neither; the Moderator's correction of 27 Nov 2026 (synthetic spelling; real names match on both builds)",
+      "description": "The same case for another house: the live page matches this name to the Gold ETF; the new build leaves it unmatched. The holding name is a synthetic spelling: the vendor's name (Kotak Gold Fund(G)) with the word \"Fund\" left out, taken from the matching-corrections ledger's measured query. Under every real spelling (the AMFI Regular and Direct names, the vendor's name) both builds match the Gold fund itself, so no alias is needed (the evidence of 27 Nov 2026, kept by the Moderator)."
     },
     {
       "id": "SB-15",
@@ -292,7 +292,7 @@
       "section": "performance",
       "kind": "only-legacy",
       "key": "/^(regular|direct) \\| commodity mf \\| bench \\| (domesticpriceofgold)$/",
-      "fixtures": ["syn-standard", "syn-standard-irr-standard", "syn-standard-irr-variant", "probe-irr-standard", "matching-probe"],
+      "fixtures": ["syn-standard", "syn-standard-irr-standard", "syn-standard-irr-variant", "probe-irr-standard", "matching-probe", "performance-probe"],
       "legacy": true,
       "new": null,
       "class": "correction",
@@ -498,8 +498,8 @@
       "legacy": { "type": "number" },
       "new": null,
       "class": "known-gap",
-      "reference": "E-32; financial review of bc32ba8 (F1); the stricter regime (OD-5 option B, owner 26 Nov 2026)",
-      "description": "Direct list: the live page's name-only Direct match finds the holding's own scheme (Axis Gold Fund(G)-Direct Plan) and shows its figures; the new build has no Regular match (SB-13) and so no Direct row figures. Here the live page is right and the new build is not: a known gap, not yet ruled on by the owner; alias candidate (PD-36)."
+      "reference": "E-32; financial review of bc32ba8 (F1); the stricter regime (OD-5 option B, owner 26 Nov 2026); the Moderator's correction of 27 Nov 2026 (synthetic spelling; real names match on both builds)",
+      "description": "Direct list: for this name the live page's name-only Direct match finds the holding's own scheme (Axis Gold Fund(G)-Direct Plan) and shows its figures; the new build has no Regular match (SB-13) and so no Direct row figures. For this spelling the live page is right and the new build is not: a known gap, not yet ruled on by the owner (whether a name without the word \"Fund\" should match at all; no alias is recommended). The holding name is a synthetic spelling: the vendor's name (Axis Gold Fund-Reg(G)) with the word \"Fund\" left out, taken from the matching-corrections ledger's measured query. Under every real spelling (the AMFI Regular and Direct names, the vendor's name) both builds match the Gold fund itself, so no alias is needed (the evidence of 27 Nov 2026, kept by the Moderator)."
     },
     {
       "id": "SB-41",
@@ -511,8 +511,8 @@
       "legacy": { "type": "number" },
       "new": null,
       "class": "known-gap",
-      "reference": "E-32; financial review of bc32ba8 (F1); the stricter regime (OD-5 option B, owner 26 Nov 2026)",
-      "description": "The same case for another house: the live page shows Kotak Gold Fund(G)-Direct Plan, the holding's own scheme; the new build a blank row. A known gap, not yet ruled on by the owner; alias candidate (PD-36)."
+      "reference": "E-32; financial review of bc32ba8 (F1); the stricter regime (OD-5 option B, owner 26 Nov 2026); the Moderator's correction of 27 Nov 2026 (synthetic spelling; real names match on both builds)",
+      "description": "The same case for another house: for this name the live page shows Kotak Gold Fund(G)-Direct Plan, the holding's own scheme; the new build a blank row. A known gap, not yet ruled on by the owner (whether a name without the word \"Fund\" should match at all; no alias is recommended). The holding name is a synthetic spelling: the vendor's name (Kotak Gold Fund(G)) with the word \"Fund\" left out, taken from the matching-corrections ledger's measured query. Under every real spelling (the AMFI Regular and Direct names, the vendor's name) both builds match the Gold fund itself, so no alias is needed (the evidence of 27 Nov 2026, kept by the Moderator)."
     },
     {
       "id": "SB-42",
