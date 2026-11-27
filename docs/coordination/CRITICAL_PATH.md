@@ -45,6 +45,12 @@ M3a -> M7a engine; M7a and M7b cost/IPS/CVS/MFA feed M8; M6, M10, M11, M12, M13,
 
 ## 2. Live page through the December window
 
+**Status, 27 Nov 2026 (registers-5) [V git log --first-parent origin/main]:** steps 1 to 5 are done: LP-01 (TA-03)
+merged in PR #36 and registers-4 in PR #42. Since then KI-032 (PR #47), KI-301 (PR #53) and LP-16b (PR #50) went live
+on the owner's word (live page `04079A77`), and the runbook's risk chain merged (PR #56), so step 6's preparation is
+done: the refresh waits for the owner's files (about 13 to 17 Dec). Step 7 stays after the window. The table below is
+the draft's of 24 Nov.
+
 | Step | Owner | When | Blocked by |
 |---|---|---|---|
 | 1. LP-01 take-main: done, committed as `d7683a0` (merge of `8cb775e` and `0e483b6`, 24 Nov 23:16; 86 commits ahead of origin, unpushed) [V git] | EX-02 | done | none |
