@@ -269,8 +269,9 @@ folders, replace the October ones, which stay in the folders unchanged; `<M>` is
 | 7 | `BuildPRSep.ps1 -Tsv <Work>\<mon>_pr_metrics.tsv -Out <Work>\pr_metrics_<mon>.xlsx -AsOn <month-end>` (`6b2244db…`, unchanged from the baseline; reviewed by ARC-02 on 26 Nov 2026 with item 6) | Writes the risk workbook (NAVWORK_README §2 step 11 on its text encoding) | Exit 0 **and** no error line in its output (it has no `Stop` preference); then row 8 at once |
 | 8 | `VerifyPRMonth.ps1 -Month <M> -AsOn <month-end> -Work …` (`b16308db…`) | Checks every value of the workbook against the metrics | 0 mismatches; more than 0 values checked; the title reads the as-on date |
 
-The full SHA-256 of each installed script is in the toolchain's `install.sha256` record (item 6, 26 Nov 2026). The
-known-answer evidence of that review stays in `C:\Temp\navwork_kat`, never deleted.
+The full SHA-256 of each installed script is in the `install.sha256` record kept with the item 6 review record (not in
+the toolchain folders; 26 Nov 2026). The known-answer evidence of that review stays in `C:\Temp\navwork_kat`, never
+deleted.
 
 **Label and price day.** The label is the month-end ("30 Nov 2026"). Log the last trading day if it is earlier: for
 October it was Fri 30 Oct, and Sat 31 Oct carried the Friday close, as the workbook had done for 20 earlier weekend
