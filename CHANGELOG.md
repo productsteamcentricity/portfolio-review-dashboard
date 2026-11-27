@@ -4,6 +4,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (tests only: the side-by-side kit's ledger class and a KI-032 case; no change to `index.html`, `/next/` or `app/`)
+- **`tests/side-by-side/`**: SB-04 to SB-07, the decided difference of client names between the live page (KI-032's
+  variant join) and the new build (exact labels, D9), are now class `accepted-difference`: an owner-accepted difference,
+  reviewed at M15 (MOD-04, 26 Nov 2026), neither an improvement nor a regression. The test fails on a class outside the
+  list and on any regression entry (17 tests).
+- **`tools/regression/KI-032-irr-client-join.js`**: initials "U. G." read as the guardian marker; the same spelling joins
+  exactly, the full name never joins (the safe direction; CHAT-008's Gate B note N2). 193 checks.
+
 ### Changed (docs: the refresh runbook's risk-ratio chain for the December refresh; no change to `index.html` or `app/`)
 - **`docs/MONTHLY_REFRESH.md` step 4** names the month-parameterised scripts of item 6 (`ReconcileMonth`, `BuildMonth`,
   `VerifyMonth`, `GenMonthMetrics`, `VerifyPRMonth`; installed 26 Nov 2026, reviewed by ARC-02 with a known-answer run)
@@ -73,6 +81,37 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - `tools/patches/2026-11-26-ki032-irr-client-join.js`; `tools/regression/KI-032-irr-client-join.js` (180 known-answer
     checks). Side-by-side kit: SB-03 retired; SB-04 to SB-07 for the client-name variant case (the new build keeps exact
     client labels, D9); 16 tests.
+
+### Fixed (new build, base-file reader: the platform's full holding report)
+- **KI-300** (`app/src/ingest/base-file.ts`): a money heading that is exactly the field's (Invested Value, Market Value or
+  Current Market Value, Total Gain/Loss, with any unit in brackets) is taken before a partial match, and a heading with
+  "price" is never the invested value, nor one with the word "realized" or "realised" the gain or loss. In the platform's
+  holding report "Invested Price" and "Realized Gain/Loss" come first, and the live page reads them instead (KI-300, open
+  there). Synthetic test in the report's layout (`tests/fixtures/holding-report.ts`); base-file ledger BF-27 and BF-28.
+
+### Added (new build, M2.1 wiring for test build 1: holdings matched in section 1)
+- **Section 1 matches the base file's holdings** when the file loads (`engine/match/resolve-holdings.ts`): each holding goes to one
+  universe as the live page routes it (listed shares to STOCK_RET by ISIN or company name; LP-16's non-MF classes unmatched with
+  their class; PMS, AIF, SIF, else MF) and resolves through the crosswalk with `NEW_BUILD_MATCHING` and the owner's aliases. The
+  product class is a port of the live page's rule on PRODUCT_CLASS_RULES (`engine/match/product-class.ts`).
+- **The import report's matching section** (E-19, `views/matching.ts`) replaces the M2 placeholder: counts by how each holding
+  resolved, the non-fund classes, a "matched to a differently named fund" table and the unmatched list. Matching never blocks
+  a file.
+- **Monitor uploads** (U-08, U-09, U-10; `ingest/load-monitor.ts`, "Fund monitor files" in section 1): an MF Monitor (Regular,
+  Direct) or SIF Monitor read in the browser stands in for the embedded block and re-matches the holdings; the monitors stay when
+  the family changes.
+- The page carries five more refdata blocks through NB-04's loader (AIF_PERF, PMS_PERF, FUND_RANKS_CODES, PRODUCT_CLASS_RULES,
+  OWNER_FUND_ALIASES); the alias evidence links move to `data/owner/fund-aliases-evidence.json` (the page carries no remote URL).
+- **Product classes read LP-16b's table** (`engine/match/product-class.ts`; CHAT-008's Gate B finding B1): `nameAny` (the
+  instrument name must say it: Global Exposure is a GIFT City fund only for GIFT or IFSC, else Offshore) and `andAny` (the
+  product or the name: a bond is US-dollar only with USD, US$, US, dollar or LRS, else a rupee bond or NCD), ported from the
+  live page; LP-16b's own known answers pass. A rule with a field or class the reader does not know is skipped and named in
+  the import report, never applied loosely and never taking matching down; P2P lending is class OTHER (MOD-04, 26 Nov
+  2026), so a DEBT rule is skipped.
+- **A matching failure is said, never silent:** the file still loads and the import report shows an error card with the
+  reason, instead of every holding reading as unmatched.
+- An uploaded monitor is refused before a sheet is expanded when the sheet's declared range exceeds the cell limit; an
+  uploaded monitor's names also rebuild the matcher's known words, a vocabulary the ledger has not measured.
 
 ### Added (new build, M2.1 sprint 2a: matcher corrections, opt-in; not wired into the page yet)
 - **Owner fund aliases** (`data/owner/fund-aliases.json`, `engine/match/owner-aliases.ts`; KI-050, PD-36): the 16 renames the
@@ -518,6 +557,21 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     - a refused IRR file;
     - a synthetic IRR file whose distributors match the base book, so adviser scopes have flows;
     - the browser check `tests/browser/irr-slot.cdp.mjs`.
+
+### Added (new build, the transactions (IRR) file template and two reader rules for the platform's cashflow file; PLAN-05)
+- **The blank template** (`exports/xlsx/irr-template.ts`): the platform's six-sheet cashflow layout (SI, YTD and QTD
+  pairs, the export's exact headings) with a Read Me. Client names must be written exactly as in the holding report:
+  the two files are joined on the exact name only, never by similarity (the owner, 26 Nov 2026). It is downloaded from
+  the IRR slot in section 1.
+- **The reader** (`ingest/irr-file.ts`):
+  - It reads the since-inception pair of the six-sheet file: a sheet whose first word is "SI" is preferred over the
+    legacy last match, which would take the QTD sheets. Recorded as a difference from the live parseIRR, which CR-0013
+    corrects there.
+  - The fund and benchmark sheets must name the same period (SI, YTD or QTD), or no benchmark is read and a Warning
+    names both sheets (CR-0013 follow-up).
+- **On screen and on the Fund IRR sheet:** the base-file clients with no rows in the transactions file are listed.
+- **For the M3b holdings sheet:** `engine/returns/irr-aggregate.ts` gives the IRR tree's client, asset and product
+  XIRRs, or nothing when the IRR file has no such line.
 
 ### Added (new build, M7a: the capital-gains statement reader and the blank template; not wired into the page yet)
 - **`app/src/ingest/capital-gains.ts`** (E-150, D-036, design `docs/new-build/capital-gains-upload.md` §2 to §4, §6, §7,

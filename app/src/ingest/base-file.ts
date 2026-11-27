@@ -80,10 +80,18 @@ export type {
 const has = (h: string, s: string): boolean => h.indexOf(s) >= 0;
 const isCr = (h: string): boolean => has(h, 'cr');
 const isLk = (h: string): boolean => has(h, 'lakh') || has(h, 'lac');
+/* The platform's holding report (MOD-04, 26 Nov 2026) puts "Invested Price" before "Invested Value" and "Realized
+   Gain/Loss" before "Total Gain/Loss": a price is never the invested value, and a realised gain (the whole word, so
+   "Unrealized" is not caught) is never the gain or loss of the holding. */
+const isInvested = (h: string): boolean => has(h, 'invested') && !has(h, 'price');
+const REALISED = /(^|[^a-z])reali[sz]ed([^a-z]|$)/;
+const isGain = (h: string): boolean => has(h, 'gain') && !REALISED.test(h);
 
 /**
- * Header predicates on the lower-cased, space-collapsed header text; the first matching column wins. The legacy
- * ones are copied from 07_engine.js parseBaseRows unchanged (including its loose "cr" test).
+ * Header predicates on the lower-cased, space-collapsed header text; the first matching column wins, after any column
+ * whose heading is exactly the field's (EXACT_HEADINGS). The legacy ones are copied from 07_engine.js parseBaseRows
+ * (including its loose "cr" test), except that a price is never an invested value and a realised gain never the gain
+ * or loss (isInvested, isGain; the holding report's layout).
  */
 const FIELD_PREDICATES: ReadonlyArray<readonly [BaseField, (h: string) => boolean]> = [
   ['client', (h) => h === 'client name' || has(h, 'client')],
@@ -96,15 +104,15 @@ const FIELD_PREDICATES: ReadonlyArray<readonly [BaseField, (h: string) => boolea
   ['product', (h) => has(h, 'product')],
   ['dist', (h) => has(h, 'distributor')],
   ['units', (h) => h === 'units'],
-  ['invR', (h) => has(h, 'invested') && !isCr(h) && !isLk(h)],
+  ['invR', (h) => isInvested(h) && !isCr(h) && !isLk(h)],
   ['mvR', (h) => has(h, 'market value') && !isCr(h) && !isLk(h)],
-  ['glR', (h) => has(h, 'gain') && !isCr(h) && !isLk(h)],
-  ['invLk', (h) => has(h, 'invested') && isLk(h)],
+  ['glR', (h) => isGain(h) && !isCr(h) && !isLk(h)],
+  ['invLk', (h) => isInvested(h) && isLk(h)],
   ['mvLk', (h) => has(h, 'market value') && isLk(h)],
-  ['glLk', (h) => has(h, 'gain') && isLk(h)],
-  ['invCr', (h) => has(h, 'invested') && isCr(h)],
+  ['glLk', (h) => isGain(h) && isLk(h)],
+  ['invCr', (h) => isInvested(h) && isCr(h)],
   ['cmvCr', (h) => has(h, 'market value') && isCr(h)],
-  ['glCr', (h) => has(h, 'gain') && isCr(h)],
+  ['glCr', (h) => isGain(h) && isCr(h)],
   ['alloc', (h) => has(h, 'allocation')],
   ['xirr', (h) => has(h, 'xirr') && !has(h, 'bm')],
   ['bmxirr', (h) => has(h, 'bmxirr') || (has(h, 'bm') && has(h, 'xirr'))],
@@ -118,6 +126,15 @@ const FIELD_PREDICATES: ReadonlyArray<readonly [BaseField, (h: string) => boolea
      ("ISIN Code") is also read, the first such column winning */
   ['isin', (h) => h === 'isin' || /(^|[^a-z0-9])isin([^a-z0-9]|$)/.test(h)],
 ];
+
+/** A money field's exact headings, with any trailing unit in brackets dropped: preferred over a partial match. */
+const EXACT_HEADINGS: Partial<Record<BaseField, readonly string[]>> = {
+  invR: ['invested value', 'invested amount'], invLk: ['invested value', 'invested amount'], invCr: ['invested value', 'invested amount'],
+  mvR: ['market value', 'current market value'], mvLk: ['market value', 'current market value'], cmvCr: ['market value', 'current market value'],
+  glR: ['total gain/loss', 'total gain / loss', 'gain/loss'], glLk: ['total gain/loss', 'total gain / loss', 'gain/loss'],
+  glCr: ['total gain/loss', 'total gain / loss', 'gain/loss'],
+};
+const withoutUnit = (h: string): string => h.replace(/ *[(][^)]*[)] *$/, '').trim();
 
 type Columns = Partial<Record<BaseField, number>>;
 
@@ -141,7 +158,9 @@ function isHeaderRow(texts: string[]): boolean {
 function mapColumns(headerTexts: string[]): Columns {
   const cols: Columns = {};
   for (const [field, pred] of FIELD_PREDICATES) {
-    const j = headerTexts.findIndex((h) => pred(h));
+    const exact = EXACT_HEADINGS[field];
+    let j = exact ? headerTexts.findIndex((h) => pred(h) && exact.includes(withoutUnit(h))) : -1;
+    if (j < 0) j = headerTexts.findIndex((h) => pred(h));
     if (j >= 0) cols[field] = j;
   }
   return cols;

@@ -8,8 +8,9 @@ import type { Holding } from '../model/holding.ts';
 import type { MoneyUnit } from '../engine/units.ts';
 import { STATUS } from '../model/status.ts';
 import { STATUS_PHRASE, plainText, plural } from './format.ts';
+import { buildMatchingSection, type MatchingVM } from './matching.ts';
+import type { MatchReport } from '../engine/match/resolve-holdings.ts';
 
-export const MATCHING_LINE = 'Instrument matching arrives in M2: until then no holding is matched to a fund, and none is reported as unmatched.';
 
 export type ImportCount = { id: string; label: string; value: number };
 export type SkippedGroup = { reason: SkipReason; label: string; count: number; rows: number[]; withAmount: number };
@@ -37,7 +38,8 @@ export type ImportReportVM = {
   skipped: SkippedGroup[];
   excluded: ExcludedHolding[];
   questions: QuestionVM[];
-  matching: string;
+  /** What each holding was matched to (E-19). */
+  matching: MatchingVM;
 };
 
 const UNIT_TEXT: Readonly<Record<MoneyUnit, string>> = {
@@ -99,7 +101,7 @@ function question(q: XirrUnitQuestion): QuestionVM {
 }
 
 /** The import report of one base file. */
-export function buildImportReport(source: SourceFile, base: BaseFileImport): ImportReportVM {
+export function buildImportReport(source: SourceFile, base: BaseFileImport, match: MatchReport | null = null): ImportReportVM {
   const c = base.counts;
   const sheet = base.sheet;
   const summary = sheet
@@ -148,6 +150,6 @@ export function buildImportReport(source: SourceFile, base: BaseFileImport): Imp
     skipped,
     excluded,
     questions: base.questions.map(question),
-    matching: MATCHING_LINE,
+    matching: buildMatchingSection(match, base.holdings),
   };
 }

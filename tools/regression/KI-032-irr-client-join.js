@@ -234,6 +234,19 @@ for (const [bn, ir] of [['sample client-a', 'SAMPLE CLIENT A'], ['Sample.Client.
   ok(rr.m.irrJoin.exact === 2 && rr.m.irrJoin.variant === 0, 'key equivalence: "' + bn + '" and "' + ir + '" join exactly, as under the old key');
 }
 
+/* 27. Gate B note N2 (CHAT-008): the letters U G read as the guardian marker, so initials "U. G." are a marker too. The
+   same spelling on both sides still joins exactly; against the full name it never joins (the safe direction: the client
+   keeps its base-file figures with the plain note), whatever the order of the names */
+r = runCase({ base: { [A]: 'U. G. Shenoy' }, irr: { [A]: 'U.G. Shenoy' } });
+counts('U.G. initials, same spelling', r, { exact: 2, variant: 0, refused: 0, none: 0 });
+checkClient('U.G. initials, same spelling', r, 'U. G. Shenoy', 'U.G. Shenoy', A);
+r = runCase({ base: { [A]: 'Udupi Ganesh Shenoy' }, irr: { [A]: 'U. G. Shenoy' } });
+counts('U.G. initials against the full name', r, { exact: 1, variant: 0, refused: 0, none: 1 });
+checkClient('U.G. initials against the full name', r, 'Udupi Ganesh Shenoy', null, null, '§ No transactions for this client in the IRR file');
+r = runCase({ base: { [A]: 'U. G. Shenoy' }, irr: { [A]: 'Udupi Ganesh Shenoy' } });
+counts('the full name against U.G. initials', r, { exact: 1, variant: 0, refused: 0, none: 1 });
+checkClient('the full name against U.G. initials', r, 'U. G. Shenoy', null, null, '§ No transactions for this client in the IRR file');
+
 /* 10. the family Fund IRR tree groups by the IRR file's own labels: the same with and without the renames */
 const famXirr = (rr) => { const t = (rr.m.irr || []).find(x => x.level === 0); return t ? [t.fund, t.bench] : null; };
 const f0 = famXirr(runCase({ base: {}, irr: {} })), f1 = famXirr(runCase({ base: { [A]: 'Rajesh Shah' }, irr: { [A]: 'Rajesh Shah HUF' } }));

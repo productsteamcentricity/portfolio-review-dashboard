@@ -314,6 +314,28 @@
       "class": "correction",
       "reference": "OD-7 (letter case, beyond OD-7, pending the owner); KI-145",
       "description": "An Asset Name that differs from a class only in letter case (\"  EQUITY  \", which the legacy kept as \"EQUITY\" with its spaces collapsed) reads as that class, Equity. The legacy kept the label as written: it became an Asset Allocation row of its own beside Equity (07_engine.js:1147-1159), and the IPS, which reads the allocation rows by assignment, took only the last of them as its equity figure (11_app_ui.js:4871-4878). Both are live-page defects, KI-145 and KI-146. OD-7 decided the blank case and two synonyms; folding letter case goes beyond OD-7 and waits for the owner's confirmation (docs/DATA_DICTIONARY.md section 8)."
+    },
+    {
+      "id": "BF-27",
+      "kind": "field",
+      "field": "invCr",
+      "fixtures": ["syn-holding-report"],
+      "legacy": {"type": "number"},
+      "new": {"type": "number"},
+      "class": "correction",
+      "reference": "KI-300; BR-2.5; OD-18",
+      "description": "In the platform's holding report layout \"Invested Price\" comes before \"Invested Value\": the new reader takes the invested value (an exact heading first, never a heading with \"price\"); the legacy took the first heading with \"invested\", the price per unit, so its invested value was the price."
+    },
+    {
+      "id": "BF-28",
+      "kind": "field",
+      "field": "glCr",
+      "fixtures": ["syn-holding-report"],
+      "legacy": {"type": "number"},
+      "new": {"type": "number"},
+      "class": "correction",
+      "reference": "KI-300; BR-2.5; OD-18",
+      "description": "In the same layout \"Realized Gain/Loss\" comes before \"Total Gain/Loss\": the new reader takes the total gain or loss (an exact heading first, never the word \"realized\" or \"realised\"); the legacy took the first heading with \"gain\", the realised gain. The file's gain feeds no figure (OD-18), so only the reconciliation notices differ."
     }
   ]
 }

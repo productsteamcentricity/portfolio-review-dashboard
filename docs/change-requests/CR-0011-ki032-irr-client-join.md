@@ -53,7 +53,9 @@ Deceased, Decd and Mnr as markers) is in.
 
 ## Evidence
 
-- `tools/regression/KI-032-irr-client-join.js`: 180 known-answer checks in IST and UTC. Every joined client's Grand
+- `tools/regression/KI-032-irr-client-join.js`: 193 known-answer checks in IST and UTC (180 at the merge; 13 added on 27
+  Nov 2026 for initials "U. G.", which read as the guardian marker: the same spelling joins exactly, the full name never
+  joins, the safe direction; Gate B note N2). Every joined client's Grand
   Total and holdings equal an independent XIRR (actual/365, bisection) of the flows it must join; every client not
   joined keeps its base-file figures with the expected note. Cases: exact names; the reproduced family case; a family
   member only in the IRR file; an HUF; a salutation with an initial; a middle name; two candidates; one candidate
@@ -62,7 +64,8 @@ Deceased, Decd and Mnr as markers) is in.
   and Karta; the word order; Smt.; initials first; M/S; two middle names; punctuation (exact key unchanged); Joint, Jt, Deceased, Decd and Mnr in brackets and
   without; key equivalence with the old key for names without markers.
 - Side-by-side kit: SB-03 retired (the probe book agrees for the client without transactions); the new case
-  `syn-standard-irr-variant` with SB-04 to SB-07 records the decided difference from the new build (D9, OD-4).
+  `syn-standard-irr-variant` with SB-04 to SB-07 records the decided difference from the new build (D9, OD-4), class
+  `accepted-difference` since 27 Nov 2026 (owner-accepted difference; reviewed at M15).
 - Measurement on the October files (read only, counts only, on the owner's permission): see the pull request.
 
 ## Records

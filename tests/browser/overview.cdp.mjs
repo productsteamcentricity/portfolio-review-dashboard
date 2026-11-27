@@ -350,7 +350,7 @@ async function runMode({ browser, mode, files, opt, expect }) {
   await page.waitFor(READY);
   const tab = async (id) => {
     await page.click(await page.eval(TAB_CENTRE(id)));
-    await page.waitFor(`${HEADING} === '${id}-title'`, 5000);
+    await page.waitFor(`(${HEADING}) === '${id}-title'`, 5000); // brackets: ?? binds looser than ===
   };
   const pick = async (file) => {
     await page.eval(FOCUS('#base-file-input')); // the keyboard user's place: the input they open the file dialog from
@@ -434,8 +434,9 @@ async function runMode({ browser, mode, files, opt, expect }) {
   })()`);
   expect('the import report shows the full 64-hex SHA-256 of the file, wrapped inside its cell (L18)',
     report.sha === sha && /^[0-9a-f]{64}$/.test(report.sha) && report.inside, { sha: report.sha, expected: sha, inside: report.inside });
-  expect('the import report: sheet "Base File", header row 1, Crore, and the M2 matching line',
-    report.text.includes('Base File, row 1') && /Crore/.test(report.text) && report.text.includes('Instrument matching arrives in M2'), report.text.slice(0, 300));
+  expect('the import report: sheet "Base File", header row 1, Crore, and the matching section (M2, E-19): the synthetic funds are in no reference data, so none is matched and none is given another fund',
+    report.text.includes('Base File, row 1') && /Crore/.test(report.text) && report.text.includes('Matched to funds and shares')
+      && /0 holdings are matched to reference data and [0-9]+ (is|are) unmatched/.test(report.text) && report.text.includes('Unmatched holdings'), report.text.slice(0, 600));
   for (const [w, h] of [[1440, 900], [1024, 768]]) {
     await page.viewport(w, h);
     const placed = await page.eval(PLACE_UNDER_HEADER('#accept-file'));

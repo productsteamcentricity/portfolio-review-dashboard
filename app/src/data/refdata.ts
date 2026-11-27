@@ -20,7 +20,8 @@ import { missing, present } from '../engine/value.ts';
 import { parseDayText } from '../engine/dates.ts';
 
 /** The embedded blocks, in page order (scripts/build.mjs REFDATA_BLOCKS has the same names in the same order). */
-export const BLOCK_NAMES = ['MF_PERF', 'MF_PERF_DIRECT', 'SIF_PERF', 'BENCH_RET', 'STOCK_RET', 'VINTAGE'] as const;
+export const BLOCK_NAMES = ['MF_PERF', 'MF_PERF_DIRECT', 'SIF_PERF', 'BENCH_RET', 'STOCK_RET', 'VINTAGE',
+  /* the matcher's (NB-02, M2.1 wiring): */ 'AIF_PERF', 'PMS_PERF', 'FUND_RANKS_CODES', 'PRODUCT_CLASS_RULES', 'OWNER_FUND_ALIASES'] as const;
 export type BlockName = (typeof BLOCK_NAMES)[number];
 
 /** A stock's vendor returns (STOCK_RET; keyed by the normalised stock name). */
@@ -48,6 +49,12 @@ export type RefdataBlocks = {
   BENCH_RET: Record<string, MonitorBenchmark>;
   STOCK_RET: Record<string, StockReturnRecord>;
   VINTAGE: Vintage;
+  /* the matcher's blocks (engine/match/resolve-holdings.ts parses and checks them) */
+  AIF_PERF: Record<string, unknown>;
+  PMS_PERF: Record<string, unknown>;
+  FUND_RANKS_CODES: Record<string, unknown>;
+  PRODUCT_CLASS_RULES: unknown[];
+  OWNER_FUND_ALIASES: Record<string, unknown>;
 };
 
 /** Reads the text of a page element by id (null when absent). The default reads this page. */
@@ -74,7 +81,7 @@ export function readBlock<N extends BlockName>(name: N, text: BlockText = domBlo
   if (raw !== null) {
     try {
       const v: unknown = JSON.parse(raw);
-      if (v !== null && typeof v === 'object' && !Array.isArray(v)) out = v as RefdataBlocks[N];
+      if (v !== null && typeof v === 'object' && (!Array.isArray(v) || name === 'PRODUCT_CLASS_RULES')) out = v as RefdataBlocks[N];
     } catch {
       out = null;
     }
