@@ -505,4 +505,23 @@ describe('round 2c, the merger condition (MOD-05): a merger candidate is never c
     assert.equal(fy.source, 'statement');
     near(v(fy.total), 8000, 'statement figure');
   });
+
+  test('item 8 counts a candidate\'s gap lot as the lots it keeps, so the statement figure\'s coverage is as before (MC14)', () => {
+    // irr-realised plus Small Cap bought 1 Jan 2023 (100 u at 100) and redeemed 1 Sep 2025 (150 u at 200, 30,000): the
+    // ordinary-switch reading takes two lots (100 u of the purchase, 50 u of the switch in); round 2c gives one
+    // 'merger-candidate' gap lot keeping both. FY 2025-26, client A: the statement covers Flexi Cap (1 lot) only; left
+    // out: Focused (1 derived lot) and Small Cap (2 lots, as before round 2c). Coverage 1 / (1 + 3) = 0.25 (counting
+    // the gap lot as 1 would give 1 / 3); the figure stays the statement's 1,700.
+    const der = deriveRealisedGains(irrImport([
+      ...irrRealisedRows(),
+      flow(CLIENT_A, SCHEME.NEW, [2023, 1, 1], 'Purchase', 100, -10000),
+      flow(CLIENT_A, SCHEME.NEW, [2025, 9, 1], 'Redemption', 200, 30000),
+    ], xlsx).fund, { asOn: AS_ON_DAY });
+    const nw = der.lots.filter((x) => x.instrumentName === SCHEME.NEW);
+    assert.deepEqual(nw.map((x) => [x.gap, x.asSwitch?.length]), [['merger-candidate', 2]]);
+    const a = realisedForYear(2025, der, statementOf()).clients.find((c) => c.source === 'statement')!;
+    assert.equal(a.schemesLeftOut, 2);
+    near(v(a.total), 1700, 'A total');
+    assert.ok(a.total.kind === 'value' && a.total.coverage === 0.25, JSON.stringify(a.total));
+  });
 });
