@@ -86,7 +86,12 @@ function weighted(members: readonly Holding[], pick: (h: Holding) => Value<numbe
     n++;
   }
   const prov = { sources: sourcesOf(members), method };
-  const avg = c !== 0 ? present(w / c, 'pct', prov) : missing(STATUS.NOT_AVAILABLE, `no holding in ${what} has this rate with a market value`, prov);
+  /* S2 (financial review of 27 Nov 2026): a rate that covers only part of the group's market value carries that share as
+     its coverage, as groupFigures does for the invested value, so the cell shows the "p" marker and the sheet's status
+     says PARTIAL COVERAGE. A share outside [0, 1) (negative market values) is left unmarked: see the follow-up (N3). */
+  const share = groupCmv.kind === 'value' && groupCmv.v > 0 ? c / groupCmv.v : undefined;
+  const extra = share !== undefined && share >= 0 && share < 1 ? { coverage: share } : undefined;
+  const avg = c !== 0 ? present(w / c, 'pct', prov, extra) : missing(STATUS.NOT_AVAILABLE, `no holding in ${what} has this rate with a market value`, prov);
   const coverage = groupCmv.kind === 'value' && groupCmv.v !== 0
     ? present(c / groupCmv.v * 100, 'pct', { sources: sourcesOf(members), method: METHOD.coverage })
     : missing(STATUS.NOT_APPLICABLE, `the market value of ${what} is 0 or missing`, { sources: sourcesOf(members), method: METHOD.coverage });

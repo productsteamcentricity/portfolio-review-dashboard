@@ -48,7 +48,7 @@ test('every fund is kept; the tenors are the bucket\'s own; Note rows for missin
   const debt = t.find((r) => r[col('Bucket')] === 'Debt MF' && r[col('Row')] === 'Fund')!;
   assert.equal(debt[col('Tenors')], '1M, 3M, 6M, 1Y, 3Y, 5Y, SI');
   assert.equal(debt[col('2Y (%)')], null);
-  assert.ok(t.some((r) => r[col('Row')] === 'Note' && r[col('Name')] === 'No benchmark is named yet for this category.'));
+  assert.ok(t.some((r) => r[col('Row')] === 'Note' && r[col('Name')] === 'No benchmark is named yet for this category (OD-7).'));
   assert.ok(t.some((r) => r[col('Row')] === 'Benchmark' && r[col('Name')] === 'NIFTY 100 - TRI'));
 });
 

@@ -38,10 +38,10 @@ describe('buildPerformanceVM', () => {
     assert.ok(eq.notes.some((n) => n === 'Benchmarks as on 31 Oct 2026.'));
   });
 
-  test('a fund with no returns is hidden on screen but named; a category with no benchmark is said', () => {
+  test('an unmatched fund is hidden on screen but named (N10); a category with no benchmark is said', () => {
     const vm = buildPerformanceVM(res, 'regular');
     const eq = vm.buckets[0]!;
-    assert.ok(eq.notes.some((n) => /^1 fund has no returns in the data and is not shown: Sample Unknown Opportunities Fund[.]$/.test(n)), JSON.stringify(eq.notes));
+    assert.ok(eq.notes.some((n) => /^1 fund is not matched to reference data and is not shown: Sample Unknown Opportunities Fund[.]$/.test(n)), JSON.stringify(eq.notes));
     assert.ok(!eq.rows.some((r) => r.name === 'Sample Unknown Opportunities Fund'));
     const hy = vm.buckets[1]!;
     assert.ok(hy.notes.includes('No benchmark is named yet for Multi Asset Allocation.'), JSON.stringify(hy.notes));

@@ -16,11 +16,18 @@ import { asOnOf, readBlock, type BlockText, domBlockText } from './refdata.ts';
 /** The uploaded monitors' blocks and the data date each file states, as written. */
 export type MonitorUploads = { blocks: MonitorBlocks; dates: Partial<Record<keyof MonitorBlocks, string>> };
 
-function uploadedDay(text: string | undefined, what: string): Value<DayNumber> {
-  const d = text === undefined ? null : parseDayText(text);
+/** The text of an "As on ..." date without its lead words. */
+const dateOnly = (text: string): string => text.replace(/^\s*(as\s+on|as\s+of|as\s+at)\s*:?\s*/i, '').trim();
+
+/** The uploaded file's data date. A date text that is present but not readable says so with the text (S5 of the
+ * financial review of 27 Nov 2026), never "not given"; no text is NOT AVAILABLE. */
+export function uploadedDay(text: string | undefined, what: string): Value<DayNumber> {
+  const t = text === undefined ? '' : text.trim();
+  if (t === '') return missing(STATUS.NOT_AVAILABLE, `the uploaded ${what} states no data date`);
+  const d = parseDayText(dateOnly(t));
   return d === null
-    ? missing(STATUS.NOT_AVAILABLE, `the uploaded ${what} states no readable data date${text ? ` ("${text}")` : ''}`)
-    : present(d, 'date', { sources: [`uploaded ${what}`], method: 'the data date the file states', asOf: text! });
+    ? missing(STATUS.INVALID_SOURCE, `the file's date could not be read: ${t}`)
+    : present(d, 'date', { sources: [`uploaded ${what}`], method: 'the data date the file states', asOf: t });
 }
 
 export function performanceSourcesFrom(uploads: MonitorUploads = { blocks: {}, dates: {} }, text: BlockText = domBlockText): PerformanceSources {

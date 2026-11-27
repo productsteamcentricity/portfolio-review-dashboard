@@ -103,6 +103,16 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   (`data/performance-sources.ts`).
 - **Performance sheet** (E-84, `exports/xlsx/sheets/performance.ts`): the Regular and Direct lists, every row with its plan and
   data date, every fund kept, statuses in their own column.
+- **Financial review of 27 Nov 2026 (CHANGES NEEDED, fixed before merge):**
+  - B1, KI-024: a PMS or AIF group gets an equity benchmark only when every holding in it is of asset class Equity;
+    the note says why otherwise.
+  - S1: the debt benchmark rules are the live page's again (Floater, Ultrashort, Gsec, Banking PSU), with a test of
+    every SEBI category; the parity ledger's PF-05 and PF-06 are narrowed to the names they cover.
+  - S2: a weighted XIRR or BMXIRR that covers part of the market value carries that share, so the cell shows the
+    partial marker and the sheet says PARTIAL COVERAGE.
+  - S3: a scheme the Regular block carries only as a Direct plan is shown as a single plan, never "Regular".
+  - S5: "YYYY-Mon-DD" dates are read, and an unreadable uploaded date is reported with its text.
+  - N6 and N10: notes tell an unrecognised category and an unmatched fund apart.
 ### Fixed (new build, base-file reader: the platform's full holding report)
 - **KI-300** (`app/src/ingest/base-file.ts`): a money heading that is exactly the field's (Invested Value, Market Value or
   Current Market Value, Total Gain/Loss, with any unit in brackets) is taken before a partial match, and a heading with

@@ -10,7 +10,14 @@ import { benchKey } from '../../app/src/engine/returns/performance.ts';
 
 export type PfKind = 'bucket-set' | 'cols' | 'group-sequence' | 'fund-set' | 'fund-figure' | 'bench-set' | 'bench-figure';
 export type PfDiff = { kind: PfKind; list: 'regular' | 'direct'; fixture: string; bucket: string; label: string; field: string; legacy: unknown; new: unknown };
-export type PfLedgerEntry = { id: string; kind: PfKind | '*'; list?: 'regular' | 'direct'; buckets?: string[]; fixtures: string[]; class: string; reference: string; description: string };
+/** `legacyOnly` and `newOnly` (set differences: benchmark keys or fund names) list the only values that difference may
+ * hold on that side, so an entry never covers a benchmark or fund it does not name; `labels` lists the only funds a
+ * figure difference may concern (the financial review of 27 Nov 2026, S1 and C1). */
+export type PfLedgerEntry = {
+  id: string; kind: PfKind | '*'; list?: 'regular' | 'direct'; buckets?: string[]; fixtures: string[];
+  legacyOnly?: string[]; newOnly?: string[]; labels?: string[];
+  class: string; reference: string; description: string;
+};
 export type PfLedger = { schema: string; entries: PfLedgerEntry[] };
 
 type LegacyRow = { type: 'sub' | 'fund' | 'bench'; label?: string; name?: string; r?: Record<string, number | null | undefined> };
@@ -87,7 +94,10 @@ export function comparePerformance(fixture: string, legacy: LegacyPerformance | 
 }
 
 /** The ledger entries a difference matches: kind ('*' any), list and bucket when given, and the fixture. */
+const within = (allowed: string[] | undefined, v: unknown): boolean => allowed === undefined || (Array.isArray(v) && v.every((x) => allowed.includes(String(x))));
+
 export function entriesFor(d: PfDiff, ledger: PfLedger): PfLedgerEntry[] {
   return ledger.entries.filter((e) => (e.kind === '*' || e.kind === d.kind) && (e.list === undefined || e.list === d.list)
-    && (e.buckets === undefined || e.buckets.includes(d.bucket)) && e.fixtures.includes(d.fixture));
+    && (e.buckets === undefined || e.buckets.includes(d.bucket)) && e.fixtures.includes(d.fixture)
+    && within(e.legacyOnly, d.legacy) && within(e.newOnly, d.new) && (e.labels === undefined || e.labels.includes(d.label)));
 }

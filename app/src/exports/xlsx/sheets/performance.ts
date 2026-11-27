@@ -58,7 +58,10 @@ function bucketRows(push: (r: Row, style?: StyleSpec) => void, b: PerfBucket, pl
   const asOn = dateCell(b.asOn);
   const tenors = strCell(b.cols.join(', '));
   const base: Row = { plan, bucket, asOn, tenors };
-  if (b.asOn.kind === 'missing') push({ ...base, row: strCell('Note'), name: strCell(`The data of ${b.key} records no as-on date.`), status: strCell(b.asOn.status) });
+  if (b.asOn.kind === 'missing') {
+    const text = b.asOn.status === STATUS.INVALID_SOURCE ? `The data of ${b.key}: ${b.asOn.reason}.` : `The data of ${b.key} records no as-on date.`;
+    push({ ...base, row: strCell('Note'), name: strCell(text), status: strCell(b.asOn.status) });
+  }
   for (const g of b.groups) {
     const group = strCell(g.label);
     for (const f of g.funds) {
@@ -68,6 +71,8 @@ function bucketRows(push: (r: Row, style?: StyleSpec) => void, b: PerfBucket, pl
       row.large = v(f.mcap.Large, PCT); row.mid = v(f.mcap.Mid, PCT); row.small = v(f.mcap.Small, PCT); row.others = v(f.mcap.Others, PCT);
       row.ytm = v(f.debt.YTM, PCT); row.avgMat = v(f.debt.AvgMat, NUM); row.modDur = v(f.debt.ModDur, NUM);
       row.status = opt(s.status);
+      /* S3: a scheme the Regular block carries only as a Direct plan is its own single plan, never "Regular" */
+      if (mf && planList === 'Regular' && f.plan === 'single-plan') row.plan = strCell('Direct only (single plan)');
       const planNote = mf && planList === 'Direct' ? PLAN_TEXT[f.plan] : '';
       row.note = opt([planNote, s.note ?? ''].filter((x) => x !== '').join('. ') || null);
       push(row);
@@ -82,7 +87,11 @@ function bucketRows(push: (r: Row, style?: StyleSpec) => void, b: PerfBucket, pl
     for (const m of g.missingBenchmarks) {
       push({ ...base, group, row: strCell('Note'), name: strCell(`Benchmark ${m}: its series is not in the data, so it is not shown.`), status: strCell(STATUS.NOT_AVAILABLE) });
     }
-    if (g.noBenchmarkNamed) push({ ...base, group, row: strCell('Note'), name: strCell('No benchmark is named yet for this category.') });
+    const why = g.noBenchmarkReason === 'not-all-equity'
+      ? 'No benchmark is shown: an equity index is used for a PMS or AIF group only when every holding in it is an equity holding (KI-024).'
+      : g.noBenchmarkReason === 'not-recognised' ? 'The category was not recognised, so no benchmark is shown for it.'
+        : g.noBenchmarkReason === 'not-named' ? 'No benchmark is named yet for this category (OD-7).' : null;
+    if (why) push({ ...base, group, row: strCell('Note'), name: strCell(why) });
   }
 }
 

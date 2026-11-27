@@ -11,7 +11,8 @@
 //     order with each held category's own benchmark rows, hybrid low to high risk, debt overnight to long duration, no
 //     2Y column for Debt MF; arbitrage against Nifty 50 Arbitrage; Global, Fund of Funds, commodity, balanced
 //     advantage, dynamic asset allocation, multi-asset and equity savings with no benchmark named.
-//   - KI-024: a debt-like PMS or AIF gets no equity benchmark.
+//   - KI-024: a PMS or AIF group gets an equity benchmark only when every holding in it is of asset class Equity (MOD-05's
+//     ruling on the financial review of 27 Nov 2026), and then by its category (a debt-like category still none).
 //   - KI-073: a named benchmark whose series is absent, or has no figure for the bucket's tenors, is left out and
 //     recorded, never an all-dash row.
 //   - KI-083: every bucket carries the as-on date of its own block.
@@ -27,7 +28,7 @@ import { missing, present } from '../value.ts';
 import { isIncluded } from '../aggregate/totals.ts';
 import { isDirectEquityProduct } from '../match/resolve-holdings.ts';
 import { holdingClass, nonMfRule, type ProductClassRule } from '../match/product-class.ts';
-import { directTwin } from '../match/rekey.ts';
+import { directTwin, isDirectKey } from '../match/rekey.ts';
 import config from '../../config/performance.json' with { type: 'json' };
 
 export type BucketKey = 'Equity MF' | 'Hybrid MF' | 'Debt MF' | 'Commodity MF' | 'PMS' | 'AIF' | 'SIF' | 'Direct Equity';
@@ -61,7 +62,8 @@ export type PerformanceSources = {
   rules: readonly ProductClassRule[];
 };
 
-/** 'not-applicable' outside the MF buckets and for an unmatched fund. */
+/** 'not-applicable' outside the MF buckets and for an unmatched fund. 'single-plan': in the Direct list an ETF (its one
+ * plan's figures); in the Regular list a scheme the Regular block carries only as a Direct plan (S3). */
 export type Plan = 'regular' | 'direct' | 'single-plan' | 'no-direct-twin' | 'not-applicable';
 
 export type FundRow = {
@@ -83,9 +85,13 @@ export type PerfGroup = {
   benchmarks: BenchRow[];
   /** The benchmark names the table gives but no series carries (KI-073). */
   missingBenchmarks: string[];
-  /** True when the table names no benchmark for any of the group's categories (OD-7); false in SIF and Direct Equity,
+  /** True when the group shows no benchmark row for want of a name (any reason below); false in SIF and Direct Equity,
    * which have no benchmark rows by design. */
   noBenchmarkNamed: boolean;
+  /** Why no benchmark is named: the table names none for the category (OD-7), the category label is not one the table
+   * recognises, or (PMS and AIF) not every holding of the group is of asset class Equity (KI-024, MOD-05's ruling of
+   * 27 Nov 2026: never an equity index by default). Null when a benchmark is named. */
+  noBenchmarkReason: 'not-named' | 'not-recognised' | 'not-all-equity' | null;
 };
 export type PerfBucket = {
   key: BucketKey;
@@ -285,7 +291,10 @@ function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: Performanc
             noTwin.push(name);
           }
         } else {
-          row = fundRow(name, x.key, x.record, cols, mfBucket && x.key ? 'regular' : 'not-applicable', source, [x.h.id]);
+          /* S3 (financial review of 27 Nov 2026): a scheme the Regular block carries only as a Direct plan (12 Zerodha
+             schemes and one JioBlackRock today) is its own single plan, never labelled Regular */
+          const plan: Plan = !mfBucket || !x.key ? 'not-applicable' : isDirectKey(x.key) ? 'single-plan' : 'regular';
+          row = fundRow(name, x.key, x.record, cols, plan, source, [x.h.id]);
         }
         seen.set(dedup, row);
         funds.push(row);
@@ -294,7 +303,13 @@ function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: Performanc
     const benchmarks: BenchRow[] = [];
     const missingBenchmarks: string[] = [];
     const names: string[] = [];
-    for (const m of g.members) {
+    /* KI-024 (rule 4; MOD-05's ruling on the financial review of 27 Nov 2026): a PMS or AIF group is compared with an
+       equity index only when every holding in it is of asset class Equity. The test reads the holdings, never the
+       category label: a blank or generic category ("Category II", "High Yield") groups debt and equity products. */
+    const alternative = bucket === 'PMS' || bucket === 'AIF';
+    const allEquity = g.cats.every((c) => byCat.get(c)!.every((x) => x.h.assetClass === 'Equity'));
+    const members = alternative && !allEquity ? [] : g.members;
+    for (const m of members) {
       for (const n of m.bench ?? []) if (!names.includes(n)) names.push(n);
       for (const cb of m.benchIfHeld ?? []) {
         const held = g.cats.some((c) => byCat.get(c)!.some((x) => re(cb.fundName).test(categoryKey(x.h.instrumentName))));
@@ -306,7 +321,11 @@ function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: Performanc
       if (b) benchmarks.push(b);
       else missingBenchmarks.push(n);
     }
-    return { label: g.label, funds, benchmarks, missingBenchmarks, noBenchmarkNamed: hasBenchmarks && names.length === 0 };
+    const noBenchmarkNamed = hasBenchmarks && names.length === 0;
+    const noBenchmarkReason = !noBenchmarkNamed ? null
+      : alternative && !allEquity ? 'not-all-equity'
+        : g.members.length === 0 ? 'not-recognised' : 'not-named';
+    return { label: g.label, funds, benchmarks, missingBenchmarks, noBenchmarkNamed, noBenchmarkReason };
   });
   const benchAsOn = groups.some((g) => g.benchmarks.length > 0) ? (s.asOn.BENCH ?? missing(STATUS.NOT_AVAILABLE, 'BENCH_RET records no as-on date')) : null;
   return { key: bucket, cols, mcap: def.mcap, debt: def.debt, hasBenchmarks, asOn: asOnOfBucket(s, bucket, direct && mfBucket), benchAsOn, groups };

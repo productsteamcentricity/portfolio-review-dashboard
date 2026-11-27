@@ -10,6 +10,8 @@ import type { Holding } from '../../../app/src/model/holding.ts';
 import type { DayNumber, Value } from '../../../app/src/model/value.ts';
 import type { PerformanceSources, PerfRecord } from '../../../app/src/engine/returns/performance.ts';
 import { computePerformance, categoryKey, benchKey } from '../../../app/src/engine/returns/performance.ts';
+import { buildPerformanceVM } from '../../../app/src/views/performance.ts';
+import { performanceSheet } from '../../../app/src/exports/xlsx/sheets/performance.ts';
 import { parseProductClassRules } from '../../../app/src/engine/match/product-class.ts';
 import { refdataBlock } from '../../helpers/legacy-engine.ts';
 
@@ -123,5 +125,75 @@ describe('computePerformance', () => {
     assert.ok(res.noDirectTwin.includes('Alpha Flexi Cap Fund'));
     assert.equal(bucket('PMS', d), bucket('PMS'));
     assert.equal(computePerformance(H.filter((x) => x.product === 'PMS'), SRC).direct, null, 'no matched mutual fund: no Direct list');
+  });
+});
+
+describe('B1 (KI-024, rule 4; MOD-05 on the financial review of 27 Nov 2026): a PMS or AIF gets an equity index only when all its holdings are equity', () => {
+  const groupOf = (hs: Holding[], bucketKey: string, label: string) => computePerformance(hs, SRC).regular.find((b) => b.key === bucketKey)!.groups.find((g) => g.label === label)!;
+
+  test('a debt AIF with a category of no debt word gets no benchmark row ("Category II", "High Yield")', () => {
+    for (const cat of ['Category II', 'High Yield']) {
+      const g = groupOf([h(`Synthetic ${cat} AIF`, 'AIF', 'Debt', cat)], 'AIF', cat);
+      assert.deepEqual([g.benchmarks.length, g.missingBenchmarks.length, g.noBenchmarkNamed, g.noBenchmarkReason], [0, 0, true, 'not-all-equity'], cat);
+    }
+  });
+
+  test('a debt PMS with a blank category ("Other") gets none', () => {
+    const g = groupOf([h('Synthetic Income PMS', 'PMS', 'Debt', null)], 'PMS', 'Other');
+    assert.deepEqual([g.benchmarks.length, g.noBenchmarkReason], [0, 'not-all-equity']);
+  });
+
+  test('a blank-category group with one debt and one equity AIF gets none (the test reads the holdings, not the label)', () => {
+    const g = groupOf([h('Synthetic Credit AIF', 'AIF', 'Debt', null), h('Synthetic Growth AIF', 'AIF', 'Equity', null)], 'AIF', 'Other');
+    assert.deepEqual([g.benchmarks.length, g.noBenchmarkReason], [0, 'not-all-equity']);
+  });
+
+  test('Hybrid, Unknown and REITs/InvITs holdings also get none; an all-equity group still gets its equity index', () => {
+    for (const asset of ['Hybrid', null, 'REITs/InvITs'] as const) {
+      const g = groupOf([h('Synthetic Multi Asset PMS', 'PMS', asset, 'Multi Asset')], 'PMS', 'Multi Asset');
+      assert.equal(g.noBenchmarkReason, 'not-all-equity', String(asset));
+    }
+    const eq = groupOf([h('Synthetic Flexi PMS', 'PMS', 'Equity', 'Flexi Cap'), h('Synthetic Flexi PMS 2', 'PMS', 'Equity', 'Flexi Cap')], 'PMS', 'Flexi Cap');
+    assert.deepEqual([eq.benchmarks.map((b) => b.name), eq.noBenchmarkReason], [['NIFTY 500 - TRI'], null]);
+  });
+
+  test('the view says why, apart from a category with no benchmark named or one not recognised (N6)', () => {
+    /* the debt AIF is matched, so its group is shown with its figures (a group with nothing to show gets no note) */
+    const vm = buildPerformanceVM(computePerformance([
+      h('Synthetic Credit AIF', 'AIF', 'Debt', 'Category II', 'Synthetic Credit AIF'),
+      h('Synthetic Odd Fund', 'Mutual Funds', 'Equity', 'Equity - Large Cap', 'Alpha Large Cap Fund-Reg(G)'),
+      h('Synthetic Balanced Fund', 'Mutual Funds', 'Hybrid', 'Balanced Advantage', 'Alpha Conservative Hybrid Fund-Reg(G)'),
+    ], { ...SRC, AIF: { 'Synthetic Credit AIF': rec(R) } }));
+    const notes = vm.buckets.flatMap((b) => b.notes);
+    assert.ok(notes.includes('No benchmark is shown for Category II: an equity index is used for a PMS or AIF group only when every holding in it is an equity holding.'), JSON.stringify(notes));
+    assert.ok(notes.includes('The category Equity - Large Cap was not recognised, so no benchmark is shown for it.'), JSON.stringify(notes));
+    assert.ok(notes.includes('No benchmark is named yet for Balanced Advantage.'), JSON.stringify(notes));
+  });
+});
+
+describe('S3: a scheme the Regular block carries only as a Direct plan', () => {
+  test('is a single plan with the dagger in the Regular list, never "Regular"', () => {
+    const src = { ...SRC, MF: { ...MF, 'Zeta Nifty 50 Index Fund(G)-Direct Plan': rec(R) } };
+    const res = computePerformance([h('Zeta Nifty 50 Index Fund - Direct Plan - Growth', 'Mutual Funds', 'Equity', 'Index Funds', 'Zeta Nifty 50 Index Fund(G)-Direct Plan')], src);
+    const f = res.regular[0]!.groups[0]!.funds[0]!;
+    assert.equal(f.plan, 'single-plan');
+    const b = buildPerformanceVM(res, 'regular').buckets[0]!;
+    assert.ok(b.rows.some((r) => r.kind === 'fund' && r.marker !== null));
+    assert.ok(b.notes.some((n) => n.endsWith('1 scheme has only a Direct plan: the figures are that plan\'s.')), JSON.stringify(b.notes));
+    const row = performanceSheet(res).rows.find((r) => (r[6] as { v?: string } | null)?.v === 'Zeta Nifty 50 Index Fund - Direct Plan - Growth')!;
+    assert.deepEqual(row[0], { kind: 'str', v: 'Direct only (single plan)' }, 'the workbook\'s Plan column');
+  });
+});
+
+describe('N10: an unmatched fund and a matched fund with no returns are told apart', () => {
+  test('two notes', () => {
+    const src = { ...SRC, MF: { ...MF, 'Alpha Empty Fund-Reg(G)': rec({}) } };
+    const b = buildPerformanceVM(computePerformance([
+      h('Synthetic Unknown Fund', 'Mutual Funds', 'Equity', 'Large Cap Fund'),
+      h('Alpha Empty Fund', 'Mutual Funds', 'Equity', 'Large Cap Fund', 'Alpha Empty Fund-Reg(G)'),
+      h('Alpha Large Cap Fund', 'Mutual Funds', 'Equity', 'Large Cap Fund', 'Alpha Large Cap Fund-Reg(G)'),
+    ], src)).buckets[0]!;
+    assert.ok(b.notes.includes('1 fund is not matched to reference data and is not shown: Synthetic Unknown Fund.'), JSON.stringify(b.notes));
+    assert.ok(b.notes.includes('1 fund has no returns in the data and is not shown: Alpha Empty Fund.'), JSON.stringify(b.notes));
   });
 });

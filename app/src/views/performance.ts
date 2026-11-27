@@ -16,6 +16,7 @@ import type { CellDisplay } from './format.ts';
 import type { DayNumber, Value } from '../model/value.ts';
 import { displayPct, plainText, plural } from './format.ts';
 import { formatDay } from '../engine/dates.ts';
+import { STATUS } from '../model/status.ts';
 
 export type PerformancePlan = 'regular' | 'direct';
 export type PerformanceRowVM =
@@ -33,8 +34,11 @@ export type PerformanceVM = {
 
 const DAGGER = String.fromCharCode(0x2020);
 
+/** "as on 31 Oct 2026"; for an uploaded file whose date text could not be read, that text (S5); else "not given". */
 function dateText(v: Value<DayNumber> | null): string {
-  return v && v.kind === 'value' ? `as on ${formatDay(v.v)}` : 'as-on date not given in the data';
+  if (v && v.kind === 'value') return `as on ${formatDay(v.v)}`;
+  if (v && v.status === STATUS.INVALID_SOURCE) return plainText(v.reason);
+  return 'as-on date not given in the data';
 }
 
 function names(list: readonly string[]): string {
@@ -49,22 +53,26 @@ function bucketVM(b: PerfBucket, plan: PerformancePlan, directList: boolean): Pe
   const planText = mf ? (directList ? ', Direct plans' : ', Regular plans') : '';
   const title = `${b.key}${planText}, ${dateText(b.asOn)}`;
   const rows: PerformanceRowVM[] = [];
-  const hidden: string[] = [];
+  const unmatched: string[] = [];
+  const noReturns: string[] = [];
   const missingBench: string[] = [];
-  const noBench: string[] = [];
+  const notNamed: string[] = [];
+  const notRecognised: string[] = [];
+  const notAllEquity: string[] = [];
   const noTwin: string[] = [];
   let singlePlan = 0;
   for (const g of b.groups) {
     const shown = g.funds.filter((f) => hasReturn(f) || f.plan === 'no-direct-twin');
-    for (const f of g.funds) if (!shown.includes(f)) hidden.push(f.name);
+    /* N10: a fund with no match is not the same as a matched fund whose data has no returns */
+    for (const f of g.funds) if (!shown.includes(f)) (f.key === null ? unmatched : noReturns).push(f.name);
     if (shown.length === 0 && g.benchmarks.length === 0) continue;
     rows.push({ kind: 'group', name: plainText(g.label) });
     for (const f of shown) {
       if (f.plan === 'no-direct-twin') noTwin.push(f.name);
-      if (f.plan === 'single-plan' && plan === 'direct') singlePlan += 1;
+      if (f.plan === 'single-plan') singlePlan += 1;
       const cells: Partial<Record<Tenor, CellDisplay>> = {};
       for (const c of b.cols) cells[c] = displayPct(f.r[c]!);
-      rows.push({ kind: 'fund', name: plainText(f.name), marker: f.plan === 'single-plan' && plan === 'direct' ? DAGGER : null, cells });
+      rows.push({ kind: 'fund', name: plainText(f.name), marker: f.plan === 'single-plan' ? DAGGER : null, cells });
     }
     for (const bm of g.benchmarks) {
       const cells: Partial<Record<Tenor, CellDisplay>> = {};
@@ -72,15 +80,24 @@ function bucketVM(b: PerfBucket, plan: PerformancePlan, directList: boolean): Pe
       rows.push({ kind: 'bench', name: plainText(bm.name), cells });
     }
     for (const m of g.missingBenchmarks) missingBench.push(`${m} (${g.label})`);
-    if (g.noBenchmarkNamed) noBench.push(g.label);
+    if (g.noBenchmarkReason === 'not-named') notNamed.push(g.label);
+    else if (g.noBenchmarkReason === 'not-recognised') notRecognised.push(g.label);
+    else if (g.noBenchmarkReason === 'not-all-equity') notAllEquity.push(g.label);
   }
   const notes: string[] = [];
   if (b.hasBenchmarks && b.benchAsOn) notes.push(`Benchmarks ${dateText(b.benchAsOn)}.`);
-  if (singlePlan > 0) notes.push(`${DAGGER} ${plural(singlePlan, 'ETF has', 'ETFs have')} a single plan: the figures are the fund's own.`);
+  if (singlePlan > 0) {
+    notes.push(directList
+      ? `${DAGGER} ${plural(singlePlan, 'ETF has', 'ETFs have')} a single plan: the figures are the fund's own.`
+      : `${DAGGER} ${plural(singlePlan, 'scheme has', 'schemes have')} only a Direct plan: the figures are that plan's.`);
+  }
   if (noTwin.length > 0) notes.push(`${plural(noTwin.length, 'fund has', 'funds have')} no Direct plan in the Direct data, so the row is blank: ${names(noTwin)}.`);
   if (missingBench.length > 0) notes.push(`Benchmark series not in the data, so not shown: ${names(missingBench)}.`);
-  if (noBench.length > 0) notes.push(`No benchmark is named yet for ${names(noBench)}.`);
-  if (hidden.length > 0) notes.push(`${plural(hidden.length, 'fund has', 'funds have')} no returns in the data and ${hidden.length === 1 ? 'is' : 'are'} not shown: ${names(hidden)}.`);
+  if (notNamed.length > 0) notes.push(`No benchmark is named yet for ${names(notNamed)}.`);
+  if (notRecognised.length > 0) notes.push(`The category ${names(notRecognised)} was not recognised, so no benchmark is shown for it.`);
+  if (notAllEquity.length > 0) notes.push(`No benchmark is shown for ${names(notAllEquity)}: an equity index is used for a PMS or AIF group only when every holding in it is an equity holding.`);
+  if (unmatched.length > 0) notes.push(`${plural(unmatched.length, 'fund is', 'funds are')} not matched to reference data and ${unmatched.length === 1 ? 'is' : 'are'} not shown: ${names(unmatched)}.`);
+  if (noReturns.length > 0) notes.push(`${plural(noReturns.length, 'fund has', 'funds have')} no returns in the data and ${noReturns.length === 1 ? 'is' : 'are'} not shown: ${names(noReturns)}.`);
   return { key: b.key, title, cols: b.cols, rows, notes };
 }
 

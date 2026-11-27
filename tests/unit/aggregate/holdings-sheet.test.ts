@@ -10,6 +10,8 @@ import { computeHoldingsSheets } from '../../../app/src/engine/aggregate/holding
 import { missing, present } from '../../../app/src/engine/value.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
 import { loadSheetJS } from '../../helpers/sheetjs.ts';
+import { displayPct } from '../../../app/src/views/format.ts';
+import { valueCells } from '../../../app/src/exports/xlsx/spec.ts';
 
 const xlsx = loadSheetJS();
 function holdings(rows: unknown[][]) {
@@ -79,5 +81,37 @@ describe('computeHoldingsSheets', () => {
     assert.equal(grand.xirr.kind, 'missing');
     assert.equal(s.irrGrandBlank, true);
     assert.equal(s.rows.find((r) => r.level === 'asset' && r.label === 'Equity')!.xirrSource, 'cmv-weighted');
+  });
+});
+
+describe('S2 (financial review of 27 Nov 2026): a partial weighted XIRR carries its coverage', () => {
+  /* the reviewer's known answer: market values 2, 3, 5 (Crore), XIRR 10, blank, 20; BMXIRR 8, 9, 6 */
+  const K = holdings([
+    HEAD,
+    ['Sample Client K', 'Fund K1', 'Equity', 'Mutual Funds', 1, 2, 10, 8],
+    ['Sample Client K', 'Fund K2', 'Equity', 'Mutual Funds', 1, 3, null, 9],
+    ['Sample Client K', 'Bond K3', 'Debt', 'Mutual Funds', 1, 5, 20, 6],
+  ]);
+  const rows = computeHoldingsSheets(K)[0]!.rows;
+  const equity = rows.find((r) => r.level === 'asset' && r.label === 'Equity')!;
+  const grand = rows.find((r) => r.level === 'grand')!;
+
+  test('Equity 10.00% covering 40%; Grand Total (10 x 2 + 20 x 5) / 7 = 17.14% covering 70%; the figure itself carries the share', () => {
+    assert.ok(Math.abs(v(equity.xirr)! - 10) < 1e-9);
+    assert.ok(equity.xirr.kind === 'value' && Math.abs(equity.xirr.coverage! - 0.4) < 1e-12);
+    assert.ok(Math.abs(v(grand.xirr)! - 120 / 7) < 1e-9);
+    assert.ok(grand.xirr.kind === 'value' && Math.abs(grand.xirr.coverage! - 0.7) < 1e-12);
+    assert.ok(Math.abs(v(grand.xirrCoveragePct!)! - 70) < 1e-9);
+    /* BMXIRR covers every holding: no coverage on the figure */
+    assert.ok(Math.abs(v(grand.bmXirr)! - (8 * 2 + 9 * 3 + 6 * 5) / 10) < 1e-9);
+    assert.ok(grand.bmXirr.kind === 'value' && grand.bmXirr.coverage === undefined);
+  });
+
+  test('the screen shows the partial marker on the cell; the client sheet says PARTIAL COVERAGE beside the figure', () => {
+    assert.equal(displayPct(equity.xirr).marker !== null, true);
+    assert.equal(displayPct(equity.xirr).footnoteStatus, STATUS.PARTIAL);
+    assert.equal(displayPct(grand.bmXirr).marker, null);
+    const [, status] = valueCells(grand.xirr);
+    assert.deepEqual(status, { kind: 'str', v: STATUS.PARTIAL });
   });
 });

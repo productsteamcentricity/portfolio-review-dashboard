@@ -212,9 +212,12 @@
     {
       "id": "PF-05",
       "kind": "bench-set",
-      "class": "correction",
-      "reference": "OD-7; Q-45; KI-073; KI-024",
-      "description": "One benchmark table: each held category's own benchmark rows (the legacy always listed all three Diversified benchmarks); no benchmark named for balanced advantage, dynamic asset allocation, multi-asset, equity savings, gold, silver and global (OD-7; the legacy showed Nifty 500 or a series it does not carry as an all-dash row, KI-073); no equity benchmark for an Equity-bucket category the table does not place; a PMS or AIF by its category (KI-024).",
+      "buckets": [
+        "Equity MF",
+        "Hybrid MF",
+        "Debt MF",
+        "Commodity MF"
+      ],
       "fixtures": [
         "family-a",
         "family-a-all-classes",
@@ -233,7 +236,6 @@
         "family-a-merged-dates",
         "family-a-merged-folios",
         "family-a-money-columns",
-        "family-a-na-cmv",
         "family-a-negative-cmv",
         "family-a-negative-gain",
         "family-a-no-invested",
@@ -276,15 +278,116 @@
         "syn-total-like",
         "syn-total-rows",
         "syn-zero-cmv"
-      ]
+      ],
+      "legacyOnly": [
+        "crisilcompositebondindex",
+        "crisildynamicbondaiiiindex",
+        "crisilliquiddebtindex",
+        "crisilshorttermbondindex",
+        "domesticpriceofgold",
+        "nifty100",
+        "nifty500",
+        "nifty500multicap502525",
+        "nifty50hybridcompositedebt6535index",
+        "niftylargemidcap250",
+        "niftymidcap150"
+      ],
+      "newOnly": [],
+      "class": "correction",
+      "reference": "OD-7; Q-45; KI-073; KI-072",
+      "description": "In the mutual-fund buckets the new build adds no benchmark and drops only the ones named in legacyOnly: no benchmark named for balanced advantage, multi-asset, equity savings, gold and silver (OD-7; the legacy showed Nifty 500, a hybrid composite or a gold price row it does not carry, KI-073); each held Diversified category with its own row instead of all three (Q-45); groups that held only holdings routed elsewhere leave with them (KI-072). Narrowed on 27 Nov 2026 (financial review S1): any benchmark the new build adds, or any other name it drops, is unclassified."
     },
     {
       "id": "PF-06",
-      "kind": "*",
+      "kind": "fund-figure",
       "list": "direct",
+      "buckets": [
+        "Equity MF"
+      ],
+      "labels": [
+        "HDFC BSE 500 ETF"
+      ],
+      "fixtures": [
+        "family-b"
+      ],
       "class": "correction",
       "reference": "KI-054; NEW-8",
-      "description": "The Direct list: present only with a matched mutual fund; a Direct record only for the same scheme, an ETF keeps its own figures as single plan (the legacy took another scheme's, e.g. HDFC BSE 500 ETF), a fund with no Direct twin and an unmatched fund keep their rows (the legacy dropped them); its other differences are those of PF-02 to PF-05 in the Direct list.",
+      "description": "The Direct list keeps an ETF's own figures as a single plan; the legacy took another scheme's Direct figures (HDFC BSE 500 ETF). Narrowed on 27 Nov 2026 (CHAT-008 C1): only this fund's figures may differ."
+    },
+    {
+      "id": "PF-07",
+      "kind": "fund-figure",
+      "list": "regular",
+      "buckets": [
+        "Equity MF"
+      ],
+      "labels": [
+        "Aditya Birla SL Large Cap Fund-Reg(G)"
+      ],
+      "fixtures": [
+        "family-a-dash-labels"
+      ],
+      "class": "correction",
+      "reference": "KI-072",
+      "description": "A PMS holding named like a mutual fund (\"PMS - Equity\", unmatched) was filed in Equity MF by the legacy and took the row of the mutual fund of the same name, blanking its returns; it is now in PMS, and the fund shows its figures. Only this fund."
+    },
+    {
+      "id": "PF-08",
+      "kind": "bench-set",
+      "buckets": [
+        "PMS"
+      ],
+      "fixtures": [
+        "family-a-odd-asset-labels"
+      ],
+      "legacyOnly": [
+        "niftymidcap150"
+      ],
+      "newOnly": [],
+      "class": "correction",
+      "reference": "KI-024; rule 4; MOD-05 ruling of 27 Nov 2026 (financial review B1)",
+      "description": "A PMS or AIF group is compared with an equity index only when every holding in it is of asset class Equity: a PMS whose Asset Name is not Equity (odd asset labels) loses the equity benchmark the legacy gave it by its category."
+    },
+    {
+      "id": "PF-09",
+      "kind": "bench-set",
+      "list": "direct",
+      "buckets": [
+        "Equity MF"
+      ],
+      "fixtures": [
+        "family-a-invalid-text",
+        "family-a-na-cmv"
+      ],
+      "legacyOnly": [],
+      "newOnly": [
+        "nifty500"
+      ],
+      "class": "correction",
+      "reference": "KI-054; Q-45",
+      "description": "The Direct list keeps an unmatched fund's row (the legacy dropped it), so its group (Thematic and Sectoral Funds) appears in the Direct list too, with its Nifty 500 row."
+    },
+    {
+      "id": "PF-10",
+      "kind": "bench-set",
+      "buckets": [
+        "PMS"
+      ],
+      "fixtures": [
+        "family-a-dash-labels"
+      ],
+      "legacyOnly": [],
+      "newOnly": [
+        "nifty100"
+      ],
+      "class": "correction",
+      "reference": "KI-072",
+      "description": "A PMS holding the legacy filed in Equity MF (\"PMS - Equity\") is in PMS; its category Large Cap Fund takes the large-cap index there (Nifty 100), all its holdings being Equity."
+    },
+    {
+      "id": "PF-11",
+      "kind": "fund-set",
+      "list": "direct",
       "fixtures": [
         "family-a",
         "family-a-all-classes",
@@ -314,23 +417,16 @@
         "family-a-text-dates",
         "family-a-total-like",
         "family-a-total-rows",
-        "family-a-zero-cmv",
-        "family-b"
-      ]
-    },
-    {
-      "id": "PF-07",
-      "kind": "fund-figure",
-      "list": "regular",
-      "buckets": [
-        "Equity MF"
+        "family-a-zero-cmv"
+      ],
+      "legacyOnly": [],
+      "newOnly": [
+        "Aditya Birla SL Large Cap Fund-Reg(G)",
+        "Sample Unknown Opportunities Fund"
       ],
       "class": "correction",
-      "reference": "KI-072",
-      "description": "A PMS holding named like a mutual fund (\"PMS - Equity\", unmatched) was filed in Equity MF by the legacy and took the row of the mutual fund of the same name, blanking its returns; it is now in PMS, and the fund shows its figures.",
-      "fixtures": [
-        "family-a-dash-labels"
-      ]
+      "reference": "KI-054; KI-072",
+      "description": "The Direct list keeps the rows the legacy dropped: an unmatched fund (blank, counted) and the PMS holding now routed to PMS. Only these funds."
     }
   ]
 }
