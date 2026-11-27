@@ -87,7 +87,11 @@ tests/fixtures/next-build/     a synthetic vendored library and two test entries
 
 1. **Bundle.** esbuild bundles `app/src/main.tsx` (format IIFE, target ES2022, JSX automatic with Preact, not
    minified, no source map, no legal comments) in memory. `absWorkingDir` is the repository, so the module comments
-   in the bundle are repository-relative and identical on every machine.
+   in the bundle are repository-relative and identical on every machine. `preserveSymlinks` is on (28 Nov 2026), so
+   a `node_modules` that is a symlink or junction to another folder (for example a second worktree sharing the first
+   one's install) keeps its written path: the comments read `// node_modules/preact/...`, never
+   `// ../<other worktree>/node_modules/preact/...`, and the page is byte-identical wherever the packages really live.
+   Without it, a reviewer's build in such a worktree differed by a few bytes in three Preact comments.
 2. **Vendored libraries, only when used.** A module imports a vendored library as `import X from 'vendor:<name>'`.
    The build resolves it against `app/vendor/MANIFEST.json` (name, version, file, SHA-256, global, licence), checks
    the file's SHA-256, and inlines it as its own `<script>` ahead of the app script, only when some bundled module
