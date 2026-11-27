@@ -112,7 +112,7 @@ describe('E-147: the source order', () => {
     const r = weightedFundReturn(book, [up, embedded], '3y', 'family');
     near(v(r.figure!.value), 20);
     // Delta is absent from the primary: the pack (same date) fills it, the September monitor (another date) cannot
-    const old = src('embedded-mf-monitor', SEP, { 'Sample Delta Fund-Reg(G)': r3(6) });
+    const old = src('uploaded-mf-monitor', SEP, { 'Sample Delta Fund-Reg(G)': r3(6) }); // one source per kind
     const book2 = [...book.slice(0, 2), fh('h4', 'Sample Delta Fund-Reg(G)', 2)];
     const r2 = weightedFundReturn(book2, [embedded, old, src('screener-pack', OCT, { 'Sample Delta Fund-Reg(G)': r3(4) })], '3y', 'family');
     near(v(r2.figure!.value), (5 * 14 + 3 * 6 + 2 * 4) / 10);
@@ -249,7 +249,7 @@ describe('E-147: Regular and Direct plans are separate tables', () => {
     // the primary is the first table used in the caller's order (the upload's Regular table, 31 Oct); Direct is a part
     assert.equal(v(r.figure!.asOn), OCT);
     assert.deepEqual(r.used.map((u) => v(u.asOn)), [OCT, SEP30]);
-    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), p.share]), [['uploaded-mf-monitor', OCT, 0.5], ['uploaded-mf-monitor', SEP30, 0.5]]);
+    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), p.share]), [['uploaded-mf-monitor', SEP30, 0.5], ['uploaded-mf-monitor', OCT, 0.5]]); // parts: date ascending within a source
   });
 });
 
@@ -355,7 +355,7 @@ describe('MOD-04 rulings of 26 Nov 2026', () => {
     const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { [twin]: r3(12) }), direct: table(OCT30, { [twin]: r3(13) }) } };
     const r = weightedFundReturn([fh('a', twin, 1, 'regular'), fh('b', twin, 1, 'direct')], [up], '3y', 'family');
     assert.equal(r.figure!.parts?.length, 2);
-    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), p.share]), [['uploaded-mf-monitor', OCT, 0.5], ['uploaded-mf-monitor', OCT30, 0.5]]);
+    assert.deepEqual(r.figure!.parts!.map((p) => [p.source, v(p.asOn), p.share]), [['uploaded-mf-monitor', OCT30, 0.5], ['uploaded-mf-monitor', OCT, 0.5]]); // parts: date ascending within a source
   });
   test('PD-57: the month-end label of a price day; PD-58: the true day only in the notes', () => {
     assert.equal(monthEndLabel(ymdToDay(2026, 11, 2)!), OCT);
@@ -401,7 +401,7 @@ describe('contracts-3 (I-31 WeightedReturn.parts)', () => {
     const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(null, { [twin]: r3(12) }), direct: table(OCT, { [twin]: r3(13) }) } };
     const r = weightedFundReturn([fh('a', twin, 1, 'regular'), fh('b', twin, 1, 'direct')], [up], '3y', 'family');
     assert.equal(r.figure!.asOn.kind, 'missing');
-    assert.deepEqual(r.figure!.parts!.map((p) => p.asOn.kind), ['missing', 'value']);
+    assert.deepEqual(r.figure!.parts!.map((p) => p.asOn.kind), ['value', 'missing']); // an undated part last
   });
 });
 
@@ -432,7 +432,7 @@ describe('ARC-03 delta review of 49e9a34 (H1, M3, L2, pinned boundaries)', () =>
     assert.deepEqual(excludedBy(r.items), { 'no-return': 2, unmatched: 1, 'no-plan': 1, 'plan-mismatch': 1 });
     assert.equal(footnoteOf(r),
       '3Y: weighted average return of current holdings. 3Y covers 40% of MF value; 2 funds without a 3Y return excluded; '
-      + '1 fund not matched to a fund excluded; 1 fund with no known plan excluded; 1 fund whose plan differs from the account excluded. '
+      + '1 holding not matched to a fund excluded; 1 fund with no known plan excluded; 1 fund whose plan differs from the account excluded. '
       + 'Source: MF Monitor (embedded monthly data), Regular plans, as on 2026-10-31.');
   });
   test('L2: a listed fund with no record is an explicit "no return", never filled', () => {
@@ -448,5 +448,50 @@ describe('ARC-03 delta review of 49e9a34 (H1, M3, L2, pinned boundaries)', () =>
     assert.equal(monthEndLabel(ymdToDay(2028, 3, 7)!), ymdToDay(2028, 2, 29));
     assert.equal(monthEndLabel(ymdToDay(2028, 3, 8)!), null);
     assert.equal(monthEndLabel(ymdToDay(2026, 10, 15)!), null);
+  });
+});
+
+describe('ARC-03 delta review 2 (F3 for E-147 parts, F7)', () => {
+  test('F3: the parts never depend on the order of the holdings', () => {
+    const twin = 'Sample Twin Fund';
+    const OCT30 = ymdToDay(2026, 10, 30)!;
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { [twin]: r3(12) }), direct: table(OCT30, { [twin]: r3(13) }) } };
+    const emb = src('embedded-mf-monitor', OCT, { Other: r3(9) });
+    const rows = [fh('a', twin, 2, 'regular'), fh('b', twin, 1, 'direct'), fh('c', 'Other', 1, 'regular')];
+    const a = weightedFundReturn(rows, [up, emb], '3y', 'family');
+    const b = weightedFundReturn([...rows].reverse(), [up, emb], '3y', 'family');
+    assert.deepEqual(b.figure!.parts, a.figure!.parts);
+    assert.equal(v(b.figure!.value), v(a.figure!.value));
+    assert.deepEqual(a.figure!.parts!.map((p) => [p.source, v(p.asOn)]), [['uploaded-mf-monitor', OCT30], ['uploaded-mf-monitor', OCT], ['embedded-mf-monitor', OCT]]);
+  });
+  test('F7: an unmatched holding is "1 holding not matched to a fund"', () => {
+    const r = weightedFundReturn([...book.slice(0, 2), fh('u', null, 2)], [embedded], '3y', 'family');
+    assert.match(footnoteOf(r)!, /; 1 holding not matched to a fund excluded\./);
+    const r2 = weightedFundReturn([...book.slice(0, 2), fh('u', null, 1), fh('w', null, 1)], [embedded], '3y', 'family');
+    assert.match(footnoteOf(r2)!, /; 2 holdings not matched to a fund excluded\./);
+  });
+});
+
+describe('financial review of the E-148 round: finding 2 for E-147', () => {
+  test('two fund sources of one kind are refused', () => {
+    assert.throws(() => weightedFundReturn(book, [embedded, { ...embedded }], '3y', 'family'), /two sources of one kind \("embedded-mf-monitor"\)/);
+  });
+});
+
+describe('ARC-03 Gate B of the E-148 round: T2 (footnote groups by source AND plan)', () => {
+  const SEP30 = ymdToDay(2026, 9, 30)!;
+  const fig = weightedFundReturn(book, [embedded], '3y', 'family').figure!;
+  const reg = { source: 'uploaded-mf-monitor' as const, plan: 'regular' as const, asOn: day(OCT) };
+  const dir = { source: 'uploaded-mf-monitor' as const, plan: 'direct' as const, asOn: day(SEP30) };
+  test('a Regular and a Direct table of one source with different dates are two entries, in either order', () => {
+    const tail = (t: string) => t.slice(t.indexOf('Source: '));
+    assert.equal(tail(coverageFootnote(fig, [reg, dir], 0, {})), 'Source: uploaded MF Monitor, Regular plans, as on 2026-10-31; uploaded MF Monitor, Direct plans, as on 2026-09-30.');
+    assert.equal(tail(coverageFootnote(fig, [dir, reg], 0, {})), 'Source: uploaded MF Monitor, Direct plans, as on 2026-09-30; uploaded MF Monitor, Regular plans, as on 2026-10-31.');
+  });
+  test('the same through the engine: an upload with both plans at different dates', () => {
+    const twin = 'Sample Twin Fund';
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { [twin]: r3(12) }), direct: table(SEP30, { [twin]: r3(13) }) } };
+    const r = weightedFundReturn([fh('a', twin, 1, 'regular'), fh('b', twin, 1, 'direct')], [up], '3y', 'family');
+    assert.match(footnoteOf(r)!, /Source: uploaded MF Monitor, Regular plans, as on 2026-10-31; uploaded MF Monitor, Direct plans, as on 2026-09-30\.$/);
   });
 });
