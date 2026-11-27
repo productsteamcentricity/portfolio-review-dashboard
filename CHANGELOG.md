@@ -4,6 +4,31 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build: the base file template, the Templates group and Account Name, 28 Nov 2026; no change to `index.html` or data; `/next/` changes)
+- **A blank base file template** (`app/src/exports/xlsx/base-template.ts`, parity row U-06): "Base file template.xlsx",
+  built in the browser on request, no binary committed. Sheet "Base File" holds the 17 headings of the platform's holding
+  report that the owner kept on 26 Nov 2026, exactly as the platform writes them, with column formats as column defaults
+  (none on the two XIRR columns: a percent format on a pasted 8.79 would read as 879%). Sheet "Read Me" has one row per
+  column, eight rules, and the product names the application knows with what each is read as.
+- **A Templates group in section 1** (`app/src/ui/components/templates-group.tsx`; one line each in `s1-uploads.tsx`,
+  `store.ts` and `wiring.ts`): the base file template and the transactions (IRR) file template, available before any file.
+  The IRR slot keeps its own template button.
+- **Account Name is read, kept and shown** (`app/src/ingest/base-file.ts`; the Moderator's default D1 (a) of 27 Nov 2026,
+  not yet ruled on by the owner): a column headed exactly "Account Name" is kept on each holding (`Holding.accountNames`,
+  each different name once for merged folios). It is shown as one count line in the import report and as a last column
+  "Account Name" on the workbook's Holdings (as loaded) sheet, written only when a holding has a name, so a workbook from a
+  file without the column is unchanged. No figure, no grouping and no account identity uses it. Merged folios under more
+  than one account name stay one holding, with an Information result (`base-file.merged-accounts`).
+- **Model types, proposed to the Moderator, who writes `app/src/model/**`**: `BaseField` gains `accountName`, and `Holding`
+  gains the optional `accountNames`.
+- **Known issue KI-320**: the template's "Valuation Date" column is not read; the Read Me says so.
+- **Tests**: `tests/exports/xlsx/base-template.test.ts` (the headings against a hand-typed list and the full report's
+  order; a filled template read back with no result of any severity and each value as typed; the Read Me's product list
+  against `data/refdata/PRODUCT_CLASS_RULES.json`: every row's example classifies as the row says and every label of the
+  table is listed), `tests/unit/ingest/account-name.test.ts` (kept as given; the same file with and without the column
+  gives the same holdings, accounts, counts and results; the import report line; the workbook column), and a real-click
+  download check in `tests/browser/overview.cdp.mjs`.
+
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
   `docs/project-control/CHAT_REGISTRY.md`): CHAT-016 (ARC-04, Guardian, successor of CHAT-008) and CHAT-017 (NB-05, new

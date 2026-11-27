@@ -186,6 +186,7 @@ point 9).
 | id | per-review holding id | rule bank §2 (`holdings[i].id`) |
 | instrument | `InstrumentRef` | `03` §6.1 |
 | isin | string, optional | the ISIN the base file gives (a column whose heading contains "ISIN"), trimmed, upper case, only in the ISIN form; absent when the file has no such column or the cell is not an ISIN; read only until the crosswalk is wired in (the owner's answer of 25 Nov 2026, M2) |
+| accountNames | list of strings, optional | the "Account Name" of the holding's rows as given (a column headed exactly "Account Name"), each different name once, in file order; absent when the file has no such column or no row of the holding has a name. Read, kept and shown only (the import report's count line and the last column of Holdings (as loaded)); no figure, grouping or identity uses it: `accountId` stays client + distributor (the Moderator's default D1 (a), 27 Nov 2026; not yet ruled on by the owner) |
 | clientId, accountId, distributorId, folio | the holding's client, account (client + distributor + plan), distributor and folio | `03` §6.8 |
 | assetClass | canonical asset; a blank asset is unknown, with a notice (never Equity); "Fixed Income" and "Debt Funds" are Debt | `03` §8 (OD-7) |
 | category | canonical category | rule bank §2 |
@@ -390,6 +391,10 @@ joint-holder label that differs from a keyed client only in letter case, not lin
 `entity-case-variant` now considers only the labels that key a holding's client or distributor. None of these four
 makes a note.
 
+Added with the base file template (28 Nov 2026): the base-file Information result `merged-accounts` (auto-resolved,
+resolved): merged folios under more than one Account Name stay one holding, with every account name kept. Scoped to
+those holdings; no note.
+
 Added in M2.1 sprint 2a (CHAT-008's S3-1): the base-file Warning `isin-disagree` (auto-resolved, resolved): a merged
 holding whose rows carry different ISINs keeps no ISIN (never guessed, rule 3; its name decides the match). Scoped to
 those holdings; no note. The overview's fixed notes gain `pie-left-out` ("Asset classes with a market value of 0 or less are
@@ -480,7 +485,9 @@ cell). The sheet list is `03` §14. (`03` §6.1, §14)
   XIRR (%), XIRR Status, BMXIRR (%), BMXIRR Status, Avg. Holding Days, Avg. Holding Days Status, Included, Exclusion
   Reason, Invested Present, Merge Gaps, Holding Id, Base File Rows. The Exclusion Reason follows the market value's
   status, as the import report words it (`views/import-report.ts` `exclusionReason`): "Market value not a number
-  (invalid source data, OD-8)" or "No market value (OD-8)" (M1.4 fix round).
+  (invalid source data, OD-8)" or "No market value (OD-8)" (M1.4 fix round). When the base file gave an Account Name for
+  any holding, a 44th column **Account Name** (AR) follows, the names as given joined by "; "; without one the sheet
+  keeps its 43 columns.
 - **Portfolio Overview**: Block | Asset Class | Product | Liquidity | Key | Investment Amount (Cr.) | Current Market
   Value (Cr.) | % CMV | Unrealised Gain/Loss (Cr.) | Absolute Return (%) | Invested Coverage (% of CMV) | Status.
   Row blocks: "Asset and product", "Total" (Grand Total, key ALL), "Liquidity".
