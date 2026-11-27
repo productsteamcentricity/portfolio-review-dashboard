@@ -545,9 +545,25 @@ async function runMode({ browser, mode, files, opt, expect }) {
       perfCaptions: perf.map((x) => x.querySelector('caption')?.textContent.trim() ?? ''),
       planSwitch: document.querySelectorAll('#group-performance .chip-toggle').length,
       notes: [...document.querySelectorAll('#holdings .notes li')].map((li) => li.textContent.trim()),
+      weighted: (() => {
+        const t = document.querySelector('table.weighted-returns');
+        if (!t) return null;
+        return {
+          caption: t.querySelector('caption')?.textContent.trim() ?? '',
+          rows: [...t.querySelectorAll('tbody tr')].map((tr) => [...tr.querySelectorAll('th, td')].map((c) => c.textContent.trim())),
+          notes: [...document.querySelectorAll('#group-weighted-returns .notes li')].map((li) => li.textContent.trim()),
+        };
+      })(),
     };
   })()`;
   const s5 = await page.eval(S5);
+  /* E-147: the sample's funds are not in the reference data, so every weighted figure is a dash, each with its footnote */
+  expect('section 5: the weighted average return of current holdings (E-147), the family then each client, one footnote per figure',
+    s5.weighted !== null && s5.weighted.caption === 'Weighted average return of current holdings (mutual funds)'
+      && JSON.stringify(s5.weighted.rows.map((r) => r[0])) === JSON.stringify(['Family', 'Sample Client A', 'Sample Client B'])
+      && s5.weighted.rows.every((r) => r.slice(1).every((c) => !/[0-9]/.test(c)))
+      && s5.weighted.notes.length === 6 && s5.weighted.notes.every((n) => /^(Family|Sample Client [AB]), [35]Y: weighted average return of current holdings\. [35]Y covers 0% of MF value; [0-9]+ funds? not matched to a fund excluded\.$/.test(n)),
+    s5.weighted);
   expect('section 5: one holdings table per client, highest CMV first, with the CZHOLD columns (U-23)',
     JSON.stringify(s5.captions) === JSON.stringify(['Holdings of Sample Client A', 'Holdings of Sample Client B']) && s5.heads[0] === 'Instrument Name' && s5.heads.includes('Distributor') && s5.heads.length === 10, s5);
   const distributorChip = await page.eval(`(() => { const b = [...document.querySelectorAll('#group-holdings .chip-toggle')].find((x) => x.textContent.trim() === 'Distributor'); if (!b) return null; b.id = 'chip-distributor-test'; return '#chip-distributor-test'; })()`);
