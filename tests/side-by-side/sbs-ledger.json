@@ -279,13 +279,13 @@
       "id": "SB-24",
       "section": "performance",
       "kind": "only-legacy",
-      "key": "/^(regular|direct) \\| hybrid mf \\| bench \\| (nifty50hybridcompositedebt6535index|nifty500)$/",
-      "fixtures": ["syn-standard", "syn-standard-irr-standard", "syn-standard-irr-variant", "probe-irr-standard", "sample-with-irr", "sample-base-only"],
+      "key": "/^(regular|direct) \\| hybrid mf \\| bench \\| (nifty50hybridcompositedebt6535index)$/",
+      "fixtures": ["syn-standard", "syn-standard-irr-standard", "syn-standard-irr-variant", "probe-irr-standard"],
       "legacy": true,
       "new": null,
       "class": "correction",
-      "reference": "E-30; PF-16 (OD-7; KI-073)",
-      "description": "Hybrid MF: no benchmark is named for balanced advantage, multi-asset and equity savings (OD-7); the live page showed a hybrid composite or Nifty 500 row."
+      "reference": "E-30; KI-073 (never an all-dash benchmark row); OD-7; PF-16",
+      "description": "Hybrid MF: the live page shows a NIFTY 50 Hybrid Composite Debt 65:35 row with no figure in any tenor (the series is not in BENCH_RET); the new build shows no all-dash row, and names no benchmark for balanced advantage (OD-7)."
     },
     {
       "id": "SB-25",
@@ -296,8 +296,8 @@
       "legacy": true,
       "new": null,
       "class": "correction",
-      "reference": "E-30; PF-13 (OD-7; KI-073)",
-      "description": "Commodity MF: no benchmark is named for gold and silver (OD-7); the live page showed a domestic gold price row."
+      "reference": "E-30; KI-073 (never an all-dash benchmark row); OD-7; PF-13",
+      "description": "Commodity MF: the live page shows a Domestic Price of Gold row with no figure in any tenor (the series is not in BENCH_RET); the new build shows no all-dash row, and names no benchmark for gold until one is named (OD-7)."
     },
     {
       "id": "SB-26",
@@ -333,7 +333,7 @@
       "new": true,
       "class": "correction",
       "reference": "E-32; PF-11 (KI-054)",
-      "description": "The Direct list keeps an unmatched fund's row (blank, counted); the live page dropped it."
+      "description": "The Direct list keeps an unmatched fund's row (blank); the live page dropped it."
     },
     {
       "id": "SB-29",
@@ -366,7 +366,7 @@
       "id": "SB-31",
       "section": "performance",
       "kind": "field",
-      "field": ["r 1M", "r 3M", "r 6M", "r 1Y", "r 2Y", "r 3Y", "r 5Y", "r 10Y", "r SI"],
+      "field": ["r 1M", "r 3M", "r 6M", "r 1Y", "r 3Y", "r 5Y", "r 10Y", "r SI"],
       "key": "/^(regular|direct) \\| debt mf \\| fund \\| (icici pru bse liquid rate etf\\(idcw\\))$/",
       "fixtures": ["matching-probe"],
       "legacy": "*",
@@ -380,7 +380,7 @@
       "id": "SB-32",
       "section": "performance",
       "kind": "field",
-      "field": ["r 1M", "r 3M", "r 6M", "r 1Y", "r 2Y", "r 3Y", "r 5Y", "r 10Y", "r SI"],
+      "field": ["r 1M", "r 3M", "r 6M", "r 1Y", "r 3Y", "r 5Y", "r 10Y", "r SI"],
       "key": "/^(regular|direct) \\| debt mf \\| fund \\| (sbi nifty 1d rate liquid etf\\(idcw\\))$/",
       "fixtures": ["matching-probe"],
       "legacy": "*",
@@ -423,28 +423,28 @@
       "section": "performance",
       "kind": "field",
       "field": ["r 1M", "r 3M", "r 6M", "r 1Y", "r 2Y", "r 3Y", "r 5Y", "r 10Y", "r SI"],
-      "key": "/^(regular|direct) \\| commodity mf \\| fund \\| (axis gold -reg\\(g\\))$/",
+      "key": "/^(regular) \\| commodity mf \\| fund \\| (axis gold -reg\\(g\\))$/",
       "fixtures": ["matching-probe"],
       "legacy": "*",
       "new": "*",
       "class": "accepted-difference",
       "follows": "SB-13",
-      "reference": "E-31; E-32; follows SB-13",
-      "description": "The live page shows figures for the Gold fund from another record (the Gold ETF in the Regular list); the new build leaves the row blank (unmatched)."
+      "reference": "E-31; follows SB-13",
+      "description": "Regular list: the live page shows the sibling Axis Gold ETF's figures for the Gold fund; the new build leaves the row blank (unmatched). Neither shows the holding's own fund in this list."
     },
     {
       "id": "SB-36",
       "section": "performance",
       "kind": "field",
       "field": ["r 1M", "r 3M", "r 6M", "r 1Y", "r 2Y", "r 3Y", "r 5Y", "r 10Y", "r SI"],
-      "key": "/^(regular|direct) \\| commodity mf \\| fund \\| (kotak gold \\(g\\))$/",
+      "key": "/^(regular) \\| commodity mf \\| fund \\| (kotak gold \\(g\\))$/",
       "fixtures": ["matching-probe"],
       "legacy": "*",
       "new": "*",
       "class": "accepted-difference",
       "follows": "SB-14",
-      "reference": "E-31; E-32; follows SB-14",
-      "description": "The same case for another house: the live page shows another record's figures, the new build a blank row."
+      "reference": "E-31; follows SB-14",
+      "description": "Regular list: the live page shows the sibling Kotak Gold ETF's figures for the Gold fund; the new build leaves the row blank (unmatched). Neither shows the holding's own fund in this list."
     },
     {
       "id": "SB-37",
@@ -487,6 +487,81 @@
       "follows": "SB-17",
       "reference": "E-31; E-32; follows SB-17",
       "description": "The live page finds no share record and shows a blank row; the new build shows the share's figures, found by its ISIN."
+    },
+    {
+      "id": "SB-40",
+      "section": "performance",
+      "kind": "field",
+      "field": ["r 1M", "r 3M", "r 6M", "r 1Y", "r 2Y", "r 3Y", "r 5Y", "r 10Y", "r SI"],
+      "key": "/^(direct) \\| commodity mf \\| fund \\| (axis gold -reg\\(g\\))$/",
+      "fixtures": ["matching-probe"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "known-gap",
+      "reference": "E-32; financial review of bc32ba8 (F1); the stricter regime (OD-5 option B, owner 26 Nov 2026)",
+      "description": "Direct list: the live page's name-only Direct match finds the holding's own scheme (Axis Gold Fund(G)-Direct Plan) and shows its figures; the new build has no Regular match (SB-13) and so no Direct row figures. Here the live page is right and the new build is not: a known gap, not yet ruled on by the owner; alias candidate (PD-36)."
+    },
+    {
+      "id": "SB-41",
+      "section": "performance",
+      "kind": "field",
+      "field": ["r 1M", "r 3M", "r 6M", "r 1Y", "r 2Y", "r 3Y", "r 5Y", "r 10Y", "r SI"],
+      "key": "/^(direct) \\| commodity mf \\| fund \\| (kotak gold \\(g\\))$/",
+      "fixtures": ["matching-probe"],
+      "legacy": { "type": "number" },
+      "new": null,
+      "class": "known-gap",
+      "reference": "E-32; financial review of bc32ba8 (F1); the stricter regime (OD-5 option B, owner 26 Nov 2026)",
+      "description": "The same case for another house: the live page shows Kotak Gold Fund(G)-Direct Plan, the holding's own scheme; the new build a blank row. A known gap, not yet ruled on by the owner; alias candidate (PD-36)."
+    },
+    {
+      "id": "SB-42",
+      "section": "performance",
+      "kind": "only-legacy",
+      "key": "/^(regular|direct) \\| hybrid mf \\| bench \\| (nifty50arbitrageindex)$/",
+      "fixtures": ["matching-probe"],
+      "legacy": true,
+      "new": null,
+      "class": "correction",
+      "reference": "E-30; KI-073 (a named benchmark whose series is absent is left out and recorded); OD-7 (arbitrage to Nifty 50 Arbitrage)",
+      "description": "Hybrid MF, an arbitrage fund: both builds name Nifty 50 Arbitrage, but BENCH_RET carries no such series. The live page shows the row with no figure in any tenor; the new build leaves it out and records it as missing."
+    },
+    {
+      "id": "SB-43",
+      "section": "performance",
+      "kind": "only-legacy",
+      "key": "/^(regular|direct) \\| pms \\| bench \\| (nifty500multicap502525)$/",
+      "fixtures": ["matching-probe"],
+      "legacy": true,
+      "new": null,
+      "class": "correction",
+      "reference": "E-30; KI-024 (MOD-05's ruling of 27 Nov 2026: an equity index for a PMS or AIF group only when every holding is Equity); PF-08",
+      "description": "A balanced-advantage PMS (asset Hybrid) written with the category Multi Cap: the live page compares it with the Nifty 500 Multicap 50:25:25 index by its category; the new build names no benchmark (not every holding of the group is Equity)."
+    },
+    {
+      "id": "SB-44",
+      "section": "performance",
+      "kind": "field",
+      "field": "group",
+      "key": "/^(regular|direct) \\| equity mf \\| fund \\| (axis elss-tax saver fund-reg\\(g\\))$/",
+      "fixtures": ["matching-probe"],
+      "legacy": "ELSS",
+      "new": "Diversified Funds",
+      "class": "correction",
+      "reference": "E-31; brief 7.3 (ELSS, Dividend Yield, Contra and Value under Diversified); Q-45 (proceeding on the brief's default); PF-03",
+      "description": "An ELSS fund: the live page gives it its own group \"ELSS\"; the new build puts it under \"Diversified Funds\" as the brief orders. The figures are the same."
+    },
+    {
+      "id": "SB-45",
+      "section": "performance",
+      "kind": "only-legacy",
+      "key": "/^(regular|direct) \\| hybrid mf \\| bench \\| (nifty500)$/",
+      "fixtures": ["sample-with-irr", "sample-base-only"],
+      "legacy": true,
+      "new": null,
+      "class": "accepted-difference",
+      "reference": "E-30; OD-7 (the decisions of 19 Oct 2026: balanced advantage, multi-asset and equity savings show no benchmark until the Products team names one); PF-16",
+      "description": "A multi-asset fund: the live page compares it with Nifty 500 (an equity index, with figures); the new build names no benchmark for the category, by the decision OD-7."
     }
   ]
 }

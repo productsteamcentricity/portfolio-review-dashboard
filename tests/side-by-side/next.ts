@@ -55,14 +55,14 @@ function performanceSources(): PerformanceSources {
 function perfRows(list: 'regular' | 'direct', buckets: readonly PerfBucket[], out: SbsPerfRow[]): void {
   for (const b of buckets) {
     for (const g of b.groups) {
-      const rows: Array<{ kind: 'fund' | 'bench'; name: string; r: Partial<Record<string, V>> }> = [
-        ...g.funds.map((f) => ({ kind: 'fund' as const, name: f.name, r: f.r as Partial<Record<string, V>> })),
-        ...g.benchmarks.map((x) => ({ kind: 'bench' as const, name: x.name, r: x.r as Partial<Record<string, V>> })),
+      const rows: Array<{ kind: 'fund' | 'bench'; name: string; r: Partial<Record<string, V>>; ref: string | null }> = [
+        ...g.funds.map((f) => ({ kind: 'fund' as const, name: f.name, r: f.r as Partial<Record<string, V>>, ref: f.key })),
+        ...g.benchmarks.map((x) => ({ kind: 'bench' as const, name: x.name, r: x.r as Partial<Record<string, V>>, ref: null })),
       ];
       for (const x of rows) {
         const returns: Record<string, number | null> = {};
         for (const c of b.cols) returns[c] = val(x.r[c]);
-        pushPerfRow(out, { key: perfKey(list, b.key, x.kind, x.kind === 'fund' ? x.name : benchKey(x.name)), list, bucket: b.key, kind: x.kind, name: x.name, group: g.label, returns });
+        pushPerfRow(out, { key: perfKey(list, b.key, x.kind, x.kind === 'fund' ? x.name : benchKey(x.name)), list, bucket: b.key, kind: x.kind, name: x.name, group: g.label, returns, ref: x.ref });
       }
     }
   }

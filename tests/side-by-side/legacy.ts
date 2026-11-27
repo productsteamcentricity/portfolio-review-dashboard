@@ -103,7 +103,7 @@ export function runLegacy(input: SbsInput): SbsSide {
         for (const c of b.cols as string[]) returns[c] = num(r.r?.[c]);
         const kind = r.type as 'fund' | 'bench';
         const name = kind === 'fund' ? String(r.name) : String(r.label);
-        pushPerfRow(performance, { key: perfKey(list, bucket, kind, kind === 'fund' ? name : benchKey(name)), list, bucket, kind, name, group, returns });
+        pushPerfRow(performance, { key: perfKey(list, bucket, kind, kind === 'fund' ? name : benchKey(name)), list, bucket, kind, name, group, returns, ref: kind === 'fund' && typeof r.key === 'string' ? r.key : null });
       }
     }
   }

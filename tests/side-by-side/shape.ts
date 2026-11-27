@@ -45,6 +45,9 @@ export type SbsPerfRow = {
   /** The group (sub-heading) the row sits under; compared for funds only. */
   group: string;
   returns: Record<string, number | null>;
+  /** The reference record the row's figures come from (a key of MF_PERF, MF_PERF_DIRECT, PMS_PERF, AIF_PERF, SIF_PERF or
+   * STOCK_RET), or null; shown and used by the test's known-answer checks, never compared. */
+  ref: string | null;
 };
 
 /** One XIRR scope: the family, a client (by label) or an adviser (by label). */
