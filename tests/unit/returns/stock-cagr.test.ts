@@ -257,7 +257,7 @@ describe('ARC-03 delta review of 49e9a34 (M1, M2, pinned)', () => {
   test('M3 for stocks: no ISIN and no price series are counted apart', () => {
     const file: PriceSource = { source: 'analyst-price-file', asOn: SRC_ON, series: { INE000SAMPLE1: pts([D(2025, 10, 31), 100], [AS_ON, 110]) } };
     const r = directEquityCagr([sh3('a', 'INE000SAMPLE1', 2), { holdingId: 'b' as HoldingId, isin: null, cmvCr: present(1, 'cr', P3) }, sh3('c', 'INE000NOPRICE', 1)], [file], AS_ON, '1y', 'family');
-    assert.match(footnoteOf(r)!, /1Y covers 50% of direct-equity value; 1 stock without a 1Y return excluded; 1 stock without an ISIN excluded\./);
+    assert.match(footnoteOf(r)!, /1Y covers 50.0% of direct-equity value; 1 stock without a 1Y return excluded; 1 stock without an ISIN excluded\./);
   });
 });
 

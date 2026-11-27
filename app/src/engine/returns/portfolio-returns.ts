@@ -85,8 +85,12 @@ export type FundHoldingInput = {
   cmvCr: Value<number>;
 };
 
-/** Why an item is not in the weights ('no-value': outside the base; the others are excluded and counted). */
-export type ExclusionReason = 'no-value' | 'unmatched' | 'no-plan' | 'plan-mismatch' | 'no-return';
+/**
+ * Why an item is not in the weights ('no-value': outside the base; the others are excluded and counted). 'other-date':
+ * the fund is absent from its plan's primary table and from every same-date table, and only a table of another date
+ * has its return, which the same-date rule may not use (ARC-03 L3: it is not "without a return").
+ */
+export type ExclusionReason = 'no-value' | 'unmatched' | 'no-plan' | 'plan-mismatch' | 'other-date' | 'no-return';
 
 /** One item of a weighted figure: the return used and where it came from, or why it was left out. */
 export type WeightedItem = {
@@ -254,13 +258,23 @@ export function weightedFundReturn(
     if (h.accountPlan != null && h.accountPlan !== h.plan) return { ...at, pick: { excluded: 'plan-mismatch' } };
     const chain = chains.get(h.plan)!;
     if (chain[0]) consulted.add(chain[0]);
+    let listed = false;
     for (const e of chain) {
       const found = fundLookup(e.table, h.schemeName, tenor);
       if (found.kind === 'absent') continue; // only a fund the table does not list is filled from the next table
+      listed = true;
       if (found.kind === 'none') break; // an explicit "no return" is the answer: never overridden
       if (h.cmvCr.kind === 'value' && h.cmvCr.v > 0) usedEntries.add(e);
       entryOfInput[entryOfInput.length - 1] = e;
       return { ...at, pick: { returnPct: found.v, source: e.src.source } };
+    }
+    // absent from every table the rule may use, but with a return in a table of another date: say so (ARC-03 L3)
+    if (!listed) {
+      const elsewhere = sources.some((src) => {
+        const t = src.plans[h.plan!];
+        return t !== undefined && !chain.some((e) => e.table === t) && fundLookup(t, h.schemeName!, tenor).kind === 'value';
+      });
+      if (elsewhere) return { ...at, pick: { excluded: 'other-date' } };
     }
     return { ...at, pick: { excluded: 'no-return' } };
   });
@@ -377,12 +391,15 @@ const BASE_NAME: Readonly<Record<ReturnsCoverage['basis'], string>> = {
   'flows-in': 'money paid in',
 };
 
-/** A share as a percent with one decimal that never reads 100% below 1, nor 0% above 0 (ARC-03 L5). */
+/**
+ * A share as a percent with a fixed one decimal ("63.0%" beside "89.8%", one format: the financial review's S5 note),
+ * never reading 100.0% below 1, nor 0.0% above 0 (ARC-03 L5).
+ */
 export function sharePct(share: number): string {
   let pct = Math.round(share * 1000) / 10;
   if (share < 1 && pct >= 100) pct = 99.9;
   if (share > 0 && pct <= 0) pct = 0.1;
-  return `${pct}%`;
+  return `${pct.toFixed(1)}%`;
 }
 
 /** The excluded items of a result counted by reason (items outside the base are not excluded: `outsideBase`). */
@@ -394,7 +411,7 @@ export function excludedBy(items: readonly WeightedItem[]): ExcludedBy {
   return out;
 }
 
-const REASON_ORDER: ReadonlyArray<Exclude<ExclusionReason, 'no-value'>> = ['no-return', 'unmatched', 'no-plan', 'plan-mismatch'];
+const REASON_ORDER: ReadonlyArray<Exclude<ExclusionReason, 'no-value'>> = ['no-return', 'other-date', 'unmatched', 'no-plan', 'plan-mismatch'];
 
 function reasonText(reason: Exclude<ExclusionReason, 'no-value'>, basis: ReturnsCoverage['basis'], t: string): string {
   switch (reason) {
@@ -402,6 +419,7 @@ function reasonText(reason: Exclude<ExclusionReason, 'no-value'>, basis: Returns
     case 'unmatched': return basis === 'equity-value' ? 'without an ISIN' : 'not matched to a fund';
     case 'no-plan': return 'with no known plan';
     case 'plan-mismatch': return 'whose plan differs from the account';
+    case 'other-date': return `not in the primary table (its ${t} return is only in a table of another date)`;
   }
 }
 
