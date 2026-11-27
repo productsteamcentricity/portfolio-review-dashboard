@@ -149,7 +149,7 @@ Each requirement carries its brief reference and parity-matrix id (`docs/new-bui
   for the review, else the latest monthly MF Monitor, else the MF Screener data pack; funds without a return excluded
   from the weights with the coverage footnoted, never counted as 0%. (E-147; D-023 point 3)
 - R-HP-7 Direct-equity 1Y, 3Y and 5Y returns: CAGR = (price on the as-on date / price n years earlier)^(1/n) minus 1
-  on split- and bonus-adjusted month-end prices at exact anniversaries of the review date, weighted by allocation;
+  on split- and bonus-adjusted month-end prices, no look-ahead: the end price is the latest on or before the review's as-on date, and the figure is dated by that price's own day (Moderator decision of 26 Nov 2026 under PD-67), weighted by allocation;
   stocks without enough history excluded and footnoted (never 0%); the analyst's price file as fallback. (E-148;
   D-023 point 4)
 - R-HP-5 MF Analysis per category against the peer median with one fund resolver and the five-year age gate.
@@ -259,7 +259,7 @@ Sources, classes and freshness rules: `docs/new-build/06-data-source-inventory.m
 | Look-through blocks | normalised over their exposure base; each block sums to 100.00% | [PO §3.3] |
 | Portfolio Quants | value-weighted over funds with the metric; coverage reported; missing never zero | [DA §4 slide 5] |
 | Portfolio 3Y and 5Y return (MF) | sum of weight x return over funds with a return, divided by their total weight; coverage footnoted; source order uploaded MF Monitor, embedded MF Monitor, Screener pack | D-023 point 3 |
-| Direct-equity CAGR | (P(as-on) / P(as-on minus n years))^(1/n) minus 1, n = 1, 3, 5, adjusted month-end prices, exact anniversaries; allocation-weighted over stocks with the tenor | D-023 point 4 |
+| Direct-equity CAGR | (P(as-on) / P(as-on minus n years))^(1/n) minus 1, n = 1, 3, 5, adjusted month-end prices, no look-ahead: the end price is the latest on or before the review's as-on date, and the figure is dated by that price's own day (Moderator decision of 26 Nov 2026 under PD-67); allocation-weighted over stocks with the tenor | D-023 point 4 |
 | Drawdown | on index series: maximum peak-to-trough fall, its dates, months to recover | D-023 point 2 |
 | Projection | illustrative value(n) = current value x (1 + r)^n; r historical (the weighted 3Y or 5Y return of the pre or post fund set) or illustrative (analyst) | D-023 point 3; Q-36 |
 | Long-term holding | more than 12 months to the review's as-on date | OD-2 |

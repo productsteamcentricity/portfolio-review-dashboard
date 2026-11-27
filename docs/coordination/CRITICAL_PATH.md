@@ -20,7 +20,7 @@ M3a -> M7a engine; M7a and M7b cost/IPS/CVS/MFA feed M8; M6, M10, M11, M12, M13,
 **Status, 27 Nov 2026 (registers-6) [V git log --first-parent origin/main]:** test build 1 is complete on `/next/`: M2.1
 (wired, PR #54), M3a (wired, PR #51) and M3b (views PR #59; data engines PR #61, not wired) are merged, and the side-by-side
 kit compares the two builds on fund matching and every performance bucket (PRs #60, #62, #63). The owner's acceptance
-(Gate E) is pending. Next on this path: the M3b follow-up, the conditions set at the review of PR #61 before the direct-equity CAGR (E-148) is wired (the per-stock provenance date, a figure date that does not depend on row order, wording, and the owner's answers on month labels against true days); and M7a round 2 (tax). The table below is
+(Gate E) is pending. Since then the M3b follow-up (PR #65) and M7a round 2 (tax, PR #67, not wired) merged on 27 Nov 2026. Next on this path: the conditions set at the review of PR #61 before the direct-equity CAGR (E-148) is wired (the per-stock provenance date, a figure date that does not depend on row order, wording, and the owner's answers on month labels against true days), then its wiring; and the tax engine's wiring. The table below is
 the draft's of 24 Nov.
 
 | Step | Gate to pass | Owner | Earliest | Blocked by |

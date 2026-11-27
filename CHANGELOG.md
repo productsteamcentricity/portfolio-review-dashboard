@@ -4,6 +4,18 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (records, registers-8, 28 Nov 2026: docs and one test comment; no change to `index.html`, `app/` or data)
+- **The direct-equity CAGR rule** (`docs/PRD.md`, `DATA_DICTIONARY.md`, `new-build/{01-legacy-system-audit,02-capability-
+  inventory,03-architecture,07-implementation-roadmap,observation-rule-bank,open-questions}.md`): the older "exact
+  anniversaries" sentence replaced by the rule on main: no look-ahead, the latest price on or before the as-on date, dated
+  by its own day (Moderator decision of 26 Nov 2026 under PD-67; CHAT-011's finding).
+- **`docs/project-control/DECISION_LOG.md`**: PD-68, the owner's delegation of 28 Nov 2026 (its decisions listed by MOD-05).
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,MODULE_DEPENDENCY_MAP,CRITICAL_PATH}.md`**: PRs #65 to #67 and
+  what comes next (CHAT-016's note N4).
+- **Compactions** recounted (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).
+- **`tests/unit/match/corpus.test.ts`**: a comment and a reason text no longer say the owner accepted losses it was not
+  asked about (CHAT-016's note N3).
+
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
   `docs/project-control/CHAT_REGISTRY.md`): CHAT-016 (ARC-04, Guardian, successor of CHAT-008) and CHAT-017 (NB-05, new

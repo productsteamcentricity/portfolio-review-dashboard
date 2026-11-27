@@ -1,6 +1,9 @@
 # Project state
 
-**Last updated:** 27 Nov 2026 (registers-6, drafted by EX-03 for MOD-05).
+**Last updated:** 28 Nov 2026 (registers-8, drafted by EX-03 for MOD-05).
+- **Records (28 Nov 2026, registers-8, docs only):** PRs #65 to #67 below; the direct-equity CAGR described by the rule on
+  main (no look-ahead) wherever the older "exact anniversaries" sentence stood; PD-68 (the owner's delegation of 28 Nov)
+  in the decision log; compactions recounted.
 - **Records (27 Nov 2026, registers-6, docs only):** test build 1 complete on `/next/` (below); PRs #59 to #63 in the
   coordination docs; the decision log's stricter-matching row corrected to the measured result (4 correct names unmatched,
   a known gap, owner asked); the Moderator's decisions of 27 Nov with a financial meaning (decision log 2.5); the
@@ -147,8 +150,10 @@
   (PR #54, M2.1 wiring), the blank transactions (IRR) file template (PR #57), and the holdings and performance views
   (PR #59, M3b). The M3b data engines (weighted 3Y and 5Y returns E-147, direct-equity CAGR E-148) merged in PR #61,
   not yet wired. The owner's acceptance (Gate E) is pending. The side-by-side kit compares the live page and the new
-  build on fund matching and every performance bucket (PRs #60, #62, #63). Next on the new build: the M3b follow-up (the
-  IRR file's XIRRs in the holdings tables, the weighted 3Y and 5Y display), the conditions set at the review of PR #61 before the direct-equity CAGR (E-148) is wired (the per-stock provenance date, a figure date that does not depend on row order, wording, and the owner's answers on month labels against true days); and tax round 2. Not
+  build on fund matching and every performance bucket (PRs #60, #62, #63). Since then (27 Nov 2026): the M3b follow-up
+  merged (PR #65, main `04bf700`: the IRR file's XIRRs in the holdings tables and the client sheets, the weighted 3Y
+  and 5Y display) and the M7a tax engine round 2 (PR #67, main `0d38184`, not wired). Next on the new build: the
+  conditions set at the review of PR #61 before the direct-equity CAGR (E-148) is wired (the per-stock provenance date, a figure date that does not depend on row order, wording, and the owner's answers on month labels against true days), then its wiring; the tax engine's wiring. Not
   in test build 1: a price-file reader (built after it, once the owner supplies the file layout).
 - **Repository.** `C:\dev\portfolio-review`; `origin` =
   https://github.com/productsteamcentricity/portfolio-review-dashboard (**public**, D-008).
@@ -268,8 +273,8 @@
    reported) and the blank template, is merged (PR #35) and accepted by the owner (Gate E), not wired into the page yet. The
    owner answered PD-16 on 26 Nov 2026 (item 4 stays with the tax adviser). **The M7a tax engine:** round 1 (the
    statement lots: the dated rules, lot classes, per-lot tax and the tax per person and year) is merged (PR #52); round 2
-   (the holdings: classification, FIFO lots, harvesting and the IRR reconciliation) is on `feat/m7a-tax-engine`. Neither
-   is wired into the page yet.
+   (the holdings: classification, FIFO lots, harvesting and the IRR reconciliation) is merged (PR #67, 27 Nov 2026).
+   Neither is wired into the page yet.
    Model contracts-1 (PR #29, types only): I-31, I-32, I-44, I-45 and decision C-01. Model contracts-2 (PR #40, types
    only): contract I-37 (`app/src/model/tax.ts`) and the analyst question as a union on its kind.
 

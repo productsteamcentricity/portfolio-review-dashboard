@@ -11,6 +11,8 @@ PDs, 26 have an answer on record (PD-16 only in part: item 4 is open) and 40 sta
 `main` 56a25fe). PD-67 added (the 15-hour delegation of 26 Nov); the publishes of KI-032, LP-16b and KI-301 added to
 PD-30; the owner's decisions of 26 and 27 Nov without a PD number added to section 2.4; the counts on the line above were not
 recounted in registers-5. **Owner of this log from now on:** MOD-05.
+**Updated:** 28 Nov 2026 (IST), drafted by EX-03 (CHAT-014) for MOD-05 (CHAT-015) on branch `docs/registers-8` (base
+`main` 0d38184). PD-68 added (the owner's delegation of 28 Nov 2026); its decisions are listed by MOD-05 before the merge.
 **Updated:** 27 Nov 2026 (IST), drafted by EX-03 (CHAT-014) for MOD-05 (CHAT-015) on branch `docs/registers-6` (base
 `main` 6973101). Section 2.4's row on the stricter matching corrected to the measured result; section 2.5 added (the
 Moderator's decisions of 27 Nov 2026 with a financial meaning). The counts on the first "Updated" line were not recounted.
@@ -18,7 +20,7 @@ Moderator's decisions of 27 Nov 2026 with a financial meaning). The counts on th
 This log has three parts, kept apart on purpose:
 1. **Approved decisions.** An index of D-001 to D-042 and the lead's handover rulings. The full text of every D
    entry is in [docs/DECISIONS.md](../DECISIONS.md), which stays authoritative. This index never replaces it.
-2. **Pending owner decisions** (PD-01 to PD-67): each has a table row; PD-01 to PD-49 and PD-57 to PD-67 are also explained in plain language below; the sections for PD-50 to PD-56 are still to be written (their table rows are complete). Section 2.4 lists the owner's decisions that have no PD number; section 2.5 the Moderator's routine decisions with a financial meaning.
+2. **Pending owner decisions** (PD-01 to PD-68): each has a table row; PD-01 to PD-49 and PD-57 to PD-68 are also explained in plain language below; the sections for PD-50 to PD-56 are still to be written (their table rows are complete). Section 2.4 lists the owner's decisions that have no PD number; section 2.5 the Moderator's routine decisions with a financial meaning.
 3. **Recommendations not yet approved.**
 
 Evidence labels: [VERIFIED] (with the evidence), [INFERRED], [UNCERTAIN], [UNKNOWN]. Related registers:
@@ -315,6 +317,7 @@ that builds it (EX-01 or NB-01).
 | PD-65 | The owner's operating charter: autonomous full-stack development, parallel execution and project continuity | **GIVEN 24 Nov 2026** (owner instruction): the Moderator is project manager, principal architect, lead full-stack developer and integration owner; routine technical decisions are the Moderator's; the owner is asked only for business and financial logic, scope, data integrity, security and privacy, irreversible actions, spend and sprint output approvals; three-compaction succession for every chat, the Moderator too; `docs/coordination/` | none |
 | PD-66 | Delegation while the owner was away | **GIVEN 25 Nov 2026, 00:57 IST** (owner instruction, about 12 hours, ended about 13:00 IST): the Moderator approves decisions on the owner's behalf ("approve all the decisions on my behalf"), recorded as "MOD-04 under PD-66", within fixed limits | none (ended) |
 | PD-67 | Delegation while the owner was away, again | **GIVEN 26 Nov 2026, about 19:30 IST** ("Yes, as on 25 Nov (Recommended)"; about 15 hours, ended about 10:30 IST on 27 Nov): as PD-66, recorded as "MOD-04 under delegation (PD-67)" and, after the Moderator change, "MOD-05 under delegation (PD-67)" | none (ended) |
+| PD-68 | Delegation while the owner was away, 28 Nov 2026 | **GIVEN 28 Nov 2026, about 02:05 IST** (until about 11:00 IST): the Moderator takes every decision needed to keep the new build moving and may open successor chats; nothing changes on the live page; anything that needs the owner's own typed word waits; recorded as "MOD-05 under delegation (PD-68)" | none (ends about 11:00 IST, 28 Nov) |
 
 ### 2.3 Each decision explained
 
@@ -998,6 +1001,16 @@ PD-50 to PD-56: the plain-language sections are still to be written; their table
   - No live-page publish was made under PD-67. KI-301 (PR #53) was ready after the delegation ended and was published on the owner's own word of 27 Nov 2026 ("Publish KI-301"); LP-16b (PR #50) was published under the owner's own "Publish when green" of 26 Nov 2026.
 - PD-67 ended about 10:30 IST on 27 Nov 2026. Gate E acceptances were not taken under it.
 
+#### PD-68. The delegation of 28 Nov 2026
+
+**GIVEN 28 Nov 2026, about 02:05 IST** [UNCERTAIN: the owner's exact words, to be quoted by MOD-05 from its record]: while
+away until about 11:00 IST, the owner told the Moderator to take every decision needed so that work on the new build
+does not stop.
+- **Scope recorded with it.** The Moderator decides in the owner's place for the new build and may open successor chats
+  itself. Nothing changes on the live page. Anything that needs the owner's own typed word (a download, an Office run)
+  waits. A default is never presented as the owner's ruling. New-build merges to `/next/` continue after Gates A to D.
+- **Decisions taken under it:** [GAP: to be listed by MOD-05 from its record before this log merges].
+
 ### 2.4 Owner decisions without a PD number (17 to 27 Nov 2026)
 
 Answers and instructions the owner gave in chat that have no PD number. Recorded from the Moderator's owner-decision record (MOD-03, then MOD-04). Quotes are the owner's words or the answer card chosen.
@@ -1095,3 +1108,4 @@ These are Claude's recommendations. None is a decision until the named approver 
 | 27 Nov 2026 | MOD-05 (registers-5, drafted by EX-03) | PD-67 added with its section; PD-30 publishes of KI-032 (#47), KI-301 (#53) and LP-16b (#50); section 2.4 rows of 26 and 27 Nov (PD-16 item 5 method, KI-032 rule and its keep, the IRR template, the final base file template, the platform product names, the Moderator model, standby and change) |
 | 27 Nov 2026 | MOD-05 (registers-6, drafted by EX-03) | Section 2.4: the stricter-matching row corrected to the measured result (20 of 22 recovered, 2 lost, 4 named and unmatched: a known gap, owner asked 27 Nov 2026); section 2.5 added: the Moderator's decisions of 27 Nov 2026 with a financial meaning |
 | 27 Nov 2026 | MOD-05 (registers-7, drafted by EX-03) | Section 2.4: the owner's "Open both" (CHAT-016 ARC-04 and CHAT-017 NB-05) |
+| 28 Nov 2026 | MOD-05 (registers-8, drafted by EX-03) | PD-68 added with its section (the owner's delegation of 28 Nov 2026; its decisions to be listed by MOD-05) |
