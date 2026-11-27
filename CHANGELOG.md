@@ -4,6 +4,25 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `04079A77756282B284016FBFB02212C0`, 16,416,337 bytes, on KI-301's page)
+- **The platform's own Product Name values are classed as the owner decided** (CR-0012; 26 Nov 2026):
+  - "Global Exposure" is a GIFT City fund when the instrument name says GIFT or IFSC, otherwise an Offshore fund (it was
+    looked up as a mutual fund).
+  - "Bonds", and every bond, NCD or debenture without USD, US$, US, dollar or LRS in its product or name, are "Rupee bonds and
+    NCDs" on the listed bond tax rows. The label "US-dollar bonds (through LRS)" (and no tax row) is kept for those that
+    say so. This changes the 25 Nov 2026 rule, which labelled every bond US-dollar.
+  - "P2P Lending" is its own class, "P2P lending" (product class OTHER in the shared table), not looked up as a fund, and
+    a Debt asset whatever its Asset Name says (asset allocation, debt look-through); still no tax row.
+  - "Unlisted-Direct" is an unlisted share held directly (no fund fee), as "Unlisted Shares" is.
+  - "AIF-Listed" is a Listed AIF: Category III with its note (D-043), as the category "Listed AIF" is.
+  - The tax rule reads USD, US$, US (a whole word: not "Plus" or "Bus"), dollar or LRS in the name only for a product or
+    category that says bond, NCD or debenture, so a fund, AIF or PMS named "... Bond ..." keeps its own row; a currency
+    word may be followed by a figure ("US$500mn", "USD5.25").
+  - Mutual Funds, Direct Equity, PMS and SIF are unchanged.
+- `PRODUCT_CLASS_RULES` (contract I-40) gains two optional fields, `nameAny` and `andAny`; `data/refdata` is regenerated.
+- `tools/patches/2026-11-26-lp16b-platform-product-names.js`; `tools/regression/LP16b-platform-product-names.js` (105
+  known-answer checks); the LP-16 test follows the new bond rule; the side-by-side kit's routing copy reads the new fields.
+
 ### Fixed (live page, KI-301 (IRR-SI): the cashflow file's since-inception sheets; `index.html` `6896AFEC8626BEB22357A258AB69508D`, 16,414,518 bytes, on 9C973F61)
 - **Transaction XIRRs come from the since-inception sheets** (CR-0013; found by CHAT-010, flagged by CHAT-012, MOD-04's
   order, 26 Nov 2026). The platform's cashflow file holds SI Xirr, SI Bmxirr, YTD Xirr, YTD Bmxirr, QTD Xirr and QTD

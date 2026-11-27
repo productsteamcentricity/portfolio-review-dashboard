@@ -4,7 +4,8 @@
   flagged by CHAT-012, confirmed at runtime by EX-03 with a synthetic six-sheet file. Publish under the owner's
   delegation PD-67 when every gate passes (high client risk of the defect, low risk of the fix).
 - **Built:** 26 Nov 2026 on branch `fix/irr-si-sheets` from `main` `5ec61f8`.
-- **Status:** in review.
+- **Status:** live: merged in PR #53 (main `8f34397`) on the owner's "Publish KI-301" (27 Nov 2026, 12:08 IST); page
+  `6896AFEC8626BEB22357A258AB69508D`.
 
 ## Defect
 
@@ -42,11 +43,15 @@ XIRRs, client and family figures, the Fund IRR tree, tax lots). Reviews built fr
 regenerated. Follow-up (not blocking; the platform's file always has the SI pair):
 - the fund and benchmark sheets are chosen independently: when only one kind has an SI sheet, warn or refuse rather
   than pair periods silently; name the two sheets used in the upload status;
-- names such as 1Y, 3Y, FY26, Q2, H1, CYTD or "YTD2026" are not read as periods: with no SI sheet and more than one
-  candidate of a kind, show the sheet taken or refuse;
-- the new build's reader (`app/src/ingest/irr-file.ts`) has the same last-match rule and needs its own change.
+  (Gate B note N2 keeps this: with an SI fund sheet and no SI benchmark sheet, a legacy-named benchmark sheet could pair
+  with SI flows);
+- names such as 1Y, 3Y, FY26, Q2, H1, CYTD or "YTD2026" are not read as periods, nor a period word with no separator
+  ("QTDXirr", Gate B note N1): with no SI sheet and more than one candidate of a kind, show the sheet taken or refuse,
+  with a test for each.
+- The new build is not affected: its reader (`app/src/ingest/irr-file.ts`) already prefers the SI sheets (CHAT-010,
+  688c679, merged in PR #51). The SIP-name test and the pairing guard for it are on CHAT-010's branch (MOD-04, 26 Nov
+  2026). The two items above stay for after December.
 
 ## Records
 
-`CHANGELOG.md`, `docs/PROJECT_STATE.md`, this record. The new build's IRR reader (`app/src/ingest/irr-file.ts`) is
-outside this change; MOD-04 checks it with its owner.
+`CHANGELOG.md`, `docs/PROJECT_STATE.md`, `docs/KNOWN_ISSUES.md` (KI-301), this record.

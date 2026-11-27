@@ -128,10 +128,12 @@
   - It serves `index.html` on `main`. After PR #36 (TA-03, 26 Nov 2026): MD5 `08CAC338E0F4468FDC82D032DACA7B5D`,
     16,408,172 bytes, with the October 2026 refresh, CR-0010, LP-16, A5 and the tax batch. (After PR #16 it was
     `12B5E5727FCA01EF2EA162C59913F01D`.) New-build merges leave `index.html` unchanged.
-  - In review: KI-032, the IRR client join (CR-0011, branch `fix/ki032-irr-client-join`): page
-    `9C973F615E6601B08277F6F8227DB569`, 16,413,720 bytes; live on the owner's "publish", before 13 Dec 2026.
-  - In review: KI-301 (IRR-SI), the cashflow file's since-inception sheets (CR-0013, branch `fix/irr-si-sheets`): page
-    `6896AFEC8626BEB22357A258AB69508D`, 16,414,518 bytes (on 9C973F61); live under PD-67 when every gate passes.
+  - KI-032, the IRR client join (CR-0011): merged in PR #47 (26 Nov 2026, the owner's "Publish now"); page
+    `9C973F615E6601B08277F6F8227DB569`, 16,413,720 bytes.
+  - KI-301 (IRR-SI), the cashflow file's since-inception sheets (CR-0013): merged in PR #53 (27 Nov 2026, the owner's
+    "Publish KI-301"); page `6896AFEC8626BEB22357A258AB69508D`, 16,414,518 bytes.
+  - In review: LP-16b, the platform's Product Name values (CR-0012, branch `fix/lp16b-platform-product-names`): page
+    `04079A77756282B284016FBFB02212C0`, 16,416,337 bytes (on KI-301's page); live on the owner's "publish when green".
   - After every deploy the live page is downloaded and its MD5 compared with `main` (batch 1a verified 19 Oct
     2026).
   - Data vintage: 31 Oct 2026 (October refresh: analytics, performance and risk), except ranks (15 Aug), fund managers
