@@ -178,27 +178,42 @@ export function weightItems(
 }
 
 /**
- * The parts of a figure: the weights of the items used, grouped by (source, as-on label) in the order met, each as its
- * share of the weights used (the shares sum to 1). Undefined when the figure has one part or none (I-31: a
- * single-source figure has no `parts`).
+ * The parts of a figure: the weights of the items used, grouped by (source, as-on label), each as its share of the
+ * weights used (the shares sum to 1), in a fixed order that never depends on the order of the holdings: by the
+ * source's rank (its place in the caller's list), then by date ascending, an undated part last (ARC-03 F3). Undefined
+ * when the figure has one part or none (I-31: a single-source figure has no `parts`).
  */
-export function partsOf(items: readonly WeightedItem[], tagOf: (index: number) => { source: ReturnsSource; asOn: Value<DayNumber> } | null): ReturnPart[] | undefined {
-  const parts: ReturnPart[] = [];
+export function partsOf(items: readonly WeightedItem[], tagOf: (index: number) => { source: ReturnsSource; asOn: Value<DayNumber>; rank: number } | null): ReturnPart[] | undefined {
+  const parts: Array<ReturnPart & { rank: number }> = [];
   items.forEach((it, i) => {
     const tag = it.excluded === null && it.weight !== null ? tagOf(i) : null;
     if (!tag) return;
     const p = parts.find((x) => x.source === tag.source && (sameDay(x.asOn, tag.asOn) || (x.asOn.kind === 'missing' && tag.asOn.kind === 'missing')));
     if (p) p.share += it.weight!;
-    else parts.push({ source: tag.source, asOn: tag.asOn, share: it.weight! });
+    else parts.push({ source: tag.source, asOn: tag.asOn, share: it.weight!, rank: tag.rank });
   });
   if (parts.length < 2) return undefined;
+  const dayKey = (v: Value<DayNumber>): number => (v.kind === 'value' ? v.v : Number.POSITIVE_INFINITY);
+  parts.sort((a, b) => a.rank - b.rank || dayKey(a.asOn) - dayKey(b.asOn));
   const total = parts.reduce((a, p) => a + p.share, 0);
-  for (const p of parts) p.share /= total;
-  return parts;
+  return parts.map((p) => ({ source: p.source, asOn: p.asOn, share: p.share / total }));
 }
 
-/** A source table whose figures a result used, for the footnote (source, plan and as-on label). */
-export type UsedTable = { source: ReturnsSource; plan?: FundPlan; asOn: Value<DayNumber> };
+/**
+ * One source per kind: parts, `used` and the footnote are grouped by the source's kind, so two sources of one kind (two
+ * analyst price files, two uploaded monitors) would make them order-dependent and list a date twice. A caller error:
+ * refused (the financial review of the E-148 round, finding 2; owner question whether a review can have two).
+ */
+export function assertOneSourcePerKind(kinds: readonly ReturnsSource[]): void {
+  const seen = new Set<ReturnsSource>();
+  for (const k of kinds) {
+    if (seen.has(k)) throw new RangeError(`two sources of one kind ("${k}"): pass one source per kind, merged by the caller`);
+    seen.add(k);
+  }
+}
+
+/** A source table whose figures a result used, for the footnote (source, plan, as-on date; E-148: count of stocks). */
+export type UsedTable = { source: ReturnsSource; plan?: FundPlan; asOn: Value<DayNumber>; count?: number };
 
 export type FundWeightedResult = WeightedResult & {
   used: UsedTable[];
@@ -221,6 +236,7 @@ export function weightedFundReturn(
   tenor: ReturnTenor,
   scope: ScopeKey,
 ): FundWeightedResult {
+  assertOneSourcePerKind(sources.map((s) => s.source));
   type Entry = { src: FundReturnSource; plan: FundPlan; table: FundReturnTable };
   const chains = new Map<FundPlan, Entry[]>();
   for (const plan of PLANS) {
@@ -288,7 +304,7 @@ export function weightedFundReturn(
   });
   const parts = partsOf(res.items, (i) => {
     const e = entryOfInput[i];
-    return e ? { source: e.src.source, asOn: e.table.asOn } : null;
+    return e ? { source: e.src.source, asOn: e.table.asOn, rank: sources.indexOf(e.src) } : null;
   });
   if (res.figure && parts) res.figure.parts = parts;
   const notes = used.flatMap((e) => {
@@ -404,12 +420,27 @@ export function coverageFootnote(figure: WeightedReturn, used: readonly UsedTabl
   if (c.excluded > 0 || c.share < 1) {
     const clauses = REASON_ORDER.filter((r) => (excluded[r] ?? 0) > 0).map((r) => {
       const n = excluded[r]!;
-      return `${n} ${n === 1 ? one : many} ${reasonText(r, c.basis, t)} excluded`;
+      // a fund that is not matched is a holding, not yet a fund (ARC-03 F7)
+      const [o, m] = r === 'unmatched' && c.basis === 'mf-value' ? ['holding', 'holdings'] : [one, many];
+      return `${n} ${n === 1 ? o : m} ${reasonText(r, c.basis, t)} excluded`;
     });
     parts.push([`${t} covers ${sharePct(c.share)} of ${BASE_NAME[c.basis]}`, ...clauses].join('; '));
   }
   if (outsideBase > 0) parts.push(`${outsideBase} ${outsideBase === 1 ? 'holding' : 'holdings'} without a positive market value not counted`);
-  const named = used.map((s) => `${SOURCE_NAME[s.source]}${s.plan ? (s.plan === 'regular' ? ', Regular plans' : ', Direct plans') : ''}, as on ${s.asOn.kind === 'value' ? dayToIso(s.asOn.v) : 'date not available'}`);
+  // entries of one source and plan in a row: the first is that source's date, the rest its other end days with counts
+  const day = (v: Value<DayNumber>): string => (v.kind === 'value' ? dayToIso(v.v) : 'date not available');
+  const cnt = (n: number | undefined): string => (n === undefined ? '' : `${n} ${n === 1 ? one : many}`);
+  const named: string[] = [];
+  for (let i = 0; i < used.length; ) {
+    const s = used[i]!;
+    let j = i + 1;
+    while (j < used.length && used[j]!.source === s.source && used[j]!.plan === s.plan) j++;
+    const head = `${SOURCE_NAME[s.source]}${s.plan ? (s.plan === 'regular' ? ', Regular plans' : ', Direct plans') : ''}, as on ${day(s.asOn)}`;
+    const others = used.slice(i + 1, j).map((o) => `${day(o.asOn)}${o.count === undefined ? '' : `: ${cnt(o.count)}`}`);
+    const inner = [s.count === undefined ? '' : cnt(s.count), others.length ? `also ${others.join(', ')}` : ''].filter((x) => x).join('; ');
+    named.push(inner ? `${head} (${inner})` : head);
+    i = j;
+  }
   if (named.length) parts.push(`Source: ${named.join('; ')}`);
   return parts.join('. ') + '.';
 }
