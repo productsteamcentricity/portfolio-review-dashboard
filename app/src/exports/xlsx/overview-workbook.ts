@@ -32,6 +32,12 @@ import { manifestSheet } from './sheets/manifest-sheet.ts';
 // M3a returns (NB-03): the Fund IRR sheet, written only when the input carries returns.
 import type { ReturnsVM } from '../../views/returns-vm.ts';
 import { fundIrrSheet } from './sheets/fund-irr.ts';
+// M3b (NB-02): the client holdings sheets, written only when the input carries the holdings view-model.
+import type { HoldingsVM } from '../../views/holdings.ts';
+import { clientHoldingsSheet } from './sheets/client-holdings.ts';
+import { clientSheetNames } from './sheet-names.ts';
+import type { PerformanceResult } from '../../engine/returns/performance.ts';
+import { performanceSheet } from './sheets/performance.ts';
 
 /** 'overview-workbook@1', written in the _manifest sheet. */
 export { OVERVIEW_WORKBOOK_SCHEMA } from './sheets/manifest-sheet.ts';
@@ -92,6 +98,10 @@ export type WorkbookInput = {
   entityKeys: { client: EntityKey[]; distributor: EntityKey[] };
   /** M3a returns (NB-03): the returns view-model; the Fund IRR sheet is written only when it is present. */
   returns?: ReturnsVM;
+  /** M3b (NB-02): the holdings view-model; one client holdings sheet per client is written only when it is present. */
+  clientHoldings?: HoldingsVM;
+  /** M3b (NB-02): the performance tables (the store's); the Performance sheet is written only when they are present. */
+  performance?: PerformanceResult;
 };
 
 /** Where a figure of the view-model is written (the _manifest "figure" rows; the cross-output join). */
@@ -110,6 +120,8 @@ export type BuildContext = {
   sheets: string[];
   leftOut: Array<{ sheet: string; reason: string }>;
   figures: FigureCell[];
+  /** M3b (NB-02): the client holdings sheets' names, one per client of input.clientHoldings, in its order. */
+  clientSheets: string[];
   /** Records where a figure is written. */
   record(figure: Figure, sheet: SheetSpec, columnKeyName: string, dataRow: number): void;
 };
@@ -240,6 +252,9 @@ export function buildContext(input: WorkbookInput): BuildContext {
   else leftOut.push({ sheet: SHEETS.clients, reason: 'fewer than two clients hold included holdings (OD-21)' });
   if (vm.matrices.distributor.shown) sheets.push(SHEETS.distributors);
   else leftOut.push({ sheet: SHEETS.distributors, reason: 'fewer than two distributors hold included holdings (OD-21)' });
+  const clientSheets = input.clientHoldings ? clientSheetNames(input.clientHoldings.clients.map((c) => c.title)) : [];
+  sheets.push(...clientSheets); // M3b (NB-02): architecture §14 sheet 11, one per client
+  if (input.performance) sheets.push(SHEETS.performance); // M3b (NB-02): sheet 12
   if (input.returns) sheets.push(SHEETS.fundIrr); // M3a returns (NB-03): no "Sheet left out" row when absent
   sheets.push(SHEETS.audit, SHEETS.manifest);
   const figures: FigureCell[] = [];
@@ -255,6 +270,7 @@ export function buildContext(input: WorkbookInput): BuildContext {
     sheets,
     leftOut,
     figures,
+    clientSheets,
     record(figure, sheet, key, dataRow) {
       if (seen.has(figure.key)) return;
       const i = sheet.columns.findIndex((c) => columnKey(c) === key);
@@ -272,6 +288,12 @@ export function overviewSheets(input: WorkbookInput): { ctx: BuildContext; sheet
   const sheets: SheetSpec[] = [readMeSheet(ctx), sourceRegisterSheet(ctx), holdingsSheet(ctx), portfolioOverviewSheet(ctx)];
   if (input.vm.matrices.client.shown) sheets.push(entityAllocationSheet(ctx, 'client'));
   if (input.vm.matrices.distributor.shown) sheets.push(entityAllocationSheet(ctx, 'distributor'));
+  if (input.clientHoldings) input.clientHoldings.clients.forEach((c, i) => sheets.push(clientHoldingsSheet(ctx, c, ctx.clientSheets[i]!))); // M3b (NB-02)
+  if (input.performance) {
+    /* E-147's client rows carry the names the client holdings sheets use (the analyst's labels) */
+    const clientLabels = Object.fromEntries((input.clientHoldings?.clients ?? []).filter((c) => c.sheet.clientId !== null).map((c) => [c.sheet.clientId!, c.title]));
+    sheets.push(performanceSheet(input.performance, { clientLabels })); // M3b (NB-02)
+  }
   if (input.returns) sheets.push(fundIrrSheet(ctx, input.returns)); // M3a returns (NB-03)
   sheets.push(auditLogSheet(ctx));
   return { ctx, sheets };

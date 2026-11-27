@@ -4,6 +4,99 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
+  `docs/project-control/CHAT_REGISTRY.md`): CHAT-016 (ARC-04, Guardian, successor of CHAT-008) and CHAT-017 (NB-05, new
+  build, successor of CHAT-009) opened on the owner's "Open both" of 27 Nov 2026 and took over that day; ARC-04 is
+  the only chat named as ARC-01's rule-10 successor (through ARC-02) from this record's merge; next free number CHAT-018.
+- **`docs/project-control/DECISION_LOG.md`** 2.4: the owner's "Open both".
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/CRITICAL_PATH.md`**: the E-148 condition list closed before "tax round
+  2" (CHAT-008's note N1 on registers-6).
+
+### Changed (tests only: the side-by-side kit's Gold rows, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
+- **`tests/side-by-side/`**: SB-13, SB-14, SB-40 and SB-41 now say their holding names ("Axis Gold -Reg(G)", "Kotak Gold
+  (G)") are synthetic spellings, the vendor's name without the word "Fund", and that under the real spellings (the
+  vendor's name, tested; the AMFI Regular and Direct Growth names, the new-build chat's run) both
+  builds match the Gold fund, so they are not alias candidates (the Moderator's correction on the new-build chat's
+  evidence). Classes after the financial review: SB-13, SB-14 (and SB-35, SB-36, which follow them)
+  corrections (the live page shows another scheme's figures); SB-40, SB-41 accepted differences under KI-036 (ties left
+  unmatched; the owner's "New build first" of 25 Nov 2026; no owner question is open). Two parity rows with the real spellings are added to the performance probe and tested (both builds, both lists). SB-25 (the all-dash gold price row) also covers the
+  performance probe.
+
+### Changed (records, registers-6, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **`docs/project-control/DECISION_LOG.md`**: the stricter-matching row of 26 Nov corrected to the measured result (the
+  follow-up recovered 20 of option B's 22 lost names and lost 2 others; 4 correct names unmatched, named: a known gap,
+  owner asked 27 Nov 2026, alias candidates); section 2.5, the Moderator's decisions of 27 Nov with a financial meaning.
+- **`docs/project-control/README.md`**, Gates A and B: a change that calculates or shows a figure carries the financial
+  review and a known-answer test in its Gate A; the Guardian refuses it at Gate B intake without them.
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,MODULE_DEPENDENCY_MAP,CRITICAL_PATH}.md`**: PRs #59 to #63;
+  test build 1 complete on `/next/` (owner Gate E pending) and what follows.
+- **`docs/coordination/CONTEXT_COMPACTION_TRACKER.md`**, **`docs/project-control/CHAT_REGISTRY.md`**: compactions
+  recounted; CHAT-008 and CHAT-009 at their third: succession ordered by MOD-05 on 27 Nov 2026 (successors ARC-04 and
+  NB-05, not yet opened), also in `CHAT_SUCCESSION_REGISTER.md`.
+- **`docs/project-control/FILE_OWNERSHIP_AND_CHANGE_CONTROL.md`**: KI ranges for the current chats (EX-03 KI-302 to KI-319,
+  NB-02 and its successor KI-320 to KI-339, NB-03 KI-340 to KI-359, NB-04 KI-360 to KI-379).
+- **`docs/KNOWN_ISSUES.md`**: KI-302 (a young fund's annualised since-inception return) and KI-303 (loosely matched PMS
+  and AIF benchmark words), both open with an owner question.
+
+### Changed (tests only: side-by-side kit phase 2 (c), AIF, SIF and the Diversified group, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
+- **`tests/side-by-side/`**: a performance probe book with five AIFs (equity Mid Cap; hybrid long-short; an Equity and a Hybrid
+  one sharing a category; an Equity one with a generic category),
+  two SIFs, and Dividend Yield, Contra and Value funds beside a Flexi Cap fund; benchmark rows now compare the groups
+  they sit under (CHAT-008's note N1). SB-46 to SB-58: the three funds under Diversified Funds (brief 7.3, the Q-45
+  default not yet confirmed by the owner), no equity index for an AIF group not all Equity (KI-024), a fund with no Direct plan kept
+  blank in the Direct list (KI-054), and the groups of Nifty 500 following the decisions already classified. The test
+  checks the AIF and SIF figures against their records, both AIF benchmarks, the empty SIF benchmarks and a moved
+  benchmark group (unclassified). 23 tests, in IST and UTC.
+
+### Changed (tests only: side-by-side kit phase 2 (b), the performance tables, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
+- **`tests/side-by-side/`**: the performance tables are compared on both sides now that M3b is merged (PR #59): the new
+  build's `computePerformance` with the sources `/next/` reads, against the live page's Regular and Direct lists; fund
+  rows and benchmark rows per bucket, each tenor on its own with the kit's tolerance, and a fund's group. SB-01 (not
+  built) is retired.
+- SB-18 to SB-29 classify the tables' decisions, each a correction already in `tests/parity/performance-ledger.json`
+  (PF-02, PF-03, PF-04, PF-06, PF-11, PF-13 to PF-16; KI-024, KI-072, KI-073, OD-7); SB-42 to SB-45 from three new
+  probe holdings (a hybrid PMS with an equity category, an ELSS fund, a Direct-only scheme) and an arbitrage fund's
+  all-dash index; SB-45 (no benchmark for a multi-asset fund, OD-7) is an accepted difference. SB-30 to SB-39: on the
+  matching probe, each fund row follows its holding's match (SB-08 to SB-17) with the same class; SB-40 and SB-41: the
+  Gold holdings in the Direct list are known gaps (the live page shows their own Direct plans). The test checks every
+  followed figure, Regular and Direct, against the record its row came from. 20 tests, in IST and UTC.
+
+### Added (new build, M3b follow-up for test build 1: the IRR file in section 5, the weighted 3Y and 5Y returns, and the financial review's notes; `/next/` only, no change to `index.html`)
+- **The IRR file in section 5 and the client sheets** (MOD-05's financial review of M3b, N2; KI-048, KI-100):
+  - With an accepted IRR file, a subtotal's XIRR and BMXIRR come from it, through NB-03's `irrAggregateFor`
+    (`views/holdings.ts` `irrHookFrom`). The same hook serves the workbook's client sheets, so screen and file agree.
+  - A subtotal the IRR file cannot give is a dash, with its reason listed under the table ("XIRR covers 1 of 2 holdings
+    on this line: ...").
+  - A line whose holdings have flows under another asset or product label is a dash too, NOT COMPARABLE.
+  - A line none of whose holdings has a flow keeps the base file's CMV-weighted figure, as NB-03's adapter defines. The
+    live page leaves such a line blank; this is recorded as an owner question.
+  - A table that mixes the two bases marks each IRR subtotal with § and says so in its caption.
+- **The dagger note** counts the holdings of the rows marked † and says so ("of their CMV"), so a Grand Total taken from
+  the IRR file no longer reads "0.00% of CMV covered" (N2a).
+  - The dagger goes with every figure that carries "p", and a share below 100% never reads 100.00%.
+  - A CMV-weighted subtotal that is NOT COMPARABLE has its reason listed under the table.
+- **Negative market values** (N3):
+  - The coverage is counted in holdings.
+  - A subtotal whose holdings with the rate have market values of both signs is blank, NOT COMPARABLE: a CMV of
+    1.0000001 beside one of -1 gave -19,99,99,989.88%.
+  - Weights of one sign keep their average, as the live page does. Ledger entry HS-05.
+- **The ‡ note gives the share of CMV again**, in the live page's wording, and a legend explains the "p" marker (N5).
+- **E-147, the weighted average return of current holdings (mutual funds), 3Y and 5Y** (D-023 point 3; NB-04's
+  `portfolio-returns.ts`):
+  - Computed for the family and for each client.
+  - A holding of a Direct plan is read from its Direct twin. With no twin it is excluded and counted, never weighted at
+    the Regular plan's figure (the matcher reads both names alike).
+  - The sources, in order: the uploaded MF Monitor, then the embedded `MF_PERF` and `MF_PERF_DIRECT`.
+  - Section 5 shows it as a table with one coverage footnote per figure, its dates in the screen's format. A figure with
+    no source is the dash with "no source".
+  - The Performance sheet ends with one Weighted row per scope.
+- **The Direct list's single-plan ETF rows** show the Regular block's figures under that block's date, on screen and in
+  the sheet (N8).
+- **PF-02's wording**: Debt MF has no 10Y in either build (N9).
+- **The Direct block's keys are normalised once per block** (`directTwinIndex`), not once per fund; the same twins
+  for every `MF_PERF` key (N11).
+
 ### Changed (new build, M3b: E-148 conditions before wiring; not wired into the page yet, `/next/` unchanged)
 - **`app/src/engine/returns/stock-cagr.ts`** (ARC-03's Gate B of the M3b engines, F2, F3, F7; MOD-05's rulings of
   27 Nov 2026): a present stock CAGR's provenance carries the end day it used (F2); the figure carries the latest end
@@ -167,6 +260,41 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     checks). Side-by-side kit: SB-03 retired; SB-04 to SB-07 for the client-name variant case (the new build keeps exact
     client labels, D9); 16 tests.
 
+### Added (new build, M3b for test build 1: section 5 holdings and performance)
+- **Holding sheets** (E-25, `engine/aggregate/holdings-sheet.ts`): per client, asset, product and holding rows with CMV-weighted
+  XIRR and coverage (KI-006), invested and gain only over holdings with an invested value (KI-007, OD-18), and a hook for
+  the IRR file's aggregates (KI-048, KI-100). At parity with the live page's client sheets except for the base-file and
+  aggregation decisions already recorded (`tests/parity/holdings-sheet-ledger.json`, HS-01 to HS-04).
+- **Section 5 holdings tables** (U-23, `views/holdings.ts`, `ui/sections/s5-holdings.tsx`): one table per client with column
+  chips, the double dagger and dagger markers with their notes, and the XIRR caption per client (KI-121).
+- **Client holdings sheets in the workbook** (E-80, `exports/xlsx/sheets/client-holdings.ts`): one per client, names sanitised
+  and unique against every sheet (KI-021); PARTIAL COVERAGE on a subtotal that leaves out a holding with no invested value
+  (KI-123).
+- **Performance tables** (E-31, E-32, E-30, `engine/returns/performance.ts`, `config/performance.json`): buckets by route and
+  class (KI-072); one benchmark table (OD-7); the brief's group order and no 2Y for Debt MF (Q-45); missing or empty series
+  recorded, never an all-dash row (KI-073); a data date per bucket (KI-083); a debt-like PMS or AIF without an equity
+  benchmark (KI-024); the Direct list by the same scheme only, an ETF as a single plan, no twin as a blank counted row
+  (KI-054). Parity ledger `tests/parity/performance-ledger.json` (PF-01 to PF-07).
+- **Section 5 performance** (U-41, `views/performance.ts`, `ui/sections/s5-performance.tsx`): one Regular/Direct switch
+  (OD-10); captions with plan and date (KI-034, KI-083); funds with no returns named under the table. The store computes the
+  tables with the review (`AppState.performance`), uploaded monitors standing in for their blocks
+  (`data/performance-sources.ts`).
+- **Performance sheet** (E-84, `exports/xlsx/sheets/performance.ts`): the Regular and Direct lists, every row with its plan and
+  data date, every fund kept, statuses in their own column.
+- **Financial review of 27 Nov 2026 (CHANGES NEEDED, fixed before merge):**
+  - B1, KI-024: a PMS or AIF group gets an equity benchmark only when every holding in it is of asset class Equity;
+    the note says why otherwise.
+  - S1: the debt benchmark rules are the live page's again (Floater, Ultrashort, Gsec, Banking PSU), with a test of
+    every SEBI category; the parity ledger's PF-05 and PF-06 are narrowed to the names they cover.
+  - S2: a weighted XIRR or BMXIRR that covers part of the market value carries that share, so the cell shows the
+    partial marker and the sheet says PARTIAL COVERAGE.
+  - S3: a scheme the Regular block carries only as a Direct plan is shown as a single plan, never "Regular".
+  - S5: "YYYY-Mon-DD" dates are read, and an unreadable uploaded date is reported with its text.
+  - N6 and N10: notes tell an unrecognised category and an unmatched fund apart.
+  - The delta's own financial review:
+    - S-A: gold and silver say "no benchmark named yet" (OD-7), not "not recognised".
+    - S-B: the category table test runs each category on its own, with exact equality.
+    - S-C: PF-05 is split into one ledger entry per list and bucket.
 ### Fixed (new build, base-file reader: the platform's full holding report)
 - **KI-300** (`app/src/ingest/base-file.ts`): a money heading that is exactly the field's (Invested Value, Market Value or
   Current Market Value, Total Gain/Loss, with any unit in brackets) is taken before a partial match, and a heading with
@@ -694,6 +822,34 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **The slab rate** is the analyst's per person and year; the default is one named parameter while PD-07 is open.
 - **Tests:** `tests/unit/tax/{rules,lots,rollup,repeat-evidence,statement-engine}.test.ts` and the known answers KA-1
   to KA-22 (`tests/fixtures/cg-known-answers.json`), to Rs 0.01.
+
+### Added (new build, M7a tax engine, round 2: the holdings' tax, harvesting and the IRR reconciliation; not wired into the page yet)
+- **`engine/tax/classify.ts` and `lots.ts`** (E-41, E-42): the live tax classification and FIFO lots (TA-03) ported on
+  the I-21 table, at parity with the live on 10 synthetic books. Recorded corrections: the OD-16 trade kinds, and OD-15
+  (one instrument over several holdings split by folio, else apportioned by units).
+- **`engine/tax/holdings-rollup.ts` and `harvest.ts`** (E-43): the live roll-ups and per-client harvest, at parity with
+  equal inputs. New-build rules: the exemption only when the amount already used is known (Q-52), otherwise "exemption
+  not applied"; no slab default (PD-07, one named parameter). Hand-worked H-1 to H-6.
+- **`engine/tax/realised-irr.ts` and `reconcile.ts`** (E-141): realised gains derived from the IRR file by FIFO (a gap
+  is stated, never guessed), reconciled with the statement per scheme and financial year. The tolerance is the larger
+  of the amount tolerance on the sale value and Rs 1 plus Rs 0.005 per statement row (MOD-04, 26 Nov 2026). Beyond it,
+  a High result with both figures kept. The statement is the source of record for a year it covers.
+- **After ARC-03's Gate B of aa67a45 (Q-49: a gap is named, never estimated):** until the owner rules how the IRR
+  export writes transfer and bonus rows, a transfer out is not a sale and a sale reaching a transfer in, stock in,
+  demerger in or bonus lot is a named gap (`transfer-row`, `bonus-row`); a holding with such a row is unreconciled
+  (`transferRow`, `bonusRow`), never split; a sale of 0 is a gap (`sale-without-amount`; `noPxSell` on the holdings
+  side); a holdings-ledger oversell is named on the record; a statement covering part of a client-year is PARTIAL; the
+  harvest labels say what the figures leave out. Tests pin the units tolerance (0.0004 absorbed, 0.0006 a gap) and the
+  reconcile tolerance's per-row part and its boundary. Parity ledger TX-06 to TX-12 and TXR-14 to TXR-18 (book
+  `tax-gate-b`).
+- **After the delta financial review (N-1 to N-5):** every sale after a transfer in, stock in or demerger in is
+  `transfer-row` (the FIFO order is not known); a holdings transfer out keeps the FIFO split and is named on the record;
+  a short-held derived loss of a scheme with a bonus row carries the TR-21 Warning `stripping-candidate`, computed
+  normally; the holdings oversell is pinned at 0.0006 units; only derived sales make a statement year PARTIAL. No parity
+  figure changed.
+- **Tests:** `tests/unit/tax/{fifo-lots,holdings-rollup,harvest,realised-irr}.test.ts`,
+  `tests/parity/tax.parity.test.ts` with its ledger, `tests/regression/ki-065-debt-mf-tax.test.ts`,
+  `tests/integration/realised-gains-reconcile.test.ts`.
 
 ### Fixed (CR-0010 A3; not published until the owner says "publish")
 - **The SWOT's international share no longer counts names that merely contain "us ".** "Plus" (the Income Plus Arbitrage

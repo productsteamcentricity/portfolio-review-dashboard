@@ -1,7 +1,8 @@
-// covers: E-13 E-14 E-15 E-19 E-26 E-27 E-28 E-29 E-31 E-142 (the side-by-side kit, test build 1)
+// covers: E-13 E-14 E-15 E-19 E-26 E-27 E-28 E-29 E-30 E-31 E-32 E-142 (the side-by-side kit, test build 1)
 // The legacy engine (index.html through tools/engine-host.js) and the new build (app/src) on the same synthetic books:
-// holding routes and matches (the new build's wired resolver), holding XIRRs, scope XIRRs and contributions compared
-// field by field. A difference passes only when
+// holding routes and matches (the new build's wired resolver), holding XIRRs, scope XIRRs, contributions and the
+// performance tables (Regular and Direct lists, fund and benchmark rows) compared field by field. A difference passes
+// only when
 // an entry of sbs-ledger.json classifies it (as the parity tests: an unclassified difference fails). Synthetic data
 // only; a real file is run locally with run.ts and never committed.
 
@@ -21,8 +22,8 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
   const ledger = loadLedger();
   const used = new Set<string>();
 
-  test('eight synthetic cases, four with an IRR file', () => {
-    assert.equal(cases.length, 8);
+  test('nine synthetic cases, four with an IRR file', () => {
+    assert.equal(cases.length, 9);
     assert.equal(cases.filter((c) => c.input.irrBytes !== null).length, 4);
   });
 
@@ -35,8 +36,20 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
       assert.equal(r.diffs.filter((d) => d.kind === 'duplicate-key').length, 0, `${c.id}: a holding key twice`);
       assert.ok(r.counts.holdings.compared > 0, `${c.id}: no holdings compared`);
       assert.ok(r.counts.contributions.compared > 0, `${c.id}: no contributions compared`);
-      assert.ok(r.counts.performance.notCompared > 0, `${c.id}: no legacy performance rows`);
+      // the performance tables are compared on both sides since M3b (SB-01 retired): rows compared, none "not built"
+      assert.ok(r.counts.performance.compared > 0, `${c.id}: no performance rows compared`);
+      assert.equal(r.counts.performance.notCompared, 0, `${c.id}: performance rows not compared`);
+      // a side with a matched holding shows at least one fund figure (the synthetic book's invented names match nothing)
+      for (const s of [legacy, next]) {
+        if (s.holdings.some((h) => h.matched !== null)) assert.ok(s.performance!.some((x) => x.kind === 'fund' && Object.values(x.returns).some((v) => v !== null)), `${c.id}: ${s.engine} has no fund figure`);
+      }
       for (const d of r.diffs) assert.match(d.matrix, /^E-\d+$/);   // every tag names a parity-matrix row
+      // an all-dash benchmark row (SB-24, SB-25, SB-42; KI-073) is a correction only while the live page's row has no
+      // figure in any tenor (financial review of 179981d, suggestion 1)
+      for (const d of r.diffs.filter((x) => ['SB-24', 'SB-25', 'SB-42'].includes(x.ledger ?? ''))) {
+        const row = legacy.performance!.find((x) => x.key === d.key)!;
+        assert.ok(Object.values(row.returns).every((v) => v === null), `${c.id}: ${d.key} has a live-page figure (${d.ledger})`);
+      }
       if (c.input.irrBytes) {
         // the IRR path really ran (financial review of 5a39d92, finding 4): the family and every compared client have an
         // XIRR on both sides (null against null would pass as "same")
@@ -82,7 +95,7 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     const expect: Array<[RegExp, string, string]> = [
       [/multi - cap/i, 'SB-08', 'correction'], [/icici pru bse liquid/i, 'SB-09', 'correction'], [/sbi nifty 1d/i, 'SB-10', 'correction'],
       [/tata nifty 50 exchange/i, 'SB-11', 'correction'], [/icici pru bluechip/i, 'SB-12', 'correction'],
-      [/axis gold/i, 'SB-13', 'accepted-difference'], [/kotak gold/i, 'SB-14', 'accepted-difference'],
+      [/axis gold/i, 'SB-13', 'correction'], [/kotak gold/i, 'SB-14', 'correction'],
       [/uti focused/i, 'SB-15', 'known-gap'], [/kotak infrastructure/i, 'SB-16', 'known-gap'],
       [/infosys/i, 'SB-17', 'improvement'],
     ];
@@ -104,11 +117,11 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     assert.equal(by(next, /hdfc bank/i).matched, 'hdfc bank');
     assert.equal(by(next, /office reit/i).route, 'other (REITs and InvITs)');
     assert.equal(by(next, /sample technologies/i).route, 'other (Unlisted shares)');
-    // the report's "Fund matching" summary: 14 holdings, 4 alike, 10 differ (5 corrections, 1 improvement, 2 accepted, 2 known gaps)
+    // the report's "Fund matching" summary: 17 holdings, 7 alike, 10 differ (7 corrections, 1 improvement, 2 known gaps)
     const m = result.matching;
-    assert.deepEqual([m.compared, m.same, m.rows.length], [14, 4, 10]);
+    assert.deepEqual([m.compared, m.same, m.rows.length], [17, 7, 10]);
     const per = (c: string): number => m.rows.filter((x) => x.class === c).length;
-    assert.deepEqual([per('correction'), per('improvement'), per('accepted-difference'), per('known-gap')], [5, 1, 2, 2]);
+    assert.deepEqual([per('correction'), per('improvement'), per('accepted-difference'), per('known-gap')], [7, 1, 0, 2]);
     const html = fundMatching(m);
     assert.match(html, /The live page matched ICICI Pru US Bluechip Equity Fund\(G\); the new build matched ICICI Pru Large Cap Fund\(G\) by alias-pin \(pinned\)\. Why: correction/);
     assert.match(html, /The live page matched UTI Focused Fund-Reg\(G\); the new build matched nothing\. Why: known gap/);
@@ -116,6 +129,137 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     const moved = { ...legacy, holdings: legacy.holdings.map((h) => (/axis gold/i.test(h.name) ? { ...h, matched: 'Axis Gold Fund-Reg(G)' } : h)) };
     const r2 = compareSides('matching-probe', false, moved, next, ledger);
     assert.deepEqual(r2.diffs.filter((d) => d.section === 'holdings' && /axis gold/i.test(d.key)).map((d) => [d.field, d.ledger]), [['matched', null], ['universe', 'SB-13']]);
+  });
+
+  test('the matching probe\'s performance rows follow the matches: each figure is the matched record\'s (kit phase 2 (b))', () => {
+    const { legacy, next, result } = runSides(cases.find((c) => c.id === 'matching-probe')!);
+    const block = (n: string): Record<string, { r?: Record<string, number | null> }> => {
+      const j = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'refdata', `${n}.json`), 'utf8')) as Record<string, unknown>;
+      return ((j as { data?: unknown }).data ?? j) as Record<string, { r?: Record<string, number | null> }>;
+    };
+    const MF = block('MF_PERF'), MFD = block('MF_PERF_DIRECT'), STOCK = block('STOCK_RET');
+    const fig = (b: typeof MF, key: string | null, t: string): number | null => (key === null ? null : b[key]?.r?.[t] ?? null);
+    const holdingOf = (s: SbsSide, name: string) => s.holdings.find((h) => h.name.toLowerCase() === name.toLowerCase())!;
+    const rowOf = (s: SbsSide, key: string) => s.performance!.find((x) => x.key === key)!;
+    // the record a row's figures come from: the Direct list reads MF_PERF_DIRECT, or MF_PERF for a single plan
+    const blockOf = (list: string, bucket: string, ref: string | null): typeof MF => (bucket === 'direct equity' ? STOCK : list === 'direct' && ref !== null && ref in MFD ? MFD : MF);
+    const checked = { regular: 0, direct: 0 };
+    for (const d of result.diffs.filter((x) => x.section === 'performance')) {
+      const e = ledger.find((x) => x.id === d.ledger)!;
+      if (!e.follows) continue;
+      const [list, bucket, , name] = d.key.split(' | ') as ['regular' | 'direct', string, string, string];
+      // the class is the followed matching entry's, and that entry classified this holding's match in this fixture
+      assert.equal(e.class, ledger.find((x) => x.id === e.follows)!.class, `${e.id} follows ${e.follows}`);
+      assert.ok(result.diffs.some((x) => x.section === 'holdings' && x.ledger === e.follows && x.key.split(' | ')[1] === name), `${e.id}: ${e.follows} did not classify ${name}`);
+      const t = d.field!.replace(/^r /, '');
+      const L = rowOf(legacy, d.key), N = rowOf(next, d.key);
+      // each side's figure is its own record's figure (null with no record), in both lists (financial review F2)
+      assert.equal(d.legacy, fig(blockOf(list, bucket, L.ref), L.ref, t), `${e.id} legacy ${d.key} ${t}`);
+      assert.equal(d.new, fig(blockOf(list, bucket, N.ref), N.ref, t), `${e.id} new ${d.key} ${t}`);
+      if (list === 'regular') {
+        // Regular list: that record is the one the holding matched (the shares' legacy rows carry no key: unmatched here)
+        assert.equal(N.ref, holdingOf(next, name).matched, `${e.id} new record ${name}`);
+        if (bucket !== 'direct equity') assert.equal(L.ref, holdingOf(legacy, name).matched, `${e.id} legacy record ${name}`);
+      }
+      checked[list]++;
+    }
+    assert.ok(checked.regular >= 40 && checked.direct >= 40, `only ${checked.regular} Regular and ${checked.direct} Direct figures checked`);
+    // the gold rows of the Direct list (SB-40, SB-41): the live page shows the holding's own scheme's Direct plan, the
+    // new build nothing, while the live page's Regular list picks the ETF (SB-40, SB-41: accepted differences, KI-036 ties left unmatched)
+    for (const [name, own] of [['axis gold -reg(g)', 'Axis Gold Fund(G)-Direct Plan'], ['kotak gold (g)', 'Kotak Gold Fund(G)-Direct Plan']] as const) {
+      const key = `direct | commodity mf | fund | ${name}`;
+      assert.equal(rowOf(legacy, key).ref, own, `legacy Direct record of ${name}`);
+      for (const [t, v] of Object.entries(rowOf(legacy, key).returns)) assert.equal(v, fig(MFD, own, t), `${name} legacy direct ${t}`);
+      assert.ok(Object.values(rowOf(next, key).returns).every((v) => v === null), `${name}: new Direct row blank`);
+    }
+    // Direct list, new side: the renamed fund takes the owner alias's Direct target (fund-aliases.json line 1); an ETF
+    // keeps its own figures as a single plan (KI-054)
+    const row = (list: string, bucket: string, name: string) => next.performance!.find((x) => x.key === `${list} | ${bucket} | fund | ${name}`)!;
+    for (const [t, v] of Object.entries(row('direct', 'equity mf', 'icici pru bluechip fund(g)').returns)) assert.equal(v, fig(MFD, 'ICICI Pru Large Cap Fund(G)-Direct Plan', t), `bluechip direct ${t}`);
+    for (const [bucket, name, key] of [['equity mf', 'tata nifty 50 exchange traded fund', 'Tata Nifty 50 ETF'], ['debt mf', 'icici pru bse liquid rate etf(idcw)', 'ICICI Pru BSE Liquid Rate ETF(IDCW)']] as const) {
+      for (const [t, v] of Object.entries(row('direct', bucket, name).returns)) assert.equal(v, fig(MF, key, t), `${name} direct ${t}`);
+    }
+    // the benchmark rows the new build leaves out as all-dash (SB-24, SB-25, SB-42; KI-073) have no figure on the live
+    // page either
+    for (const k of ['regular | commodity mf | bench | domesticpriceofgold', 'regular | hybrid mf | bench | nifty50arbitrageindex']) {
+      assert.ok(Object.values(rowOf(legacy, k).returns).every((v) => v === null), `${k}: legacy row has a figure`);
+    }
+    // KI-024 (SB-43): the hybrid PMS written as Multi Cap has no benchmark in the new build; the live page gives the equity index
+    assert.ok(!next.performance!.some((x) => x.bucket === 'PMS' && x.kind === 'bench'), 'new: a benchmark for a group not all Equity');
+    assert.ok(legacy.performance!.some((x) => x.key === 'regular | pms | bench | nifty500multicap502525'), 'legacy: the equity index by category');
+    // S3: a scheme the Regular block carries only as a Direct plan: both builds show its Regular-block record in the
+    // Regular list and its Direct-block record in the Direct list, alike (no difference)
+    const z = 'zerodha arbitrage fund(g)-direct plan';
+    assert.ok(!result.diffs.some((x) => x.key.endsWith(`| fund | ${z}`)), 'S3: no difference');
+    assert.equal(row('regular', 'hybrid mf', z).ref, 'Zerodha Arbitrage Fund(G)-Direct Plan');
+    for (const [t, v] of Object.entries(row('regular', 'hybrid mf', z).returns)) assert.equal(v, fig(MF, 'Zerodha Arbitrage Fund(G)-Direct Plan', t), `S3 regular ${t}`);
+  });
+
+  test('the performance probe: AIF and SIF buckets, Dividend Yield, Contra and Value funds (kit phase 2 (c))', () => {
+    const { legacy, next, result } = runSides(cases.find((c) => c.id === 'performance-probe')!);
+    const block = (n: string): Record<string, { r?: Record<string, number | null> }> => {
+      const j = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'refdata', `${n}.json`), 'utf8')) as Record<string, unknown>;
+      return ((j as { data?: unknown }).data ?? j) as Record<string, { r?: Record<string, number | null> }>;
+    };
+    const AIF = block('AIF_PERF'), SIF = block('SIF_PERF'), BENCH = block('BENCH_RET'), MFD = block('MF_PERF_DIRECT');
+    const rowOf = (s: SbsSide, key: string) => s.performance!.find((x) => x.key === key);
+    // every AIF and SIF fund row on both sides shows its own record's figures (each tenor of the bucket's columns)
+    for (const s of [legacy, next]) {
+      for (const r of s.performance!.filter((x) => x.kind === 'fund' && (x.bucket === 'AIF' || x.bucket === 'SIF'))) {
+        const b = r.bucket === 'AIF' ? AIF : SIF;
+        assert.ok(r.ref !== null && r.ref in b, `${s.engine} ${r.key}: record`);
+        for (const [t, v] of Object.entries(r.returns)) assert.equal(v, b[r.ref!]!.r?.[t] ?? null, `${s.engine} ${r.key} ${t}`);
+      }
+      // the SIF bucket has no benchmark rows by design, on both sides
+      assert.ok(!s.performance!.some((x) => x.bucket === 'SIF' && x.kind === 'bench'), `${s.engine}: a SIF benchmark`);
+    }
+    // KI-024 both ways: the equity AIF (Mid Cap) takes Nifty Midcap 150 on both sides, with BENCH_RET's figures; a group not
+    // all Equity takes none in the new build (SB-49, SB-58)
+    for (const list of ['regular', 'direct']) {
+      for (const s of [legacy, next]) {
+        const b = rowOf(s, `${list} | aif | bench | niftymidcap150`)!;
+        assert.equal(b.group, 'Mid Cap', `${s.engine} ${list}`);
+        for (const [t, v] of Object.entries(b.returns)) assert.equal(v, BENCH['niftymidcap150']!.r?.[t] ?? null, `${s.engine} ${list} midcap ${t}`);
+      }
+      // Nifty 500: the generic-category Equity AIF on both sides; the hybrid long-short AIF too on the live page only (SB-49)
+      assert.equal(rowOf(next, `${list} | aif | bench | nifty500`)!.group, 'Category III', `new ${list}: Nifty 500 groups`);
+      assert.equal(rowOf(legacy, `${list} | aif | bench | nifty500`)!.group, 'Long Short + Category III', `legacy ${list}`);
+      // an Equity and a Hybrid AIF in one category (SB-58): the live page's category index, none in the new build
+      assert.equal(rowOf(legacy, `${list} | aif | bench | niftysmallcap250`)!.group, 'Small Cap', `legacy ${list} small cap`);
+      assert.equal(rowOf(next, `${list} | aif | bench | niftysmallcap250`), undefined, `new ${list}: an index for a mixed group`);
+    }
+    // the brief's Diversified group (Q-45 default): Dividend Yield, Contra and Value beside Flexi Cap in the new build
+    for (const f of ['hdfc dividend yield fund-reg(g)', 'kotak contra fund-reg(g)', 'axis value fund-reg(g)', 'parag parikh flexi cap fund-reg(g)']) {
+      assert.equal(rowOf(next, `regular | equity mf | fund | ${f}`)!.group, 'Diversified Funds', f);
+    }
+    // a fund with no Direct plan of its scheme (SB-50): a blank Direct row in the new build, noted; the live page drops it
+    assert.ok(!Object.keys(MFD).some((k) => /^HDFC Dividend Yield/i.test(k)), 'the Direct block has no such plan');
+    const dy = rowOf(next, 'direct | equity mf | fund | hdfc dividend yield fund-reg(g)')!;
+    assert.equal(dy.ref, null);
+    assert.ok(Object.values(dy.returns).every((v) => v === null));
+    assert.ok(next.notes.some((n) => /no Direct twin.*HDFC Dividend Yield Fund-Reg\(G\)/.test(n)), 'new: noted as having no Direct twin');
+    assert.equal(rowOf(legacy, 'direct | equity mf | fund | hdfc dividend yield fund-reg(g)'), undefined);
+    // the matching probe's synthetic Gold spellings (SB-13, SB-14) under their real names: both builds match the Gold fund
+    // itself, with the same rows and figures in both lists (no difference)
+    for (const [real, key, direct] of [['Axis Gold Fund-Reg(G)', 'Axis Gold Fund-Reg(G)', 'Axis Gold Fund(G)-Direct Plan'], ['Kotak Gold Fund(G)', 'Kotak Gold Fund(G)', 'Kotak Gold Fund(G)-Direct Plan']] as const) {
+      for (const s of [legacy, next]) {
+        assert.equal(s.holdings.find((h) => h.name === real)!.matched, key, `${s.engine} ${real}`);
+        assert.equal(rowOf(s, `regular | commodity mf | fund | ${real.toLowerCase()}`)!.ref, key, `${s.engine} ${real} regular`);
+        assert.equal(rowOf(s, `direct | commodity mf | fund | ${real.toLowerCase()}`)!.ref, direct, `${s.engine} ${real} direct`);
+        // a figure on each row (parity of two blank rows would prove nothing; financial review of bd6db3e)
+        for (const list of ['regular', 'direct']) assert.ok(Object.values(rowOf(s, `${list} | commodity mf | fund | ${real.toLowerCase()}`)!.returns).some((v) => v !== null), `${s.engine} ${real} ${list}: no figure`);
+      }
+      assert.ok(!result.diffs.some((d) => d.key.includes(real.toLowerCase())), `${real}: parity expected`);
+    }
+    assert.equal(result.unclassified, 0);
+  });
+
+  test('a benchmark moved to another group is caught as an unclassified E-30 difference (CHAT-008 N1 on 26ef40c)', () => {
+    const { legacy, next } = runSides(cases.find((c) => c.id === 'performance-probe')!);
+    const moved = { ...next, performance: next.performance!.map((x) => (x.key === 'regular | aif | bench | niftymidcap150' ? { ...x, group: 'Long Short' } : x)) };
+    const r = compareSides('performance-probe', false, legacy, moved, ledger);
+    const d = r.diffs.filter((x) => x.key === 'regular | aif | bench | niftymidcap150');
+    assert.deepEqual(d.map((x) => [x.field, x.legacy, x.new, x.matrix, x.ledger]), [['group', 'Mid Cap', 'Long Short', 'E-30', null]]);
   });
 
   test('a client name variant in the IRR file: the live page joins it (KI-032), the new build does not (D9)', () => {

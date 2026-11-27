@@ -49,7 +49,8 @@ export const MATCH_BOOK: ReadonlyArray<BookRow & { isin?: string }> = [
   row({ client: 'Sample Client M', name: 'SBI Nifty 1D Rate Liquid ETF(IDCW)', cat: 'ETF', asset: 'Debt', amc: 'SBI', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-5003' }),
   // amfi / other-answer / fixed: an AMFI-style name the live page sends to the index fund, the new build to the ETF
   row({ client: 'Sample Client M', name: 'Tata Nifty 50 Exchange Traded Fund', cat: 'ETF', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-5004' }),
-  // self / to-null / neither: the live page picks the sibling Gold ETF for a Gold fund, the new build leaves it unmatched
+  // self / to-null / neither: the live page picks the sibling Gold ETF for a Gold fund, the new build leaves it unmatched;
+  // these two are synthetic spellings (the vendor's name without the word "Fund", the ledger's measured query)
   row({ client: 'Sample Client M', name: 'Axis Gold -Reg(G)', cat: 'Gold FoF', asset: 'Commodity', amc: '', product: 'Mutual Funds', dist: 'Other Distributor', folio: 'SYN-5005' }),
   row({ client: 'Sample Client M', name: 'Kotak Gold (G)', cat: 'Gold FoF', asset: 'Commodity', amc: '', product: 'Mutual Funds', dist: 'Other Distributor', folio: 'SYN-5006' }),
   // amfi / to-null / regressed: the live page's answer is right, the stricter regime leaves it unmatched
@@ -65,6 +66,37 @@ export const MATCH_BOOK: ReadonlyArray<BookRow & { isin?: string }> = [
   // non-MF classes (LP-16): no fund data by design on both sides
   row({ client: 'Sample Client N', name: 'Sample Office REIT', cat: 'REIT', asset: 'Real Estate', amc: '', product: 'REIT', dist: 'Centricity', folio: 'SYN-6007', units: 500 }),
   row({ client: 'Sample Client N', name: 'Sample Technologies Pvt Ltd', cat: 'Unlisted', amc: '', product: 'Unlisted Direct Equity', dist: 'Centricity', folio: 'SYN-6008', units: 100 }),
+  // performance probes (kit phase 2 (b), financial review of bc32ba8): a hybrid PMS written with an equity category
+  // (KI-024: no equity index unless every holding of the group is Equity), an ELSS fund (its group), and a scheme the
+  // Regular block carries only as a Direct plan (S3: a single plan, the same figures in both lists)
+  row({ client: 'Sample Client N', name: 'NJ-BALANCED ADVANTAGE PORTFOLIO', cat: 'Multi Cap', asset: 'Hybrid', amc: '', product: 'PMS', dist: 'Centricity', folio: 'SYN-6009', units: null }),
+  row({ client: 'Sample Client N', name: 'Axis ELSS-Tax Saver Fund-Reg(G)', cat: 'ELSS', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-6010' }),
+  row({ client: 'Sample Client N', name: 'Zerodha Arbitrage Fund(G)-Direct Plan', cat: 'Arbitrage Fund', asset: 'Hybrid', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-6011' }),
+];
+
+/** The performance probe book (kit phase 2 (c); MOD-05, 27 Nov 2026): public names from the shipped blocks for the
+ * buckets and groups no other case reaches: five AIFs (asset Equity with an equity category; Hybrid long-short; an Equity
+ * and a Hybrid one sharing the category Small Cap; Equity with the generic category "Category III": KI-024), two SIFs (equity and hybrid long-short: the SIF bucket has no benchmark rows), and Dividend Yield, Contra and
+ * Value funds beside a Flexi Cap fund (the Diversified group of the brief, Q-45). Clients, folios and amounts invented. */
+export const PERF_BOOK: readonly BookRow[] = [
+  row({ client: 'Sample Client P', name: 'Alchemy Leaders of Tomorrow', cat: 'Mid Cap', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7001', units: null }),
+  row({ client: 'Sample Client P', name: 'ICICI Prudential Alpha Opportunities', cat: 'Long Short', asset: 'Hybrid', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7002', units: null }),
+  row({ client: 'Sample Client P', name: 'DynaSIF Equity Long-Short Fund-Reg(G)', cat: 'Equity Long Short Fund', amc: '', product: 'SIF', dist: 'Centricity', folio: 'SYN-7003' }),
+  row({ client: 'Sample Client P', name: 'Altiva Hybrid Long-Short Fund-Reg(G)', cat: 'Hybrid Long-Short Fund', asset: 'Hybrid', amc: '', product: 'SIF', dist: 'Centricity', folio: 'SYN-7004' }),
+  row({ client: 'Sample Client P', name: 'HDFC Dividend Yield Fund-Reg(G)', cat: 'Dividend Yield Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7005' }),
+  row({ client: 'Sample Client P', name: 'Kotak Contra Fund-Reg(G)', cat: 'Contra Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7006' }),
+  // financial review of 8fa975f: an Equity and a Hybrid AIF in one category (the group is not all Equity: no index), and an
+  // Equity AIF with a generic category (the catch-all index, Nifty 500)
+  row({ client: 'Sample Client P', name: 'SageOne Flagship Growth OE Fund', cat: 'Small Cap', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7009', units: null }),
+  row({ client: 'Sample Client P', name: 'Singularity Equity Fund I', cat: 'Small Cap', asset: 'Hybrid', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7010', units: null }),
+  row({ client: 'Sample Client P', name: 'Kotak Iconic Fund II', cat: 'Category III', amc: '', product: 'AIF', dist: 'Centricity', folio: 'SYN-7011', units: null }),
+  row({ client: 'Sample Client P', name: 'Axis Value Fund-Reg(G)', cat: 'Value Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7007' }),
+  // the matching probe's two synthetic Gold spellings (SB-13, SB-14) under their real (vendor) names: both builds match
+  // the Gold fund itself, in both lists (kept out of the matching probe, where the live page's Direct list would show the
+  // synthetic and the real holding as one row of the same Direct record)
+  row({ client: 'Sample Client P', name: 'Axis Gold Fund-Reg(G)', cat: 'Gold FoF', asset: 'Commodity', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7012' }),
+  row({ client: 'Sample Client P', name: 'Kotak Gold Fund(G)', cat: 'Gold FoF', asset: 'Commodity', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7013' }),
+  row({ client: 'Sample Client P', name: 'Parag Parikh Flexi Cap Fund-Reg(G)', cat: 'Flexi Cap Fund', amc: '', product: 'Mutual Funds', dist: 'Centricity', folio: 'SYN-7008' }),
 ];
 
 /** A base file's bytes with an ISIN column appended (heading "ISIN", one cell per holding row; blank when none). */
@@ -94,6 +126,7 @@ export function syntheticCases(): Case[] {
   const match = withIsinColumn(xlsx, buildVariants(xlsx, MATCH_BOOK, 'match').find((f) => f.id === 'match-standard')!.bytes, MATCH_BOOK.map((h) => h.isin));
   return [
     { id: 'matching-probe', input: { baseBytes: match, irrBytes: null, asOn: '30 Sep 2026', label: 'Matching probe' } },
+    { id: 'performance-probe', input: { baseBytes: buildVariants(xlsx, PERF_BOOK, 'perf').find((f) => f.id === 'perf-standard')!.bytes, irrBytes: null, asOn: '30 Sep 2026', label: 'Performance probe' } },
     { id: 'syn-standard-irr-variant', input: { baseBytes: syn.bytes, irrBytes: variantIrr, asOn: '30 Sep 2026', label: 'Synthetic' } },
     { id: 'probe-irr-standard', input: { baseBytes: probe.bytes, irrBytes: irr.bytes, asOn: '30 Sep 2026', label: 'Probe' } },
     { id: 'sample-with-irr', input: { baseBytes: read('Sample_Base_File.xlsx'), irrBytes: read('Sample_IRR_Transactions.xlsx'), asOn: '30 Sep 2026', label: 'Sample Family' } },

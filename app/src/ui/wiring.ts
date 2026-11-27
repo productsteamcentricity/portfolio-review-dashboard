@@ -13,6 +13,8 @@ import { loadBaseFile } from '../ingest/load-base.ts';
 import { computeReview } from '../engine/review.ts';
 import { buildOverviewDeck, type PptxLib } from '../exports/pptx/deck.ts';
 import { buildOverviewWorkbook, workbookInputFrom } from '../exports/xlsx/overview-workbook.ts';
+import { buildHoldingsVM, irrHookFrom } from '../views/holdings.ts';
+import type { ReviewReturns } from '../engine/returns/review-returns.ts';
 import { sha256Hex } from '../services/sha256.ts';
 import { systemClock } from '../services/clock.ts';
 import { auditExport } from '../services/audit-log.ts';
@@ -22,6 +24,9 @@ import { deckFileName, workbookFileName } from '../views/labels.ts';
 import type { ReturnsVM } from '../views/returns-vm.ts';
 import { loadIrrFile, type LoadedIrrFile } from '../ingest/load-irr.ts';
 import { readBlock } from '../data/refdata.ts';
+import { fundReturnSourcesFrom, performanceSourcesFrom, type MonitorUploads } from '../data/performance-sources.ts';
+import { computePerformance, type PerformanceResult } from '../engine/returns/performance.ts';
+import type { Holding } from '../model/holding.ts';
 import { buildMatchContext, matchLoaded, type MatchContext, type MatchReport } from '../engine/match/resolve-holdings.ts';
 import { loadMonitor, type LoadedMonitor, type MonitorBlocks, type MonitorLoadError, type MonitorSheetJS, type MonitorUploadKind } from '../ingest/load-monitor.ts';
 import type { MonitorScheme } from '../ingest/vendor/mf-monitor.ts';
@@ -33,7 +38,10 @@ export type Wiring = {
   loadBaseFile(bytes: Uint8Array, fileName: string, answers: Partial<Record<'xirr' | 'bmXirr', XirrUnitChoice>>): LoadedBaseFile | LoadError;
   computeReview(req: ReviewRequest): Review;
   exportDeck(review: Review, vm: OverviewVM, logo: LogoAsset | null): Promise<ExportResult>;
-  exportWorkbook(review: Review, vm: OverviewVM, returns?: ReturnsVM | null): Promise<ExportResult>;
+  /** `returns` (M3a, NB-03): the Fund IRR sheet when present. `extra.performance` (M3b, NB-02): the store's performance
+   * tables, written as the Performance sheet. `extra.irrReturns`: the accepted IRR file's returns, so the client sheets'
+   * subtotals come from the IRR file as section 5's do (MOD-05's review N2). */
+  exportWorkbook(review: Review, vm: OverviewVM, returns?: ReturnsVM | null, extra?: { performance?: PerformanceResult | null; irrReturns?: ReviewReturns | null }): Promise<ExportResult>;
   now(): string;
   /** M3a returns (NB-03): reads a transactions (IRR) file; optional, so the test fakes stay valid. TODO(I-41): the IRR file joins ReviewRequest. */
   loadIrrFile?(bytes: Uint8Array, fileName: string): LoadedIrrFile | LoadError;
@@ -43,6 +51,8 @@ export type Wiring = {
   loadMonitor?(kind: MonitorUploadKind, bytes: Uint8Array, fileName: string, regular?: Readonly<Record<string, MonitorScheme>>): LoadedMonitor | MonitorLoadError;
   /** PLAN-05 (NB-03): saves the blank transactions (IRR) file template; optional, so the test fakes stay valid. */
   downloadIrrTemplate?(): void;
+  /** M3b: section 5's performance tables of the matched holdings, the uploaded monitors standing in for their blocks. */
+  performance?(holdings: readonly Holding[], uploads: MonitorUploads): PerformanceResult;
 };
 
 /** The match context from the page's refdata blocks, an uploaded monitor standing in for its block; built once for the
@@ -74,12 +84,15 @@ export function browserWiring(build: BuildStamp): Wiring {
     loadBaseFile: (bytes, fileName, answers) => loadBaseFile(bytes, fileName, XLSX as SheetJSLike, { answers, now }),
     computeReview: (req) => computeReview(req, { now, build }),
     exportDeck: async (_review, vm, logo) => finish('pptx', vm, await buildOverviewDeck(vm, { logo, now }, lib), deckFileName(vm)),
-    exportWorkbook: async (review, vm, returns) => finish('xlsx', vm, buildOverviewWorkbook(workbookInputFrom(review, vm, returns)), workbookFileName(vm)),
+    exportWorkbook: async (review, vm, returns, extra) => finish('xlsx', vm, buildOverviewWorkbook({
+      ...workbookInputFrom(review, vm, returns), clientHoldings: buildHoldingsVM(review, { irr: irrHookFrom(extra?.irrReturns) }), ...(extra?.performance ? { performance: extra.performance } : {}),
+    }), workbookFileName(vm)),
     now,
     // M3a returns (NB-03). TODO(I-41): the loaded IRR file becomes ReviewRequest.irr, and its returns Review.returns (computeReview)
     loadIrrFile: (bytes, fileName) => loadIrrFile(bytes, fileName, XLSX as SheetJSLike, { now }),
     matchHoldings: (loaded, overrides) => matchLoaded(loaded, pageMatchContext(overrides)),
     loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, XLSX as unknown as MonitorSheetJS, regular ?? readBlock('MF_PERF') ?? undefined),
     downloadIrrTemplate: () => downloadBytes(buildIrrTemplate(), IRR_TEMPLATE_FILE_NAME, XLSX_MIME), // PLAN-05 (NB-03): no client data, no audit entry
+    performance: (holdings, uploads) => computePerformance(holdings, performanceSourcesFrom(uploads), { fundSources: fundReturnSourcesFrom(uploads) }),
   };
 }

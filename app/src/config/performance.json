@@ -1,0 +1,83 @@
+{
+  "_about": "Section 5 performance tables (E-31, E-32; engine/returns/performance.ts): the one table of buckets, group order and benchmarks (OD-7). Patterns are regular expressions over the category in lower case, with & read as 'and', every other run of non-letters and non-digits as one space, and one space added at each end (so ' word ' is a whole word). The order of the members is the order of the rows (Q-45: Equity in the brief's order, hybrid low to high risk, debt overnight to long duration); the first member whose pattern matches a category takes it. A member with no 'bench' has no benchmark named (OD-7); The Debt MF members are the live page's debt rules (07_engine.js benchmarkFor, Debt MF) as substrings in its own precedence: the Liquid group, then Gilt, then Short Term Bond, then Composite; the last member takes any other category, against a bond index, as the live page did (S1 of the financial review of 27 Nov 2026). 'Nifty 50 Arbitrage' is named for arbitrage funds although no series carries it yet (KI-073: recorded as missing, never an empty row). Benchmark names are looked up in BENCH_RET by the legacy normBench key (lower case, the word tri and every non-alphanumeric character dropped).",
+  "buckets": [
+    { "key": "Equity MF", "cols": ["3M", "6M", "1Y", "3Y", "5Y", "10Y", "SI"], "mcap": true, "debt": false },
+    { "key": "Hybrid MF", "cols": ["3M", "6M", "1Y", "3Y", "5Y", "10Y", "SI"], "mcap": true, "debt": false },
+    { "key": "Debt MF", "cols": ["1M", "3M", "6M", "1Y", "3Y", "5Y", "SI"], "mcap": false, "debt": true },
+    { "key": "Commodity MF", "cols": ["3M", "6M", "1Y", "3Y", "5Y", "10Y", "SI"], "mcap": false, "debt": false },
+    { "key": "PMS", "cols": ["1M", "3M", "6M", "1Y", "2Y", "3Y", "5Y", "SI"], "mcap": true, "debt": false },
+    { "key": "AIF", "cols": ["1M", "3M", "6M", "1Y", "3Y", "5Y", "SI"], "mcap": true, "debt": false },
+    { "key": "SIF", "cols": ["1M", "3M", "SI"], "mcap": false, "debt": false },
+    { "key": "Direct Equity", "cols": ["3M", "6M", "1Y", "2Y", "3Y", "5Y"], "mcap": false, "debt": false }
+  ],
+  "commodity": " (gold|silver|bullion|commodity|commodities|precious metals?) ",
+  "equityGroups": [
+    { "label": "Index Funds", "members": [
+      { "match": "^ (index|index funds?|index funds? etfs?|etfs?) $", "bench": ["Nifty 50 - TRI"],
+        "benchIfHeld": [{ "name": "Nifty Next 50 - TRI", "fundName": " (next 50|nifty junior) " }] } ] },
+    { "label": "Large Cap Funds", "members": [
+      { "match": "^ large ?cap( funds?)? $", "bench": ["Nifty 100 - TRI"] } ] },
+    { "label": "Diversified Funds", "members": [
+      { "match": "^ large and mid ?cap( funds?)? $", "bench": ["Nifty LargeMidcap 250 - TRI"] },
+      { "match": "^ flexi ?cap( funds?)? $", "bench": ["Nifty 500 - TRI"] },
+      { "match": "^ multi ?cap( funds?)? $", "bench": ["Nifty 500 Multicap 50:25:25 - TRI"] },
+      { "match": "^ focused( funds?)? $", "bench": ["Nifty 500 - TRI"] },
+      { "match": "^ (elss|tax saver)( funds?)? $| equity linked savings ", "bench": ["Nifty 500 - TRI"] },
+      { "match": " dividend yield ", "bench": ["Nifty 500 - TRI"] },
+      { "match": "^ contra( funds?)? $", "bench": ["Nifty 500 - TRI"] },
+      { "match": "^ value( funds?)? $", "bench": ["Nifty 500 - TRI"] } ] },
+    { "label": "Mid Cap Funds", "members": [
+      { "match": "^ mid ?cap( funds?)? $", "bench": ["Nifty Midcap 150 - TRI"] } ] },
+    { "label": "Small Cap Funds", "members": [
+      { "match": "^ small ?cap( funds?)? $", "bench": ["Nifty Smallcap 250 - TRI"] } ] },
+    { "label": "Thematic and Sectoral Funds", "members": [
+      { "match": "thematic|sector", "bench": ["Nifty 500 - TRI"] } ] },
+    { "label": "Global Funds", "members": [
+      { "match": " (global|international|overseas) " } ] },
+    { "label": "Fund of Funds", "members": [
+      { "match": " (fund of funds?|fofs?) " } ] }
+  ],
+  "hybrid": [
+    { "match": " arbitrage ", "bench": ["Nifty 50 Arbitrage"] },
+    { "match": " (conservative|debt oriented) |hybrid 85", "bench": ["CRISIL Hybrid 85+15 - Conservative Index"] },
+    { "match": " equity savings " },
+    { "match": " (balanced advantage|dynamic asset) " },
+    { "match": " multi asset " },
+    { "match": " (aggressive|balanced hybrid|equity oriented) |hybrid 35", "bench": ["CRISIL Hybrid 35+65 - Aggressive Index"] },
+    { "match": " hybrid ", "bench": ["CRISIL Hybrid 35+65 - Aggressive Index"] }
+  ],
+  "debt": [
+    { "match": "overnight", "rank": 1, "bench": ["CRISIL Liquid Debt Index"] },
+    { "match": "liquid", "rank": 2, "bench": ["CRISIL Liquid Debt Index"] },
+    { "match": "money ?market", "rank": 3, "bench": ["CRISIL Liquid Debt Index"] },
+    { "match": "ultra ?short", "rank": 4, "bench": ["CRISIL Liquid Debt Index"] },
+    { "match": "constant", "rank": 15, "bench": ["CRISIL 10 Year Gilt Index"] },
+    { "match": "gilt|g ?sec", "rank": 15, "bench": ["CRISIL 10 Year Gilt Index"] },
+    { "match": "low ?duration", "rank": 5, "bench": ["CRISIL Short Term Bond Index"] },
+    { "match": "short ?duration", "rank": 6, "bench": ["CRISIL Short Term Bond Index"] },
+    { "match": "short.*mid|mid.*term", "rank": 7, "bench": ["CRISIL Short Term Bond Index"] },
+    { "match": "float", "rank": 8, "bench": ["CRISIL Short Term Bond Index"] },
+    { "match": "corporate ?bond", "rank": 9, "bench": ["CRISIL Short Term Bond Index"] },
+    { "match": "banking.*psu|psu.*bank", "rank": 10, "bench": ["CRISIL Short Term Bond Index"] },
+    { "match": "credit ?risk", "rank": 11, "bench": ["CRISIL Short Term Bond Index"] },
+    { "match": "medium to long", "rank": 13, "bench": ["CRISIL Composite Bond Index"] },
+    { "match": "medium", "rank": 12, "bench": ["CRISIL Composite Bond Index"] },
+    { "match": "dynamic ?bond", "rank": 14, "bench": ["CRISIL Composite Bond Index"] },
+    { "match": "long ?duration", "rank": 16, "bench": ["CRISIL Composite Bond Index"] },
+    { "match": "", "rank": 17, "bench": ["CRISIL Composite Bond Index"] }
+  ],
+  "alternatives": [
+    { "match": " (debt|fixed income|credit|bond|bonds|lending) " },
+    { "match": " (global|international|overseas) " },
+    { "match": "large.*mid|mid.*large", "bench": ["Nifty LargeMidcap 250 - TRI"] },
+    { "match": "large", "bench": ["Nifty 100 - TRI"] },
+    { "match": "mid", "bench": ["Nifty Midcap 150 - TRI"] },
+    { "match": "small", "bench": ["Nifty Smallcap 250 - TRI"] },
+    { "match": "flexi", "bench": ["Nifty 500 - TRI"] },
+    { "match": "multi.*cap", "bench": ["Nifty 500 Multicap 50:25:25 - TRI"] },
+    { "match": "value|contra", "bench": ["BSE 500 - TRI"] },
+    { "match": "dividend", "bench": ["Nifty Dividend Opportunities 50 - TRI"] },
+    { "match": "index fund|etf", "bench": ["Nifty 50 - TRI"] },
+    { "match": "", "bench": ["Nifty 500 - TRI"] }
+  ]
+}

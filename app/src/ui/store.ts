@@ -15,6 +15,8 @@ import type { OverviewVM } from '../views/overview-vm.ts';
 import type { Prefs } from '../services/storage.ts';
 import type { LogoAsset, Wiring } from './wiring.ts';
 import type { MatchReport } from '../engine/match/resolve-holdings.ts';
+import type { PerformanceResult } from '../engine/returns/performance.ts';
+import type { MonitorUploads } from '../data/performance-sources.ts';
 import type { LoadedMonitor, MonitorBlocks, MonitorLoadError, MonitorUploadKind } from '../ingest/load-monitor.ts';
 
 /** One uploaded monitor file (U-08, U-09, U-10): read, or refused with the reason. */
@@ -41,6 +43,8 @@ export type AppState = {
   upload: UploadState;
   /** M2.1: what each holding of the loaded file was matched to (E-19); null before a file loads or without fund data. */
   match: MatchReport | null;
+  /** M3b: section 5's performance tables of the review's holdings; null without a review or without the hook. */
+  performance: PerformanceResult | null;
   /** M2.1: the month's monitor files uploaded in section 1; kept when the family changes (they are not family data). */
   monitors: Partial<Record<MonitorUploadKind, MonitorSlot>>;
   /** Remounts the monitor inputs, so the same file can be picked again (KI-089). */
@@ -96,6 +100,7 @@ function initialState(logo: LogoAsset | null, inputKey: number): AppState {
   return {
     upload: emptyUpload(),
     match: null,
+    performance: null,
     monitors: {},
     monitorKey: 0,
     asOn: null,
@@ -182,6 +187,25 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
       return { loaded, report: { entries: [], available: [], aliasesApproved: null, skippedRules: [], failed: messageOf(err) } };
     }
   };
+  /** The uploaded monitors' blocks with the data date each file states (KI-083). */
+  const uploadsOf = (monitors: AppState['monitors']): MonitorUploads => {
+    const u: MonitorUploads = { blocks: {}, dates: {} };
+    for (const slot of Object.values(monitors)) {
+      if (!slot?.loaded) continue;
+      Object.assign(u.blocks, slot.loaded.blocks);
+      for (const k of Object.keys(slot.loaded.blocks) as Array<keyof MonitorUploads['dates']>) u.dates[k] = slot.loaded.date;
+    }
+    return u;
+  };
+  /** The performance tables; a failure leaves them out (section 5 says so) and never blocks the review. */
+  const performanceOf = (review: Review, monitors: AppState['monitors']): PerformanceResult | null => {
+    if (!deps.wiring.performance) return null;
+    try {
+      return deps.wiring.performance(review.holdings, uploadsOf(monitors));
+    } catch {
+      return null;
+    }
+  };
   /** After a monitor changes: the loaded file matched again against the data now in use. */
   const rematch = (s: AppState): AppState => {
     if (!s.upload.loaded) return s;
@@ -195,27 +219,28 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
       result = deps.wiring.loadBaseFile(bytes, fileName, s.answers);
     } catch (err) {
       // The reader refuses a file with a LoadError; an exception is the app's own failure, not the file's (L15).
-      return { ...s, upload: { ...s.upload, stage: 'upload', loaded: null, error: { kind: 'review-failed', message: messageOf(err) } }, review: null, vm: null };
+      return { ...s, upload: { ...s.upload, stage: 'upload', loaded: null, error: { kind: 'review-failed', message: messageOf(err) } }, review: null, vm: null, performance: null };
     }
-    if (isLoadError(result)) return { ...s, upload: { ...s.upload, stage: 'upload', loaded: null, error: result }, match: null, review: null, vm: null };
+    if (isLoadError(result)) return { ...s, upload: { ...s.upload, stage: 'upload', loaded: null, error: result }, match: null, review: null, vm: null, performance: null };
     const m = matched(result, s.monitors);
-    return { ...s, upload: { ...s.upload, stage: 'validate', loaded: m.loaded, error: null }, match: m.report, review: null, vm: null };
+    return { ...s, upload: { ...s.upload, stage: 'validate', loaded: m.loaded, error: null }, match: m.report, review: null, vm: null, performance: null };
   };
 
   const compute = (s: AppState): AppState => {
     const loaded = s.upload.loaded;
-    if (!loaded) return { ...s, review: null, vm: null };
+    if (!loaded) return { ...s, review: null, vm: null, performance: null };
     try {
       const review = deps.wiring.computeReview({
         loaded, asOn: s.asOn as DayNumber | null, labels: s.labels, acknowledged: s.acknowledged, answers: s.answers,
       });
-      return { ...s, upload: { ...s.upload, stage: 'review', error: null }, review, vm: buildOverviewVM(review) };
+      return { ...s, upload: { ...s.upload, stage: 'review', error: null }, review, vm: buildOverviewVM(review), performance: performanceOf(review, s.monitors) };
     } catch (err) {
       return {
         ...s,
         upload: { ...s.upload, stage: 'validate', error: { kind: 'review-failed', message: messageOf(err) } },
         review: null,
         vm: null,
+        performance: null,
       };
     }
   };
@@ -338,7 +363,7 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
     try {
       const result = kind === 'pptx'
         ? await deps.wiring.exportDeck(review, s.vm, s.logo)
-        : await deps.wiring.exportWorkbook(review, s.vm, s.irr.vm); // M3a returns (NB-03): the Fund IRR sheet when present
+        : await deps.wiring.exportWorkbook(review, s.vm, s.irr.vm, { performance: s.performance, irrReturns: s.irr.returns }); // M3a returns (NB-03): the Fund IRR sheet when present; M3b (NB-02): the Performance sheet, and the client sheets from the IRR file as section 5
       if (session === mySession) {
         const entry: AuditEntry = { ...result.audit, id: `export:${state.exportLog.length + 1}` };
         set({ ...state, exportLog: [...state.exportLog, entry], busy: null });

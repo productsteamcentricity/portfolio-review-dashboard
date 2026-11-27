@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { SbsSide } from './shape.ts';
+import type { SbsPerfRow, SbsSide } from './shape.ts';
 
 export type Section = 'holdings' | 'performance' | 'scopes' | 'contributions';
 export type DiffKind = 'field' | 'only-legacy' | 'only-new' | 'not-built' | 'duplicate-key';
@@ -61,6 +61,9 @@ export type LedgerEntry = {
   class: 'correction' | 'improvement' | 'not-built' | 'regression' | 'accepted-difference' | 'known-gap';
   reference: string;
   description: string;
+  /** A performance entry whose figures follow a holding's matching difference (the entry id, SB-08 to SB-17): it takes
+   * that entry's class, and its Regular-list figures are checked against the record each side matched. */
+  follows?: string;
 };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -162,7 +165,17 @@ export function compareSides(fixture: string, irr: boolean, L: SbsSide, N: SbsSi
   keyed('scopes', L.scopes, N.scopes, ['xirr', 'bmxirr'], (r) => (r.kind === 'advisor' ? 'E-142' : 'E-27'));
   if (L.contributions && N.contributions) keyed('contributions', L.contributions, N.contributions, ['rank', 'cmvCr', 'contribPp'], () => 'E-29');
   if (L.performance && N.performance) {
-    keyed('performance', L.performance, N.performance, ['benchmark', 'returns', 'benchReturns'], (_r, f) => (f === 'benchmark' || f === 'benchReturns' ? 'E-30' : 'E-31'));
+    // each tenor is its own field ("r 1Y"), compared with the kit's tolerance, so one figure differing is one difference
+    // (CHAT-008's note N1 on the kit); a tenor one side's bucket lacks reads as null; a benchmark's groups are compared too
+    type Flat = { key: string; list: string; kind: string; [field: string]: unknown };
+    const tenors = [...new Set([...L.performance, ...N.performance].flatMap((r) => Object.keys(r.returns)))];
+    const flat = (rows: readonly SbsPerfRow[]): Flat[] => rows.map((r) => {
+      const o: Flat = { key: r.key, list: r.list, kind: r.kind, group: r.group };
+      for (const t of tenors) o[`r ${t}`] = r.returns[t] ?? null;
+      return o;
+    });
+    const fields = ['group', ...tenors.map((t) => `r ${t}`)];
+    keyed('performance', flat(L.performance), flat(N.performance), fields, (r) => (r.kind === 'bench' ? 'E-30' : r.list === 'direct' ? 'E-32' : 'E-31'));
   } else if (L.performance) {
     for (const r of L.performance) {
       tally('performance').notCompared++;

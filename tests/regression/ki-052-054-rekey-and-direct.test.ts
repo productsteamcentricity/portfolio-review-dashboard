@@ -11,7 +11,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { REKEY_LEDGER, rekeyLedger } from '../parity/rekey-ledger.ts';
-import { directTwin, rekeyBlock } from '../../app/src/engine/match/rekey.ts';
+import { directTwin, directTwinIndex, rekeyBlock } from '../../app/src/engine/match/rekey.ts';
 import { matchInstrument } from '../../app/src/engine/match/instrument.ts';
 import { refdataBlock } from '../helpers/legacy-engine.ts';
 import { nameKey } from '../../app/src/engine/match/normalize.ts';
@@ -68,5 +68,25 @@ describe('KI-054: the Direct twin is the same scheme or none', () => {
       assert.equal(optionOf(d), optionOf(k), `${k} -> ${d}`);
     }
     assert.ok(n > 0);
+  });
+  test('N11: the Direct keys normalised once (directTwinIndex) give the twin of the former scan for every MF_PERF key', () => {
+    /* the former algorithm (one scan of the Direct keys per fund), as the reference */
+    const norm = MFD.map((d) => ({ d, name: nameKey(d.replace(/[(]adjusted[)]/gi, ' ')), opt: optionOf(d) }));
+    const scan = (k: string): string | null => {
+      const name = nameKey(k);
+      const opt = optionOf(k);
+      const hits = norm.filter((x) => x.name === name && x.opt === opt).map((x) => x.d);
+      if (hits.length === 1) return hits[0]!;
+      const plain = hits.filter((d) => !/[(]adjusted[)]/i.test(d));
+      return hits.length > 1 && plain.length === 1 ? plain[0]! : null;
+    };
+    const ix = directTwinIndex(MFD);
+    let twins = 0;
+    for (const k of MF) {
+      const want = scan(k);
+      assert.equal(directTwin(k, ix), want, k);
+      if (want !== null) twins++;
+    }
+    assert.ok(twins > 1000, String(twins));
   });
 });

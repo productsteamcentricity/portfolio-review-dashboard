@@ -607,6 +607,19 @@ export function sampleFixtures(host: LegacyHost): { book: BookRow[]; fixtures: F
   return { book, fixtures };
 }
 
+/**
+ * One base file of a book, money in rupee columns only (so every amount is read exactly as written, to the paisa):
+ * the tax-lot tests' books (NB-M7a S4). `blankInvested` lists the holdings (by index) written without an invested
+ * value and gain (KI-007).
+ */
+export function bookBytes(xlsx: SheetJS, book: readonly BookRow[], blankInvested: readonly number[] = []): Uint8Array {
+  const layout: Layout = { ...STANDARD, money: ['rupee'] };
+  const total = book.reduce((s, h) => s + h.mv, 0);
+  const rows: CellSpec[][] = [headerFor(layout), ...book.map((h, i) => holdingRow(h, layout, total, i,
+    blankInvested.includes(i) ? { invested: null, gain: null } : {}))];
+  return toWorkbook(xlsx, [{ name: 'Base File', rows }]);
+}
+
 /** The variants of the synthetic book (unit tests). */
 export function syntheticFixtures(xlsx: SheetJS = loadSheetJS()): Fixture[] {
   return buildVariants(xlsx, SYNTHETIC_BOOK, 'syn');

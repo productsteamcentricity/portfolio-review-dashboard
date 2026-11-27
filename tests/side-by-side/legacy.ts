@@ -4,7 +4,8 @@
 
 import { loadLegacyHost } from '../fixtures/make-books.ts';
 import type { SbsHolding, SbsInput, SbsPerfRow, SbsScope, SbsContribution, SbsSide } from './shape.ts';
-import { holdingKey, labelKey } from './shape.ts';
+import { holdingKey, labelKey, perfKey, pushPerfRow } from './shape.ts';
+import { benchKey } from '../../app/src/engine/returns/performance.ts';
 
 type Any = any; // eslint-disable-line @typescript-eslint/no-explicit-any -- the legacy engine is untyped JavaScript
 
@@ -84,22 +85,26 @@ export function runLegacy(input: SbsInput): SbsSide {
     };
   });
 
+  // the performance tables as the page shows them: the Regular list, and the Direct list when the page has one
+  // (performance.regularList / directList / hasDirect, index.html computeReview); a bucket's "SIF (as on ...)" is SIF;
+  // the rows of a bucket are its group sub-headings, fund rows (by the name shown) and benchmark rows
   const performance: SbsPerfRow[] = [];
-  for (const b of (m.performance?.buckets ?? []) as Any[]) {
-    let bench: Any = null;
-    const funds: Any[] = [];
-    for (const r of b.rows as Any[]) {
-      if (r.type === 'fund') funds.push(r);
-      else if (r.type === 'bench') bench = r;
-    }
-    for (const f of funds) {
-      const ret: Record<string, number | null> = {};
-      const bret: Record<string, number | null> = {};
-      for (const c of b.cols as string[]) {
-        ret[c] = num(f.r?.[c]);
-        bret[c] = bench ? num(bench.r?.[c]) : null;
+  const p = m.performance ?? {};
+  const lists: Array<['regular' | 'direct', Any[]]> = [['regular', (p.regularList ?? p.buckets ?? []) as Any[]]];
+  if (p.hasDirect) lists.push(['direct', p.directList as Any[]]);
+  for (const [list, buckets] of lists) {
+    for (const b of buckets) {
+      const bucket = String(b.key).replace(/ [(]as on .*[)]$/, '');
+      let group = '';
+      for (const r of b.rows as Any[]) {
+        if (r.type === 'sub') { group = String(r.label); continue; }
+        if (r.type !== 'fund' && r.type !== 'bench') continue;
+        const returns: Record<string, number | null> = {};
+        for (const c of b.cols as string[]) returns[c] = num(r.r?.[c]);
+        const kind = r.type as 'fund' | 'bench';
+        const name = kind === 'fund' ? String(r.name) : String(r.label);
+        pushPerfRow(performance, { key: perfKey(list, bucket, kind, kind === 'fund' ? name : benchKey(name)), list, bucket, kind, name, group, returns, ref: kind === 'fund' && typeof r.key === 'string' ? r.key : null });
       }
-      performance.push({ key: `${labelKey(b.key)} | ${labelKey(f.key ?? f.name)}`, bucket: String(b.key), fund: String(f.key ?? f.name), returns: ret, benchmark: bench ? String(bench.label) : null, benchReturns: bret });
     }
   }
 

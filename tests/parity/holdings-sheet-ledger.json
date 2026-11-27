@@ -1,0 +1,40 @@
+{
+  "schema": "parity-ledger-v1",
+  "area": "per-client holding sheets (E-25)",
+  "legacy": "index.html 07_engine.js computeReview().clients (1815-1880), through tools/engine-host.js",
+  "new": "app/src/engine/aggregate/holdings-sheet.ts computeHoldingsSheets",
+  "test": "tests/parity/holdings-sheet.parity.test.ts",
+  "notes": "Every difference here follows from a decision the base-file and aggregation ledgers already record; each entry names it. The sheets themselves add no difference of their own.",
+  "entries": [
+    {
+      "id": "HS-01", "kind": "row", "field": ["xirr", "bmXirr", "xirrCoverage", "bmXirrCoverage"],
+      "fixtures": ["syn-pct-xirr", "family-a-pct-xirr", "syn-ambiguous-xirr", "family-a-ambiguous-xirr", "syn-ambiguous-xirr-answered", "family-a-ambiguous-xirr-answered"],
+      "class": "correction", "reference": "OD-3; KI-005; BF-05 to BF-10",
+      "description": "The holdings' XIRR and BMXIRR follow the base file's unit rules: percent-formatted cells are fractions read once (the legacy divided by 100 again), and an ambiguous unformatted column waits for the analyst's answer (blank until then, so the subtotals' coverage is 0). Every subtotal built on them differs in the same proportion."
+    },
+    {
+      "id": "HS-02", "kind": "*", "field": "*",
+      "fixtures": ["syn-odd-asset-labels", "family-a-odd-asset-labels", "syn-all-classes", "family-a-all-classes"],
+      "class": "correction", "reference": "OD-7; BF-14; BF-19; AG-04; AG-07; AG-09; AG-10",
+      "description": "A blank or unrecognised Asset Name is the Unknown class, a section of its own placed last, never Equity, so the client's rows and their order differ."
+    },
+    {
+      "id": "HS-03", "kind": "*", "field": "*",
+      "fixtures": ["syn-money-columns", "family-a-money-columns"],
+      "class": "correction", "reference": "KI-147; D-041; AG-13; AG-14",
+      "description": "The money-column rule (the owner's answer of 24 Oct 2026): a holding's Crore market or invested value that is not a number is invalid, not read from another column, so the rows, their sums and the clients' CMV order differ."
+    },
+    {
+      "id": "HS-04", "kind": "row", "field": ["gain"],
+      "fixtures": ["syn-merged-folios", "family-a-merged-folios", "syn-invalid-text", "family-a-invalid-text"],
+      "class": "correction", "reference": "OD-18; KI-113; BF-17",
+      "description": "Gain is CMV minus invested value over the holdings that have an invested value (OD-18); the legacy summed the file's own gain or loss column, which merged folios and unreadable cells make partial."
+    },
+    {
+      "id": "HS-05", "kind": "row", "field": ["xirr", "bmXirr"],
+      "fixtures": ["syn-negative-cmv", "family-a-negative-cmv"], "labels": ["asset:Equity", "grand:Grand Total"],
+      "class": "correction", "reference": "MOD-05's financial review of M3b, N3 (27 Nov 2026); KI-006",
+      "description": "A subtotal whose holdings with an XIRR (or BMXIRR) have market values of both signs is blank, NOT COMPARABLE: a CMV-weighted average with weights of both signs can fall outside every member's rate (CMVs of 1.0000001 and -1 gave -19,99,99,989.88%). The legacy printed the weighted figure. A subtotal whose holdings with the rate are of one sign keeps its average, as the legacy (a single holding of negative value gives its own rate)."
+    }
+  ]
+}

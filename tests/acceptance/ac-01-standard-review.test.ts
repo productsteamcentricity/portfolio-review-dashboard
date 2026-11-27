@@ -1,4 +1,4 @@
-// covers: AC-01 E-03 E-21 E-22 E-24 E-52 E-77 E-79 E-123 BR-2.1 BR-13.1 BR-14.3 OD-8 OD-18 D-029 D-039 M1.4
+// covers: AC-01 E-03 E-21 E-22 E-24 E-52 E-77 E-79 E-123 BR-2.1 BR-13.1 BR-14.3 OD-8 OD-18 D-029 D-039 M1.4 E-80
 // Acceptance case AC-01, standard review generation (08-regression-test-plan.md §3), as far as milestone M1.4 builds
 // it: family-a is read, the review computed, the overview view-model built, and the deck (slide C-08, the manifest's
 // one component) and the overview workbook exported, all through the page's wiring in Node (tests/helpers/
@@ -21,6 +21,9 @@ import assert from 'node:assert/strict';
 import type { Figure, OverviewVM } from '../../app/src/views/overview-vm.ts';
 import type { Value } from '../../app/src/model/value.ts';
 import type { ReviewRun } from '../helpers/node-wiring.ts';
+import type { Review } from '../../app/src/model/review.ts';
+import { buildHoldingsVM } from '../../app/src/views/holdings.ts';
+import { clientSheetNames } from '../../app/src/exports/xlsx/sheet-names.ts';
 import { ASSET_ORDER } from '../../app/src/model/review.ts';
 import { MISSING_STATUSES } from '../../app/src/model/status.ts';
 import { MISSING_MARKER } from '../../app/src/config/formats.ts';
@@ -36,8 +39,9 @@ const xlsx = loadSheetJS();
 const { JSZip } = loadPptxGenJS();
 const DASHES = /[–—]/;
 /** The sheets of the overview workbook, in the order of D-039 point 5 (both matrices shown for family-a). */
-const SHEET_ORDER = ['Read Me and Controls', 'Source Register', 'Holdings (as loaded)', 'Portfolio Overview',
-  'Client Allocation', 'Distributor Allocation', 'Audit Log', '_manifest'];
+/** The D-039 sheets in order, with one client holdings sheet per client (E-80, M3b) before the Audit Log. */
+const sheetOrder = (review: Review): string[] => ['Read Me and Controls', 'Source Register', 'Holdings (as loaded)', 'Portfolio Overview',
+  'Client Allocation', 'Distributor Allocation', ...clientSheetNames(buildHoldingsVM(review).clients.map((c) => c.title)), 'Audit Log', '_manifest'];
 
 type FileRow = Record<string, unknown>;
 type Case = {
@@ -249,8 +253,9 @@ for (const c of CASES) {
     });
 
     test('the workbook: the sheets of D-039 in order with data; every formula evaluates to its cached value; each figure cell is the screen\'s figure', async () => {
-      const { run: { vm }, book, bookBytes } = await built;
-      assert.deepEqual(book.sheets.map((s) => s.name), SHEET_ORDER);
+      const { run: { vm, review }, book, bookBytes } = await built;
+      assert.deepEqual(book.sheets.map((s) => s.name), sheetOrder(review));
+      assert.ok(sheetOrder(review).length > 8, 'the client holdings sheets are there');
       for (const s of book.sheets) assert.ok(sheetTable(s).length >= 2, `${s.name} has data below its header`);
 
       const ev = readWorkbookForEval(bookBytes);
