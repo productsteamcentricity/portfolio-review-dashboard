@@ -20,7 +20,7 @@ M3a -> M7a engine; M7a and M7b cost/IPS/CVS/MFA feed M8; M6, M10, M11, M12, M13,
 **Status, 27 Nov 2026 (registers-6) [V git log --first-parent origin/main]:** test build 1 is complete on `/next/`: M2.1
 (wired, PR #54), M3a (wired, PR #51) and M3b (views PR #59; data engines PR #61, not wired) are merged, and the side-by-side
 kit compares the two builds on fund matching and every performance bucket (PRs #60, #62, #63). The owner's acceptance
-(Gate E) is pending. Since then the M3b follow-up (PR #65) and M7a round 2 (tax, PR #67, not wired) merged on 27 Nov 2026. Next on this path: the holdings fix round (the reviewer's condition on the IRR rows), the owner-approved alias lines, the base-file template download, the returns note and the new-fund return, the direct-equity engine's conditions (not wired), the tax engine's next round and its review seam (not wired); then look-through and overlap (M4). The table below is
+(Gate E) is pending. Since then the M3b follow-up (PR #65) and M7a round 2 (tax, PR #67, not wired) merged on 27 Nov 2026, and the direct-equity CAGR's review conditions of PR #61 (PR #68) on 28 Nov 2026. Next on this path: the holdings fix round (the reviewer's condition on the IRR rows), the owner-approved alias lines, the base-file template download, the returns note and the new-fund return, the direct-equity CAGR's remaining conditions before it is wired (dates compared as month labels, as the owner answered on 28 Nov 2026; a price source; a parity ledger); the review conditions of PR #61 were met in PR #68; not wired, the tax engine's next round and its review seam (not wired); then look-through and overlap (M4). The table below is
 the draft's of 24 Nov.
 
 | Step | Gate to pass | Owner | Earliest | Blocked by |

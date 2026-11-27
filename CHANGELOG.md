@@ -16,8 +16,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   names marked answered in section 2.5, and the 26 Nov stricter-matching row updated (the aliases approved).
   **`docs/DECISIONS.md`**: a dated note under D-023 (its own text unchanged). **`docs/KNOWN_ISSUES.md`**: KI-302 answered
   by the owner (absolute, marked), open until built.
-- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,MODULE_DEPENDENCY_MAP,CRITICAL_PATH}.md`**: PRs #65 to #67 and
-  what comes next (CHAT-016's note N4).
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,MODULE_DEPENDENCY_MAP,CRITICAL_PATH}.md`**: PRs #65 to #68 and
+  what comes next (CHAT-016's note N4); decision log 2.5: the CAGR figure date in the code since PR #68.
 - **Compactions** recounted (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).
 - **`tests/unit/match/corpus.test.ts`**: a comment and a reason text no longer say the owner accepted losses it was not
   asked about (CHAT-016's note N3).
