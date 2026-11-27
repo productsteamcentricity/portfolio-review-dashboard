@@ -4,6 +4,22 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (records, registers-6, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **`docs/project-control/DECISION_LOG.md`**: the stricter-matching row of 26 Nov corrected to the measured result (the
+  follow-up recovered 20 of option B's 22 lost names and lost 2 others; 4 correct names unmatched, named: a known gap,
+  owner asked 27 Nov 2026, alias candidates); section 2.5, the Moderator's decisions of 27 Nov with a financial meaning.
+- **`docs/project-control/README.md`**, Gates A and B: a change that calculates or shows a figure carries the financial
+  review and a known-answer test in its Gate A; the Guardian refuses it at Gate B intake without them.
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,MODULE_DEPENDENCY_MAP,CRITICAL_PATH}.md`**: PRs #59 to #63;
+  test build 1 complete on `/next/` (owner Gate E pending) and what follows.
+- **`docs/coordination/CONTEXT_COMPACTION_TRACKER.md`**, **`docs/project-control/CHAT_REGISTRY.md`**: compactions
+  recounted; CHAT-008 and CHAT-009 at their third: succession ordered by MOD-05 on 27 Nov 2026 (successors ARC-04 and
+  NB-05, not yet opened), also in `CHAT_SUCCESSION_REGISTER.md`.
+- **`docs/project-control/FILE_OWNERSHIP_AND_CHANGE_CONTROL.md`**: KI ranges for the current chats (EX-03 KI-302 to KI-319,
+  NB-02 and its successor KI-320 to KI-339, NB-03 KI-340 to KI-359, NB-04 KI-360 to KI-379).
+- **`docs/KNOWN_ISSUES.md`**: KI-302 (a young fund's annualised since-inception return) and KI-303 (loosely matched PMS
+  and AIF benchmark words), both open with an owner question.
+
 ### Changed (tests only: side-by-side kit phase 2 (c), AIF, SIF and the Diversified group, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
 - **`tests/side-by-side/`**: a performance probe book with five AIFs (equity Mid Cap; hybrid long-short; an Equity and a Hybrid
   one sharing a category; an Equity one with a generic category),

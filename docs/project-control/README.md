@@ -176,7 +176,9 @@ The gates are the owner's (27 Oct, section 13), mapped onto the practice this re
   branch; worktree; base SHA and head SHA; for the live page, the page MD5 before and after and the patch scripts; for
   the new app, the build size and SHA-256; files changed (`git diff --stat <base>...<head>`); every check actually run,
   with its command, result, counts and time zone; the checks **not** run, said plainly; open issues and new known
-  issues; whether the scope grew beyond the contract.
+  issues; whether the scope grew beyond the contract. For a change that calculates a figure, or shows a calculated
+  figure on screen, in a sheet or on a slide: the financial-domain reviewer's verdict (approve, with its findings and
+  how each was settled) and a test against an independently known answer (CLAUDE.md rule 7; MOD-05, 27 Nov 2026).
 - **Status after:** IMPLEMENTED, NOT FULLY VERIFIED.
 - **Existing practice:** CLAUDE.md workflow steps 1 to 4 and the change request record.
 
@@ -184,7 +186,10 @@ The gates are the owner's (27 Oct, section 13), mapped onto the practice this re
 - **Who:** ARC-01, plus the financial-domain-reviewer for any calculation, tax rule or base-file reading rule, plus the
   security-release-reviewer before every push and PR.
 - **Entry:** a complete Gate A report; the head commit readable locally (ARC-01 reads with `git -C` and `git show`, and
-  never writes in the task's worktree).
+  never writes in the task's worktree). For a change that calculates or shows a figure, the Guardian checks at intake
+  that the Gate A report carries the financial review and the known-answer test, and refuses the submission without
+  them (NO-GO at intake). Reason on record (27 Nov 2026): PR #59 passed Gates A and B without one; the review that
+  followed found a debt PMS or AIF compared with an equity index (KI-024) before the merge.
 - **ARC-01 checks:** the actual diff, not a summary; every consumer of each interface touched
   ([INTERFACE_CONTRACTS.md](INTERFACE_CONTRACTS.md)); ownership conflicts; a merge simulation (`git merge-tree`) against
   the current `main` and every other active branch; business logic duplicated across the two builds (for example the

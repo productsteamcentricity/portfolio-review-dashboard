@@ -169,6 +169,10 @@ Lead decision, 28 Oct. Use only your own range; MOD-02 allocates new ranges and 
 Before 28 Oct these ranges lived only in private notes; this table is now the authoritative copy [VERIFIED: `git grep` found no range
 on main]. A chat that needs more numbers asks MOD-02 first.
 
+**KI ranges for the current chats (MOD-05, 27 Nov 2026):** EX-03 KI-302 to KI-319 (KI-302 and KI-303 filed in registers-6);
+NB-02 and its successor KI-320 to KI-339; NB-03 KI-340 to KI-359; NB-04 KI-360 to KI-379. KI-300 and KI-301 were used
+before this allocation. The table above names no range for these chats; the Moderator allocates further ranges here.
+
 ## Change log of this file
 
 | Date (IST) | By | Change |
@@ -177,3 +181,4 @@ on main]. A chat that needs more numbers asks MOD-02 first.
 | 30 Oct 2026 | MOD-01 (fixer pass) | Validation findings applied: the authority and gates tables replaced by links to README sections 5.2 and 6 (README wins); ARC-01's scratch worktrees (R-7) in rules 5 and 9; open branches take main by merge, never rebase; the TA-05 rollback is a forward fix; BF removed from NB-01's design ids; `tests/helpers/sheetjs.ts` is on main |
 | 2 Nov 2026 | MOD-02 | Numbering note: D-043, KI-185 and KI-186 are used by TA-03 |
 | 9 Nov 2026 | MOD-02 | KI ranges: EX-01 KI-200..KI-219 added; NB-01 limited to KI-190..KI-199 (R-14) |
+| 27 Nov 2026 | MOD-05 (registers-6, drafted by EX-03) | KI ranges for the current chats: EX-03 KI-302..KI-319; NB-02 and its successor KI-320..KI-339; NB-03 KI-340..KI-359; NB-04 KI-360..KI-379 |
