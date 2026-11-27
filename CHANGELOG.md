@@ -13,8 +13,11 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   reads "1 holding not matched to a fund" (F7). The rule is named "the no-look-ahead rule (Moderator decision of
   26 Nov 2026 under PD-67)" in code and docs, and the three old "exact anniversaries ... within 7 days" sentences
   (DATA_DICTIONARY §7, architecture §8, this file) are replaced (F8).
+- Two price or fund sources of one kind are refused (`assertOneSourcePerKind`): parts and the footnote are grouped by
+  kind. A stock line without an ISIN or a price series keeps the review as-on in its provenance.
 - Tests: every permutation of four holdings gives the same figure, parts, `used` and footnote; end days and counts;
-  F2 dates; F7 wording.
+  F2 dates; F7 wording; the financial review's known answers (mixed pack and file sources, 13.00% over all 120 orders;
+  the primary ending earlier, 5.15%; a holding outside the base).
 
 ### Changed (tests only: side-by-side kit phase 2 (a), fund matching, 27 Nov 2026; no change to `index.html`, `/next/`, `app/` or data)
 - **`tests/side-by-side/`**: the new side runs the new build's wired matcher (`resolveHoldings` with the shipped blocks
