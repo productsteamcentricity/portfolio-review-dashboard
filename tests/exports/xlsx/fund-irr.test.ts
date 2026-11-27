@@ -191,7 +191,7 @@ describe('the names rule note in the Fund IRR sheet (PLAN-05)', () => {
   const col = (name: string): number => header.indexOf(name);
 
   test('one Note row per scope with the screen\'s text, the exact-name sentence included', () => {
-    const text = 'Clients of the base file with no rows in the transactions file: Sample Client B; the two files are joined on the exact client name.';
+    const text = 'Clients of the base file with no fund rows in the transactions file: Sample Client B; the two files are joined on the exact client name.';
     for (const s of rvm.scopes) assert.equal(s.notes.find((n) => n.id === 'base-clients-without-rows')?.text, text, s.key);
     const rows = table.filter((r) => r[col('Part')] === 'Note' && r[col('Label')] === text);
     assert.deepEqual(rows.map((r) => r[col('Scope')]), rvm.scopes.map((s) => s.label));

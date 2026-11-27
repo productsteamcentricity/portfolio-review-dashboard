@@ -210,7 +210,7 @@ describe('reconciliation notes (OD-4, E-142, D13)', () => {
 // PLAN-05, the names rule on screen: a synthetic file with client B spelt "Sample Clint B" (the owner's rule of 26 Nov
 // 2026: the two files are joined on the exact client name, never by similarity).
 describe('the names rule note (PLAN-05)', () => {
-  const NAMES_TEXT = 'Clients of the base file with no rows in the transactions file: Sample Client B; the two files are joined on the exact client name.';
+  const NAMES_TEXT = 'Clients of the base file with no fund rows in the transactions file: Sample Client B; the two files are joined on the exact client name.';
   const misspelt = load(toWorkbook(loadSheetJS(), [{ name: 'SI Xirr', rows: [FUND_HEADER,
     fundRow('Sample Client A', 'Sample Bluechip Fund - Regular Plan - Growth', 'SYN-1001', 'Equity', dateCell(2023, 4, 1), 'Purchase', null, 50, -10000, 'Centricity'),
     fundRow('Sample Client A', 'Sample Bluechip Fund - Regular Plan - Growth', 'SYN-1001', 'Equity', dateCell(2025, 3, 31), null, 'Closing', null, 12000, 'Centricity'),
@@ -239,7 +239,7 @@ describe('the names rule note (PLAN-05)', () => {
       { clientId: 'cl_1' as never, clientLabel: 'Sample Client B' },
       { clientId: 'cl_2' as never, clientLabel: `Sample ${String.fromCharCode(0x2013)} Client C` },
     ])!;
-    assert.ok(t.startsWith('Clients of the base file with no rows in the transactions file: Sample Client B, Sample '));
+    assert.ok(t.startsWith('Clients of the base file with no fund rows in the transactions file: Sample Client B, Sample '));
     assert.ok(t.endsWith('; the two files are joined on the exact client name.'));
     assert.ok(!DASHES.test(t));
   });
@@ -285,6 +285,18 @@ describe('the IRR slot (U-13)', () => {
     assert.equal(refused.stage, 'validate');
     assert.match(refused.refusal!, /^Refused: no sheet holds fund flows/);
     assert.equal(refused.canAccept, false);
+  });
+
+  test('Gate B of d6401f6, F6: a file with YTD sheets only is refused, so it gives no XIRR; the message names the sheet and the SI sheets', () => {
+    const ytdRows = (header: typeof FUND_HEADER | typeof BENCH_HEADER) => (header === FUND_HEADER
+      ? [FUND_HEADER, fundRow('Sample Client A', 'Sample Bluechip Fund - Regular Plan - Growth', 'SYN-1001', 'Equity', dateCell(2025, 1, 1), 'Purchase', null, 10, -100, null)]
+      : [BENCH_HEADER, ['Sample Client A', 'Sample Bluechip Fund - Regular Plan - Growth', 'Equity', 'Mutual Funds', dateCell(2025, 1, 1), 'Sample Index 1', -100]]);
+    const ytd = load(toWorkbook(loadSheetJS(), [{ name: 'YTD Xirr', rows: ytdRows(FUND_HEADER) }, { name: 'YTD Bmxirr', rows: ytdRows(BENCH_HEADER) }]), 'ytd.xlsx');
+    const u = { stage: 'validate' as const, loaded: ytd, error: null };
+    assert.equal(canAcceptIrr(u, true), false);
+    const v = irrSlotView(u, true);
+    assert.equal(v.chip, 'Refused');
+    assert.equal(v.refusal, 'Refused: the since-inception sheet is missing: fund flows were found only on the sheet "YTD Xirr" (period YTD), and the returns need the "SI Xirr" and "SI Bmxirr" sheets, so no XIRR is computed from this file.');
   });
 });
 

@@ -15,6 +15,7 @@ import { computeScopeReturns } from '../../../app/src/engine/returns/scope.ts';
 import { fixtureById, nodeWiring, reviewOf } from '../../helpers/node-wiring.ts';
 import { irrFixtures } from '../../fixtures/make-irr-files.ts';
 import { baseClientsWithoutRowsOf } from '../../../app/src/engine/returns/review-returns.ts';
+import { baseClientsWithoutRowsText } from '../../../app/src/views/returns.ts';
 import { BENCH_HEADER, dateCell, FUND_HEADER, fundRow, toWorkbook } from '../../fixtures/make-irr-files.ts';
 import { loadSheetJS } from '../../helpers/sheetjs.ts';
 
@@ -296,8 +297,16 @@ describe('base-file clients with no rows in the transactions file (PLAN-05)', ()
     assert.deepEqual(returnsForReview(labelled.review, misspeltIrr()).baseClientsWithoutRows, [{ clientId: b!.id, clientLabel: 'Sample Client B' }]);
   });
 
-  test('a row on either sheet counts: a client with benchmark rows only is not listed', () => {
-    assert.deepEqual(baseClientsWithoutRowsOf(run.review.clients, misspeltIrr(true)), []);
+  // Gate B of d6401f6, F9 (MOD-05: count fund rows only, the note says "no fund rows"). Before, a row on either sheet
+  // counted, so B with one benchmark row and no fund row was in neither list (expected [] then; that was the finding).
+  test('fund rows only: a client with benchmark rows only is listed (it has no XIRR), and is not IRR-only', () => {
+    const irr = misspeltIrr(true);
+    assert.ok(irr.bench.some((t) => t.clientLabel === 'Sample Client B') && !irr.fund.some((t) => t.clientLabel === 'Sample Client B'), 'B: benchmark rows only');
+    assert.deepEqual(baseClientsWithoutRowsOf(run.review.clients, irr), [{ clientId: b!.id, clientLabel: 'Sample Client B' }]);
+    const r = returnsForReview(run.review, irr);
+    assert.deepEqual(r.baseClientsWithoutRows, [{ clientId: b!.id, clientLabel: 'Sample Client B' }]);
+    assert.ok(!r.scopes[0]!.result.reconciliation.irrOnlyClients.some((c) => c.clientLabel === 'Sample Client B'));
+    assert.match(baseClientsWithoutRowsText(r.baseClientsWithoutRows)!, /^Clients of the base file with no fund rows in the transactions file: Sample Client B;/);
   });
 
   test('in review order, and pure', () => {

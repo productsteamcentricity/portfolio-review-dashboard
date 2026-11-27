@@ -129,13 +129,13 @@ function roleText(roles: readonly ReturnsListId[]): string {
 }
 
 /**
- * The names rule note (PLAN-05; the owner's rule of 26 Nov 2026): the base file's clients with no row in the
- * transactions file, named as the base file spells them; null when every base-file client has rows. The same text on
- * screen and in the Fund IRR sheet (one view-model).
+ * The names rule note (PLAN-05; the owner's rule of 26 Nov 2026): the base file's clients with no fund row in the
+ * transactions file (benchmark rows alone give no XIRR; Gate B of d6401f6, F9), named as the base file spells them; null
+ * when every base-file client has fund rows. The same text on screen and in the Fund IRR sheet (one view-model).
  */
 export function baseClientsWithoutRowsText(clients: ReviewReturns['baseClientsWithoutRows']): string | null {
   if (clients.length === 0) return null;
-  return `Clients of the base file with no rows in the transactions file: ${clients.map((c) => plainText(c.clientLabel)).join(', ')}; the two files are joined on the exact client name.`;
+  return `Clients of the base file with no fund rows in the transactions file: ${clients.map((c) => plainText(c.clientLabel)).join(', ')}; the two files are joined on the exact client name.`;
 }
 
 function scopeVM(s: ReviewScopeReturns, review: Pick<Review, 'clients' | 'holdings'>, namesText: string | null): ReturnsScopeVM {

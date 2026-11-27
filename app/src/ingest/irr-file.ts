@@ -8,7 +8,11 @@
 //     date column (the I-04 aliases, matched on the upper-cased header and on the header with its parenthesised unit
 //     and currency signs removed, as the legacy hmap does);
 //   - the sheet-pairing guard (MOD-04): a fund and a benchmark sheet whose names start with different periods (SI, YTD,
-//     QTD) are never paired; the benchmark sheet of the fund sheet's period is taken, else none, with a Warning;
+//     QTD, MTD, FYTD; sheetPeriodOf) are never paired; the benchmark sheet of the fund sheet's period is taken, else
+//     none, with a Warning naming the benchmark sheets seen;
+//   - the since-inception rule (Gate B of d6401f6, F6; MOD-05): a fund sheet of another period (no SI sheet in the
+//     file) is refused with the Blocking result 'no-si-sheet'; period-less legacy names stay accepted;
+//   - hand-filled files (F7; MOD-05): contrary signs, and a missing or duplicate Closing row per instrument, are Warnings;
 //   - columns: the I-04 alias groups unchanged, plus the DISTRIBUTOR column (E-142; the legacy parser ignores it);
 //   - dates: THE FREE-TEXT DATE RULE of model/transactions.ts (KI-186): a serial by excelSerialToDay (its whole day,
 //     KI-211: never the next day from noon), text by parseDayText (the date as written; a zone never moves it); any
@@ -36,7 +40,7 @@ import { STATUS } from '../model/status.ts';
 import { cellText } from './workbook.ts';
 import { readNumber } from './cells.ts';
 import { excelSerialToDay, parseDayText } from '../engine/dates.ts';
-import { idFactory } from '../engine/ids.ts';
+import { idFactory, normaliseLabel } from '../engine/ids.ts';
 import { missing, present } from '../engine/value.ts';
 
 export const IRR_PARSER_VERSION = 'irr-file@1';
@@ -167,10 +171,18 @@ export function readFlowDay(cell: Cell | undefined, date1904: boolean): { day: D
 
 const textOrNull = (c: Cell | undefined): string | null => { const t = cellText(c); return t === '' ? null : t; };
 
-/** A sheet's period: the first word of its name when it is SI, YTD or QTD (any case), else null (MOD-04, PLAN-05). */
-export function sheetPeriodOf(name: string): 'SI' | 'YTD' | 'QTD' | null {
-  const m = /^(SI|YTD|QTD)\b/i.exec(name.trim());
-  return m ? (m[1]!.toUpperCase() as 'SI' | 'YTD' | 'QTD') : null;
+/** The period words of a sheet name (MOD-05, Gate B of d6401f6, F5 (c); the platform exports SI, YTD and QTD). */
+export const SHEET_PERIODS = ['SI', 'YTD', 'QTD', 'MTD', 'FYTD'] as const;
+export type SheetPeriod = (typeof SHEET_PERIODS)[number];
+
+/**
+ * A sheet's period (MOD-04, PLAN-05; MOD-05, F5 (c)): a period word (SI, YTD, QTD, MTD, FYTD, any case) at the start of
+ * the name, followed by a separator (space, underscore, hyphen or dot), by the end of the name, or joined directly to
+ * "Xirr" or "Bm" ("SIXirr", "QTDBmxirr"); else null. "SIP Xirr" and "YTDX Xirr" have no period: the word must end there.
+ */
+export function sheetPeriodOf(name: string): SheetPeriod | null {
+  const m = /^(FYTD|YTD|QTD|MTD|SI)(?=[\s_.-]|$|XIRR|BM)/i.exec(name.trim());
+  return m ? (m[1]!.toUpperCase() as SheetPeriod) : null;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -208,8 +220,9 @@ export function parseIrrFile(wb: Workbook, opts: IrrFileOptions): IrrFileImport 
   const fileScope: ValidationScope = { kind: 'file', sourceId };
 
   // 1. Sheets: by name, then by content. The platform's cashflow file (owner's layout of 26 Nov 2026) has six sheets:
-  // SI Xirr and SI Bmxirr (since inception, the review's flows) and YTD and QTD pairs. A since-inception sheet ("SI"
-  // as the name's first word) is preferred whatever the order; without one, the last match wins, as in the legacy.
+  // SI Xirr and SI Bmxirr (since inception, the review's flows) and YTD and QTD pairs. A since-inception sheet (period
+  // SI, sheetPeriodOf) is preferred whatever the order; without one, the last match wins, as in the legacy (and a fund
+  // sheet of another period is then refused below: Gate B of d6401f6, F6).
   let benchSh: Sheet | null = null;
   let fundSh: Sheet | null = null;
   let benchSi = false;
@@ -217,7 +230,7 @@ export function parseIrrFile(wb: Workbook, opts: IrrFileOptions): IrrFileImport 
   const found = new Map<Sheet, 'by-name' | 'by-content'>();
   const nameMatched = new Set<Sheet>();
   const benchNamed: Sheet[] = [];
-  const isSi = (u: string): boolean => /^SI\b/.test(u.trim());
+  const isSi = (u: string): boolean => sheetPeriodOf(u) === 'SI';
   for (const s of wb.sheets) {
     const u = s.name.toUpperCase();
     if (u.includes('BMXIRR') || u.includes('BM XIRR') || u.includes('BMX')) {
@@ -242,10 +255,11 @@ export function parseIrrFile(wb: Workbook, opts: IrrFileOptions): IrrFileImport 
     }
   }
   // The sheet-pairing guard (MOD-04, PLAN-05 follow-up): the fund and benchmark sheets come from the same period. A
-  // sheet's period is the first word of its name when that word is SI, YTD or QTD; else it has none, and the pairing
-  // is as before (legacy names such as "Old Xirr"). When both have a period and they differ, the benchmark sheet of the
-  // fund sheet's period is taken if the file has one (the last, as in the legacy); else no benchmark is read, with a
-  // Warning naming the two sheets (sheet names only, never client data).
+  // sheet's period is its name's period word (sheetPeriodOf: SI, YTD, QTD, MTD or FYTD); else it has none, and the
+  // pairing is as before (legacy names such as "Old Xirr"). When both have a period and they differ, the benchmark sheet
+  // of the fund sheet's period is taken if the file has one (the last, as in the legacy); else no benchmark is read,
+  // never a period-less or other-period sheet in its place (MOD-05, F5 (a) and (b)), with a Warning naming the two
+  // sheets and every benchmark sheet seen (sheet names only, never client data).
   let periodMismatch: { fund: string; bench: string } | null = null;
   const fundPeriod = fundSh ? sheetPeriodOf(fundSh.name) : null;
   const benchPeriod = benchSh ? sheetPeriodOf(benchSh.name) : null;
@@ -357,12 +371,21 @@ export function parseIrrFile(wb: Workbook, opts: IrrFileOptions): IrrFileImport 
     issues.add('sheet-used', 'Information', { kind: 'sheet', sourceId, sheet: fundRead.read.name },
       `Fund flows were read from the sheet "${fundRead.read.name}" (found ${fundRead.read.found === 'by-name' ? 'by its name' : 'by its header'}, header in row ${fundRead.read.headerRow})${benchRead.read ? `, benchmark flows from "${benchRead.read.name}" (header in row ${benchRead.read.headerRow})` : ''}.`,
       { resolution: 'auto-resolved', status: 'resolved' });
+    // Gate B of d6401f6, F6 (MOD-05: Blocking for the returns view). The review's returns are since inception: a fund
+    // sheet whose name carries another period word (a YTD or QTD sheet, read because the file has no SI sheet) gives no
+    // XIRR. Its flows are still read and listed; the Blocking result refuses the file. A period-less name (legacy
+    // "Xirr" and "Bmxirr", or a sheet found by its header) is accepted as before.
+    if (fundPeriod !== null && fundPeriod !== 'SI') {
+      issues.add('no-si-sheet', 'Blocking', { kind: 'sheet', sourceId, sheet: fundRead.read.name },
+        `The since-inception sheet is missing: fund flows were found only on the sheet "${fundRead.read.name}" (period ${fundPeriod}), and the returns need the "SI Xirr" and "SI Bmxirr" sheets, so no XIRR is computed from this file.`);
+    }
     if (fund.length === 0) issues.add('no-fund-flows', 'Blocking', { kind: 'sheet', sourceId, sheet: fundRead.read.name }, 'The fund sheet has no row that could be read as a flow.');
   }
   if (!benchRead.read && periodMismatch !== null) {
-    // In place of "no sheet holds benchmark flows": one does, of another period.
+    // In place of "no sheet holds benchmark flows": one does, of another period. Every benchmark sheet seen is named.
+    const seen = [...new Set([...benchNamed.map((s) => s.name), periodMismatch.bench])].map((n) => `"${n}"`).join(', ');
     issues.add('sheet-period-mismatch', 'Warning', fileScope,
-      `The benchmark sheet "${periodMismatch.bench}" is not of the same period as the fund sheet "${periodMismatch.fund}" (SI, YTD or QTD), and the file has no benchmark sheet of that period, so no benchmark flows are read and no benchmark XIRR can be computed.`);
+      `The benchmark sheet "${periodMismatch.bench}" is not of the same period as the fund sheet "${periodMismatch.fund}" (${SHEET_PERIODS.join(', ')}), and the file has no benchmark sheet of that period, so no benchmark flows are read and no benchmark XIRR can be computed. Benchmark sheets seen: ${seen}.`);
   } else if (!benchRead.read) {
     issues.add('no-bench-sheet', 'Warning', fileScope,
       'No sheet holds benchmark flows ("Bmxirr" in its name, or a benchmark-amount column), so no benchmark XIRR can be computed.');
@@ -404,6 +427,53 @@ export function parseIrrFile(wb: Workbook, opts: IrrFileOptions): IrrFileImport 
     issues.add('unrecognised-types', 'Warning', fileScope,
       `${plural(n, 'flow has', 'flows have')} a transaction type that is not a known type: ${unrecognisedTypes.map((x) => `"${x.label}" (${x.rows})`).join(', ')}. They count in the XIRR as written and are not treated as a purchase or a sale.`,
       { count: n });
+  }
+  // Gate B of d6401f6, F7 (MOD-05's defaults; owner question Q-R3): Warnings, counted and listed by row, for a file
+  // filled by hand. The flows are read and count in the XIRR as written; nothing is corrected.
+  //   - contrary signs: money paid in (a purchase-like type) written positive, money paid out (a redemption-like type)
+  //     written negative, or a Closing value written negative (a zero Closing row is accepted);
+  //   - Closing rows, per instrument (client, instrument name normalised, folio), only when the fund sheet has a row-type
+  //     column (without one no row can be marked Closing): none, unless the instrument is fully redeemed, which is taken
+  //     as its last day's flows being money paid out on balance (INFERRED: the file has no units, so a partial redemption
+  //     on the last day reads the same); more than one, a duplicate.
+  const contrary = fund.filter((t) => (t.direction === 'in' && t.amountRupees > 0) || (t.direction === 'out' && t.amountRupees < 0)
+    || (t.direction === 'valuation' && t.amountRupees < 0));
+  if (contrary.length > 0) {
+    const n = contrary.length;
+    issues.add('contrary-signs', 'Warning', { kind: 'rows', sourceId, rows: contrary.map((t) => t.at) },
+      `${plural(n, 'fund flow has', 'fund flows have')} a sign contrary to ${n === 1 ? 'its' : 'their'} type (money paid in is negative; money paid out and a Closing value are positive); ${n === 1 ? 'it counts' : 'they count'} in the XIRR as written.`,
+      { count: n });
+  }
+  if (fundRead.read && fundRead.read.columns.some((c) => c.field === 'rowType')) {
+    const byInstrument = new Map<string, Transaction[]>();
+    for (const t of fund) {
+      const k = `${t.clientId as string}\u0000${normaliseLabel(t.instrumentName)}\u0000${t.folio ?? ''}`;
+      const g = byInstrument.get(k);
+      if (g) g.push(t); else byInstrument.set(k, [t]);
+    }
+    const noClosing: RowRef[] = [];
+    const duplicate: RowRef[] = [];
+    let duplicated = 0;
+    for (const ts of byInstrument.values()) {
+      const closing = ts.filter((t) => t.direction === 'valuation');
+      if (closing.length > 1) { duplicated++; duplicate.push(...closing.map((t) => t.at)); }
+      if (closing.length > 0) continue;
+      const lastDay = Math.max(...ts.map((t) => t.day));
+      const last = ts.filter((t) => t.day === lastDay);
+      if (last.reduce((s, t) => s + t.amountRupees, 0) > 0) continue;
+      noClosing.push(last[last.length - 1]!.at);
+    }
+    if (noClosing.length > 0) {
+      const n = noClosing.length;
+      issues.add('missing-closing', 'Warning', { kind: 'rows', sourceId, rows: noClosing },
+        `${plural(n, 'instrument has', 'instruments have')} no Closing row and ${n === 1 ? 'does' : 'do'} not end with money paid out (a fully redeemed instrument needs no Closing row, and a zero Closing row says the same); without a closing value the XIRR counts only the flows written.`,
+        { count: n });
+    }
+    if (duplicated > 0) {
+      issues.add('duplicate-closing', 'Warning', { kind: 'rows', sourceId, rows: duplicate },
+        `${plural(duplicated, 'instrument has', 'instruments have')} more than one Closing row (${plural(duplicate.length, 'row', 'rows')}); every Closing row counts in the XIRR as written.`,
+        { count: duplicated });
+    }
   }
   if (fundRead.read) {
     if (!hasDistributor) {

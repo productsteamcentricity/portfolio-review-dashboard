@@ -15,7 +15,7 @@
 //     a headline benchmark XIRR over less money than the fund XIRR is said to be partial;
 //   - the dates (R3): the IRR file's last fund-flow day beside the review's as-on day, and how many fund flows are dated
 //     after the as-on day. No figure changes: whether such flows are left out is an owner question.
-// And the names rule (PLAN-05; the owner's rule of 26 Nov 2026): the base file's clients with no row in the
+// And the names rule (PLAN-05; the owner's rule of 26 Nov 2026): the base file's clients with no fund row in the
 // transactions file, so a client spelt differently in the two files is seen at once (the join stays the exact name).
 //
 // TODO(I-41): this output becomes Review.returns and this function is called from computeReview
@@ -69,10 +69,11 @@ export type ReviewReturns = {
   advisorScopes: 'listed' | 'no-distributor-column';
   dates: ReturnsDates;
   /**
-   * The base file's clients with no row on either flow sheet of the transactions file (PLAN-05; the owner's rule of
-   * 26 Nov 2026: the two files are joined on the exact client name, never by similarity), in review order, each named
-   * as the base file spells it (the spelling the transactions file must match). The other side of the join, clients of
-   * the transactions file with no holding in the base file, is each scope's `reconciliation.irrOnlyClients` (OD-4).
+   * The base file's clients with no fund row in the transactions file, benchmark rows not counted (PLAN-05; Gate B of
+   * d6401f6, F9: the returns use the fund flows; the owner's rule of 26 Nov 2026: the two files are joined on the exact
+   * client name, never by similarity), in review order, each named as the base file spells it (the spelling the
+   * transactions file must match). The other side of the join, clients of the transactions file with no holding in the
+   * base file, is each scope's `reconciliation.irrOnlyClients` (OD-4).
    * Client data.
    */
   baseClientsWithoutRows: Array<{ clientId: ClientId; clientLabel: string }>;
@@ -128,11 +129,13 @@ export function returnsDatesOf(irr: IrrFileImport, asOnDay: DayNumber | null, ba
 }
 
 /**
- * The base file's clients with no row in the transactions file (fund or benchmark), in review order, named as the base
- * file spells them (PLAN-05). The join is the per-review client id built from the exact name (KI-111), as everywhere.
+ * The base file's clients with no fund row in the transactions file, in review order, named as the base file spells them
+ * (PLAN-05). Fund rows only (Gate B of d6401f6, F9; MOD-05): the returns are computed from the fund flows, so a client
+ * with benchmark rows only has no XIRR and is listed (before, it was in neither this list nor the IRR-only list). The
+ * join is the per-review client id built from the exact name (KI-111), as everywhere.
  */
 export function baseClientsWithoutRowsOf(clients: ReturnsReviewInput['clients'], irr: IrrFileImport): ReviewReturns['baseClientsWithoutRows'] {
-  const withRows = new Set<ClientId>([...irr.fund, ...irr.bench].map((t) => t.clientId));
+  const withRows = new Set<ClientId>(irr.fund.map((t) => t.clientId));
   return clients.filter((c) => !withRows.has(c.id)).map((c) => ({ clientId: c.id, clientLabel: c.label }));
 }
 
