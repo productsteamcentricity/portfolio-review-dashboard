@@ -9,8 +9,9 @@
 //   - the XIRR caption is per client (KI-121): the IRR file's transactions, or the base file's figures CMV-weighted;
 //     when one table mixes the two, each subtotal from the IRR file carries § and the caption says so (MOD-05's review
 //     N2b); a subtotal the IRR file cannot give is a dash, its reason listed under the table, with no CMV fallback; a
-//     line whose holdings have flows in the IRR file under another label is a dash too (NOT COMPARABLE, S1); a line
-//     none of whose holdings has a flow keeps the base file's CMV-weighted figure (the adapter's null);
+//     line whose holdings have flows in the IRR file under another label, or flows left out of the IRR tree for an
+//     invalid benchmark, is a dash too (NOT COMPARABLE, S1 and M1); a line none of whose holdings has a flow keeps the
+//     base file's CMV-weighted figure (the adapter's null);
 //   - the IRR hook (irrHookFrom) is NB-03's adapter (engine/returns/irr-aggregate.ts) over the accepted IRR file's
 //     returns; section 5 and the workbook's client sheets use the same one (the cross-output rule).
 // Sentences never contain an en or em dash (D-029).
@@ -56,6 +57,10 @@ const SECTION = String.fromCharCode(0x00a7);
  * use under the client. When some of the line's holdings nevertheless have flows under that client (filed under another
  * asset or product label), the base file's figure would stand beside an IRR file that holds those flows, so the line is
  * a dash, NOT COMPARABLE, with that reason. A line none of whose holdings has a flow keeps the CMV-weighted path.
+ * M1 of the Gate B of d93da80: "has a flow" is read from the file, not from the tree. A holding whose instrument has
+ * flows but is left out of the IRR tree for an invalid benchmark (OD-4) is in no node, yet it is not without flows
+ * (`reconciliation.holdingsWithoutFlows`); its line is a dash with that reason too, so a table never shows the base
+ * file's figure for a line whose holdings have flows in the IRR file.
  */
 export function irrHookFrom(returns: ReviewReturns | null | undefined): IrrAggregateHook | undefined {
   if (!returns) return undefined;
@@ -67,9 +72,20 @@ export function irrHookFrom(returns: ReviewReturns | null | undefined): IrrAggre
     if (r !== null || scope.asset === undefined || !family) return r;
     const client = family.result.tree.find((n) => n.level === 'client' && n.clientId === clientId);
     if (!client) return null;
-    const flowing = ids.filter((id) => client.holdingIds.includes(id)).length;
-    if (flowing === 0) return null;
-    const m = missing(STATUS.NOT_COMPARABLE, `${plural(flowing, 'holding', 'holdings')} of ${ids.length} on this line ${flowing === 1 ? 'has' : 'have'} flows in the IRR file under another asset or product label, so the line's XIRR cannot be read from the IRR file, and the base file's figure is not shown in its place.`);
+    const inTree = new Set<string>(client.holdingIds);
+    const noFlow = new Set<string>(family.result.reconciliation.holdingsWithoutFlows);
+    /* in the client's tree, so under another asset or product label; or with flows in the file and in no node */
+    const elsewhere = ids.filter((id) => inTree.has(id)).length;
+    const leftOut = ids.filter((id) => !inTree.has(id) && !noFlow.has(id)).length;
+    if (elsewhere + leftOut === 0) return null;
+    const verb = (n: number): string => (n === 1 ? 'has' : 'have');
+    const other = 'flows in the IRR file under another asset or product label';
+    const out = 'that are left out of the IRR tree for an invalid benchmark';
+    const of = `of ${ids.length} on this line`;
+    const what = leftOut === 0 ? `${plural(elsewhere, 'holding', 'holdings')} ${of} ${verb(elsewhere)} ${other}`
+      : elsewhere === 0 ? `${plural(leftOut, 'holding', 'holdings')} ${of} ${verb(leftOut)} flows in the IRR file ${out}`
+        : `${plural(elsewhere, 'holding', 'holdings')} ${of} ${verb(elsewhere)} ${other} and ${leftOut} ${verb(leftOut)} flows ${out}`;
+    const m = missing(STATUS.NOT_COMPARABLE, `${what}, so the line's XIRR cannot be read from the IRR file, and the base file's figure is not shown in its place.`);
     return { fund: m, bench: m, basis: 'irr-tree' };
   };
 }
