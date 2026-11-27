@@ -14,6 +14,7 @@ import { buildValidationPanel } from '../../views/validation-panel.ts';
 import { Chip, Group } from '../components/group.tsx';
 import { UploadStages } from '../components/upload-stages.tsx';
 import { ImportReport } from '../components/import-report.tsx';
+import { MonitorSlots } from '../components/monitor-slots.tsx';
 import { ValidationPanel } from '../components/validation-panel.tsx';
 import { SourceRegister } from '../components/source-register.tsx';
 import { LabelsEditor } from '../components/labels-editor.tsx';
@@ -90,7 +91,7 @@ function UploadSlot({ state, store }: { state: AppState; store: Store }) {
 
 export function S1Uploads({ store, state, logos }: { store: Store; state: AppState; logos: readonly LogoAsset[] }) {
   const loaded = state.upload.loaded;
-  const report = loaded ? buildImportReport(loaded.source, loaded.base) : null;
+  const report = loaded ? buildImportReport(loaded.source, loaded.base, state.match) : null;
   const sources: SourceFile[] = registerSources(state.upload, state.review ? state.review.sources : null);
   // M3a returns (NB-03): the IRR file joins the register at the stage its strip shows.
   const irrStage = irrSlotView(state.irr, true).stage;
@@ -117,6 +118,10 @@ export function S1Uploads({ store, state, logos }: { store: Store; state: AppSta
       {/* M3a returns (NB-03) */}
       <Group id="group-irr-file" title="Transactions (IRR) file" note="Upload, Validate, Preview, Review">
         <IrrSlot state={state} store={store} />
+      </Group>
+
+      <Group id="group-monitors" title="Fund monitor files" note="Optional: the month's data is embedded">
+        <MonitorSlots state={state} store={store} />
       </Group>
 
       {report ? (

@@ -3,95 +3,24 @@
   "decision": "PD-36",
   "approvedBy": "the owner",
   "approved": "2026-11-25",
+  "evidenceFile": "data/owner/fund-aliases-evidence.json",
   "rule": "An old scheme name resolves to the renamed fund. key is normalize(oldName).join(' '). An alias applies only where its target is one of the candidates being matched, after the stable identifiers and the exact vendor key and before the exact normalised name. It covers the Regular and Direct plans: a holding whose own name says Direct takes the direct target, any other the regular target. requiresPhrase, when present, must appear in the holding's own name (lower case, spaces collapsed), or the alias does not apply. Every line needs the owner's approval (OD-5, PD-36), with public evidence. Line 10 of the evidence list (Aditya Birla SL Equity Advantage Fund) is on hold and deliberately absent.",
   "aliases": [
-    {
-      "line": 1, "oldName": "ICICI Pru Bluechip Fund", "key": "icici pru bluechip fund",
-      "regular": "ICICI Pru Large Cap Fund(G)", "direct": "ICICI Pru Large Cap Fund(G)-Direct Plan", "renamed": "2025-06-16",
-      "evidence": ["https://fundsindia.com/blog/?p=32342", "https://www.icicipruamc.com/blob/knowledgecentre/story-mania/ipru-snippets/ICICI%20Prudential%20Large%20Cap%20Fund%20-%20February%202026.pdf"],
-      "note": "Without the alias the old name went to ICICI Pru US Bluechip Equity Fund, an overseas fund."
-    },
-    {
-      "line": 2, "oldName": "SBI Long Term Equity Fund", "key": "sbi long term equity fund",
-      "regular": "SBI ELSS Tax Saver Fund-Reg(G)", "direct": "SBI ELSS Tax Saver Fund(G)-Direct Plan", "renamed": null,
-      "evidence": ["https://www.fincover.com/mutual-funds/sbi-elss-tax-saver-fund-regular-growth", "https://www.arihantcapital.com/News/News-Details/1614231/investor-attention"],
-      "note": "Rename date not settled by the sources (2023 or 30 Jun 2025)."
-    },
-    {
-      "line": 3, "oldName": "Axis Long Term Equity Fund", "key": "axis long term equity fund",
-      "regular": "Axis ELSS-Tax Saver Fund-Reg(G)", "direct": "Axis ELSS-Tax Saver Fund(G)-Direct Plan", "renamed": "2023-12-08",
-      "evidence": ["https://www.axismf.com/efactsheet/May-2024/Innerpage/Long-term-Equity.html", "https://valueresearchonline.com/stories/53525/name-change-of-axis-long-term-equity-fund"]
-    },
-    {
-      "line": 4, "oldName": "ICICI Pru Long Term Equity Fund (Tax Saving)", "key": "icici pru long term equity fund tax sav",
-      "regular": "ICICI Pru ELSS-Tax Saver Fund(G)", "direct": "ICICI Pru ELSS-Tax Saver Fund(G)-Direct Plan", "renamed": null,
-      "evidence": ["https://www.icicipruamc.com/blob/knowledgecentre/factsheet-schemes/Schemes/1.%20Equity%20Schemes/ICICI%20Prudential%20ELSS%20-%20Tax%20Saver%20Fund.pdf", "https://businesstoday.in/visualstories/personal-finance/hsbc-elss-tax-saver-fund-dsp-elss-tax-saver-fund-to-uti-elss-tax-saver-fund-tax-saving-mutual-funds-that-have-changed-their-names-74730-07-11-2023"]
-    },
-    {
-      "line": 5, "oldName": "HDFC Equity Fund", "key": "hdfc equity fund",
-      "regular": "HDFC Flexi Cap Fund(G)", "direct": "HDFC Flexi Cap Fund(G)-Direct Plan", "renamed": "2021-01-29",
-      "evidence": ["https://www.personalfn.com/mf-news/List-of-Multi-Cap-Funds-That-Have-Been-Recategorized-As-Flexi-Cap-Fund"]
-    },
-    {
-      "line": 6, "oldName": "UTI Equity Fund", "key": "uti equity fund",
-      "regular": "UTI Flexi Cap Fund-Reg(G)", "direct": "UTI Flexi Cap Fund(G)-Direct Plan", "renamed": "2021-02-12",
-      "evidence": ["https://www.personalfn.com/mf-news/List-of-Multi-Cap-Funds-That-Have-Been-Recategorized-As-Flexi-Cap-Fund", "https://www.sebi.gov.in/sebi_data/mutualfundfile/jul-2025/1751611787600.pdf"]
-    },
-    {
-      "line": 7, "oldName": "Kotak Emerging Equity Fund", "key": "kotak emerging equity fund",
-      "regular": "Kotak Mid Cap Fund-Reg(G)", "direct": "Kotak Mid Cap Fund(G)-Direct Plan", "renamed": "2025-06-28",
-      "evidence": ["https://www.valueresearchonline.com/stories/225310/name-change-of-few-schemes-in-kotak-mahindra-mutual-fund/", "https://www.kotakmf.com/factsheet/January_2026/kotak/EMERGING-EQUITY-SCHEME.html"]
-    },
-    {
-      "line": 8, "oldName": "Aditya Birla SL Frontline Equity Fund", "key": "aditya birla sl frontline equity fund",
-      "regular": "Aditya Birla SL Large Cap Fund-Reg(G)", "direct": "Aditya Birla SL Large Cap Fund(G)-Direct Plan", "renamed": null,
-      "evidence": ["https://www.valueresearchonline.com/stories/225220/name-change-of-three-schemes-in-aditya-birla-sun-life-mutual-fund/", "https://mutualfund.adityabirlacapital.com/-/media/bsl/files/resources/forms/applicationforms/kim---aditya-birla-sun-life-large-cap-fund-301026.pdf"]
-    },
-    {
-      "line": 9, "oldName": "Aditya Birla SL Equity Fund", "key": "aditya birla sl equity fund",
-      "regular": "Aditya Birla SL Flexi Cap Fund-Reg(G)", "direct": "Aditya Birla SL Flexi Cap Fund(G)-Direct Plan", "renamed": "2021-01-30",
-      "evidence": ["https://www.personalfn.com/mf-news/Aditya-Birla-Sun-Life-MF-Changes-Fundamental-Attributes-of-Aditya-Birla-Sun-Life-Equity-Fund", "https://mutualfund.adityabirlacapital.com:443/-/media/bsl/files/resources/forms/applicationforms/kim-absl-flexi-cap-fund-290121.pdf"]
-    },
-    {
-      "line": 11, "oldName": "Aditya Birla SL Equity Hybrid '95 Fund", "key": "aditya birla sl equity hybrid 95 fund",
-      "regular": "Aditya Birla SL Aggressive Hybrid Fund(G)", "direct": "Aditya Birla SL Aggressive Hybrid Fund(G)-Direct Plan", "renamed": null,
-      "evidence": ["https://investmentguruindia.com/newsdetail/aditya-birla-sun-life-mutual-fund-announces-change-in-scheme-names614402", "https://www.valueresearchonline.com/funds/23/aditya-birla-sun-life-equity-hybrid-95-fund-regular-plan/"],
-      "note": "Renamed in August 2026. The old name also appears in older reference tables (FUND_RANKS_CODES, MF_ER_TABLE) for the same scheme."
-    },
-    {
-      "line": 12, "oldName": "Kotak Standard Multicap Fund", "key": "kotak standard multicap fund",
-      "regular": "Kotak Flexi Cap Fund(G)", "direct": "Kotak Flexi Cap Fund(G)-Direct Plan", "renamed": "2021-02-01",
-      "evidence": ["https://www.business-standard.com/article/markets/kotak-mf-moves-multicap-fund-to-newly-created-flexicap-category-121021701114_1.html"],
-      "note": "Without the alias the old name went to Kotak Multi Cap Fund, a different, newer fund."
-    },
-    {
-      "line": 13, "oldName": "Motilal Oswal Multicap 35 Fund", "key": "motilal multicap 35 fund",
-      "regular": "Motilal Oswal Flexi Cap Fund-Reg(G)", "direct": "Motilal Oswal Flexi Cap Fund(G)-Direct Plan", "renamed": "2021-02-06",
-      "evidence": ["https://morningstar.in/posts/61429/5-questions-multi-cap-flexi-cap-funds.aspx"],
-      "note": "Without the alias the old name went to Motilal Oswal Multi Cap Fund, a different fund."
-    },
-    {
-      "line": 14, "oldName": "Franklin India Equity Fund", "key": "franklin india equity fund",
-      "regular": "Franklin India Flexi Cap Fund(G)", "direct": "Franklin India Flexi Cap Fund(G)-Direct Plan", "renamed": "2021-01-29",
-      "evidence": ["https://www.franklintempletonindia.com/investor/fund-details/fund-portfolio/franklin-india-flexi-cap-fund-erstwhile-franklin-india-equity-fund-4616"],
-      "note": "One direction only: before 2018 a different scheme carried the name Franklin India Flexi Cap Fund; never add the reverse pair."
-    },
-    {
-      "line": 15, "oldName": "ICICI Pru Equity & Debt Fund", "key": "icici pru equity debt fund",
-      "regular": "ICICI Pru Aggressive Hybrid Fund(G)", "direct": "ICICI Pru Aggressive Hybrid Fund(G)-Direct Plan", "renamed": "2026-08-26",
-      "evidence": ["https://www.businesstoday.in/mutual-funds/story/icici-prudential-amc-renames-19-mutual-fund-schemes-revises-scheme-types-of-23-funds-551977-2026-08-28", "https://www.icicipruamc.com/blob/knowledgecentre/factsheet-schemes/Schemes/2.%20Hybrid%20Schemes/ICICI%20Prudential%20Aggressive%20Hybrid%20Fund.pdf"],
-      "note": "The target is the Fund, never ICICI Pru Aggressive Hybrid Active FOF (formerly the Thematic Advantage FoF), a different fund."
-    },
-    {
-      "line": 16, "oldName": "Canara Rob Equity Hybrid Fund", "key": "canara rob equity hybrid fund",
-      "regular": "Canara Rob Aggressive Hybrid Fund-Reg(G)", "direct": "Canara Rob Aggressive Hybrid Fund(G)-Direct Plan", "renamed": "2026-08-26",
-      "evidence": ["https://jkbfsl.com/market/mutualfund/news_details/Mutual_News/5011107"]
-    },
-    {
-      "line": 17, "oldName": "ICICI Pru Regular Savings Fund", "key": "icici pru sav fund", "requiresPhrase": "regular savings",
-      "regular": "ICICI Pru Conservative Hybrid Fund-Reg(G)", "direct": "ICICI Pru Conservative Hybrid Fund(G)-Direct Plan", "renamed": "2026-08-26",
-      "evidence": ["https://www.businesstoday.in/mutual-funds/story/icici-prudential-amc-renames-19-mutual-fund-schemes-revises-scheme-types-of-23-funds-551977-2026-08-28"],
-      "note": "Name guard (approved by MOD-04, 25 Nov 2026): the matcher drops 'regular' as a plan word, so this key is also the key of ICICI Pru Savings Fund, a different debt fund. The alias applies only when the holding's own name contains 'regular savings'."
-    }
+    {"line":1,"oldName":"ICICI Pru Bluechip Fund","key":"icici pru bluechip fund","regular":"ICICI Pru Large Cap Fund(G)","direct":"ICICI Pru Large Cap Fund(G)-Direct Plan","renamed":"2025-06-16","note":"Without the alias the old name went to ICICI Pru US Bluechip Equity Fund, an overseas fund."},
+    {"line":2,"oldName":"SBI Long Term Equity Fund","key":"sbi long term equity fund","regular":"SBI ELSS Tax Saver Fund-Reg(G)","direct":"SBI ELSS Tax Saver Fund(G)-Direct Plan","renamed":null,"note":"Rename date not settled by the sources (2023 or 30 Jun 2025)."},
+    {"line":3,"oldName":"Axis Long Term Equity Fund","key":"axis long term equity fund","regular":"Axis ELSS-Tax Saver Fund-Reg(G)","direct":"Axis ELSS-Tax Saver Fund(G)-Direct Plan","renamed":"2023-12-08"},
+    {"line":4,"oldName":"ICICI Pru Long Term Equity Fund (Tax Saving)","key":"icici pru long term equity fund tax sav","regular":"ICICI Pru ELSS-Tax Saver Fund(G)","direct":"ICICI Pru ELSS-Tax Saver Fund(G)-Direct Plan","renamed":null},
+    {"line":5,"oldName":"HDFC Equity Fund","key":"hdfc equity fund","regular":"HDFC Flexi Cap Fund(G)","direct":"HDFC Flexi Cap Fund(G)-Direct Plan","renamed":"2021-01-29"},
+    {"line":6,"oldName":"UTI Equity Fund","key":"uti equity fund","regular":"UTI Flexi Cap Fund-Reg(G)","direct":"UTI Flexi Cap Fund(G)-Direct Plan","renamed":"2021-02-12"},
+    {"line":7,"oldName":"Kotak Emerging Equity Fund","key":"kotak emerging equity fund","regular":"Kotak Mid Cap Fund-Reg(G)","direct":"Kotak Mid Cap Fund(G)-Direct Plan","renamed":"2025-06-28"},
+    {"line":8,"oldName":"Aditya Birla SL Frontline Equity Fund","key":"aditya birla sl frontline equity fund","regular":"Aditya Birla SL Large Cap Fund-Reg(G)","direct":"Aditya Birla SL Large Cap Fund(G)-Direct Plan","renamed":null},
+    {"line":9,"oldName":"Aditya Birla SL Equity Fund","key":"aditya birla sl equity fund","regular":"Aditya Birla SL Flexi Cap Fund-Reg(G)","direct":"Aditya Birla SL Flexi Cap Fund(G)-Direct Plan","renamed":"2021-01-30"},
+    {"line":11,"oldName":"Aditya Birla SL Equity Hybrid '95 Fund","key":"aditya birla sl equity hybrid 95 fund","regular":"Aditya Birla SL Aggressive Hybrid Fund(G)","direct":"Aditya Birla SL Aggressive Hybrid Fund(G)-Direct Plan","renamed":null,"note":"Renamed in August 2026. The old name also appears in older reference tables (FUND_RANKS_CODES, MF_ER_TABLE) for the same scheme."},
+    {"line":12,"oldName":"Kotak Standard Multicap Fund","key":"kotak standard multicap fund","regular":"Kotak Flexi Cap Fund(G)","direct":"Kotak Flexi Cap Fund(G)-Direct Plan","renamed":"2021-02-01","note":"Without the alias the old name went to Kotak Multi Cap Fund, a different, newer fund."},
+    {"line":13,"oldName":"Motilal Oswal Multicap 35 Fund","key":"motilal multicap 35 fund","regular":"Motilal Oswal Flexi Cap Fund-Reg(G)","direct":"Motilal Oswal Flexi Cap Fund(G)-Direct Plan","renamed":"2021-02-06","note":"Without the alias the old name went to Motilal Oswal Multi Cap Fund, a different fund."},
+    {"line":14,"oldName":"Franklin India Equity Fund","key":"franklin india equity fund","regular":"Franklin India Flexi Cap Fund(G)","direct":"Franklin India Flexi Cap Fund(G)-Direct Plan","renamed":"2021-01-29","note":"One direction only: before 2018 a different scheme carried the name Franklin India Flexi Cap Fund; never add the reverse pair."},
+    {"line":15,"oldName":"ICICI Pru Equity & Debt Fund","key":"icici pru equity debt fund","regular":"ICICI Pru Aggressive Hybrid Fund(G)","direct":"ICICI Pru Aggressive Hybrid Fund(G)-Direct Plan","renamed":"2026-08-26","note":"The target is the Fund, never ICICI Pru Aggressive Hybrid Active FOF (formerly the Thematic Advantage FoF), a different fund."},
+    {"line":16,"oldName":"Canara Rob Equity Hybrid Fund","key":"canara rob equity hybrid fund","regular":"Canara Rob Aggressive Hybrid Fund-Reg(G)","direct":"Canara Rob Aggressive Hybrid Fund(G)-Direct Plan","renamed":"2026-08-26"},
+    {"line":17,"oldName":"ICICI Pru Regular Savings Fund","key":"icici pru sav fund","requiresPhrase":"regular savings","regular":"ICICI Pru Conservative Hybrid Fund-Reg(G)","direct":"ICICI Pru Conservative Hybrid Fund(G)-Direct Plan","renamed":"2026-08-26","note":"Name guard (approved by MOD-04, 25 Nov 2026): the matcher drops 'regular' as a plan word, so this key is also the key of ICICI Pru Savings Fund, a different debt fund. The alias applies only when the holding's own name contains 'regular savings'."}
   ]
 }
