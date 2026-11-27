@@ -12,6 +12,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **`tools/regression/KI-032-irr-client-join.js`**: initials "U. G." read as the guardian marker; the same spelling joins
   exactly, the full name never joins (the safe direction; CHAT-008's Gate B note N2). 193 checks.
 
+### Changed (docs: the refresh runbook's risk-ratio chain for the December refresh; no change to `index.html` or `app/`)
+- **`docs/MONTHLY_REFRESH.md` step 4** names the month-parameterised scripts of item 6 (`ReconcileMonth`, `BuildMonth`,
+  `VerifyMonth`, `GenMonthMetrics`, `VerifyPRMonth`; installed 26 Nov 2026, reviewed by ARC-02 with a known-answer run)
+  in place of the October ones, with their arguments and SHA-256 prefixes. `BuildPRSep.ps1` is reviewed now too. The
+  review's conditions are in the launch rule: local `C:\Temp` work folders only, `BuildPRSep` always with explicit
+  arguments and checked by `VerifyPRMonth` at once, and the regression output never over last month's metrics.
+- `docs/PROJECT_STATE.md`: nothing toolchain-side is left before the December window.
+
 ### Changed (live page, LP-16b: the platform's Product Name values; `index.html` `04079A77756282B284016FBFB02212C0`, 16,416,337 bytes, on KI-301's page)
 - **The platform's own Product Name values are classed as the owner decided** (CR-0012; 26 Nov 2026):
   - "Global Exposure" is a GIFT City fund when the instrument name says GIFT or IFSC, otherwise an Offshore fund (it was

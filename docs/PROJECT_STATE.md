@@ -150,7 +150,9 @@
   - The inbox `01 Monthly Updates\2026-11` is ready for the December refresh (data as on 30 Nov 2026).
   - The PDF slide scripts are reviewed by ARC-02 (render-pdf 958b095e GO on conditions; shrink 530357e6 GO after its
     one-line fix).
-  - Before that window, one item remains: month-parameterised risk scripts, a separate toolchain item.
+  - The month-parameterised risk scripts (item 6) are reviewed by ARC-02 and installed (26 Nov 2026); the step 4 chain
+    of docs/MONTHLY_REFRESH.md names them, with ARC-02's conditions (27 Nov 2026). Nothing toolchain-side is left
+    before the December window (13 to 19 Dec).
 - **OneDrive project folder:** `…\Desktop\Claude Code-Portfolio Review Dashboard` (D-018).
 - **Local preview:** `Open Dashboard.cmd` (OneDrive) or `tools/open-dashboard.cmd` opens http://127.0.0.1:8099.
   The server serves only the dashboard and `test-data/`. With M1.2, `npm run serve` (preview configuration `next`)
