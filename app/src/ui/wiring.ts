@@ -13,7 +13,8 @@ import { loadBaseFile } from '../ingest/load-base.ts';
 import { computeReview } from '../engine/review.ts';
 import { buildOverviewDeck, type PptxLib } from '../exports/pptx/deck.ts';
 import { buildOverviewWorkbook, workbookInputFrom } from '../exports/xlsx/overview-workbook.ts';
-import { buildHoldingsVM } from '../views/holdings.ts';
+import { buildHoldingsVM, irrHookFrom } from '../views/holdings.ts';
+import type { ReviewReturns } from '../engine/returns/review-returns.ts';
 import { sha256Hex } from '../services/sha256.ts';
 import { systemClock } from '../services/clock.ts';
 import { auditExport } from '../services/audit-log.ts';
@@ -23,7 +24,7 @@ import { deckFileName, workbookFileName } from '../views/labels.ts';
 import type { ReturnsVM } from '../views/returns-vm.ts';
 import { loadIrrFile, type LoadedIrrFile } from '../ingest/load-irr.ts';
 import { readBlock } from '../data/refdata.ts';
-import { performanceSourcesFrom, type MonitorUploads } from '../data/performance-sources.ts';
+import { fundReturnSourcesFrom, performanceSourcesFrom, type MonitorUploads } from '../data/performance-sources.ts';
 import { computePerformance, type PerformanceResult } from '../engine/returns/performance.ts';
 import type { Holding } from '../model/holding.ts';
 import { buildMatchContext, matchLoaded, type MatchContext, type MatchReport } from '../engine/match/resolve-holdings.ts';
@@ -38,8 +39,9 @@ export type Wiring = {
   computeReview(req: ReviewRequest): Review;
   exportDeck(review: Review, vm: OverviewVM, logo: LogoAsset | null): Promise<ExportResult>;
   /** `returns` (M3a, NB-03): the Fund IRR sheet when present. `extra.performance` (M3b, NB-02): the store's performance
-   * tables, written as the Performance sheet. */
-  exportWorkbook(review: Review, vm: OverviewVM, returns?: ReturnsVM | null, extra?: { performance?: PerformanceResult | null }): Promise<ExportResult>;
+   * tables, written as the Performance sheet. `extra.irrReturns`: the accepted IRR file's returns, so the client sheets'
+   * subtotals come from the IRR file as section 5's do (MOD-05's review N2). */
+  exportWorkbook(review: Review, vm: OverviewVM, returns?: ReturnsVM | null, extra?: { performance?: PerformanceResult | null; irrReturns?: ReviewReturns | null }): Promise<ExportResult>;
   now(): string;
   /** M3a returns (NB-03): reads a transactions (IRR) file; optional, so the test fakes stay valid. TODO(I-41): the IRR file joins ReviewRequest. */
   loadIrrFile?(bytes: Uint8Array, fileName: string): LoadedIrrFile | LoadError;
@@ -83,7 +85,7 @@ export function browserWiring(build: BuildStamp): Wiring {
     computeReview: (req) => computeReview(req, { now, build }),
     exportDeck: async (_review, vm, logo) => finish('pptx', vm, await buildOverviewDeck(vm, { logo, now }, lib), deckFileName(vm)),
     exportWorkbook: async (review, vm, returns, extra) => finish('xlsx', vm, buildOverviewWorkbook({
-      ...workbookInputFrom(review, vm, returns), clientHoldings: buildHoldingsVM(review), ...(extra?.performance ? { performance: extra.performance } : {}),
+      ...workbookInputFrom(review, vm, returns), clientHoldings: buildHoldingsVM(review, { irr: irrHookFrom(extra?.irrReturns) }), ...(extra?.performance ? { performance: extra.performance } : {}),
     }), workbookFileName(vm)),
     now,
     // M3a returns (NB-03). TODO(I-41): the loaded IRR file becomes ReviewRequest.irr, and its returns Review.returns (computeReview)
@@ -91,6 +93,6 @@ export function browserWiring(build: BuildStamp): Wiring {
     matchHoldings: (loaded, overrides) => matchLoaded(loaded, pageMatchContext(overrides)),
     loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, XLSX as unknown as MonitorSheetJS, regular ?? readBlock('MF_PERF') ?? undefined),
     downloadIrrTemplate: () => downloadBytes(buildIrrTemplate(), IRR_TEMPLATE_FILE_NAME, XLSX_MIME), // PLAN-05 (NB-03): no client data, no audit entry
-    performance: (holdings, uploads) => computePerformance(holdings, performanceSourcesFrom(uploads)),
+    performance: (holdings, uploads) => computePerformance(holdings, performanceSourcesFrom(uploads), { fundSources: fundReturnSourcesFrom(uploads) }),
   };
 }

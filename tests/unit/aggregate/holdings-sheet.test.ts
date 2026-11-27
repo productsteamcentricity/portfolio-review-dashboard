@@ -55,7 +55,7 @@ describe('computeHoldingsSheets', () => {
     assert.ok(Math.abs(v(eq.xirrCoveragePct!)! - 3 / 6 * 100) < 1e-9);
     assert.ok(Math.abs(v(eq.bmXirr)! - (8 * 2 + 9 * 3 + 15 * 1) / 6) < 1e-9);
     assert.equal(eq.xirrSource, 'cmv-weighted');
-    assert.deepEqual(sheets[1]!.partial, { withoutXirr: 1, withoutBmXirr: 0, xirrCoveragePct: (2 + 4 + 1) / 10 * 100, bmXirrCoveragePct: 100 });
+    assert.deepEqual(sheets[1]!.partial, { withoutXirr: 1, withoutBmXirr: 0, xirrCoveragePct: (2 + 4 + 1) / 10 * 100, bmXirrCoveragePct: 100, byCount: false });
     assert.equal(sheets[0]!.partial, null);
   });
 
@@ -113,5 +113,60 @@ describe('S2 (financial review of 27 Nov 2026): a partial weighted XIRR carries 
     assert.equal(displayPct(grand.bmXirr).marker, null);
     const [, status] = valueCells(grand.xirr);
     assert.deepEqual(status, { kind: 'str', v: STATUS.PARTIAL });
+  });
+});
+
+describe('N3 (financial review of 27 Nov 2026): negative market values', () => {
+  /* one client, one product; the market values are set on the loaded holdings */
+  const base = holdings([
+    HEAD,
+    ['Sample Client N', 'Fund N1', 'Equity', 'Mutual Funds', 1, 10, 10, 8],
+    ['Sample Client N', 'Fund N2', 'Equity', 'Mutual Funds', 1, 1, null, 9],
+  ]);
+  const withCmv = (a: number, b: number, bXirr: number | null) => base.map((h, i) => ({
+    ...h,
+    cmv: present(i === 0 ? a : b, 'cr', { sources: [h.sourceId], method: 'test: market value set' }),
+    ...(i === 1 ? { xirr: bXirr === null ? missing(STATUS.NOT_AVAILABLE, 'not in the file') : present(bXirr, 'pct') } : {}),
+  }));
+
+  test('a negative CMV without XIRR beside 10 with 10%: the coverage counts holdings (1 of 2 = 50%), the figure is 10% marked partial, the dagger note says so', () => {
+    const s = computeHoldingsSheets(withCmv(10, -1, null))[0]!;
+    const eq = s.rows.find((r) => r.level === 'asset')!;
+    assert.equal(v(eq.xirr), 10);
+    assert.ok(eq.xirr.kind === 'value' && eq.xirr.coverage === 0.5, 'was coverage 111.11% with no marker');
+    assert.equal(v(eq.xirrCoveragePct!), 50);
+    assert.deepEqual(s.partial, { withoutXirr: 1, withoutBmXirr: 0, xirrCoveragePct: 50, bmXirrCoveragePct: 100, byCount: true });
+  });
+
+  test('CMVs 1.0000001 (10%) and -1 (5%): no weighted XIRR (NOT COMPARABLE), never -19,99,99,989.88%', () => {
+    const s = computeHoldingsSheets(withCmv(1.0000001, -1, 5))[0]!;
+    const eq = s.rows.find((r) => r.level === 'asset')!;
+    assert.equal(eq.xirr.kind, 'missing');
+    assert.ok(eq.xirr.kind === 'missing' && eq.xirr.status === STATUS.NOT_COMPARABLE);
+    assert.match(eq.xirr.kind === 'missing' ? eq.xirr.reason : '', /market values of both signs/);
+  });
+
+  test('weights of one sign keep the average: -2 at 10% and -3 at 20% give (-20 - 60) / -5 = 16%, inside the members\' rates', () => {
+    const s = computeHoldingsSheets(withCmv(-2, -3, 20))[0]!;
+    const eq = s.rows.find((r) => r.level === 'asset')!;
+    assert.ok(Math.abs(v(eq.xirr)! - 16) < 1e-9);
+    assert.equal(eq.xirr.kind === 'value' ? eq.xirr.coverage : 'x', undefined, 'every holding has the rate: no partial marker');
+  });
+
+  test('positive market values only: the figure and its CMV coverage are as before (10% at 10 / 11)', () => {
+    const s = computeHoldingsSheets(withCmv(10, 1, null))[0]!;
+    const eq = s.rows.find((r) => r.level === 'asset')!;
+    assert.equal(v(eq.xirr), 10);
+    assert.ok(Math.abs(v(eq.xirrCoveragePct!)! - 10 / 11 * 100) < 1e-9);
+    assert.equal(s.partial!.byCount, false);
+  });
+});
+
+describe('the dagger note when the Grand Total comes from the IRR file (MOD-05\'s review N2a)', () => {
+  test('the note counts the holdings of the rows marked dagger: 1 without XIRR, 50% of their CMV covered (was 0.00%)', () => {
+    /* client A: the Grand Total from the IRR file; Equity (A1 2 Cr. 10%, A2 3 Cr. no XIRR, A4 1 Cr. 20%) on the CMV path */
+    const s = computeHoldingsSheets(H, { irr: (_c, scope) => (scope.asset === undefined ? { fund: present(9, 'pct'), bench: present(8, 'pct') } : null) })[1]!;
+    assert.equal(s.rows.at(-1)!.xirrSource, 'irr');
+    assert.deepEqual(s.partial, { withoutXirr: 1, withoutBmXirr: 0, xirrCoveragePct: (2 + 1) / 6 * 100, bmXirrCoveragePct: 100, byCount: false });
   });
 });

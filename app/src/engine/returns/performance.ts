@@ -22,13 +22,16 @@
 
 import type { Holding } from '../../model/holding.ts';
 import type { DayNumber, Value } from '../../model/value.ts';
-import type { HoldingId } from '../../model/ids.ts';
+import type { ClientId, HoldingId } from '../../model/ids.ts';
+import type { ScopeKey } from '../../model/scope.ts';
+import type { FundHoldingInput, FundReturnSource, FundWeightedResult } from './portfolio-returns.ts';
+import { weightedFundReturn } from './portfolio-returns.ts';
 import { STATUS } from '../../model/status.ts';
 import { missing, present } from '../value.ts';
 import { isIncluded } from '../aggregate/totals.ts';
 import { isDirectEquityProduct } from '../match/resolve-holdings.ts';
 import { holdingClass, nonMfRule, type ProductClassRule } from '../match/product-class.ts';
-import { directTwin, isDirectKey } from '../match/rekey.ts';
+import { directTwin, directTwinIndex, isDirectKey, type DirectTwinIndex } from '../match/rekey.ts';
 import config from '../../config/performance.json' with { type: 'json' };
 
 export type BucketKey = 'Equity MF' | 'Hybrid MF' | 'Debt MF' | 'Commodity MF' | 'PMS' | 'AIF' | 'SIF' | 'Direct Equity';
@@ -103,6 +106,9 @@ export type PerfBucket = {
   /** The as-on date of the bucket's own block (KI-083). */
   asOn: Value<DayNumber>;
   benchAsOn: Value<DayNumber> | null;
+  /** N8 (financial review of 27 Nov 2026): in the Direct list, the date of the Regular block whose figures its
+   * single-plan ETF rows show (the bucket's own date is the Direct block's); absent elsewhere. */
+  singlePlanAsOn?: Value<DayNumber>;
   groups: PerfGroup[];
 };
 export type PerformanceResult = {
@@ -114,6 +120,22 @@ export type PerformanceResult = {
   noDirectTwin: string[];
   /** Holdings left out of the tables, with the reason: another class, or a mutual fund of no known class. */
   leftOut: Array<{ holdingId: HoldingId; name: string; reason: 'other-class' | 'mf-class-unknown'; classLabel: string | null }>;
+  /** E-147: the weighted 3Y and 5Y returns of the mutual-fund holdings, the family then each client; null when the
+   * caller gave no fund-return sources (the tables only), and absent when there is no mutual-fund holding. */
+  weighted?: WeightedReturnRow[] | null;
+};
+
+/** E-147's tenors on screen and in the sheet (D-023 point 3). */
+export const WEIGHTED_TENORS = ['3y', '5y'] as const;
+export type WeightedTenor = (typeof WEIGHTED_TENORS)[number];
+
+/** One scope's weighted returns (E-147): the family, or one client by its per-review id. */
+export type WeightedReturnRow = {
+  scope: ScopeKey;
+  clientId: ClientId | null;
+  /** The file's client label (the view puts the analyst's label in its place); null for the family. */
+  clientLabel: string | null;
+  byTenor: Record<WeightedTenor, FundWeightedResult>;
 };
 
 type Member = { match: string; bench?: string[]; benchIfHeld?: Array<{ name: string; fundName: string }>; rank?: number };
@@ -257,6 +279,14 @@ function groupsOf(bucket: BucketKey, cats: readonly string[]): GroupSpec[] {
   return specs.map((x) => x.spec);
 }
 
+/** N11: one index of the Direct block's keys per block object (the block is not changed after it is read). */
+const TWIN_INDEX = new WeakMap<object, DirectTwinIndex>();
+function twinIndexOf(block: object): DirectTwinIndex {
+  let ix = TWIN_INDEX.get(block);
+  if (!ix) { ix = directTwinIndex(Object.keys(block)); TWIN_INDEX.set(block, ix); }
+  return ix;
+}
+
 function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: PerformanceSources, direct: boolean, noTwin: string[]): PerfBucket {
   const def = CFG.buckets.find((b) => b.key === bucket)!;
   const cols = def.cols;
@@ -267,7 +297,7 @@ function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: Performanc
     if (g) g.push(x);
     else byCat.set(c, [x]);
   }
-  const directKeys = direct && s.MF_DIRECT ? Object.keys(s.MF_DIRECT) : [];
+  const directKeys = direct && s.MF_DIRECT ? twinIndexOf(s.MF_DIRECT) : new Map<string, readonly string[]>();
   const source = bucket === 'PMS' ? 'PMS_PERF' : bucket === 'AIF' ? 'AIF_PERF' : bucket === 'SIF' ? 'SIF_PERF' : bucket === 'Direct Equity' ? 'STOCK_RET' : 'MF_PERF';
   const mfBucket = bucket.endsWith(' MF');
   const hasBenchmarks = bucket !== 'SIF' && bucket !== 'Direct Equity';
@@ -330,10 +360,57 @@ function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: Performanc
     return { label: g.label, funds, benchmarks, missingBenchmarks, noBenchmarkNamed, noBenchmarkReason };
   });
   const benchAsOn = groups.some((g) => g.benchmarks.length > 0) ? (s.asOn.BENCH ?? missing(STATUS.NOT_AVAILABLE, 'BENCH_RET records no as-on date')) : null;
-  return { key: bucket, cols, mcap: def.mcap, debt: def.debt, hasBenchmarks, asOn: asOnOfBucket(s, bucket, direct && mfBucket), benchAsOn, groups };
+  const out: PerfBucket = { key: bucket, cols, mcap: def.mcap, debt: def.debt, hasBenchmarks, asOn: asOnOfBucket(s, bucket, direct && mfBucket), benchAsOn, groups };
+  if (direct && mfBucket && groups.some((g) => g.funds.some((f) => f.plan === 'single-plan'))) out.singlePlanAsOn = asOnOfBucket(s, bucket, false);
+  return out;
 }
 
-export function computePerformance(holdings: readonly Holding[], s: PerformanceSources): PerformanceResult {
+/**
+ * E-147 (D-023 point 3; NB-04's engine/returns/portfolio-returns.ts): the weighted 3Y and 5Y returns of the scope's
+ * mutual-fund holdings, the family and then each client in the order of first appearance. A mutual fund is a holding
+ * routed to an MF bucket, or one left out as a mutual fund of no known class (it stays in the MF value and is counted as
+ * not matched). The sources are in the caller's order (the uploaded MF Monitor, then the embedded one).
+ *
+ * The plan (B1 of the follow-up's financial review, 27 Nov 2026; CLAUDE.md rule 3: never another plan's figure): the
+ * matcher resolves a mutual fund in MF_PERF and reads Regular and Direct names alike, so a holding of a Direct plan
+ * ("... - Direct Plan - Growth") gets the Regular key. Its plan is then taken from its own name: a Direct-plan holding
+ * is read from the Direct twin of that key (directTwin, the same scheme only, KI-054) in the first Direct table of the
+ * sources, plan 'direct'; with no twin it is excluded and counted ('plan-mismatch': the account's plan has no figure),
+ * never weighted at the Regular figure. A key that itself names a Direct plan (a Direct-only scheme MF_PERF carries) is
+ * that scheme's own figure and is read as it is.
+ */
+function weightedRows(routed: readonly Routed[], leftOut: PerformanceResult['leftOut'], holdings: readonly Holding[], sources: readonly FundReturnSource[]): WeightedReturnRow[] {
+  const unknownMf = new Set(leftOut.filter((x) => x.reason === 'mf-class-unknown').map((x) => x.holdingId));
+  const mf = holdings.filter((h) => unknownMf.has(h.id) || routed.some((x) => x.h === h && x.bucket.endsWith(' MF')));
+  if (mf.length === 0) return [];
+  const directFunds = sources.find((x) => x.plans.direct)?.plans.direct?.funds;
+  const input = (h: Holding): FundHoldingInput => {
+    const key = h.instrument?.vendorKey ?? null;
+    if (key === null) return { holdingId: h.id, schemeName: null, plan: null, cmvCr: h.cmv };
+    if (isDirectKey(h.instrumentName) && !isDirectKey(key)) {
+      const twin = directFunds ? directTwin(key, twinIndexOf(directFunds)) : null;
+      return twin !== null
+        ? { holdingId: h.id, schemeName: twin, plan: 'direct', accountPlan: 'direct', cmvCr: h.cmv }
+        : { holdingId: h.id, schemeName: key, plan: 'regular', accountPlan: 'direct', cmvCr: h.cmv };
+    }
+    return { holdingId: h.id, schemeName: key, plan: 'regular', cmvCr: h.cmv };
+  };
+  const row = (scope: ScopeKey, clientId: ClientId | null, clientLabel: string | null, members: readonly Holding[]): WeightedReturnRow => {
+    const ins = members.map(input);
+    const byTenor = Object.fromEntries(WEIGHTED_TENORS.map((t) => [t, weightedFundReturn(ins, sources, t, scope)])) as Record<WeightedTenor, FundWeightedResult>;
+    return { scope, clientId, clientLabel, byTenor };
+  };
+  const out: WeightedReturnRow[] = [row('family', null, null, mf)];
+  const clients: ClientId[] = [];
+  for (const h of mf) if (h.clientId !== null && !clients.includes(h.clientId)) clients.push(h.clientId);
+  for (const c of clients) {
+    const members = mf.filter((h) => h.clientId === c);
+    out.push(row(`client:${c}`, c, members[0]!.clientLabel, members));
+  }
+  return out;
+}
+
+export function computePerformance(holdings: readonly Holding[], s: PerformanceSources, opts: { fundSources?: readonly FundReturnSource[] } = {}): PerformanceResult {
   const leftOut: PerformanceResult['leftOut'] = [];
   const routed = route(holdings, s, leftOut);
   const present = CFG.buckets.map((b) => b.key).filter((k) => routed.some((x) => x.bucket === k));
@@ -343,5 +420,6 @@ export function computePerformance(holdings: readonly Holding[], s: PerformanceS
   /* the Direct list exists only with a Direct block and at least one matched mutual fund (the live page's hasDirect) */
   const anyMatchedMf = regular.some((bk) => bk.key.endsWith(' MF') && bk.groups.some((g) => g.funds.some((x) => x.key !== null)));
   const direct = s.MF_DIRECT && anyMatchedMf ? present.map((k) => (k.endsWith(' MF') ? buildBucket(k, of(k), s, true, noDirectTwin) : regular.find((b) => b.key === k)!)) : null;
-  return { regular, direct, noDirectTwin, leftOut };
+  const weighted = opts.fundSources ? weightedRows(routed, leftOut, holdings.filter(isIncluded), opts.fundSources) : null;
+  return { regular, direct, noDirectTwin, leftOut, weighted };
 }

@@ -289,7 +289,11 @@ export function overviewSheets(input: WorkbookInput): { ctx: BuildContext; sheet
   if (input.vm.matrices.client.shown) sheets.push(entityAllocationSheet(ctx, 'client'));
   if (input.vm.matrices.distributor.shown) sheets.push(entityAllocationSheet(ctx, 'distributor'));
   if (input.clientHoldings) input.clientHoldings.clients.forEach((c, i) => sheets.push(clientHoldingsSheet(ctx, c, ctx.clientSheets[i]!))); // M3b (NB-02)
-  if (input.performance) sheets.push(performanceSheet(input.performance)); // M3b (NB-02)
+  if (input.performance) {
+    /* E-147's client rows carry the names the client holdings sheets use (the analyst's labels) */
+    const clientLabels = Object.fromEntries((input.clientHoldings?.clients ?? []).filter((c) => c.sheet.clientId !== null).map((c) => [c.sheet.clientId!, c.title]));
+    sheets.push(performanceSheet(input.performance, { clientLabels })); // M3b (NB-02)
+  }
   if (input.returns) sheets.push(fundIrrSheet(ctx, input.returns)); // M3a returns (NB-03)
   sheets.push(auditLogSheet(ctx));
   return { ctx, sheets };

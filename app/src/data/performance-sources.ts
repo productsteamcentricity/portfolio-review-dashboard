@@ -7,6 +7,8 @@
 import type { DayNumber, Value } from '../model/value.ts';
 import type { MonitorBlocks } from '../ingest/load-monitor.ts';
 import type { PerformanceSources } from '../engine/returns/performance.ts';
+import type { FundReturnSource, FundReturnTable } from '../engine/returns/portfolio-returns.ts';
+import { monitorAsOn } from '../engine/returns/portfolio-returns.ts';
 import { STATUS } from '../model/status.ts';
 import { missing, present } from '../engine/value.ts';
 import { parseDayText } from '../engine/dates.ts';
@@ -28,6 +30,29 @@ export function uploadedDay(text: string | undefined, what: string): Value<DayNu
   return d === null
     ? missing(STATUS.INVALID_SOURCE, `the file's date could not be read: ${t}`)
     : present(d, 'date', { sources: [`uploaded ${what}`], method: 'the data date the file states', asOf: t });
+}
+
+/**
+ * E-147's fund-return sources in their order (NB-04's portfolio-returns.ts): the uploaded MF Monitors (Regular and/or
+ * Direct), each table labelled with its month-end as-on date and its true price day (PD-57, PD-58: monitorAsOn), then
+ * the embedded MF_PERF and MF_PERF_DIRECT with their VINTAGE dates. The MF Screener data pack is not a source in test
+ * build 1 (it is not wired; M10u).
+ */
+export function fundReturnSourcesFrom(uploads: MonitorUploads = { blocks: {}, dates: {} }, text: BlockText = domBlockText): FundReturnSource[] {
+  const up = uploads.blocks;
+  type Funds = FundReturnTable['funds'];
+  const out: FundReturnSource[] = [];
+  const uploaded: { regular?: FundReturnTable; direct?: FundReturnTable } = {};
+  if (up.MF_PERF) { const d = monitorAsOn(dateOnly(uploads.dates.MF_PERF ?? '')); uploaded.regular = { asOn: d.asOn, priceDay: d.priceDay, funds: up.MF_PERF as unknown as Funds }; }
+  if (up.MF_PERF_DIRECT) { const d = monitorAsOn(dateOnly(uploads.dates.MF_PERF_DIRECT ?? '')); uploaded.direct = { asOn: d.asOn, priceDay: d.priceDay, funds: up.MF_PERF_DIRECT as unknown as Funds }; }
+  if (uploaded.regular || uploaded.direct) out.push({ source: 'uploaded-mf-monitor', plans: uploaded });
+  const embedded: { regular?: FundReturnTable; direct?: FundReturnTable } = {};
+  const reg = readBlock('MF_PERF', text);
+  const dir = readBlock('MF_PERF_DIRECT', text);
+  if (reg) embedded.regular = { asOn: asOnOf('MF_PERF', text), funds: reg as unknown as Funds };
+  if (dir) embedded.direct = { asOn: asOnOf('MF_PERF_DIRECT', text), funds: dir as unknown as Funds };
+  if (embedded.regular || embedded.direct) out.push({ source: 'embedded-mf-monitor', plans: embedded });
+  return out;
 }
 
 export function performanceSourcesFrom(uploads: MonitorUploads = { blocks: {}, dates: {} }, text: BlockText = domBlockText): PerformanceSources {

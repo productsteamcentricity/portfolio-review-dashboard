@@ -5,7 +5,10 @@
 // returns). A missing return is a blank cell; the row's Status column gives the status and its Note the reason (no dash
 // in a numeric column). A tenor the bucket does not use (2Y in Debt MF, Q-45) is blank and the Tenors column lists the
 // bucket's own. Benchmark series not in the data (KI-073), categories with no benchmark named (OD-7), funds with no
-// Direct plan (KI-054) and holdings in no table are Note rows.
+// Direct plan (KI-054) and holdings in no table are Note rows. Last, E-147: one "Weighted" row per scope (the family,
+// then each client, named as on screen), the 3Y and 5Y weighted average return of current holdings (mutual funds), the
+// primary table's as-on date, PARTIAL COVERAGE when a figure covers part of the MF value, and both figures' coverage
+// footnotes in the Note (every rendering carries its footnote); a figure with no source at all is blank, "no source".
 // Columns: Plan | Bucket | As On | Tenors | Group | Row | Name | Matched To | Inception | AUM (Cr.) | 1M | 3M | 6M | 1Y |
 // 2Y | 3Y | 5Y | 10Y | SI | Large (%) | Mid (%) | Small (%) | Others (%) | YTM (%) | Avg Maturity (yrs) |
 // Mod Duration (yrs) | Status | Note.
@@ -17,6 +20,9 @@ import { numCell, strCell } from '../spec.ts';
 import { SHEETS } from '../sheet-names.ts';
 import { dayToExcelSerial } from '../../../engine/dates.ts';
 import { STATUS } from '../../../model/status.ts';
+import { WEIGHTED_TENORS } from '../../../engine/returns/performance.ts';
+import { footnoteOf, TENOR_KEY, WEIGHTED_RETURN_LABEL } from '../../../engine/returns/portfolio-returns.ts';
+import { footnoteText, scopeName } from '../../../views/performance.ts';
 
 const TENORS: readonly Tenor[] = ['1M', '3M', '6M', '1Y', '2Y', '3Y', '5Y', '10Y', 'SI'];
 const PCT: StyleSpec = { fmt: 'pct', align: 'right' };
@@ -73,6 +79,8 @@ function bucketRows(push: (r: Row, style?: StyleSpec) => void, b: PerfBucket, pl
       row.status = opt(s.status);
       /* S3: a scheme the Regular block carries only as a Direct plan is its own single plan, never "Regular" */
       if (mf && planList === 'Regular' && f.plan === 'single-plan') row.plan = strCell('Direct only (single plan)');
+      /* N8: in the Direct list a single-plan ETF shows the Regular block's figures, so its row carries that block's date */
+      if (mf && planList === 'Direct' && f.plan === 'single-plan' && b.singlePlanAsOn) row.asOn = dateCell(b.singlePlanAsOn);
       const planNote = mf && planList === 'Direct' ? PLAN_TEXT[f.plan] : '';
       row.note = opt([planNote, s.note ?? ''].filter((x) => x !== '').join('. ') || null);
       push(row);
@@ -95,7 +103,37 @@ function bucketRows(push: (r: Row, style?: StyleSpec) => void, b: PerfBucket, pl
   }
 }
 
-export function performanceSheet(res: PerformanceResult): SheetSpec {
+/** E-147's rows (see the header). */
+function weightedRows(push: (r: Row, style?: StyleSpec) => void, res: PerformanceResult, labels: Readonly<Record<string, string>>): void {
+  for (const w of res.weighted ?? []) {
+    const row: Row = {
+      plan: strCell('Each fund\'s own plan'), bucket: strCell('Mutual funds'), tenors: strCell(WEIGHTED_TENORS.map((t) => TENOR_KEY[t]).join(', ')),
+      group: strCell(scopeName(w, labels)), row: strCell('Weighted'), name: strCell(WEIGHTED_RETURN_LABEL),
+    };
+    const statuses: string[] = [];
+    const notes: string[] = [];
+    for (const t of WEIGHTED_TENORS) {
+      const res1 = w.byTenor[t];
+      const foot = footnoteOf(res1);
+      if (res1.figure === null || foot === null) {
+        statuses.push(STATUS.NOT_AVAILABLE);
+        notes.push(`${TENOR_KEY[t]}: no source of fund returns, so no figure.`);
+        continue;
+      }
+      const val = res1.figure.value;
+      row[TENOR_KEY[t]] = v(val, PCT);
+      if (row.asOn === undefined) row.asOn = dateCell(res1.figure.asOn);
+      if (val.kind === 'missing') statuses.push(val.status);
+      else if (val.coverage !== undefined && val.coverage < 1) statuses.push(STATUS.PARTIAL);
+      notes.push(footnoteText(foot));
+    }
+    if (statuses.length) row.status = strCell([...new Set(statuses)].join('; '));
+    row.note = strCell(notes.join(' '));
+    push(row);
+  }
+}
+
+export function performanceSheet(res: PerformanceResult, opts: { clientLabels?: Readonly<Record<string, string>> } = {}): SheetSpec {
   const rows: CellSpec[][] = [];
   const rowStyles: Array<StyleSpec | undefined> = [];
   const push = (r: Row, style?: StyleSpec): void => {
@@ -110,6 +148,7 @@ export function performanceSheet(res: PerformanceResult): SheetSpec {
       note: strCell(x.reason === 'other-class' ? `In no performance table: ${x.classLabel ?? 'another class'}.` : 'In no performance table: a mutual fund with no asset class and no reference match.'),
     });
   }
+  weightedRows(push, res, opts.clientLabels ?? {});
   const tenorCols = TENORS.map((t) => ({ header: `${t} (%)`, key: t, width: 9, style: PCT }));
   return {
     name: SHEETS.performance,

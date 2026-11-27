@@ -8,15 +8,24 @@
 //     table (the workbook keeps every row);
 //   - notes under each table: benchmark series not in the data (KI-073), categories with no benchmark named (OD-7),
 //     funds with no Direct plan (KI-054), ETFs shown with their single plan; under the section, the holdings not in any
-//     table.
+//     table;
+//   - E-147: the weighted average return of current holdings (mutual funds), 3Y and 5Y, the family then each client
+//     (D-023 point 3). Every figure carries its coverage footnote (portfolio-returns.ts footnoteOf), one note per figure;
+//     a figure with no source at all is the dash with "no source"; the switch does not change it (each fund is read
+//     from its own plan's table).
 // Sentences never contain an en or em dash (D-029).
 
-import type { BucketKey, FundRow, PerfBucket, PerformanceResult, Tenor } from '../engine/returns/performance.ts';
+import type { BucketKey, FundRow, PerfBucket, PerformanceResult, Tenor, WeightedReturnRow } from '../engine/returns/performance.ts';
 import type { CellDisplay } from './format.ts';
 import type { DayNumber, Value } from '../model/value.ts';
 import { displayPct, plainText, plural } from './format.ts';
-import { formatDay } from '../engine/dates.ts';
+import { formatDay, ymdToDay } from '../engine/dates.ts';
 import { STATUS } from '../model/status.ts';
+import { WEIGHTED_TENORS } from '../engine/returns/performance.ts';
+import { footnoteOf, TENOR_KEY, WEIGHTED_RETURN_LABEL } from '../engine/returns/portfolio-returns.ts';
+import { missing } from '../engine/value.ts';
+import { PARTIAL_MARKER } from '../config/formats.ts';
+import { NOT_GIVEN } from '../engine/aggregate/entities.ts';
 
 export type PerformancePlan = 'regular' | 'direct';
 export type PerformanceRowVM =
@@ -24,13 +33,57 @@ export type PerformanceRowVM =
   | { kind: 'fund'; name: string; marker: string | null; cells: Partial<Record<Tenor, CellDisplay>> }
   | { kind: 'bench'; name: string; cells: Partial<Record<Tenor, CellDisplay>> };
 export type PerformanceBucketVM = { key: BucketKey; title: string; cols: Tenor[]; rows: PerformanceRowVM[]; notes: string[] };
+/** E-147's table: one row per scope (the family, then each client), the 3Y and 5Y columns, one note per figure. */
+export type WeightedReturnsVM = { title: string; cols: string[]; rows: Array<{ name: string; cells: CellDisplay[] }>; notes: string[] };
 export type PerformanceVM = {
   plan: PerformancePlan;
   directAvailable: boolean;
   buckets: PerformanceBucketVM[];
   notes: string[];
   empty: string | null;
+  /** E-147; null when there is no mutual-fund holding or the engine was given no fund-return sources. */
+  weighted: WeightedReturnsVM | null;
 };
+
+export const WEIGHTED_TITLE = `${WEIGHTED_RETURN_LABEL.charAt(0).toUpperCase()}${WEIGHTED_RETURN_LABEL.slice(1)} (mutual funds)`;
+
+/** NB-04's coverage footnote with its ISO dates ("as on 2026-10-31") in the screen's format ("as on 31 Oct 2026"), so
+ * one date reads one way across section 5 and the sheet (S5 of the follow-up's financial review). */
+export function footnoteText(text: string): string {
+  return plainText(text.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (m, y: string, mo: string, d: string) => {
+    const day = ymdToDay(Number(y), Number(mo), Number(d));
+    return day === null ? m : formatDay(day);
+  }));
+}
+
+/** The scope's name: "Family", the analyst's client label, else the file's, else "Client not given" (screen and sheet). */
+export function scopeName(r: WeightedReturnRow, labels: Readonly<Record<string, string>>): string {
+  if (r.clientId === null) return 'Family';
+  return plainText(labels[r.clientId] ?? r.clientLabel ?? NOT_GIVEN.client.label);
+}
+
+function weightedVM(rows: readonly WeightedReturnRow[] | null | undefined, labels: Readonly<Record<string, string>>): WeightedReturnsVM | null {
+  if (!rows || rows.length === 0) return null;
+  const notes: string[] = [];
+  const out = rows.map((r) => {
+    const name = scopeName(r, labels);
+    const cells = WEIGHTED_TENORS.map((t) => {
+      const res = r.byTenor[t];
+      const foot = footnoteOf(res);
+      if (res.figure === null || foot === null) {
+        notes.push(`${name}, ${TENOR_KEY[t]}: no source of fund returns, so no figure.`);
+        return displayPct(missing(STATUS.NOT_AVAILABLE, 'no source'));
+      }
+      notes.push(`${name}, ${footnoteText(foot)}`);
+      return displayPct(res.figure.value);
+    });
+    return { name, cells };
+  });
+  if (out.some((r) => r.cells.some((c) => c.marker === PARTIAL_MARKER))) {
+    notes.push(`A figure marked ${PARTIAL_MARKER} covers only part of the mutual-fund value; its note gives the share and what was left out.`);
+  }
+  return { title: WEIGHTED_TITLE, cols: WEIGHTED_TENORS.map((t) => TENOR_KEY[t]), rows: out, notes };
+}
 
 const DAGGER = String.fromCharCode(0x2020);
 
@@ -87,8 +140,9 @@ function bucketVM(b: PerfBucket, plan: PerformancePlan, directList: boolean): Pe
   const notes: string[] = [];
   if (b.hasBenchmarks && b.benchAsOn) notes.push(b.benchAsOn.kind === 'value' ? `Benchmarks ${dateText(b.benchAsOn)}.` : `Benchmarks: ${dateText(b.benchAsOn)}.`);
   if (singlePlan > 0) {
+    /* N8: the Direct list's single-plan rows show the Regular block's figures, which may be of another date */
     notes.push(directList
-      ? `${DAGGER} ${plural(singlePlan, 'ETF has', 'ETFs have')} a single plan: the figures are the fund's own.`
+      ? `${DAGGER} ${plural(singlePlan, 'ETF has', 'ETFs have')} a single plan: the figures are the fund's own, from the Regular plans' data, ${dateText(b.singlePlanAsOn ?? null)}.`
       : `${DAGGER} ${plural(singlePlan, 'scheme has', 'schemes have')} only a Direct plan: the figures are that plan's.`);
   }
   if (noTwin.length > 0) notes.push(`${plural(noTwin.length, 'fund has', 'funds have')} no Direct plan in the Direct data, so the row is blank: ${names(noTwin)}.`);
@@ -105,8 +159,8 @@ function bucketVM(b: PerfBucket, plan: PerformancePlan, directList: boolean): Pe
   return { key: b.key, title, cols: b.cols, rows, notes };
 }
 
-export function buildPerformanceVM(res: PerformanceResult | null, plan: PerformancePlan = 'regular'): PerformanceVM {
-  if (!res) return { plan: 'regular', directAvailable: false, buckets: [], notes: [], empty: 'The performance tables appear once a base file is accepted in section 1.' };
+export function buildPerformanceVM(res: PerformanceResult | null, plan: PerformancePlan = 'regular', opts: { clientLabels?: Readonly<Record<string, string>> } = {}): PerformanceVM {
+  if (!res) return { plan: 'regular', directAvailable: false, buckets: [], notes: [], empty: 'The performance tables appear once a base file is accepted in section 1.', weighted: null };
   const direct = plan === 'direct' && res.direct !== null;
   const list = direct ? res.direct! : res.regular;
   const notes: string[] = [];
@@ -125,5 +179,6 @@ export function buildPerformanceVM(res: PerformanceResult | null, plan: Performa
     buckets: list.map((b) => bucketVM(b, direct ? 'direct' : 'regular', direct)),
     notes,
     empty: list.length === 0 ? 'No holding has a performance table.' : null,
+    weighted: weightedVM(res.weighted, opts.clientLabels ?? {}),
   };
 }
