@@ -14,7 +14,8 @@
 // For each mode (M1.4 fix round decisions in brackets):
 //   1. the page loads under its CSP with no violation, console error or exception, and requests nothing but itself;
 //   2. section 1 before a file: the stage strip at Upload, "No file", Accept not available with its reason, the
-//      disclaimer's status, the MF Screener slot (M10), an empty source register;
+//      disclaimer's status, the MF Screener slot (M10), an empty source register; the Templates group offers both
+//      templates, and the base file template downloads by a real click with no file loaded (U-06);
 //   3. refusals as sentences [L15]: a 21 MB file and a damaged workbook; a file with no holding is refused, Accept
 //      does nothing [L14]; after every pick the focus is on the new file input, never the body [L13]; the review bar
 //      reads "Base file refused" and never names a refused file [N12];
@@ -390,6 +391,23 @@ async function runMode({ browser, mode, files, opt, expect }) {
   const screener = await page.eval(TEXT('#slot-screener-pack'));
   expect('"Disclaimer in use" shows its status, and the MF Screener slot names M10',
     /not available in supplied data/.test(disclaimer ?? '') && /M10/.test(screener ?? ''), { disclaimer, screener });
+  // The Templates group (U-06): both templates before any file; the base file template by a real click.
+  const templates = await page.eval(`[...document.querySelectorAll('#group-templates button')].map((b) => b.textContent.trim())`);
+  expect('the Templates group offers the base file and the transactions (IRR) file templates before any file',
+    templates.length === 2 && templates[0] === 'Download a blank base file template' && templates[1] === 'Download a blank transactions (IRR) file template', templates);
+  {
+    const done = nextDownload(15000);
+    await page.click(await page.eval(CENTRE('#download-base-template')));
+    let dl;
+    try { dl = await done; } catch { dl = { state: 'no download within 15 s', name: null, file: null }; }
+    await sleep(300);
+    const bytes = dl.file && fs.existsSync(dl.file) ? fs.readFileSync(dl.file) : null;
+    expect('the base file template downloads as "Base file template.xlsx", a zip package, with no base file loaded',
+      dl.state === 'completed' && dl.name === 'Base file template.xlsx' && bytes !== null && bytes.length > 1000 && bytes[0] === 0x50 && bytes[1] === 0x4b,
+      { state: dl.state, name: dl.name, bytes: bytes ? bytes.length : null });
+    const after = await page.eval(SLOT);
+    expect('the template download leaves section 1 as it was: "No file" and an empty source register', after.chip === 'No file' && after.register.length === 0, after);
+  }
 
   // 3. Refusals [L15, L14], with the focus after each pick [L13]
   const huge = await pick(files.huge);

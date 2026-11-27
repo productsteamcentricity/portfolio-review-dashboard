@@ -87,6 +87,8 @@ export type Store = {
   exportWorkbook(): Promise<void>;
   /** PLAN-05 (NB-03): saves the blank transactions (IRR) file template, at any stage; nothing when the wiring has none. */
   downloadIrrTemplate(): void;
+  /** NB-05: saves the blank base file template, at any stage; nothing when the wiring has none. */
+  downloadBaseTemplate(): void;
 };
 
 /** The label of an uploaded logo restored from the browser's storage. */
@@ -385,6 +387,7 @@ export function createStore(deps: { wiring: Wiring; prefs: Prefs; logos: readonl
     exportDeck: () => runExport('pptx'),
     exportWorkbook: () => runExport('xlsx'),
     downloadIrrTemplate: () => deps.wiring.downloadIrrTemplate?.(), // PLAN-05 (NB-03)
+    downloadBaseTemplate: () => deps.wiring.downloadBaseTemplate?.(), // the Templates group (NB-05)
   };
 }
 
