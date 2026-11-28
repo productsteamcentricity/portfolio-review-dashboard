@@ -21,7 +21,7 @@ Moderator (MOD-03 until 25 Nov 2026, MOD-04 until 26 Nov 2026, MOD-05 since).
 
 Counts as of 28 Nov 2026, about 23:45 IST (registers-11 recount of the transcripts' compaction markers, every chat):
 CHAT-011 (NB-04) has its third (28 Nov 15:28 UTC, 20:58 IST; successor pending the owner), CHAT-016 (ARC-04) its first
-(16:46 UTC; its own report said none), CHAT-017 (NB-05) its second (16:49 UTC) and CHAT-014 (EX-03) its second
+(16:46 UTC, after its report of 20:40 IST), CHAT-017 (NB-05) its second (16:49 UTC) and CHAT-014 (EX-03) its second
 (18:14 UTC); no other change. In registers-10 (about 20:40 IST): CHAT-015 (MOD-05) had its first (28 Nov 14:55 UTC). In registers-9 (about 12:05 IST): no change since
 registers-8 (about 02:10 IST); no chat reached its third in the owner's absence, and no successor was opened.
 Changes since registers-6: CHAT-012 has a second compaction, CHAT-017 its first; CHAT-016 none.
