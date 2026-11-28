@@ -23,7 +23,7 @@
 //     "slab rate not set" (taxAfter, saving, used and unused losses). The live default was 30%.
 //   - Q-52 (KI-130): the annual exemption is applied only when the amount already used this year is known: the
 //     analyst's entry (TaxInputs.exemptionUsed: an amount, or "unused-confirmed"), else the capital-gains statement's
-//     person-year `exemption.applied` (rollup.ts `values.exemptionApplied`) of the as-on financial year for the person
+//     person-year `exemption.applied` (a Value since contracts-4) of the as-on financial year for the person
 //     whose only review client is this client. Otherwise the result is labelled "exemption not applied" and no exemption
 //     enters the tax figures. The live assumed Rs 0 used.
 // M7b financial review F-3: the client's holdings not split because they are unreconciled with the IRR file are left out
@@ -112,18 +112,15 @@ export type HarvestCandidate = {
   stLoss: number;
 };
 
-/** Where the amount of the exemption already used came from (Q-52). */
-export type ExemptionSource = 'analyst' | 'analyst-confirmed-unused' | 'statement';
+/** Where the amount of the exemption already used came from (Q-52; the contract's HarvestResult.exemption.source). */
+export type ExemptionSource = NonNullable<HarvestResult['exemption']['source']>;
 
-/** The exemption of one client's harvest. */
-export type HarvestExemption = {
-  /** The year's limit (table v1), or null when the year has no threshold amount. */
-  limit: number | null;
-  /** The amount already used this year, when known (Q-52). */
-  used: number | null;
-  source: ExemptionSource | null;
-  /** Why the exemption is not applied (null when applied). */
-  reason: string | null;
+/**
+ * The exemption of one client's harvest: the contract's (C4-4): the year's limit (table v1), missing when the year has
+ * no threshold amount; the amount already used this year, missing when not known (Q-52); its source; and why the
+ * exemption is not applied (null when applied). With the unused exemption applied in the figures.
+ */
+export type HarvestExemption = HarvestResult['exemption'] & {
   /** The unused exemption applied in the figures (0 when not applied). */
   available: number;
 };
@@ -169,19 +166,17 @@ export const HARVEST_SUM_FIELDS: ReadonlyArray<keyof HarvestFigures> = ['taxBefo
   's198Gains', 's198Left', 'exBefore', 'exAfter', 'exBeforeTax', 'exAfterTax', 'noSetOffGain', 'noSetOffLoss'];
 
 /**
- * One client's harvest: the contract's HarvestResult (model/tax.ts) and the lines it does not carry. Engine-local:
- * `clientId` may be null (the holdings without a client label are one person, PD-44). Round 3 M1 (Q-49): the plain
- * `usedLosses`, `unusedLosses` and `harvestableLoss` are null where they are not known, never 0: all of them for a
- * client with no harvest worked (`notWorked`). Under the dash "slab rate not set" the used and unused totals stand (S-1).
+ * One client's harvest: the contract's HarvestResult (model/tax.ts; contracts-4, C4-4) and the lines it does not carry.
+ * Since contracts-4 the contract holds a null `clientId` (the holdings without a client label are one person, PD-44),
+ * the nullable `usedLosses` and `unusedLosses` (round 3 M1: null where not known, never 0, all of them for a client with
+ * no harvest worked; under the dash "slab rate not set" the used and unused totals stand, S-1), `notWorked` (D-1: when
+ * set, the Values are NOT AVAILABLE with this reason, and the plain figures, losses and harvestable loss are null),
+ * `afterSetOffDash`, `ratesMissing` (round 3 M2: every rate-dependent figure is then NOT AVAILABLE with it),
+ * `harvestableLoss` (DATA_DICTIONARY §6 `tax.harvestableLoss[p]`: the candidates' losses, null when no harvest is worked),
+ * `gainUnknown` (split holdings whose gain is unknown, left out of the pools, PARTIAL), `unreconciled` (holdings not
+ * split, unreconciled with the IRR file, left out of the pools, PARTIAL; M7b F-3) and `labels`.
  */
-// TODO(contracts-4): HarvestResult.clientId may be null; usedLosses and unusedLosses become nullable (round 3 M1); the
-//   fields below join HarvestResult
-export type HarvestLocal = Omit<HarvestResult, 'clientId' | 'usedLosses' | 'unusedLosses'> & {
-  clientId: ClientId | null;
-  /** The losses used in the set-off, by term; each null where not known (round 3 M1), never 0. */
-  usedLosses: { st: number | null; lt: number | null };
-  /** The losses left unused, by term; each null where not known (round 3 M1), never 0. */
-  unusedLosses: { st: number | null; lt: number | null };
+export type HarvestLocal = Omit<HarvestResult, 'exemption' | 'candidateDetail'> & {
   clientLabel: string | null;
   /** The as-on financial year (its start year). */
   fy: number;
@@ -192,44 +187,34 @@ export type HarvestLocal = Omit<HarvestResult, 'clientId' | 'usedLosses' | 'unus
    * rates are not in the table (M2).
    */
   exRate: number | null;
-  /** "slab rate not set" when the after-set-off figures depend on the slab rate and none is entered; else null. */
-  afterSetOffDash: string | null;
   /**
-   * Round 3 M2: the label when the as-on date is before 23 Jul 2024, whose rates are not in the I-21 table (classify.ts
-   * I21_RATES_MISSING); every rate-dependent figure is then NOT AVAILABLE with it. Else null.
+   * The figures; all null when no harvest is worked (round 3 M1); the tax before, tax after and saving null too when every
+   * gain is at the slab rate (round 4 S-3), as their Values.
    */
-  ratesMissing: string | null;
-  /** The figures; all null when no harvest is worked (round 3 M1). */
   figures: HarvestFigureValues;
   pools: HarvestPool[];
+  /** The contract's candidate detail, with the holding's name, client, class and value. */
   candidateDetail: HarvestCandidate[];
-  /** Split holdings of the client whose gain is unknown (no invested value): left out of the pools (PARTIAL). */
-  gainUnknown: number;
-  /** Holdings of the client not split, unreconciled with the IRR file: left out of the pools (PARTIAL; M7b F-3). */
-  unreconciled: number;
-  /** Round 3 L2: those holdings counted by unreconciled kind (named in the labels). */
+  /** Round 3 L2: the unreconciled holdings counted by unreconciled kind (named in the labels). */
   unreconciledKinds: UnreconciledKinds;
   /** The client's split holdings (a holding split at 1 Apr 2023 counted once). */
   split: number;
   /**
-   * D-1: why no harvest is worked for the client (no holding split, some unreconciled with the IRR file), else null.
-   * When set, the Values are NOT AVAILABLE with this reason, and the plain figures, losses and harvestable loss are
-   * null (round 3 M1; before, they read 0).
+   * Round 4 S-3: why the tax figures are NOT AVAILABLE when every gain of the client is at the slab rate (the pools
+   * named), else null.
    */
-  notWorked: string | null;
-  /**
-   * DATA_DICTIONARY §6 `tax.harvestableLoss[p]`: the candidates' losses (long plus short term); null when no harvest is
-   * worked (round 3 M1).
-   */
-  harvestableLoss: number | null;
-  labels: string[];
+  allSlab: string | null;
 };
 
 /** The family: the clients' harvests added field by field, never one set-off pooled across the family. */
 export type FamilyHarvest = {
   label: typeof FAMILY_LABEL;
   byClient: HarvestLocal[];
-  /** Null when any worked client's figure is null (the dash), and every one when no client's harvest is worked (M1). */
+  /**
+   * Null when any worked client's figure is null (the dash), and every one when no client's harvest is worked (M1); the
+   * tax before, tax after and saving add the worked clients with a gain at a rate (a client whose every gain is at the
+   * slab rate adds none) and are null when every worked client's gains are at the slab rate (contracts-4).
+   */
   figures: HarvestFigureValues;
   taxBefore: Value<number>;
   taxAfter: Value<number>;
@@ -253,7 +238,7 @@ export type FamilyHarvest = {
 
 /** The statement roll-up as the harvest reads it (rollup.ts RollupResult or RollupOutput). */
 export type StatementYears = {
-  years: ReadonlyArray<{ fy: number; persons: ReadonlyArray<Pick<PersonYearTaxLocal, 'clientId' | 'inReview' | 'personKey' | 'values'>> }>;
+  years: ReadonlyArray<{ fy: number; persons: ReadonlyArray<Pick<PersonYearTaxLocal, 'clientId' | 'inReview' | 'personKey' | 'exemption'>> }>;
 };
 
 export type HarvestContext = {
@@ -272,8 +257,13 @@ export type HarvestContext = {
 // ---------------------------------------------------------------------------------------------------------------
 // Inputs: the slab rate (PD-07) and the exemption already used (Q-52)
 
+/**
+ * The analyst's slab rate for a client and year: a client-id entry of TaxInputs.personYear (`personSource` null). An
+ * entry keyed by a statement's person ("person:n", bound to a statement file; contracts-4 C4-2) is never a client's.
+ */
 function slabFor(clientId: ClientId | null, fy: number, ctx: HarvestContext): HarvestLocal['slab'] {
-  const e = (ctx.inputs?.personYear ?? []).find((x) => x.clientId === clientId && x.fy === fy && x.slabPct !== null && Number.isFinite(x.slabPct));
+  const e = (ctx.inputs?.personYear ?? []).find((x) => x.personSource === null && x.clientId === clientId && x.fy === fy
+    && x.slabPct !== null && Number.isFinite(x.slabPct));
   const def = ctx.slabDefaultPct === undefined ? SLAB_DEFAULT_PCT_HARVEST : ctx.slabDefaultPct;
   const raw = e ? e.slabPct! : def;
   if (raw === null) return { pct: null, source: 'not set', limited: false };
@@ -284,7 +274,7 @@ function slabFor(clientId: ClientId | null, fy: number, ctx: HarvestContext): Ha
 /**
  * Q-52: the exemption already used by a client in a financial year. The analyst's entry first; else the statement's
  * person-year whose only review client is this client (rollup.ts PersonYearTaxLocal.clientId is that client, else
- * null), when exactly one such person-year exists and its `values.exemptionApplied` is present.
+ * null), when exactly one such person-year exists and its `exemption.applied` is present.
  */
 export function exemptionUsedFor(clientId: ClientId | null, fy: number, ctx: HarvestContext): { used: number | null; source: ExemptionSource | null; reason: string | null } {
   if (clientId === null) return { used: null, source: null, reason: 'holdings without a client label: no person to read the exemption already used for' };
@@ -299,7 +289,7 @@ export function exemptionUsedFor(clientId: ClientId | null, fy: number, ctx: Har
   const hits = year.persons.filter((p) => p.inReview && p.clientId === clientId);
   if (hits.length === 0) return { used: null, source: null, reason: 'the capital-gains statement has no person for this client alone in this financial year and there is no analyst entry (Q-52)' };
   if (hits.length > 1) return { used: null, source: null, reason: 'the capital-gains statement gives more than one person for this client in this financial year (Q-52)' };
-  const v = hits[0]!.values.exemptionApplied;
+  const v = hits[0]!.exemption.applied;
   if (v.kind !== 'value') return { used: null, source: null, reason: `the statement's exemption used is not available: ${v.reason}` };
   return { used: v.v, source: 'statement', reason: null };
 }
@@ -460,8 +450,12 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   const notWorked = split === 0 && unreconciled > 0
     ? `no holding of this client is split into long and short term (${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split, ${unrecText}), so no harvest is worked`
     : null;
-  // Round 3 M1 (Q-49): with no harvest worked, every plain figure is null (not known), never 0.
-  const shown: HarvestFigureValues = notWorked !== null ? nullFigures() : figures;
+  // Round 3 M1 (Q-49): with no harvest worked, every plain figure is null (not known), never 0. contracts-4 (the note
+  // carried from round 4's delta review of f6aec11): with every gain at the slab rate, the plain tax before, tax after and
+  // saving follow their NOT AVAILABLE Values (null, never 0).
+  const slabOnly = notWorked === null && ratesMissing === null ? allSlab : null;
+  const shown: HarvestFigureValues = notWorked !== null ? nullFigures()
+    : slabOnly !== null ? { ...figures, taxBefore: null, taxAfter: null, saving: null } : figures;
   const val = (x: number | null, what: string): Value<number> => (notWorked !== null ? missing(STATUS.NOT_AVAILABLE, notWorked, p)
     : ratesMissing !== null ? missing(STATUS.NOT_AVAILABLE, `${ratesMissing}: the ${what} needs the tax rates as on the as-on date`, p)
     : allSlab !== null ? missing(STATUS.NOT_AVAILABLE, `${allSlab}: the ${what} is not available`, p)
@@ -496,7 +490,15 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   return {
     clientId: client.clientId, clientLabel: client.clientLabel, fy, slabPct: slab.pct, slab,
     exemptionApplied: applied ? 'applied' : EXEMPTION_NOT_APPLIED,
-    exemption: { limit, used, source: known.source, reason: applied ? null : reason, available: exAvail },
+    // C4-4: the limit and the amount already used as Values, missing with the reason where not known.
+    exemption: {
+      limit: limit !== null ? present(limit, 'inr', { ...p, method: `the annual exemption of the year (table v1, design section 10.2)` })
+        : missing(STATUS.NOT_AVAILABLE, reason ?? 'the year has no annual exemption amount in the rule table', p),
+      used: used !== null ? present(used, 'inr', { ...p, method: `the exemption already used this year (${known.source ?? 'none'}, Q-52)` })
+        : missing(STATUS.NOT_AVAILABLE, reason ?? known.reason ?? 'the exemption already used this year is not known (Q-52)', p),
+      source: known.source, reason: applied ? null : reason, available: exAvail,
+    },
+    allSlab: slabOnly,
     exRate: notWorked !== null || ratesMissing !== null ? null : c.er, afterSetOffDash: dash, ratesMissing, figures: shown,
     taxBefore: val(figures.taxBefore, 'tax before harvesting'),
     taxAfter: val(figures.taxAfter, 'tax after harvesting'),
@@ -566,9 +568,14 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
   const notWorked = list.length - worked.length;
   const none = list.length > 0 && worked.length === 0;
   // Round 3 M1 (Q-49): when no client's harvest is worked, every family figure is null, never a sum of nothing (0).
+  // contracts-4 (the note carried from round 4): a client whose every gain is at the slab rate has its plain tax before,
+  // tax after and saving null (as its Values); its gains at a rate are none, so it adds 0 to the family's, as before; the
+  // family's are null when every worked client's gains are at the slab rate (as the family's Values, below).
+  const slabTrio = new Set<keyof HarvestFigures>(['taxBefore', 'taxAfter', 'saving']);
   const figures = {} as HarvestFigureValues;
   for (const k of HARVEST_SUM_FIELDS) {
-    figures[k] = none || worked.some((h) => h.figures[k] === null) ? null : worked.reduce((s, h) => s + (h.figures[k] ?? 0), 0);
+    const adds = slabTrio.has(k) ? worked.filter((h) => h.allSlab === null) : worked;
+    figures[k] = none || adds.some((h) => h.figures[k] === null) ? null : adds.reduce((s, h) => s + (h.figures[k] ?? 0), 0);
   }
   const p: Provenance = prov ?? { sources: [], method: 'tax-loss harvest per client (E-43)' };
   const fp: Provenance = { ...p, method: `${p.method}; family: ${FAMILY_LABEL}` };
@@ -592,6 +599,9 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
   const slabGains = worked.reduce((s, h) => s + (h.figures.unquantifiedGain ?? 0), 0);
   const familySlab = slabPoolsText(slabPools);
   const familySlabShare = familySlab === null ? null : allGains > 0 ? Math.max(0, Math.min(1, (allGains - slabGains) / allGains)) : 1;
+  // contracts-4 (carried note): every gain of the worked clients at the slab rate: the plain tax figures follow the NOT
+  // AVAILABLE Values below (null, never 0).
+  if (familySlabShare === 0) for (const k of slabTrio) figures[k] = null;
   const familyPartial = [familyNote.length ? `${familyNote.join(' and ')} left out` : null, familySlab].filter((x): x is string => x !== null);
   const familyCov = Math.min(...[familyNote.length ? familyCoverage : null, familySlabShare].filter((x): x is number => x !== null));
   // Round 3 M2: a worked client whose rates are not in the table (as on a date before 23 Jul 2024) makes the family's

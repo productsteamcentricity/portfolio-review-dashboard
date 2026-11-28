@@ -14,17 +14,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { emptyTaxInputs } from '../../../app/src/engine/tax/realised.ts';
-import { NO_PERSON, SLAB_DEFAULT_PCT, rollupPersonYears } from '../../../app/src/engine/tax/rollup.ts';
+import { NO_PERSON, PERSON_INPUTS_STALE, SLAB_DEFAULT_PCT, rollupPersonYears } from '../../../app/src/engine/tax/rollup.ts';
 import type { RollupFamilyYear, RollupOptions, RollupPersonYear } from '../../../app/src/engine/tax/rollup.ts';
 import { TAX_RULES_V1 } from '../../../app/src/engine/tax/rules.ts';
 import { S3_ISSUE_IDS } from '../../../app/src/engine/tax/types.ts';
 import type { EstimateLocal, FamilyTaxYearLocal, PersonYearTaxLocal, RealiseResult, RollupResult, TaxIssue, TaxLot } from '../../../app/src/engine/tax/types.ts';
 import type { TaxInputs } from '../../../app/src/model/tax.ts';
 import type { AuditEntry } from '../../../app/src/model/audit.ts';
+import type { ClientId, SourceFileId } from '../../../app/src/model/ids.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
 import { hasPanShape } from '../../../app/src/ingest/capital-gains.ts';
 import type { CgImport } from '../../../app/src/ingest/capital-gains.ts';
-import { CLIENT_IDS, parseLots, personYearInputs, realiseAndRoll } from '../../fixtures/make-cg-tax-lots.ts';
+import { CLIENT_IDS, SRC, parseLots, personYearInputs, realiseAndRoll } from '../../fixtures/make-cg-tax-lots.ts';
 import type { KaLot, KaPersonYear } from '../../fixtures/make-cg-tax-lots.ts';
 import { accountWithPan, CLIENT_A, CLIENT_B } from '../../fixtures/make-cg-statements.ts';
 
@@ -92,17 +93,17 @@ function checkPersonYear(p: PersonYearTaxLocal, x: Record<string, unknown>, w: s
       case 'totalUnrounded': assert.ok(Math.abs(v(p.estimate.total)! - (want as number)) < 0.0001, `${w} total unrounded ${v(p.estimate.total)}`); break;
       case 'partial': assert.equal(p.coverage.partial, want, `${w} partial`); break;
       case 'lotsNotComputed': assert.equal(p.coverage.lotsNotComputed, want, `${w} lots not computed`); break;
-      case 'economicGainNotComputed': near(p.coverage.economicGainNotComputed, want as number, `${w} economic gain not computed`); break;
-      case 'exemptionApplied': near(p.exemption.applied, want as number, `${w} exemption applied`); break;
+      case 'economicGainNotComputed': near(v(p.coverage.economicGainNotComputed), want as number, `${w} economic gain not computed`); break;
+      case 'exemptionApplied': near(v(p.exemption.applied), want as number, `${w} exemption applied`); break;
       case 'beforeSurcharge': assert.equal(p.estimate.beforeSurcharge, want, `${w} before surcharge`); break;
       case 'afterSetOffDash': assert.equal(p.afterSetOffDash, want, `${w} after set-off dash`); break;
       case 'slabTaxableLeftOut': near(p.slabTaxableLeftOut, want as number, `${w} slab left out`); break;
-      case 'realised': near(p.realised, want as number, `${w} realised`); break;
+      case 'realised': near(v(p.realised), want as number, `${w} realised`); break;
       case 'nonTaxable': near(p.nonTaxable, want as number, `${w} non-taxable`); break;
       case 'unabsorbed': {
         const u = want as { st: number; lt: number };
-        near(p.unabsorbed.st, u.st, `${w} unabsorbed st`);
-        near(p.unabsorbed.lt, u.lt, `${w} unabsorbed lt`);
+        near(v(p.unabsorbed.st), u.st, `${w} unabsorbed st`);
+        near(v(p.unabsorbed.lt), u.lt, `${w} unabsorbed lt`);
         break;
       }
       case 'labels': for (const l of want as string[]) assert.ok(p.labels.includes(l), `${w} label ${l}`); break;
@@ -113,6 +114,8 @@ function checkPersonYear(p: PersonYearTaxLocal, x: Record<string, unknown>, w: s
           for (const [f, z] of Object.entries(b)) {
             if (f === 'ruleId') continue;
             if (f === 'rate') assert.equal(got!.rate, z, `${w} bucket ${b.ruleId} rate`);
+            // contracts-4 (C4-1): setOff and taxable are Values; the other bucket fields are plain numbers.
+            else if (f === 'setOff' || f === 'taxable') near(v(got![f]), z as number, `${w} bucket ${b.ruleId} ${f}`);
             else near((got as unknown as Record<string, number | null>)[f]!, z as number, `${w} bucket ${b.ruleId} ${f}`);
           }
         }
@@ -176,7 +179,7 @@ function checkCase(id: string, r: Run, e: KaCase['expect']): void {
     assert.equal(y.familySum.label, 'sum of separate computations');
     assert.ok(!('exemption' in y.familySum), `${id} the family sum has no exemption`);
   }
-  if (e.realisedAllYears !== undefined) near(r.roll.years.reduce((s, y) => s + y.familySum.realised, 0), e.realisedAllYears, `${id} realised over all years`);
+  if (e.realisedAllYears !== undefined) near(r.roll.years.reduce((s, y) => s + (v(y.familySum.realised) ?? 0), 0), e.realisedAllYears, `${id} realised over all years`);
 }
 
 describe('the person-year known answers (cg-known-answers.json rollup: KA-9 to KA-13, KA-15, KA-18 to KA-22)', () => {
@@ -212,11 +215,11 @@ describe('set-off (§9.3 step 3, TR-10)', () => {
     const c = ka('KA-18');
     const p = py(run(c.lots, c.personYear).roll, 2023, CLIENT_A);
     const b = (id: string) => p.buckets.find((x) => x.ruleId === id)!;
-    near(b('NE-LT-3').setOff, 50000, 'NE-LT-3 set off');
-    near(b('EQ-ST-2').setOff, 50000, 'EQ-ST-2 set off');
+    near(v(b('NE-LT-3').setOff), 50000, 'NE-LT-3 set off');
+    near(v(b('EQ-ST-2').setOff), 50000, 'EQ-ST-2 set off');
     near(b('EQ-ST-2').loss, 50000, 'the short-term loss in its pool');
     near(b('EQ-LT-3').loss, 50000, 'the long-term loss in its pool');
-    assert.deepEqual(p.unabsorbed, { st: 0, lt: 0 });
+    assert.deepEqual([v(p.unabsorbed.st), v(p.unabsorbed.lt)], [0, 0]);
   });
   test('a long-term loss never reaches a short-term gain; left over, it is reported by term, not carried', () => {
     const r = run([
@@ -224,15 +227,15 @@ describe('set-off (§9.3 step 3, TR-10)', () => {
       { ...EQ, scheme: 'Sample Mid Cap Fund - Regular Plan - Growth', buy: [2025, 1, 2], sell: [2025, 6, 2], units: 100, buyNav: 100, sellNav: 150 },
     ], [A_(2025)]);
     const p = py(r.roll, 2025, CLIENT_A);
-    near(p.unabsorbed.lt, 10000, 'long-term loss left');
-    near(p.unabsorbed.st, 0, 'no short-term loss left');
+    near(v(p.unabsorbed.lt), 10000, 'long-term loss left');
+    near(v(p.unabsorbed.st), 0, 'no short-term loss left');
     near(v(p.estimate.tax), 5000 * 0.2, 'the short-term gain fully taxed at 20%');
   });
   test('the exemption ranking: s.112A gains inside the unused exemption rank at 0% and come last (KA-13)', () => {
     const c = ka('KA-13');
     const p = py(run(c.lots, c.personYear).roll, 2024, CLIENT_A);
-    near(p.buckets.find((b) => b.ruleId === 'EQ-LT-7')!.setOff, 0, 'the equity gain inside the exemption untouched');
-    near(p.exemption.applied, 100000, 'the exemption covers the equity gain');
+    near(v(p.buckets.find((b) => b.ruleId === 'EQ-LT-7')!.setOff), 0, 'the equity gain inside the exemption untouched');
+    near(v(p.exemption.applied), 100000, 'the exemption covers the equity gain');
     near(v(p.estimate.tax), 0, 'tax');
   });
   test('the tie: at equal rates the loss goes to the non-exempt gain first (12.5% s.112A above the exemption against 12.5% NE-LT-4)', () => {
@@ -242,8 +245,8 @@ describe('set-off (§9.3 step 3, TR-10)', () => {
       { ...EQ, scheme: 'Sample Mid Cap Fund - Regular Plan - Growth', buy: [2022, 6, 1], sell: [2025, 9, 2], units: 500, buyNav: 200, sellNav: 100 },
     ], [A_(2025)]);
     const p = py(r.roll, 2025, CLIENT_A);
-    near(p.buckets.find((b) => b.ruleId === 'NE-LT-4')!.setOff, 50000, 'the non-exempt gain takes the loss');
-    near(p.buckets.find((b) => b.ruleId === 'EQ-LT-7')!.setOff, 0, 'the s.112A gain keeps its gain');
+    near(v(p.buckets.find((b) => b.ruleId === 'NE-LT-4')!.setOff), 50000, 'the non-exempt gain takes the loss');
+    near(v(p.buckets.find((b) => b.ruleId === 'EQ-LT-7')!.setOff), 0, 'the s.112A gain keeps its gain');
     near(v(p.estimate.tax), (300000 - 125000) * 0.125, 'tax');
   });
   test('EQ-LT-1 losses are ignored (the exempt line): KA-14 lots 1 and 2', () => {
@@ -573,24 +576,25 @@ describe('financial review round 1: analyst inputs applied, missing figures neve
     const p = py(r.roll, 2023, CLIENT_A);
     assert.equal(p.afterSetOffDash, 'slab rate not set');
     const NA = STATUS.NOT_AVAILABLE;
-    isMissing(p.values.exemptionApplied, NA, 'slab rate not set', 'exemption applied');
-    isMissing(p.values.unabsorbed.st, NA, 'slab rate not set', 'unabsorbed st');
-    isMissing(p.values.unabsorbed.lt, NA, 'slab rate not set', 'unabsorbed lt');
+    isMissing(p.exemption.applied, NA, 'slab rate not set', 'exemption applied');
+    isMissing(p.unabsorbed.st, NA, 'slab rate not set', 'unabsorbed st');
+    isMissing(p.unabsorbed.lt, NA, 'slab rate not set', 'unabsorbed lt');
     assert.equal(p.buckets.length, 2);
     for (const b of p.buckets) {
-      for (const k of ['setOff', 'taxable', 'exemption', 'tax', 'surcharge'] as const) isMissing(b.values[k], NA, 'slab rate not set', `${b.ruleId} ${k}`);
+      for (const k of ['setOff', 'taxable'] as const) isMissing(b[k], NA, 'slab rate not set', `${b.ruleId} ${k}`);
+      for (const k of ['exemption', 'tax', 'surcharge'] as const) isMissing(b.values[k], NA, 'slab rate not set', `${b.ruleId} ${k}`);
     }
-    near(v(p.values.realised), 30000 - 50000 + 80000, 'realised is before set-off and stays a figure');
-    isMissing(year(r.roll, 2023).familySumValues.unabsorbed.st, NA, 'slab rate not set', 'family unabsorbed st');
-    // With the slab rate set, the same Values are figures equal to the contract's numbers (KA-12 at 30%).
+    near(v(p.realised), 30000 - 50000 + 80000, 'realised is before set-off and stays a figure');
+    isMissing(year(r.roll, 2023).familySum.unabsorbed.st, NA, 'slab rate not set', 'family unabsorbed st');
+    // With the slab rate set, the same Values are figures (KA-12 at 30%), the tax equal to the bucket's plain tax.
     const s = py(run(c.lots, [A_(2023, { slabPct: 30 })]).roll, 2023, CLIENT_A);
     assert.equal(s.afterSetOffDash, null);
     for (const b of s.buckets) {
-      near(v(b.values.taxable), b.taxable, `${b.ruleId} taxable`);
-      near(v(b.values.setOff), b.setOff, `${b.ruleId} set-off`);
+      assert.equal(b.taxable.kind, 'value', `${b.ruleId} taxable`);
+      assert.equal(b.setOff.kind, 'value', `${b.ruleId} set-off`);
       near(v(b.values.tax), b.tax, `${b.ruleId} tax`);
     }
-    near(v(s.values.unabsorbed.st), s.unabsorbed.st, 'unabsorbed st with the slab set');
+    assert.equal(s.unabsorbed.st.kind, 'value', 'unabsorbed st with the slab set');
   });
 
   test('S-3: in a year with an unanswered repeat, realised, exemption applied and every tax figure are INSUFFICIENT EVIDENCE', () => {
@@ -602,22 +606,23 @@ describe('financial review round 1: analyst inputs applied, missing figures neve
     assert.equal(p.insufficientEvidence, true);
     const IE = STATUS.INSUFFICIENT_EVIDENCE;
     const why = /unanswered repeated-rows question/;
-    isMissing(p.values.realised, IE, why, 'realised');
-    isMissing(p.values.exemptionApplied, IE, why, 'exemption applied');
-    isMissing(p.values.unabsorbed.st, IE, why, 'unabsorbed st');
-    isMissing(p.values.unabsorbed.lt, IE, why, 'unabsorbed lt');
+    isMissing(p.realised, IE, why, 'realised');
+    isMissing(p.exemption.applied, IE, why, 'exemption applied');
+    isMissing(p.unabsorbed.st, IE, why, 'unabsorbed st');
+    isMissing(p.unabsorbed.lt, IE, why, 'unabsorbed lt');
     for (const k of ['tax', 'surcharge', 'cess', 'total'] as const) isMissing(p.estimate[k], IE, why, `estimate ${k}`);
     for (const b of p.buckets) {
-      for (const k of ['setOff', 'taxable', 'exemption', 'tax', 'surcharge'] as const) isMissing(b.values[k], IE, why, `${b.ruleId} ${k}`);
+      for (const k of ['setOff', 'taxable'] as const) isMissing(b[k], IE, why, `${b.ruleId} ${k}`);
+      for (const k of ['exemption', 'tax', 'surcharge'] as const) isMissing(b.values[k], IE, why, `${b.ruleId} ${k}`);
     }
     isMissing(p.alternatives.anniversaryLongTerm!, IE, why, 'anniversary alternative');
     for (const k of ['tax', 'surcharge', 'cess', 'total'] as const) isMissing(p.alternativesDetail.anniversaryLongTerm![k], IE, why, `anniversary detail ${k}`);
-    isMissing(year(r.roll, 2025).familySumValues.realised, IE, why, 'family realised');
+    isMissing(year(r.roll, 2025).familySum.realised, IE, why, 'family realised');
     // The other year is untouched: realised 10 x (175 - 100) = 750.00.
     const o = py(r.roll, 2024, CLIENT_A);
     assert.equal(o.insufficientEvidence, false);
-    near(v(o.values.realised), 750, 'the other year realised');
-    near(v(o.values.exemptionApplied), 750, 'the other year exemption applied');
+    near(v(o.realised), 750, 'the other year realised');
+    near(v(o.exemption.applied), 750, 'the other year exemption applied');
   });
 
   test('S-5: a person-year assessee mark entered under the person key "person:n" flags the PAN person\'s lots', () => {
@@ -647,7 +652,7 @@ describe('financial review round 1: analyst inputs applied, missing figures neve
     const r = run([lot], [A_(2018)], { inputs: { lotMarks: [{ lotIndex, giftOrInheritance: true }] } });
     const g = r.g[0]!;
     assert.equal(g.ruleId, 'EQ-ST-2');
-    assert.equal(g.anniversaryLongTerm, null, 'the contract field cannot hold the dash');
+    isMissing(g.anniversaryLongTerm!.taxableGain, STATUS.NOT_AVAILABLE, /cost-input-missing/, 'the contract field holds the dash (C4-1)');
     assert.equal(g.anniversaryLongTermDetail?.ruleId, 'EQ-LT-2');
     assert.equal(g.anniversaryLongTermDetail?.costForTax, null);
     isMissing(g.anniversaryLongTermDetail!.taxableGain, STATUS.NOT_AVAILABLE, /cost-input-missing/, 'the long-term gain');
@@ -656,7 +661,7 @@ describe('financial review round 1: analyst inputs applied, missing figures neve
     // Without the mark: the grandfathered figure, cost max(10,000, min(12,000, 15,000)) = 12,000, gain 3,000.00.
     const u = run([lot], [A_(2018)]);
     assert.equal(u.g[0]!.anniversaryLongTerm?.ruleId, 'EQ-LT-2');
-    near(u.g[0]!.anniversaryLongTerm!.taxableGain, 3000, 'unmarked long-term gain');
+    near(v(u.g[0]!.anniversaryLongTerm!.taxableGain), 3000, 'unmarked long-term gain');
     assert.notEqual(v(py(u.roll, 2018, CLIENT_A).alternatives.anniversaryLongTerm), null, 'unmarked: a figure');
   });
 });
@@ -692,20 +697,20 @@ describe('Gate B round 1: unknown gains never read as 0 (B1), the anniversary da
     assert.equal(r.g[1]!.notComputedDetail, 'cost-missing');
     const p = pyR(r, 2025, CLIENT_A);
     // The realised total: Rs 1,50,000.00 over the known lot, PARTIAL (coverage below 1), the count named.
-    assert.equal(p.values.realised.kind, 'value');
-    near(v(p.values.realised), 150000, 'realised over the known lot');
-    assert.ok(p.values.realised.kind === 'value' && (p.values.realised.coverage ?? 1) < 1, 'realised is PARTIAL');
-    assert.match(p.values.realised.kind === 'value' ? p.values.realised.prov.method : '', /PARTIAL: 1 lot has an unknown economic gain/);
+    assert.equal(p.realised.kind, 'value');
+    near(v(p.realised), 150000, 'realised over the known lot');
+    assert.ok(p.realised.kind === 'value' && (p.realised.coverage ?? 1) < 1, 'realised is PARTIAL');
+    assert.match(p.realised.kind === 'value' ? p.realised.prov.method : '', /PARTIAL: 1 lot has an unknown economic gain/);
     assert.equal(p.values.lotsGainUnknown, 1, 'the count of lots with an unknown gain');
     // The economic gain left out of the tax: missing, never 0.
-    isMissing(p.values.economicGainNotComputed, NA, /1 lot has an unknown economic gain/, 'economic gain not computed');
+    isMissing(p.coverage.economicGainNotComputed, NA, /1 lot has an unknown economic gain/, 'economic gain not computed');
     assert.equal(p.coverage.partial, true);
     assert.equal(p.coverage.lotsNotComputed, 1);
     // The family sum follows: PARTIAL realised, the gain left out missing, the count carried.
     const f = famR(r, 2025);
-    assert.ok(f.familySumValues.realised.kind === 'value' && (f.familySumValues.realised.coverage ?? 1) < 1, 'family realised PARTIAL');
-    near(v(f.familySumValues.realised), 150000, 'family realised over the known lot');
-    isMissing(f.familySumValues.economicGainNotComputed, NA, /unknown economic gain/, 'family economic gain not computed');
+    assert.ok(f.familySum.realised.kind === 'value' && (f.familySum.realised.coverage ?? 1) < 1, 'family realised PARTIAL');
+    near(v(f.familySum.realised), 150000, 'family realised over the known lot');
+    isMissing(f.familySum.coverage.economicGainNotComputed, NA, /unknown economic gain/, 'family economic gain not computed');
     assert.equal(f.familySumValues.lotsGainUnknown, 1);
     assert.equal(f.familySum.coverage.partial, true);
   });
@@ -714,18 +719,18 @@ describe('Gate B round 1: unknown gains never read as 0 (B1), the anniversary da
     const r = run([known, blankSale], [A_(2025)]);
     assert.equal(r.g[1]!.notComputed, 'amount-missing');
     const p = pyR(r, 2025, CLIENT_A);
-    assert.ok(p.values.realised.kind === 'value' && (p.values.realised.coverage ?? 1) < 1, 'realised is PARTIAL');
+    assert.ok(p.realised.kind === 'value' && (p.realised.coverage ?? 1) < 1, 'realised is PARTIAL');
     assert.equal(p.values.lotsGainUnknown, 1);
-    isMissing(p.values.economicGainNotComputed, NA, /unknown economic gain/, 'economic gain not computed');
+    isMissing(p.coverage.economicGainNotComputed, NA, /unknown economic gain/, 'economic gain not computed');
     // Only the unknown lot: the realised total itself is missing, with the count.
     const only = pyR(run([blankSale], [A_(2025)]), 2025, CLIENT_A);
-    isMissing(only.values.realised, NA, /^1 lot has an unknown economic gain/, 'realised of unknown lots only');
+    isMissing(only.realised, NA, /^1 lot has an unknown economic gain/, 'realised of unknown lots only');
     // A lot left out with a known gain (tax class not set, KA-21): the gain left out is a figure, the realised complete.
     const c = ka('KA-21');
     const k = pyR(run(c.lots, c.personYear, { inputs: c.inputs }), 2025, CLIENT_A);
     assert.equal(k.values.lotsGainUnknown, 0);
-    near(v(k.values.economicGainNotComputed), 20000, 'KA-21: economic gain Rs 20,000.00 left out, known');
-    assert.equal(k.values.realised.kind === 'value' && k.values.realised.coverage, undefined, 'realised complete');
+    near(v(k.coverage.economicGainNotComputed), 20000, 'KA-21: economic gain Rs 20,000.00 left out, known');
+    assert.equal(k.realised.kind === 'value' && k.realised.coverage, undefined, 'realised complete');
   });
 
   test('B2: an anniversary lot whose long-term rule is to be confirmed (EQ-FOF-2) makes the alternative the dash, never its short-term figure', () => {
@@ -743,7 +748,7 @@ describe('Gate B round 1: unknown gains never read as 0 (B1), the anniversary da
     const r = run(lots, [A_(2018, { slabPct: 30 })], { inputs: { scheme: [{ schemeKey: fof.toLowerCase(), fy: null, etfFof9090: true }] } as Partial<TaxInputs> });
     const g = r.g[1]!;
     assert.equal(g.ruleId, 'EQ-FOF-1');
-    assert.equal(g.anniversaryLongTerm, null);
+    isMissing(g.anniversaryLongTerm?.taxableGain, NA, /rule to be confirmed/, 'the contract field holds the dash (C4-1)');
     assert.equal(g.anniversaryLongTermDetail?.ruleId, 'EQ-FOF-2');
     isMissing(g.anniversaryLongTermDetail?.taxableGain, NA, /rule to be confirmed/, 'the FoF lot\'s long-term gain');
     assert.equal(r.g[2]!.anniversaryLongTermDetail?.ruleId, 'EQ-LT-3');
@@ -769,13 +774,13 @@ describe('Gate B round 1: unknown gains never read as 0 (B1), the anniversary da
     const b = p.buckets.find((x) => x.ruleId === 'EQ-LT-7')!;
     assert.ok(b, 'the EQ-LT-7 bucket');
     near(b.gain, 300000, 'gain');
-    near(b.setOff, 250000, 'set-off');
+    near(v(b.setOff), 250000, 'set-off');
     near(b.exemption, 50000, 'the exemption after set-off');
-    near(b.taxable, 0, 'taxable, never negative');
+    near(v(b.taxable), 0, 'taxable, never negative');
     near(b.tax, 0, 'bucket tax');
-    near(p.exemption.applied, 50000, 'exemption applied');
-    near(v(p.values.exemptionApplied), 50000, 'exemption applied (Value)');
-    assert.deepEqual(p.unabsorbed, { st: 0, lt: 0 });
+    near(v(p.exemption.applied), 50000, 'exemption applied');
+    near(v(p.exemption.applied), 50000, 'exemption applied (Value)');
+    assert.deepEqual([v(p.unabsorbed.st), v(p.unabsorbed.lt)], [0, 0]);
     checkEstimate(p.estimate, { tax: 0, surcharge: 0, cess: 0, total: 0 }, 'T3');
   });
 
@@ -784,12 +789,12 @@ describe('Gate B round 1: unknown gains never read as 0 (B1), the anniversary da
     const p = py(r.roll, 2027, CLIENT_A);
     const open = 'the annual exemption of the year is to be confirmed';
     isMissing(p.exemption.limit, NA, open, 'exemption limit');
-    isMissing(p.values.exemptionApplied, NA, open, 'exemption applied');
+    isMissing(p.exemption.applied, NA, open, 'exemption applied');
     // The exemption block decides first, ahead of the surcharge and cess of the year (also to be confirmed).
     for (const k of ['tax', 'surcharge', 'cess', 'total'] as const) isMissing(p.estimate[k], NA, open, `estimate ${k}`);
     for (const bk of p.buckets) {
       isMissing(bk.values.exemption, NA, open, `${bk.ruleId} exemption`);
-      isMissing(bk.values.taxable, NA, open, `${bk.ruleId} taxable`);
+      isMissing(bk.taxable, NA, open, `${bk.ruleId} taxable`);
     }
   });
 
@@ -844,5 +849,80 @@ describe('the ids this file is assigned (design §14 coverage table: tax/rollup)
   test('clients-unmatched (the roll-up part), anniversary-sale and old-law-choice were raised here', () => {
     const seen = new Set(RAISED.map((i) => i.ruleId.replace('capital-gains.', '')));
     for (const id of ['clients-unmatched', 'anniversary-sale', 'old-law-choice', ...S3_ISSUE_IDS]) assert.ok(seen.has(id), id);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// contracts-4 C4-2 (CHAT-012's review of 28 Nov 2026, delta 1): the person key "person:n" is numbered by first appearance
+// within one statement file and bound to that file's id; an entry for another file is never applied to anyone.
+
+describe('contracts-4 C4-2: the tax person key is bound to the statement file', () => {
+  const OTHER = 'e'.repeat(64) as SourceFileId;
+  const EQ3 = { scheme: 'Sample Flexi Cap Fund - Regular Plan - Growth', asset: 'Equity', category: 'Flexi Cap Funds' } as const;
+  // Two PAN persons, each an EQ-LT-7 gain of Rs 2,00,000 sold 11 Aug 2025: A under PAN 1, B under PAN 2.
+  const a: KaLot = { ...EQ, accountName: accountWithPan(CLIENT_A, 1), buy: [2021, 4, 5], sell: [2025, 8, 11], units: 1000, buyNav: 100, sellNav: 300 };
+  const b: KaLot = { ...EQ3, client: CLIENT_B, accountName: accountWithPan(CLIENT_B, 2), buy: [2021, 4, 5], sell: [2025, 8, 11], units: 1000, buyNav: 100, sellNav: 300 };
+  // The analyst's surcharge entry for person:2 of the first file (SRC, parseLots' default id).
+  const forPerson2: KaPersonYear = { personKey: 'person:2', fy: 2025, slabPct: null, surchargePct: 10, regime: 'new' };
+  const NOT_SET = 'before surcharge (rate not set)';
+  const forbidden = new RegExp(`[${String.fromCharCode(0x2013, 0x2014, 0x20b9)}]|Rs|9150\\d{4}`);
+  const stale = (r: RollupResult): TaxIssue | undefined => r.issues.find((i) => i.ruleId === PERSON_INPUTS_STALE);
+
+  test('the same file read twice gives the same keys, labels and source, and the entry applies to its person', () => {
+    const r1 = run([a, b], [forPerson2]);
+    const r2 = run([a, b], [forPerson2]);
+    const keys = (r: Run): unknown[] => year(r.roll, 2025).persons.map((p) => [p.personKey, p.personLabel, p.personSource]);
+    assert.deepEqual(keys(r1), [['person:1', `${CLIENT_A} (Person 1)`, SRC], ['person:2', `${CLIENT_B} (Person 2)`, SRC]]);
+    assert.deepEqual(keys(r2), keys(r1));
+    for (const r of [r1, r2]) {
+      const [p1, p2] = year(r.roll, 2025).persons;
+      // By hand: (2,00,000 - 1,25,000) x 12.5% = 9,375.00; the entry's 10% surcharge 937.50 on person:2 only.
+      assert.deepEqual(p2!.inputSource, { by: 'person' });
+      near(v(p2!.estimate.surcharge), 937.5, 'person:2 surcharge');
+      assert.equal(p1!.inputSource, null);
+      assert.equal(p1!.estimate.surchargeLabel, NOT_SET);
+      assert.equal(stale(r.roll), undefined);
+    }
+  });
+
+  test('the same rows reordered, read as a new file: no saved entry applies, and the Warning counts it', () => {
+    const r = run([b, a], [forPerson2], { extra: { sourceId: OTHER } });
+    const y = year(r.roll, 2025);
+    assert.deepEqual(y.persons.map((p) => [p.personKey, p.personLabel, p.personSource]),
+      [['person:1', `${CLIENT_B} (Person 1)`, OTHER], ['person:2', `${CLIENT_A} (Person 2)`, OTHER]]);
+    for (const p of y.persons) {
+      assert.equal(p.inputSource, null, p.personKey);
+      assert.equal(p.estimate.surchargeLabel, NOT_SET, p.personKey);
+      near(v(p.estimate.tax), 9375, `${p.personKey} tax, before surcharge`);
+    }
+    const w = stale(r.roll);
+    assert.ok(w, 'tax.person-inputs-stale');
+    assert.deepEqual([w!.severity, w!.count, w!.scope], ['Warning', 1, { kind: 'file', sourceId: OTHER }]);
+    assert.equal(hasPanShape(w!.message), false);
+    assert.doesNotMatch(w!.message, forbidden);
+    assert.deepEqual(r.roll.refusals, []);
+    // Entered again for the new file, the entry applies to that file's person.
+    const again = run([b, a], [{ ...forPerson2, personKey: 'person:1', personSource: OTHER }], { extra: { sourceId: OTHER } });
+    const p1 = year(again.roll, 2025).persons[0]!;
+    assert.equal(p1.personLabel, `${CLIENT_B} (Person 1)`);
+    assert.deepEqual(p1.inputSource, { by: 'person' });
+    near(v(p1.estimate.surcharge), 937.5, 'the new entry applies');
+    assert.equal(stale(again.roll), undefined);
+  });
+
+  test('an entry for person:2 never reaches person:1 (or the new person:2) after a reorder', () => {
+    // The saved entry also carries "person:2" in clientId, the way entries were keyed before contracts-4: a reorder
+    // must not attach it to whichever person now has that number.
+    const saved: TaxInputs['personYear'][number] = {
+      clientId: 'person:2' as ClientId, personKey: 'person:2', personSource: SRC, fy: 2025, slabPct: null, surchargePct: 10,
+      regime: 'new', assesseeMark: null,
+    };
+    const imp = parseLots([b, a], { sourceId: OTHER });
+    const { roll } = realiseAndRoll(imp, { ...emptyTaxInputs(), personYear: [saved] });
+    for (const p of year(roll, 2025).persons) {
+      assert.equal(p.inputSource, null, p.personKey);
+      assert.equal(p.estimate.surchargeLabel, NOT_SET, p.personKey);
+    }
+    assert.equal(stale(roll)?.count, 1);
   });
 });

@@ -41,10 +41,7 @@ function statementOf(m: Record<string, number | Value<number>>, fy = FY): Statem
       fy,
       persons: Object.entries(m).map(([c, v]) => ({
         clientId: clientIdOf(c), inReview: true, personKey: clientIdOf(c) as string,
-        values: {
-          realised: present(0, 'inr', PROV), exemptionApplied: typeof v === 'number' ? present(v, 'inr', PROV) : v,
-          unabsorbed: { st: present(0, 'inr', PROV), lt: present(0, 'inr', PROV) },
-        },
+        exemption: { limit: present(125000, 'inr', PROV), applied: typeof v === 'number' ? present(v, 'inr', PROV) : v },
       })),
     }],
   };
@@ -52,7 +49,7 @@ function statementOf(m: Record<string, number | Value<number>>, fy = FY): Statem
 
 function ctxOf(i: Inputs, extra: Partial<HarvestContext> = {}): HarvestContext {
   const personYear: TaxInputs['personYear'] = Object.entries(i.slab ?? {}).map(([c, pct]) => ({
-    clientId: clientIdOf(c), fy: FY, slabPct: pct, surchargePct: null, regime: null, assesseeMark: null,
+    clientId: clientIdOf(c), personKey: clientIdOf(c) ?? '', personSource: null, fy: FY, slabPct: pct, surchargePct: null, regime: null, assesseeMark: null,
   }));
   const exemptionUsed: TaxInputs['exemptionUsed'] = Object.entries(i.exemptionUsed ?? {}).map(([c, amount]) => ({ clientId: clientIdOf(c), fy: FY, amount }));
   return { asOn: AS_ON, inputs: { personYear, exemptionUsed }, statement: i.statement ? statementOf(i.statement) : null, ...extra };
@@ -174,14 +171,14 @@ describe('Q-52: the exemption only when the amount used is known', () => {
   test('an amount used above the limit is limited to it: nothing unused', () => {
     const h = run(specs, ctxOf({ exemptionUsed: { [A]: 200000 } })).clients[0]!;
     assert.equal(h.exemptionApplied, 'applied');
-    assert.equal(h.exemption.used, 125000);
+    assert.equal(h.exemption.used.kind === 'value' ? h.exemption.used.v : null, 125000);
     near(h.figures.taxBefore, 37500, 'taxBefore');
   });
   test('a year whose exemption is to be confirmed applies none', () => {
     const h = run(specs, ctxOf({ exemptionUsed: { [A]: 'unused-confirmed' } }, { asOn: ymdToDay(2027, 9, 30)! })).clients[0]!;
     assert.equal(h.fy, 2027);
     assert.equal(h.exemptionApplied, EXEMPTION_NOT_APPLIED);
-    assert.equal(h.exemption.limit, null);
+    assert.equal(h.exemption.limit.kind, 'missing');
   });
 });
 
@@ -461,7 +458,7 @@ describe('round 4 S-1 (the financial review of 7c6c4e9; Q-49): slab-rate pools l
   const JAN25 = ymdToDay(2025, 1, 31)!;
   const ctx25 = (slab: number | null): HarvestContext => ({
     asOn: JAN25,
-    inputs: { personYear: slab === null ? [] : [{ clientId: clientIdOf(A), fy: 2024, slabPct: slab, surchargePct: null, regime: null, assesseeMark: null }], exemptionUsed: [] },
+    inputs: { personYear: slab === null ? [] : [{ clientId: clientIdOf(A), personKey: clientIdOf(A) ?? '', personSource: null, fy: 2024, slabPct: slab, surchargePct: null, regime: null, assesseeMark: null }], exemptionUsed: [] },
     statement: null,
   });
   const cov = (v: Value<number>): number | undefined => (v.kind === 'value' ? v.coverage : undefined);
@@ -484,6 +481,12 @@ describe('round 4 S-1 (the financial review of 7c6c4e9; Q-49): slab-rate pools l
       for (const v of [a.taxBefore, a.taxAfter, a.saving]) assert.match(v.kind === 'missing' ? v.reason : '', /Commodity ETF, short term; every gain is at the slab rate/);
       assert.ok(a.labels.includes(`${SLAB_ONE}: Commodity ETF, short term (${STATUS.NOT_AVAILABLE})`), JSON.stringify(a.labels));
       assert.equal(a.figures.unquantifiedGain, 3000);
+      // contracts-4 (carried note): the plain tax figures follow the Values, null, never 0, for the client and the family.
+      for (const k of ['taxBefore', 'taxAfter', 'saving'] as const) {
+        assert.equal(a.figures[k], null, `slab ${slab}: client ${k}`);
+        assert.equal(family.figures[k], null, `slab ${slab}: family ${k}`);
+      }
+      assert.equal(a.allSlab !== null && a.allSlab.startsWith(SLAB_ONE), true);
     }
   });
 
@@ -569,5 +572,14 @@ describe('round 4 S-3 (the delta review of 0b95ff3; Q-49): an all-slab harvest i
     const f = family.taxBefore;
     assert.ok(f.kind === 'value' && Math.abs(f.v - 3750) <= 0.01 && Math.abs((f.coverage ?? -1) - 30000 / 37000) < 1e-12, JSON.stringify(f));
     assert.match(f.kind === 'value' ? f.prov.method : '', /slab-rate gains of 2 pools not in the tax figures/);
+    // contracts-4 (carried note): B's plain tax figures are null like its Values; A's and the family's plain figures are
+    // unchanged (B adds no tax at a rate, as before).
+    for (const k of ['taxBefore', 'taxAfter', 'saving'] as const) assert.equal(b.figures[k], null, `B ${k}`);
+    assert.equal(a.allSlab, null);
+    near(a.figures.taxBefore, 3750, 'A plain tax before');
+    near(family.figures.taxBefore, 3750, 'family plain tax before');
+    near(family.figures.taxAfter, a.figures.taxAfter!, 'family plain tax after');
+    // The plain losses still stand (S-1): only the tax figures follow the slab Values.
+    assert.notEqual(b.usedLosses.st, undefined);
   });
 });

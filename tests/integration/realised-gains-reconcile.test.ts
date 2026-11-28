@@ -266,12 +266,31 @@ describe('the review figure tax.realisedFY: the statement where it covers the ye
     near(v(fy.total), 2400, 'total');
   });
 
-  test('neither side: no source and a total of 0 over no client', () => {
+  test('neither side: no source, and the figures missing over no client (contracts-4 B-4; it read Rs 0 before)', () => {
     const fy = realisedForYear(2020, der, st);
     assert.equal(fy.source, null);
+    assert.equal(fy.clientId, null);
     assert.equal(fy.clients.length, 0);
-    near(v(fy.total), 0, 'total');
+    assert.equal(fy.schemesLeftOut, 0);
+    for (const x of [fy.total, fy.st, fy.lt, fy.unknownTerm]) {
+      assert.ok(x.kind === 'missing' && x.status === STATUS.NOT_AVAILABLE && /^no client of the review has a realised figure in this year/.test(x.reason), JSON.stringify(x));
+    }
     assert.deepEqual(fy.outsideReview.clients, []);
+  });
+
+  test('contracts-4 (C4-5, B-4): RealisedForYear.source is null only when the total is missing; each client entry is one', () => {
+    for (const y of [2020, 2023, 2024, 2025, 2026]) {
+      for (const fy of [realisedForYear(y, der, st), realisedForYear(y, der, null), realisedForYear(y, null, st)]) {
+        if (fy.source === null) assert.equal(fy.total.kind, 'missing', `${y}: source null with a total`);
+        assert.equal(fy.schemesLeftOut, fy.clients.reduce((n, c) => n + c.schemesLeftOut, 0));
+        for (const c of fy.clients) {
+          assert.equal(c.fy, y);
+          assert.notEqual(c.source, null);
+          assert.notEqual(c.source, MIXED_SOURCE);
+        }
+      }
+    }
+    assert.equal(MIXED_SOURCE, 'mixed');
   });
 });
 

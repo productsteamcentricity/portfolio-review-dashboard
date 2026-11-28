@@ -646,7 +646,7 @@ const enteredLikeLive = (asOn: DayNumber) => (clients: Array<ClientId | null>): 
   return {
     asOn,
     inputs: {
-      personYear: ids.map((clientId) => ({ clientId, fy, slabPct: 30, surchargePct: null, regime: null, assesseeMark: null })),
+      personYear: ids.map((clientId) => ({ clientId, personKey: clientId as string, personSource: null, fy, slabPct: 30, surchargePct: null, regime: null, assesseeMark: null })),
       exemptionUsed: ids.map((clientId) => ({ clientId, fy, amount: 'unused-confirmed' as const })),
     },
   };

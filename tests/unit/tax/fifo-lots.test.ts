@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { readWorkbook } from '../../../app/src/ingest/workbook.ts';
 import { parseBaseFile } from '../../../app/src/ingest/base-file.ts';
 import { parseIrrFile } from '../../../app/src/ingest/irr-file.ts';
+import { STATUS } from '../../../app/src/model/status.ts';
 import { computeTaxLots, lotLocked, lotTerm, toTaxPosition } from '../../../app/src/engine/tax/lots.ts';
 import type { TaxLotsResult, TaxPositionRecord } from '../../../app/src/engine/tax/lots.ts';
 import { INST, TAX_RULES_I21, i21ByInst } from '../../../app/src/engine/tax/classify.ts';
@@ -119,8 +120,14 @@ describe('FIFO lots (hand-worked)', () => {
     near(x.unclassified.cmv, 0); near(x.unclassified.gain, 0);
     assert.equal(x.lots, 2);
     assert.deepEqual(x.lotDetail.map((l) => [l.day, Math.round(l.units * 1e6) / 1e6, l.bucket]), [[day(2025, 6, 10), 60, 'long'], [day(2026, 1, 10), 125, 'short']]);
-    const tp = toTaxPosition(x)!;
-    near(tp.lt.gain + tp.st.gain + tp.unclassifiedGain, 2850, 'contract gain');
+    const tp = toTaxPosition(x);
+    const n = (g: { kind: string; v?: number }): number => (g.kind === 'value' ? g.v! : NaN);
+    near(n(tp.lt.gain) + n(tp.st.gain) + n(tp.unclassifiedGain), 2850, 'contract gain');
+    // contracts-4 (C4-3): the contract's new fields, as the record holds them.
+    assert.deepEqual([tp.notSplitKind, tp.fundLevel, tp.locked, tp.oversoldUnits], [null, false, null, null]);
+    assert.deepEqual(tp.counts, { laterTrades: 0, noPrice: 0, untyped: 0 });
+    near(n(tp.unclassified.gain), 0, 'contract unclassified gain');
+    assert.deepEqual([tp.product, tp.asset], [null, null], 'no holding facts given');
   });
 
   test('OD-16 kinds: top-up, STP in and SWP move lots; untyped and unrecognised rows are counted and named', () => {
@@ -140,6 +147,8 @@ describe('FIFO lots (hand-worked)', () => {
     near(x.lt.cmv, 18000); near(x.lt.gain, 3000); near(x.st.cmv, 0);
     assert.deepEqual(r.counts.unrecognised, [{ label: 'Dividend Reinvest', rows: 1 }]);
     assert.equal(r.counts.untyped, 1);
+    // contracts-4 (C4-3): the holding's own count of rows with no type.
+    assert.deepEqual(x.counts, { laterTrades: 0, noPrice: 0, untyped: 1 });
     assert.equal(r.counts.valuation, 1);
     assert.equal(r.counts.trades, 3);
   });
@@ -158,6 +167,8 @@ describe('FIFO lots (hand-worked)', () => {
     assert.equal(x.viaSwitchIn, true);
     near(x.lt.cmv, 48000); near(x.lt.gain, 8000);
     assert.equal(r.counts.noPrice, 1);
+    // contracts-4 (C4-3): the holding's own count of trades without a price.
+    assert.equal(x.counts.noPrice, 1);
   });
 
   test('rupee-only PMS and an AIF are not split (OD-12, D-040 d, h)', () => {
@@ -293,7 +304,7 @@ describe('FIFO lots (hand-worked)', () => {
     ]);
     const x = one(r, BLUE);
     near(x.lt.cmv, 11000); near(x.lt.gain, 1000);
-    assert.equal(x.laterTrades, 1);
+    assert.equal(x.counts.laterTrades, 1);
     assert.equal(r.counts.later, 1);
     assert.deepEqual(r.counts.laterInstruments, [BLUE]);
   });
@@ -362,7 +373,11 @@ describe('FIFO lots (hand-worked)', () => {
     assert.equal(x.gain, null);
     assert.equal(x.lt.gain, null);
     near(x.lt.cmv, 12000);
-    assert.equal(toTaxPosition(x), null);
+    // contracts-4 (C4-3): the contract form carries every gain as a missing Value (KI-007), never 0 (it was null before).
+    const tp = toTaxPosition(x);
+    for (const g of [tp.gain, tp.lt.gain, tp.st.gain, tp.unclassifiedGain]) {
+      assert.ok(g.kind === 'missing' && g.status === STATUS.NOT_AVAILABLE && /KI-007/.test(g.reason), JSON.stringify(g));
+    }
   });
 
   test('unmapped and unreconciled holdings keep their whole CMV unclassified, with the live reasons', () => {
@@ -396,7 +411,7 @@ describe('Gate B of aa67a45 (ARC-03): transfer and bonus rows, oversells and zer
     const harvest = buildHarvests(rollup, {
       asOn: AS_ON,
       inputs: {
-        personYear: ids.map((clientId) => ({ clientId, fy, slabPct: 30, surchargePct: null, regime: null, assesseeMark: null })),
+        personYear: ids.map((clientId) => ({ clientId, personKey: clientId as string, personSource: null, fy, slabPct: 30, surchargePct: null, regime: null, assesseeMark: null })),
         exemptionUsed: ids.map((clientId) => ({ clientId, fy, amount: 'unused-confirmed' as const })),
       },
     });
@@ -414,7 +429,10 @@ describe('Gate B of aa67a45 (ARC-03): transfer and bonus rows, oversells and zer
     near(x.unclassified.cmv, 15500, 'unclassified cmv'); near(x.unclassified.gain, 500, 'unclassified gain');
     assert.equal(x.lt.cmv + x.st.cmv, 0);
     assert.match(x.reason!, /transfer in, stock in or demerger in\. Its lots would be dated and costed by the transfer/);
-    assert.equal(toTaxPosition(x)!.status, 'unreconciled');
+    assert.equal(toTaxPosition(x).status, 'unreconciled');
+    // contracts-4 (C4-3): the not-split kind, and the long and short gains missing, never 0.
+    assert.equal(toTaxPosition(x).notSplitKind, 'transfer-row');
+    assert.equal(toTaxPosition(x).lt.gain.kind, 'missing');
   });
 
   test('B3: stock in and demerger in rows are unreconciled the same way, even when the units reconcile', () => {

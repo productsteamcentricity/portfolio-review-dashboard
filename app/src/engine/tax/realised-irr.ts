@@ -48,7 +48,9 @@
 // to the month end as rules.ts `anniversaryOf`). The IRR file has no record date, so the bonus row's date stands for it.
 // Output: the engine-local DerivedLot (the contract's RealisedGain with `source: 'derived from transactions'` and the
 // lines the contract does not hold), and per scheme and financial year the totals. Derived lots carry no tax
-// computation in S5: the tax class, rule and taxable gain are missing (notComputed 'tax-class-not-set').
+// computation in S5: the tax class, rule and taxable gain are missing (notComputed 'derived-not-taxed', contracts-4
+// C4-5). A derived lot has lotIndex -1 (lotMarks apply to statement lots only), eventId and tagAssetText null, and
+// inReview true when its client has a holding in the base file (true when no holdings are given; C4-7).
 // Money in rupees, unrounded (LD-42). Pure. Messages carry counts and type labels only: never a client, folio or amount.
 
 import type { Holding } from '../../model/holding.ts';
@@ -76,9 +78,8 @@ export { UNITS_TOLERANCE };
 
 export const DERIVED_SOURCE = 'derived from transactions' as const;
 
-/** Why a derived lot's cost and realised gain are not computed. */
-export type DerivedGap = 'sale-without-price' | 'purchase-without-price' | 'units-beyond-held' | 'transfer-row' | 'bonus-row'
-  | 'sale-without-amount' | 'after-earlier-gap' | 'merger-candidate';
+/** Why a derived lot's cost and realised gain are not computed (the contract's RealisedGain.gap, C4-5). */
+export type DerivedGap = NonNullable<RealisedGain['gap']>;
 
 export const DERIVED_GAPS: readonly DerivedGap[] = ['sale-without-price', 'purchase-without-price', 'units-beyond-held', 'transfer-row', 'bonus-row',
   'sale-without-amount', 'after-earlier-gap', 'merger-candidate'];
@@ -197,8 +198,6 @@ export type DerivedLot = RealisedGain & {
   i21: string | null;
   /** The table v1 row (rules.ts ruleFor) whose holding period gave the term at the sale date; null when not known. */
   termRule: string | null;
-  /** Null for a computed lot; the gap otherwise (cost and realised missing). */
-  gap: DerivedGap | null;
   financialYearLabel: string;
   /**
    * Round 2c: on a 'merger-candidate' gap lot, its role (the candidate's switch out, or a sale of the scheme switched
@@ -330,6 +329,8 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
   const join = opts.join ?? matcherJoin(holdings, fund);
   const byInst = i21ByInst(opts.table ?? TAX_RULES_I21);
   const holdingById = new Map(holdings.map((h) => [h.id, h]));
+  // C4-7: a derived lot is of the review when its client has a holding in the base file (all are, with no holdings given).
+  const reviewClientIds = opts.holdings ? new Set(holdings.map((h) => h.clientId)) : null;
   const counts: DerivedCounts = {
     flows: fund.length, trades: 0, sales: 0, purchases: 0, valuation: 0, untyped: 0, unrecognised: [], later: 0,
     salesWithoutPrice: 0, purchasesWithoutPrice: 0, instrumentsTermUnknown: 0, instrumentsOutsideTable: 0, mergerCandidates: 0,
@@ -362,8 +363,8 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
   // Round 2c (MOD-05's merger condition; Q-49): the switch pairs that look like a scheme merger.
   const merger = mergerCandidates(used);
   counts.mergerCandidates = merger.pairs;
-  // TODO(contracts-4): the analyst's answer to a merger candidate (a merger, or an ordinary switch) needs a model field;
-  // until then every candidate stays a 'merger-candidate' gap without a statement.
+  // The analyst's answer to a merger candidate is TaxInputs.switchAnswers (contracts-4 C4-6); it is not applied in this
+  // build (the owner's Q-T5 first), so every candidate stays a 'merger-candidate' gap without a statement.
 
   // 2. The ledger of each instrument.
   const lots: DerivedLot[] = [];
@@ -468,8 +469,9 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
           purchaseDate: buyDated ? present(buy!.day, 'date', prov) : missing(STATUS.NOT_AVAILABLE, gapWhy ?? 'no purchase', prov),
           realised, financialYear: fy.start, financialYearLabel: fy.label,
           taxClass: noTax, listed: noTax, subType: 'none', lotClass: 'standard', term, ruleId: null, costForTax: noTax,
-          costBasis: 'none', taxableGain: noTax, notComputed: 'tax-class-not-set', legs: null, anniversaryLongTerm: null,
-          duplicateOf: null, excludedAsRepeat: false, statement: null, flags,
+          costBasis: 'none', taxableGain: noTax, notComputed: 'derived-not-taxed', legs: null, anniversaryLongTerm: null,
+          duplicateOf: null, excludedAsRepeat: false, statement: null, flags, tagAssetText: null, lotIndex: -1, eventId: null,
+          inReview: reviewClientIds === null || reviewClientIds.has(t.clientId),
           instrumentKey: key, instrumentName: t.instrumentName, clientLabel: t.clientLabel, saleKind: t.kind,
           saleRow: t.kind !== 'transfer-out' && amt > EPS,
           buyAt: buy?.at ?? null, buyKind: buy?.kind ?? null, i21: ra?.rule.inst ?? null, termRule, gap: o.gap,

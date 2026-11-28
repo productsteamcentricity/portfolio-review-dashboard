@@ -148,8 +148,7 @@ describe('all three inputs: holdings, IRR file and statement', () => {
       assert.equal(p.record.status, 'ok', name);
       assert.equal(p.record.taxRule, INST.equityMf);
       near(p.record.lt.cmv, cmv, `${name} long`); near(p.record.lt.gain, gain, `${name} gain`);
-      assert.ok(p.position !== null);
-      near(p.position!.lt.gain, gain, `${name} TaxPosition`);
+      near(v(p.position.lt.gain), gain, `${name} TaxPosition`);
     }
     near(v(ALL.holdings.unrealised.lt), 6350, 'unrealised lt');
     near(v(ALL.holdings.unrealised.st), 0, 'unrealised st');
@@ -166,11 +165,11 @@ describe('all three inputs: holdings, IRR file and statement', () => {
     // year, so not applied; no gain, a long-term loss of 800, unused; Midcap the one candidate.
     const st = part(ALL.statement, 'statement').years.find((y) => y.fy === 2026)!;
     const pa = st.persons.find((p) => p.clientId === A_ID)!;
-    near(pa.realised, 3000, 'A realised'); near(v(pa.values.exemptionApplied), 3000, 'A exemption applied'); near(v(pa.estimate.total), 0, 'A tax');
+    near(v(pa.realised), 3000, 'A realised'); near(v(pa.exemption.applied), 3000, 'A exemption applied'); near(v(pa.estimate.total), 0, 'A tax');
     const a = harvestOf(ALL, A_ID);
     assert.equal(a.exemptionApplied, 'applied');
     assert.equal(a.exemption.source, 'statement');
-    near(a.exemption.used, 3000, 'used'); near(a.exemption.available, 122000, 'available');
+    near(v(a.exemption.used), 3000, 'used'); near(a.exemption.available, 122000, 'available');
     near(a.figures.s198Gains, 7150, 's198'); near(a.figures.taxBefore, 0, 'before'); near(a.figures.taxAfter, 0, 'after');
     const b = harvestOf(ALL, B_ID);
     assert.equal(b.exemptionApplied, EXEMPTION_NOT_APPLIED);
@@ -358,7 +357,7 @@ describe('H-1 to H-6 and R2-H7 through the seam (holdings and IRR file, no state
     const id = (label: string): ClientId => idOf(holdings, label);
     const tax: TaxInputs = {
       ...emptyTaxInputs(),
-      personYear: Object.entries(inputs.slab ?? {}).map(([c, pct]) => ({ clientId: id(c), fy: 2026, slabPct: pct, surchargePct: null, regime: null, assesseeMark: null })),
+      personYear: Object.entries(inputs.slab ?? {}).map(([c, pct]) => ({ clientId: id(c), personKey: id(c) as string, personSource: null, fy: 2026, slabPct: pct, surchargePct: null, regime: null, assesseeMark: null })),
       exemptionUsed: Object.entries(inputs.exemptionUsed ?? {}).map(([c, amount]) => ({ clientId: id(c), fy: 2026, amount })),
     };
     return reviewTax({ holdings, asOnDay: AS_ON_DAY, irr: irrImport(flows, xlsx), statement: null, inputs: tax }, { now: NOW });
@@ -417,14 +416,14 @@ describe('KA-9 to KA-22 through the seam (holdings and statement, no IRR file): 
         case 'totalUnrounded': assert.ok(Math.abs(v(p.estimate.total)! - (want as number)) < 0.0001, `${w} total unrounded`); break;
         case 'partial': assert.equal(p.coverage.partial, want, `${w} partial`); break;
         case 'lotsNotComputed': assert.equal(p.coverage.lotsNotComputed, want, `${w} lots not computed`); break;
-        case 'economicGainNotComputed': near(p.coverage.economicGainNotComputed, want as number, `${w} gain not computed`); break;
-        case 'exemptionApplied': near(p.exemption.applied, want as number, `${w} exemption`); break;
+        case 'economicGainNotComputed': near(v(p.coverage.economicGainNotComputed), want as number, `${w} gain not computed`); break;
+        case 'exemptionApplied': near(v(p.exemption.applied), want as number, `${w} exemption`); break;
         case 'beforeSurcharge': assert.equal(p.estimate.beforeSurcharge, want, `${w} before surcharge`); break;
         case 'afterSetOffDash': assert.equal(p.afterSetOffDash, want, `${w} dash`); break;
         case 'slabTaxableLeftOut': near(p.slabTaxableLeftOut, want as number, `${w} slab left out`); break;
-        case 'realised': near(p.realised, want as number, `${w} realised`); break;
+        case 'realised': near(v(p.realised), want as number, `${w} realised`); break;
         case 'nonTaxable': near(p.nonTaxable, want as number, `${w} non-taxable`); break;
-        case 'unabsorbed': near(p.unabsorbed.st, (want as { st: number }).st, `${w} unabsorbed st`); near(p.unabsorbed.lt, (want as { lt: number }).lt, `${w} unabsorbed lt`); break;
+        case 'unabsorbed': near(v(p.unabsorbed.st), (want as { st: number }).st, `${w} unabsorbed st`); near(v(p.unabsorbed.lt), (want as { lt: number }).lt, `${w} unabsorbed lt`); break;
         case 'labels': for (const l of want as string[]) assert.ok(p.labels.includes(l), `${w} label ${l}`); break;
         case 'buckets':
           for (const b of want as Array<Record<string, unknown>>) {
@@ -432,7 +431,10 @@ describe('KA-9 to KA-22 through the seam (holdings and statement, no IRR file): 
             assert.ok(got, `${w} bucket ${String(b.ruleId)}`);
             for (const [f, z] of Object.entries(b)) {
               if (f === 'ruleId') continue;
-              if (f === 'rate') assert.equal(got!.rate, z); else near((got as unknown as Record<string, number>)[f], z as number, `${w} bucket ${String(b.ruleId)} ${f}`);
+              // contracts-4 (C4-1): setOff and taxable are Values.
+              if (f === 'rate') assert.equal(got!.rate, z);
+              else if (f === 'setOff' || f === 'taxable') near(v(got![f]), z as number, `${w} bucket ${String(b.ruleId)} ${f}`);
+              else near((got as unknown as Record<string, number>)[f], z as number, `${w} bucket ${String(b.ruleId)} ${f}`);
             }
           }
           break;
@@ -484,7 +486,7 @@ describe('KA-9 to KA-22 through the seam (holdings and statement, no IRR file): 
       est(y.familySum.estimate as EstimateLocal, e.family, `${id} family`);
       assert.equal(y.familySum.coverage.partial, e.family.partial, `${id} family partial`);
     }
-    if (e.realisedAllYears !== undefined) near(st.years.reduce((s, y) => s + y.familySum.realised, 0), e.realisedAllYears, `${id} realised over all years`);
+    if (e.realisedAllYears !== undefined) near(st.years.reduce((s, y) => s + (v(y.familySum.realised) ?? 0), 0), e.realisedAllYears, `${id} realised over all years`);
   }
   const cases = (CG_KA.rollup as KaCase[]).filter((c) => c.rollupFy === undefined);
   test('every person-year known answer the seam can read is run (KA-19 re-dates the roll-up input, so it is not a statement)', () => {
@@ -659,10 +661,14 @@ describe('financial review of 75561f0: the reviewer\'s book (KA-P1, KA-P2, P3, P
         assert.equal(x.kind, 'missing');
       }
       assert.match((t.holdings.rollup.legacy.unrealised.lt as { reason: string }).reason, /^no holding is split into long and short term: 1 holding not split/);
-      for (const r of t.holdings.positions) { assert.equal(r.record.status, 'unreconciled'); assert.equal(r.position, null); }
+      // contracts-4 (C4-3): the contract form of every record; its long and short gains missing, never 0 (it was null).
+      for (const r of t.holdings.positions) {
+        assert.equal(r.record.status, 'unreconciled');
+        for (const g of [r.position.lt.gain, r.position.st.gain]) assert.ok(g.kind === 'missing' && g.status === STATUS.NOT_AVAILABLE, JSON.stringify(g));
+      }
     }
-    // With the IRR file the split record keeps its contract form.
-    assert.ok(p().holdings.positions.every((r) => r.position !== null));
+    // With the IRR file the split record's gains are figures.
+    assert.ok(p().holdings.positions.every((r) => r.position.lt.gain.kind === 'value' && r.position.st.gain.kind === 'value'));
   });
 
   test('F-3 (P6): an IRR file covering one of two holdings makes the unrealised split and the harvest PARTIAL', () => {
