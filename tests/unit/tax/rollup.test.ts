@@ -925,4 +925,20 @@ describe('contracts-4 C4-2: the tax person key is bound to the statement file', 
     }
     assert.equal(stale(roll)?.count, 1);
   });
+
+  test('a malformed entry (a "person:n" key with no source file) is never applied and is counted as stale', () => {
+    // CHAT-012's mutant at Gate B of contracts-4: an exact match on personKey alone would attach this entry to
+    // whichever person now has number 2. No statement file owns a "person:n" key without a source, so it is refused.
+    const malformed: TaxInputs['personYear'][number] = {
+      clientId: null, personKey: 'person:2', personSource: null, fy: 2025, slabPct: null, surchargePct: 10,
+      regime: 'new', assesseeMark: null,
+    };
+    const imp = parseLots([a, b], { sourceId: SRC });
+    const { roll } = realiseAndRoll(imp, { ...emptyTaxInputs(), personYear: [malformed] });
+    for (const p of year(roll, 2025).persons) {
+      assert.equal(p.inputSource, null, p.personKey);
+      assert.equal(p.estimate.surchargeLabel, NOT_SET, p.personKey);
+    }
+    assert.equal(stale(roll)?.count, 1);
+  });
 });

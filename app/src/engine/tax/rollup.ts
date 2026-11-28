@@ -376,12 +376,14 @@ type InputPick =
 function personYearInputFor(inputs: TaxInputs, fy: number, fyLabel: string, p: PersonInfo, sourceId: SourceFileId,
   clientsInYear: ReadonlyMap<string, number>, labelOf: (c: ClientId) => string): InputPick {
   const own = personSourceOf(p.key, sourceId);
-  const exact = inputs.personYear.find((e) => e.fy === fy && e.personKey === p.key && e.personSource === own);
+  // Stale or malformed entries are never candidates (C4-2): they are counted in tax.person-inputs-stale instead.
+  const usable = inputs.personYear.filter((e) => !isStalePersonInput(e, sourceId));
+  const exact = usable.find((e) => e.fy === fy && e.personKey === p.key && e.personSource === own);
   if (exact) return { kind: 'applied', input: exact, source: { by: 'person' } };
   const found: Array<[ClientId, PersonYearInput]> = [];
   for (const c of p.reviewClients) {
     if ((clientsInYear.get(c) ?? 0) !== 1) continue;
-    const e = inputs.personYear.find((x) => x.fy === fy && x.personSource === null && x.clientId === c);
+    const e = usable.find((x) => x.fy === fy && x.personSource === null && x.clientId === c);
     if (e) found.push([c, e]);
   }
   if (found.length === 0) return { kind: 'none' };

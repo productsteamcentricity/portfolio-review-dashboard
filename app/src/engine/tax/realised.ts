@@ -82,11 +82,14 @@ export function personSourceOf(key: string, sourceId: SourceFileId): SourceFileI
 }
 
 /**
- * C4-2: a person-year entry bound to another statement file (its `personSource` set and not the accepted statement's
- * file id). Such an entry is never applied to anyone (the roll-up raises `tax.person-inputs-stale`).
+ * C4-2: a person-year entry that may not be applied: bound to another statement file (its `personSource` set and not
+ * the accepted statement's file id), or malformed (a "person:n" key with no `personSource`, which no statement file
+ * can own; CHAT-012's mutant at Gate B of contracts-4). Such an entry is never applied to anyone (the roll-up raises
+ * `tax.person-inputs-stale`).
  */
-export function isStalePersonInput(e: Pick<PersonYearInput, 'personSource'>, sourceId: SourceFileId | null): boolean {
-  return e.personSource !== null && e.personSource !== sourceId;
+export function isStalePersonInput(e: Pick<PersonYearInput, 'personSource' | 'personKey'>, sourceId: SourceFileId | null): boolean {
+  if (e.personSource === null) return /^person:\d+$/.test(e.personKey);
+  return e.personSource !== sourceId;
 }
 
 const val = <T>(r: CgRead<T>): T | null => (r.kind === 'value' ? r.v : null);
