@@ -1163,6 +1163,23 @@ describe('M7b B2 (KI-340): compound merger days, many into one per receiving sch
     assert.equal(r.counts.mergerCandidates, 3);
   });
 
+  test('review H2 on a not-decidable day: seventeen sources into Small Cap 2,500 and Flexi Cap 1,000 (mutant H2c)', () => {
+    // Seventeen schemes, each 8 u bought for 800 and emptied for 1,000 on 10 Nov 2023, into Small Cap (2,500) and Flexi
+    // Cap (1,000 = 10 u at 100). Over MANY_INTO_ONE_SOURCES the bounds cannot rule a fit into Small Cap out, so its
+    // sources are not decidable: ambiguous. Flexi Cap's 1,000 can be any one of them merged into it: its switch in is a
+    // lot not known, and its later sale (10 u at 120, 1,200 on 4 May 2026) is a successor gap. Treating the not-decidable
+    // fit as unambiguous would compute that sale at 200.
+    const names = Array.from({ length: 17 }, (_, i) => `Sample Many ${i + 1} Fund - Growth`);
+    const r = run([
+      ...names.flatMap((k) => [flow(A, k, [2019, 7, 1], 'Purchase', 100, -800), flow(A, k, M, 'Switch Out', 125, 1000)]),
+      flow(A, NEW, M, 'Switch In', 150, -2500), flow(A, FLEXI, M, 'Switch In', 100, -1000),
+      flow(A, FLEXI, [2026, 5, 4], 'Redemption', 120, 1200),
+    ]);
+    assert.ok(names.every((k) => lotsOf(r, k).every((x) => x.gap === 'merger-candidate')));
+    assert.deepEqual(gapsOf(r, FLEXI), [['merger-candidate', 'successor']]);
+    assert.equal(r.counts.mergerCandidates, 17);
+  });
+
   test('a subset is two or more sources: two emptied schemes of the same amount into one switch in stay computed', () => {
     // Contra and Value (100 u at 100 each) both switched out whole for 15,000 (at 150) on 10 Nov 2023, and Small Cap in
     // for 15,000. One into one fails (two possible partners), and no subset
