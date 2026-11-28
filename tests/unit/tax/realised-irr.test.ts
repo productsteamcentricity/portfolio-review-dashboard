@@ -13,6 +13,8 @@ import { deriveRealisedGains, DERIVED_SOURCE, UNITS_TOLERANCE } from '../../../a
 import * as realisedIrr from '../../../app/src/engine/tax/realised-irr.ts';
 import type { DerivedLot, DerivedRealised, DeriveOptions } from '../../../app/src/engine/tax/realised-irr.ts';
 import { consumeFifo } from '../../../app/src/engine/tax/lots.ts';
+// Round 3 J1's oracle test reads subsetsFitting through the namespace.
+import * as lotsMod from '../../../app/src/engine/tax/lots.ts';
 import { realisedForYear } from '../../../app/src/engine/tax/reconcile.ts';
 import { INST } from '../../../app/src/engine/tax/classify.ts';
 import { ymdToDay } from '../../../app/src/engine/dates.ts';
@@ -1123,12 +1125,17 @@ describe('M7b B2 (KI-340): compound merger days, many into one per receiving sch
       assert.equal(r.counts.mergerCandidates, 0, `${n}`);
       assert.ok(allComputed(r, n), `${n}`);
     }
-    // Seventeen (over the cap) into 2,500: the bounds cannot rule a fit out (total 17,000, the two smallest 2,000), so it
-    // is not decidable: all seventeen gaps, counted 17. Seventeen into 50,000: the total is short, nothing can fit: all
-    // computed.
+    // Seventeen (over the plain search) into 2,500: the bounds cannot rule a fit out (total 17,000, the two smallest
+    // 2,000); round 3 J1 searches it exactly by meet in the middle: no sum of 1,000s is 2,500, so all seventeen are
+    // computed, 0 counted (5b9028c: not decidable, all gaps, 17). Thirty-three (over MANY_INTO_ONE_SOURCES_SPLIT, 32)
+    // into 2,500: still not decidable: all gaps, counted 33. Seventeen into 50,000: the total is short, nothing can fit:
+    // all computed.
     const r17 = many(17, [[NEW, 2500]]);
-    assert.equal(r17.counts.mergerCandidates, 17);
-    assert.ok(allGaps(r17, 17));
+    assert.equal(r17.counts.mergerCandidates, 0);
+    assert.ok(allComputed(r17, 17));
+    const r33 = many(33, [[NEW, 2500]]);
+    assert.equal(r33.counts.mergerCandidates, 33);
+    assert.ok(allGaps(r33, 33));
     const r17b = many(17, [[NEW, 50000]]);
     assert.equal(r17b.counts.mergerCandidates, 0);
     assert.ok(allComputed(r17b, 17));
@@ -1163,13 +1170,14 @@ describe('M7b B2 (KI-340): compound merger days, many into one per receiving sch
     assert.equal(r.counts.mergerCandidates, 3);
   });
 
-  test('review H2 on a not-decidable day: seventeen sources into Small Cap 2,500 and Flexi Cap 1,000 (mutant H2c)', () => {
-    // Seventeen schemes, each 8 u bought for 800 and emptied for 1,000 on 10 Nov 2023, into Small Cap (2,500) and Flexi
-    // Cap (1,000 = 10 u at 100). Over MANY_INTO_ONE_SOURCES the bounds cannot rule a fit into Small Cap out, so its
+  test('review H2 on a not-decidable day: thirty-three sources into Small Cap 2,500 and Flexi Cap 1,000 (mutant H2c)', () => {
+    // Thirty-three schemes, each 8 u bought for 800 and emptied for 1,000 on 10 Nov 2023, into Small Cap (2,500) and
+    // Flexi Cap (1,000 = 10 u at 100). Over MANY_INTO_ONE_SOURCES_SPLIT (32; round 3 J1 searches up to it exactly, so the
+    // case of 5b9028c, seventeen sources, is now decided: no fit) the bounds cannot rule a fit into Small Cap out, so its
     // sources are not decidable: ambiguous. Flexi Cap's 1,000 can be any one of them merged into it: its switch in is a
     // lot not known, and its later sale (10 u at 120, 1,200 on 4 May 2026) is a successor gap. Treating the not-decidable
     // fit as unambiguous would compute that sale at 200.
-    const names = Array.from({ length: 17 }, (_, i) => `Sample Many ${i + 1} Fund - Growth`);
+    const names = Array.from({ length: 33 }, (_, i) => `Sample Many ${i + 1} Fund - Growth`);
     const r = run([
       ...names.flatMap((k) => [flow(A, k, [2019, 7, 1], 'Purchase', 100, -800), flow(A, k, M, 'Switch Out', 125, 1000)]),
       flow(A, NEW, M, 'Switch In', 150, -2500), flow(A, FLEXI, M, 'Switch In', 100, -1000),
@@ -1177,7 +1185,7 @@ describe('M7b B2 (KI-340): compound merger days, many into one per receiving sch
     ]);
     assert.ok(names.every((k) => lotsOf(r, k).every((x) => x.gap === 'merger-candidate')));
     assert.deepEqual(gapsOf(r, FLEXI), [['merger-candidate', 'successor']]);
-    assert.equal(r.counts.mergerCandidates, 17);
+    assert.equal(r.counts.mergerCandidates, 33);
   });
 
   test('a subset is two or more sources: two emptied schemes of the same amount into one switch in stay computed', () => {
@@ -1190,5 +1198,133 @@ describe('M7b B2 (KI-340): compound merger days, many into one per receiving sch
     ]);
     assert.equal(r.counts.mergerCandidates, 0);
     assert.deepEqual([...lotsOf(r, OLD), ...lotsOf(r, OLD2)].map((x) => [x.gap, v(x.realised)]), [[null, 5000], [null, 5000]]);
+  });
+});
+
+describe('tax round 3 (CHAT-012\'s Gate B of M7b and of round 2c): the merger search on the realised side', () => {
+  const X = 'Sample Contra Fund - Regular Plan - Growth';
+  const Y = 'Sample Value Fund - Regular Plan - Growth';
+  const B = 'Sample Small Cap Fund - Regular Plan - Growth';
+  const C = 'Sample Focused Fund - Regular Plan - Growth';
+  const M = [2023, 11, 10] as const;
+  const gapsOf = (r: DerivedRealised, name: string): Array<[string | null, string | null]> =>
+    lotsOf(r, name).map((x) => [x.gap, x.mergerCandidate?.role ?? null]);
+
+  test('P3: a source already paired one into one never joins a many-into-one subset (CHAT-012\'s mutant P3)', () => {
+    // On 10 Nov 2023: Contra (100 u bought at 80, cost 8,000) switched out whole for 10,000 (at 100), and Focused in for
+    // 10,000, the only switch in of that sum and Contra the only switch out of it: a one-into-one candidate. Value (50 u at
+    // 80, cost 4,000) switched out whole for 5,000, and Small Cap in for 15,000 (100 u at 150), redeemed 4 May 2026 at
+    // 180 (18,000). Contra is paired, so Small Cap's only possible source is Value, one scheme: no subset of two, and
+    // no one-into-one pair either (5,000 against 15,000). Value is an ordinary switch, 5,000 - 4,000 = 1,000; Small Cap's
+    // sale 18,000 - 15,000 = 3,000; one candidate (Contra). With the paired source let in (mutant P3) Contra and Value
+    // would fit Small Cap's 15,000: Value and Small Cap's sale gaps, and 3 counted.
+    const r = run([
+      flow(A, X, [2019, 7, 1], 'Purchase', 80, -8000), flow(A, Y, [2019, 7, 1], 'Purchase', 80, -4000),
+      flow(A, X, M, 'Switch Out', 100, 10000), flow(A, C, M, 'Switch In', 100, -10000),
+      flow(A, Y, M, 'Switch Out', 100, 5000), flow(A, B, M, 'Switch In', 150, -15000),
+      flow(A, B, [2026, 5, 4], 'Redemption', 180, 18000),
+    ]);
+    assert.deepEqual(gapsOf(r, X), [['merger-candidate', 'switch-out']]);
+    // Contra's partner is Focused (one key), never Small Cap.
+    const partners = lotsOf(r, X)[0]!.mergerCandidate!.partnerKeys;
+    assert.equal(partners.length, 1);
+    assert.notEqual(partners[0], lotsOf(r, B)[0]!.instrumentKey);
+    assert.deepEqual(lotsOf(r, Y).map((x) => [x.gap, v(x.realised)]), [[null, 1000]]);
+    assert.deepEqual(lotsOf(r, B).map((x) => [x.gap, v(x.realised)]), [[null, 3000]]);
+    assert.equal(r.counts.mergerCandidates, 1);
+  });
+
+  const names = (n: number): string[] => Array.from({ length: n }, (_, i) => `Sample Legacy ${i + 1} Fund - Growth`);
+  test('J1, the financial review\'s case: 17 schemes of 12,000 into 1,00,000 and 1,04,000 stay computed at 34,000', () => {
+    // Seventeen schemes, each 100 u bought 1 Jul 2019 for 10,000 and emptied on 10 Nov 2023 for 12,000 (realised 2,000
+    // each), into Small Cap (1,00,000) and Focused (1,04,000). Sums of 12,000s are multiples of 12,000: 1,00,000 is 8.33
+    // and 1,04,000 8.67 of them, so no subset fits either; an ordinary rebalancing. Over 16 sources 5b9028c could not
+    // decide it (both bounds pass) and made all seventeen gaps, hiding 34,000; the exact search computes 17 x 2,000.
+    const r = run([
+      ...names(17).flatMap((k) => [flow(A, k, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, k, M, 'Switch Out', 120, 12000)]),
+      flow(A, B, M, 'Switch In', 100, -100000), flow(A, C, M, 'Switch In', 100, -104000),
+    ]);
+    assert.equal(r.counts.mergerCandidates, 0);
+    assert.ok(names(17).every((k) => lotsOf(r, k).every((x) => x.gap === null)));
+    near(names(17).reduce((t, k) => t + lotsOf(r, k).reduce((s, x) => s + (v(x.realised) ?? NaN), 0), 0), 34000, 'seventeen gains');
+  });
+
+  test('J1: over 16 sources a fit is still found exactly: a unique pair is a candidate alone; many fits stay all gaps', () => {
+    // Sixteen schemes of 1,000 (8 u bought for 800) plus Contra emptied for 3,333 and Value for 4,444 (each 10 u bought for
+    // 2,000), all on 10 Nov 2023, into Small Cap for 7,777. The only subset that sums to 7,777 within Rs 1 is Contra and
+    // Value (3,333 + 4 x 1,000 = 7,333; 4,444 + 3 x 1,000 = 7,444): those two are the candidate's, 2 counted, and the
+    // sixteen stay computed at 200 each (5b9028c: not decidable, all eighteen gaps).
+    const r = run([
+      ...names(16).flatMap((k) => [flow(A, k, [2019, 7, 1], 'Purchase', 100, -800), flow(A, k, M, 'Switch Out', 125, 1000)]),
+      flow(A, X, [2019, 7, 1], 'Purchase', 200, -2000), flow(A, X, M, 'Switch Out', 333.3, 3333),
+      flow(A, Y, [2019, 7, 1], 'Purchase', 200, -2000), flow(A, Y, M, 'Switch Out', 444.4, 4444),
+      flow(A, B, M, 'Switch In', 100, -7777),
+    ]);
+    assert.equal(r.counts.mergerCandidates, 2);
+    assert.deepEqual(gapsOf(r, X), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, Y), [['merger-candidate', 'switch-out']]);
+    assert.ok(names(16).every((k) => lotsOf(r, k).every((x) => x.gap === null && Math.abs(v(x.realised)! - 200) < 0.01)));
+    // Eighteen schemes of 1,000 into 2,000: any two fit (153 ways): ambiguous, all eighteen gaps, 18 counted.
+    const many = run([
+      ...names(18).flatMap((k) => [flow(A, k, [2019, 7, 1], 'Purchase', 100, -800), flow(A, k, M, 'Switch Out', 125, 1000)]),
+      flow(A, B, M, 'Switch In', 100, -2000),
+    ]);
+    assert.equal(many.counts.mergerCandidates, 18);
+    assert.ok(names(18).every((k) => lotsOf(many, k).every((x) => x.gap === 'merger-candidate')));
+  });
+
+  test('J1: the exact search over 16 sources agrees with every subset tried one by one (synthetic oracle)', () => {
+    // An independent oracle: every subset of the sources left (those not above the target), one by one, with the reader's
+    // tolerance (Rs 1 or 0.01%, the larger). Deterministic pseudo-random cases of 17 and 18 sources, targets made from two
+    // or three of the amounts (with and without a half-rupee step) or arbitrary.
+    const same = (x: number, y: number): boolean => Math.abs(x - y) <= Math.max(1, Math.max(x, y) * 0.0001);
+    let seed = 11;
+    const rnd = (): number => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    const oracle = (avail: Array<[string, number]>, target: number, minSize: number): { chosen: string; ambiguous: boolean } => {
+      const left = avail.filter(([, x]) => x <= target || same(x, target));
+      const chosen = new Set<string>(); let fits = 0;
+      for (let mask = 1; mask < 1 << left.length; mask++) {
+        let n = 0; let s = 0;
+        for (let i = 0; i < left.length; i++) if (mask & (1 << i)) { n++; s += left[i]![1]; }
+        if (n >= minSize && same(s, target)) { fits++; for (let i = 0; i < left.length; i++) if (mask & (1 << i)) chosen.add(left[i]![0]); }
+      }
+      return { chosen: [...chosen].sort().join(','), ambiguous: fits > 1 };
+    };
+    const subsetsFitting = (lotsMod as { subsetsFitting?: typeof import('../../../app/src/engine/tax/lots.ts').subsetsFitting }).subsetsFitting!;
+    let withFit = 0; let unique = 0;
+    for (let c = 0; c < 16; c++) {
+      const n = 17 + (c % 2);
+      const pool = [1000, 1500, 2000, 2500, 777, 4321];
+      const avail = Array.from({ length: n }, (_, i): [string, number] => [`s${i}`, rnd() < 0.6 ? pool[Math.floor(rnd() * pool.length)]! : Math.round(rnd() * 20000 + 100)]);
+      const pick = (): number => avail[Math.floor(rnd() * n)]![1];
+      const target = rnd() < 0.75 ? pick() + pick() + (rnd() < 0.4 ? pick() : 0) + (rnd() < 0.3 ? 0.5 : 0) : Math.round(rnd() * 40000);
+      for (const minSize of [1, 2]) {
+        const want = oracle(avail, target, minSize);
+        const got = subsetsFitting(avail, target, minSize, same);
+        assert.equal([...got.chosen].sort().join(','), want.chosen, `case ${c} minSize ${minSize} target ${target}`);
+        assert.equal(got.ambiguous, want.ambiguous, `case ${c} minSize ${minSize} ambiguous`);
+        if (want.chosen) withFit++;
+        if (want.chosen && !want.ambiguous) unique++;
+      }
+    }
+    // The cases exercise both answers (a fit and none) as well as a unique fit.
+    assert.ok(withFit > 4 && withFit < 32 && unique > 0, `${withFit} with a fit, ${unique} unique`);
+  });
+
+  test('round 2c L2: at the successor reset the rounding left in the ledger is cleared, so no dust lot is computed', () => {
+    // Contra (100 u at 100) merged into Small Cap on 10 Nov 2023 (15,000 at 150 = 100 u, a one-into-one candidate). Small
+    // Cap redeemed 1 Jun 2024 for 16,000 at 160.0000333: 99.9999792 u, leaving 0.0000208 u, within UNITS_TOLERANCE, so the
+    // successor mark ends (a gap lot). A fresh Purchase 1 Jan 2025 of 50 u at 200 and its Redemption 1 Jun 2025 of 50 u at
+    // 220 (11,000): one lot of 50 u, realised 1,000, bought 1 Jan 2025. Before round 3 the 0.0000208 u of the switch in
+    // (at 150) were sold first: a dust lot of about Rs 0.0015, computed, beside a lot of 49.9999792 u.
+    const r = run([
+      flow(A, X, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, X, M, 'Switch Out', 150, 15000),
+      flow(A, B, M, 'Switch In', 150, -15000), flow(A, B, [2024, 6, 1], 'Redemption', 16000 / 99.9999792, 16000),
+      flow(A, B, [2025, 1, 1], 'Purchase', 200, -10000), flow(A, B, [2025, 6, 1], 'Redemption', 220, 11000),
+    ]);
+    const nb = lotsOf(r, B);
+    assert.deepEqual(nb.map((x) => [x.gap, x.mergerCandidate?.role ?? null]), [['merger-candidate', 'successor'], [null, null]]);
+    near(v(nb[1]!.units), 50, 'units'); near(v(nb[1]!.realised), 1000, 'realised');
+    assert.equal(v(nb[1]!.purchaseDate), day(2025, 1, 1));
   });
 });

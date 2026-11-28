@@ -540,7 +540,9 @@ export function deriveRealisedGains(fund: readonly Transaction[], opts: DeriveOp
       }
       // Gate B of 4001f8f: once the instrument's units are known to be back to 0, the merged units have all been sold, so
       // a later fresh purchase and sale is an ordinary trade again.
-      if (successor !== null && heldUnits !== null && Math.abs(heldUnits) <= UNITS_TOLERANCE) successor = null;
+      // Round 2c L2 (round 3 item 7): the units left in the ledger within UNITS_TOLERANCE are rounding, cleared at the reset,
+      // so no dust lot of the merged units is computed against a later sale.
+      if (successor !== null && heldUnits !== null && Math.abs(heldUnits) <= UNITS_TOLERANCE) { successor = null; ledger.length = 0; }
     }
   }
 
