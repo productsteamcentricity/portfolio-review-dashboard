@@ -2,7 +2,7 @@
   "table": "fund-aliases-evidence",
   "decision": "PD-36",
   "approved": "2026-11-25",
-  "rule": "The public evidence for each line of data/owner/fund-aliases.json, by line number. Kept apart from the table because the built page carries the table and never a remote URL (check-next).",
+  "rule": "The public evidence for each line of data/owner/fund-aliases.json, by line number. Kept apart from the table because the built page carries the table and never a remote URL (check-next). For lines 18 to 22 (approved by the owner on 28 Nov 2026) the first link is AMFI's public NAV file, which gives the official scheme name and its scheme code; the vendor's name for the same code is in data/refdata/FUND_RANKS_CODES.json.",
   "lines": {
     "1": [
       "https://fundsindia.com/blog/?p=32342",
@@ -61,6 +61,25 @@
     ],
     "17": [
       "https://www.businesstoday.in/mutual-funds/story/icici-prudential-amc-renames-19-mutual-fund-schemes-revises-scheme-types-of-23-funds-551977-2026-08-28"
+    ],
+    "18": [
+      "https://www.amfiindia.com/spages/NAVAll.txt"
+    ],
+    "19": [
+      "https://www.amfiindia.com/spages/NAVAll.txt"
+    ],
+    "20": [
+      "https://www.amfiindia.com/spages/NAVAll.txt"
+    ],
+    "21": [
+      "https://www.amfiindia.com/spages/NAVAll.txt",
+      "https://groww.in/mutual-funds/navi-nifty-smallcap250-momentum-quality-100-index-fund-regular-growth",
+      "https://www.advisorkhoj.com/mutual-funds-research/Navi-Nifty-Small-Cap-250-Momentum-Quality-Index-Fund-Direct-Plan"
+    ],
+    "22": [
+      "https://www.amfiindia.com/spages/NAVAll.txt",
+      "https://www.barodabnpparibasmf.in/mutual-fund-schemes/equity-funds/baroda-bnp-paribas-esg-best-in-class-strategy-fund/regular-growth",
+      "https://www.barodabnpparibasmf.in/efactsheet/Jun2026/Innerpages/Baroda-BNP-Paribas-ESG-Best-in-Class-Strategy-Fund.html"
     ]
   }
 }
