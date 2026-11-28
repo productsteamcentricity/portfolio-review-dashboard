@@ -59,8 +59,10 @@ the last section of its Gate B of round 2c). No page change: the engine is impor
   block is priced to, which is not the month-end label: the October 2026 Regular monitor is priced to Mon 2 Nov 2026 and
   the Direct monitor to Fri 30 Oct 2026 (the refresh log of October 2026; PD-56). The price days are a small table,
   `app/src/config/price-days.json` (one entry per data month and block, copied from the refresh log at each refresh,
-  read by `app/src/data/price-days.ts`); an uploaded monitor uses the date its file states. The page still shows one
-  label only (the owner, 28 Nov 2026: "No, one label only"): the price day is used, never shown.
+  read by `app/src/data/price-days.ts`). The page still shows one label only (the owner, 28 Nov 2026: "No, one label
+  only"): the price day is used, never shown. An uploaded monitor has no known price day: the date its file states may
+  be the month's label (the October 2026 Direct file states 31 Oct and is priced to 30 Oct), so a young fund of an
+  uploaded monitor shows a dash with that reason, never a figure counted to the stated date.
 - **How the conversion is known** (the financial review of 28 Nov 2026): from the vendor's own figures. Thirteen funds in
   the committed data start exactly at a 1M, 3M or 6M window, and converted this way their since-inception figure gives
   the vendor's own figure for that tenor to four decimals (Edelweiss BSE Top 10 Bank ETF: -13.413% annualised over 94
@@ -70,15 +72,17 @@ the last section of its Gate B of round 2c). No page change: the engine is impor
   CI. A Regular and a Direct figure of one young fund differ because the two blocks are of two price days, as every
   other tenor of the two lists already does under the one label.
 - **A dash with its reason, never a figure of unknown basis and never a count to the label.** These are the
-  Moderator's defaults of 28 Nov 2026 (MOD-05's rulings on this branch), not rulings of the owner, to whom they are put
-  (Q-F9 to Q-F11): a mutual fund under 30 days old, where one day of count is a large share of the figure (22 Regular
+  Moderator's defaults of 28 Nov 2026 (MOD-05's rulings on this branch), not rulings of the owner; the questions for
+  the owner are held by the Moderator: a mutual fund under 30 days old, where one day of count is a large share of the figure (22 Regular
   and 17 Direct records); a SIF at every age, because the SIF data does not state whether its since-inception return is
-  annualised (all 30 records; KI-322); a month with no price day recorded. Where a date is missing (PMS carries no
-  inception dates; PMS and AIF no as-on date), the data's figure is kept only when a return of one year or more shows
+  annualised (all 30 records; KI-322); a month with no price day recorded. Where a date is missing (700 of the 721 PMS
+  records carry no inception date; PMS and AIF no as-on date), the data's figure is kept only when a return of one year or more shows
   the strategy is a year old (620 of 690 PMS strategies, 10 of 12 AIFs), else a dash: the implementer's reading,
   confirmed by the Moderator. Such a figure is annualised by convention, which is not verified for a strategy between
-  one and two years old. In the committed data 246 Regular and 164 Direct mutual-fund records are shown as an absolute
-  return.
+  one and two years old (88 of those 620 PMS figures and 8 of those 10 AIF figures have a 1Y return and no longer
+  one). In the committed data 246 Regular and 164 Direct mutual-fund records are shown as an absolute return. A limit
+  that stays: about ten of the Direct figures shown are a day off, where the vendor counted those schemes to 31 Oct and
+  not to the block's price day; the difference is at most 0.064 percentage points.
 - **Parity**: `tests/parity/performance-ledger.json` PF-17 (a SIF's since-inception figure, a dash) and
   `tests/side-by-side/sbs-ledger.json` SB-59 and SB-60 (one fund in each list: 1.3790% over 76 days for 6.7987%
   annualised; 1.1980% over 73 days for 6.1353%) and SB-61 (three SIFs, under and over one year old). The live page

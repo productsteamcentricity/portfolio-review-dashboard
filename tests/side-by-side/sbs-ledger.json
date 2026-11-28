@@ -766,7 +766,7 @@
       "legacy": "*",
       "new": null,
       "class": "correction",
-      "reference": "E-31; E-32; KI-302; KI-322 (the Moderator's interim default of 28 Nov 2026, D-C; the owner is asked, Q-F10)",
+      "reference": "E-31; E-32; KI-302; KI-322 (the Moderator's interim default of 28 Nov 2026; a question for the owner, held by the Moderator)",
       "description": "The since-inception return of a SIF, at every age (two of these three funds are under one year old, one is over): the live page shows the data's figure with no flag. The SIF data does not state whether that figure is annualised, so under the returns note it would be read on a basis nobody has verified; the new build shows a dash with that reason. The dash is the Moderator's interim default until the owner or the source says how the figure is stated (KI-322); it is not the owner's ruling."
     }
   ]

@@ -71,7 +71,7 @@ describe(`performance parity (TZ=${process.env.TZ ?? 'system'})`, () => {
   test('fund returns agree wherever both sides list the same matched fund, except the classified cases', () => {
     const figures = results.flatMap((r) => r.diffs).filter((d) => d.kind === 'fund-figure' || d.kind === 'bench-figure');
     /* 12 before KI-302; then the since-inception figure of the one SIF fund of the sample family, a dash in the new
-       build (KI-322), in 29 of its fixtures and both lists (PF-17): 58 more */
+       build (KI-322), in both lists of the fixtures that hold it (PF-17): 58 more, as measured */
     const CAP = 70;
     assert.ok(figures.length <= CAP, `${figures.length} figure differences`);
   });

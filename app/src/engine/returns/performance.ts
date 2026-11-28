@@ -74,8 +74,8 @@ export type PerformanceSources = {
   STOCK: Book<PerfRecord>;
   BENCH: Book<BenchRecord>;
   asOn: Partial<Record<'MF' | 'MF_DIRECT' | 'PMS' | 'AIF' | 'SIF' | 'STOCK' | 'BENCH', Value<DayNumber>>>;
-  /** KI-302: the day each block's figures are priced to (an uploaded monitor: its file's date; an embedded block: the
-   * day recorded for its month, data/price-days.ts). Used to count a young fund's days; never displayed. */
+  /** KI-302: the day each block's figures are priced to (an embedded block: the day recorded for its month,
+   * data/price-days.ts; an uploaded monitor: not known, so missing). Used to count a young fund's days; never displayed. */
   priceDay?: Partial<Record<'MF' | 'MF_DIRECT' | 'SIF', Value<DayNumber>>>;
   /** PRODUCT_CLASS_RULES, so the routing agrees with the matcher's. */
   rules: readonly ProductClassRule[];
@@ -260,7 +260,7 @@ export function sinceInception(record: PerfRecord, priceDay: Value<DayNumber> | 
         ? `${source} gives no inception date and no return of one year or more, so the fund cannot be shown to be a year old and its since-inception return is not shown`
         : `the inception date "${text}" in ${source} could not be read and there is no return of one year or more, so its since-inception return is not shown`);
     }
-    return dash('no-price-day', `the day ${source} is priced to is not recorded and the fund has no return of one year or more, so its days cannot be counted and its since-inception return is not shown`);
+    return dash('no-price-day', `the day ${source} is priced to is not known and the fund has no return of one year or more, so its days cannot be counted and its since-inception return is not shown`);
   }
   const days = on - inc;
   if (days <= 0) return dash('inception-not-before-price-day', `the fund's inception (${formatDay(inc)}) is not before the day its data is priced to, so it has no since-inception return yet`);
@@ -269,7 +269,7 @@ export function sinceInception(record: PerfRecord, priceDay: Value<DayNumber> | 
     return dash('basis-not-stated', `the fund is under one year old (inception ${formatDay(inc)}) and ${source} does not state whether its since-inception return is annualised, so it is not shown`);
   }
   if (days < SI_MIN_DAYS) {
-    return dash('under-30-days', `the fund is only ${days} days old (inception ${formatDay(inc)}): one day of count is a large share of so young a figure, so its since-inception return is not shown`);
+    return dash('under-30-days', `the fund is only ${days} days old on the day its data is priced to (inception ${formatDay(inc)}): one day of count is a large share of so young a figure, so its since-inception return is not shown`);
   }
   const base = 1 + vendor / 100;
   if (!(base > 0)) return dash('cannot-convert', `the data's annualised since-inception figure (${vendor}%) is a loss of 100% or more, so no absolute return can be worked from it`);

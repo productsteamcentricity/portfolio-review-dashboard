@@ -15,7 +15,8 @@
 //
 // The Moderator's defaults of 28 Nov 2026, not the owner's rulings: under 30 days old a dash (D-B); a SIF a dash at every
 // age, its data not stating whether the figure is annualised (D-C, KI-322); either date missing: the data's figure only
-// when a return of one year or more shows the fund is a year old, else a dash (D-D). Never a count to the label.
+// when a return of one year or more shows the fund is a year old, else a dash (D-D). Never a count to the label: an
+// uploaded monitor's stated date may be one, so its price day is not known (the review's R2-1).
 // The returns note is first under every table and in the workbook's Read Me.
 
 import { describe, test } from 'node:test';
@@ -30,7 +31,7 @@ import {
 } from '../../../app/src/engine/returns/performance.ts';
 import { ABSOLUTE_MARKER, buildPerformanceVM, RETURNS_NOTE } from '../../../app/src/views/performance.ts';
 import { performanceSheet } from '../../../app/src/exports/xlsx/sheets/performance.ts';
-import { performanceSourcesFrom } from '../../../app/src/data/performance-sources.ts';
+import { performanceSourcesFrom, uploadedPriceDay } from '../../../app/src/data/performance-sources.ts';
 import { PRICE_DAYS, priceDayOf, type PricedBlock } from '../../../app/src/data/price-days.ts';
 import { parseProductClassRules } from '../../../app/src/engine/match/product-class.ts';
 import { dayToIso, ymdToDay } from '../../../app/src/engine/dates.ts';
@@ -153,6 +154,46 @@ describe('known answers: the vendor\'s own figures (the committed data)', () => 
   }
 });
 
+describe('an uploaded monitor: the date its file states is not counted to (the financial review of 28 Nov 2026, R2-1)', () => {
+  // The October 2026 Direct file states "31 Oct 2026" and is priced to Fri 30 Oct 2026 (the refresh log). Counted to
+  // the stated date, Mirae Asset BSE Information Technology Index Fund's Direct figure would be 13.59% where the fund's
+  // return is 13.19%.
+  const direct = refdataBlock('MF_PERF_DIRECT') as Record<string, PerfRecord>;
+  const regular = refdataBlock('MF_PERF') as Record<string, PerfRecord>;
+  const src = performanceSourcesFrom({ blocks: { MF_PERF: regular, MF_PERF_DIRECT: direct } as never, dates: { MF_PERF: 'As on 02-Nov-2026', MF_PERF_DIRECT: 'As on 31-Oct-2026' } }, FILE_BLOCK_TEXT);
+
+  test('the committed blocks uploaded with their stated dates: the label is the file\'s date, the price day is missing with its reason', () => {
+    assert.equal(src.asOn.MF_DIRECT?.kind, 'value');
+    for (const k of ['MF', 'MF_DIRECT'] as const) {
+      const pd = src.priceDay?.[k];
+      assert.deepEqual([pd?.kind, pd?.kind === 'missing' ? pd.status : ''], ['missing', STATUS.NOT_AVAILABLE], k);
+    }
+    const pd = uploadedPriceDay('Direct monitor');
+    assert.equal(pd.kind === 'missing' ? pd.reason : '', 'the uploaded Direct monitor states one date, which may be its month\'s label and not the day its figures are priced to');
+  });
+
+  test('so a young fund of an uploaded monitor is a dash, never a figure counted to the stated date; a fund a year old keeps its figure', () => {
+    let young = 0, old = 0;
+    for (const [book, key, source] of [[direct, 'MF_DIRECT', 'MF_PERF_DIRECT'], [regular, 'MF', 'MF_PERF']] as const) {
+      for (const [name, r] of Object.entries(book)) {
+        const x = sinceInception(r, src.priceDay?.[key], source);
+        if (!x) continue;
+        if (String(r.inception ?? '') > '2025-11-02') {
+          young += 1;
+          assert.deepEqual(x.si, { basis: 'not-shown', why: 'no-price-day' }, name);
+          assert.equal(x.value.kind, 'missing', name);
+        } else if (x.si.basis === 'annualised') {
+          old += 1;
+          assert.ok(x.value.kind === 'value' && x.value.v === r.r!.SI, name);
+        } else assert.deepEqual(x.si, { basis: 'not-shown', why: 'no-price-day' }, name);
+      }
+    }
+    assert.ok(young > 300 && old > 3000, `${young} young, ${old} a year old`);
+    const it = sinceInception(direct['Mirae Asset BSE Information Technology Index Fund(G)-Direct Plan']!, src.priceDay?.MF_DIRECT, 'MF_PERF_DIRECT')!;
+    assert.equal(reason(it), 'the day MF_PERF_DIRECT is priced to is not known and the fund has no return of one year or more, so its days cannot be counted and its since-inception return is not shown');
+  });
+});
+
 // ---------------------------------------------------------------------------------------------------------------
 // The rules, on hand-made records.
 
@@ -210,7 +251,7 @@ describe('sinceInception: a dash with its reason, never a figure of unknown basi
     const x = sinceInception(rec('2026-10-15', { SI: -9.6648 }), NOV2, 'MF_PERF')!;
     assert.deepEqual(x.si, { basis: 'not-shown', why: 'under-30-days' });
     assert.equal(status(x), STATUS.INSUFFICIENT_EVIDENCE);
-    assert.equal(reason(x), 'the fund is only 18 days old (inception 15 Oct 2026): one day of count is a large share of so young a figure, so its since-inception return is not shown');
+    assert.equal(reason(x), 'the fund is only 18 days old on the day its data is priced to (inception 15 Oct 2026): one day of count is a large share of so young a figure, so its since-inception return is not shown');
     assert.deepEqual(sinceInception(rec('2026-10-04', { SI: 8 }), NOV2, 'MF_PERF')!.si, { basis: 'not-shown', why: 'under-30-days' }, '29 days');
     // 30 days: 1.08^(30/365) - 1 = e^(0.0769610 x 0.0821918) - 1 = 0.6346%
     const thirty = sinceInception(rec('2026-10-03', { SI: 8 }), NOV2, 'MF_PERF')!;
@@ -247,7 +288,7 @@ describe('sinceInception: a dash with its reason, never a figure of unknown basi
     for (const pd of [undefined, { kind: 'missing', status: STATUS.NOT_AVAILABLE, reason: 'the price day of MF_PERF is not recorded for 2027-03' } as Value<DayNumber>]) {
       const young = sinceInception(rec('2026-09-25', { '1M': 1, SI: 20 }), pd, 'MF_PERF')!;
       assert.deepEqual(young.si, { basis: 'not-shown', why: 'no-price-day' });
-      assert.equal(reason(young), 'the day MF_PERF is priced to is not recorded and the fund has no return of one year or more, so its days cannot be counted and its since-inception return is not shown');
+      assert.equal(reason(young), 'the day MF_PERF is priced to is not known and the fund has no return of one year or more, so its days cannot be counted and its since-inception return is not shown');
       assert.deepEqual(sinceInception(rec('2015-01-01', { '3Y': 6, SI: 9 }), pd, 'MF_PERF')!.si, { basis: 'annualised' });
     }
   });
@@ -389,7 +430,7 @@ describe('the screen: the returns note, the marker and the reasons', () => {
 
   test('a since-inception return that is not shown: a dash, and a note that names the funds and the reason', () => {
     assert.doesNotMatch(rowOf('Equity MF', 'Newest Contra Fund').cells.SI!.text, /[0-9]/);
-    assert.ok(bucketVM('Equity MF').notes.includes('Since-inception return not shown for 1 fund (Newest Contra Fund): the fund is under 30 days old, and one day of count is a large share of so young a figure.'));
+    assert.ok(bucketVM('Equity MF').notes.includes('Since-inception return not shown for 1 fund (Newest Contra Fund): the fund is under 30 days old on the day its data is priced to, and one day of count is a large share of so young a figure.'));
     assert.doesNotMatch(rowOf('SIF', 'Sample Older SIF').cells.SI!.text, /[0-9]/);
     assert.ok(bucketVM('SIF').notes.includes('Since-inception return not shown for 3 funds (Sample Long-Short Fund, Sample Older SIF and Sample Only-SI SIF): the data does not state whether its since-inception return is annualised.'));
     assert.ok(bucketVM('PMS').notes.includes('Since-inception return not shown for 1 fund (Sample New PMS): the data gives no readable inception date and no return of one year or more.'));
@@ -430,7 +471,7 @@ describe('the Performance sheet: the absolute figure with its Note; a blank with
     assert.equal(at(s, 'note'), 'SI: SIF_PERF does not state whether its since-inception return is annualised, so it is not shown.');
     const c = row('Regular', 'Newest Contra Fund');
     assert.equal(at(c, 'SI'), null);
-    assert.match(String(at(c, 'note')), /SI: the fund is only 18 days old \(inception 15 Oct 2026\)/);
+    assert.match(String(at(c, 'note')), /SI: the fund is only 18 days old on the day its data is priced to \(inception 15 Oct 2026\)/);
     const p = row('Not applicable', 'Sample New PMS');
     assert.equal(at(p, 'SI'), null);
     assert.match(String(at(p, 'status')), /INSUFFICIENT EVIDENCE/);
