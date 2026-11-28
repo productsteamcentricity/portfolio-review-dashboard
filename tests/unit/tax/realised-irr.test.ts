@@ -1192,3 +1192,37 @@ describe('M7b B2 (KI-340): compound merger days, many into one per receiving sch
     assert.deepEqual([...lotsOf(r, OLD), ...lotsOf(r, OLD2)].map((x) => [x.gap, v(x.realised)]), [[null, 5000], [null, 5000]]);
   });
 });
+
+describe('tax round 3 (CHAT-012\'s Gate B of M7b and of round 2c): the merger search on the realised side', () => {
+  const X = 'Sample Contra Fund - Regular Plan - Growth';
+  const Y = 'Sample Value Fund - Regular Plan - Growth';
+  const B = 'Sample Small Cap Fund - Regular Plan - Growth';
+  const C = 'Sample Focused Fund - Regular Plan - Growth';
+  const M = [2023, 11, 10] as const;
+  const gapsOf = (r: DerivedRealised, name: string): Array<[string | null, string | null]> =>
+    lotsOf(r, name).map((x) => [x.gap, x.mergerCandidate?.role ?? null]);
+
+  test('P3: a source already paired one into one never joins a many-into-one subset (CHAT-012\'s mutant P3)', () => {
+    // On 10 Nov 2023: Contra (100 u bought at 80, cost 8,000) switched out whole for 10,000 (at 100), and Focused in for
+    // 10,000, the only switch in of that sum and Contra the only switch out of it: a one-into-one candidate. Value (50 u at
+    // 80, cost 4,000) switched out whole for 5,000, and Small Cap in for 15,000 (100 u at 150), redeemed 4 May 2026 at
+    // 180 (18,000). Contra is paired, so Small Cap's only possible source is Value, one scheme: no subset of two, and
+    // no one-into-one pair either (5,000 against 15,000). Value is an ordinary switch, 5,000 - 4,000 = 1,000; Small Cap's
+    // sale 18,000 - 15,000 = 3,000; one candidate (Contra). With the paired source let in (mutant P3) Contra and Value
+    // would fit Small Cap's 15,000: Value and Small Cap's sale gaps, and 3 counted.
+    const r = run([
+      flow(A, X, [2019, 7, 1], 'Purchase', 80, -8000), flow(A, Y, [2019, 7, 1], 'Purchase', 80, -4000),
+      flow(A, X, M, 'Switch Out', 100, 10000), flow(A, C, M, 'Switch In', 100, -10000),
+      flow(A, Y, M, 'Switch Out', 100, 5000), flow(A, B, M, 'Switch In', 150, -15000),
+      flow(A, B, [2026, 5, 4], 'Redemption', 180, 18000),
+    ]);
+    assert.deepEqual(gapsOf(r, X), [['merger-candidate', 'switch-out']]);
+    // Contra's partner is Focused (one key), never Small Cap.
+    const partners = lotsOf(r, X)[0]!.mergerCandidate!.partnerKeys;
+    assert.equal(partners.length, 1);
+    assert.notEqual(partners[0], lotsOf(r, B)[0]!.instrumentKey);
+    assert.deepEqual(lotsOf(r, Y).map((x) => [x.gap, v(x.realised)]), [[null, 1000]]);
+    assert.deepEqual(lotsOf(r, B).map((x) => [x.gap, v(x.realised)]), [[null, 3000]]);
+    assert.equal(r.counts.mergerCandidates, 1);
+  });
+});

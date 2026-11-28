@@ -849,3 +849,32 @@ describe('M7b B2 (KI-340): compound merger days on the holdings side', () => {
     assert.equal(one(r, LARGE).status, 'ok'); near(one(r, LARGE).lt.gain, 5800, 'Large Cap long gain');
   });
 });
+
+describe('tax round 3 (CHAT-012\'s Gate B of M7b and of round 2c) on the holdings side', () => {
+  const X = 'Sample Contra Fund - Regular Plan - Growth';
+  const Y = 'Sample Value Fund - Regular Plan - Growth';
+  const SMALL = 'Sample Small Cap Fund - Regular Plan - Growth';
+  const FOCUSED = 'Sample Focused Fund - Regular Plan - Growth';
+  const M = [2023, 11, 10] as const;
+
+  test('P3: a source paired one into one never joins a many-into-one subset: Small Cap stays split (CHAT-012\'s mutant P3)', () => {
+    // 10 Nov 2023: Contra (100 u at 80) switched out whole for 10,000 into Focused (10,000 = 100 u at 100), a one-into-one
+    // candidate; Value (50 u at 80) switched out whole for 5,000, and Small Cap in for 15,000 (100 u at 150). Base: Small
+    // Cap 100 u, invested 15,000, CMV 18,000; Focused 100 u, invested 10,000, CMV 12,000. Contra is paired, so Small Cap's
+    // only possible source is Value alone: an ordinary switch, split long (bought 10 Nov 2023, 30 Sep 2026 is after the
+    // anniversary) 18,000 at a gain of 3,000. Focused is unreconciled 'mergerCandidate'. Letting the paired Contra into
+    // the subset search (mutant P3) would fit Contra and Value to 15,000 and leave Small Cap unreconciled too.
+    const r = run([
+      hold(SMALL, 'Small Cap Fund', 'Equity', 100, 15000, 18000),
+      hold(FOCUSED, 'Focused Fund', 'Equity', 100, 10000, 12000),
+    ], [
+      flow(X, [2019, 7, 1], 'Purchase', 80, -8000), flow(Y, [2019, 7, 1], 'Purchase', 80, -4000),
+      flow(X, M, 'Switch Out', 100, 10000), flow(FOCUSED, M, 'Switch In', 100, -10000),
+      flow(Y, M, 'Switch Out', 100, 5000), flow(SMALL, M, 'Switch In', 150, -15000),
+    ]);
+    const s = one(r, SMALL);
+    assert.equal(s.status, 'ok');
+    near(s.lt.cmv, 18000, 'Small Cap long'); near(s.lt.gain, 3000, 'Small Cap gain');
+    assert.equal(one(r, FOCUSED).unreconciledKind, 'mergerCandidate');
+  });
+});
