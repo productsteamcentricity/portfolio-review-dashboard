@@ -15,8 +15,19 @@ the last section of its Gate B of round 2c). No page change: the engine is impor
   from 23 Jul 2024 (named once, `I21_RATES_FROM`, with its source). As on an earlier date every class of the roll-up is
   marked (`ratesMissing`) and the harvest's tax before, tax after, saving and the amounts the rate order of set-off
   decides are NOT AVAILABLE, labelled "the rates before 23 Jul 2024 are not in the table". CHAT-012's case as on 30 Jun
-  2024 (long 30,000, short 5,000) is no longer 4,750; on and after 23 Jul 2024 it is computed as before. Gains, losses,
-  splits and terms are unchanged. Owner question: whether the holdings side should read the dated table v1 instead.
+  2024 (long 30,000, short 5,000) is no longer 4,750; on and after 23 Jul 2024 it is computed as before. Owner
+  question: whether the holdings side should read the dated table v1 (rates and holding periods) instead.
+- **B-1 (the financial review of 7c4d545; `classify.ts`, `lots.ts`, `holdings-rollup.ts`, `harvest.ts`; Q-49):** the
+  same day changed holding periods (s.2(42A): 36 months to 24 or 12 for most non-equity units), and the I-21 table holds
+  only today's. As on a date before 23 Jul 2024 a holding is split only when its class's period is proven the same on
+  both sides of that day from table v1's dated rows (`I21_PERIODS_UNCHANGED`: equity MF, equity ETF, ELSS, the 90/90
+  equity ETF FoF, and the Sec. 76 classes, deemed short on both sides); every other class (non-equity funds, the
+  equity-oriented hybrid, and every class table v1 does not cover, such as shares, bonds, REIT, InvIT and SGB) is
+  unreconciled `periodsNotInTable`, "the holding periods before 23 Jul 2024 are not in the table", so long + short +
+  unclassified = CMV holds, nothing of it reaches the harvest, and the figures are PARTIAL with it. The review's case (a
+  gold FoF, an overseas FoF and a pre-2023 debt fund bought 1 Jan 2022, shown long 9,500 as on 30 Jun 2024) is not
+  split; on 23 Jul 2024 it is long 9,500 as before. M2's label no longer says the gains and losses stand: they are those
+  of the holdings still split.
 - **P3 (tests only):** a scheme already paired one into one never joins a many-into-one subset, on both sides
   (CHAT-012's surviving mutant P3 is now killed).
 - **L1 (`harvest.ts`):** a PARTIAL family harvest figure always carries its coverage, so a family whose only gap is a

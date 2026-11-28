@@ -95,8 +95,10 @@ export const TAX_RULES_I21: readonly I21Row[] = loadI21(rawI21);
  * carries one rate per class and term, with no dates: the rates in force from 23 Jul 2024, set by the Finance (No. 2)
  * Act 2024 (s.111A 20%, s.112A and s.112 12.5%; the rows of table v1, data/owner/tax-rules.json, with `saleFrom`
  * 2024-07-23). The rates before that day (for example 15% and 10% on listed equity) are not in it, so a figure that
- * needs a rate as on an earlier date is NOT AVAILABLE with I21_RATES_MISSING; no rate is invented. Holding periods,
- * splits and gains do not read the rate and stay as they are.
+ * needs a rate as on an earlier date is NOT AVAILABLE with I21_RATES_MISSING; no rate is invented. The same day
+ * changed holding periods too (s.2(42A): 36 months to 24 or 12 for most non-equity units), and the table holds only the
+ * periods from it: round 3 B-1 (I21_PERIODS_UNCHANGED below) keeps a holding split as on an earlier date only when its
+ * class's period is proven the same on both sides of this day.
  */
 export const I21_RATES_FROM: DayNumber = ymdToDay(2024, 7, 23)!;
 /** The label of a rate-dependent figure as on a date before I21_RATES_FROM (round 3 M2). */
@@ -158,6 +160,28 @@ export const INST = {
   sifDebt: 'SIF (debt long-short, Specified)',
   foreignShares: 'Foreign-listed shares (held directly)',
 } as const;
+
+/**
+ * Round 3 B-1 (the financial review of 7c4d545; Q-49; the conservative default while reading table v1 on the holdings
+ * side is an owner question): the I-21 classes whose holding period is the same for a sale before I21_RATES_FROM (23 Jul
+ * 2024) as from it, and equal to the I-21 row's own period. Each is proven from the dated rows of table v1
+ * (data/owner/tax-rules.json) through realised-irr.ts V1_OF_I21, for every monthly purchase date
+ * (tests/unit/tax/fifo-lots.test.ts, "round 3 B-1"): the equity-oriented units at 12 months (equity MF, equity ETF,
+ * ELSS, the 90/90 equity ETF FoF) and the Sec. 76 classes, deemed short term on both sides. Every other class (the
+ * non-equity units whose period went from 36 months to 24 or 12, the equity-oriented hybrid, whose class table v1 cannot
+ * decide, and every class table v1 does not cover: shares, bonds, REIT, InvIT, SGB, crypto and the like) is not split as
+ * on an earlier date, with I21_PERIODS_MISSING.
+ */
+export const I21_PERIODS_UNCHANGED: ReadonlySet<string> = new Set<string>([
+  INST.equityMf, INST.equityEtf, INST.elss, INST.etfFof9090, INST.debtMf, INST.hybridSpecified,
+]);
+/** The reason a holding is not split as on a date before I21_RATES_FROM (round 3 B-1). */
+export const I21_PERIODS_MISSING = 'the holding periods before 23 Jul 2024 are not in the table';
+
+/** Round 3 B-1: I21_PERIODS_MISSING when the class's I-21 holding period may not apply as on `asOn`, else null. */
+export function i21PeriodsMissing(inst: string, asOn: DayNumber): string | null {
+  return asOn < I21_RATES_FROM && !I21_PERIODS_UNCHANGED.has(inst) ? I21_PERIODS_MISSING : null;
+}
 
 /** Why a holding is left unclassified: the live TAX_WHY texts, word for word. */
 export const TAX_WHY = {

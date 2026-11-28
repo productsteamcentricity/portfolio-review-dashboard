@@ -36,7 +36,9 @@
 // Round 3 M2 (Q-49; MOD-05): the pools' rates are the I-21 table's, which holds only the rates from 23 Jul 2024
 // (classify.ts I21_RATES_FROM). As on an earlier date every rate-dependent figure (tax before, tax after, saving, the
 // exemption's tax value, and the amounts the rate order of set-off decides) is NOT AVAILABLE, labelled "the rates before
-// 23 Jul 2024 are not in the table"; no rate is invented. The gains, losses, used and unused totals and terms stand.
+// 23 Jul 2024 are not in the table"; no rate is invented. Round 3 B-1: the holding periods changed that day too, so the
+// holdings of classes whose period may have differed are not split (lots.ts 'periodsNotInTable') and stay out of the
+// pools, counted as PARTIAL; the gains, losses and used and unused totals stand only for the holdings still split.
 // The exemption limit is the as-on year's threshold of table v1 (data/owner/tax-rules.json §10.2: Rs 1,25,000 from FY
 // 2024-25); a year whose exemption is to be confirmed applies none ("exemption not applied").
 // Money in rupees, unrounded (the live works in Crore: the same figures x 1e7). Pure.
@@ -459,7 +461,7 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   if (slab.source === 'default') labels.push('slab rate: the default (PD-07)');
   if (slab.limited) labels.push(`the slab entry is limited to ${SLAB_MAX_PCT_HARVEST}%`);
   if (dash !== null) labels.push(`${SLAB_NOT_SET}: the figures after set-off depend on the slab rate`);
-  if (ratesMissing !== null) labels.push(`${ratesMissing}: the tax before, the tax after and the saving are not available (the gains and losses stand)`);
+  if (ratesMissing !== null) labels.push(`${ratesMissing}: the tax before, the tax after and the saving are not available; the gains and losses shown are those of the holdings still split, whose holding periods did not change that day`);
   if (c.nsoGain + c.nsoLoss > EPS) labels.push('crypto kept out of set-off (PD-03)');
   if (gainUnknown > 0) labels.push(`${gainUnknown} holding${gainUnknown === 1 ? '' : 's'} with an unknown gain left out (${STATUS.PARTIAL})`);
   if (notWorked !== null) labels.push(notWorked);

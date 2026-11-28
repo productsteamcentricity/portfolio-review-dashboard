@@ -38,7 +38,8 @@
 // 'mergerCandidate', never split, since a scheme merger is not a sale
 // (s.47(xviii)) and cost and date carry over. Round 3 (round 2c L1, L2): once the scheme's units are known to be back to 0
 // after that switch in, the mark ends (a later fresh purchase is split as usual) and the rounding left in the unit ledger
-// is cleared, as the realised side's successor reset.
+// is cleared, as the realised side's successor reset. Round 3 B-1: as on a date before 23 Jul 2024, a holding of a class
+// whose holding period may have differed then is unreconciled 'periodsNotInTable', never split by today's period.
 // One correction (OD-15, KI-069): when one IRR instrument joins more than one holding (the same scheme with two
 // distributors) and the flows carry no folio that tells them apart, the instrument's lots are apportioned by units (by
 // invested value on the rupee ledger) across those holdings and labelled `apportioned`; the live gives every such
@@ -58,7 +59,7 @@ import { RUPEES_PER } from '../units.ts';
 import { amountTolerance } from '../../ingest/capital-gains.ts';
 import { anniversaryOf } from './rules.ts';
 import {
-  GRANDFATHER_BEFORE, GRANDFATHER_CLASSES, TAX_RULES_I21, classifyHolding, i21ByInst, i21Day, isListedEtf,
+  GRANDFATHER_BEFORE, GRANDFATHER_CLASSES, TAX_RULES_I21, classifyHolding, i21ByInst, i21Day, i21PeriodsMissing, isListedEtf,
 } from './classify.ts';
 import type { ClassifyContext, HoldingTaxClass, I21Row } from './classify.ts';
 
@@ -77,9 +78,10 @@ export type NotSplitKind = 'fund-level' | 'pass-through' | 'per-security';
  * holds a transfer in, stock in or demerger in, so its lots would be dated and costed by the transfer, OD-16) and
  * 'bonusRow' (B2: the history holds a bonus row, never costed at its amount); and 'mergerCandidate' (round 2c, MOD-05's
  * merger condition: the history holds the switch in of a merger candidate, so its lots would be dated and costed at the
- * merger).
+ * merger); and 'periodsNotInTable' (round 3 B-1: as on a date before 23 Jul 2024, a class whose holding period then may
+ * differ from the I-21 table's, classify.ts I21_PERIODS_UNCHANGED).
  */
-export type UnreconciledKind = 'unitsGap' | 'noLots' | 'value' | 'short' | 'excess' | 'noPxSell' | 'apportion' | 'transferRow' | 'bonusRow' | 'mergerCandidate';
+export type UnreconciledKind = 'unitsGap' | 'noLots' | 'value' | 'short' | 'excess' | 'noPxSell' | 'apportion' | 'transferRow' | 'bonusRow' | 'mergerCandidate' | 'periodsNotInTable';
 
 /** Units sold beyond the units held up to this many are rounding (3 decimals, as repeat-evidence.ts compares units). */
 export const UNITS_TOLERANCE = 0.0005;
@@ -622,6 +624,8 @@ const REASON = {
   mergerCandidate: 'The transaction history of this holding holds a switch in that looks like a scheme merger: on the same day the whole of another scheme was switched out for the same amount. A merger is not a sale (s.47(xviii)), so the cost and date of the merged units would carry over, and the IRR file does not say whether it was a merger; no split is shown until the analyst confirms whether it was a merger or an ordinary switch.',
   apportion: 'The IRR history of this scheme covers more than one holding and gives no folio that tells them apart, and not every one of those holdings has the units (or invested value) to apportion its lots by, so no split is shown (OD-15).',
   noRow: (inst: string): string => `No row in the tax rules covers the class "${inst}".`,
+  // Round 3 B-1 (Q-49).
+  periodsNotInTable: 'The holding periods before 23 Jul 2024 are not in the table: the review\'s as-on date is earlier, and this class\'s holding period then may differ from today\'s (36 months for most non-equity units), so no split is shown rather than one by today\'s period.',
 } as const;
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -848,6 +852,15 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
       continue;
     }
     if (rule.perSecurity) { notSplit('per-security'); continue; }
+    // Round 3 B-1 (Q-49): as on a date before 23 Jul 2024, a lot whose class's holding period may have differed then
+    // (classify.ts I21_PERIODS_UNCHANGED) is not split: the table holds only the periods from that day. A Specified
+    // holding is read per part (the pre-2023 part takes the row's `before` class, as the split below does).
+    const pre = rule.specifiedFrom && rule.before ? byInst.get(rule.before) ?? null : null;
+    const preFrom = pre ? i21Day(rule.specifiedFrom) : null;
+    if (L.some((x) => i21PeriodsMissing(pre && preFrom !== null && x.day < preFrom ? pre.inst : rule.inst, asOn) !== null)) {
+      unreconciled('periodsNotInTable', REASON.periodsNotInTable);
+      continue;
+    }
     if (src?.group) counts.apportioned++;
     rec.reason = withOversold(rec.reason, true);
 

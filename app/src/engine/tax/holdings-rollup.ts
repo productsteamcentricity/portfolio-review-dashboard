@@ -23,8 +23,10 @@
 // are unreconciled (no IRR file, or one that reconciles none): never Rs 0 on a book whose split is unknown.
 // Round 3 M2 (Q-49; MOD-05): each class carries its I-21 row (`rule`, with the rates), and the table's rates are those
 // from 23 Jul 2024 only (classify.ts I21_RATES_FROM). As on an earlier date every class says so (`ratesMissing`), and
-// so does the roll-up, so that no reader takes `rule.lt.rate` or `rule.st.rate` for a date they do not cover; the
-// classes, splits, gains and terms are unchanged.
+// so does the roll-up, so that no reader takes `rule.lt.rate` or `rule.st.rate` for a date they do not cover. The
+// holding periods changed that day too (round 3 B-1): lots.ts then leaves the classes whose period may have differed
+// unreconciled ('periodsNotInTable'), so only the classes proven unchanged (classify.ts I21_PERIODS_UNCHANGED) are split
+// and pooled; for them the classes, splits, gains and terms stand.
 // Money in rupees, unrounded. Pure.
 
 import type { Holding } from '../../model/holding.ts';
@@ -190,6 +192,7 @@ export const UNRECONCILED_KIND_WORDS: Readonly<Record<UnreconciledKind, string>>
   unitsGap: 'units blank (merged folio)', noLots: 'no purchase in the history', value: 'invested value does not reconcile',
   short: 'fewer units in the history', excess: 'more units in the history', noPxSell: 'a sale without a price',
   apportion: 'shared scheme not apportioned', transferRow: 'transfer row', bonusRow: 'bonus row', mergerCandidate: 'merger candidate',
+  periodsNotInTable: 'the holding periods before 23 Jul 2024 are not in the table',
 };
 
 /** The count of each unreconciled kind (a record without a kind is not counted). */
@@ -211,12 +214,18 @@ export function addUnreconciledKinds(a: UnreconciledKinds, b: UnreconciledKinds)
 
 /**
  * Round 3 L2: the label of holdings not split because unreconciled with the IRR file, naming each kind by count, for
- * example "unreconciled with the IRR file: merger candidate 1, transfer row 2" (the kinds in the type's order).
+ * example "unreconciled with the IRR file: merger candidate 1, transfer row 2" (the kinds in the type's order). Round 3
+ * B-1: the holdings not split because the holding periods of an earlier as-on date are not in the table are named
+ * apart, since the IRR file is not the cause: "the holding periods before 23 Jul 2024 are not in the table: 2".
  */
 export function unreconciledText(kinds: UnreconciledKinds): string {
-  const parts = (Object.keys(UNRECONCILED_KIND_WORDS) as UnreconciledKind[])
-    .filter((k) => (kinds[k] ?? 0) > 0).map((k) => `${UNRECONCILED_KIND_WORDS[k]} ${kinds[k]}`);
-  return parts.length ? `unreconciled with the IRR file: ${parts.join(', ')}` : 'unreconciled with the IRR file';
+  const irrKinds = (Object.keys(UNRECONCILED_KIND_WORDS) as UnreconciledKind[]).filter((k) => k !== 'periodsNotInTable');
+  const parts = irrKinds.filter((k) => (kinds[k] ?? 0) > 0).map((k) => `${UNRECONCILED_KIND_WORDS[k]} ${kinds[k]}`);
+  const periods = kinds.periodsNotInTable ?? 0;
+  const irr = parts.length ? `unreconciled with the IRR file: ${parts.join(', ')}` : 'unreconciled with the IRR file';
+  if (periods === 0) return irr;
+  const p = `${UNRECONCILED_KIND_WORDS.periodsNotInTable}: ${periods}`;
+  return parts.length ? `${irr}; ${p}` : p;
 }
 
 /** A GainTotal being added up, with the holdings already counted (a split holding is counted once). */
