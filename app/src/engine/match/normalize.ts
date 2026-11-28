@@ -73,9 +73,12 @@ export function normalize(s: unknown): string[] {
   return out;
 }
 
-/** Extra compounds of the second normaliser, after the legacy ones. */
+/** Extra compounds of the second normaliser, after the legacy ones. The last one is AMFI's long form of IDCW,
+ * "Income Distribution cum Capital Withdrawal" (KI-321): after "cum" the two words are option words, like the words
+ * before it that JUNK already drops; anywhere else ("Capital Builder", "Capital Protection") they are left alone. */
 export const COMPOUNDS_V2: ReadonlyArray<readonly [string, string]> = [
   ['exchange traded funds', 'etf'], ['exchange traded fund', 'etf'],
+  ['cum capital withdrawal', 'cum'],
 ];
 /** Extra synonyms of the second normaliser (spellings the vendor and AMFI use for one word). */
 export const SYN_V2: ReadonlyMap<string, string> = new Map([
@@ -103,6 +106,13 @@ export function normalizeV2(s: unknown): string[] {
     if (!seen.has(w)) { seen.add(w); out.push(w); }
   }
   return out;
+}
+
+/** A name without AMFI's long form of IDCW after "cum" (KI-321; the same phrase COMPOUNDS_V2 reads as option words),
+ * lower case with punctuation as spaces: for the legacy key of a name that an alias list is asked about. */
+export function withoutLongIdcw(s: unknown): string {
+  const t = ' ' + legacyString(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() + ' ';
+  return t.split(' cum capital withdrawal ').join(' cum ').trim();
 }
 
 /** The normalised key of a name: its tokens joined by one space (the legacy `normalize(name).join(" ")`). */

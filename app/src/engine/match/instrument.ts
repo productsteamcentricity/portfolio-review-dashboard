@@ -45,7 +45,7 @@
 //     tests/parity/matching-corrections.ts.
 
 import { aliasFor, isExactOnlyKey } from './name-lists.ts';
-import { nameKey, normalize, normalizeV2 } from './normalize.ts';
+import { nameKey, normalize, normalizeV2, withoutLongIdcw } from './normalize.ts';
 import { ownerAliasOf, ownerAliasTarget, wordsOf, type OwnerAliasTable } from './owner-aliases.ts';
 
 /** Normalised tokens of candidate names, kept between calls (the legacy candNormCache). */
@@ -310,7 +310,10 @@ export function matchInstrumentDetail(name: unknown, amc: unknown, candidates: r
     for (const c of candidates) if (c === alias) return { key: alias, step: 'pin' };
   }
   if (opts?.ownerAliases) {
-    const own = ownerAliasOf(name, legacyKey, opts.ownerAliases);
+    /* KI-321: with the second normaliser, an income-option name written with AMFI's long form of IDCW asks the owner's
+       list by its key without those option words, as an "IDCW Payout" name already does. The legacy lists (pins,
+       blocks, EXACT_ONLY) keep the legacy key. */
+    const own = ownerAliasOf(name, opts.normaliserV2 ? nameKey(withoutLongIdcw(name)) : legacyKey, opts.ownerAliases);
     const target = own ? ownerAliasTarget(name, own, candidates) : undefined;
     if (target !== undefined) return { key: target, step: 'owner-alias' };
   }
