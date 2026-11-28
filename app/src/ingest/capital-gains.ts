@@ -148,12 +148,17 @@ const PAN_TAG_RE = /\[\s*pan\s*:[^\]]*\]/gi;
 // token glued to other letters or digits is removed too (the stricter reading protects more).
 const PAN_TOKEN_RE = /[A-Za-z]{5}[0-9]{4}[A-Za-z]/g;
 const PAN_TOKEN_TEST_RE = /[A-Za-z]{5}[0-9]{4}[A-Za-z]/;
-// KI-323 (MOD-05's ruling): a PAN written with a space or a hyphen between its groups (five letters, four digits, one
-// letter; one separator or both, mixed or not, any letter case). Unlike the token above it must stand apart: no letter or
-// digit directly before or after it. Without that guard, ordinary text is cut: "April 2033 Index" in reference scheme
-// names reads "April 2033 I", and "Sample 2025 Growth" reads "ample 2025 G" (tests/unit/ingest/capital-gains.test.ts,
-// "KI-323", runs this pattern over every reference string and fixture line).
-const PAN_SPACED_RE = /(?<![A-Za-z0-9])[A-Za-z]{5}(?:[ -][0-9]{4}[ -]?|[0-9]{4}[ -])[A-Za-z](?![A-Za-z0-9])/g;
+// KI-323 (MOD-05's rulings): a PAN written with a space or a hyphen between its groups (five letters, four digits, one
+// letter; one separator or both, mixed or not). Narrower than the token above, so ordinary text is not cut:
+//   - it must stand apart: no letter or digit directly before or after it ("April 2033 Index" in reference scheme names
+//     would read "April 2033 I", and "Sample 2025 Growth" "ample 2025 G");
+//   - upper case only ("KI-323 narrow");
+//   - its fourth letter is a PAN holder-type letter: A, B, C, F, G, H, J, L, P or T ("KI-323 narrow").
+// The residual, by design: an upper-case five-letter word whose fourth letter is one of the ten, then four digits, then
+// one letter, each apart by one space or hyphen (a month name in capitals whose fourth letter is C, before a year and a
+// lone letter), is removed too; it is counted, so the analyst is told, never silently.
+// tests/unit/ingest/capital-gains.test.ts ("KI-323") runs this pattern over every reference string and fixture line.
+const PAN_SPACED_RE = /(?<![A-Za-z0-9])[A-Z]{3}[ABCFGHJLPT][A-Z](?:[ -][0-9]{4}[ -]?|[0-9]{4}[ -])[A-Z](?![A-Za-z0-9])/g;
 
 /** True when a text holds a PAN-shaped token (used by the tests' scans too). */
 export function hasPanShape(text: string): boolean {

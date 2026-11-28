@@ -17,10 +17,13 @@ calls no capital-gains reader function (it imports only the reader's column tabl
   as on 1 Apr 2025 it is long 3,000 as before; lots bought before 1 Apr 2023 are unchanged; before 23 Jul 2024 round
   3's B-1 rule already leaves these classes not split. Round 3's period proof now covers every sale day from 23 Jul
   2024 to 31 Mar 2027 and derives each gate from table v1. Parity: book `tax-w1`, TX-15 to TX-17 and TXR-25 to TXR-29.
-- **KI-323 (`ingest/capital-gains.ts`; MOD-05's ruling):** `scrubText` also removes and counts a PAN written with a
-  space or a hyphen between its groups (one separator or both, mixed or not, any letter case) when no letter or digit
-  touches it; without that guard ordinary text such as "... April 2033 Index Fund" in the reference names would be cut.
-  A check over every reference string and fixture line shows nothing else is removed.
+- **KI-323 (`ingest/capital-gains.ts`; MOD-05's rulings, "KI-323 narrow"):** `scrubText` also removes and counts a PAN
+  written with a space or a hyphen between its groups (one separator or both, mixed or not) when it is in upper case,
+  its fourth letter is a PAN holder-type letter (A, B, C, F, G, H, J, L, P, T) and no letter or digit touches it;
+  without the last guard ordinary text such as "... April 2033 Index Fund" in the reference names would be cut. A check
+  over every reference string and fixture line shows nothing else is removed. Residual, by design and tested: an
+  upper-case five-letter word whose fourth letter is one of the ten, four digits and one letter, apart by single spaces
+  or hyphens, is removed too, counted and reported to the analyst, never silent. The unbroken token is unchanged.
 - **Not built:** round 2c L3 (row-level matching of a merger's switch in) needs the owner's answer on how the export
   writes a merger (Q-T5); S-2 stays as built (MOD-05: NO; on the owner's list).
 

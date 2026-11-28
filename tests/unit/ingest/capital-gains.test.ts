@@ -136,18 +136,46 @@ describe('KI-323 (MOD-05\'s ruling): a PAN written with spaces or hyphens betwee
     return [`${a} ${b} ${c}`, `${a}-${b}-${c}`, `${a} ${b}-${c}`, `${a}-${b} ${c}`, `${a} ${b}${c}`, `${a}-${b}${c}`, `${a}${b} ${c}`, `${a}${b}-${c}`];
   };
 
-  test('each form, upper and lower case, alone, in a name and beside punctuation, is removed and counted once', () => {
-    for (const p of [panToken(7), panToken(8, true)]) {
-      for (const f of forms(p)) {
-        assert.deepEqual(scrubText(f), { text: PAN_REPLACEMENT, tags: 0, tokens: 1 }, 'alone');
+  /** The PAN holder-type letters (the fourth letter of a real PAN), the only ones the spaced pattern takes (KI-323 narrow). */
+  const HOLDER = 'ABCFGHJLPT';
+  /** A synthetic upper-case PAN whose fourth letter is the given one (built from panToken, never written out). */
+  const withFourth = (n: number, fourth: string): string => { const p = panToken(n); return `${p.slice(0, 3)}${fourth}${p.slice(4)}`; };
+
+  test('each form of a PAN, upper case, with each holder-type fourth letter, alone, in a name and beside punctuation, is removed and counted once', () => {
+    for (const [k, fourth] of [...HOLDER].entries()) {
+      for (const f of forms(withFourth(7 + k, fourth))) {
+        assert.deepEqual(scrubText(f), { text: PAN_REPLACEMENT, tags: 0, tokens: 1 }, `alone: fourth ${fourth}`);
         assert.deepEqual(scrubText(`Sample Client A ${f}`), { text: `Sample Client A ${PAN_REPLACEMENT}`, tags: 0, tokens: 1 }, 'in a name');
         assert.deepEqual(scrubText(`Sample Client A (${f}), Held Away`), { text: `Sample Client A (${PAN_REPLACEMENT}), Held Away`, tags: 0, tokens: 1 }, 'punctuation');
       }
     }
     // Two in one cell, one of each kind, and a spaced one beside a tag: every one counted.
-    const [s1, s2] = [forms(panToken(9))[0]!, forms(panToken(10))[1]!];
+    const [s1, s2] = [forms(withFourth(9, 'P'))[0]!, forms(withFourth(10, 'C'))[1]!];
     assert.deepEqual(scrubText(`${s1} and ${panToken(11)} and ${s2}`), { text: `${PAN_REPLACEMENT} and ${PAN_REPLACEMENT} and ${PAN_REPLACEMENT}`, tags: 0, tokens: 3 });
     assert.deepEqual(scrubText(`Sample Client B ${s1} [PAN: ${s2}]`), { text: `Sample Client B ${PAN_REPLACEMENT}`, tags: 1, tokens: 1 });
+  });
+
+  test('KI-323 narrow: a lower-case spaced form, and a fourth letter outside the ten, are not removed; the unbroken token is unchanged', () => {
+    for (const f of forms(withFourth(13, 'P').toLowerCase())) assert.deepEqual(scrubText(f), { text: f, tags: 0, tokens: 0 }, 'lower case');
+    for (const fourth of 'DEIKMNOQRSUVWXYZ') {
+      for (const f of forms(withFourth(14, fourth))) assert.deepEqual(scrubText(f), { text: f, tags: 0, tokens: 0 }, `fourth ${fourth}`);
+    }
+    // A month name in capitals whose fourth letter is not among the ten (I), before a year and a lone letter.
+    const month = `${['AP', 'RIL'].join('')} 2030 A`;
+    assert.deepEqual(scrubText(month), { text: month, tags: 0, tokens: 0 });
+    assert.deepEqual(scrubText(`Sample Client A ${month.replace(/ /g, '-')}`), { text: `Sample Client A ${month.replace(/ /g, '-')}`, tags: 0, tokens: 0 });
+    // The unbroken token keeps its rule: any letter case, any fourth letter.
+    for (const t of [panToken(15, true), withFourth(16, 'Z')]) assert.deepEqual(scrubText(t), { text: PAN_REPLACEMENT, tags: 0, tokens: 1 });
+  });
+
+  test('KI-323 narrow, the residual stated plainly: an upper-case five-letter word whose fourth letter is one of the ten, four digits and one letter, apart by single spaces or hyphens, is removed and counted', () => {
+    // MOD-05's ruling: such ordinary text is still removed, by design; it is counted (the statement's "pan-removed"
+    // Information result tells the analyst), never silent. A month name in capitals whose fourth letter is C.
+    const word = ['MAR', 'CH'].join('');
+    for (const s of [`${word} 2025 A`, `${word}-2025-A`, `${word} 2025-A`, `${word}-2025 A`]) {
+      assert.deepEqual(scrubText(s), { text: PAN_REPLACEMENT, tags: 0, tokens: 1 }, s);
+      assert.deepEqual(scrubText(`Sample Fund ${s}`), { text: `Sample Fund ${PAN_REPLACEMENT}`, tags: 0, tokens: 1 }, s);
+    }
   });
 
   test('not removed: scheme names with a year or a code, folio numbers, dates, and a spaced form glued to other text', () => {
@@ -160,7 +188,7 @@ describe('KI-323 (MOD-05\'s ruling): a PAN written with spaces or hyphens betwee
       'Folio No: 91000001/12', 'Folio 1234-5678-9', 'Folio ABC-1234-5',
       '01-04-2025', '2025-04-01', '31 March 2025', 'April 2025', 'Tue 01 Apr 2025', 'FY 2024-25',
       // A form glued to letters or digits on either side is left alone: the guard that keeps the names above.
-      `x${forms(panToken(12))[0]}`, `${forms(panToken(12))[1]}9`,
+      `x${forms(withFourth(12, 'P'))[0]}`, `${forms(withFourth(12, 'P'))[1]}9`,
     ];
     for (const s of kept) assert.deepEqual(scrubText(s), { text: s, tags: 0, tokens: 0 }, s);
   });
