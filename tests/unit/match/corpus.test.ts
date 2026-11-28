@@ -27,7 +27,9 @@ const MAX_V2_LOSSES = 4;
  * stricter regime (option B) on 26 Nov 2026 after asking why 21 correct names would become unmatched; the 4 names still
  * unmatched after the follow-up were a known gap: the owner approved an alias for each of the four names on 28 Nov 2026
  * (decision log 2.4), and the last stage, which adds the owner's aliases (lines 18 to 22 among them), recovers all four:
- * no official name the live matcher resolves correctly is lost at the end. */
+ * none of the 1,206 official names of this measure that the live matcher resolves correctly is lost at the end. The
+ * measure does not hold every official name: 444 income-option names outside it, which the live matcher resolves, are
+ * not matched by the new build (KI-321). */
 const ACCEPTED_AMFI_LOSSES: Readonly<Record<string, { max: number; reason: string }>> = {
   'Option B, the stricter regime (the owner, 26 Nov 2026)': { max: 22, reason: 'the owner chose the stricter regime on 26 Nov 2026 after asking why 21 of 1,206 correct names would become unmatched' },
   'Normaliser v2 and the candidate-side word guard (follow-up, 26 Nov 2026)': { max: MAX_V2_LOSSES, reason: 'a known gap: the follow-up recovers 20 of option B\'s 22 and loses 2 others; the owner approved an alias for each of the four names on 28 Nov 2026 (decision log 2.4), and the last stage, with those lines, recovers them' },
@@ -48,7 +50,7 @@ describe('matcher corrections: corpus, both ways', () => {
     }
   });
 
-  test('the last stage, with the owner\'s aliases: the four names the follow-up left unmatched are recovered, and no official name is lost', () => {
+  test('the last stage, with the owner\'s aliases: the four names the follow-up left unmatched are recovered, and none of the 1,206 names of this measure is lost (names outside it: KI-321)', () => {
     const FOUR = [
       'Kotak Infrastructure & Economic Reform Fund - Standard Plan-Growth',
       'UTI Focused Fund (30 stocks) - Regular Plan - Growth Option',

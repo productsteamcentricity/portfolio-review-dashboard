@@ -52,7 +52,7 @@ export function S5Performance({ state }: { state: AppState }) {
               </tbody>
             </table>
           </div>
-          {b.notes.length ? <ul class="plain-list notes">{b.notes.map((n) => <li key={n}>{n}</li>)}</ul> : null}
+          {b.notes.length ? <ul class="plain-list notes">{b.notes.map((n, ni) => <li key={`n${ni}`}>{n}</li>)}</ul> : null}
         </Group>
       ))}
       {vm.weighted ? (
@@ -62,8 +62,9 @@ export function S5Performance({ state }: { state: AppState }) {
               <caption>{vm.weighted.title}</caption>
               <thead><tr><th scope="col">Scope</th>{vm.weighted.cols.map((c) => <th scope="col" key={c} class="num">{c}</th>)}</tr></thead>
               <tbody>
-                {vm.weighted.rows.map((r) => (
-                  <tr key={r.name} class={r.name === 'Family' ? 'row-total' : 'row-item'}>
+                {/* the family row is the first (views/performance.ts); two clients can share a name, so the key is the position */}
+                {vm.weighted.rows.map((r, ri) => (
+                  <tr key={`w${ri}`} class={ri === 0 ? 'row-total' : 'row-item'}>
                     <th scope="row">{r.name}</th>
                     {r.cells.map((d, i) => <td key={vm.weighted!.cols[i]} class={d.negative ? 'num neg' : 'num'}>{d.text}{d.marker ? <sup>{d.marker}</sup> : null}</td>)}
                   </tr>
@@ -71,7 +72,7 @@ export function S5Performance({ state }: { state: AppState }) {
               </tbody>
             </table>
           </div>
-          <ul class="plain-list notes">{vm.weighted.notes.map((n) => <li key={n}>{n}</li>)}</ul>
+          <ul class="plain-list notes">{vm.weighted.notes.map((n, ni) => <li key={`n${ni}`}>{n}</li>)}</ul>
         </Group>
       ) : null}
     </>

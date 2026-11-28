@@ -17,6 +17,10 @@
 // equal the live's figures.
 // Another (OD-7): the asset key is the holding's canonical class, else its label as given, else blank
 // ("(unspecified)"); the live reads a blank Asset Name as Equity.
+// M7b financial review F-2, F-3: the legacy-facing `tax.unrealised.{st,lt}` leaves out the holdings unreconciled with the
+// IRR file (their CMV and gain are unclassified), so it is PARTIAL COVERAGE with them (coverage: the split holdings over
+// the split and unreconciled holdings, the count in its method), and NOT AVAILABLE when no holding is split while some
+// are unreconciled (no IRR file, or one that reconciles none): never Rs 0 on a book whose split is unknown.
 // Money in rupees, unrounded. Pure.
 
 import type { Holding } from '../../model/holding.ts';
@@ -327,13 +331,27 @@ export function rollupHoldings(lots: Pick<TaxLotsResult, 'positions' | 'unreconc
     return { s: { clientId: c, clientLabel: label, positions: p, unreconciled: u, unmapped: m, ...summariseRecords(p, u, m, facts, opts) }, i };
   }).sort((a, b) => b.s.totals.cmv - a.s.totals.cmv || a.i - b.i).map((x) => x.s);
   const unnamedN = all.filter((r) => r.clientId === null && !isSecondPart(r)).length;
+  const split = lots.positions.filter((r) => r.notSplit === null && !isSecondPart(r)).length;
+  const unrec = lots.unreconciled.length;
   return {
     family, clients, unnamedN, facts, prov,
     legacy: {
       unrealised: {
-        st: gainValue(family.totals.st.gain, { ...prov, method: `${prov.method}; tax.unrealised.st` }, 'short-term gain'),
-        lt: gainValue(family.totals.lt.gain, { ...prov, method: `${prov.method}; tax.unrealised.lt` }, 'long-term gain'),
+        st: withUnreconciled(gainValue(family.totals.st.gain, { ...prov, method: `${prov.method}; tax.unrealised.st` }, 'short-term gain'), split, unrec, prov),
+        lt: withUnreconciled(gainValue(family.totals.lt.gain, { ...prov, method: `${prov.method}; tax.unrealised.lt` }, 'long-term gain'), split, unrec, prov),
       },
     },
   };
+}
+
+/**
+ * F-2, F-3: a legacy unrealised figure with the holdings unreconciled with the IRR file left out: unchanged when there are
+ * none; NOT AVAILABLE when no holding is split; else PARTIAL COVERAGE (split / (split + unreconciled), or lower).
+ */
+function withUnreconciled(v: Value<number>, split: number, unrec: number, prov: Provenance): Value<number> {
+  if (unrec === 0 || v.kind === 'missing') return v;
+  const why = `${plural(unrec, 'holding')} not split (unreconciled with the IRR file) left out`;
+  if (split === 0) return missing(STATUS.NOT_AVAILABLE, `no holding is split into long and short term: ${why}`, prov);
+  return present(v.v, 'inr', { ...v.prov, method: `${v.prov.method}; ${STATUS.PARTIAL}: ${why}` },
+    { coverage: Math.min(v.coverage ?? 1, split / (split + unrec)) });
 }

@@ -240,6 +240,43 @@ describe('per client, the family a sum; the contract shape', () => {
     assert.ok(h.labels.includes('1 holding with an unknown gain left out (PARTIAL COVERAGE)'), JSON.stringify(h.labels));
     assert.equal(family.gainUnknown, 1);
   });
+  test('M7b F-3: a holding unreconciled with the IRR file stays out of the pools and makes the figures PARTIAL, labelled', () => {
+    // One split holding (long gain 1,00,000) and one unreconciled holding (gain 8,000, not split): the pools hold the
+    // 1,00,000 alone (unused exemption confirmed: 1,00,000 within Rs 1,25,000, tax 0), and the figures are PARTIAL with
+    // coverage 1 split / (1 split + 1 unreconciled) = 0.5; the family too. Before M7b: complete, no label.
+    const { clients, family } = run([
+      { client: A, name: 'Sample Fund One', cls: 'equityMf', cmv: 300000, lt: 100000 },
+      { client: A, name: 'Sample Fund Two', cls: 'equityMf', cmv: 80000, status: 'unreconciled', gain: 8000 },
+    ], ctxOf({ exemptionUsed: { [A]: 'unused-confirmed' } }));
+    const h = clients[0]!;
+    assert.equal(h.unreconciled, 1);
+    near(h.figures.taxBefore, 0, 'tax before');
+    assert.equal((h.taxBefore as { coverage?: number }).coverage, 0.5);
+    assert.match((h.taxBefore as { prov: { method: string } }).prov.method, /PARTIAL COVERAGE: 1 holding not split \(unreconciled with the IRR file\) left out of the pools/);
+    assert.ok(h.labels.includes('1 holding not split (unreconciled with the IRR file) left out (PARTIAL COVERAGE)'), JSON.stringify(h.labels));
+    assert.equal(family.unreconciled, 1);
+    assert.equal((family.taxBefore as { coverage?: number }).coverage, 0.5);
+  });
+  test('M7b D-1: a client with no holding split (all unreconciled) has no harvest; the family leaves it out with a count', () => {
+    // A: one split holding (long gain 1,00,000, unused exemption confirmed: tax 0). B: one unreconciled holding only. B's
+    // Values are NOT AVAILABLE with the reason (before: 0 at coverage 0); the family is A's alone, PARTIAL, 1 client left
+    // out, coverage 1 split holding of 2 = 0.5. With B alone the family is NOT AVAILABLE.
+    const specs: PositionSpec[] = [
+      { client: A, name: 'Sample Fund One', cls: 'equityMf', cmv: 300000, lt: 100000 },
+      { client: B, name: 'Sample Fund Two', cls: 'equityMf', cmv: 80000, status: 'unreconciled', gain: 8000 },
+    ];
+    const { clients, family } = run(specs, ctxOf({ exemptionUsed: { [A]: 'unused-confirmed' } }));
+    const b = clients.find((c) => c.clientLabel === B)!;
+    assert.equal(b.taxBefore.kind, 'missing');
+    assert.equal(b.notWorked, 'no holding of this client is split into long and short term (1 holding not split, unreconciled with the IRR file), so no harvest is worked');
+    assert.equal(clients.find((c) => c.clientLabel === A)!.notWorked, null);
+    assert.equal(family.clientsNotWorked, 1);
+    assert.equal(family.taxBefore.kind, 'value');
+    assert.equal((family.taxBefore as { coverage?: number }).coverage, 0.5);
+    const alone = run([specs[1]!], ctxOf({})).family;
+    assert.equal(alone.taxBefore.kind, 'missing');
+    assert.equal(alone.clientsNotWorked, 1);
+  });
   test('an unsplit holding (Category II AIF) is never a pool or a candidate', () => {
     const { clients } = run([
       { client: A, name: 'Sample AIF Category II', cls: 'equityAif12', cmv: 300000, notSplit: 'pass-through', gain: -50000 },
