@@ -279,8 +279,35 @@ const R2C: Book = {
   ],
 };
 
+/**
+ * Round 4 W-1 (Q-49; OD-2; CHAT-012's Gate B of tax round 3 d7e1818; KI-341): as on 31 Jan 2025, CHAT-012's Commodity
+ * ETF (100 u bought 1 May 2023 at 100, CMV 13,000) was Specified (s.50AA): short 3,000 at the slab rate, where the live
+ * reads today's 12 months and gives long 3,000. A second Commodity ETF bought 1 Mar 2023 (before 1 Apr 2023: never
+ * Specified), an International ETF bought 1 Mar 2023, a Commodity MF and a Global Fund bought 1 Jan 2022 and an equity
+ * fund bought 1 Jan 2024 are long on both sides. Ledger TX-15 to TX-17, roll-up TXR-25 onward.
+ */
+const W1_NEW = 'Sample Gold Exchange Traded Fund 2023';
+const W1_INTL = 'Sample Nasdaq 100 ETF';
+const W1_SILVER = 'Sample Silver Fund of Funds - Regular Plan - Growth';
+const W1: Book = {
+  id: 'tax-w1', asOn: day(2025, 1, 31),
+  book: [
+    hold(A, W1_NEW, 'Gold ETF', 'Commodity', MF, 100, 10000, 13000),
+    hold(A, N.gold, 'Gold ETF', 'Commodity', MF, 100, 10000, 12500),
+    hold(A, W1_INTL, 'Other ETFs', 'Equity', MF, 100, 10000, 12000),
+    hold(A, W1_SILVER, 'FoF Domestic', 'Commodity', MF, 100, 10000, 11500),
+    hold(A, N.intl, 'FoF Overseas', 'Equity', MF, 100, 10000, 11000),
+    hold(A, N.blue, 'Large Cap Fund', 'Equity', MF, 100, 10000, 10500),
+  ],
+  flows: [
+    flow(A, W1_NEW, [2023, 5, 1], 'Purchase', 100, -10000), flow(A, N.gold, [2023, 3, 1], 'Purchase', 100, -10000),
+    flow(A, W1_INTL, [2023, 3, 1], 'Purchase', 100, -10000), flow(A, W1_SILVER, [2022, 1, 1], 'Purchase', 100, -10000),
+    flow(A, N.intl, [2022, 1, 1], 'Purchase', 100, -10000), flow(A, N.blue, [2024, 1, 1], 'Purchase', 100, -10000),
+  ],
+};
+
 const BOOKS: Book[] = [CORE, OD16, OD15, annivBook('tax-anniv-on', day(2026, 9, 30)), annivBook('tax-anniv-after', day(2026, 10, 1)),
-  annivBook('tax-leap-on', day(2025, 2, 28)), annivBook('tax-leap-after', day(2025, 3, 1)), USUAL_BEFORE, LISTED_ETF, KI065, INVESTED_ZERO, GATE_B, R2C];
+  annivBook('tax-leap-on', day(2025, 2, 28)), annivBook('tax-leap-after', day(2025, 3, 1)), USUAL_BEFORE, LISTED_ETF, KI065, INVESTED_ZERO, GATE_B, R2C, W1];
 
 // ---------------------------------------------------------------------------------------------------------------
 // Both sides in one shape
@@ -741,6 +768,21 @@ describe('known answers R2-R1 for the books the ledger covers by correction (fin
       'totals.unclassCmv': 18000, 'totals.unclassGain': 3000, 'harvest.s198Gains': 1990, 'harvest.exBefore': 1990,
       'harvest.taxBefore': 0, 'harvest.taxAfter': 0, 'harvest.saving': 0,
     }, 'tax-r2c');
+  });
+
+  test('tax-w1: the Commodity ETF bought 1 May 2023 is short 3,000 at the slab rate; tax before 875', () => {
+    // Round 4 W-1 (TX-15 to TX-17), as on 31 Jan 2025 (FY 2024-25: exemption Rs 1,25,000, long-term 12.5%). The Commodity
+    // ETF bought 1 May 2023 was Specified (s.50AA): short 13,000 at a gain of 3,000, at the slab rate (no tax figure:
+    // unquantified, 1 pool). Long: the Commodity ETF of 1 Mar 2023 (12,500, gain 2,500), the International ETF of 1 Mar
+    // 2023 (12,000, 2,000), the Commodity MF (11,500, 1,500) and the Global Fund (11,000, 1,000) of 1 Jan 2022, the equity
+    // fund of 1 Jan 2024 (10,500, 500): long 57,500 at 7,500. Harvest: Sec 198 gains 500 inside the exemption; the other
+    // long-term pools 7,000 x 12.5% = 875 before and after, saving 0. The live: long 70,500 at 10,500, tax 1,250.
+    expectFig(fig(W1), {
+      'totals.cmv': 70500, 'totals.ltCmv': 57500, 'totals.ltGain': 7500, 'totals.stCmv': 13000, 'totals.stGain': 3000,
+      'totals.unclassCmv': 0, 'totals.unclassGain': 0, 'harvest.s198Gains': 500, 'harvest.exBefore': 500,
+      'harvest.taxBefore': 875, 'harvest.taxAfter': 875, 'harvest.saving': 0, 'harvest.stGains': 3000,
+      'harvest.unquantifiedGain': 3000, 'harvest.unquantifiedPools': 1,
+    }, 'tax-w1');
   });
 });
 

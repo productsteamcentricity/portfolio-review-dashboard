@@ -148,18 +148,35 @@ const PAN_TAG_RE = /\[\s*pan\s*:[^\]]*\]/gi;
 // token glued to other letters or digits is removed too (the stricter reading protects more).
 const PAN_TOKEN_RE = /[A-Za-z]{5}[0-9]{4}[A-Za-z]/g;
 const PAN_TOKEN_TEST_RE = /[A-Za-z]{5}[0-9]{4}[A-Za-z]/;
+// KI-323 (MOD-05's rulings): a PAN written with a separator between its groups (five letters, four digits, one letter;
+// a separator after the letters, before the last letter, or both). A separator is one to three characters, each a
+// space, a non-breaking space (U+00A0, the escape xA0 below) or a hyphen (the review's S-2: spreadsheet exports write the
+// non-breaking space and short runs). Narrower than the token above, so ordinary text is not cut:
+//   - it must stand apart: no letter or digit directly before or after it ("April 2033 Index" in reference scheme names
+//     would read "April 2033 I", and "Sample 2025 Growth" "ample 2025 G");
+//   - upper case only ("KI-323 narrow");
+//   - its fourth letter is a PAN holder-type letter: A, B, C, F, G, H, J, L, P or T ("KI-323 narrow").
+// The residual, by design: an upper-case five-letter word whose fourth letter is one of the ten, then four digits, then
+// one letter, with such a separator after the word, before the letter, or both (a month name in capitals whose fourth
+// letter is C, before a year and a lone letter), is removed too; it is counted, so the analyst is told, never silently.
+// tests/unit/ingest/capital-gains.test.ts ("KI-323") runs this pattern over every reference string and fixture line.
+const PAN_SPACED_RE = /(?<![A-Za-z0-9])[A-Z]{3}[ABCFGHJLPT][A-Z](?:[ \xA0-]{1,3}[0-9]{4}(?:[ \xA0-]{1,3})?|[0-9]{4}[ \xA0-]{1,3})[A-Z](?![A-Za-z0-9])/g;
 
 /** True when a text holds a PAN-shaped token (used by the tests' scans too). */
 export function hasPanShape(text: string): boolean {
   return PAN_TOKEN_TEST_RE.test(text);
 }
 
-/** The text with every PAN tag and PAN-shaped token removed, and how many of each. */
+/**
+ * The text with every PAN tag and PAN-shaped token removed, and how many of each. A token written with spaces or hyphens
+ * between its groups (KI-323) is removed and counted as a token too.
+ */
 export function scrubText(text: string): { text: string; tags: number; tokens: number } {
   let tags = 0;
   let tokens = 0;
   let out = text.replace(PAN_TAG_RE, () => { tags++; return ''; });
   out = out.replace(PAN_TOKEN_RE, () => { tokens++; return PAN_REPLACEMENT; });
+  out = out.replace(PAN_SPACED_RE, () => { tokens++; return PAN_REPLACEMENT; });
   if (tags > 0) out = out.replace(/\s+$/, '');
   return { text: out, tags, tokens };
 }

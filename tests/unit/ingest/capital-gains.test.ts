@@ -5,6 +5,9 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { readWorkbook } from '../../../app/src/ingest/workbook.ts';
 import type { Cell, Workbook } from '../../../app/src/ingest/workbook.ts';
 import {
@@ -121,6 +124,130 @@ describe('helpers (design §2.2, §2.5, §3, §8, §11)', () => {
     assert.equal(possiblyOnePerson('A Sample', 'B Sample'), false);
     assert.equal(possiblyOnePerson('Sample Client A', 'Sample Client A'), false);
     assert.equal(possiblyOnePerson('Other Client X', 'Other Client Y'), false);
+  });
+});
+
+describe('KI-323 (MOD-05\'s ruling): a PAN written with spaces or hyphens between its groups is removed and counted', () => {
+  // The forms are built at run time from the synthetic panToken (five letters, four digits, one letter), never written
+  // out, so the repository's privacy scan sees no PAN.
+  const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+  const forms = (p: string): string[] => {
+    const [a, b, c] = [p.slice(0, 5), p.slice(5, 9), p.slice(9)];
+    return [`${a} ${b} ${c}`, `${a}-${b}-${c}`, `${a} ${b}-${c}`, `${a}-${b} ${c}`, `${a} ${b}${c}`, `${a}-${b}${c}`, `${a}${b} ${c}`, `${a}${b}-${c}`];
+  };
+
+  /** The PAN holder-type letters (the fourth letter of a real PAN), the only ones the spaced pattern takes (KI-323 narrow). */
+  const HOLDER = 'ABCFGHJLPT';
+  /** A synthetic upper-case PAN whose fourth letter is the given one (built from panToken, never written out). */
+  const withFourth = (n: number, fourth: string): string => { const p = panToken(n); return `${p.slice(0, 3)}${fourth}${p.slice(4)}`; };
+
+  test('each form of a PAN, upper case, with each holder-type fourth letter, alone, in a name and beside punctuation, is removed and counted once', () => {
+    for (const [k, fourth] of [...HOLDER].entries()) {
+      for (const f of forms(withFourth(7 + k, fourth))) {
+        assert.deepEqual(scrubText(f), { text: PAN_REPLACEMENT, tags: 0, tokens: 1 }, `alone: fourth ${fourth}`);
+        assert.deepEqual(scrubText(`Sample Client A ${f}`), { text: `Sample Client A ${PAN_REPLACEMENT}`, tags: 0, tokens: 1 }, 'in a name');
+        assert.deepEqual(scrubText(`Sample Client A (${f}), Held Away`), { text: `Sample Client A (${PAN_REPLACEMENT}), Held Away`, tags: 0, tokens: 1 }, 'punctuation');
+      }
+    }
+    // Two in one cell, one of each kind, and a spaced one beside a tag: every one counted.
+    const [s1, s2] = [forms(withFourth(9, 'P'))[0]!, forms(withFourth(10, 'C'))[1]!];
+    assert.deepEqual(scrubText(`${s1} and ${panToken(11)} and ${s2}`), { text: `${PAN_REPLACEMENT} and ${PAN_REPLACEMENT} and ${PAN_REPLACEMENT}`, tags: 0, tokens: 3 });
+    assert.deepEqual(scrubText(`Sample Client B ${s1} [PAN: ${s2}]`), { text: `Sample Client B ${PAN_REPLACEMENT}`, tags: 1, tokens: 1 });
+  });
+
+  test('KI-323 narrow: a lower-case spaced form, and a fourth letter outside the ten, are not removed; the unbroken token is unchanged', () => {
+    for (const f of forms(withFourth(13, 'P').toLowerCase())) assert.deepEqual(scrubText(f), { text: f, tags: 0, tokens: 0 }, 'lower case');
+    for (const fourth of 'DEIKMNOQRSUVWXYZ') {
+      for (const f of forms(withFourth(14, fourth))) assert.deepEqual(scrubText(f), { text: f, tags: 0, tokens: 0 }, `fourth ${fourth}`);
+    }
+    // A month name in capitals whose fourth letter is not among the ten (I), before a year and a lone letter.
+    const month = `${['AP', 'RIL'].join('')} 2030 A`;
+    assert.deepEqual(scrubText(month), { text: month, tags: 0, tokens: 0 });
+    assert.deepEqual(scrubText(`Sample Client A ${month.replace(/ /g, '-')}`), { text: `Sample Client A ${month.replace(/ /g, '-')}`, tags: 0, tokens: 0 });
+    // The unbroken token keeps its rule: any letter case, any fourth letter.
+    for (const t of [panToken(15, true), withFourth(16, 'Z')]) assert.deepEqual(scrubText(t), { text: PAN_REPLACEMENT, tags: 0, tokens: 1 });
+  });
+
+  test('KI-323 narrow, the residual stated plainly: an upper-case five-letter word whose fourth letter is one of the ten, four digits and one letter, with a separator after the word, before the letter or both, is removed and counted', () => {
+    // MOD-05's ruling: such ordinary text is still removed, by design; it is counted (the statement's "pan-removed"
+    // Information result tells the analyst), never silent. A month name in capitals whose fourth letter is C. The
+    // separator: one to three spaces, non-breaking spaces or hyphens (S-2), on either side or both (review N-2).
+    const word = ['MAR', 'CH'].join('');
+    const NBSP = String.fromCharCode(0xa0);
+    for (const s of [`${word} 2025 A`, `${word}-2025-A`, `${word} 2025-A`, `${word}-2025 A`, `${word}2025 A`, `${word} 2025A`,
+      `${word}${NBSP}2025${NBSP}A`, `${word}  2025  A`, `${word} - 2025 - A`]) {
+      assert.deepEqual(scrubText(s), { text: PAN_REPLACEMENT, tags: 0, tokens: 1 }, JSON.stringify(s));
+      assert.deepEqual(scrubText(`Sample Fund ${s}`), { text: `Sample Fund ${PAN_REPLACEMENT}`, tags: 0, tokens: 1 }, JSON.stringify(s));
+    }
+  });
+
+  test('KI-323 widened (S-2): separators of one to three spaces, non-breaking spaces or hyphens are removed; four, or a tab, are not', () => {
+    // MOD-05's ruling on the review's S-2. The non-breaking space (U+00A0) and the tab are built from their codes.
+    const NBSP = String.fromCharCode(0xa0);
+    const TAB = String.fromCharCode(9);
+    const p = withFourth(17, 'H');
+    const [a, b, c] = [p.slice(0, 5), p.slice(5, 9), p.slice(9)];
+    for (const sep of [NBSP, '  ', ' - ', `${NBSP}-${NBSP}`, '---', `${NBSP}${NBSP}`]) {
+      for (const f of [`${a}${sep}${b}${sep}${c}`, `${a}${sep}${b}${c}`, `${a}${b}${sep}${c}`, `${a}${sep}${b} ${c}`]) {
+        assert.deepEqual(scrubText(`Sample Client A ${f}`), { text: `Sample Client A ${PAN_REPLACEMENT}`, tags: 0, tokens: 1 }, JSON.stringify(f));
+      }
+    }
+    for (const sep of ['    ', ' -- ', `${NBSP}${NBSP}${NBSP}${NBSP}`, TAB, ` ${TAB} `]) {
+      for (const f of [`${a}${sep}${b}${sep}${c}`, `${a}${sep}${b}${c}`, `${a}${b}${sep}${c}`]) {
+        assert.deepEqual(scrubText(`Sample Client A ${f}`), { text: `Sample Client A ${f}`, tags: 0, tokens: 0 }, JSON.stringify(f));
+      }
+    }
+    // The guards stay with the wider separators: lower case, and a fourth letter outside the ten, are kept.
+    for (const f of [`${a.toLowerCase()}${NBSP}${b}${NBSP}${c.toLowerCase()}`, `${withFourth(18, 'E').slice(0, 5)}  ${b}  ${c}`]) {
+      assert.deepEqual(scrubText(f), { text: f, tags: 0, tokens: 0 }, JSON.stringify(f));
+    }
+  });
+
+  test('not removed: scheme names with a year or a code, folio numbers, dates, and a spaced form glued to other text', () => {
+    const kept = [
+      'Sample CRISIL IBX Gilt April 2033 Index Fund - Direct Plan - Growth',
+      'Sample Nifty SDL Plus Gilt - April 2032 Index Fund',
+      'Sample 2025 Growth Fund',
+      'Sample Fixed Maturity Plan Series 2025 A',
+      'Sample Fund INF000A01AB1',
+      'Folio No: 91000001/12', 'Folio 1234-5678-9', 'Folio ABC-1234-5',
+      '01-04-2025', '2025-04-01', '31 March 2025', 'April 2025', 'Tue 01 Apr 2025', 'FY 2024-25',
+      // A form glued to letters or digits on either side is left alone: the guard that keeps the names above.
+      `x${forms(withFourth(12, 'P'))[0]}`, `${forms(withFourth(12, 'P'))[1]}9`,
+    ];
+    for (const s of kept) assert.deepEqual(scrubText(s), { text: s, tags: 0, tokens: 0 }, s);
+  });
+
+  test('no false removal over every reference string (data/refdata) and every line of tests/fixtures', () => {
+    // The spaced pattern adds a removal only where a PAN written with separators stands: none of these hold one, so the
+    // tokens counted equal those of the unspaced rule alone (the fixtures' own synthetic PANs), and the text is the
+    // unspaced rule's text.
+    const strings: string[] = [];
+    const walk = (x: unknown): void => {
+      if (typeof x === 'string') strings.push(x);
+      else if (Array.isArray(x)) x.forEach(walk);
+      else if (x && typeof x === 'object') for (const [k, v] of Object.entries(x)) { strings.push(k); walk(v); }
+    };
+    const refdata = path.join(ROOT, 'data/refdata');
+    const jsons = fs.readdirSync(refdata).filter((f) => f.endsWith('.json'));
+    for (const f of jsons) walk(JSON.parse(fs.readFileSync(path.join(refdata, f), 'utf8')));
+    const files = (d: string): string[] => fs.readdirSync(d).flatMap((n) => {
+      const p = path.join(d, n);
+      return fs.statSync(p).isDirectory() ? files(p) : [p];
+    });
+    const fixtureFiles = files(path.join(ROOT, 'tests/fixtures'));
+    for (const p of fixtureFiles) strings.push(...fs.readFileSync(p, 'utf8').split('\n'));
+    assert.ok(jsons.length >= 20 && fixtureFiles.length >= 20 && strings.length > 500000, `${jsons.length} files, ${fixtureFiles.length} fixtures, ${strings.length} strings`);
+    const plain = /[A-Za-z]{5}[0-9]{4}[A-Za-z]/g;
+    const hits: string[] = [];
+    for (const s of strings) {
+      const r = scrubText(s);
+      const unspaced = s.replace(/\[\s*pan\s*:[^\]]*\]/gi, '').replace(plain, PAN_REPLACEMENT);
+      if (r.tokens !== (s.replace(/\[\s*pan\s*:[^\]]*\]/gi, '').match(plain) ?? []).length || r.text.replace(/\s+$/, '') !== unspaced.replace(/\s+$/, '')) {
+        if (hits.length < 10) hits.push(s.slice(0, 120));
+      }
+    }
+    assert.deepEqual(hits, []);
   });
 });
 

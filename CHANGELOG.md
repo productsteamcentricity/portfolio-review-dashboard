@@ -15,6 +15,38 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **Compactions** recounted: CHAT-011 (NB-04) at its third, successor pending the owner; CHAT-014 and CHAT-017 at 2,
   CHAT-016 at 1 (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_SUCCESSION_REGISTER.md`, `CHAT_REGISTRY.md`).
 
+### Fixed (new build, M7a tax round 4; not wired into the page yet)
+PLAN-09 (MOD-05, 28 Nov 2026). The tax engine is imported by no page module. One change reaches the page: since PR #81
+the base-file reader calls `scrubText` for the Account Name cell and its label, so KI-323 below changes `/next/`.
+- **W-1 (`classify.ts`, `lots.ts`; Q-49; KI-341; CHAT-012's Gate B of round 3 d7e1818):** Commodity ETF, International
+  ETFs, Commodity Mutual Fund and Global Funds units bought from 1 Apr 2023 were Specified mutual fund units (s.50AA:
+  deemed short term, at the slab rate) for sales up to 31 Mar 2025; table v1 applies the new definition to sales from
+  1 Apr 2025 (NE-50AA-2, line 568). A gate per class (`I21_PERIODS_GATES`, each with its table v1 line) makes such a lot
+  short term as on a date before 1 Apr 2025, and the record names why. Its short-term I-21 rate is the slab rate, so
+  its tax is the existing slab dash (no slab rate invented, PD-07). CHAT-012's case (a Commodity ETF, 100 units bought
+  1 May 2023 at 100, CMV 13,000) as on 31 Jan 2025 is short 3,000 with the slab dash, no longer long 3,000 and tax 375;
+  as on 1 Apr 2025 it is long 3,000 as before; lots bought before 1 Apr 2023 are unchanged; before 23 Jul 2024 round
+  3's B-1 rule already leaves these classes not split. Round 3's period proof now covers every sale day from 23 Jul
+  2024 to 31 Mar 2027 and derives each gate from table v1. Parity: book `tax-w1`, TX-15 to TX-17 and TXR-25 to TXR-29.
+- **KI-323 (`ingest/capital-gains.ts`; MOD-05's rulings, "KI-323 narrow" and S-2):** `scrubText` also removes and counts
+  a PAN written with a separator between its groups (after the letters, before the last letter, or both; one to three
+  spaces, non-breaking spaces or hyphens) when it is in upper case, its fourth letter is a PAN holder-type letter (A, B,
+  C, F, G, H, J, L, P, T) and no letter or digit touches it; without the last guard ordinary text such as "... April
+  2033 Index Fund" in the reference names would be cut. A check over every reference string and fixture line shows
+  nothing else is removed. Residual, by design and tested: an upper-case five-letter word whose fourth letter is one of
+  the ten, four digits and one letter, with such separators, is removed too, counted and reported to the analyst, never
+  silent. Fourth letters E and K are not confirmed (to revisit). The unbroken token is unchanged.
+- **S-1 (`harvest.ts`; Q-49; the financial review of 7c6c4e9):** a slab-rate pool has no tax figure (PD-07: no slab
+  arithmetic in the engine), so whenever one exists, slab rate entered or not, the tax before, tax after and saving of
+  the client and of the family are PARTIAL: their coverage is the share of the pools' gains at a rate (the smaller one
+  when holdings are also left out), and a label names the pools ("slab-rate gains of N pools not in the tax figures").
+  No figure changes; a client with no slab-rate pool is unmarked as before. S-3 (the delta review of 0b95ff3; as M1 and
+  D-1): when every gain is in slab-rate pools, those three are NOT AVAILABLE with the pools named, never Rs 0 at
+  coverage 0, for the client and, when every worked client is so, the family. CHAT-012's case with a 30% slab entered
+  was a present 0 with no label (the tax at that slab is 900); it is now NOT AVAILABLE, labelled.
+- **Not built:** round 2c L3 (row-level matching of a merger's switch in) needs the owner's answer on how the export
+  writes a merger (Q-T5); S-2 stays as built (MOD-05: NO; on the owner's list).
+
 ### Fixed (new build, M7a tax round 3: conditions before wiring; not wired into the page yet)
 These are conditions before the tax engine is wired (PLAN-08, MOD-05, 28 Nov 2026; CHAT-012's Gate B of M7b b299804 and
 the last section of its Gate B of round 2c). No page change: the engine is imported by no page module.

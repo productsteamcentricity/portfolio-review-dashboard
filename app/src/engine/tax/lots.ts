@@ -39,7 +39,9 @@
 // (s.47(xviii)) and cost and date carry over. Round 3 (round 2c L1, L2): once the scheme's units are known to be back to 0
 // after that switch in, the mark ends (a later fresh purchase is split as usual) and the rounding left in the unit ledger
 // is cleared, as the realised side's successor reset. Round 3 B-1: as on a date before 23 Jul 2024, a holding of a class
-// whose holding period may have differed then is unreconciled 'periodsNotInTable', never split by today's period.
+// whose holding period may have differed then is unreconciled 'periodsNotInTable', never split by today's period. Round 4
+// W-1 (KI-341): as on a date before 1 Apr 2025, a lot of Commodity ETF, International ETFs, Commodity MF or Global Funds
+// bought from 1 Apr 2023 is short term (Specified under s.50AA then; classify.ts I21_PERIODS_GATES), named in the reason.
 // One correction (OD-15, KI-069): when one IRR instrument joins more than one holding (the same scheme with two
 // distributors) and the flows carry no folio that tells them apart, the instrument's lots are apportioned by units (by
 // invested value on the rupee ledger) across those holdings and labelled `apportioned`; the live gives every such
@@ -59,7 +61,8 @@ import { RUPEES_PER } from '../units.ts';
 import { amountTolerance } from '../../ingest/capital-gains.ts';
 import { anniversaryOf } from './rules.ts';
 import {
-  GRANDFATHER_BEFORE, GRANDFATHER_CLASSES, TAX_RULES_I21, classifyHolding, i21ByInst, i21Day, i21PeriodsMissing, isListedEtf,
+  GRANDFATHER_BEFORE, GRANDFATHER_CLASSES, TAX_RULES_I21, classifyHolding, i21ByInst, i21Day, i21DeemedShort, i21PeriodsMissing,
+  isListedEtf,
 } from './classify.ts';
 import type { ClassifyContext, HoldingTaxClass, I21Row } from './classify.ts';
 
@@ -202,9 +205,13 @@ export type TaxLotsOptions = {
 // ---------------------------------------------------------------------------------------------------------------
 // Terms (D-040 b, OD-2)
 
-/** The live taxBucket: long strictly after the anniversary; short on an alwaysShort or anyPeriod row. */
+/**
+ * The live taxBucket: long strictly after the anniversary; short on an alwaysShort or anyPeriod row. Round 4 W-1
+ * (KI-341): short too for a lot that was Specified as on `asOn` (classify.ts I21_PERIODS_GATES, i21DeemedShort).
+ */
 export function lotTerm(rule: I21Row, buy: DayNumber, asOn: DayNumber, listedEtf: boolean): 'long' | 'short' | null {
   if (rule.alwaysShort || rule.anyPeriod) return 'short';
+  if (i21DeemedShort(rule.inst, buy, asOn)) return 'short';
   const months = listedEtf && rule.listedEtfMonths ? rule.listedEtfMonths : rule.months;
   if (months === null || months === undefined) return null;
   return asOn > anniversaryOf(buy, months) ? 'long' : 'short';
@@ -626,6 +633,8 @@ const REASON = {
   noRow: (inst: string): string => `No row in the tax rules covers the class "${inst}".`,
   // Round 3 B-1 (Q-49).
   periodsNotInTable: 'The holding periods before 23 Jul 2024 are not in the table: the review\'s as-on date is earlier, and this class\'s holding period then may differ from today\'s (36 months for most non-equity units), so no split is shown rather than one by today\'s period.',
+  // Round 4 W-1 (KI-341).
+  deemedShort: 'Units of this class bought from 1 Apr 2023 were Specified mutual fund units (s.50AA) for sales up to 31 Mar 2025, so as on this date they are short term at the slab rate whatever their holding period; today\'s holding periods apply from 1 Apr 2025.',
 } as const;
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -871,14 +880,16 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
     if (sfDay === null) preRule = null;
     const etf = isListedEtf(h);
     const gfCls = GRANDFATHER_CLASSES.has(cls.inst);
-    type B = { bucket: LotBucket; u: number; costRaw: number; day: DayNumber; part: 0 | 1; gf: boolean };
+    type B = { bucket: LotBucket; u: number; costRaw: number; day: DayNumber; part: 0 | 1; gf: boolean; deemed: boolean };
     const buckets: B[] = L.map((x) => {
       const u = x.u * scale;
       const part: 0 | 1 = preRule && sfDay !== null && x.day < sfDay ? 1 : 0;
       const lr = part ? preRule! : rule;
       const term = lotTerm(lr, x.day, asOn, etf);
       const bucket: LotBucket = term && lotLocked(lr, x.day, asOn) ? 'locked' : term ?? 'unknown';
-      return { bucket, u, costRaw: amtMode ? u : u * x.px!, day: x.day, part, gf: gfCls && x.day < GRANDFATHER_BEFORE };
+      // Round 4 W-1: a lot short only because it was Specified as on this date is named in the record's reason.
+      const deemed = !lr.alwaysShort && !lr.anyPeriod && i21DeemedShort(lr.inst, x.day, asOn);
+      return { bucket, u, costRaw: amtMode ? u : u * x.px!, day: x.day, part, gf: gfCls && x.day < GRANDFATHER_BEFORE, deemed };
     });
     const totU = buckets.reduce((s, x) => s + x.u, 0);
     const per = totU > 0 ? cmv / totU : 0;
@@ -923,6 +934,7 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
       r.unclassified = { cmv: unk * per, gain: unkG };
       r.unclassifiedGain = unkG;
       r.locked = rr.lockMonths ? { cmv: lockU * per, gain: lockG } : null;
+      if (own.some((x) => x.deemed)) r.reason = r.reason === null ? REASON.deemedShort : `${r.reason.replace(/\.?\s*$/, '.')} ${REASON.deemedShort}`;
       if (own.length && own.every((x) => x.bucket === 'locked')) r.status = 'locked';
       out.positions.push(r);
     });

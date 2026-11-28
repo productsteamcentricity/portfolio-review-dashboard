@@ -306,16 +306,19 @@ describe('a PAN in Account Name is removed from what is read (T-9)', () => {
     assert.equal(b.issues.find((i) => i.ruleId === 'base-file.account-pan-removed')!.count, 1);
   });
 
-  test('a known limit (KI-323): a PAN written with spaces or hyphens inside it is not removed', () => {
+  test('KI-323 (fixed by tax round 4): a PAN written with spaces or hyphens between its groups is removed', () => {
+    // The pinned expectation changed with scrubText's KI-323 fix (MOD-05's rulings of 28 Nov 2026; an approved
+    // cross-lane edit by NB-03): an upper-case spaced or hyphenated form whose fourth letter is a PAN holder-type
+    // letter is removed and counted. panToken(6) is upper case with the fourth letter A.
     const p = panToken(6);
     const spaced = `${p.slice(0, 5)} ${p.slice(5, 9)} ${p.slice(9)}`;
     const hyphened = `${p.slice(0, 5)}-${p.slice(5, 9)}-${p.slice(9)}`;
     const b = baseOf([HEAD,
       ['Sample Client A', `Sample Client A ${spaced}`, 'Sample Fund 1', 'F-1', 'Sample Distributor', 100000],
       ['Sample Client A', `Sample Client A ${hyphened}`, 'Sample Fund 2', 'F-2', 'Sample Distributor', 200000]]);
-    // what the reader does today, pinned so that a change to scrubText shows here: the spaced forms stay in the name
-    assert.deepEqual(b.holdings.map((h) => h.accountNames), [[`Sample Client A ${spaced}`], [`Sample Client A ${hyphened}`]]);
-    assert.ok(!b.issues.some((i) => i.ruleId === 'base-file.account-pan-removed'));
+    assert.deepEqual(b.holdings.map((h) => h.accountNames), [[`Sample Client A ${PAN_REPLACEMENT}`], [`Sample Client A ${PAN_REPLACEMENT}`]]);
+    assert.equal(b.issues.find((i) => i.ruleId === 'base-file.account-pan-removed')!.count, 2);
+    assert.ok(!JSON.stringify(b.holdings.map((h) => h.accountNames)).includes(p.slice(5, 9)), 'no group of the PAN is left');
   });
 
   test('a file with no PAN in the column: no such result, the names as given', () => {
