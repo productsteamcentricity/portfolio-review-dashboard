@@ -675,12 +675,12 @@ describe('financial review of 75561f0: the reviewer\'s book (KA-P1, KA-P2, P3, P
     const lt = t.holdings.unrealised.lt;
     near(v(lt), 900, 'unrealised lt');
     assert.equal(lt.kind === 'value' ? lt.coverage : -1, 0.5);
-    assert.match(lt.kind === 'value' ? lt.prov.method : '', /PARTIAL COVERAGE: 1 holding not split \(unreconciled with the IRR file\) left out/);
+    assert.match(lt.kind === 'value' ? lt.prov.method : '', /PARTIAL COVERAGE: 1 holding not split \(unreconciled with the IRR file: no purchase in the history 1\) left out/);
     const h = harvestOf(t, idOf(hs, CLIENT_A));
     near(h.figures.taxBefore, 112.5, 'before');
     assert.equal(h.unreconciled, 1);
     assert.equal(h.taxBefore.kind === 'value' ? h.taxBefore.coverage : -1, 0.5);
-    assert.ok(h.labels.includes('1 holding not split (unreconciled with the IRR file) left out (PARTIAL COVERAGE)'));
+    assert.ok(h.labels.includes('1 holding not split (unreconciled with the IRR file: no purchase in the history 1) left out (PARTIAL COVERAGE)'));
     const fam = part(t.harvest, 'harvest').family;
     assert.equal(fam.unreconciled, 1);
     assert.equal(fam.taxBefore.kind === 'value' ? fam.taxBefore.coverage : -1, 0.5);
@@ -696,7 +696,7 @@ describe('financial review of 75561f0: the reviewer\'s book (KA-P1, KA-P2, P3, P
     const b = harvestOf(t, idOf(hs, CLIENT_B));
     for (const x of [b.taxBefore, b.taxAfter, b.saving]) {
       assert.equal(x.kind, 'missing');
-      assert.equal(x.kind === 'missing' && x.reason, 'no holding of this client is split into long and short term (1 holding not split, unreconciled with the IRR file), so no harvest is worked');
+      assert.equal(x.kind === 'missing' && x.reason, 'no holding of this client is split into long and short term (1 holding not split, unreconciled with the IRR file: no purchase in the history 1), so no harvest is worked');
     }
     assert.equal(b.notWorked, (b.taxBefore as { reason: string }).reason);
     assert.ok(b.labels.includes(b.notWorked!));

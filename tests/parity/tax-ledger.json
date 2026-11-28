@@ -369,7 +369,7 @@
       ],
       "class": "correction",
       "reference": "AC-18; FIN-REVIEW-TAX-R2 S-2",
-      "description": "Follows from TX-05 (units blank and an invested value of 0: the new engine reads full drift and keeps the holding unreconciled, its CMV of 12,000 unclassified; the live reads no drift and keeps a split position whose long, short and unclassified CMV are all 0). Unclassified CMV 12,000 in the new engine against 0 in the live (long + short + unclassified = CMV, AC-18); nPos 0 against 1. The CMV, the gains and the harvest agree."
+      "description": "Follows from TX-05 (units blank and an invested value of 0: the new engine reads full drift and keeps the holding unreconciled, its CMV of 12,000 unclassified; the live reads no drift and keeps a split position whose long, short and unclassified CMV are all 0). Unclassified CMV 12,000 in the new engine against 0 in the live (long + short + unclassified = CMV, AC-18); nPos 0 against 1. The CMV and the gains agree; the harvest differs by TXR-24 (round 3 M1)."
     },
     {
       "id": "TXR-13",
@@ -585,6 +585,41 @@
       "class": "correction",
       "reference": "Q-49; OD-16; MOD-05's merger condition (round 2c item 5)",
       "description": "Follows from TX-13 (round 2c item 5: the holding switched into by a merger candidate is not split). The harvest pools only split positions: long-term (Sec 198) gains 1,990 against the live 4,990, both inside the exemption, so the exemption used and its tax value follow and the tax is 0 on both sides (before and after, saving 0). Slab 30% entered and the exemption confirmed unused on both sides."
+    },
+    {
+      "id": "TXR-24",
+      "book": "tax-invested-zero",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "harvest.taxBefore",
+        "harvest.taxAfter",
+        "harvest.saving",
+        "harvest.ltGains",
+        "harvest.stGains",
+        "harvest.ltLosses",
+        "harvest.stLosses",
+        "harvest.ltUsed",
+        "harvest.stUsed",
+        "harvest.ltUnused",
+        "harvest.stUnused",
+        "harvest.unquantifiedGain",
+        "harvest.slabSheltered",
+        "harvest.s198Gains",
+        "harvest.s198Left",
+        "harvest.exBefore",
+        "harvest.exAfter",
+        "harvest.exBeforeTax",
+        "harvest.exAfterTax",
+        "harvest.noSetOffGain",
+        "harvest.noSetOffLoss",
+        "harvest.unquantifiedPools"
+      ],
+      "class": "correction",
+      "reference": "Q-49; AC-18; round 3 M1 (CHAT-012, Gate B of M7b b299804)",
+      "description": "Follows from TX-05 and the D-1 rule: the only holding of Sample Client A is unreconciled in the new engine, so no holding of the client is split and no harvest is worked. Round 3 M1 (Q-49): every plain harvest figure of the client, and of the family (no client worked), is null, not known, where the live gives 0 for each (and the new engine gave 0 before round 3). The harvest Values were already NOT AVAILABLE with the reason (D-1); nothing is worked, so nothing is 0."
     }
   ]
 }

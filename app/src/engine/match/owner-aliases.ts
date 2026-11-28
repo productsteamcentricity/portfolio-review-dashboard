@@ -15,6 +15,8 @@
 //   - requiresPhrase, when given, must appear as whole words in the holding's own name. Line 17 needs it: the
 //     normaliser drops "regular" as a plan word, so "ICICI Pru Regular Savings Fund" and "ICICI Pru Savings Fund" (a
 //     different debt fund) share a key.
+// Lines 18 to 22 (the owner, 28 Nov 2026) are not renames: each old name is AMFI's official spelling of a scheme the vendor
+// data spells differently (the same AMFI scheme code). They carry their own approved date and approver.
 // The module is pure: the caller passes the parsed table (matchInstrumentDetail's options); nothing reads files here.
 
 import { nameKey } from './normalize.ts';
@@ -26,6 +28,9 @@ export type OwnerAlias = {
   readonly regular: string;
   readonly direct: string;
   readonly requiresPhrase?: string;
+  /** The line's own approval date (YYYY-MM-DD) and approver, when it was approved after the file's date (lines 18 on). */
+  readonly approved?: string;
+  readonly approvedBy?: string;
 };
 
 export type OwnerAliasTable = {
@@ -80,7 +85,11 @@ export function parseOwnerAliases(json: unknown): OwnerAliasTable {
       if (wordsOf(requiresPhrase) !== requiresPhrase) throw new Error(`fund-aliases: line ${line} requiresPhrase must be lower-case words`);
       if (!wordsOf(oldName).includes(requiresPhrase)) throw new Error(`fund-aliases: line ${line} old name lacks its own requiresPhrase`);
     }
-    byKey.set(key, requiresPhrase === undefined ? { line, oldName, key, regular, direct } : { line, oldName, key, regular, direct, requiresPhrase });
+    /* a line approved after the file's date says when and by whom: both or neither, the date in the file's form */
+    if ((a.approved === undefined) !== (a.approvedBy === undefined)) throw new Error(`fund-aliases: line ${line} needs both approved and approvedBy, or neither`);
+    const own = a.approved === undefined ? {} : { approved: str(a.approved, `line ${line} approved`), approvedBy: str(a.approvedBy, `line ${line} approvedBy`) };
+    if (own.approved !== undefined && (!DATE.test(own.approved) || own.approved < approved)) throw new Error(`fund-aliases: line ${line} approved must be YYYY-MM-DD, on or after the file's date`);
+    byKey.set(key, { line, oldName, key, regular, direct, ...(requiresPhrase === undefined ? {} : { requiresPhrase }), ...own });
   }
   return { decision, approved, byKey };
 }
