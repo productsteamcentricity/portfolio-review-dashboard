@@ -1030,9 +1030,8 @@ PD-50 to PD-56: the plain-language sections are still to be written; their table
     Display only; no figure moves. (MOD-05 under delegation (PD-68).)
   - About 03:50: tax round 2c merges with one rarer case recorded as an open limit (KI-340: a many-into-one merger on
     the same day as another switch is still computed as a sale), to be fixed before the tax engine is put on screen. (MOD-05 under delegation (PD-68).)
-  - Prepared at 04:28, done at about 12:00 when the PC woke: PR #72 merged on the Guardian's GO for that exact commit,
-    with green checks, the expected merge tree and an unchanged `/next/` fingerprint, each verified by the Moderator,
-    without waiting for the Guardian's separate pre-merge line; the Guardian's post-merge check is requested. (MOD-05 under delegation (PD-68).)
+- The merge of PR #72 at about 12:00 IST came after the window had ended and is not under PD-68: it was merged under
+  the standing `/next/` rule (the owner's decision of 25 Nov 2026), as PROJECT_STATE records.
 
 ### 2.4 Owner decisions without a PD number (17 to 28 Nov 2026)
 
@@ -1138,4 +1137,4 @@ These are Claude's recommendations. None is a decision until the named approver 
 | 27 Nov 2026 | MOD-05 (registers-6, drafted by EX-03) | Section 2.4: the stricter-matching row corrected to the measured result (20 of 22 recovered, 2 lost, 4 named and unmatched: a known gap, owner asked 27 Nov 2026); section 2.5 added: the Moderator's decisions of 27 Nov 2026 with a financial meaning |
 | 27 Nov 2026 | MOD-05 (registers-7, drafted by EX-03) | Section 2.4: the owner's "Open both" (CHAT-016 ARC-04 and CHAT-017 NB-05) |
 | 28 Nov 2026 | MOD-05 (registers-8, drafted by EX-03) | PD-68 added with its section and the owner's words (the delegation of 28 Nov 2026); section 2.4: the owner's six answers of 28 Nov 2026; section 2.5: the four unmatched names marked answered |
-| 28 Nov 2026 | MOD-05 (registers-9, drafted by EX-03) | PD-68: the decisions taken under it (the month-labels ruling to be confirmed by the owner), the window's end and the PC's sleep from 04:28 to 12:00 IST |
+| 28 Nov 2026 | MOD-05 (registers-9, drafted by EX-03) | PD-68: the decisions taken under it (the month-labels ruling to be confirmed by the owner), the window's end and the PC's sleep from 04:28 to 12:00 IST; the merge of PR #72 recorded as outside PD-68 |
