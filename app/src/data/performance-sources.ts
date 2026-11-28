@@ -56,11 +56,6 @@ export function fundReturnSourcesFrom(uploads: MonitorUploads = { blocks: {}, da
   return out;
 }
 
-/** KI-302: an uploaded monitor's price day is not known: its file states one date, which may be the month's label. */
-export function uploadedPriceDay(what: string): Value<DayNumber> {
-  return missing(STATUS.NOT_AVAILABLE, `the uploaded ${what} states one date, which may be its month's label and not the day its figures are priced to`);
-}
-
 export function performanceSourcesFrom(uploads: MonitorUploads = { blocks: {}, dates: {} }, text: BlockText = domBlockText): PerformanceSources {
   const up = uploads.blocks;
   const rules = readBlock('PRODUCT_CLASS_RULES', text);
@@ -84,11 +79,12 @@ export function performanceSourcesFrom(uploads: MonitorUploads = { blocks: {}, d
     /* KI-302: the day each block's figures are priced to. An embedded block: the day recorded for its month
        (data/price-days.ts); none recorded is missing, never the label. An uploaded monitor: not known. The date its
        file states may be the month's label and not the price day (the October 2026 Direct file states 31 Oct and is
-       priced to 30 Oct; the financial review of 28 Nov 2026, R2-1), so it is never counted to. */
+       priced to 30 Oct; the financial review of 28 Nov 2026, R2-1), so it is never counted to (the Moderator's ruling
+       D-A as corrected on 28 Nov 2026). */
     priceDay: {
-      MF: up.MF_PERF ? uploadedPriceDay('MF Monitor') : priceDayOf('MF_PERF', asOnOf('MF_PERF', text)),
-      MF_DIRECT: up.MF_PERF_DIRECT ? uploadedPriceDay('Direct monitor') : priceDayOf('MF_PERF_DIRECT', asOnOf('MF_PERF_DIRECT', text)),
-      SIF: up.SIF_PERF ? uploadedPriceDay('SIF Monitor') : priceDayOf('SIF_PERF', asOnOf('SIF_PERF', text)),
+      MF: up.MF_PERF ? 'uploaded' : priceDayOf('MF_PERF', asOnOf('MF_PERF', text)),
+      MF_DIRECT: up.MF_PERF_DIRECT ? 'uploaded' : priceDayOf('MF_PERF_DIRECT', asOnOf('MF_PERF_DIRECT', text)),
+      SIF: up.SIF_PERF ? 'uploaded' : priceDayOf('SIF_PERF', asOnOf('SIF_PERF', text)),
     },
     rules: rules === null ? [] : parseProductClassRules(rules),
   };

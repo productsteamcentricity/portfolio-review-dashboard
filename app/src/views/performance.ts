@@ -42,6 +42,7 @@ export const SI_NOT_SHOWN_TEXT: Readonly<Record<Extract<SinceInception, { basis:
   'under-30-days': 'the fund is under 30 days old on the day its data is priced to, and one day of count is a large share of so young a figure',
   'no-inception': 'the data gives no readable inception date and no return of one year or more',
   'no-price-day': 'the day the data is priced to is not known and the fund has no return of one year or more',
+  'uploaded-monitor': 'the figures come from an uploaded monitor, which does not state the day they are priced to; the return is shown once the month\'s data is built into the page',
   'inception-not-before-price-day': 'the fund\'s inception is not before the day its data is priced to',
   'cannot-convert': 'the data\'s annualised figure is a loss of 100% or more',
 };

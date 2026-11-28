@@ -16,7 +16,8 @@
 // The Moderator's defaults of 28 Nov 2026, not the owner's rulings: under 30 days old a dash (D-B); a SIF a dash at every
 // age, its data not stating whether the figure is annualised (D-C, KI-322); either date missing: the data's figure only
 // when a return of one year or more shows the fund is a year old, else a dash (D-D). Never a count to the label: an
-// uploaded monitor's stated date may be one, so its price day is not known (the review's R2-1).
+// uploaded monitor's stated date may be one, so its price day is not known (the review's R2-1; the Moderator's ruling
+// D-A as corrected on 28 Nov 2026).
 // The returns note is first under every table and in the workbook's Read Me.
 
 import { describe, test } from 'node:test';
@@ -29,9 +30,9 @@ import type { PerformanceSources, PerfRecord } from '../../../app/src/engine/ret
 import {
   computePerformance, sinceInception, SI_ANNUALISED_SOURCES, SI_BASIS_NOT_STATED_SOURCES, SI_MIN_DAYS, SI_YEAR_DAYS,
 } from '../../../app/src/engine/returns/performance.ts';
-import { ABSOLUTE_MARKER, buildPerformanceVM, RETURNS_NOTE } from '../../../app/src/views/performance.ts';
+import { ABSOLUTE_MARKER, buildPerformanceVM, RETURNS_NOTE, SI_NOT_SHOWN_TEXT } from '../../../app/src/views/performance.ts';
 import { performanceSheet } from '../../../app/src/exports/xlsx/sheets/performance.ts';
-import { performanceSourcesFrom, uploadedPriceDay } from '../../../app/src/data/performance-sources.ts';
+import { performanceSourcesFrom } from '../../../app/src/data/performance-sources.ts';
 import { PRICE_DAYS, priceDayOf, type PricedBlock } from '../../../app/src/data/price-days.ts';
 import { parseProductClassRules } from '../../../app/src/engine/match/product-class.ts';
 import { dayToIso, ymdToDay } from '../../../app/src/engine/dates.ts';
@@ -84,7 +85,7 @@ describe('the price-day table (config/price-days.json)', () => {
 
   test('the page\'s sources carry the price days of the embedded blocks', () => {
     const src = performanceSourcesFrom(undefined, FILE_BLOCK_TEXT);
-    const iso = (v: Value<DayNumber> | undefined): string | null => (v && v.kind === 'value' ? dayToIso(v.v) : null);
+    const iso = (v: Value<DayNumber> | 'uploaded' | undefined): string | null => (v && v !== 'uploaded' && v.kind === 'value' ? dayToIso(v.v) : null);
     assert.deepEqual([iso(src.priceDay?.MF), iso(src.priceDay?.MF_DIRECT), iso(src.priceDay?.SIF)],
       (['MF_PERF', 'MF_PERF_DIRECT', 'SIF_PERF'] as const).map((b) => iso(priceDayOf(b, labelOf(b)))));
     // the label the table shows is untouched
@@ -162,14 +163,13 @@ describe('an uploaded monitor: the date its file states is not counted to (the f
   const regular = refdataBlock('MF_PERF') as Record<string, PerfRecord>;
   const src = performanceSourcesFrom({ blocks: { MF_PERF: regular, MF_PERF_DIRECT: direct } as never, dates: { MF_PERF: 'As on 02-Nov-2026', MF_PERF_DIRECT: 'As on 31-Oct-2026' } }, FILE_BLOCK_TEXT);
 
-  test('the committed blocks uploaded with their stated dates: the label is the file\'s date, the price day is missing with its reason', () => {
+  test('the committed blocks uploaded with their stated dates: the label is the file\'s date; the price day is not a day at all', () => {
     assert.equal(src.asOn.MF_DIRECT?.kind, 'value');
-    for (const k of ['MF', 'MF_DIRECT'] as const) {
-      const pd = src.priceDay?.[k];
-      assert.deepEqual([pd?.kind, pd?.kind === 'missing' ? pd.status : ''], ['missing', STATUS.NOT_AVAILABLE], k);
-    }
-    const pd = uploadedPriceDay('Direct monitor');
-    assert.equal(pd.kind === 'missing' ? pd.reason : '', 'the uploaded Direct monitor states one date, which may be its month\'s label and not the day its figures are priced to');
+    assert.deepEqual([src.priceDay?.MF, src.priceDay?.MF_DIRECT], ['uploaded', 'uploaded']);
+    // only the uploaded block: the embedded one beside it keeps its recorded price day
+    const one = performanceSourcesFrom({ blocks: { MF_PERF_DIRECT: direct } as never, dates: { MF_PERF_DIRECT: 'As on 31-Oct-2026' } }, FILE_BLOCK_TEXT);
+    assert.equal(one.priceDay?.MF_DIRECT, 'uploaded');
+    assert.ok(one.priceDay?.MF !== 'uploaded' && one.priceDay?.MF?.kind === 'value');
   });
 
   test('so a young fund of an uploaded monitor is a dash, never a figure counted to the stated date; a fund a year old keeps its figure', () => {
@@ -180,17 +180,20 @@ describe('an uploaded monitor: the date its file states is not counted to (the f
         if (!x) continue;
         if (String(r.inception ?? '') > '2025-11-02') {
           young += 1;
-          assert.deepEqual(x.si, { basis: 'not-shown', why: 'no-price-day' }, name);
+          assert.deepEqual(x.si, { basis: 'not-shown', why: 'uploaded-monitor' }, name);
           assert.equal(x.value.kind, 'missing', name);
         } else if (x.si.basis === 'annualised') {
           old += 1;
           assert.ok(x.value.kind === 'value' && x.value.v === r.r!.SI, name);
-        } else assert.deepEqual(x.si, { basis: 'not-shown', why: 'no-price-day' }, name);
+        } else assert.deepEqual(x.si, { basis: 'not-shown', why: 'uploaded-monitor' }, name);
       }
     }
     assert.ok(young > 300 && old > 3000, `${young} young, ${old} a year old`);
     const it = sinceInception(direct['Mirae Asset BSE Information Technology Index Fund(G)-Direct Plan']!, src.priceDay?.MF_DIRECT, 'MF_PERF_DIRECT')!;
-    assert.equal(reason(it), 'the day MF_PERF_DIRECT is priced to is not known and the fund has no return of one year or more, so its days cannot be counted and its since-inception return is not shown');
+    // the reason tells the analyst what to do and names no date
+    assert.equal(reason(it), 'the fund has no return of one year or more, and an uploaded monitor does not state the day its figures are priced to, so the fund\'s days cannot be counted; its since-inception return is shown once the month\'s data is built into the page');
+    assert.equal(status(it), STATUS.INSUFFICIENT_EVIDENCE);
+    assert.equal(SI_NOT_SHOWN_TEXT['uploaded-monitor'], 'the figures come from an uploaded monitor, which does not state the day they are priced to; the return is shown once the month\'s data is built into the page');
   });
 });
 

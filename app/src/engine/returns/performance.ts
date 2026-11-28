@@ -75,8 +75,9 @@ export type PerformanceSources = {
   BENCH: Book<BenchRecord>;
   asOn: Partial<Record<'MF' | 'MF_DIRECT' | 'PMS' | 'AIF' | 'SIF' | 'STOCK' | 'BENCH', Value<DayNumber>>>;
   /** KI-302: the day each block's figures are priced to (an embedded block: the day recorded for its month,
-   * data/price-days.ts; an uploaded monitor: not known, so missing). Used to count a young fund's days; never displayed. */
-  priceDay?: Partial<Record<'MF' | 'MF_DIRECT' | 'SIF', Value<DayNumber>>>;
+   * data/price-days.ts; an uploaded monitor: 'uploaded', its price day not known). Used to count a young fund's days;
+   * never displayed. */
+  priceDay?: Partial<Record<'MF' | 'MF_DIRECT' | 'SIF', PriceDay>>;
   /** PRODUCT_CLASS_RULES, so the routing agrees with the matcher's. */
   rules: readonly ProductClassRule[];
 };
@@ -91,10 +92,15 @@ export type Plan = 'regular' | 'direct' | 'single-plan' | 'no-direct-twin' | 'no
  * block's price day), worked from the data's annualised figure `vendorAnnualised`. 'not-shown': a dash, with the reason in the
  * cell's Value and its kind here.
  */
+/** The day a block is priced to; 'uploaded' for an uploaded monitor, whose file states one date that may be its month's
+ * label and not its price day (the Moderator's ruling D-A as corrected on 28 Nov 2026 after the delta financial review,
+ * R2-1): never counted to. */
+export type PriceDay = Value<DayNumber> | 'uploaded';
+
 export type SinceInception =
   | { basis: 'annualised' }
   | { basis: 'absolute'; days: number; vendorAnnualised: number }
-  | { basis: 'not-shown'; why: 'basis-not-stated' | 'under-30-days' | 'no-inception' | 'no-price-day' | 'inception-not-before-price-day' | 'cannot-convert' };
+  | { basis: 'not-shown'; why: 'basis-not-stated' | 'under-30-days' | 'no-inception' | 'no-price-day' | 'uploaded-monitor' | 'inception-not-before-price-day' | 'cannot-convert' };
 
 export type FundRow = {
   name: string;
@@ -241,7 +247,7 @@ function inceptionDay(text: string | null | undefined): DayNumber | null {
  *      the record has a 1Y or longer return, which only a fund at least one year old has (annualised by convention,
  *      not verified for a PMS or AIF between one and two years old); else a dash naming what is missing.
  */
-export function sinceInception(record: PerfRecord, priceDay: Value<DayNumber> | undefined, source: string): { value: Value<number>; si: SinceInception } | null {
+export function sinceInception(record: PerfRecord, priceDay: PriceDay | undefined, source: string): { value: Value<number>; si: SinceInception } | null {
   const vendor = record.r?.SI;
   if (typeof vendor !== 'number' || !Number.isFinite(vendor)) return null;
   const given = (): { value: Value<number>; si: SinceInception } => ({ value: present(vendor, 'pct', { sources: [source], method: 'vendor figure' }), si: { basis: 'annualised' } });
@@ -251,7 +257,7 @@ export function sinceInception(record: PerfRecord, priceDay: Value<DayNumber> | 
     return dash('basis-not-stated', `${source} does not state whether its since-inception return is annualised, so it is not shown`);
   }
   const inc = inceptionDay(record.inception);
-  const on = priceDay && priceDay.kind === 'value' ? priceDay.v : null;
+  const on = priceDay && priceDay !== 'uploaded' && priceDay.kind === 'value' ? priceDay.v : null;
   if (inc === null || on === null) {
     if (LONG_TENORS.some((t) => typeof record.r?.[t] === 'number')) return given();
     const text = typeof record.inception === 'string' ? record.inception.trim() : '';
@@ -259,6 +265,9 @@ export function sinceInception(record: PerfRecord, priceDay: Value<DayNumber> | 
       return dash('no-inception', text === ''
         ? `${source} gives no inception date and no return of one year or more, so the fund cannot be shown to be a year old and its since-inception return is not shown`
         : `the inception date "${text}" in ${source} could not be read and there is no return of one year or more, so its since-inception return is not shown`);
+    }
+    if (priceDay === 'uploaded') {
+      return dash('uploaded-monitor', 'the fund has no return of one year or more, and an uploaded monitor does not state the day its figures are priced to, so the fund\'s days cannot be counted; its since-inception return is shown once the month\'s data is built into the page');
     }
     return dash('no-price-day', `the day ${source} is priced to is not known and the fund has no return of one year or more, so its days cannot be counted and its since-inception return is not shown`);
   }
@@ -310,7 +319,7 @@ function asOnOfBucket(s: PerformanceSources, b: BucketKey, direct: boolean): Val
 }
 
 /** The price day of a bucket's own block (the Regular block for the mutual-fund buckets); PMS and AIF have none. */
-function priceDayOfBucket(s: PerformanceSources, b: BucketKey): Value<DayNumber> | undefined {
+function priceDayOfBucket(s: PerformanceSources, b: BucketKey): PriceDay | undefined {
   return b === 'SIF' ? s.priceDay?.SIF : b.endsWith(' MF') ? s.priceDay?.MF : undefined;
 }
 
@@ -362,7 +371,7 @@ function benchRow(name: string, cols: readonly Tenor[], s: PerformanceSources): 
   return any ? { name: rec.name ?? name, r } : null;
 }
 
-function fundRow(name: string, key: string | null, record: PerfRecord | null, cols: readonly Tenor[], plan: Plan, source: string, ids: HoldingId[], priceDay?: Value<DayNumber>): FundRow {
+function fundRow(name: string, key: string | null, record: PerfRecord | null, cols: readonly Tenor[], plan: Plan, source: string, ids: HoldingId[], priceDay?: PriceDay): FundRow {
   const r: FundRow['r'] = {};
   for (const c of cols) r[c] = record ? num(record.r?.[c], 'pct', `no ${c} return in ${source}`, source) : NO_FIGURE(key ? `no ${c} return in ${source}` : 'the holding is not matched to reference data');
   /* KI-302: the SI cell follows the fund's age on its own block's price day */
