@@ -3,8 +3,8 @@
 // unions they use) are the contract's, model/tax.ts (I-37); this file keeps only what is the engine's own: the per-lot
 // extension of RealisedGain (TaxLot), the sources of the tax facts, the successor link, the merger event, the engine's
 // issues and refusals, and the result; and (S3) the person-year roll-up's extensions of Bucket, PersonYearTax and
-// FamilyTaxYear with the person key and label that the contract does not yet hold (contracts-4). Self-contained and
-// serialisable: plain data, no class, no Map, no function.
+// FamilyTaxYear (since contracts-4 the contract holds the person key, label and source and the missing figures as
+// Values; these keep the engine's own lines). Self-contained and serialisable: plain data, no class, no Map, no function.
 // Money is in rupees, unrounded (LD-42). Dates are day numbers.
 
 import type { DayNumber, Value } from '../../model/value.ts';
@@ -48,17 +48,10 @@ export type LegDetail = {
 
 /**
  * One statement lot as the engine returns it: the contract's RealisedGain (DATA_DICTIONARY §5.5), its fields exactly
- * as typed there, and the S2 lines the contract does not carry.
+ * as typed there (contracts-4: lotIndex, eventId, inReview, tagAssetText and gap included; gap is null on a statement
+ * lot), and the S2 lines the contract does not carry.
  */
 export type TaxLot = RealisedGain & {
-  /** The reader's lot index (CgLot.index): the key of the analyst's lot marks. */
-  lotIndex: number;
-  /** True when the person matches a client of the review. */
-  inReview: boolean;
-  /** The sale event of §6 (the reader's eventId); a merger event is the merger rows of one sale event (§5). */
-  eventId: string;
-  /** The Instrument Name tag's asset as read (free text); `tagAsset` holds it only when it is Equity or Debt. */
-  tagAssetText: string | null;
   /** The part of `realised` in the year's realised total (§4: a non-taxable transfer's gain is left out, unless reset). */
   realisedCounted: Value<number>;
   /** The part of `realised` shown in the year's non-taxable line (non-taxable transfers only, else 0). */
@@ -81,16 +74,19 @@ export type TaxLot = RealisedGain & {
    */
   // 'amount-missing' is also the contract's NotComputed since contracts-3; this detail still tells a blank cost apart.
   notComputedDetail: 'amount-missing' | 'cost-missing' | null;
-  /** NE-LT-1: each leg's cost, gain and tax, beside the contract's `legs`. */
+  /**
+   * NE-LT-1: each leg's cost, gain and tax as plain numbers, the roll-up's input for the old-law alternative; the
+   * contract's `legs` holds the same figures as Values.
+   */
   legDetail: LegDetail | null;
   /**
-   * The anniversary-day long-term figure (PD-16 item 2) in full: its rule, rate, cost for tax and taxable gain as a
-   * Value. The gain is missing (NOT AVAILABLE, with the reason, for example `cost-input-missing` for a grandfathered row
-   * whose lot is marked gift or inheritance or first held before 1 Apr 2001, TR-11) when the long-term row applies but
-   * its figure cannot be computed; the contract's `anniversaryLongTerm` is then null, since its `taxableGain` is a plain
-   * number (fin review S-6). Null when no long-term row applies (or the lot is not sold on its anniversary).
+   * The anniversary-day long-term figure (PD-16 item 2) as the roll-up reads it: its rule, its rate as the engine keeps
+   * it (a fraction, 'slab', 'exempt' or null), its cost for tax and its taxable gain as a Value. The gain is missing
+   * (NOT AVAILABLE, with the reason, for example `cost-input-missing` for a grandfathered row whose lot is marked gift or
+   * inheritance or first held before 1 Apr 2001, TR-11) when the long-term row applies but its figure cannot be computed
+   * (fin review S-6). The contract's `anniversaryLongTerm` holds the same figure (rate a percent number, or null where
+   * 'exempt' or not known). Null when no long-term row applies (or the lot is not sold on its anniversary).
    */
-  // TODO(contracts-4): anniversaryLongTerm becomes a Value
   anniversaryLongTermDetail: { ruleId: string; rate: LotRate; costForTax: number | null; taxableGain: Value<number> } | null;
   /** The statement's LTCG plus STCG compared with the taxable gain (gain-differs), when stated. */
   statementGain: number | null;
@@ -176,20 +172,19 @@ export type RealiseResult = {
  * 'slab') and the lines it does not carry. `gain` is the bucket's gross gains (its lots' positive taxable gains); its
  * lots' losses go to the term's loss pool (TR-10), so a loss and a gain at one rate are never netted before the
  * ranking (KA-13). `setOff` is the loss set against the gains; `taxable` is what stays after set-off and the bucket's
- * share of the annual exemption (the tax is taxable x rate).
- *
- * The contract's `setOff` and `taxable` are plain numbers, so they cannot say "missing": they are NOT MEANINGFUL (0)
- * when the person-year's `afterSetOffDash` is set (step 3, "slab rate not set") or the year is INSUFFICIENT EVIDENCE
- * (design §6), and while the year's annual exemption is to be confirmed `taxable` of an exemption-group bucket is
- * before the exemption. `values` carries the precise figures (fin review S-2, S-3); a reader shows those.
+ * share of the annual exemption (the tax is taxable x rate). Since contracts-4 (C4-1) the contract's `setOff` and
+ * `taxable` are Values: missing NOT AVAILABLE when the person-year's `afterSetOffDash` is set (step 3, "slab rate not
+ * set"), `taxable` of an exemption-group bucket while the year's annual exemption is to be confirmed, and missing
+ * INSUFFICIENT EVIDENCE in a year with an unanswered repeated-rows question (design §6; fin review S-2, S-3).
  */
-// TODO(contracts-4): setOff becomes a Value
-// TODO(contracts-4): taxable becomes a Value
 export type BucketLocal = Bucket & {
   term: Term;
   /** The bucket's gross losses (positive), sent to the term's loss pool. */
   loss: number;
-  /** The share of the person's annual exemption applied to this bucket (s.112A or Sec 198 gains only). */
+  /**
+   * The share of the person's annual exemption applied to this bucket (s.112A or Sec 198 gains only), as computed;
+   * `values.exemption` is the figure to show.
+   */
   exemption: number;
   exemptionGroup: 's112a' | 's198' | null;
   surchargeCategory: string | null;
@@ -198,18 +193,16 @@ export type BucketLocal = Bucket & {
   tax: number | null;
   /** Surcharge on `tax`, capped for capital gains (§10.7); null while not computed (before surcharge, slab not set). */
   surcharge: number | null;
-  /** The after-set-off figures as Values (see the type's note): the ones to show. */
+  /** The bucket's exemption, tax and surcharge as Values (the statuses as `setOff` and `taxable`): the ones to show. */
   values: BucketValues;
 };
 
 /**
- * A bucket's figures after set-off as Values: present when computed; missing NOT AVAILABLE with the reason under the
- * slab dash ("slab rate not set"), while the exemption, surcharge or cess of the year is to be confirmed, or before
+ * A bucket's exemption, tax and surcharge as Values: present when computed; missing NOT AVAILABLE with the reason under
+ * the slab dash ("slab rate not set"), while the exemption, surcharge or cess of the year is to be confirmed, or before
  * surcharge; missing INSUFFICIENT EVIDENCE in a year with an unanswered repeated-rows question (design §6).
  */
 export type BucketValues = {
-  setOff: Value<number>;
-  taxable: Value<number>;
   exemption: Value<number>;
   tax: Value<number>;
   surcharge: Value<number>;
@@ -225,36 +218,24 @@ export type EstimateLocal = PersonYearTax['estimate'] & {
 };
 
 /**
- * A person's financial year as the roll-up returns it: the contract's PersonYearTax and the person fields the
- * contract keys by clientId only.
+ * A person's financial year as the roll-up returns it: the contract's PersonYearTax (since contracts-4 with the person
+ * key, label and source, C4-2, and its missing figures as Values, C4-1) and the lines the contract does not carry.
+ * `personKey` is ingest/capital-gains.ts taxPersonKey ("person:n" or the client id), or "no-person"; `personLabel` the
+ * client label, or the labels of a PAN ordinal with "Person n", "no client label" else. `realised` is INSUFFICIENT
+ * EVIDENCE in a year with an unanswered repeated-rows question (design §6); `exemption.applied` and `unabsorbed` are
+ * missing NOT AVAILABLE under the slab dash, and `exemption.applied` while the year's exemption is to be confirmed and
+ * exemption-group gains remain (fin review S-2, S-3).
  */
-// TODO(contracts-4): personKey and personLabel join PersonYearTax
 export type PersonYearTaxLocal = Omit<PersonYearTax, 'buckets' | 'estimate'> & {
-  /** The tax person (design §9.3): ingest/capital-gains.ts taxPersonKey ("person:n" or the client id), or "no-person". */
-  personKey: string;
-  /** The person as shown: the client label, or the labels of a PAN ordinal with "Person n"; "no client label" else. */
-  personLabel: string;
   buckets: BucketLocal[];
   estimate: EstimateLocal;
   /** The year's realised and taxable totals are INSUFFICIENT EVIDENCE (an unanswered repeat event, design §6). */
   insufficientEvidence: boolean;
   /**
-   * Step 3: the taxable amounts after set-off and the tax are the dash ("slab rate not set"), else null. While set, the
-   * contract's plain numbers `unabsorbed`, `exemption.applied` and each bucket's `setOff` and `taxable` are NOT
-   * MEANINGFUL (they read 0); `values` and each bucket's `values` hold them as missing (fin review S-2).
+   * Step 3: the taxable amounts after set-off and the tax are the dash ("slab rate not set"), else null. While set,
+   * `unabsorbed`, `exemption.applied` and each bucket's `setOff` and `taxable` are missing (fin review S-2).
    */
   afterSetOffDash: string | null;
-  /**
-   * The contract's plain-number totals as Values (fin review S-2, S-3): `realised` is INSUFFICIENT EVIDENCE in a year
-   * with an unanswered repeated-rows question (design §6), when the contract's `realised` still counts every row;
-   * `exemptionApplied` and `unabsorbed` are also missing NOT AVAILABLE under the slab dash, and `exemptionApplied`
-   * while the year's exemption is to be confirmed and exemption-group gains remain.
-   */
-  // TODO(contracts-4): realised becomes a Value
-  // TODO(contracts-4): exemption.applied becomes a Value
-  // TODO(contracts-4): unabsorbed.st becomes a Value
-  // TODO(contracts-4): unabsorbed.lt becomes a Value
-  values: { realised: Value<number>; exemptionApplied: Value<number>; unabsorbed: { st: Value<number>; lt: Value<number> } };
   /** Where the analyst's slab, surcharge and regime entry came from (an audit entry records it too); null: none applied. */
   inputSource: PersonYearInputSource | null;
   /** The slab rate used (the analyst's entry, or the named default slabDefaultPct), and where it came from. */
@@ -280,22 +261,17 @@ export type PersonYearTaxLocal = Omit<PersonYearTax, 'buckets' | 'estimate'> & {
   labels: string[];
 };
 
-/** A family's financial year: every person computed separately (unmatched ones too, `inReview` false) and their sum. */
+/**
+ * A family's financial year: every person computed separately (unmatched ones too, `inReview` false) and their sum.
+ * The family sum's `realised` and `unabsorbed` are the sums of the persons' Values (fin review S-2, S-3): missing in an
+ * INSUFFICIENT EVIDENCE year, PARTIAL when a person's is.
+ */
 export type FamilyTaxYearLocal = Omit<FamilyTaxYear, 'persons'> & {
   persons: PersonYearTaxLocal[];
   /** The year's realised and taxable totals are INSUFFICIENT EVIDENCE (an unanswered repeat event). */
   insufficientEvidence: boolean;
   /** The person keys added to the family sum (the review's clients); an unmatched person is never added. */
   familyPersons: string[];
-  /**
-   * The family sum's plain-number totals as Values, the sum of the persons' `values` (fin review S-2, S-3): the
-   * contract's `familySum.realised` and `familySum.unabsorbed` are NOT MEANINGFUL in an INSUFFICIENT EVIDENCE year,
-   * and `unabsorbed` leaves out a person under the slab dash; these say so.
-   */
-  // TODO(contracts-4): familySum.realised becomes a Value
-  // TODO(contracts-4): familySum.unabsorbed.st becomes a Value
-  // TODO(contracts-4): familySum.unabsorbed.lt becomes a Value
-  familySumValues: { realised: Value<number>; unabsorbed: { st: Value<number>; lt: Value<number> } };
 };
 
 /** The engine-side ids of design §11 that the roll-up (S3) raises, with their severity (High or Warning by case). */

@@ -25,6 +25,13 @@
 // PD-07 (the slab rate) is open with the owner: the slab rate is the analyst's per person-year, and a default sits in
 // the one named parameter SLAB_DEFAULT_PCT / opts.slabDefaultPct (null: no default). Either answer is a one-line change.
 //
+// The person key is bound to the statement file (contracts-4 C4-2): a PAN ordinal "person:n" belongs to the accepted
+// statement's file id (`personSource`), a client id or "no-person" to none (null). A person-year entry applies only when
+// its `personKey` and `personSource` equal the person's; the client-id entries (`personSource` null) are matched by the
+// client ids of the person's review lots, as before. An entry bound to another file is never applied to anyone and is
+// counted in one Warning `tax.person-inputs-stale` (counts only); that person then has no entry, so the slab rate is
+// "not set" and the slab dash follows (PD-07).
+//
 // Pure: no globals, no network; the clock only through opts.now (audit entries). Money in rupees, unrounded (LD-42).
 // Messages carry counts only: never a PAN, a folio or an amount (§11), and no en or em dash (D-029).
 
@@ -34,11 +41,12 @@ import type { Provenance, Value } from '../../model/value.ts';
 import type { MissingStatus } from '../../model/status.ts';
 import { STATUS } from '../../model/status.ts';
 import type { AuditEntry } from '../../model/audit.ts';
-import type { ClientId } from '../../model/ids.ts';
+import type { ClientId, SourceFileId } from '../../model/ids.ts';
 import type { FamilyTaxYear, TaxInputs, Term } from '../../model/tax.ts';
 import { missing, present } from '../value.ts';
 import type { ExemptionLookup, RateLookup, Regime, TaxRule, TaxRuleTable } from './rules.ts';
 import { TAX_RULES_V1, cessRateFor, exemptionFor, surchargeCapFor, surchargeMaxFor } from './rules.ts';
+import { isStalePersonInput, personSourceOf } from './realised.ts';
 import type {
   BucketLocal, BucketValues, EstimateLocal, FamilyTaxYearLocal, PersonYearInput, PersonYearInputSource, PersonYearTaxLocal,
   Refusal, RollupResult, TaxIssue, TaxLot,
@@ -54,27 +62,26 @@ export const SLAB_DEFAULT_PCT: number | null = null;
 export const NO_PERSON = 'no-person';
 
 /**
- * The realised coverage of a person-year or a family sum (Gate B F-1; design §9.3 step 2, LD-34): the lots whose
- * economic gain is unknown (a blank or invalid Sell Amount or Invested Value, so `realisedCounted` is missing) and the
- * economic gain of the lots left out of the tax as a Value. That gain is missing (NOT AVAILABLE) when any lot left out
- * has an unknown gain, never 0; the contract's plain `coverage.economicGainNotComputed` then holds only the known part
- * and is NOT MEANINGFUL. `values.realised` is PARTIAL (coverage below 1, the count in its method) when some lots have an
- * unknown gain, and missing when every lot has. Kept here, not in types.ts, until contracts-4 takes them.
+ * The realised coverage of a person-year or a family sum (Gate B F-1; design §9.3 step 2, LD-34): the count of lots
+ * whose economic gain is unknown (a blank or invalid Sell Amount or Invested Value, so `realisedCounted` is missing).
+ * The contract's `realised` is then PARTIAL (coverage below 1, the count in its method), or missing when every lot's
+ * gain is unknown; and `coverage.economicGainNotComputed` (a Value since contracts-4, C4-1) is missing (NOT AVAILABLE)
+ * when any lot left out of the tax has an unknown gain, never 0.
  */
-// TODO(contracts-4): coverage.economicGainNotComputed becomes a Value
 export type RealisedCoverageValues = {
-  /** The lots whose economic gain is unknown (left out of `values.realised`, which is then PARTIAL or missing). */
+  /** The lots whose economic gain is unknown (left out of `realised`, which is then PARTIAL or missing). */
   lotsGainUnknown: number;
-  /** The economic gain of the lots left out of the tax: missing when any of them is unknown. */
-  economicGainNotComputed: Value<number>;
 };
-/** A person-year as rollupPersonYears returns it: PersonYearTaxLocal with the realised coverage in `values`. */
-export type RollupPersonYear = Omit<PersonYearTaxLocal, 'values'> & { values: PersonYearTaxLocal['values'] & RealisedCoverageValues };
-/** A family year as rollupPersonYears returns it: its persons and family sum Values with the realised coverage. */
-export type RollupFamilyYear = Omit<FamilyTaxYearLocal, 'persons' | 'familySumValues'> & {
+/** A person-year as rollupPersonYears returns it: PersonYearTaxLocal with the realised coverage count in `values`. */
+export type RollupPersonYear = PersonYearTaxLocal & { values: RealisedCoverageValues };
+/** A family year as rollupPersonYears returns it: its persons, and the family sum's realised coverage count. */
+export type RollupFamilyYear = Omit<FamilyTaxYearLocal, 'persons'> & {
   persons: RollupPersonYear[];
-  familySumValues: FamilyTaxYearLocal['familySumValues'] & RealisedCoverageValues;
+  familySumValues: RealisedCoverageValues;
 };
+
+/** C4-2: the Warning on person-year entries bound to another statement file (counts only). */
+export const PERSON_INPUTS_STALE = 'tax.person-inputs-stale';
 /** The roll-up's result (assignable to RollupResult). */
 export type RollupOutput = Omit<RollupResult, 'years'> & { years: RollupFamilyYear[] };
 
@@ -144,8 +151,11 @@ type CoreCtx = {
   cess: RateLookup;
 };
 
-/** A bucket as the core computes it; the person-year adds its `values` (BucketValues). */
-type CoreBucket = Omit<BucketLocal, 'values'>;
+/**
+ * A bucket as the core computes it, its set-off and taxable amount as plain numbers; the person-year turns them into
+ * the contract's Values and adds its `values` (BucketValues).
+ */
+type CoreBucket = Omit<BucketLocal, 'values' | 'setOff' | 'taxable'> & { setOff: number; taxable: number };
 
 type Core = {
   buckets: CoreBucket[];
@@ -355,21 +365,25 @@ type InputPick =
   | { kind: 'refused'; refusal: Refusal };
 
 /**
- * The analyst's person-year entry: by the person key (TaxInputs.personYear.clientId holding "person:n" or the client
- * id); else by the client labels of the person's review clients that no other person of the year carries. A PAN person
- * can carry two review clients' labels (fin review S-1): their entries apply when they agree on the slab rate, the
- * surcharge rate and the regime (or only one is given), recorded with the labels they came from; when they disagree
- * none applies and the entry is refused, naming "Person n" and the labels, never the PAN.
+ * The analyst's person-year entry: by the person key and source (C4-2: TaxInputs.personYear `personKey` "person:n" or
+ * the client id, and `personSource` the statement's file id for "person:n", null for a client id); else by the client
+ * labels (`clientId`, `personSource` null) of the person's review clients that no other person of the year carries. A
+ * PAN person can carry two review clients' labels (fin review S-1): their entries apply when they agree on the slab
+ * rate, the surcharge rate and the regime (or only one is given), recorded with the labels they came from; when they
+ * disagree none applies and the entry is refused, naming "Person n" and the labels, never the PAN. An entry bound to
+ * another statement file is never applied (rollupPersonYears counts it in `tax.person-inputs-stale`).
  */
-// TODO(contracts-4): personKey joins TaxInputs.personYear
-function personYearInputFor(inputs: TaxInputs, fy: number, fyLabel: string, p: PersonInfo,
+function personYearInputFor(inputs: TaxInputs, fy: number, fyLabel: string, p: PersonInfo, sourceId: SourceFileId,
   clientsInYear: ReadonlyMap<string, number>, labelOf: (c: ClientId) => string): InputPick {
-  const exact = inputs.personYear.find((e) => e.fy === fy && (e.clientId as string | null) === p.key);
+  const own = personSourceOf(p.key, sourceId);
+  // Stale or malformed entries are never candidates (C4-2): they are counted in tax.person-inputs-stale instead.
+  const usable = inputs.personYear.filter((e) => !isStalePersonInput(e, sourceId));
+  const exact = usable.find((e) => e.fy === fy && e.personKey === p.key && e.personSource === own);
   if (exact) return { kind: 'applied', input: exact, source: { by: 'person' } };
   const found: Array<[ClientId, PersonYearInput]> = [];
   for (const c of p.reviewClients) {
     if ((clientsInYear.get(c) ?? 0) !== 1) continue;
-    const e = inputs.personYear.find((x) => x.fy === fy && x.clientId === c);
+    const e = usable.find((x) => x.fy === fy && x.personSource === null && x.clientId === c);
     if (e) found.push([c, e]);
   }
   if (found.length === 0) return { kind: 'none' };
@@ -542,7 +556,7 @@ function personYear(lots: readonly TaxLot[], x: PyCtx): RollupPersonYear {
   const groupLeft = (b: CoreBucket): boolean => b.exemptionGroup !== null && b.gain - b.setOff > EPS;
   const after = (n: number, why: string | null = null): Value<number> => (x.insufficient ? ieV()
     : main.dash !== null ? missing(NA, main.dash, prov) : why !== null ? missing(NA, why, prov) : present(n, 'inr', prov));
-  const bucketValues = (b: CoreBucket): BucketValues => {
+  const bucketValues = (b: CoreBucket): { setOff: Value<number>; taxable: Value<number>; values: BucketValues } => {
     const exWhy = exemptionOpen && groupLeft(b) ? EXEMPTION_OPEN : null;
     const taxable = after(b.taxable, exWhy);
     const tax: Value<number> = taxable.kind === 'missing' ? taxable
@@ -551,7 +565,7 @@ function personYear(lots: readonly TaxLot[], x: PyCtx): RollupPersonYear {
       : main.blocked ?? 'the surcharge cap of the year is to be confirmed';
     const sur: Value<number> = tax.kind === 'missing' ? tax
       : b.surcharge !== null ? present(b.surcharge, 'inr', prov) : missing(NA, surWhy, prov);
-    return { setOff: after(b.setOff), taxable, exemption: after(b.exemption, exWhy), tax, surcharge: sur };
+    return { setOff: after(b.setOff), taxable, values: { exemption: after(b.exemption, exWhy), tax, surcharge: sur } };
   };
   // The realised total and the economic gain left out of the tax (Gate B F-1): a lot whose gain is unknown (a blank or
   // invalid Sell Amount or Invested Value) makes the realised total PARTIAL, with the count, or missing when every lot's
@@ -566,13 +580,7 @@ function personYear(lots: readonly TaxLot[], x: PyCtx): RollupPersonYear {
   const economicGainNotComputed: Value<number> = x.insufficient ? ieV()
     : leftOutUnknown > 0 ? missing(NA, `${unknownWhy(leftOutUnknown)} among the lots left out of the tax`, leftOutProv)
       : present(notComputed.reduce((s, g) => s + (g.realised.kind === 'value' ? g.realised.v : 0), 0), 'inr', leftOutProv);
-  const values: RollupPersonYear['values'] = {
-    realised: x.insufficient ? ieV() : realisedValue,
-    exemptionApplied: after(main.exemptionApplied, exemptionOpen && main.buckets.some(groupLeft) ? EXEMPTION_OPEN : null),
-    unabsorbed: { st: after(main.unabsorbed.st), lt: after(main.unabsorbed.lt) },
-    lotsGainUnknown: realisedUnknown,
-    economicGainNotComputed,
-  };
+  const values: RollupPersonYear['values'] = { lotsGainUnknown: realisedUnknown };
 
   const labels = ['resident individual assumed', 'indicative, not tax advice'];
   if (main.exemptionApplied > EPS) labels.push('the annual exemption is shared with listed shares, other equity-oriented units and business trust units outside this statement, so part of it may already be used');
@@ -588,11 +596,12 @@ function personYear(lots: readonly TaxLot[], x: PyCtx): RollupPersonYear {
     clientId: reviewClients.length === 1 ? reviewClients[0]! : null,
     personKey: x.person.key,
     personLabel: x.person.label,
+    personSource: personSourceOf(x.person.key, x.imp.sourceId),
     fy,
     inReview: x.person.reviewClients.size > 0,
-    // NOT MEANINGFUL in an INSUFFICIENT EVIDENCE year (every row counted), and only the known part when a lot's gain is
-    // unknown (values.lotsGainUnknown above 0): values.realised holds the status (PARTIAL or missing).
-    realised,
+    // INSUFFICIENT EVIDENCE in a year with an unanswered repeated-rows question; PARTIAL or missing when a lot's gain is
+    // unknown (values.lotsGainUnknown above 0).
+    realised: x.insufficient ? ieV() : realisedValue,
     exempt,
     nonTaxable,
     exemption: {
@@ -601,15 +610,16 @@ function personYear(lots: readonly TaxLot[], x: PyCtx): RollupPersonYear {
           ? present(exemption.year.amount, 'inr', { sources: [], method: `${exemption.year.section} annual exemption of the year (design section 10.2)` })
           : missing(NAPP, `whole long-term gain exempt under ${exemption.year.section}, no threshold`))
         : missing(NA, EXEMPTION_OPEN),
-      // NOT MEANINGFUL (0) under afterSetOffDash or INSUFFICIENT EVIDENCE: values.exemptionApplied holds the status.
-      applied: main.exemptionApplied,
+      // Missing under afterSetOffDash or INSUFFICIENT EVIDENCE, and while the year's exemption is to be confirmed and
+      // exemption-group gains remain.
+      applied: after(main.exemptionApplied, exemptionOpen && main.buckets.some(groupLeft) ? EXEMPTION_OPEN : null),
     },
-    // NOT MEANINGFUL ({0, 0}) under afterSetOffDash or INSUFFICIENT EVIDENCE: values.unabsorbed holds the status.
-    unabsorbed: main.unabsorbed,
-    // Each bucket's setOff and taxable likewise; its `values` holds them as Values.
+    // Missing under afterSetOffDash or INSUFFICIENT EVIDENCE.
+    unabsorbed: { st: after(main.unabsorbed.st), lt: after(main.unabsorbed.lt) },
+    // Each bucket's setOff and taxable likewise.
     buckets: main.buckets.map((b) => {
-      const { order: _o, frac: _f, ...rest } = b as CoreBucket & { order?: number; frac?: number | null };
-      return { ...rest, values: bucketValues(b) };
+      const { order: _o, frac: _f, setOff: _s, taxable: _t, ...rest } = b as CoreBucket & { order?: number; frac?: number | null };
+      return { ...rest, ...bucketValues(b) };
     }),
     estimate: est,
     alternatives: {
@@ -624,8 +634,8 @@ function personYear(lots: readonly TaxLot[], x: PyCtx): RollupPersonYear {
     },
     coverage: {
       lotsNotComputed: notComputed.length,
-      // The known part only; NOT MEANINGFUL when values.economicGainNotComputed is missing (a gain left out is unknown).
-      economicGainNotComputed: notComputed.reduce((s, g) => s + (g.realised.kind === 'value' ? g.realised.v : 0), 0),
+      // Missing when a gain left out is unknown (never its known part alone), or in an INSUFFICIENT EVIDENCE year.
+      economicGainNotComputed,
       partial,
     },
     insufficientEvidence: x.insufficient,
@@ -670,6 +680,12 @@ function sumValues(values: ReadonlyArray<Value<number>>, weights: readonly numbe
   return present(sum, 'inr', { ...prov, method: `${what}: the sum of separate computations` }, coverage < 1 - EPS ? { coverage } : undefined);
 }
 
+/**
+ * The family sum: the persons' figures added up (sumValues), labelled as such. Its `realised` and `unabsorbed` are the
+ * sums of the persons' Values (fin review S-2, S-3): PARTIAL when any person's is (sumValues carries the coverage), and
+ * missing in an INSUFFICIENT EVIDENCE year; its `coverage.economicGainNotComputed` is missing when any person's is (an
+ * unknown part is never added as 0; Gate B F-1).
+ */
 function familySumOf(fy: number, persons: readonly PersonYearTaxLocal[], prov: Provenance): FamilyTaxYear['familySum'] {
   const w = persons.map((p) => Math.max(p.lots.length, 1));
   const est = (k: 'tax' | 'surcharge' | 'cess' | 'total'): Value<number> => sumValues(persons.map((p) => p.estimate[k]), w, prov, `family ${k}`);
@@ -677,12 +693,16 @@ function familySumOf(fy: number, persons: readonly PersonYearTaxLocal[], prov: P
     if (!persons.some((p) => p.alternatives[k] !== null)) return null;
     return sumValues(persons.map((p) => p.alternatives[k] ?? p.estimate.tax), w, prov, `family ${k}`);
   };
+  const sum = (pick: (p: PersonYearTaxLocal) => Value<number>, what: string): Value<number> => sumValues(persons.map(pick), w, prov, what);
+  const gains = persons.map((p) => p.coverage.economicGainNotComputed);
+  const gainMissing = gains.find((g) => g.kind === 'missing' && g.status === IE) ?? gains.find((g) => g.kind === 'missing');
+  const gainProv: Provenance = { ...prov, method: 'family economic gain left out of the tax: the sum of separate computations' };
   return {
     fy,
-    realised: persons.reduce((s, p) => s + p.realised, 0),
+    realised: sum((p) => p.realised, 'family realised'),
     exempt: persons.reduce((s, p) => s + p.exempt, 0),
     nonTaxable: persons.reduce((s, p) => s + p.nonTaxable, 0),
-    unabsorbed: { st: persons.reduce((s, p) => s + p.unabsorbed.st, 0), lt: persons.reduce((s, p) => s + p.unabsorbed.lt, 0) },
+    unabsorbed: { st: sum((p) => p.unabsorbed.st, 'family unabsorbed short-term loss'), lt: sum((p) => p.unabsorbed.lt, 'family unabsorbed long-term loss') },
     estimate: {
       tax: est('tax'), surcharge: est('surcharge'), cess: est('cess'), total: est('total'),
       beforeSurcharge: persons.some((p) => p.estimate.beforeSurcharge),
@@ -695,32 +715,13 @@ function familySumOf(fy: number, persons: readonly PersonYearTaxLocal[], prov: P
     },
     coverage: {
       lotsNotComputed: persons.reduce((s, p) => s + p.coverage.lotsNotComputed, 0),
-      economicGainNotComputed: persons.reduce((s, p) => s + p.coverage.economicGainNotComputed, 0),
+      economicGainNotComputed: persons.length === 0 ? missing(NAPP, 'no client of the review has lots in this financial year', gainProv)
+        : gainMissing !== undefined && gainMissing.kind === 'missing'
+        ? missing(gainMissing.status, gainMissing.reason, gainProv)
+        : present(gains.reduce((s, g) => s + (g.kind === 'value' ? g.v : 0), 0), 'inr', gainProv),
       partial: persons.some((p) => p.coverage.partial || p.afterSetOffDash !== null),
     },
     label: 'sum of separate computations',
-  };
-}
-
-/**
- * The family sum's realised and unabsorbed totals as Values: the sum of the persons' `values` (fin review S-2, S-3).
- * The realised total is PARTIAL when any person's is (sumValues carries the coverage); the economic gain left out of
- * the tax is missing when any person's is (an unknown part is never added as 0; Gate B F-1).
- */
-function familySumValuesOf(persons: readonly RollupPersonYear[], prov: Provenance): RollupFamilyYear['familySumValues'] {
-  const w = persons.map((p) => Math.max(p.lots.length, 1));
-  const sum = (pick: (p: RollupPersonYear) => Value<number>, what: string): Value<number> => sumValues(persons.map(pick), w, prov, what);
-  const gains = persons.map((p) => p.values.economicGainNotComputed);
-  const gainMissing = gains.find((g) => g.kind === 'missing' && g.status === IE) ?? gains.find((g) => g.kind === 'missing');
-  const gainProv: Provenance = { ...prov, method: 'family economic gain left out of the tax: the sum of separate computations' };
-  return {
-    realised: sum((p) => p.values.realised, 'family realised'),
-    unabsorbed: { st: sum((p) => p.values.unabsorbed.st, 'family unabsorbed short-term loss'), lt: sum((p) => p.values.unabsorbed.lt, 'family unabsorbed long-term loss') },
-    lotsGainUnknown: persons.reduce((s, p) => s + p.values.lotsGainUnknown, 0),
-    economicGainNotComputed: persons.length === 0 ? missing(NAPP, 'no client of the review has lots in this financial year', gainProv)
-      : gainMissing !== undefined && gainMissing.kind === 'missing'
-      ? missing(gainMissing.status, gainMissing.reason, gainProv)
-      : present(gains.reduce((s, g) => s + (g.kind === 'value' ? g.v : 0), 0), 'inr', gainProv),
   };
 }
 
@@ -776,7 +777,7 @@ export function rollupPersonYears(gains: readonly TaxLot[], imp: CgImport, input
     const isInsufficient = insufficient.has(yearLabel.get(fy)!);
     const pys = keys.map((k) => {
       const person = persons.get(k)!;
-      const pick = personYearInputFor(inputs, fy, yearLabel.get(fy)!, person, clientsInYear, labelOf);
+      const pick = personYearInputFor(inputs, fy, yearLabel.get(fy)!, person, imp.sourceId, clientsInYear, labelOf);
       if (pick.kind === 'refused') refusals.push(pick.refusal);
       const input = pick.kind === 'applied' ? pick.input : undefined;
       const inputSource = pick.kind === 'applied' ? pick.source : null;
@@ -801,7 +802,7 @@ export function rollupPersonYears(gains: readonly TaxLot[], imp: CgImport, input
     years.push({
       fy, rulesVersion: table.version, persons: pys, insufficientEvidence: isInsufficient,
       familyPersons: inFamily.map((p) => p.personKey), familySum: familySumOf(fy, inFamily, prov),
-      familySumValues: familySumValuesOf(inFamily, prov),
+      familySumValues: { lotsGainUnknown: inFamily.reduce((s, p) => s + p.values.lotsGainUnknown, 0) },
     });
   }
 
@@ -837,6 +838,16 @@ export function rollupPersonYears(gains: readonly TaxLot[], imp: CgImport, input
         count: out.length > 0 ? out.length : joined.length,
       });
     }
+  }
+  // C4-2: person-year entries bound to another statement file are never applied to anyone (counts only).
+  const stale = inputs.personYear.filter((e) => isStalePersonInput(e, imp.sourceId)).length;
+  if (stale > 0) {
+    const one = stale === 1;
+    issues.push({
+      id: `${PERSON_INPUTS_STALE}:1`, ruleId: PERSON_INPUTS_STALE, scope: { kind: 'file', sourceId: imp.sourceId },
+      message: `${plural(stale, 'person-year entry was', 'person-year entries were')} entered for another capital-gains statement file (a re-uploaded or reordered statement numbers its persons afresh), so ${one ? 'it is' : 'they are'} not applied to any person: the slab rate of ${one ? 'its person' : 'their persons'} is not set until the analyst enters it again for this file.`,
+      severity: 'Warning', blocksPublication: false, resolution: 'none', status: 'open', decision: 'PD-16', count: stale,
+    });
   }
   return { years, issues, refusals, audit };
 }

@@ -8,7 +8,7 @@
 //   1. computeTaxLots (lots.ts): the FIFO lots of every holding to the as-on day, from the IRR file's fund flows;
 //   2. rollupHoldings (holdings-rollup.ts): by class, product, asset, client and family;
 //   3. buildHarvests (harvest.ts): per client and the family sum; the exemption already used (Q-52, exemptionUsedFor) is
-//      the analyst's entry, else the statement's person-year `values.exemptionApplied` of the as-on financial year,
+//      the analyst's entry, else the statement's person-year `exemption.applied` of the as-on financial year,
 //      else not applied and labelled "exemption not applied" (PLAN-07 section 5, as round 2 built it). Financial review
 //      F-1: the statement's figure is offered only for a client whose as-on-year realised figure (realisedForYear) is the
 //      statement's, known and complete; a PARTIAL figure (the IRR file shows sales the statement leaves out, or a lot's
@@ -37,18 +37,15 @@
 // `capital-gains.after-as-on-date` in the list, so one Warning is raised (delta review N-6). Pure: no global, no I/O,
 // and the clock only through `opts.now` (the audit entries of the statement steps).
 //
+// contracts-4 (I-37, C4-1 to C4-7): every holding record has its contract TaxPosition, a gain not known (KI-007, a record
+// not split, a fund-level holding) a labelled missing Value, never 0 (F-2); the harvest is the contract's HarvestResult
+// per client (the family sum stays engine-local, harvest.ts FamilyHarvest); `realisedFY` holds the contract's
+// RealisedForYear per client and for the family ('mixed' across sources); the person-years carry the person key, label
+// and source, and the person-year entries of another statement file apply to no one (C4-2; the harvest reads only the
+// client-id entries). TaxInputs.switchAnswers (C4-6) is not applied yet: every merger candidate stays a gap without a
+// statement that shows the merger.
+//
 // TODO(I-41): this output becomes Review.tax and this function is called from computeReview
-// TODO(contracts-4): TaxPosition gains become nullable (I-37 notes item 10); `positions[].position` is null until then
-//   whenever the record's long or short gain is not known: an unknown gain (KI-007), and every record not split
-//   (unreconciled, unmapped, not split by law, fund level), whose contract form would read a long-term gain of 0 (F-2);
-//   the engine's TaxPositionRecord carries the figures
-// TODO(contracts-4): HarvestResult takes the HarvestLocal lines and a null clientId (item 11)
-// TODO(contracts-4): GainSource gets the mixed family source, a 'derived-not-taxed' reason, and tax.realisedFY its
-//   unknown term and per-client entries (item 12; reconcile.ts MIXED_SOURCE and RealisedFY meanwhile)
-// TODO(contracts-4): PersonYearTax and FamilyTaxYear take personKey, personLabel and the Values of items 8 and 9
-//   (types.ts PersonYearTaxLocal and FamilyTaxYearLocal meanwhile)
-// TODO(contracts-4): the analyst's answer to a merger candidate (round 2c) needs a TaxInputs field; until then every
-//   candidate stays a gap without a statement that shows the merger
 
 import type { Holding } from '../../model/holding.ts';
 import type { IrrFileImport } from '../../model/transactions.ts';
@@ -130,8 +127,8 @@ export type ReviewTaxBasis = {
 export type ReviewTaxHoldings = {
   /** The FIFO lot records of every holding with a market value, and the counts (lots.ts). */
   lots: TaxLotsResult;
-  /** Each record (positions, then unreconciled, then unmapped) with its contract TaxPosition, or null (TODO above). */
-  positions: Array<{ record: TaxPositionRecord; position: TaxPosition | null }>;
+  /** Each record (positions, then unreconciled, then unmapped) with its contract TaxPosition (contracts-4, C4-3). */
+  positions: Array<{ record: TaxPositionRecord; position: TaxPosition }>;
   /** By class, product, asset, client and family (holdings-rollup.ts). */
   rollup: HoldingsTaxRollup;
   /** DATA_DICTIONARY section 6 `tax.unrealised.{st,lt}`: missing without an IRR file. */
@@ -225,7 +222,7 @@ export const EXEMPTION_WITHHELD = 'exemption not applied: the as-on year\'s real
 
 /**
  * F-1 (Q-52): the statement's person-years as the harvest reads them. In the as-on year, a review person's
- * `values.exemptionApplied` stays only when that client's as-on-year realised figure (realisedForYear) is the statement's,
+ * `exemption.applied` stays only when that client's as-on-year realised figure (realisedForYear) is the statement's,
  * present and complete (no coverage mark); otherwise it becomes a missing value with WITHHELD_REASON, so the harvest
  * applies no exemption for the client (unless the analyst entered one). No figure is changed or added.
  */
@@ -235,11 +232,11 @@ export function statementForHarvest(years: readonly RollupFamilyYear[], asOnFy: 
   const out = years.map((y) => (y.fy !== asOnFy ? y : {
     ...y,
     persons: y.persons.map((p) => {
-      if (!p.inReview || p.clientId === null || p.values.exemptionApplied.kind === 'missing') return p;
+      if (!p.inReview || p.clientId === null || p.exemption.applied.kind === 'missing') return p;
       const c = asOnRealised?.clients.find((x) => x.clientId === p.clientId);
       if (c !== undefined && c.source === 'statement' && c.total.kind === 'value' && c.total.coverage === undefined) return p;
       withheld.push(p.clientId);
-      return { ...p, values: { ...p.values, exemptionApplied: missing(STATUS.NOT_AVAILABLE, WITHHELD_REASON) } };
+      return { ...p, exemption: { ...p.exemption, applied: missing(STATUS.NOT_AVAILABLE, WITHHELD_REASON) } };
     }),
   }));
   return { years: out, withheld };
@@ -271,6 +268,7 @@ export function reviewTax(input: ReviewTaxInput, opts: ReviewTaxOptions): Review
   const lots = computeTaxLots(holdings, irr ? irr.fund : [], { asOn: asOnDay, classifyContext });
   const rollup = rollupHoldings(lots, holdings);
   const records = [...lots.positions, ...lots.unreconciled, ...lots.unmapped];
+  const holdingById = new Map(holdings.map((h) => [h.id, h]));
 
   // 5. The statement side (before the harvest, which reads its exemption already used).
   let side: StatementSide | null = null;
@@ -325,8 +323,10 @@ export function reviewTax(input: ReviewTaxInput, opts: ReviewTaxOptions): Review
     },
     holdings: {
       lots,
-      // F-2: the contract form only where the long and short gains are known (a record not split would read 0).
-      positions: records.map((record) => ({ record, position: record.lt.gain !== null && record.st.gain !== null ? toTaxPosition(record) : null })),
+      // F-2 and C4-3: the contract form of every record, a gain not known a labelled missing Value (never 0).
+      positions: records.map((record) => ({
+        record, position: toTaxPosition(record, { facts: holdingById.get(record.holdingId) ?? null, prov: { ...rollup.prov, method: 'FIFO tax lots of the holding to the as-on date (E-41)' } }),
+      })),
       rollup,
       unrealised: irr ? rollup.legacy.unrealised : { st: na(MISSING_TEXT.unrealised), lt: na(MISSING_TEXT.unrealised) },
     },

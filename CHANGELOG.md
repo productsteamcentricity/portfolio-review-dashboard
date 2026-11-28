@@ -44,6 +44,22 @@ the base-file reader calls `scrubText` for the Account Name cell and its label, 
   D-1): when every gain is in slab-rate pools, those three are NOT AVAILABLE with the pools named, never Rs 0 at
   coverage 0, for the client and, when every worked client is so, the family. CHAT-012's case with a 30% slab entered
   was a present 0 with no label (the tax at that slab is 900); it is now NOT AVAILABLE, labelled.
+- **contracts-4 (I-37, `model/tax.ts` and `engine/tax/**`; model file written by NB-03 on MOD-05's delegation of 28 Nov
+  2026; text agreed by CHAT-012: the proposal's C4-1, C4-5, C4-7, delta 1's C4-2, C4-3, C4-4, C4-6, delta 2):** a
+  figure that can be missing is a `Value` in the contract, never a plain 0 (Q-49): `Bucket.setOff` and `taxable`,
+  `PersonYearTax.realised`, `exemption.applied`, `unabsorbed`, `coverage.economicGainNotComputed` and the family sum's;
+  `RealisedGain.anniversaryLongTerm` holds the dash with its reason and a percent rate; `legs` each leg's cost, gain and
+  tax. `TaxPosition` gains are Values with `notSplitKind`, `unclassified`, `locked`, `fundLevel`, `oversoldUnits`,
+  `counts` (per holding), `product` and `asset`; `toTaxPosition` gives every record's contract form. `HarvestResult` takes
+  a null client, nullable losses, the exemption as Values (source `analyst-confirmed-unused` kept) and the round 3 lines;
+  the family harvest stays engine-local. `GainSource` adds 'mixed' (`MIXED_SOURCE`), `NotComputed` 'derived-not-taxed'
+  (derived lots; lot index -1, so no lot mark reaches one), `RealisedForYear` is the realised figure per client and family.
+  C4-2: the person key "person:n" is bound to the statement file (`personSource`); an entry for another file applies to
+  no one and raises the Warning `tax.person-inputs-stale` (counts only), so that person's slab is "not set". C4-6 adds
+  `TaxInputs.switchAnswers` only: nothing applies answers yet. Figures: the known answers and parity are unchanged, with
+  two departures, both silent zeros closed: an all-slab harvest's plain tax before, tax after and saving are null like
+  their Values (round 4's carried note), and a year with no client entry has its family realised figures missing, not
+  Rs 0 (delta 2 B-4).
 - **Not built:** round 2c L3 (row-level matching of a merger's switch in) needs the owner's answer on how the export
   writes a merger (Q-T5); S-2 stays as built (MOD-05: NO; on the owner's list).
 

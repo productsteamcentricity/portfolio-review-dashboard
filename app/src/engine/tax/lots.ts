@@ -51,7 +51,9 @@
 import type { Holding } from '../../model/holding.ts';
 import type { Transaction } from '../../model/transactions.ts';
 import type { TaxPosition } from '../../model/tax.ts';
-import type { DayNumber } from '../../model/value.ts';
+import type { DayNumber, Provenance, Value } from '../../model/value.ts';
+import { STATUS } from '../../model/status.ts';
+import { missing, present } from '../value.ts';
 import type { ClientId, HoldingId } from '../../model/ids.ts';
 import type { HoldingJoin } from '../returns/irr-tree.ts';
 import { matcherJoin } from '../returns/scope.ts';
@@ -111,11 +113,18 @@ export type LotDetail = {
 type Split = { cmv: number; gain: number | null };
 
 /**
- * One record per holding with a market value (two for a holding split at the Specified date): the contract's
- * TaxPosition (model/tax.ts) with its gains allowed to be missing (no invested value: KI-007, never 0) and the lines
- * the contract does not carry. `toTaxPosition` gives the contract's shape when every gain is known.
+ * One record per holding with a market value (two for a holding split at the Specified date): the engine's working form
+ * of the contract's TaxPosition (model/tax.ts), its gains as plain numbers or null where not known (no invested value:
+ * KI-007, never 0), the fund-level split, the not-split kinds as the engine names them, and the lines the contract does
+ * not carry. The contract's `oversoldUnits` (units the IRR history sells beyond the units its earlier purchases hold,
+ * beyond UNITS_TOLERANCE, on the unit ledger; null when none or on the rupee ledger; never silent, Gate B of aa67a45: the
+ * reason says so; on a shared instrument, OD-15, this holding's share, by the same share as its lots, Gate B of 5c9ae0a,
+ * F3) and `counts` (this holding's instrument's trades after the as-on date, left out; its trades to the as-on date
+ * without a price; its rows with no type) are held as the contract types them. `toTaxPosition` gives the contract's
+ * shape (contracts-4, C4-3), a missing gain as a labelled missing Value.
  */
-export type TaxPositionRecord = Omit<TaxPosition, 'gain' | 'lt' | 'st' | 'unclassifiedGain'> & {
+export type TaxPositionRecord = Omit<TaxPosition, 'gain' | 'lt' | 'st' | 'unclassifiedGain' | 'unclassified' | 'locked' | 'fundLevel'
+  | 'notSplitKind' | 'product' | 'asset'> & {
   instrumentName: string;
   gain: number | null;
   lt: Split;
@@ -140,12 +149,6 @@ export type TaxPositionRecord = Omit<TaxPosition, 'gain' | 'lt' | 'st' | 'unclas
   pxGap: boolean;
   viaSwitchIn: boolean;
   /**
-   * Units the IRR history sells beyond the units its earlier purchases hold (beyond UNITS_TOLERANCE), on the unit
-   * ledger; null when none or on the rupee ledger. Never silent (Gate B of aa67a45): the reason says so. On a shared
-   * instrument (OD-15) it is this holding's share, by the same share as its lots (Gate B of 5c9ae0a, F3).
-   */
-  oversoldUnits: number | null;
-  /**
    * The history (to the as-on date) holds a transfer out, consumed oldest first (FIFO, the usual convention, s.45(2A)):
    * which units it moved is assumed, not in the IRR file. Named in the reason (delta review N-2).
    */
@@ -154,8 +157,6 @@ export type TaxPositionRecord = Omit<TaxPosition, 'gain' | 'lt' | 'st' | 'unclas
   gfLots: number;
   oldest: DayNumber | null;
   newest: DayNumber | null;
-  /** Trades of this holding's instrument dated after the as-on date, left out. */
-  laterTrades: number;
   lotDetail: LotDetail[];
 };
 
@@ -688,6 +689,18 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
     if (!l) { l = []; tradesOf.set(k, l); holdingsOf.set(k, join(t.clientId, t.instrumentName)); }
     l.push(t);
   }
+  // C4-3: each holding's own counts (the contract's TaxPosition.counts): its instruments' trades to the as-on date
+  // without a price, and its instruments' rows with no type (as the file's counts above, joined the same way).
+  const noPriceOf = new Map<HoldingId, number>();
+  const untypedOf = new Map<HoldingId, number>();
+  const bump = (m: Map<HoldingId, number>, ids: readonly HoldingId[], n: number): void => {
+    if (n > 0) for (const id of ids) m.set(id, (m.get(id) ?? 0) + n);
+  };
+  for (const [k, list] of tradesOf) bump(noPriceOf, holdingsOf.get(k)!, list.filter((t) => t.day <= asOn && priceOf(t) === null).length);
+  for (const t of sorted) {
+    if (t.direction === 'valuation' || t.kind !== 'untyped') continue;
+    bump(untypedOf, holdingsOf.get(instrumentKey(t.clientId, t.instrumentName)) ?? join(t.clientId, t.instrumentName), 1);
+  }
   const holdingById = new Map(holdings.map((h) => [h.id, h]));
   // Union-find over holdings, keyed by holding id; each instrument links the holdings it joins.
   const parent = new Map<HoldingId, HoldingId>();
@@ -803,7 +816,8 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
       baseUnits: amtMode ? null : baseU, fifoUnits: amtMode ? null : fifoU, pxGap, viaSwitchIn: pxGap && swIn,
       // F3 (Gate B of 5c9ae0a): on a shared instrument, this holding's share of the ledger's oversell (OD-15).
       oversoldUnits: !amtMode && ledger && ledger.oversold > 0 ? ledger.oversold * share : null, transferOutFifo: !!ledger?.transferOut, gfLots: 0,
-      oldest: null, newest: null, laterTrades: later, lotDetail: [],
+      oldest: null, newest: null, lotDetail: [],
+      counts: { laterTrades: later, noPrice: noPriceOf.get(h.id) ?? 0, untyped: untypedOf.get(h.id) ?? 0 },
     };
     /** Gate B of aa67a45: an oversell on the unit ledger is named in the reason, never silent. */
     // Delta review N-2: a transfer out consumed by FIFO is named the same way.
@@ -942,17 +956,40 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
   return out;
 }
 
-/** The contract's TaxPosition (model/tax.ts) for a record whose gains are all known; null otherwise. */
-export function toTaxPosition(r: TaxPositionRecord): TaxPosition | null {
-  if (r.gain === null || r.lt.gain === null || r.st.gain === null || r.unclassifiedGain === null) {
-    // An unsplit or unreconciled record carries its gain in `unclassified`; a fund-level record in `fundLevel`.
-    if (r.gain === null) return null;
-    if (r.status === 'ok' || r.status === 'locked') return null;
-  }
+/** The contract's not-split kinds (C4-3) by the engine's unreconciled kind; the other kinds keep `status` and `reason`. */
+const NOT_SPLIT_KIND: Partial<Record<UnreconciledKind, NonNullable<TaxPosition['notSplitKind']>>> = {
+  mergerCandidate: 'merger-candidate', transferRow: 'transfer-row', bonusRow: 'bonus-row', apportion: 'apportion',
+  periodsNotInTable: 'periods-not-in-table',
+};
+
+/** The holding facts the contract's TaxPosition carries (C4-3), so the roll-ups need not re-read the holdings. */
+export type TaxPositionFacts = Pick<Holding, 'product' | 'assetClass' | 'assetLabel'>;
+
+/**
+ * The contract's TaxPosition (model/tax.ts; contracts-4, C4-3) for a record. A gain the record does not know is a
+ * missing Value (NOT AVAILABLE) with the reason, never 0 (Q-49): every gain of a holding whose invested value is blank or
+ * invalid (KI-007); the long and short gains of a holding not split; the unclassified gain of a fund-level holding.
+ * `product` and `asset` come from the holding (the asset as the roll-up keys it: the canonical class, else the label as
+ * given), null when no holding is given.
+ */
+export function toTaxPosition(r: TaxPositionRecord, opts: { facts?: TaxPositionFacts | null; prov?: Provenance } = {}): TaxPosition {
+  const prov: Provenance = opts.prov ?? { sources: [], method: 'FIFO tax lots of the holding to the as-on date (E-41)' };
+  const unknown = 'the invested value is blank or invalid, so the gain is not known (KI-007)';
+  const why = r.gain === null ? unknown
+    : r.status === 'fund-level' ? 'the holding is valued at fund level (a Category III AIF): its gain is not split'
+      : `the holding is not split into long and short term (${r.status})`;
+  const gainOf = (g: number | null): Value<number> => (g !== null ? present(g, 'inr', prov) : missing(STATUS.NOT_AVAILABLE, why, prov));
+  const facts = opts.facts ?? null;
   return {
     holdingId: r.holdingId, clientId: r.clientId, splitPart: r.splitPart, taxRule: r.taxRule, status: r.status,
-    reason: r.reason, ledger: r.ledger, apportioned: r.apportioned, cmv: r.cmv, gain: r.gain,
-    lt: { cmv: r.lt.cmv, gain: r.lt.gain ?? 0 }, st: { cmv: r.st.cmv, gain: r.st.gain ?? 0 },
-    unclassifiedGain: r.unclassifiedGain ?? 0, lots: r.lots,
+    notSplitKind: r.unreconciledKind !== null ? NOT_SPLIT_KIND[r.unreconciledKind] ?? null : null,
+    reason: r.reason, ledger: r.ledger, apportioned: r.apportioned, cmv: r.cmv, gain: gainOf(r.gain),
+    lt: { cmv: r.lt.cmv, gain: gainOf(r.lt.gain) }, st: { cmv: r.st.cmv, gain: gainOf(r.st.gain) },
+    unclassifiedGain: gainOf(r.unclassifiedGain),
+    unclassified: { cmv: r.unclassified.cmv, gain: gainOf(r.unclassified.gain) },
+    locked: r.locked === null ? null : { cmv: r.locked.cmv, gain: gainOf(r.locked.gain) },
+    fundLevel: r.fundLevel !== null, oversoldUnits: r.oversoldUnits, counts: { ...r.counts },
+    product: facts?.product ?? null, asset: facts === null ? null : facts.assetClass ?? facts.assetLabel ?? null,
+    lots: r.lots,
   };
 }

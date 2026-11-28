@@ -82,21 +82,28 @@ export function parseLots(lots: ReadonlyArray<KaLot | LotSpec>, extra: Partial<C
 /** The review's client ids by label (REVIEW above). */
 export const CLIENT_IDS: Readonly<Record<string, ClientId>> = { [CLIENT_A]: 'cl_review_a' as ClientId, [CLIENT_B]: 'cl_review_b' as ClientId };
 
-/** A person-year entry as the known-answer file writes it: the person by client label, or by its person key. */
+/**
+ * A person-year entry as the known-answer file writes it: the person by client label, or by its person key (and, for a
+ * person key, the statement file it was entered for: SRC unless given; contracts-4 C4-2).
+ */
 export type KaPersonYear = {
-  client?: string; personKey?: string; fy: number; slabPct: number | null; surchargePct: number | null;
-  regime: 'old' | 'new' | null; assesseeMark?: string | null;
+  client?: string; personKey?: string; personSource?: SourceFileId; fy: number; slabPct: number | null;
+  surchargePct: number | null; regime: 'old' | 'new' | null; assesseeMark?: string | null;
 };
 
 /**
- * The contract's person-year entries: a client label becomes the review's client id (the roll-up applies it to the
- * person whose single review client it is), a person key ("person:n") is passed as written.
+ * The contract's person-year entries (C4-2): a client label becomes the review's client id, its person key that id and
+ * its source null (the roll-up applies it to the person whose single review client it is); a person key ("person:n")
+ * is passed as written, bound to the statement file SRC (parseLots' default) unless another is given.
  */
 export function personYearInputs(rows: readonly KaPersonYear[] = []): TaxInputs['personYear'] {
-  return rows.map((r) => ({
-    clientId: (r.personKey ?? (r.client !== undefined ? CLIENT_IDS[r.client] ?? r.client : null)) as ClientId | null,
-    fy: r.fy, slabPct: r.slabPct, surchargePct: r.surchargePct, regime: r.regime, assesseeMark: r.assesseeMark ?? null,
-  }));
+  return rows.map((r) => {
+    const clientId = r.personKey === undefined && r.client !== undefined ? (CLIENT_IDS[r.client] ?? r.client) as ClientId : null;
+    return {
+      clientId, personKey: r.personKey ?? clientId ?? '', personSource: r.personKey !== undefined ? r.personSource ?? SRC : null,
+      fy: r.fy, slabPct: r.slabPct, surchargePct: r.surchargePct, regime: r.regime, assesseeMark: r.assesseeMark ?? null,
+    };
+  });
 }
 
 /** The reader, realiseLots and rollupPersonYears over one import, with the review's as-on date (30 Sep 2026). */

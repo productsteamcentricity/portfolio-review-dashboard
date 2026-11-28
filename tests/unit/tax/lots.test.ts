@@ -129,7 +129,7 @@ function checkLot(g: TaxLot, e: Record<string, unknown>, slabPct: number | null,
           const want = le[leg] as Record<string, number> | undefined;
           if (!want) continue;
           for (const f of Object.keys(want)) near(g.legDetail![leg][f as 'cost'], want[f]!, `${w} ${leg}.${f}`);
-          near(v(g.legs![leg]), g.legDetail![leg].gain, `${w} ${leg}: the contract's leg is the leg's gain`);
+          for (const f of ['cost', 'gain', 'tax'] as const) near(v(g.legs![leg][f]), g.legDetail![leg][f], `${w} ${leg}.${f}: the contract's leg holds the leg's figure`);
         }
         break;
       }
@@ -138,8 +138,8 @@ function checkLot(g: TaxLot, e: Record<string, unknown>, slabPct: number | null,
         const a = x as { ruleId: string; taxableGain: number; tax?: number };
         assert.ok(g.anniversaryLongTerm, `${w} long-term figure`);
         assert.equal(g.anniversaryLongTerm!.ruleId, a.ruleId, `${w} long-term rule`);
-        near(g.anniversaryLongTerm!.taxableGain, a.taxableGain, `${w} long-term gain`);
-        if (a.tax !== undefined) near(v(lotTax(present(g.anniversaryLongTerm!.taxableGain, 'inr', PROV), g.anniversaryLongTermDetail!, slabPct)), a.tax, `${w} long-term tax`);
+        near(v(g.anniversaryLongTerm!.taxableGain), a.taxableGain, `${w} long-term gain`);
+        if (a.tax !== undefined) near(v(lotTax(g.anniversaryLongTerm!.taxableGain, g.anniversaryLongTermDetail!, slabPct)), a.tax, `${w} long-term tax`);
         break;
       }
       case 'flags': for (const f of x as string[]) assert.ok(g.flags.includes(f), `${w} flag ${f} in [${g.flags}]`); break;
@@ -507,7 +507,7 @@ describe('dates, the statement split and the other engine ids (§9.2, §10.4, §
       L(BON, [2021, 6, 1], [2023, 1, 2], { buyNav: 0 }),
       L(EQ, [2021, 1, 4], [2023, 1, 5], { over: { ltcg: 1500 } }),
       L(EQ, [2021, 1, 4], [2023, 1, 5], { client: 'Sample Client B', over: { ltcg: 0, stcg: 1000 } }),
-    ], { lotMarks: [{ lotIndex: 5, assessee: 'joint' }], personYear: [{ clientId: 'cl_review_b' as never, fy: 2022, slabPct: null, surchargePct: null, regime: null, assesseeMark: 'minor' }] });
+    ], { lotMarks: [{ lotIndex: 5, assessee: 'joint' }], personYear: [{ clientId: 'cl_review_b' as never, personKey: 'cl_review_b', personSource: null, fy: 2022, slabPct: null, surchargePct: null, regime: null, assesseeMark: 'minor' }] });
     assert.deepEqual([g[0]!.notComputed, v(g[0]!.taxableGain)], ['outside-rule-table', null]);
     assert.ok(g[0]!.flags.includes('outside-rule-table'));
     assert.ok(g[1]!.flags.includes('after-as-on-date'));

@@ -21,6 +21,7 @@ import { ymdToDay } from '../../../app/src/engine/dates.ts';
 import { STATUS } from '../../../app/src/model/status.ts';
 import type { SourceFileId } from '../../../app/src/model/ids.ts';
 import type { DayNumber, Value } from '../../../app/src/model/value.ts';
+import type { TaxInputs } from '../../../app/src/model/tax.ts';
 import { loadSheetJS } from '../../helpers/sheetjs.ts';
 import { bookBytes } from '../../fixtures/make-books.ts';
 import type { BookRow } from '../../fixtures/make-books.ts';
@@ -91,7 +92,10 @@ describe('FIFO derivations (hand-worked)', () => {
       assert.equal(x.financialYearLabel, 'FY 2024-25');
       assert.equal(x.saleKind, 'redemption');
       assert.equal(x.i21, INST.equityMf);
-      assert.equal(x.notComputed, 'tax-class-not-set');
+      // contracts-4 (C4-5): a derived lot carries no tax in this build ('tax-class-not-set' before the contract held it).
+      assert.equal(x.notComputed, 'derived-not-taxed');
+      // C4-7: no lot index of the statement (-1), no sale event, no tag text; of the review (its client holds the scheme).
+      assert.deepEqual([x.lotIndex, x.eventId, x.tagAssetText, x.inReview], [-1, null, null, true]);
     }
     near(v(l[0]!.units), 100, 'units 1'); near(v(l[0]!.purchaseValue), 10000, 'cost 1'); near(v(l[0]!.saleValue), 13200, 'sale 1'); near(v(l[0]!.realised), 3200, 'realised 1');
     assert.equal(v(l[0]!.purchaseDate), day(2024, 1, 10));
@@ -773,6 +777,18 @@ describe('round 2c, the merger condition (MOD-05): merger candidates on the real
     near(v(l[1]!.saleValue), 10000, 'sale value'); near(v(l[1]!.units), 50, 'units');
     assert.equal(l[1]!.realised.kind, 'missing'); assert.equal(l[1]!.purchaseDate.kind, 'missing');
     assert.deepEqual(l[1]!.asSwitch!.map((x) => v(x.realised)), [5000]);
+    // contracts-4 (NB-03's ruling on C4-7): a lot mark at index 0 never reaches a derived lot: every derived lot, the
+    // ordinary-switch lots kept on a gap lot included, has lotIndex -1 (lotMarks apply to statement lots only).
+    const marks: TaxInputs['lotMarks'] = [{ lotIndex: 0, giftOrInheritance: true }];
+    const every = [...r.lots, ...r.lots.flatMap((x) => x.asSwitch ?? [])];
+    assert.ok(every.length > r.lots.length, 'an ordinary-switch lot is among them');
+    for (const x of every) {
+      assert.equal(x.lotIndex, -1);
+      assert.equal(marks.find((m) => m.lotIndex === x.lotIndex), undefined);
+    }
+    // An empty list of base-file holdings is given here: no client of the IRR file holds a scheme in the base file, so no
+    // lot is of the review (the rule of reconcile.ts outsideReview).
+    assert.ok(every.every((x) => x.inReview === false));
     const sy = r.schemeYears.find((s) => s.instrumentName === NEW && s.fy === 2025)!;
     assert.equal(sy.realised.kind, 'missing');
     assert.deepEqual(sy.gaps, { 'merger-candidate': 1 });

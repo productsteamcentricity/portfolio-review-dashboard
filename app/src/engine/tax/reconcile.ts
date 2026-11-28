@@ -56,7 +56,7 @@
 import type { CgImport } from '../../ingest/capital-gains.ts';
 import { financialYearOf, totalsTolerance } from '../../ingest/capital-gains.ts';
 import type { ClientId } from '../../model/ids.ts';
-import type { GainSource, Term } from '../../model/tax.ts';
+import type { GainSource, RealisedForYear, Term } from '../../model/tax.ts';
 import type { Provenance, Value } from '../../model/value.ts';
 import type { ValidationResult } from '../../model/validation.ts';
 import { STATUS } from '../../model/status.ts';
@@ -435,21 +435,22 @@ function reconcileIssues(rows: readonly ReconcileRow[], statementOnly: readonly 
 // The review's figure: tax.realisedFY.{st,lt,source}
 
 export const FAMILY_SUM_LABEL = 'sum of separate computations';
-export const MIXED_SOURCE = 'statement and derived from transactions' as const;
+/** The family figure that mixes the statement and the derived source across clients (the contract's GainSource, C4-5). */
+export const MIXED_SOURCE: Extract<GainSource, 'mixed'> = 'mixed';
 
 export type RealisedFigure = { st: Value<number>; lt: Value<number>; unknownTerm: Value<number>; total: Value<number> };
 
-export type RealisedFYClient = RealisedFigure & {
+/**
+ * One client's realised figure of a year: the contract's RealisedForYear (C4-5) with its client, and the lots counted.
+ * `schemesLeftOut` (item 8 of Gate B of aa67a45): on a statement figure, the IRR schemes of the client with gains derived
+ * in the year that no statement lot of the year matches (the statement covers only part of the client-year). Their
+ * derived gains are not added (never the two sides in one client-year); the figure is PARTIAL instead. The rule is an
+ * owner question. 0 on a derived figure.
+ */
+export type RealisedFYClient = RealisedForYear & {
   clientId: ClientId;
-  source: GainSource;
+  source: Exclude<GainSource, 'mixed'>;
   lots: number;
-  /**
-   * Item 8 of Gate B of aa67a45: on a statement figure, the IRR schemes of the client with gains derived in the year that
-   * no statement lot of the year matches (the statement covers only part of the client-year). Their derived gains are not
-   * added (never the two sides in one client-year); the figure is PARTIAL instead. The rule is an owner question. 0 on a
-   * derived figure.
-   */
-  schemesLeftOut: number;
 };
 
 /** The PARTIAL text of a statement figure that leaves out `n` IRR schemes with derived gains in the year (item 8). */
@@ -459,11 +460,15 @@ export function partialStatementReason(n: number): string {
 
 export type OutsideReviewClient = { clientId: ClientId; clientLabel: string; lots: number };
 
-export type RealisedFY = RealisedFigure & {
-  fy: number;
+/**
+ * The family's realised figure of a year: the contract's RealisedForYear (C4-5) with `clientId` null, and the lines it
+ * does not hold. `source` is one source when every client's figure has it, MIXED_SOURCE ('mixed') when they differ (each
+ * client's own is in `clients`), and null only when no client has a figure in the year (`total` then missing).
+ * `schemesLeftOut` is the clients' sum.
+ */
+export type RealisedFY = RealisedForYear & {
+  clientId: null;
   fyLabel: string;
-  /** One source when every client's figure has it; otherwise MIXED_SOURCE (each client's own is in `clients`). */
-  source: GainSource | typeof MIXED_SOURCE | null;
   clients: RealisedFYClient[];
   label: typeof FAMILY_SUM_LABEL;
   /**
@@ -583,7 +588,7 @@ export function realisedForYear(fy: number, derived: DerivedRealised | null, sta
           : present(x.v, 'inr', { ...x.prov, method: `${x.prov.method}; PARTIAL: ${why}` }, { coverage: Math.min(x.coverage ?? 1, share, 1 - 1e-9) }));
         fig.st = mark(fig.st); fig.lt = mark(fig.lt); fig.unknownTerm = mark(fig.unknownTerm); fig.total = mark(fig.total);
       }
-      clients.push({ clientId: c, source: 'statement', lots: used.length, schemesLeftOut, ...fig });
+      clients.push({ fy, clientId: c, source: 'statement', lots: used.length, schemesLeftOut, ...fig });
     } else {
       const dl = derBy.get(c)!;
       const prov: Provenance = { sources: [...new Set(dl.map((l) => l.at.sourceId))], method: 'realised gains derived from transactions (FIFO on the IRR file), split by the term of table v1 at the sale date' };
@@ -592,17 +597,21 @@ export function realisedForYear(fy: number, derived: DerivedRealised | null, sta
         const t = l.term.kind === 'value' ? l.term.v : null;
         return { st: t === 'short' ? v : 0, lt: t === 'long' ? v : 0, unk: t === null ? v : 0 };
       });
-      clients.push({ clientId: c, source: DERIVED_SOURCE, lots: dl.length, schemesLeftOut: 0, ...figureOf(parts, dl.length, dl.length - parts.length, prov, false) });
+      clients.push({ fy, clientId: c, source: DERIVED_SOURCE, lots: dl.length, schemesLeftOut: 0, ...figureOf(parts, dl.length, dl.length - parts.length, prov, false) });
     }
   }
   const sources = [...new Set(clients.map((c) => c.source))];
   const outsideList = [...outside.values()].sort((a, b) => (a.clientId < b.clientId ? -1 : a.clientId > b.clientId ? 1 : 0));
   const outNote = outsideList.length ? `; ${plural(outsideList.length, 'client', 'clients')} of the IRR file with no holding in the base file left out (OD-4)` : '';
   const prov: Provenance = { sources: [...new Set(clients.flatMap((c) => (c.total.kind === 'value' ? c.total.prov.sources : c.total.prov?.sources ?? [])))], method: `family view: the clients' realised gains added up (${FAMILY_SUM_LABEL})${outNote}` };
+  // contracts-4 (C4-5, delta 2 B-4): with no client entry in the year the source is null and the figures are missing
+  // (no client of the review has a realised figure), never a sum of nothing (Rs 0; Q-49).
+  const none = clients.length === 0 ? missing(STATUS.NOT_AVAILABLE, `no client of the review has a realised figure in this year${outNote}`, prov) : null;
   return {
-    fy, fyLabel, source: sources.length === 0 ? null : sources.length === 1 ? sources[0]! : MIXED_SOURCE, clients, label: FAMILY_SUM_LABEL,
+    fy, clientId: null, fyLabel, source: sources.length === 0 ? null : sources.length === 1 ? sources[0]! : MIXED_SOURCE, clients, label: FAMILY_SUM_LABEL,
+    schemesLeftOut: clients.reduce((s, c) => s + c.schemesLeftOut, 0),
     outsideReview: { count: outsideList.length, clients: outsideList, reason: OUTSIDE_REVIEW_REASON },
-    st: sumValues(clients.map((c) => c.st), prov), lt: sumValues(clients.map((c) => c.lt), prov),
-    unknownTerm: sumValues(clients.map((c) => c.unknownTerm), prov), total: sumValues(clients.map((c) => c.total), prov),
+    st: none ?? sumValues(clients.map((c) => c.st), prov), lt: none ?? sumValues(clients.map((c) => c.lt), prov),
+    unknownTerm: none ?? sumValues(clients.map((c) => c.unknownTerm), prov), total: none ?? sumValues(clients.map((c) => c.total), prov),
   };
 }

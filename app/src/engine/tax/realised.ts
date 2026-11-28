@@ -33,8 +33,9 @@ import { schemeKeyOf, taxFactsFor } from './tax-class.ts';
 import type { TaxFacts } from './tax-class.ts';
 import { classifyLots } from './lot-class.ts';
 import type {
-  LegDetail, LotMark, LotRate, MergerEventResult, RealiseResult, SuccessorLink, TaxIssue, TaxLot,
+  LegDetail, LotMark, LotRate, MergerEventResult, PersonYearInput, RealiseResult, SuccessorLink, TaxIssue, TaxLot,
 } from './types.ts';
+import type { SourceFileId } from '../../model/ids.ts';
 import { S2_ISSUE_SEVERITY } from './types.ts';
 
 /** First held before this day: the s.55(2)(b) or s.90(9) input is needed for the actual-cost leg (TR-11). */
@@ -69,7 +70,26 @@ export type RealiseOptions = {
 };
 
 export function emptyTaxInputs(): TaxInputs {
-  return { personYear: [], scheme: [], mergerAnswers: [], lotMarks: [], exemptionUsed: [] };
+  return { personYear: [], scheme: [], mergerAnswers: [], lotMarks: [], exemptionUsed: [], switchAnswers: [] };
+}
+
+/**
+ * C4-2: the statement file a tax person's key belongs to: the statement's file id for a PAN ordinal ("person:n"), null
+ * for a client id or the person with no client label (no PAN).
+ */
+export function personSourceOf(key: string, sourceId: SourceFileId): SourceFileId | null {
+  return /^person:\d+$/.test(key) ? sourceId : null;
+}
+
+/**
+ * C4-2: a person-year entry that may not be applied: bound to another statement file (its `personSource` set and not
+ * the accepted statement's file id), or malformed (a "person:n" key with no `personSource`, which no statement file
+ * can own; CHAT-012's mutant at Gate B of contracts-4). Such an entry is never applied to anyone (the roll-up raises
+ * `tax.person-inputs-stale`).
+ */
+export function isStalePersonInput(e: Pick<PersonYearInput, 'personSource' | 'personKey'>, sourceId: SourceFileId | null): boolean {
+  if (e.personSource === null) return /^person:\d+$/.test(e.personKey);
+  return e.personSource !== sourceId;
 }
 
 const val = <T>(r: CgRead<T>): T | null => (r.kind === 'value' ? r.v : null);
@@ -95,6 +115,15 @@ export function lotTax(gain: Value<number>, rule: { rate: LotRate | 'two-leg' } 
   if (rule.rate === 'exempt') return present(0, 'inr', prov);
   if (rule.rate === 'slab') return slabPct === null ? missing(NA, 'slab rate not set', prov) : present((gain.v * slabPct) / 100, 'inr', prov);
   return present(gain.v * rule.rate, 'inr', prov);
+}
+
+/**
+ * C4-1: a lot rate as the contract's `anniversaryLongTerm.rate` holds it: a percent number (as rollup.ts writes a
+ * bucket's rate, clean of binary noise), 'slab', or null where no rate can be expressed ('exempt', or not known).
+ */
+function contractRate(rate: LotRate): number | 'slab' | null {
+  if (rate === 'slab') return 'slab';
+  return typeof rate === 'number' ? Math.round(rate * 1e8) / 1e6 : null;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -348,7 +377,7 @@ function realiseOne(x: LotCtx): TaxLot {
     exempt: false, costForTax: noRule(), costBasis: 'none', taxableGain: noRule(), notComputed: null,
     notComputedDetail: null, legs: null, legDetail: null, anniversaryLongTerm: null, anniversaryLongTermDetail: null,
     statementGain: split.gain, statementTerm: split.term, successor, duplicateOf: lot.duplicateOf,
-    excludedAsRepeat: lot.excludedAsRepeat, statement: lot.statement, flags, labels,
+    excludedAsRepeat: lot.excludedAsRepeat, gap: null, statement: lot.statement, flags, labels,
   };
   const notComputed = (reason: NotComputedReason, status: MissingStatus = NA): TaxLot => {
     if (reason === 'amount-missing') {
@@ -420,18 +449,19 @@ function realiseOne(x: LotCtx): TaxLot {
       g.anniversaryLongTerm = null;
       g.anniversaryLongTermDetail = null;
     } else if (a.kind === 'ok') {
-      g.anniversaryLongTerm = { ruleId: a.ruleId, taxableGain: a.taxableGain };
-      g.anniversaryLongTermDetail = { ruleId: a.ruleId, rate: a.rate, costForTax: a.costForTax, taxableGain: present(a.taxableGain, 'inr', altProv) };
+      const taxableGain = present(a.taxableGain, 'inr', altProv);
+      g.anniversaryLongTermDetail = { ruleId: a.ruleId, rate: a.rate, costForTax: a.costForTax, taxableGain };
+      g.anniversaryLongTerm = {
+        ruleId: a.ruleId, taxableGain, rate: contractRate(a.rate),
+        costForTax: a.costForTax === null ? missing(NAPP, 'not applicable: the s.10(38) exempt line', altProv) : present(a.costForTax, 'inr', altProv),
+      };
     } else {
-      // The contract's anniversaryLongTerm holds a plain-number gain, so a figure that is the dash stays null there;
-      // the dash and its reason are in anniversaryLongTermDetail (TODO(contracts-4) in types.ts).
+      // C4-1: the contract's anniversaryLongTerm holds the dash and its reason as a missing Value (fin review S-6).
       const reason: NotComputed = a.reason === 'cost-missing' ? 'cost-input-missing' : a.reason;
       const why = reason === 'rule-to-be-confirmed' ? `rule to be confirmed (${a.ruleId})` : reason;
-      g.anniversaryLongTerm = null;
-      g.anniversaryLongTermDetail = {
-        ruleId: a.ruleId, rate: a.rate, costForTax: null,
-        taxableGain: missing(NA, `the long-term figure is not computed: ${why}`, altProv),
-      };
+      const taxableGain = missing(NA, `the long-term figure is not computed: ${why}`, altProv);
+      g.anniversaryLongTermDetail = { ruleId: a.ruleId, rate: a.rate, costForTax: null, taxableGain };
+      g.anniversaryLongTerm = { ruleId: a.ruleId, taxableGain, rate: contractRate(a.rate), costForTax: taxableGain };
     }
   }
 
@@ -454,8 +484,16 @@ function realiseOne(x: LotCtx): TaxLot {
   g.exempt = r.exempt;
   g.legDetail = r.legs;
   g.legs = r.legs === null ? null : {
-    indexed20: present(r.legs.indexed20.gain, 'inr', prov(`NE-LT-1 20% leg: sale value minus indexed cost (rule ${rule.id})`)),
-    actual10: present(r.legs.actual10.gain, 'inr', prov(`NE-LT-1 10% leg: sale value minus actual cost (rule ${rule.id})`)),
+    indexed20: {
+      cost: present(r.legs.indexed20.cost, 'inr', prov(`NE-LT-1 20% leg: indexed cost (rule ${rule.id})`)),
+      gain: present(r.legs.indexed20.gain, 'inr', prov(`NE-LT-1 20% leg: sale value minus indexed cost (rule ${rule.id})`)),
+      tax: present(r.legs.indexed20.tax, 'inr', prov(`NE-LT-1 20% leg: tax on the leg's gain (rule ${rule.id})`)),
+    },
+    actual10: {
+      cost: present(r.legs.actual10.cost, 'inr', prov(`NE-LT-1 10% leg: actual cost (rule ${rule.id})`)),
+      gain: present(r.legs.actual10.gain, 'inr', prov(`NE-LT-1 10% leg: sale value minus actual cost (rule ${rule.id})`)),
+      tax: present(r.legs.actual10.tax, 'inr', prov(`NE-LT-1 10% leg: tax on the leg's gain (rule ${rule.id})`)),
+    },
     chosen: r.legs.chosen,
   };
   // gain-differs: the taxable gain (NE-LT-1: the chosen leg's) against the statement's LTCG plus STCG. Not on an
@@ -555,12 +593,12 @@ function buildIssues(gains: readonly RealisedGain[], events: readonly MergerEven
 
 /**
  * Per lot: whether its person-year carries an assessee mark (TaxInputs.personYear.assesseeMark; fin review S-5). The
- * entry is looked up as the roll-up looks up the person-year entry: by the tax person's key first ("person:n" for a
- * PAN ordinal, else the client id; the contract's `clientId` field holds it until contracts-4); when the person has no
- * entry under its key, by the client ids of the person's review lots in that year and the lot's own client id. A
- * flag only, never a figure: raising it on any of these entries is the safe side.
+ * entry is looked up as the roll-up looks up the person-year entry: by the tax person's key and source first
+ * (`personKey` "person:n" for a PAN ordinal of this statement file, else the client id; C4-2); when the person has no
+ * entry under its key, by the client ids (`clientId`, `personSource` null) of the person's review lots in that year and
+ * the lot's own client id. An entry bound to another statement file is never used (C4-2). A flag only, never a figure.
  */
-function personYearMarked(lots: readonly CgLot[], inputs: TaxInputs): boolean[] {
+function personYearMarked(lots: readonly CgLot[], inputs: TaxInputs, sourceId: SourceFileId): boolean[] {
   const reviewClients = new Map<string, Set<string>>();
   for (const l of lots) {
     const k = taxPersonKey(l.taxPerson);
@@ -570,13 +608,13 @@ function personYearMarked(lots: readonly CgLot[], inputs: TaxInputs): boolean[] 
   }
   return lots.map((l) => {
     const fy = l.financialYear.start;
-    const entries = inputs.personYear.filter((e) => e.fy === fy);
+    const entries = inputs.personYear.filter((e) => e.fy === fy && !isStalePersonInput(e, sourceId));
     const k = taxPersonKey(l.taxPerson);
-    const exact = k === null ? undefined : entries.find((e) => (e.clientId as string | null) === k);
+    const exact = k === null ? undefined : entries.find((e) => e.personKey === k && e.personSource === personSourceOf(k, sourceId));
     if (exact !== undefined) return exact.assesseeMark !== null;
     const ids = new Set<string>(k === null ? [] : reviewClients.get(`${fy}|${k}`) ?? []);
     if (l.clientId !== null) ids.add(l.clientId);
-    return entries.some((e) => e.clientId !== null && ids.has(e.clientId) && e.assesseeMark !== null);
+    return entries.some((e) => e.personSource === null && e.clientId !== null && ids.has(e.clientId) && e.assesseeMark !== null);
   });
 }
 
@@ -597,7 +635,7 @@ export function realiseLots(imp: CgImport, inputs: TaxInputs, opts: RealiseOptio
   for (const m of inputs.lotMarks) marks.set(m.lotIndex, { ...(marks.get(m.lotIndex) ?? { lotIndex: m.lotIndex }), ...m });
   const bonusSchemes = new Set<string>();
   for (const l of lots) if (val(l.purchaseValue) === 0) bonusSchemes.add(`${l.accountId}|${schemeKeyOf(l.schemeLabel)}`);
-  const marked = personYearMarked(lots, inputs);
+  const marked = personYearMarked(lots, inputs, imp.sourceId);
 
   const gains = lots.map((lot, i) => realiseOne({
     table, sourceId: imp.sourceId, lot, facts: facts[i]!, lotClass: classing.classes[i]!, successor: classing.successorOf[i] ?? null,
