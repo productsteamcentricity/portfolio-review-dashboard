@@ -64,11 +64,12 @@ Unlisted paths keep the owner given in FILE_OWNERSHIP_AND_CHANGE_CONTROL.md.
 | `app/src/ingest/price-file.ts` | not built | no price-file reader in test build 1; built after it, once the owner supplies the file layout (registers-5) |
 | `app/src/engine/returns/{xirr,irr-tree,contributions,scope}.ts`, `app/src/ingest/irr-file.ts` | NB-03 (M3a) | contracts I-31, I-32, I-45 |
 | `app/src/exports/xlsx/irr-template.ts`, `app/src/engine/returns/irr-aggregate.ts` | NB-03 | the blank transactions (IRR) file template and the IRR tree's client, asset and product aggregate, both from PR #57 [V git log, 27 Nov] |
-| `app/src/exports/xlsx/base-template.ts`, `app/src/ui/components/templates-group.tsx` | NB-05 | the base-file template download; in review, not yet on main (28 Nov 2026) |
+| `app/src/exports/xlsx/base-template.ts`, `app/src/ui/components/templates-group.tsx` | NB-05 | the base-file template download and the Templates group in section 1; on main since PR #81 (28 Nov 2026) |
+| `app/src/ingest/base-file.ts` (the base-file reader) | not assigned to a milestone chat in this map; NB-05 changed it in PR #81 (Account Name) | imports `scrubText` from NB-03's `app/src/ingest/capital-gains.ts` (PR #81): a cross-owner import, so a change to `scrubText` changes the base-file reader too (KI-323) |
 | `app/src/ingest/capital-gains.ts`, `app/src/engine/tax/**`, `data/owner/tax-rules.json`, the KA known-answer file, `app/src/exports/xlsx/cg-template.ts` | NB-03 (M7a) | financial-domain review mandatory; I-37 parity with `data/refdata/TAX_RULES.json` (EX-02) |
-| `app/src/ingest/screener-pack/**`, `app/src/services/screener-store.ts` | NB-04 (M10) | no pack content ever committed (D-026) |
+| `app/src/ingest/screener-pack/**`, `app/src/services/screener-store.ts`, `app/src/services/screener-intake.ts` | NB-04 (M10) | no pack content ever committed (D-026); the intake service from PR #80 (28 Nov 2026), not wired |
 | `scripts/monthly-update/**`, `product_bank/**`, `app/src/ingest/index-series.ts`, `app/src/engine/drawdown.ts` | NB-04 (M11a, M12a) | contracts I-39, I-44 |
-| `app/src/model/**` | MOD-03 writes every file | the chat named in INTERFACE_CONTRACTS §2 specifies the contract and proposes changes |
+| `app/src/model/**` | MOD-03 writes every file | the chat named in INTERFACE_CONTRACTS §2 specifies the contract and proposes changes. `model/base-file.ts` and `model/holding.ts` were changed in PR #81 for Account Name on the Moderator's approval of 28 Nov 2026. `model/tax.ts` is written by NB-03 in tax round 4 on the Moderator's delegation of 28 Nov 2026 (contracts-4: its own PR and commit, its text agreed with the new-build reviewer; no other model file) |
 | `app/src/observations/**` (framework) | MOD-03 (M5a) | rules folder assigned at M5b |
 | `app/src/exports/pptx/text-lint.ts` | MOD-03 | the existing D-029 lint [V on main]; M5a reuses or extends it |
 | `app/src/engine/validate/**`, `app/src/services/audit-log.ts` | MOD-03 (M13) | contracts I-41, I-42 |

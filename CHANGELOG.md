@@ -4,6 +4,17 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (records, registers-11, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,CRITICAL_PATH}.md`**: PRs #77 to #81; the tax engine's
+  conditions before wiring met in PR #78 except the contract fields (contracts-4) and the owner questions, and the tax
+  finding W-1 added; "next on the new build" refreshed.
+- **`docs/project-control/DECISION_LOG.md`**: section 2.5 (27 and 28 Nov 2026): eight decisions of the Moderator of
+  28 Nov 2026 with a financial meaning, defaults pending the owner where marked; section 2.4: the alias lines on main.
+- **`docs/coordination/FILE_OWNERSHIP_MAP.md`**: the base-file template's files on main (PR #81); the base-file reader's
+  import of `scrubText`; the M10 intake service; the model files changed for Account Name; `model/tax.ts` by NB-03 (contracts-4).
+- **Compactions** recounted: CHAT-011 (NB-04) at its third, successor pending the owner; CHAT-014 and CHAT-017 at 2,
+  CHAT-016 at 1 (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_SUCCESSION_REGISTER.md`, `CHAT_REGISTRY.md`).
+
 ### Fixed (new build, M7a tax round 3: conditions before wiring; not wired into the page yet)
 These are conditions before the tax engine is wired (PLAN-08, MOD-05, 28 Nov 2026; CHAT-012's Gate B of M7b b299804 and
 the last section of its Gate B of round 2c). No page change: the engine is imported by no page module.
