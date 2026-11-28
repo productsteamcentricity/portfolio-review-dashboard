@@ -90,6 +90,23 @@ export function loadI21(json: unknown): readonly I21Row[] {
 /** The live I-21 table (data/refdata/TAX_RULES.json, EX-02's; read only), loaded once. */
 export const TAX_RULES_I21: readonly I21Row[] = loadI21(rawI21);
 
+/**
+ * Round 3 M2 (Q-49; MOD-05; CHAT-012's Gate B of M7b): the first day of the I-21 table's rates, named once. The table
+ * carries one rate per class and term, with no dates: the rates in force from 23 Jul 2024, set by the Finance (No. 2)
+ * Act 2024 (s.111A 20%, s.112A and s.112 12.5%; the rows of table v1, data/owner/tax-rules.json, with `saleFrom`
+ * 2024-07-23). The rates before that day (for example 15% and 10% on listed equity) are not in it, so a figure that
+ * needs a rate as on an earlier date is NOT AVAILABLE with I21_RATES_MISSING; no rate is invented. Holding periods,
+ * splits and gains do not read the rate and stay as they are.
+ */
+export const I21_RATES_FROM: DayNumber = ymdToDay(2024, 7, 23)!;
+/** The label of a rate-dependent figure as on a date before I21_RATES_FROM (round 3 M2). */
+export const I21_RATES_MISSING = 'the rates before 23 Jul 2024 are not in the table';
+
+/** Round 3 M2: I21_RATES_MISSING when the I-21 rates do not apply as on `asOn` (before 23 Jul 2024), else null. */
+export function i21RatesMissing(asOn: DayNumber): string | null {
+  return asOn < I21_RATES_FROM ? I21_RATES_MISSING : null;
+}
+
 /** The I-21 rows by `inst`. */
 export function i21ByInst(table: readonly I21Row[] = TAX_RULES_I21): ReadonlyMap<string, I21Row> {
   return new Map(table.map((r) => [r.inst, r]));

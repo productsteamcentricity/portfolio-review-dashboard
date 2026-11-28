@@ -335,3 +335,58 @@ describe('Gate B of aa67a45 item 9: the harvest says what its figures leave out'
     }
   });
 });
+
+describe('round 3 M2: the I-21 rates are those from 23 Jul 2024; before that day no rate-dependent figure (Q-49, MOD-05)', () => {
+  // CHAT-012's case (Gate B of M7b, M2): one client, Equity MF long-term gain 30,000 and short-term gain 5,000, nothing
+  // entered (exemption not applied). The table's rates (12.5% and 20%) give 30,000 x 0.125 + 5,000 x 0.20 = 3,750 +
+  // 1,000 = 4,750; before 23 Jul 2024 the rates were 10% and 15% (3,000 + 750 = 3,750), which the table does not hold.
+  // So as on 30 Jun 2024 (and 22 Jul 2024) the tax before, the tax after and the saving are NOT AVAILABLE, labelled,
+  // never 4,750; the gains stand. As on 23 Jul 2024 and later they are computed as today.
+  const MISSING = 'the rates before 23 Jul 2024 are not in the table';
+  const specs: PositionSpec[] = [
+    { client: A, name: 'Sample Fund One', cls: 'equityMf', cmv: 130000, lt: 30000 },
+    { client: A, name: 'Sample Fund Two', cls: 'equityMf', cmv: 55000, lt: undefined, st: 5000, ltCmv: 0 },
+  ];
+  const at = (y: number, m: number, d: number): ReturnType<typeof buildHarvests> => {
+    const asOn = ymdToDay(y, m, d)!;
+    const { lots, facts } = makeLots(specs);
+    return buildHarvests(rollupHoldings({ ...lots, asOn }, facts), ctxOf({}, { asOn }));
+  };
+  for (const [y, m, d] of [[2024, 6, 30], [2024, 7, 22]] as const) {
+    test(`as on ${d} ${m === 6 ? 'Jun' : 'Jul'} ${y}: tax before, after and saving NOT AVAILABLE with the label, not 4,750`, () => {
+      const { clients, family } = at(y, m, d);
+      const h = clients[0]!;
+      for (const v of [h.taxBefore, h.taxAfter, h.saving]) {
+        assert.equal(v.kind, 'missing');
+        assert.ok(v.kind === 'missing' && v.reason.startsWith(MISSING), v.kind === 'missing' ? v.reason : '');
+      }
+      for (const k of ['taxBefore', 'taxAfter', 'saving', 'exBeforeTax', 'exAfterTax', 's198Left', 'exAfter'] as const) assert.equal(h.figures[k], null, k);
+      assert.equal(h.exRate, null);
+      assert.equal(h.ratesMissing, MISSING);
+      assert.ok(h.labels.some((l) => l.startsWith(MISSING)), JSON.stringify(h.labels));
+      for (const p of h.pools) { assert.equal(p.rate, null); assert.equal(p.rateMissing, MISSING); assert.equal(p.left, null); }
+      // The splits and gains do not depend on the rate.
+      near(h.figures.ltGains, 30000, 'long-term gains'); near(h.figures.stGains, 5000, 'short-term gains');
+      assert.equal(family.taxBefore.kind, 'missing');
+      assert.ok(family.taxBefore.kind === 'missing' && family.taxBefore.reason.startsWith(MISSING));
+      assert.equal(family.figures.taxBefore, null);
+      // The holdings side says so on every class (the reader of rule.lt.rate and rule.st.rate reads it first).
+      const { lots, facts } = makeLots(specs);
+      const roll = rollupHoldings({ ...lots, asOn: ymdToDay(y, m, d)! }, facts);
+      assert.equal(roll.ratesMissing, MISSING);
+      assert.ok(roll.family.byClass.length > 0 && roll.family.byClass.every((g) => g.ratesMissing === MISSING));
+    });
+  }
+  test('as on 23 Jul 2024 and 30 Sep 2026: computed as today (4,750), no rates label', () => {
+    for (const [y, m, d] of [[2024, 7, 23], [2026, 9, 30]] as const) {
+      const { clients } = at(y, m, d);
+      const h = clients[0]!;
+      near(h.figures.taxBefore, 4750, `${d}.${m}.${y} tax before`);
+      assert.equal(h.taxBefore.kind, 'value');
+      assert.equal(h.ratesMissing, null);
+      assert.ok(!h.labels.some((l) => l.startsWith(MISSING)));
+      const { lots, facts } = makeLots(specs);
+      assert.ok(rollupHoldings({ ...lots, asOn: ymdToDay(y, m, d)! }, facts).family.byClass.every((g) => g.ratesMissing === null));
+    }
+  });
+});

@@ -21,14 +21,18 @@
 // IRR file (their CMV and gain are unclassified), so it is PARTIAL COVERAGE with them (coverage: the split holdings over
 // the split and unreconciled holdings, the count in its method), and NOT AVAILABLE when no holding is split while some
 // are unreconciled (no IRR file, or one that reconciles none): never Rs 0 on a book whose split is unknown.
+// Round 3 M2 (Q-49; MOD-05): each class carries its I-21 row (`rule`, with the rates), and the table's rates are those
+// from 23 Jul 2024 only (classify.ts I21_RATES_FROM). As on an earlier date every class says so (`ratesMissing`), and
+// so does the roll-up, so that no reader takes `rule.lt.rate` or `rule.st.rate` for a date they do not cover; the
+// classes, splits, gains and terms are unchanged.
 // Money in rupees, unrounded. Pure.
 
 import type { Holding } from '../../model/holding.ts';
 import type { ClientId, HoldingId } from '../../model/ids.ts';
-import type { Provenance, Value } from '../../model/value.ts';
+import type { DayNumber, Provenance, Value } from '../../model/value.ts';
 import { STATUS } from '../../model/status.ts';
 import { missing, present } from '../value.ts';
-import { TAX_RULES_I21, i21ByInst } from './classify.ts';
+import { TAX_RULES_I21, i21ByInst, i21RatesMissing } from './classify.ts';
 import type { I21Row } from './classify.ts';
 import type { NotSplitKind, TaxLotsResult, TaxPositionRecord } from './lots.ts';
 
@@ -61,6 +65,12 @@ export type RollupGroup = {
 export type ClassPool = {
   cls: string;
   rule: I21Row | null;
+  /**
+   * Round 3 M2: why the row's rates (`rule.lt.rate`, `rule.st.rate`) do not apply as on the roll-up's as-on date (the
+   * table holds only the rates from 23 Jul 2024: classify.ts I21_RATES_MISSING), else null. A reader of the rates reads
+   * this first; harvest.ts gives every rate-dependent figure NOT AVAILABLE with it.
+   */
+  ratesMissing: string | null;
   cmv: number;
   ltCmv: number;
   stCmv: number;
@@ -133,12 +143,19 @@ export type HoldingsTaxRollup = {
   legacy: { unrealised: { st: Value<number>; lt: Value<number> } };
   /** The facts of each record's holding, by id (for the harvest's candidate names). */
   facts: ReadonlyMap<HoldingId, HoldingFacts>;
+  /** Round 3 M2: why the I-21 rates do not apply as on the as-on date (before 23 Jul 2024), else null. */
+  ratesMissing: string | null;
   prov: Provenance;
 };
 
 export type HoldingsRollupOptions = {
   /** The I-21 table (default data/refdata/TAX_RULES.json). */
   table?: readonly I21Row[];
+  /**
+   * The as-on date the records are split to (rollupHoldings takes the lots' own when not given). Round 3 M2: before 23
+   * Jul 2024 every class's `ratesMissing` is set. Without one, the rates are not marked (as before).
+   */
+  asOn?: DayNumber;
 };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -234,7 +251,8 @@ export function summariseRecords(
   facts: ReadonlyMap<HoldingId, HoldingFacts>, opts: HoldingsRollupOptions = {},
 ): HoldingsTaxSummary {
   const byInst = i21ByInst(opts.table ?? TAX_RULES_I21);
-  const A = { gain: acc(), lt: acc(), st: acc(), unc: acc(), locked: acc(), fund: acc() };
+  const ratesMissing = opts.asOn === undefined ? null : i21RatesMissing(opts.asOn);
+  const A ={ gain: acc(), lt: acc(), st: acc(), unc: acc(), locked: acc(), fund: acc() };
   const nsAcc: Record<NotSplitKind, Acc> = { 'fund-level': acc(), 'pass-through': acc(), 'per-security': acc() };
   const t: HoldingsTaxTotals = {
     cmv: 0, gain: gt(), gainMissing: 0, lt: { cmv: 0, gain: gt() }, st: { cmv: 0, gain: gt() },
@@ -252,7 +270,7 @@ export function summariseRecords(
     const key = r.taxRule ?? '';
     let c = cls.get(key);
     if (!c) {
-      c = { p: { cls: key, rule: byInst.get(key) ?? null, cmv: 0, ltCmv: 0, stCmv: 0, gain: gt(), ltGain: gt(), stGain: gt(), n: 0,
+      c = { p: { cls: key, rule: byInst.get(key) ?? null, ratesMissing, cmv: 0, ltCmv: 0, stCmv: 0, gain: gt(), ltGain: gt(), stGain: gt(), n: 0,
         ltPos: 0, ltNeg: 0, stPos: 0, stNeg: 0, notSplit: null, gainUnknown: 0 }, gain: acc(), lt: acc(), st: acc(), order: cls.size };
       cls.set(key, c);
     }
@@ -314,8 +332,10 @@ export function summariseRecords(
 // The family and its clients
 
 /** The holdings roll-ups of a computeTaxLots result: the family, each client, and the legacy-facing figures. */
-export function rollupHoldings(lots: Pick<TaxLotsResult, 'positions' | 'unreconciled' | 'unmapped'>, holdings: readonly HoldingFacts[],
-  opts: HoldingsRollupOptions = {}): HoldingsTaxRollup {
+export function rollupHoldings(lots: Pick<TaxLotsResult, 'positions' | 'unreconciled' | 'unmapped'> & { asOn?: DayNumber }, holdings: readonly HoldingFacts[],
+  options: HoldingsRollupOptions = {}): HoldingsTaxRollup {
+  // Round 3 M2: the as-on date of the lots (computeTaxLots carries it) marks the rates, unless the caller gives one.
+  const opts: HoldingsRollupOptions = { ...options, asOn: options.asOn ?? lots.asOn };
   const facts = new Map(holdings.map((h) => [h.id, h]));
   const all = [...lots.positions, ...lots.unreconciled, ...lots.unmapped];
   const sources = [...new Set(all.map((r) => facts.get(r.holdingId)?.sourceId).filter((x): x is NonNullable<typeof x> => !!x))];
@@ -335,6 +355,7 @@ export function rollupHoldings(lots: Pick<TaxLotsResult, 'positions' | 'unreconc
   const unrec = lots.unreconciled.length;
   return {
     family, clients, unnamedN, facts, prov,
+    ratesMissing: opts.asOn === undefined ? null : i21RatesMissing(opts.asOn),
     legacy: {
       unrealised: {
         st: withUnreconciled(gainValue(family.totals.st.gain, { ...prov, method: `${prov.method}; tax.unrealised.st` }, 'short-term gain'), split, unrec, prov),
