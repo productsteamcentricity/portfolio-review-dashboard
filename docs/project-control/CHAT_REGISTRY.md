@@ -65,7 +65,7 @@ CHAT_SUCCESSION_REGISTER there. **Next free number: CHAT-018.**
 | CHAT-008 | ARC-02, Guardian (live page, M2, rule 10) | handed over to CHAT-016 (ARC-04) on 27 Nov 2026; review queue closed | 18 Nov 2026 | three compactions; succession ordered by MOD-05 on 27 Nov 2026; held rule 10 until registers-7 merged (see above) |
 | CHAT-009 | NB-02, new build (identifiers, ingest, classification, then M3b) | handed over to CHAT-017 (NB-05) on 27 Nov 2026 | 22 Nov 2026 | three compactions; succession ordered by MOD-05 on 27 Nov 2026 |
 | CHAT-010 | NB-03, new build: financial engines (M3a, M7a) | ACTIVE | 24 Nov 2026 (late evening IST) | |
-| CHAT-011 | NB-04, new build: data platform (M10, M11a, M12a) | ACTIVE | 24 Nov 2026 (late evening IST) | |
+| CHAT-011 | NB-04, new build: data platform (M10, M11a, M12a) | ACTIVE | 24 Nov 2026 (late evening IST) | third compaction on 28 Nov 2026 (20:58 IST): successor pending the owner; stands still until then |
 | CHAT-012 | ARC-03, new-build reviewer | ACTIVE | 24 Nov 2026 (late evening IST) | not the rule-10 Guardian |
 | CHAT-013 | MOD-04, Moderator | historical record since 26 Nov 2026; forwards notes only | 25 Nov 2026 (about 01:00 IST) | took over from CHAT-006 on 25 Nov 2026 about 01:20 IST; handed over to CHAT-015 on 26 Nov 2026 on the owner's order |
 | CHAT-015 | MOD-05, Master Project Moderator | ACTIVE, the only active Moderator | 26 Nov 2026 (about 19:35 IST, as a standby) | took over from CHAT-013 on 26 Nov 2026 about 20:40 IST, on the owner's order (the next Moderator runs on the Fable model) |
@@ -248,3 +248,4 @@ The full procedure is in the owner's 27 Oct handover prompt (sections 14 to 21),
 | 28 Nov 2026 | MOD-05 (drafted by EX-03) | registers-8: compactions recounted from the markers about 02:10 IST on 28 Nov: CHAT-010 2, CHAT-011 2, CHAT-012 2, CHAT-014 1, CHAT-015 0, CHAT-016 0, CHAT-017 1 |
 | 28 Nov 2026 | MOD-05 (drafted by EX-03) | registers-9: compactions recounted from the markers about 12:05 IST on 28 Nov: no change (CHAT-010 2, CHAT-011 2, CHAT-012 2, CHAT-014 1, CHAT-015 0, CHAT-016 0, CHAT-017 1); no chat opened in the window |
 | 28 Nov 2026 | MOD-05 (drafted by EX-03) | registers-10: compactions recounted from the markers about 20:40 IST on 28 Nov: CHAT-010 2, CHAT-011 2, CHAT-012 2, CHAT-014 1, CHAT-015 1 (new, 14:55 UTC), CHAT-016 0, CHAT-017 1 |
+| 28 Nov 2026 | MOD-05 (drafted by EX-03) | registers-11: compactions recounted from the markers about 23:45 IST on 28 Nov: CHAT-010 2, CHAT-011 3 (new, 15:28 UTC: successor pending the owner), CHAT-012 2, CHAT-014 2 (new, 18:14 UTC), CHAT-015 1, CHAT-016 1 (new, 16:46 UTC), CHAT-017 2 (new, 16:49 UTC) |
