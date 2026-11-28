@@ -118,3 +118,27 @@ describe('screenerStoreStatus: the sidebar line', () => {
     assert.equal((await screenerStoreStatus(store)).label, 'No current MF Screener pack (history kept for 1 cycle)');
   });
 });
+
+describe('ARC-03 Gate B T1 and T2 (MOD-05: in the take-main)', () => {
+  test('T1: an older backfill whose month-end a newer cycle already holds reports it in skippedMonthEnds', async () => {
+    const store = newStore();
+    const newer = await intakeScreenerPack(makeScreenerPack({ kind: 'backfill', cycle: '2026-10-15', monthEnds: ['2026-03-31', '2026-04-30'] }), 'b1.zip', deps, store);
+    assert.equal(newer.status, 'stored');
+    const older = await intakeScreenerPack(makeScreenerPack({ kind: 'backfill', cycle: '2026-09-15', monthEnds: ['2026-04-30', '2026-02-28'], backfillCycles: [] }), 'b0.zip', deps, store);
+    assert.equal(older.status, 'stored');
+    assert.deepEqual(older.status === 'stored' && older.skippedMonthEnds, ['2026-04-30']);
+    assert.deepEqual(newer.status === 'stored' && newer.skippedMonthEnds, []);
+  });
+  test('T2: a damaged stored record reaches screenerStoreStatus as a problem (never dropped silently)', async () => {
+    const be = memoryBackend();
+    const store = createScreenerStore(be, { now: fixedClock('2026-11-28T12:00:00Z'), sha256: sha256Hex });
+    const bytes = oct();
+    await intakeScreenerPack(bytes, 'a.zip', deps, store);
+    const meta = be.meta.get(sha256Hex(bytes)) as Record<string, unknown>;
+    be.meta.set(sha256Hex(bytes), { ...meta, schema: 0 });
+    const st = await screenerStoreStatus(store);
+    assert.deepEqual(st.problems, ['A stored MF Screener pack record was damaged or from an older version of the app and has been removed. Load the pack again.']);
+    assert.equal(st.current, null);
+    assert.equal(st.label, 'No MF Screener pack loaded');
+  });
+});
