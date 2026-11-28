@@ -289,8 +289,9 @@ export type MergerCandidates = { outs: ReadonlyMap<Transaction, string>; ins: Re
  *   - many into one, per receiving scheme B (M7b B2, KI-340, replacing the per-day rule of B1): among the day's emptied
  *     schemes other than B not already paired one into one, any subset of two or more whose switch outs sum to B's switch
  *     ins within the amount tolerance; the other switches of the day do not stop it. When several subsets fit, all of
- *     their sources are the candidate's (never one picked); over MANY_INTO_ONE_SOURCES sources left after ruling out
- *     those that cannot fit, all of them when a fit is still possible (not decidable: a gap, never a sale; review H1).
+ *     their sources are the candidate's (never one picked); the search is exact up to MANY_INTO_ONE_SOURCES_SPLIT
+ *     sources left after ruling out those that cannot fit (meet in the middle above MANY_INTO_ONE_SOURCES: round 3
+ *     J1), and beyond that all of them when a fit is still possible (not decidable: a gap, never a sale; review H1).
  *     On such an ambiguous day, another receiving scheme that one or more of the ambiguous sources could have made is
  *     the candidate's too (review H2). B's own switch out that day is never a source; it falls under the successor gap.
  * A same-day chain is tested first (E1, the delta review of 8ed1dc7): when a scheme both receives a switch in and is
@@ -430,16 +431,22 @@ export function mergerCandidates(trades: readonly Transaction[]): MergerCandidat
   return { outs, ins, pairs };
 }
 
-/** M7b B2 (review H1): the most sources of one client-day whose subsets are searched for a many-into-one merger. */
+/** M7b B2 (review H1): the most sources of one client-day whose subsets are searched one by one for a many-into-one merger. */
 export const MANY_INTO_ONE_SOURCES = 16;
+/**
+ * Round 3 J1 (the financial review of 5b9028c): the most sources searched exactly, by meet in the middle above
+ * MANY_INTO_ONE_SOURCES (two halves of at most 16, 2^16 sums each). Beyond it a possible fit is not decidable.
+ */
+export const MANY_INTO_ONE_SOURCES_SPLIT = 32;
 
 /**
  * The sources (key, switch-out sum) that are in some subset of at least `minSize` of them whose sum matches `target`
  * (`same`), and whether the fit is ambiguous (several subsets fit, or not decidable). Sources whose own sum is already
  * beyond the target cannot be in any fitting subset (the amounts are positive) and are ruled out first. Over
- * MANY_INTO_ONE_SOURCES left, the subsets are not searched: when the total of the rest is short of the target, or the
- * smallest `minSize` of them already exceed it, nothing fits; otherwise a fit is still possible and not decidable, so all
- * of them are returned, ambiguous (review H1).
+ * MANY_INTO_ONE_SOURCES left: when the total of the rest is short of the target, or the smallest `minSize` of them
+ * already exceed it, nothing fits; otherwise, up to MANY_INTO_ONE_SOURCES_SPLIT the subsets are searched exactly by meet
+ * in the middle (round 3 J1: no fit means an ordinary switch, computed), and beyond it a fit is still possible and not
+ * decidable, so all of them are returned, ambiguous (review H1).
  */
 export function subsetsFitting(avail: ReadonlyArray<readonly [string, number]>, target: number, minSize: number,
   same: (x: number, y: number) => boolean): { chosen: Set<string>; ambiguous: boolean } {
@@ -450,6 +457,7 @@ export function subsetsFitting(avail: ReadonlyArray<readonly [string, number]>, 
     const total = left.reduce((t, [, x]) => t + x, 0);
     const smallest = left.map(([, x]) => x).sort((a, b) => a - b).slice(0, minSize).reduce((t, x) => t + x, 0);
     if ((total < target && !same(total, target)) || (smallest > target && !same(smallest, target))) return { chosen, ambiguous: false };
+    if (left.length <= MANY_INTO_ONE_SOURCES_SPLIT) return meetInTheMiddle(left, target, minSize, same);
     for (const [k] of left) chosen.add(k);
     return { chosen, ambiguous: true };
   }
@@ -461,6 +469,69 @@ export function subsetsFitting(avail: ReadonlyArray<readonly [string, number]>, 
     if (n >= minSize && same(sum, target)) {
       fits++;
       for (let i = 0; i < left.length; i++) if (mask & (1 << i)) chosen.add(left[i]![0]);
+    }
+  }
+  return { chosen, ambiguous: fits > 1 };
+}
+
+/** One subset of a half: its sum, its size and its members (bit i: the half's source i). */
+type HalfSum = { sum: number; pop: number; mask: number };
+
+/** Every subset of a half (at most 16 sources), sorted by sum. */
+function halfSums(half: ReadonlyArray<readonly [string, number]>): HalfSum[] {
+  const out: HalfSum[] = [];
+  for (let mask = 0; mask < 1 << half.length; mask++) {
+    let sum = 0; let pop = 0;
+    for (let i = 0; i < half.length; i++) if (mask & (1 << i)) { sum += half[i]![1]; pop++; }
+    out.push({ sum, pop, mask });
+  }
+  return out.sort((a, b) => a.sum - b.sum);
+}
+
+/**
+ * Round 3 J1: the exact search of subsetsFitting by meet in the middle (up to MANY_INTO_ONE_SOURCES_SPLIT sources). The
+ * sources split into two halves; each half's subset sums are listed and sorted. For a subset of one half, the subsets of
+ * the other half that complete it to a fit form one run of the sorted list: `same(x, target)` holds on an interval of x,
+ * since below the target the gap shrinks as x grows while the tolerance stays (that of the target), and above it the gap
+ * grows faster than the tolerance (amountTolerance grows by 0.01% of the amount). The run is found by bisection; counts
+ * of its members of each size (prefix sums) give the fits with at least `minSize` sources in all. A source is chosen
+ * when it is in a subset of its half that has a completing run; each half is read in turn. Ambiguous when more than one
+ * subset fits. The same answer as the plain search, without listing every pair.
+ */
+function meetInTheMiddle(left: ReadonlyArray<readonly [string, number]>, target: number, minSize: number,
+  same: (x: number, y: number) => boolean): { chosen: Set<string>; ambiguous: boolean } {
+  const size = Math.max(1, minSize);
+  const h = left.length >> 1;
+  const halves = [left.slice(0, h), left.slice(h)] as const;
+  const sums = [halfSums(halves[0]), halfSums(halves[1])] as const;
+  // cnt[k][i]: how many of the first i sums of a half have at least k sources (k up to `size`).
+  const counts = sums.map((list) => Array.from({ length: size + 1 }, (_, k) => {
+    const c = new Int32Array(list.length + 1);
+    for (let i = 0; i < list.length; i++) c[i + 1] = c[i]! + (list[i]!.pop >= k ? 1 : 0);
+    return c;
+  }));
+  /** The first index in [lo, hi) where `pred` turns from false to true (hi when it never does). */
+  const firstTrue = (lo: number, hi: number, pred: (i: number) => boolean): number => {
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (pred(mid)) hi = mid; else lo = mid + 1; }
+    return lo;
+  };
+  const chosen = new Set<string>();
+  let fits = 0;
+  for (const side of [0, 1] as const) {
+    const mine = sums[side]; const other = sums[1 - side]!; const cnt = counts[1 - side]!;
+    for (const s of mine) {
+      const fit = (i: number): boolean => same(s.sum + other[i]!.sum, target);
+      const p = firstTrue(0, other.length, (i) => s.sum + other[i]!.sum >= target);
+      const lo = firstTrue(0, p, fit);
+      const hi = firstTrue(p, other.length, (i) => !fit(i));
+      if (lo >= hi) continue;
+      // The other half's part needs at least this many sources; with `size` at least 1, the empty subset of both halves
+      // is never a fit.
+      const need = Math.max(0, size - s.pop);
+      const n = cnt[need]![hi]! - cnt[need]![lo]!;
+      if (n <= 0) continue;
+      for (let i = 0; i < halves[side].length; i++) if (s.mask & (1 << i)) chosen.add(halves[side][i]![0]);
+      if (side === 0) fits += n;
     }
   }
   return { chosen, ambiguous: fits > 1 };

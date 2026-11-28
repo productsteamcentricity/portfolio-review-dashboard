@@ -877,4 +877,22 @@ describe('tax round 3 (CHAT-012\'s Gate B of M7b and of round 2c) on the holding
     near(s.lt.cmv, 18000, 'Small Cap long'); near(s.lt.gain, 3000, 'Small Cap gain');
     assert.equal(one(r, FOCUSED).unreconciledKind, 'mergerCandidate');
   });
+
+  test('J1: 17 schemes of 12,000 into 1,00,000 and 1,04,000 (no subset fits): the holdings switched into stay split', () => {
+    // The financial review's case on the holdings side. Seventeen schemes, each 100 u bought 1 Jul 2019 for 10,000,
+    // emptied for 12,000 on 10 Nov 2023, into Small Cap (1,00,000 = 1,000 u at 100) and Focused (1,04,000 = 1,040 u at
+    // 100). No sum of 12,000s is either amount. Base Small Cap 1,000 u (invested 1,00,000, CMV 1,10,000) and Focused
+    // 1,040 u (1,04,000, 1,14,400): split, long on 30 Sep 2026, at gains of 10,000 and 10,400 (5b9028c: not decidable over
+    // 16 sources, both unreconciled 'mergerCandidate').
+    const legacy = Array.from({ length: 17 }, (_, i) => `Sample Legacy ${i + 1} Fund - Growth`);
+    const r = run([
+      hold(SMALL, 'Small Cap Fund', 'Equity', 1000, 100000, 110000),
+      hold(FOCUSED, 'Focused Fund', 'Equity', 1040, 104000, 114400),
+    ], [
+      ...legacy.flatMap((k) => [flow(k, [2019, 7, 1], 'Purchase', 100, -10000), flow(k, M, 'Switch Out', 120, 12000)]),
+      flow(SMALL, M, 'Switch In', 100, -100000), flow(FOCUSED, M, 'Switch In', 100, -104000),
+    ]);
+    assert.equal(one(r, SMALL).status, 'ok'); near(one(r, SMALL).lt.gain, 10000, 'Small Cap long gain');
+    assert.equal(one(r, FOCUSED).status, 'ok'); near(one(r, FOCUSED).lt.gain, 10400, 'Focused long gain');
+  });
 });
