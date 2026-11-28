@@ -31,7 +31,7 @@ test('the sheet sits after the client sheets and before the Audit Log; the Read 
   // the owner's returns note (28 Nov 2026) is in the Read Me whenever the Performance sheet is written
   const returns = sheetTable(sheetByName(wb, 'Read Me and Controls')).filter((r) => r[0] === 'Returns');
   assert.equal(returns.length, 1);
-  assert.ok(String(returns[0]![1]).startsWith('Returns up to one year are absolute; returns over one year are annualised. The since-inception return of a fund under one year old'));
+  assert.ok(String(returns[0]![1]).startsWith('Returns up to one year are absolute; returns over one year are annualised. The since-inception return of a mutual fund under one year old is shown as an absolute return, and its row\'s Note says so'));
 });
 
 test('Regular rows, then the Direct rows of the MF buckets, each with its plan and data date (KI-034, KI-083)', () => {

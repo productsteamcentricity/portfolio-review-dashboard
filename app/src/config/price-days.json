@@ -1,0 +1,10 @@
+{
+  "note": "The day each monthly block's figures are priced to, by data month (the month of the block's as-on label). The page shows one label per month (PD-57, PD-58; the owner's \"No, one label only\" of 28 Nov 2026); the price day is used to count a young fund's days (KI-302) and is never displayed. Copied at each refresh from the refresh log (docs/refresh-log/YYYY-MM.md, \"Label against file date against price day\"). tests/unit/returns/since-inception.test.ts checks each day of the embedded month against the data itself, so a wrong day fails the build. A month with no entry gives a dash for a young fund's since-inception return, never a count to the label.",
+  "months": {
+    "2026-10": {
+      "MF_PERF": "2026-11-02",
+      "MF_PERF_DIRECT": "2026-10-30",
+      "SIF_PERF": "2026-11-02"
+    }
+  }
+}

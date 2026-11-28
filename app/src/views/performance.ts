@@ -38,10 +38,11 @@ export const ABSOLUTE_MARKER = 'a';
 
 /** Why a since-inception return is not shown, as a note says it (the cell's own reason is longer and names the dates). */
 export const SI_NOT_SHOWN_TEXT: Readonly<Record<Extract<SinceInception, { basis: 'not-shown' }>['why'], string>> = {
-  'basis-not-stated': 'the fund is under one year old and its data does not say whether the figure is annualised',
+  'basis-not-stated': 'the data does not state whether its since-inception return is annualised',
+  'under-30-days': 'the fund is under 30 days old, and one day of count is a large share of so young a figure',
   'no-inception': 'the data gives no readable inception date and no return of one year or more',
-  'no-as-on': 'the data records no as-on date and the fund has no return of one year or more',
-  'inception-not-before-as-on': 'the fund\'s inception is not before the table\'s date',
+  'no-price-day': 'the day the data is priced to is not recorded and the fund has no return of one year or more',
+  'inception-not-before-price-day': 'the fund\'s inception is not before the day its data is priced to',
   'cannot-convert': 'the data\'s annualised figure is a loss of 100% or more',
 };
 
@@ -171,7 +172,7 @@ function bucketVM(b: PerfBucket, plan: PerformancePlan, directList: boolean): Pe
   }
   const notes: string[] = [RETURNS_NOTE];
   if (absolute > 0) {
-    notes.push(`${ABSOLUTE_MARKER}: ${plural(absolute, 'fund is', 'funds are')} under one year old on the table's date, so ${absolute === 1 ? 'its' : 'their'} since-inception return is shown as an absolute return, worked from the data's annualised figure over the days since the fund's inception.`);
+    notes.push(`${ABSOLUTE_MARKER}: ${plural(absolute, 'fund is', 'funds are')} under one year old, so ${absolute === 1 ? 'its' : 'their'} since-inception return is shown as an absolute return, worked from the data's annualised figure over the days from the fund's inception to the day the data is priced to.`);
   }
   for (const [why, list] of siNotShown) {
     notes.push(`Since-inception return not shown for ${plural(list.length, 'fund', 'funds')} (${names(list)}): ${SI_NOT_SHOWN_TEXT[why as keyof typeof SI_NOT_SHOWN_TEXT]}.`);

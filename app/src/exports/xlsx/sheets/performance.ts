@@ -91,7 +91,7 @@ function bucketRows(push: (r: Row, style?: StyleSpec) => void, b: PerfBucket, pl
       const planNote = mf && planList === 'Direct' ? PLAN_TEXT[f.plan] : '';
       /* KI-302: an absolute since-inception return says so, with what it was worked from */
       const siNote = f.si?.basis === 'absolute'
-        ? `SI is an absolute return over ${f.si.days} days: the fund is under one year old on this date; the data's annualised figure is ${f.si.vendorAnnualised}%`
+        ? `SI is an absolute return over ${f.si.days} days, from the fund's inception to the day its data is priced to: the fund is under one year old; the data's annualised figure is ${f.si.vendorAnnualised}%`
         : '';
       /* without an SI note the text is as before; the SI note closes with its own full stop when nothing follows it */
       const parts = [planNote, siNote, s.note ?? ''].filter((x) => x !== '');

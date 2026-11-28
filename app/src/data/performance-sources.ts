@@ -14,6 +14,7 @@ import { missing, present } from '../engine/value.ts';
 import { parseDayText } from '../engine/dates.ts';
 import { parseProductClassRules } from '../engine/match/product-class.ts';
 import { asOnOf, readBlock, type BlockText, domBlockText } from './refdata.ts';
+import { priceDayOf } from './price-days.ts';
 
 /** The uploaded monitors' blocks and the data date each file states, as written. */
 export type MonitorUploads = { blocks: MonitorBlocks; dates: Partial<Record<keyof MonitorBlocks, string>> };
@@ -74,6 +75,13 @@ export function performanceSourcesFrom(uploads: MonitorUploads = { blocks: {}, d
       SIF: up.SIF_PERF ? uploadedDay(uploads.dates.SIF_PERF, 'SIF Monitor') : asOnOf('SIF_PERF', text),
       STOCK: asOnOf('STOCK_RET', text),
       BENCH: up.BENCH_RET ? uploadedDay(uploads.dates.BENCH_RET, 'MF Monitor') : asOnOf('BENCH_RET', text),
+    },
+    /* KI-302: the day each block's figures are priced to. An uploaded monitor: the date its file states. An embedded
+       block: the day recorded for its month (data/price-days.ts); none recorded is missing, never the label. */
+    priceDay: {
+      MF: up.MF_PERF ? uploadedDay(uploads.dates.MF_PERF, 'MF Monitor') : priceDayOf('MF_PERF', asOnOf('MF_PERF', text)),
+      MF_DIRECT: up.MF_PERF_DIRECT ? uploadedDay(uploads.dates.MF_PERF_DIRECT, 'Direct monitor') : priceDayOf('MF_PERF_DIRECT', asOnOf('MF_PERF_DIRECT', text)),
+      SIF: up.SIF_PERF ? uploadedDay(uploads.dates.SIF_PERF, 'SIF Monitor') : priceDayOf('SIF_PERF', asOnOf('SIF_PERF', text)),
     },
     rules: rules === null ? [] : parseProductClassRules(rules),
   };
