@@ -30,6 +30,13 @@
 // reason (`oversoldUnits`), never clamped silently; a sale row with an amount of 0 counts as a sale the units of which
 // are not known (the noPxSell kind, with its own reason text). A transfer out keeps the FIFO split (the usual
 // convention, s.45(2A)) and is named the same way (`transferOutFifo`; delta review N-2).
+// Round 2c (Q-49; Gate B of 5c9ae0a F3, F4; MOD-05's merger condition; parity ledger TX-13, TX-14): on a shared
+// instrument the oversell is this holding's share (F3, OD-15); a sale row with an amount of 0 is named in the reason even
+// when the split stands (F4); a holding whose history holds the switch in of a merger candidate (`mergerCandidates`: the
+// day's switch outs that empty one scheme into exactly one other scheme on the same day for the same sum, one row or
+// several, financial review V1, V2; or several emptied schemes into one, Gate B of 4001f8f B1) is unreconciled
+// 'mergerCandidate', never split, since a scheme merger is not a sale
+// (s.47(xviii)) and cost and date carry over.
 // One correction (OD-15, KI-069): when one IRR instrument joins more than one holding (the same scheme with two
 // distributors) and the flows carry no folio that tells them apart, the instrument's lots are apportioned by units (by
 // invested value on the rupee ledger) across those holdings and labelled `apportioned`; the live gives every such
@@ -46,6 +53,7 @@ import { matcherJoin } from '../returns/scope.ts';
 import { keyOf, normaliseLabel } from '../ids.ts';
 import { formatDay } from '../dates.ts';
 import { RUPEES_PER } from '../units.ts';
+import { amountTolerance } from '../../ingest/capital-gains.ts';
 import { anniversaryOf } from './rules.ts';
 import {
   GRANDFATHER_BEFORE, GRANDFATHER_CLASSES, TAX_RULES_I21, classifyHolding, i21ByInst, i21Day, isListedEtf,
@@ -65,9 +73,11 @@ export type NotSplitKind = 'fund-level' | 'pass-through' | 'per-security';
  * The live `unrec` kinds, plus 'apportion' (OD-15: the lots of a shared instrument cannot be apportioned), and two kinds
  * of Gate B of aa67a45 (Q-49; owner question on how the IRR export writes these rows): 'transferRow' (B3: the history
  * holds a transfer in, stock in or demerger in, so its lots would be dated and costed by the transfer, OD-16) and
- * 'bonusRow' (B2: the history holds a bonus row, never costed at its amount).
+ * 'bonusRow' (B2: the history holds a bonus row, never costed at its amount); and 'mergerCandidate' (round 2c, MOD-05's
+ * merger condition: the history holds the switch in of a merger candidate, so its lots would be dated and costed at the
+ * merger).
  */
-export type UnreconciledKind = 'unitsGap' | 'noLots' | 'value' | 'short' | 'excess' | 'noPxSell' | 'apportion' | 'transferRow' | 'bonusRow';
+export type UnreconciledKind = 'unitsGap' | 'noLots' | 'value' | 'short' | 'excess' | 'noPxSell' | 'apportion' | 'transferRow' | 'bonusRow' | 'mergerCandidate';
 
 /** Units sold beyond the units held up to this many are rounding (3 decimals, as repeat-evidence.ts compares units). */
 export const UNITS_TOLERANCE = 0.0005;
@@ -124,7 +134,8 @@ export type TaxPositionRecord = Omit<TaxPosition, 'gain' | 'lt' | 'st' | 'unclas
   viaSwitchIn: boolean;
   /**
    * Units the IRR history sells beyond the units its earlier purchases hold (beyond UNITS_TOLERANCE), on the unit
-   * ledger; null when none or on the rupee ledger. Never silent (Gate B of aa67a45): the reason says so.
+   * ledger; null when none or on the rupee ledger. Never silent (Gate B of aa67a45): the reason says so. On a shared
+   * instrument (OD-15) it is this holding's share, by the same share as its lots (Gate B of 5c9ae0a, F3).
    */
   oversoldUnits: number | null;
   /**
@@ -213,6 +224,8 @@ type Ledger = {
   oversold: number;
   /** A transfer out was consumed by FIFO (delta review N-2). */
   transferOut: boolean;
+  /** The history holds the switch in of a merger candidate (round 2c, `mergerCandidates`). */
+  mergerIn: boolean;
 };
 
 const EPS = 1e-9;
@@ -247,13 +260,148 @@ function consume(lots: Array<{ u: number }>, need: number): void {
   consumeFifo(lots, need);
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Merger candidates (round 2c; MOD-05's merger condition; Q-49)
+
+/**
+ * The switch rows of the merger candidates. Each switch out maps to the instrument key (client and normalised name, as
+ * `derivedInstrumentKey`) of its partner scheme B; each switch in maps to the keys of its source schemes (one, or
+ * several for a many-into-one merger: Gate B of 4001f8f, B1). `pairs` counts the source schemes of the candidates (one
+ * per client, scheme A and day).
+ */
+export type MergerCandidates = { outs: ReadonlyMap<Transaction, string>; ins: ReadonlyMap<Transaction, readonly string[]>; pairs: number };
+
+/**
+ * The switches that look like a scheme merger. A scheme merger written as Switch Out / Switch In cannot be told from an
+ * ordinary switch in the IRR file, and a merger is not a sale (s.47(xviii)): cost and date carry over. Within one client
+ * and one day, the day's switch outs are summed per scheme, and so are the day's switch ins (a merger may be written as
+ * several rows, one per folio or distributor: round 2c financial review V1). A scheme A switched out that day is
+ * "emptied" when the last of the day's switch outs of A is A's last trade and:
+ *   - A's units come to 0 within UNITS_TOLERANCE after it; or
+ *   - A's units are not known (a trade of A without a price or with an amount of 0; V2), unless A's priced trades prove
+ *     it kept units: while every trade of A whose units are not known is a purchase, the priced trades give a lower
+ *     bound of A's units, and a bound above UNITS_TOLERANCE after the day's switch outs means a partial switch, which
+ *     stays an ordinary switch (delta review D1).
+ * Two shapes are candidates (Gate B of 4001f8f, B1, keeps the first and adds the second):
+ *   - one into one: A emptied; B's switch ins that day sum to A's switch outs, within the reader's amount tolerance
+ *     (Rs 1 or 0.01%, the larger; ingest/capital-gains.ts `amountTolerance`); exactly one partner scheme both ways (B
+ *     the only other scheme whose switch-in sum matches A's, A the only other scheme whose switch-out sum matches B's);
+ *   - many into one: no one-into-one candidate that day; every scheme switched out that day is emptied (two or more);
+ *     every switch in that day goes to one scheme B, not one of them; and the day's total out equals the total in,
+ *     within the amount tolerance.
+ * A same-day chain is tested first (E1, the delta review of 8ed1dc7): when a scheme both receives a switch in and is
+ * switched out whole that day (a pass-through), the switches are followed through it. If no scheme receives a switch in
+ * and is switched out only in part (the B1d guard), every starting scheme (switched out, receiving nothing) is emptied,
+ * and the chain ends in exactly one scheme (the one recipient that is not a pass-through, or, with no such recipient, the
+ * one pass-through), and the starting schemes' total out equals the end scheme's total in within the amount tolerance,
+ * then every switch out of the chain is the candidate's, and every switch in of a pass-through and of the end scheme
+ * enters its ledger as a lot not known (X and Y into B with B switched out whole the same day; X into B into C).
+ * Several possible partners, a partial switch, unequal sums or a scheme kept: an ordinary switch, as before. All of the
+ * sources' switch outs that day are the candidate's, and all of B's switch ins that day.
+ * `trades`: the trades (direction in or out) in day order, file order within a day, already limited to the as-on date.
+ */
+export function mergerCandidates(trades: readonly Transaction[]): MergerCandidates {
+  const keyOfTrade = (t: Transaction): string => keyOf([t.clientId, normaliseLabel(t.instrumentName)]);
+  const last = new Map<string, number>();
+  trades.forEach((t, i) => last.set(keyOfTrade(t), i));
+  /** Units of each instrument after the trades so far; null once a trade's units are not known. */
+  const held = new Map<string, number | null>();
+  /** D1: a lower bound of the units from the priced trades, while every trade whose units are not known is an 'in'. */
+  const low = new Map<string, number | null>();
+  /** Per client and day, per scheme: the switch rows, their amount sums and, for the outs, A's state after the last. */
+  type Side = { rows: Transaction[]; sum: number };
+  type Day = { out: Map<string, Side & { emptied: boolean }>; in: Map<string, Side> };
+  const days = new Map<string, Day>();
+  trades.forEach((t, i) => {
+    const k = keyOfTrade(t);
+    const before = held.has(k) ? held.get(k)! : 0;
+    const lowBefore = low.has(k) ? low.get(k)! : 0;
+    const px = priceOf(t);
+    const amt = Math.abs(t.amountRupees);
+    const u = px !== null && amt > EPS ? amt / px : null;
+    const isIn = t.direction === 'in';
+    const after = before === null || u === null ? null : isIn ? before + u : before - u;
+    held.set(k, after);
+    // An unknown purchase only adds units, so the bound holds; an unknown sale loses it.
+    const lowAfter = lowBefore === null ? null : u !== null ? (isIn ? lowBefore + u : lowBefore - u) : isIn ? lowBefore : null;
+    low.set(k, lowAfter);
+    const isSwitchOut = t.direction === 'out' && t.kind === 'switch-out';
+    const isSwitchIn = isIn && t.kind === 'switch-in';
+    if (!isSwitchOut && !isSwitchIn) return;
+    const dk = keyOf([t.clientId, String(t.day)]);
+    const d = days.get(dk) ?? { out: new Map(), in: new Map() };
+    days.set(dk, d);
+    if (isSwitchIn) {
+      const s = d.in.get(k) ?? { rows: [], sum: 0 };
+      s.rows.push(t); s.sum += amt; d.in.set(k, s);
+      return;
+    }
+    const s = d.out.get(k) ?? { rows: [], sum: 0, emptied: false };
+    s.rows.push(t); s.sum += amt;
+    // Read after each switch out; the last one of the day decides (it must be A's last trade).
+    const empty = after !== null ? Math.abs(after) <= UNITS_TOLERANCE : !(lowAfter !== null && lowAfter > UNITS_TOLERANCE);
+    s.emptied = last.get(k) === i && empty;
+    d.out.set(k, s);
+  });
+  const outs = new Map<Transaction, string>();
+  const ins = new Map<Transaction, readonly string[]>();
+  let pairs = 0;
+  const same = (x: number, y: number): boolean => Math.abs(x - y) <= amountTolerance(Math.max(x, y));
+  for (const d of days.values()) {
+    // Same-day chains (E1): followed through the pass-through schemes, if any.
+    const through = [...d.out].filter(([k, o]) => d.in.has(k) && o.emptied).map(([k]) => k);
+    if (through.length) {
+      const partial = [...d.out].some(([k, o]) => d.in.has(k) && !o.emptied);
+      const starts = [...d.out.keys()].filter((k) => !d.in.has(k));
+      const ends = [...d.in.keys()].filter((k) => !through.includes(k));
+      const end = ends.length === 1 ? ends[0]! : ends.length === 0 && through.length === 1 ? through[0]! : null;
+      const startsEmptied = starts.length > 0 && starts.every((k) => d.out.get(k)!.emptied && d.out.get(k)!.sum > EPS);
+      if (!partial && end !== null && startsEmptied
+        && same(starts.reduce((x, k) => x + d.out.get(k)!.sum, 0), d.in.get(end)!.sum)) {
+        const feeders = [...starts, ...through.filter((k) => k !== end)];
+        for (const k of [...starts, ...through]) for (const r of d.out.get(k)!.rows) outs.set(r, end);
+        for (const k of through) if (k !== end) for (const r of d.in.get(k)!.rows) ins.set(r, starts);
+        for (const r of d.in.get(end)!.rows) ins.set(r, feeders);
+        pairs += feeders.length;
+        continue;
+      }
+    }
+    let found = false;
+    // One into one.
+    for (const [a, o] of d.out) {
+      if (!o.emptied || !(o.sum > EPS)) continue;
+      const partners = [...d.in].filter(([b, s]) => b !== a && same(o.sum, s.sum));
+      if (partners.length !== 1) continue;
+      const [b, s] = partners[0]!;
+      const rivals = [...d.out].filter(([c, x]) => c !== b && same(x.sum, s.sum));
+      if (rivals.length !== 1) continue;
+      for (const r of o.rows) outs.set(r, b);
+      for (const r of s.rows) ins.set(r, [a]);
+      pairs++;
+      found = true;
+    }
+    // Many into one (Gate B of 4001f8f, B1).
+    if (found || d.in.size !== 1 || d.out.size < 2) continue;
+    const [b, s] = [...d.in][0]!;
+    if (d.out.has(b) || ![...d.out.values()].every((o) => o.emptied && o.sum > EPS)) continue;
+    const total = [...d.out.values()].reduce((x, o) => x + o.sum, 0);
+    if (!same(total, s.sum)) continue;
+    const sources = [...d.out.keys()];
+    for (const o of d.out.values()) for (const r of o.rows) outs.set(r, b);
+    for (const r of s.rows) ins.set(r, sources);
+    pairs += sources.length;
+  }
+  return { outs, ins, pairs };
+}
+
 /** One pass over trades sorted by day (file order within a day): both FIFO ledgers. */
-function runLedger(trades: readonly Transaction[], asOn: DayNumber): Ledger {
-  const L: Ledger = { units: [], rupees: [], noPxBuy: false, swIn: false, noPxSell: false, later: 0, transferRow: false, bonusRow: false, zeroSell: false, oversold: 0, transferOut: false };
+function runLedgerOf(trades: readonly Transaction[], asOn: DayNumber, merger: MergerCandidates): Ledger {
+  const L: Ledger = { units: [], rupees: [], noPxBuy: false, swIn: false, noPxSell: false, later: 0, transferRow: false, bonusRow: false, zeroSell: false, oversold: 0, transferOut: false, mergerIn: false };
   for (const t of trades) {
     if (t.day > asOn) { L.later++; continue; }
     const amt = Math.abs(t.amountRupees);
     const buy = t.direction === 'in';
+    if (buy && merger.ins.has(t)) L.mergerIn = true;
     if (buy && TRANSFER_IN_KINDS.has(t.kind)) L.transferRow = true;
     if (buy && BONUS_KINDS.has(t.kind)) L.bonusRow = true;
     if (!buy && t.kind === 'transfer-out') L.transferOut = true;
@@ -282,6 +430,11 @@ const folioKey = (s: string | null | undefined): string => normaliseLabel(s ?? '
 // ---------------------------------------------------------------------------------------------------------------
 // Reasons (the live texts)
 
+/** A unit count in a reason: up to six significant digits, no grouping (F3). */
+function unitsText(u: number): string {
+  return String(Number(u.toPrecision(6)));
+}
+
 function withLater(reason: string, n: number, asOn: DayNumber): string {
   return `${reason.replace(/\.?\s*$/, '.')} ${n} IRR transaction${n === 1 ? '' : 's'} for this holding dated after ${formatDay(asOn)}, `
     + `the date holding periods run to, ${n === 1 ? 'is' : 'are'} left out.`;
@@ -303,8 +456,16 @@ const REASON = {
   // Gate B of aa67a45 (Q-49; owner question on how the IRR export writes these rows).
   transferRow: 'The transaction history of this holding holds a transfer in, stock in or demerger in. Its lots would be dated and costed by the transfer, not by the original purchase, and what cost and date carry over is not known, so no split is shown (OD-16).',
   bonusRow: 'The transaction history of this holding holds a bonus row. Bonus units have nil cost by law, and how the IRR file writes a bonus row is not confirmed, so no split is shown rather than one costed at the row\'s amount.',
-  oversold: 'The transaction history sells more units than its earlier purchases hold, so a purchase, bonus or split is missing from the IRR file; the lots shown are those left after the sale.',
+  // Gate B of 5c9ae0a, F3: the units are this holding's share on a shared instrument (OD-15); when the share cannot be
+  // worked out (the apportionment failed), the scheme's whole figure, said so (round 2c financial review N1).
+  oversold: (units: number, shared: 'own' | 'share' | 'scheme'): string => `The transaction history sells more units than its earlier purchases hold (${unitsText(units)} units beyond${shared === 'share'
+    ? ', this holding\'s share by units of the scheme\'s history (OD-15)' : shared === 'scheme' ? ', for the scheme\'s whole history: this holding\'s share is not known (OD-15)' : ''}), so a purchase, bonus or split is missing from the IRR file; the lots shown are those left after the sale.`,
   transferOut: 'The transaction history holds a transfer out; the IRR file does not say which units it moved, so the oldest are assumed (FIFO, the usual convention).',
+  // Gate B of 5c9ae0a, F4: the split stands within the 1% band, but the sale of 0 is named.
+  zeroSell: 'A sale, switch out or transfer out in the transaction history carries an amount of 0, so the units it sold could not be counted; the units still reconcile to the base file within 1%, so the split is shown on them.',
+  // Round 2c (MOD-05's merger condition; Q-49).
+  // Financial review N3: what the file does not say is whether the pair was a merger.
+  mergerCandidate: 'The transaction history of this holding holds a switch in that looks like a scheme merger: on the same day the whole of another scheme was switched out for the same amount. A merger is not a sale (s.47(xviii)), so the cost and date of the merged units would carry over, and the IRR file does not say whether it was a merger; no split is shown until the analyst confirms whether it was a merger or an ordinary switch.',
   apportion: 'The IRR history of this scheme covers more than one holding and gives no folio that tells them apart, and not every one of those holdings has the units (or invested value) to apportion its lots by, so no split is shown (OD-15).',
   noRow: (inst: string): string => `No row in the tax rules covers the class "${inst}".`,
 } as const;
@@ -391,6 +552,9 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
   }
   const sourceOf = new Map<HoldingId, LotSource>();
   const order = new Map(sorted.map((t, i) => [t, i]));
+  // Round 2c: the merger candidates among every trade to the as-on date (whether or not a holding joins them).
+  const merger = mergerCandidates(sorted.filter((t) => isTrade(t) && t.day <= asOn));
+  const runLedger = (trades: readonly Transaction[], on: DayNumber): Ledger => runLedgerOf(trades, on, merger);
   for (const [r, keys] of instrumentsOfRoot) {
     const members = membersOfRoot.get(r);
     if (!members) continue;
@@ -435,10 +599,12 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
     let L: Array<{ day: DayNumber; u: number; px: number | null }> = [];
     let fifoU = 0;
     let baseU: number | null = unitBase;
+    /** This holding's share of its ledger (1 unless apportioned, OD-15); F3 scales the oversell by it. */
+    let share = 1;
     const load = (): void => {
       apportionFailed = false;
       const raw = ledger ? (amtMode ? ledger.rupees.map((x) => ({ day: x.day, u: x.u, px: null })) : ledger.units.map((x) => ({ day: x.day, u: x.u, px: x.px as number | null }))) : [];
-      let share = 1;
+      share = 1;
       if (src?.group) {
         // OD-15: this holding's share of the shared instrument, by units (by invested value on the rupee ledger).
         const basis = src.group.map((g) => (amtMode ? investedOf(g) : unitsOf(g)));
@@ -468,15 +634,18 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
       instrumentName: h.instrumentName, locked: null, fundLevel: null, notSplit: null, unreconciledKind: null,
       usual: !!cls.usual, catAssumed: !!cls.catAssumed, catRuled: !!cls.catRuled,
       baseUnits: amtMode ? null : baseU, fifoUnits: amtMode ? null : fifoU, pxGap, viaSwitchIn: pxGap && swIn,
-      oversoldUnits: !amtMode && ledger && ledger.oversold > 0 ? ledger.oversold : null, transferOutFifo: !!ledger?.transferOut, gfLots: 0,
+      // F3 (Gate B of 5c9ae0a): on a shared instrument, this holding's share of the ledger's oversell (OD-15).
+      oversoldUnits: !amtMode && ledger && ledger.oversold > 0 ? ledger.oversold * share : null, transferOutFifo: !!ledger?.transferOut, gfLots: 0,
       oldest: null, newest: null, laterTrades: later, lotDetail: [],
     };
     /** Gate B of aa67a45: an oversell on the unit ledger is named in the reason, never silent. */
     // Delta review N-2: a transfer out consumed by FIFO is named the same way.
-    const withOversold = (reason: string | null): string | null => {
+    // F4 (Gate B of 5c9ae0a): on a split that stands, a sale row with an amount of 0 is named too (`zeroSplit`).
+    const withOversold = (reason: string | null, zeroSplit = false): string | null => {
       const notes: string[] = [];
-      if (rec.oversoldUnits !== null) notes.push(REASON.oversold);
+      if (rec.oversoldUnits !== null) notes.push(REASON.oversold(rec.oversoldUnits, !src?.group ? 'own' : apportionFailed ? 'scheme' : 'share'));
       if (rec.transferOutFifo) notes.push(REASON.transferOut);
+      if (zeroSplit && ledger?.zeroSell) notes.push(REASON.zeroSell);
       if (!notes.length) return reason;
       return [reason === null ? null : reason.replace(/\.?\s*$/, '.'), ...notes].filter((x): x is string => x !== null).join(' ');
     };
@@ -514,6 +683,8 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
     // amount. A per-security row (PMS) is never split anyway and keeps its own path.
     if (!rule.perSecurity && ledger?.transferRow) { unreconciled('transferRow', REASON.transferRow); continue; }
     if (!rule.perSecurity && ledger?.bonusRow) { unreconciled('bonusRow', REASON.bonusRow); continue; }
+    // Round 2c (MOD-05's merger condition; Q-49): never split on lots dated and costed at what may be a scheme merger.
+    if (!rule.perSecurity && ledger?.mergerIn) { unreconciled('mergerCandidate', REASON.mergerCandidate); continue; }
     if (!L.length) { unreconciled('noLots', REASON.noLots(pxGap, swIn, amtMode)); continue; }
     const rel = drift();
     if (baseU !== null && rel > 0.01) {
@@ -524,7 +695,7 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
     }
     if (rule.perSecurity) { notSplit('per-security'); continue; }
     if (src?.group) counts.apportioned++;
-    rec.reason = withOversold(rec.reason);
+    rec.reason = withOversold(rec.reason, true);
 
     // The split.
     const scale = baseU !== null && fifoU > 0 ? baseU / fifoU : 1;

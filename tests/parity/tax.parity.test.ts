@@ -257,8 +257,30 @@ const GATE_B: Book = {
   ],
 };
 
+/**
+ * Round 2c (Q-49; Gate B of 5c9ae0a F4; MOD-05's merger condition): a merger candidate (Contra, not in the base file,
+ * switched out whole on 10 Nov 2023 into Small Cap for the same amount), which the live splits as a purchase dated and
+ * costed at the switch, and a sale of 0 within the 1% band, which the live splits silently. Ledger TX-13, TX-14, roll-up
+ * TXR-19 onward.
+ */
+const OLD_CONTRA = 'Sample Contra Fund - Regular Plan - Growth';
+const R2C: Book = {
+  id: 'tax-r2c', asOn: day(2026, 9, 30),
+  book: [
+    hold(A, N.small, 'Small Cap Fund', 'Equity', MF, 100, 15000, 18000),
+    hold(A, N.blue, 'Large Cap Fund', 'Equity', MF, 99.5, 9950, 11940),
+  ],
+  flows: [
+    // The merger candidate: the whole of Contra into Small Cap on one day, 15,000 each side.
+    flow(A, OLD_CONTRA, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD_CONTRA, [2023, 11, 10], 'Switch Out', 150, 15000),
+    flow(A, N.small, [2023, 11, 10], 'Switch In', 150, -15000),
+    // F4: a sale written with an amount of 0, the base 0.5% from the history's 100 u (inside the 1% band).
+    flow(A, N.blue, [2024, 1, 1], 'Purchase', 100, -10000), flow(A, N.blue, [2025, 1, 1], 'Redemption', 110, 0),
+  ],
+};
+
 const BOOKS: Book[] = [CORE, OD16, OD15, annivBook('tax-anniv-on', day(2026, 9, 30)), annivBook('tax-anniv-after', day(2026, 10, 1)),
-  annivBook('tax-leap-on', day(2025, 2, 28)), annivBook('tax-leap-after', day(2025, 3, 1)), USUAL_BEFORE, LISTED_ETF, KI065, INVESTED_ZERO, GATE_B];
+  annivBook('tax-leap-on', day(2025, 2, 28)), annivBook('tax-leap-after', day(2025, 3, 1)), USUAL_BEFORE, LISTED_ETF, KI065, INVESTED_ZERO, GATE_B, R2C];
 
 // ---------------------------------------------------------------------------------------------------------------
 // Both sides in one shape
@@ -707,6 +729,18 @@ describe('known answers R2-R1 for the books the ledger covers by correction (fin
       'totals.unclassCmv': 107200, 'totals.unclassGain': 42000, 'harvest.s198Gains': 1000, 'harvest.exBefore': 1000,
       'harvest.taxBefore': 0, 'harvest.taxAfter': 0, 'harvest.saving': 0,
     }, 'tax-gate-b');
+  });
+
+  test('tax-r2c: the merger candidate unclassified (18,000, gain 3,000); Bluechip long 11,940 at 1,990; tax 0', () => {
+    // Round 2c (TX-13, TX-14): Small Cap, switched into by the merger candidate, is unreconciled: unclassified 18,000 at
+    // a gain of 3,000 (invested 15,000). Bluechip: 100 u bought 1 Jan 2024 at 100, the sale of 0 moves nothing, scaled to
+    // the base 99.5 u: long on 30 Sep 2026, 11,940 less 9,950 = 1,990. CMV 29,940. Harvest: Sec 198 gains 1,990 inside
+    // the exemption: tax 0, saving 0.
+    expectFig(fig(R2C), {
+      'totals.cmv': 29940, 'totals.ltCmv': 11940, 'totals.ltGain': 1990, 'totals.stCmv': 0, 'totals.stGain': 0,
+      'totals.unclassCmv': 18000, 'totals.unclassGain': 3000, 'harvest.s198Gains': 1990, 'harvest.exBefore': 1990,
+      'harvest.taxBefore': 0, 'harvest.taxAfter': 0, 'harvest.saving': 0,
+    }, 'tax-r2c');
   });
 });
 
