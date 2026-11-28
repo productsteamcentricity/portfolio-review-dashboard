@@ -655,6 +655,52 @@
       "class": "correction",
       "reference": "OD-7; KI-073; KI-072",
       "description": "The Regular list, Hybrid MF: the new build adds no benchmark and drops only the names in legacyOnly: no benchmark named for balanced advantage, multi-asset and equity savings (OD-7; the legacy showed Nifty 500 or a hybrid composite series it does not carry, KI-073); groups that held only holdings routed elsewhere (KI-072) leave with their rows. Split from PF-05 on 27 Nov 2026 (delta review S-C): one entry per list and bucket, with only the names and fixtures that combination uses."
+    },
+    {
+      "id": "PF-17",
+      "kind": "fund-figure",
+      "buckets": [
+        "SIF"
+      ],
+      "labels": [
+        "Altiva Equity Ex-Top 100 Long-Short Fund-Reg(G)"
+      ],
+      "fixtures": [
+        "family-a",
+        "family-a-all-classes",
+        "family-a-ambiguous-xirr",
+        "family-a-ambiguous-xirr-answered",
+        "family-a-blank-entities",
+        "family-a-blank-invested",
+        "family-a-case-variants",
+        "family-a-dash-labels",
+        "family-a-fifty",
+        "family-a-holders",
+        "family-a-invalid-text",
+        "family-a-lakh",
+        "family-a-liquidity-labels",
+        "family-a-many-products",
+        "family-a-merged-dates",
+        "family-a-merged-folios",
+        "family-a-money-columns",
+        "family-a-na-cmv",
+        "family-a-negative-cmv",
+        "family-a-negative-gain",
+        "family-a-no-invested",
+        "family-a-odd-asset-labels",
+        "family-a-pct-xirr",
+        "family-a-rupee",
+        "family-a-single-entity",
+        "family-a-skipped-rows",
+        "family-a-standard",
+        "family-a-text-dates",
+        "family-a-total-like",
+        "family-a-total-rows",
+        "family-a-zero-cmv"
+      ],
+      "class": "correction",
+      "reference": "KI-302; the owner's answer of 28 Nov 2026 (\"Absolute, and say so (Recommended)\"; where either date is missing the cell is a dash with its reason)",
+      "description": "The since-inception return of a fund that cannot be shown to be at least one year old. This parity run gives the blocks no as-on date, so the fund's age cannot be told, and the fund has no return of one year or more: the new build shows a dash with that reason (the owner's rule for a missing date). The live page shows the data's figure (-0.11) with no flag. Only this fund's SI figure may differ, in both lists."
     }
   ]
 }

@@ -729,6 +729,45 @@
       "class": "correction",
       "reference": "E-30; KI-024 (MOD-05's ruling of 27 Nov 2026: an equity index for a PMS or AIF group only when every holding is Equity); PF-08",
       "description": "An Equity AIF and a Hybrid AIF in one category (Small Cap): the live page compares the group with Nifty Smallcap 250 by its category; the new build names no benchmark, because not every holding of the group is Equity."
+    },
+    {
+      "id": "SB-59",
+      "section": "performance",
+      "kind": "field",
+      "field": "r SI",
+      "key": "regular | hybrid mf | fund | zerodha arbitrage fund(g)-direct plan",
+      "fixtures": ["matching-probe"],
+      "legacy": 6.7987,
+      "new": 1.3424632620261834,
+      "class": "correction",
+      "reference": "E-31; KI-302; the owner's answer of 28 Nov 2026 (\"Absolute, and say so (Recommended)\")",
+      "description": "A fund under one year old on the table's date (inception 18 Aug 2026, 74 days before 31 Oct 2026): the live page shows the data's annualised since-inception figure (6.7987%) with no flag; the new build shows the absolute return, (1 + 0.067987)^(74/365) - 1 = 1.3425%, marked. Regular list (the scheme has only a Direct plan, read from the Regular data)."
+    },
+    {
+      "id": "SB-60",
+      "section": "performance",
+      "kind": "field",
+      "field": "r SI",
+      "key": "direct | hybrid mf | fund | zerodha arbitrage fund(g)-direct plan",
+      "fixtures": ["matching-probe"],
+      "legacy": 6.1353,
+      "new": 1.2145198650199696,
+      "class": "correction",
+      "reference": "E-32; KI-302; the owner's answer of 28 Nov 2026 (\"Absolute, and say so (Recommended)\")",
+      "description": "The same fund in the Direct list, read from the Direct data, whose annualised figure is 6.1353%: the absolute return over the same 74 days is (1 + 0.061353)^(74/365) - 1 = 1.2145%, marked. The two blocks give this one plan different figures; each list shows its own block's."
+    },
+    {
+      "id": "SB-61",
+      "section": "performance",
+      "kind": "field",
+      "field": "r SI",
+      "key": "/^(regular|direct) \\| sif \\| fund \\| (dynasif equity long-short fund-reg\\(g\\)|altiva equity ex-top 100 long-short fund-reg\\(g\\))$/",
+      "fixtures": ["performance-probe", "sample-with-irr", "sample-base-only"],
+      "legacy": "*",
+      "new": null,
+      "class": "correction",
+      "reference": "E-31; E-32; KI-302; the owner's answer of 28 Nov 2026 (\"Absolute, and say so (Recommended)\"); KI-322",
+      "description": "A SIF under one year old on the table's date: the live page shows the data's since-inception figure with no flag. The SIF data does not say whether that figure is annualised, so the new build cannot work an absolute return from it and shows a dash with that reason. The dash is the implementer's conservative default where the owner's answer cannot be carried out, not the owner's ruling: how the SIF monitor states a young fund's since-inception return is asked (KI-322), not yet ruled on by the owner."
     }
   ]
 }

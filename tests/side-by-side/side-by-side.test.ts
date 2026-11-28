@@ -188,11 +188,21 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     assert.ok(!next.performance!.some((x) => x.bucket === 'PMS' && x.kind === 'bench'), 'new: a benchmark for a group not all Equity');
     assert.ok(legacy.performance!.some((x) => x.key === 'regular | pms | bench | nifty500multicap502525'), 'legacy: the equity index by category');
     // S3: a scheme the Regular block carries only as a Direct plan: both builds show its Regular-block record in the
-    // Regular list and its Direct-block record in the Direct list, alike (no difference)
+    // Regular list and its Direct-block record in the Direct list, alike but for the since-inception return: the fund
+    // is 74 days old on 31 Oct 2026 (inception 18 Aug 2026), so the new build shows it as an absolute return (KI-302, the
+    // owner's answer of 28 Nov 2026; SB-59, SB-60), where the live page shows the data's annualised figure
     const z = 'zerodha arbitrage fund(g)-direct plan';
-    assert.ok(!result.diffs.some((x) => x.key.endsWith(`| fund | ${z}`)), 'S3: no difference');
+    assert.deepEqual(result.diffs.filter((x) => x.key.endsWith(`| fund | ${z}`)).map((x) => [x.key.split(' | ')[0], x.field, x.ledger]), [['regular', 'r SI', 'SB-59'], ['direct', 'r SI', 'SB-60']], 'S3: only SI differs');
     assert.equal(row('regular', 'hybrid mf', z).ref, 'Zerodha Arbitrage Fund(G)-Direct Plan');
-    for (const [t, v] of Object.entries(row('regular', 'hybrid mf', z).returns)) assert.equal(v, fig(MF, 'Zerodha Arbitrage Fund(G)-Direct Plan', t), `S3 regular ${t}`);
+    assert.equal((MF['Zerodha Arbitrage Fund(G)-Direct Plan'] as { inception?: string }).inception, '2026-08-18');
+    for (const [t, v] of Object.entries(row('regular', 'hybrid mf', z).returns)) {
+      if (t !== 'SI') assert.equal(v, fig(MF, 'Zerodha Arbitrage Fund(G)-Direct Plan', t), `S3 regular ${t}`);
+    }
+    // by hand: 1.067987^(74/365) - 1 = 1.3425% (Regular data, 6.7987% annualised); 1.061353^(74/365) - 1 = 1.2145% (Direct data, 6.1353%)
+    const near = (a: number | null | undefined, b: number): boolean => typeof a === 'number' && Math.abs(a - b) < 5e-5;
+    assert.ok(near(row('regular', 'hybrid mf', z).returns.SI, 1.3425), `S3 regular SI ${row('regular', 'hybrid mf', z).returns.SI}`);
+    assert.ok(near(next.performance!.find((x) => x.key === `direct | hybrid mf | fund | ${z}`)!.returns.SI, 1.2145), 'S3 direct SI');
+    assert.equal(legacy.performance!.find((x) => x.key === `regular | hybrid mf | fund | ${z}`)!.returns.SI, 6.7987, 'the live page: the annualised figure');
   });
 
   test('the performance probe: AIF and SIF buckets, Dividend Yield, Contra and Value funds (kit phase 2 (c))', () => {
@@ -208,8 +218,14 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
       for (const r of s.performance!.filter((x) => x.kind === 'fund' && (x.bucket === 'AIF' || x.bucket === 'SIF'))) {
         const b = r.bucket === 'AIF' ? AIF : SIF;
         assert.ok(r.ref !== null && r.ref in b, `${s.engine} ${r.key}: record`);
-        for (const [t, v] of Object.entries(r.returns)) assert.equal(v, b[r.ref!]!.r?.[t] ?? null, `${s.engine} ${r.key} ${t}`);
+        for (const [t, v] of Object.entries(r.returns)) {
+          // KI-302 (SB-61): the new build does not show the since-inception figure of a SIF under one year old on the
+          // table's date (31 Oct 2026), because the SIF data does not say whether it is annualised; the live page shows it
+          const young = s === next && r.bucket === 'SIF' && t === 'SI' && String((b[r.ref!] as { inception?: string }).inception ?? '') > '2025-10-31';
+          assert.equal(v, young ? null : b[r.ref!]!.r?.[t] ?? null, `${s.engine} ${r.key} ${t}`);
+        }
       }
+      assert.ok(next.performance!.some((x) => x.bucket === 'SIF' && x.kind === 'fund' && x.returns.SI === null), 'a young SIF is in the probe');
       // the SIF bucket has no benchmark rows by design, on both sides
       assert.ok(!s.performance!.some((x) => x.bucket === 'SIF' && x.kind === 'bench'), `${s.engine}: a SIF benchmark`);
     }
