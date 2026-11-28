@@ -24,6 +24,12 @@ calls no capital-gains reader function (it imports only the reader's column tabl
   over every reference string and fixture line shows nothing else is removed. Residual, by design and tested: an
   upper-case five-letter word whose fourth letter is one of the ten, four digits and one letter, apart by single spaces
   or hyphens, is removed too, counted and reported to the analyst, never silent. The unbroken token is unchanged.
+- **S-1 (`harvest.ts`; Q-49; the financial review of 7c6c4e9):** a slab-rate pool has no tax figure (PD-07: no slab
+  arithmetic in the engine), so whenever one exists, slab rate entered or not, the tax before, tax after and saving of
+  the client and of the family are PARTIAL: their coverage is the share of the pools' gains at a rate (the smaller one
+  when holdings are also left out), and a label names the pools ("slab-rate gains of N pools not in the tax figures").
+  CHAT-012's case with a 30% slab entered was a present 0 with no label (the tax at that slab is 900); now 0 at
+  coverage 0, labelled. No figure changes; a client with no slab-rate pool is unmarked as before.
 - **Not built:** round 2c L3 (row-level matching of a merger's switch in) needs the owner's answer on how the export
   writes a merger (Q-T5); S-2 stays as built (MOD-05: NO; on the owner's list).
 

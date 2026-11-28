@@ -452,3 +452,92 @@ describe('round 3 L1 and L2 (CHAT-012\'s Gate B of M7b): the family coverage and
     assert.match(lt.kind === 'value' ? lt.prov.method : '', /4 holdings not split \(unreconciled with the IRR file: transfer row 2, bonus row 1, merger candidate 1\) left out/);
   });
 });
+
+describe('round 4 S-1 (the financial review of 7c6c4e9; Q-49): slab-rate pools left out of the tax figures are marked', () => {
+  // A slab-rate pool has no tax figure (PD-07: no slab arithmetic in the engine), so the tax before, tax after and saving
+  // leave its gain out. Whenever such a pool exists, slab rate entered or not, those three are PARTIAL, their coverage
+  // the share of the pools' gains at a rate, with the label "slab-rate gains of N pools not in the tax figures" naming
+  // the pools. Before (7c6c4e9): a present figure with no mark; with a slab rate entered, no label either.
+  const JAN25 = ymdToDay(2025, 1, 31)!;
+  const ctx25 = (slab: number | null): HarvestContext => ({
+    asOn: JAN25,
+    inputs: { personYear: slab === null ? [] : [{ clientId: clientIdOf(A), fy: 2024, slabPct: slab, surchargePct: null, regime: null, assesseeMark: null }], exemptionUsed: [] },
+    statement: null,
+  });
+  const cov = (v: Value<number>): number | undefined => (v.kind === 'value' ? v.coverage : undefined);
+  const method = (v: Value<number>): string => (v.kind === 'value' ? v.prov.method : '');
+  const amount = (v: Value<number>): number | null => (v.kind === 'value' ? v.v : null);
+  const SLAB_ONE = 'slab-rate gains of 1 pool not in the tax figures';
+
+  test('the review\'s slab probe (CHAT-012\'s Commodity ETF, short 3,000, as on 31 Jan 2025), with and without a slab rate entered', () => {
+    // The only pool is short term at the slab rate: none of its gain is in the tax figures, coverage 0 (the tax at a 30%
+    // slab would be 900; the engine shows 0 and says it is PARTIAL, never a complete 0).
+    for (const slab of [null, 30]) {
+      const { clients, family } = run([{ client: A, name: 'Sample Gold ETF', cls: 'commodityEtf', cmv: 13000, st: 3000, ltCmv: 0 }], ctx25(slab));
+      const a = clients[0]!;
+      for (const v of [a.taxBefore, a.taxAfter, a.saving, family.taxBefore, family.taxAfter, family.saving]) {
+        assert.equal(amount(v), 0, `slab ${slab}`);
+        assert.equal(cov(v), 0, `slab ${slab}: coverage`);
+        assert.match(method(v), new RegExp(`${STATUS.PARTIAL}: ${SLAB_ONE}`), `slab ${slab}`);
+      }
+      assert.ok(a.labels.includes(`${SLAB_ONE}: Commodity ETF, short term (${STATUS.PARTIAL})`), JSON.stringify(a.labels));
+      assert.equal(a.figures.unquantifiedGain, 3000);
+    }
+  });
+
+  test('a Sec. 76 debt fund beside an equity fund: the tax before is the equity fund\'s 2,000, PARTIAL at 10,000 / 11,500', () => {
+    // As on 30 Sep 2026: equity short-term gain 10,000 at 20% = 2,000; the debt fund's short-term 1,500 is at the slab
+    // rate, out of the figure. Coverage: gains at a rate 10,000 over all gains 11,500. Slab 30% entered.
+    const { clients, family } = run([
+      { client: A, name: 'Sample Flexi Cap Fund', cls: 'equityMf', cmv: 60000, st: 10000, ltCmv: 0 },
+      { client: A, name: 'Sample Corporate Bond Fund', cls: 'debtMf', cmv: 11500, st: 1500, ltCmv: 0 },
+    ], ctxOf({ slab: { [A]: 30 }, exemptionUsed: { [A]: 'unused-confirmed' } }));
+    const a = clients[0]!;
+    near(amount(a.taxBefore), 2000, 'tax before');
+    for (const v of [a.taxBefore, a.taxAfter, a.saving, family.taxBefore]) {
+      assert.ok(Math.abs((cov(v) ?? -1) - 10000 / 11500) < 1e-12, `coverage ${cov(v)}`);
+      assert.match(method(v), new RegExp(SLAB_ONE));
+    }
+    assert.ok(a.labels.some((l) => l.startsWith(`${SLAB_ONE}: Debt Mutual Funds `) && l.endsWith(`Sec. 76 (old 50AA), short term (${STATUS.PARTIAL})`)), JSON.stringify(a.labels));
+  });
+
+  test('a client with no slab-rate pool is unchanged; beside one with such a pool, the family is PARTIAL by the gains share', () => {
+    // A: equity short-term 10,000 (tax 2,000), no slab pool: no mark, no label, as before. B: a debt fund short-term 1,500
+    // only (coverage 0). The family: gains at a rate 10,000 of 11,500.
+    const { clients, family } = run([
+      { client: A, name: 'Sample Flexi Cap Fund', cls: 'equityMf', cmv: 60000, st: 10000, ltCmv: 0 },
+      { client: B, name: 'Sample Corporate Bond Fund', cls: 'debtMf', cmv: 11500, st: 1500, ltCmv: 0 },
+    ], ctxOf({ slab: { [A]: 30, [B]: 30 }, exemptionUsed: { [A]: 'unused-confirmed', [B]: 'unused-confirmed' } }));
+    const a = clients.find((c) => c.clientLabel === A)!;
+    const b = clients.find((c) => c.clientLabel === B)!;
+    for (const v of [a.taxBefore, a.taxAfter, a.saving]) {
+      assert.equal(cov(v), undefined);
+      assert.ok(!/slab-rate gains/.test(method(v)), method(v));
+    }
+    near(amount(a.taxBefore), 2000, 'A tax before');
+    assert.ok(!a.labels.some((l) => /slab-rate gains of/.test(l)), JSON.stringify(a.labels));
+    assert.equal(cov(b.taxBefore), 0);
+    near(amount(family.taxBefore), 2000, 'family tax before');
+    assert.ok(Math.abs((cov(family.taxBefore) ?? -1) - 10000 / 11500) < 1e-12, `family coverage ${cov(family.taxBefore)}`);
+    assert.match(method(family.taxBefore), new RegExp(`${STATUS.PARTIAL}: ${SLAB_ONE}`));
+  });
+});
+
+describe('round 4 S-1 with another gap: the smaller coverage, both named', () => {
+  test('a slab-rate pool and a holding unreconciled with the IRR file: coverage 2/3 (holdings), not 10,000 / 11,500 (gains)', () => {
+    // A: equity short-term 10,000 and a debt fund short-term 1,500 (split), and one holding unreconciled (gain 1,000).
+    // Holdings coverage: 2 split over 3 = 2/3; gains coverage: 10,000 / 11,500. The figure carries the smaller, and its
+    // method names both gaps.
+    const { lots, facts } = makeLots([
+      { client: A, name: 'Sample Flexi Cap Fund', cls: 'equityMf', cmv: 60000, st: 10000, ltCmv: 0 },
+      { client: A, name: 'Sample Corporate Bond Fund', cls: 'debtMf', cmv: 11500, st: 1500, ltCmv: 0 },
+      { client: A, name: 'Sample Midcap Fund', cls: 'equityMf', cmv: 11000, status: 'unreconciled', gain: 1000 },
+    ]);
+    lots.unreconciled.forEach((r) => { r.unreconciledKind = 'transferRow'; });
+    const { clients, family } = buildHarvests(rollupHoldings(lots, facts), ctxOf({ slab: { [A]: 30 }, exemptionUsed: { [A]: 'unused-confirmed' } }));
+    for (const v of [clients[0]!.taxBefore, family.taxBefore]) {
+      assert.ok(v.kind === 'value' && Math.abs((v.coverage ?? -1) - 2 / 3) < 1e-12, JSON.stringify(v));
+      assert.match(v.kind === 'value' ? v.prov.method : '', /1 holding not split \(unreconciled with the IRR file: transfer row 1\) left out.*; slab-rate gains of 1 pool not in the tax figures/);
+    }
+  });
+});

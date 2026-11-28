@@ -443,7 +443,14 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   const p: Provenance = prov ?? { sources: [], method: 'tax-loss harvest per client (E-43)' };
   const leftOut = [gainUnknown > 0 ? `${gainUnknown} holding${gainUnknown === 1 ? '' : 's'} with an unknown gain` : null,
     unreconciled > 0 ? `${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (${unrecText})` : null].filter((x): x is string => x !== null);
-  const note = leftOut.length ? `; ${STATUS.PARTIAL}: ${leftOut.join(' and ')} left out of the pools` : '';
+  // Round 4 S-1 (Q-49; the financial review of 7c6c4e9): a slab-rate pool has no tax figure (PD-07: no slab arithmetic
+  // here), so whenever one exists, slab rate entered or not, the tax before, tax after and saving leave its gain out:
+  // they are PARTIAL, their coverage the share of the pools' gains at a rate, and a label names the pools.
+  const slabText = slabPoolsText(slabP.length);
+  const slabShare = slabP.length ? ratedShare(c.pools) : null;
+  const partial = [leftOut.length ? `${leftOut.join(' and ')} left out of the pools` : null, slabText].filter((x): x is string => x !== null);
+  const note = partial.length ? `; ${STATUS.PARTIAL}: ${partial.join('; ')}` : '';
+  const coverages = [leftOut.length ? coverageOf(client, gainUnknown, unreconciled) : null, slabShare].filter((x): x is number => x !== null);
   // M7b delta review D-1: a client with no holding split and some unreconciled with the IRR file has no harvest worked:
   // its figures are NOT AVAILABLE with the reason (as the unrealised figure), never Rs 0 at coverage 0.
   const split = splitHoldingsOf(client);
@@ -456,7 +463,8 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
     : ratesMissing !== null ? missing(STATUS.NOT_AVAILABLE, `${ratesMissing}: the ${what} needs the tax rates as on the as-on date`, p)
     : x === null
     ? missing(STATUS.NOT_AVAILABLE, `${SLAB_NOT_SET}: the ${what} depends on the order of set-off against slab-rate gains`, p)
-    : present(x, 'inr', { ...p, method: `${p.method}; ${what}${note}` }, leftOut.length ? { coverage: coverageOf(client, gainUnknown, unreconciled) } : undefined));
+    // Round 4 S-1: with both gaps the smaller coverage (the conservative mark).
+    : present(x, 'inr', { ...p, method: `${p.method}; ${what}${note}` }, coverages.length ? { coverage: Math.min(...coverages) } : undefined));
   const labels = [...HARVEST_BASE_LABELS];
   if (!applied) labels.push(EXEMPTION_NOT_APPLIED);
   else if (known.source === 'statement') labels.push('exemption already used read from the capital-gains statement; gains outside the statement are not included');
@@ -469,6 +477,10 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   if (gainUnknown > 0) labels.push(`${gainUnknown} holding${gainUnknown === 1 ? '' : 's'} with an unknown gain left out (${STATUS.PARTIAL})`);
   if (notWorked !== null) labels.push(notWorked);
   else if (unreconciled > 0) labels.push(`${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (${unrecText}) left out (${STATUS.PARTIAL})`);
+  // Round 4 S-1: the label names the slab-rate pools left out of the tax figures, whenever those figures are shown.
+  if (slabText !== null && notWorked === null && ratesMissing === null) {
+    labels.push(`${slabText}: ${slabP.map((x) => `${x.cls}, ${x.b === 'LT' ? 'long term' : 'short term'}`).join('; ')} (${STATUS.PARTIAL})`);
+  }
   const pools: HarvestPool[] = c.pools.map((x) => ({
     // M2: as on a date before 23 Jul 2024 the class's rate (and its label, which states the rate) is not in the table,
     // and what is left after set-off depends on the order the rates set.
@@ -503,6 +515,18 @@ function coverageOf(client: ClientTaxSummary, unknown: number, unreconciled = 0)
   const split = splitHoldingsOf(client);
   const base = split + unreconciled;
   return base > 0 ? Math.max(0, Math.min(1, (split - unknown) / base)) : 0;
+}
+
+/** Round 4 S-1: "slab-rate gains of N pools not in the tax figures", or null with no slab-rate pool. */
+function slabPoolsText(n: number): string | null {
+  return n > 0 ? `slab-rate gains of ${n} pool${n === 1 ? '' : 's'} not in the tax figures` : null;
+}
+
+/** Round 4 S-1: the share of the pools' gains (gross) in pools with a rate, 0 to 1; 1 when the pools hold no gain. */
+function ratedShare(pools: ReadonlyArray<{ gross: number; rate: number | null }>): number {
+  const all = pools.reduce((s, p) => s + p.gross, 0);
+  const rated = pools.filter((p) => p.rate !== null).reduce((s, p) => s + p.gross, 0);
+  return all > 0 ? Math.max(0, Math.min(1, rated / all)) : 1;
 }
 
 /** Every figure null (round 3 M1: no harvest worked, so nothing is known; never 0). */
@@ -546,6 +570,15 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
   const known = list.reduce((s, h) => s + Math.max(0, h.split - h.gainUnknown), 0);
   const base = list.reduce((s, h) => s + h.split + h.unreconciled, 0);
   const familyCoverage = base > 0 ? Math.min(1, known / base) : 0;
+  // Round 4 S-1: the worked clients' slab-rate pools are left out of the family's tax figures too; their coverage is the
+  // share of the worked clients' pool gains at a rate, and with the other gaps the smaller of the two.
+  const slabPools = worked.reduce((s, h) => s + (h.figures.unquantifiedPools ?? 0), 0);
+  const allGains = worked.reduce((s, h) => s + (h.figures.ltGains ?? 0) + (h.figures.stGains ?? 0), 0);
+  const slabGains = worked.reduce((s, h) => s + (h.figures.unquantifiedGain ?? 0), 0);
+  const familySlab = slabPoolsText(slabPools);
+  const familySlabShare = familySlab === null ? null : allGains > 0 ? Math.max(0, Math.min(1, (allGains - slabGains) / allGains)) : 1;
+  const familyPartial = [familyNote.length ? `${familyNote.join(' and ')} left out` : null, familySlab].filter((x): x is string => x !== null);
+  const familyCov = Math.min(...[familyNote.length ? familyCoverage : null, familySlabShare].filter((x): x is number => x !== null));
   // Round 3 M2: a worked client whose rates are not in the table (as on a date before 23 Jul 2024) makes the family's
   // rate-dependent figures NOT AVAILABLE with its label.
   const ratesMissing = worked.find((h) => h.ratesMissing !== null)?.ratesMissing ?? null;
@@ -555,10 +588,11 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
       ? missing(STATUS.NOT_AVAILABLE, `${ratesMissing}: the family ${what} is not available`, fp)
     : x === null
       ? missing(STATUS.NOT_AVAILABLE, `${SLAB_NOT_SET} for ${dashed} client${dashed === 1 ? '' : 's'}: the family ${what} is not available`, fp)
-      : familyNote.length === 0 ? present(x, 'inr', fp)
-        // Round 3 L1 (CHAT-012): the coverage mark whatever is left out, an unknown gain alone included (as the client's).
-        : present(x, 'inr', { ...fp, method: `${fp.method}; ${STATUS.PARTIAL}: ${familyNote.join(' and ')} left out` },
-          { coverage: familyCoverage }));
+      : familyPartial.length === 0 ? present(x, 'inr', fp)
+        // Round 3 L1 (CHAT-012): the coverage mark whatever is left out, an unknown gain alone included (as the client's);
+        // round 4 S-1: slab-rate pools too.
+        : present(x, 'inr', { ...fp, method: `${fp.method}; ${STATUS.PARTIAL}: ${familyPartial.join('; ')}` },
+          { coverage: familyCov }));
   return {
     label: FAMILY_LABEL, byClient: [...list], figures,
     taxBefore: v(figures.taxBefore, 'tax before harvesting'), taxAfter: v(figures.taxAfter, 'tax after harvesting'), saving: v(figures.saving, 'saving'),
