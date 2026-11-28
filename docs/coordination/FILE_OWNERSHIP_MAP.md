@@ -64,6 +64,7 @@ Unlisted paths keep the owner given in FILE_OWNERSHIP_AND_CHANGE_CONTROL.md.
 | `app/src/ingest/price-file.ts` | not built | no price-file reader in test build 1; built after it, once the owner supplies the file layout (registers-5) |
 | `app/src/engine/returns/{xirr,irr-tree,contributions,scope}.ts`, `app/src/ingest/irr-file.ts` | NB-03 (M3a) | contracts I-31, I-32, I-45 |
 | `app/src/exports/xlsx/irr-template.ts`, `app/src/engine/returns/irr-aggregate.ts` | NB-03 | the blank transactions (IRR) file template and the IRR tree's client, asset and product aggregate, both from PR #57 [V git log, 27 Nov] |
+| `app/src/exports/xlsx/base-template.ts`, `app/src/ui/components/templates-group.tsx` | NB-05 | the base-file template download; in review, not yet on main (28 Nov 2026) |
 | `app/src/ingest/capital-gains.ts`, `app/src/engine/tax/**`, `data/owner/tax-rules.json`, the KA known-answer file, `app/src/exports/xlsx/cg-template.ts` | NB-03 (M7a) | financial-domain review mandatory; I-37 parity with `data/refdata/TAX_RULES.json` (EX-02) |
 | `app/src/ingest/screener-pack/**`, `app/src/services/screener-store.ts` | NB-04 (M10) | no pack content ever committed (D-026) |
 | `scripts/monthly-update/**`, `product_bank/**`, `app/src/ingest/index-series.ts`, `app/src/engine/drawdown.ts` | NB-04 (M11a, M12a) | contracts I-39, I-44 |

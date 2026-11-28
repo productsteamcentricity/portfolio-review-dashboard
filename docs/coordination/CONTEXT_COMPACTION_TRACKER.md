@@ -15,11 +15,13 @@ Moderator (MOD-03 until 25 Nov 2026, MOD-04 until 26 Nov 2026, MOD-05 since).
 | CHAT-011 | NB-04, data platform | 2 | 25 Nov 09:47; 25 Nov 14:39 | at the 3rd |
 | CHAT-012 | ARC-03, new-build reviewer | 2 | 25 Nov 09:32; 27 Nov 13:26 | at the 3rd |
 | CHAT-013 | MOD-04, Moderator (historical record since 26 Nov) | 0 | - | done: succeeded by CHAT-015 on 26 Nov on the owner's order, with no compaction |
-| CHAT-015 | MOD-05, Moderator | 0 | - | at the 3rd: successor Moderator |
+| CHAT-015 | MOD-05, Moderator | 1 | 28 Nov 14:55 | at the 3rd: successor Moderator |
 | CHAT-016 | ARC-04, Guardian (successor of CHAT-008) | 0 | - | at the 3rd |
 | CHAT-017 | NB-05, new build (successor of CHAT-009) | 1 | 27 Nov 20:39 | at the 3rd |
 
-Counts as of 28 Nov 2026, about 02:10 IST (registers-8 recount of the transcripts' compaction markers, every chat).
+Counts as of 28 Nov 2026, about 20:40 IST (registers-10 recount of the transcripts' compaction markers, every chat):
+CHAT-015 (MOD-05) has its first (28 Nov 14:55 UTC); no other change. In registers-9 (about 12:05 IST): no change since
+registers-8 (about 02:10 IST); no chat reached its third in the owner's absence, and no successor was opened.
 Changes since registers-6: CHAT-012 has a second compaction, CHAT-017 its first; CHAT-016 none.
 Changes in registers-6: CHAT-008 and CHAT-009 had a third compaction each (succession ordered by MOD-05 on
 27 Nov 2026: successors CHAT-016 ARC-04 and CHAT-017 NB-05, opened and in charge that day, both at 0 then), CHAT-010 a second, CHAT-014 its first. Changes in registers-5: CHAT-008 and CHAT-009 had a

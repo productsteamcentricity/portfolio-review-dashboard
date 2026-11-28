@@ -36,7 +36,10 @@
 // day's switch outs that empty one scheme into exactly one other scheme on the same day for the same sum, one row or
 // several, financial review V1, V2; or several emptied schemes into one, Gate B of 4001f8f B1) is unreconciled
 // 'mergerCandidate', never split, since a scheme merger is not a sale
-// (s.47(xviii)) and cost and date carry over.
+// (s.47(xviii)) and cost and date carry over. Round 3 (round 2c L1, L2): once the scheme's units are known to be back to 0
+// after that switch in, the mark ends (a later fresh purchase is split as usual) and the rounding left in the unit ledger
+// is cleared, as the realised side's successor reset. Round 3 B-1: as on a date before 23 Jul 2024, a holding of a class
+// whose holding period may have differed then is unreconciled 'periodsNotInTable', never split by today's period.
 // One correction (OD-15, KI-069): when one IRR instrument joins more than one holding (the same scheme with two
 // distributors) and the flows carry no folio that tells them apart, the instrument's lots are apportioned by units (by
 // invested value on the rupee ledger) across those holdings and labelled `apportioned`; the live gives every such
@@ -56,7 +59,7 @@ import { RUPEES_PER } from '../units.ts';
 import { amountTolerance } from '../../ingest/capital-gains.ts';
 import { anniversaryOf } from './rules.ts';
 import {
-  GRANDFATHER_BEFORE, GRANDFATHER_CLASSES, TAX_RULES_I21, classifyHolding, i21ByInst, i21Day, isListedEtf,
+  GRANDFATHER_BEFORE, GRANDFATHER_CLASSES, TAX_RULES_I21, classifyHolding, i21ByInst, i21Day, i21PeriodsMissing, isListedEtf,
 } from './classify.ts';
 import type { ClassifyContext, HoldingTaxClass, I21Row } from './classify.ts';
 
@@ -75,9 +78,10 @@ export type NotSplitKind = 'fund-level' | 'pass-through' | 'per-security';
  * holds a transfer in, stock in or demerger in, so its lots would be dated and costed by the transfer, OD-16) and
  * 'bonusRow' (B2: the history holds a bonus row, never costed at its amount); and 'mergerCandidate' (round 2c, MOD-05's
  * merger condition: the history holds the switch in of a merger candidate, so its lots would be dated and costed at the
- * merger).
+ * merger); and 'periodsNotInTable' (round 3 B-1: as on a date before 23 Jul 2024, a class whose holding period then may
+ * differ from the I-21 table's, classify.ts I21_PERIODS_UNCHANGED).
  */
-export type UnreconciledKind = 'unitsGap' | 'noLots' | 'value' | 'short' | 'excess' | 'noPxSell' | 'apportion' | 'transferRow' | 'bonusRow' | 'mergerCandidate';
+export type UnreconciledKind = 'unitsGap' | 'noLots' | 'value' | 'short' | 'excess' | 'noPxSell' | 'apportion' | 'transferRow' | 'bonusRow' | 'mergerCandidate' | 'periodsNotInTable';
 
 /** Units sold beyond the units held up to this many are rounding (3 decimals, as repeat-evidence.ts compares units). */
 export const UNITS_TOLERANCE = 0.0005;
@@ -286,9 +290,14 @@ export type MergerCandidates = { outs: ReadonlyMap<Transaction, string>; ins: Re
  *   - one into one: A emptied; B's switch ins that day sum to A's switch outs, within the reader's amount tolerance
  *     (Rs 1 or 0.01%, the larger; ingest/capital-gains.ts `amountTolerance`); exactly one partner scheme both ways (B
  *     the only other scheme whose switch-in sum matches A's, A the only other scheme whose switch-out sum matches B's);
- *   - many into one: no one-into-one candidate that day; every scheme switched out that day is emptied (two or more);
- *     every switch in that day goes to one scheme B, not one of them; and the day's total out equals the total in,
- *     within the amount tolerance.
+ *   - many into one, per receiving scheme B (M7b B2, KI-340, replacing the per-day rule of B1): among the day's emptied
+ *     schemes other than B not already paired one into one, any subset of two or more whose switch outs sum to B's switch
+ *     ins within the amount tolerance; the other switches of the day do not stop it. When several subsets fit, all of
+ *     their sources are the candidate's (never one picked); the search is exact up to MANY_INTO_ONE_SOURCES_SPLIT
+ *     sources left after ruling out those that cannot fit (meet in the middle above MANY_INTO_ONE_SOURCES: round 3
+ *     J1), and beyond that all of them when a fit is still possible (not decidable: a gap, never a sale; review H1).
+ *     On such an ambiguous day, another receiving scheme that one or more of the ambiguous sources could have made is
+ *     the candidate's too (review H2). B's own switch out that day is never a source; it falls under the successor gap.
  * A same-day chain is tested first (E1, the delta review of 8ed1dc7): when a scheme both receives a switch in and is
  * switched out whole that day (a pass-through), the switches are followed through it. If no scheme receives a switch in
  * and is switched out only in part (the B1d guard), every starting scheme (switched out, receiving nothing) is emptied,
@@ -366,8 +375,9 @@ export function mergerCandidates(trades: readonly Transaction[]): MergerCandidat
         continue;
       }
     }
-    let found = false;
     // One into one.
+    const pairedOut = new Set<string>();
+    const pairedIn = new Set<string>();
     for (const [a, o] of d.out) {
       if (!o.emptied || !(o.sum > EPS)) continue;
       const partners = [...d.in].filter(([b, s]) => b !== a && same(o.sum, s.sum));
@@ -377,30 +387,172 @@ export function mergerCandidates(trades: readonly Transaction[]): MergerCandidat
       if (rivals.length !== 1) continue;
       for (const r of o.rows) outs.set(r, b);
       for (const r of s.rows) ins.set(r, [a]);
+      pairedOut.add(a);
+      pairedIn.add(b);
       pairs++;
-      found = true;
     }
-    // Many into one (Gate B of 4001f8f, B1).
-    if (found || d.in.size !== 1 || d.out.size < 2) continue;
-    const [b, s] = [...d.in][0]!;
-    if (d.out.has(b) || ![...d.out.values()].every((o) => o.emptied && o.sum > EPS)) continue;
-    const total = [...d.out.values()].reduce((x, o) => x + o.sum, 0);
-    if (!same(total, s.sum)) continue;
-    const sources = [...d.out.keys()];
-    for (const o of d.out.values()) for (const r of o.rows) outs.set(r, b);
-    for (const r of s.rows) ins.set(r, sources);
-    pairs += sources.length;
+    // Many into one, per receiving scheme B (Gate B of 4001f8f B1; M7b B2, KI-340: a compound day may hold other switches
+    // too). The sources are the day's emptied schemes other than B (B's own switch out is never one: the B1d guard) not
+    // already paired one into one. Every subset of two or more whose switch outs sum to B's switch ins, within the amount
+    // tolerance, fits (`subsetsFitting`); when several fit, all their sources are the candidate's (never one picked).
+    // Sources that cannot be in any fitting subset are ruled out first; over MANY_INTO_ONE_SOURCES left, a fit that is
+    // still possible is not decidable: a gap, never a sale (review H1). All of the chosen sources' switch outs that day and
+    // all of B's switch ins are the candidate's.
+    const chosenFor: Array<[string, string[]]> = [];
+    /** Sources of an ambiguous fit (several subsets, or not decidable): review H2. */
+    const ambiguous = new Set<string>();
+    for (const [b, s] of d.in) {
+      if (pairedIn.has(b)) continue;
+      const avail = [...d.out].filter(([k, o]) => k !== b && !pairedOut.has(k) && o.emptied && o.sum > EPS).map(([k, o]) => [k, o.sum] as const);
+      if (avail.length < 2) continue;
+      const fit = subsetsFitting(avail, s.sum, 2, same);
+      if (!fit.chosen.size) continue;
+      chosenFor.push([b, [...fit.chosen]]);
+      if (fit.ambiguous) for (const k of fit.chosen) ambiguous.add(k);
+    }
+    // Review H2: on an ambiguous day, another receiving scheme whose switch ins one or more of the ambiguous sources could
+    // have made (a merger of one of them into it cannot be ruled out) is the candidate's too: its switch ins are lots not
+    // known.
+    if (ambiguous.size) {
+      const chosenIn = new Set(chosenFor.map(([b]) => b));
+      for (const [c, s] of d.in) {
+        if (pairedIn.has(c) || chosenIn.has(c)) continue;
+        const fit = subsetsFitting([...ambiguous].filter((k) => k !== c).map((k) => [k, d.out.get(k)!.sum] as const), s.sum, 1, same);
+        if (fit.chosen.size) chosenFor.push([c, [...fit.chosen]]);
+      }
+    }
+    // Review H1: each source counted once a day, however many receiving schemes it is chosen for.
+    const counted = new Set<string>();
+    for (const [b, sources] of chosenFor) {
+      for (const k of sources) {
+        for (const r of d.out.get(k)!.rows) outs.set(r, b);
+        counted.add(k);
+      }
+      for (const r of d.in.get(b)!.rows) ins.set(r, sources);
+    }
+    pairs += counted.size;
   }
   return { outs, ins, pairs };
+}
+
+/** M7b B2 (review H1): the most sources of one client-day whose subsets are searched one by one for a many-into-one merger. */
+export const MANY_INTO_ONE_SOURCES = 16;
+/**
+ * Round 3 J1 (the financial review of 5b9028c): the most sources searched exactly, by meet in the middle above
+ * MANY_INTO_ONE_SOURCES (two halves of at most 16, 2^16 sums each). Beyond it a possible fit is not decidable.
+ */
+export const MANY_INTO_ONE_SOURCES_SPLIT = 32;
+
+/**
+ * The sources (key, switch-out sum) that are in some subset of at least `minSize` of them whose sum matches `target`
+ * (`same`), and whether the fit is ambiguous (several subsets fit, or not decidable). Sources whose own sum is already
+ * beyond the target cannot be in any fitting subset (the amounts are positive) and are ruled out first. Over
+ * MANY_INTO_ONE_SOURCES left: when the total of the rest is short of the target, or the smallest `minSize` of them
+ * already exceed it, nothing fits; otherwise, up to MANY_INTO_ONE_SOURCES_SPLIT the subsets are searched exactly by meet
+ * in the middle (round 3 J1: no fit means an ordinary switch, computed), and beyond it a fit is still possible and not
+ * decidable, so all of them are returned, ambiguous (review H1).
+ */
+export function subsetsFitting(avail: ReadonlyArray<readonly [string, number]>, target: number, minSize: number,
+  same: (x: number, y: number) => boolean): { chosen: Set<string>; ambiguous: boolean } {
+  const left = avail.filter(([, x]) => x <= target || same(x, target));
+  const chosen = new Set<string>();
+  if (left.length < minSize) return { chosen, ambiguous: false };
+  if (left.length > MANY_INTO_ONE_SOURCES) {
+    const total = left.reduce((t, [, x]) => t + x, 0);
+    const smallest = left.map(([, x]) => x).sort((a, b) => a - b).slice(0, minSize).reduce((t, x) => t + x, 0);
+    if ((total < target && !same(total, target)) || (smallest > target && !same(smallest, target))) return { chosen, ambiguous: false };
+    if (left.length <= MANY_INTO_ONE_SOURCES_SPLIT) return meetInTheMiddle(left, target, minSize, same);
+    for (const [k] of left) chosen.add(k);
+    return { chosen, ambiguous: true };
+  }
+  let fits = 0;
+  for (let mask = 1; mask < 1 << left.length; mask++) {
+    let n = 0;
+    let sum = 0;
+    for (let i = 0; i < left.length; i++) if (mask & (1 << i)) { n++; sum += left[i]![1]; }
+    if (n >= minSize && same(sum, target)) {
+      fits++;
+      for (let i = 0; i < left.length; i++) if (mask & (1 << i)) chosen.add(left[i]![0]);
+    }
+  }
+  return { chosen, ambiguous: fits > 1 };
+}
+
+/** One subset of a half: its sum, its size and its members (bit i: the half's source i). */
+type HalfSum = { sum: number; pop: number; mask: number };
+
+/** Every subset of a half (at most 16 sources), sorted by sum. */
+function halfSums(half: ReadonlyArray<readonly [string, number]>): HalfSum[] {
+  const out: HalfSum[] = [];
+  for (let mask = 0; mask < 1 << half.length; mask++) {
+    let sum = 0; let pop = 0;
+    for (let i = 0; i < half.length; i++) if (mask & (1 << i)) { sum += half[i]![1]; pop++; }
+    out.push({ sum, pop, mask });
+  }
+  return out.sort((a, b) => a.sum - b.sum);
+}
+
+/**
+ * Round 3 J1: the exact search of subsetsFitting by meet in the middle (up to MANY_INTO_ONE_SOURCES_SPLIT sources). The
+ * sources split into two halves; each half's subset sums are listed and sorted. For a subset of one half, the subsets of
+ * the other half that complete it to a fit form one run of the sorted list: `same(x, target)` holds on an interval of x,
+ * since below the target the gap shrinks as x grows while the tolerance stays (that of the target), and above it the gap
+ * grows faster than the tolerance (amountTolerance grows by 0.01% of the amount). The run is found by bisection; counts
+ * of its members of each size (prefix sums) give the fits with at least `minSize` sources in all. A source is chosen
+ * when it is in a subset of its half that has a completing run; each half is read in turn. Ambiguous when more than one
+ * subset fits. The same answer as the plain search, without listing every pair.
+ */
+function meetInTheMiddle(left: ReadonlyArray<readonly [string, number]>, target: number, minSize: number,
+  same: (x: number, y: number) => boolean): { chosen: Set<string>; ambiguous: boolean } {
+  const size = Math.max(1, minSize);
+  const h = left.length >> 1;
+  const halves = [left.slice(0, h), left.slice(h)] as const;
+  const sums = [halfSums(halves[0]), halfSums(halves[1])] as const;
+  // cnt[k][i]: how many of the first i sums of a half have at least k sources (k up to `size`).
+  const counts = sums.map((list) => Array.from({ length: size + 1 }, (_, k) => {
+    const c = new Int32Array(list.length + 1);
+    for (let i = 0; i < list.length; i++) c[i + 1] = c[i]! + (list[i]!.pop >= k ? 1 : 0);
+    return c;
+  }));
+  /** The first index in [lo, hi) where `pred` turns from false to true (hi when it never does). */
+  const firstTrue = (lo: number, hi: number, pred: (i: number) => boolean): number => {
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (pred(mid)) hi = mid; else lo = mid + 1; }
+    return lo;
+  };
+  const chosen = new Set<string>();
+  let fits = 0;
+  for (const side of [0, 1] as const) {
+    const mine = sums[side]; const other = sums[1 - side]!; const cnt = counts[1 - side]!;
+    for (const s of mine) {
+      const fit = (i: number): boolean => same(s.sum + other[i]!.sum, target);
+      const p = firstTrue(0, other.length, (i) => s.sum + other[i]!.sum >= target);
+      const lo = firstTrue(0, p, fit);
+      const hi = firstTrue(p, other.length, (i) => !fit(i));
+      if (lo >= hi) continue;
+      // The other half's part needs at least this many sources; with `size` at least 1, the empty subset of both halves
+      // is never a fit.
+      const need = Math.max(0, size - s.pop);
+      const n = cnt[need]![hi]! - cnt[need]![lo]!;
+      if (n <= 0) continue;
+      for (let i = 0; i < halves[side].length; i++) if (s.mask & (1 << i)) chosen.add(halves[side][i]![0]);
+      if (side === 0) fits += n;
+    }
+  }
+  return { chosen, ambiguous: fits > 1 };
 }
 
 /** One pass over trades sorted by day (file order within a day): both FIFO ledgers. */
 function runLedgerOf(trades: readonly Transaction[], asOn: DayNumber, merger: MergerCandidates): Ledger {
   const L: Ledger = { units: [], rupees: [], noPxBuy: false, swIn: false, noPxSell: false, later: 0, transferRow: false, bonusRow: false, zeroSell: false, oversold: 0, transferOut: false, mergerIn: false };
+  /** Units after the trades so far, from the rows; null once a row's units are not known (as realised-irr.ts). */
+  let held: number | null = 0;
   for (const t of trades) {
     if (t.day > asOn) { L.later++; continue; }
     const amt = Math.abs(t.amountRupees);
     const buy = t.direction === 'in';
+    const rowPx = priceOf(t);
+    const rowUnits = rowPx !== null && amt > EPS ? amt / rowPx : null;
+    held = held === null || rowUnits === null ? null : buy ? held + rowUnits : held - rowUnits;
     if (buy && merger.ins.has(t)) L.mergerIn = true;
     if (buy && TRANSFER_IN_KINDS.has(t.kind)) L.transferRow = true;
     if (buy && BONUS_KINDS.has(t.kind)) L.bonusRow = true;
@@ -420,6 +572,10 @@ function runLedgerOf(trades: readonly Transaction[], asOn: DayNumber, merger: Me
       const { short } = consumeFifo(L.units, u);
       if (short > UNITS_TOLERANCE) L.oversold += short;
     }
+    // Round 2c L1 and L2 (CHAT-012's Gate B of a031769, round 3 item 7): once the units are known to be back to 0 after a
+    // merger candidate's switch in, the merged units are all sold, so a later fresh purchase is an ordinary lot again (the
+    // realised side's successor reset); the units left in the ledger within UNITS_TOLERANCE are rounding and are cleared.
+    if (L.mergerIn && held !== null && Math.abs(held) <= UNITS_TOLERANCE) { L.mergerIn = false; L.units = []; }
   }
   return L;
 }
@@ -468,6 +624,8 @@ const REASON = {
   mergerCandidate: 'The transaction history of this holding holds a switch in that looks like a scheme merger: on the same day the whole of another scheme was switched out for the same amount. A merger is not a sale (s.47(xviii)), so the cost and date of the merged units would carry over, and the IRR file does not say whether it was a merger; no split is shown until the analyst confirms whether it was a merger or an ordinary switch.',
   apportion: 'The IRR history of this scheme covers more than one holding and gives no folio that tells them apart, and not every one of those holdings has the units (or invested value) to apportion its lots by, so no split is shown (OD-15).',
   noRow: (inst: string): string => `No row in the tax rules covers the class "${inst}".`,
+  // Round 3 B-1 (Q-49).
+  periodsNotInTable: 'The holding periods before 23 Jul 2024 are not in the table: the review\'s as-on date is earlier, and this class\'s holding period then may differ from today\'s (36 months for most non-equity units), so no split is shown rather than one by today\'s period.',
 } as const;
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -694,6 +852,15 @@ export function computeTaxLots(holdings: readonly Holding[], fund: readonly Tran
       continue;
     }
     if (rule.perSecurity) { notSplit('per-security'); continue; }
+    // Round 3 B-1 (Q-49): as on a date before 23 Jul 2024, a lot whose class's holding period may have differed then
+    // (classify.ts I21_PERIODS_UNCHANGED) is not split: the table holds only the periods from that day. A Specified
+    // holding is read per part (the pre-2023 part takes the row's `before` class, as the split below does).
+    const pre = rule.specifiedFrom && rule.before ? byInst.get(rule.before) ?? null : null;
+    const preFrom = pre ? i21Day(rule.specifiedFrom) : null;
+    if (L.some((x) => i21PeriodsMissing(pre && preFrom !== null && x.day < preFrom ? pre.inst : rule.inst, asOn) !== null)) {
+      unreconciled('periodsNotInTable', REASON.periodsNotInTable);
+      continue;
+    }
     if (src?.group) counts.apportioned++;
     rec.reason = withOversold(rec.reason, true);
 

@@ -103,7 +103,9 @@ describe('E-147: the source order', () => {
     const r = weightedFundReturn(book, [up, embedded], '3y', 'family');
     near(v(r.figure!.value), 20);
     assert.deepEqual(r.figure!.coverage, { share: 0.5, basis: 'mf-value', included: 1, excluded: 2 });
-    assert.deepEqual(r.items.map((i) => i.excluded), [null, 'no-return', 'no-return']);
+    // Beta is absent from the upload but has a return in the embedded table of another date: 'other-date' (ARC-03
+    // L3); Gamma is listed there without a return: 'no-return'
+    assert.deepEqual(r.items.map((i) => i.excluded), [null, 'other-date', 'no-return']);
     const p = r.figure!.value.kind === 'value' ? r.figure!.value.prov.sources : [];
     assert.deepEqual(p, ['sha-up']);
   });
@@ -177,15 +179,15 @@ describe('the coverage footnote (one text for screen, slide and sheet)', () => {
     const res = weightedFundReturn(book, [embedded], '3y', 'family');
     assert.equal(
       footnoteOf(res),
-      '3Y: weighted average return of current holdings. 3Y covers 80% of MF value; 1 fund without a 3Y return excluded. Source: MF Monitor (embedded monthly data), Regular plans, as on 2026-10-31.',
+      '3Y: weighted average return of current holdings. 3Y covers 80.0% of MF value; 1 fund without a 3Y return excluded. Source: MF Monitor (embedded monthly data), Regular plans, as on 2026-10-31.',
     );
   });
   test('stocks, plural, and an undated source', () => {
     const wi = (id: string, cmv: number, x: number | null): WeightInput => ({ holdingId: id as HoldingId, cmvCr: present(cmv, 'cr', P), pick: x === null ? { excluded: 'no-return' } : { returnPct: x, source: 'analyst-price-file' } });
     const r = weightItems([wi('s1', 6, 10), wi('s2', 3, null), wi('s3', 1, null)], { scope: 'family', tenor: '5y', basis: 'equity-value', primary: 'analyst-price-file', asOn: missing(STATUS.NOT_AVAILABLE, 'x'), sourceIds: [], method: 'test' });
     const t = coverageFootnote(r.figure!, [{ source: 'analyst-price-file', asOn: r.figure!.asOn }], 0, excludedBy(r.items));
-    assert.equal(t, "5Y: weighted average return of current holdings. 5Y covers 60% of direct-equity value; 2 stocks without a 5Y return excluded. Source: analyst's price file, as on date not available.");
-    assert.ok(!/\b0(\.0+)?%/.test(t), 'no excluded item printed as 0%');
+    assert.equal(t, "5Y: weighted average return of current holdings. 5Y covers 60.0% of direct-equity value; 2 stocks without a 5Y return excluded. Source: analyst's price file, as on date not available.");
+    assert.ok(!/(^|[^\d.])0(\.0+)?%/.test(t), 'no excluded item printed as 0%'); // "0%" or "0.0%" as a number, not the end of "60.0%"
   });
   test('complete: no coverage clause', () => {
     const res = weightedFundReturn(book.slice(0, 2), [embedded], '3y', 'family');
@@ -315,9 +317,9 @@ describe('ARC-03 Gate B fixes (B1 to B3, L2, L5)', () => {
   test('L5: coverage just below 100% never reads 100%, just above 0% never reads 0%', () => {
     assert.equal(sharePct(0.9999), '99.9%');
     assert.equal(sharePct(0.0001), '0.1%');
-    assert.equal(sharePct(0.8), '80%');
-    assert.equal(sharePct(1), '100%');
-    assert.equal(sharePct(0), '0%');
+    assert.equal(sharePct(0.8), '80.0%');
+    assert.equal(sharePct(1), '100.0%');
+    assert.equal(sharePct(0), '0.0%');
   });
 });
 
@@ -431,7 +433,7 @@ describe('ARC-03 delta review of 49e9a34 (H1, M3, L2, pinned boundaries)', () =>
     ], [emb], '3y', 'family');
     assert.deepEqual(excludedBy(r.items), { 'no-return': 2, unmatched: 1, 'no-plan': 1, 'plan-mismatch': 1 });
     assert.equal(footnoteOf(r),
-      '3Y: weighted average return of current holdings. 3Y covers 40% of MF value; 2 funds without a 3Y return excluded; '
+      '3Y: weighted average return of current holdings. 3Y covers 40.0% of MF value; 2 funds without a 3Y return excluded; '
       + '1 holding not matched to a fund excluded; 1 fund with no known plan excluded; 1 fund whose plan differs from the account excluded. '
       + 'Source: MF Monitor (embedded monthly data), Regular plans, as on 2026-10-31.');
   });
@@ -493,5 +495,74 @@ describe('ARC-03 Gate B of the E-148 round: T2 (footnote groups by source AND pl
     const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(OCT, { [twin]: r3(12) }), direct: table(SEP30, { [twin]: r3(13) }) } };
     const r = weightedFundReturn([fh('a', twin, 1, 'regular'), fh('b', twin, 1, 'direct')], [up], '3y', 'family');
     assert.match(footnoteOf(r)!, /Source: uploaded MF Monitor, Regular plans, as on 2026-10-31; uploaded MF Monitor, Direct plans, as on 2026-09-30\.$/);
+  });
+});
+
+describe('L3 and S5 (MOD-05, 28 Nov 2026)', () => {
+  const NOV = ymdToDay(2026, 11, 20)!;
+  test('L3: a fund only in a table of another date is "not in the primary table", not "without a return"', () => {
+    const up = src('uploaded-mf-monitor', NOV, { 'Sample Alpha Fund-Reg(G)': r3(20) }, ['sha-up']);
+    const r = weightedFundReturn(book, [up, embedded], '3y', 'family');
+    assert.deepEqual(excludedBy(r.items), { 'other-date': 1, 'no-return': 1 });
+    assert.match(footnoteOf(r)!, /3Y covers 50\.0% of MF value; 1 fund without a 3Y return excluded; 1 fund not in the primary table \(its 3Y return is only in a table of another date\) excluded\./);
+  });
+  test('L3: a fund absent everywhere, or listed without the tenor in the other-date table, stays "without a return"', () => {
+    const up = src('uploaded-mf-monitor', NOV, { 'Sample Alpha Fund-Reg(G)': r3(20) });
+    const r = weightedFundReturn([book[0]!, fh('g', 'Sample Gamma Fund-Reg(G)', 1), fh('x', 'Sample Nowhere Fund', 1)], [up, embedded], '3y', 'family');
+    assert.deepEqual(r.items.map((i) => i.excluded), [null, 'no-return', 'no-return']);
+  });
+  test('L3: only the same plan counts; a same-date table that lists the fund without the tenor stays "no-return"', () => {
+    const twin = 'Sample Twin Fund';
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { regular: table(NOV, {}) } };
+    const emb: FundReturnSource = { source: 'embedded-mf-monitor', plans: { direct: table(OCT, { [twin]: r3(11) }) } };
+    // a Regular holding: the Direct table of another date does not make it 'other-date'
+    const r = weightedFundReturn([fh('a', twin, 1, 'regular')], [up, emb], '3y', 'family');
+    assert.deepEqual(r.items.map((i) => i.excluded), ['no-return']);
+    // listed without a 3Y return in the primary: an explicit answer, even when another date has one
+    const up2 = src('uploaded-mf-monitor', NOV, { 'Sample Beta Fund-Reg(G)': r3(null) });
+    const r2 = weightedFundReturn([book[1]!], [up2, embedded], '3y', 'family');
+    assert.deepEqual(r2.items.map((i) => i.excluded), ['no-return']);
+  });
+  test('S5: one share format, a fixed one decimal', () => {
+    assert.equal(sharePct(0.63), '63.0%');
+    assert.equal(sharePct(0.898), '89.8%');
+    assert.equal(sharePct(0.8982), '89.8%');
+    assert.equal(sharePct(0.5), '50.0%');
+  });
+});
+
+describe('L3: the financial review of bdae6b8 (plural, fill order, sources, undated, Direct)', () => {
+  const NOV = ymdToDay(2026, 11, 20)!;
+  test('two other-date funds: "their 3Y returns"', () => {
+    const up = src('uploaded-mf-monitor', NOV, { 'Sample Alpha Fund-Reg(G)': r3(20) });
+    const emb2 = src('embedded-mf-monitor', OCT, { 'Sample Beta Fund-Reg(G)': r3(6), 'Sample Delta Fund-Reg(G)': r3(7) });
+    const r = weightedFundReturn([book[0]!, book[1]!, fh('d', 'Sample Delta Fund-Reg(G)', 1)], [up, emb2], '3y', 'family');
+    assert.match(footnoteOf(r)!, /; 2 funds not in the primary table \(their 3Y returns are only in a table of another date\) excluded\./);
+  });
+  test('a same-date fill wins over a listing in a table of another date', () => {
+    const up = src('uploaded-mf-monitor', NOV, { 'Sample Alpha Fund-Reg(G)': r3(20) });
+    const packSame = src('screener-pack', NOV, { 'Sample Beta Fund-Reg(G)': r3(8) });
+    const r = weightedFundReturn([book[0]!, book[1]!], [up, embedded, packSame], '3y', 'family');
+    assert.deepEqual(r.items.map((i) => [i.source, i.excluded]), [['uploaded-mf-monitor', null], ['screener-pack', null]]);
+  });
+  test('any later table of another date with the return counts, even when an earlier one lacks the tenor', () => {
+    const up = src('uploaded-mf-monitor', NOV, {});
+    const noTenor = src('embedded-mf-monitor', OCT, { 'Sample Beta Fund-Reg(G)': { r: { '1Y': 4 } } });
+    const withIt = src('screener-pack', ymdToDay(2026, 9, 30)!, { 'Sample Beta Fund-Reg(G)': r3(6) });
+    const r = weightedFundReturn([book[1]!], [up, noTenor, withIt], '3y', 'family');
+    assert.deepEqual(r.items.map((i) => i.excluded), ['other-date']);
+  });
+  test('an undated primary or an undated other table: not known to be another date, so "without a return"', () => {
+    const upUndated = src('uploaded-mf-monitor', null, {});
+    assert.deepEqual(weightedFundReturn([book[1]!], [upUndated, embedded], '3y', 'family').items.map((i) => i.excluded), ['no-return']);
+    const up = src('uploaded-mf-monitor', NOV, {});
+    const embUndated = src('embedded-mf-monitor', null, { 'Sample Beta Fund-Reg(G)': r3(6) });
+    assert.deepEqual(weightedFundReturn([book[1]!], [up, embUndated], '3y', 'family').items.map((i) => i.excluded), ['no-return']);
+  });
+  test('a Direct holding listed only in a Regular table of another date stays "without a return"', () => {
+    const twin = 'Sample Twin Fund';
+    const up: FundReturnSource = { source: 'uploaded-mf-monitor', plans: { direct: table(NOV, {}) } };
+    const emb: FundReturnSource = { source: 'embedded-mf-monitor', plans: { regular: table(OCT, { [twin]: r3(11) }) } };
+    assert.deepEqual(weightedFundReturn([fh('b', twin, 1, 'direct')], [up, emb], '3y', 'family').items.map((i) => i.excluded), ['no-return']);
   });
 });
