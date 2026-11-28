@@ -108,11 +108,13 @@ export function normalizeV2(s: unknown): string[] {
   return out;
 }
 
+const LONG_IDCW = /(^|[^a-z0-9])cum[^a-z0-9]+capital[^a-z0-9]+withdrawal(?![a-z0-9])/gi;
+
 /** A name without AMFI's long form of IDCW after "cum" (KI-321; the same phrase COMPOUNDS_V2 reads as option words),
- * lower case with punctuation as spaces: for the legacy key of a name that an alias list is asked about. */
+ * for the legacy key of a name that the owner's alias list is asked about. Only those two words are taken out: a name
+ * that does not carry them comes back unchanged, so its key is its legacy key. */
 export function withoutLongIdcw(s: unknown): string {
-  const t = ' ' + legacyString(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() + ' ';
-  return t.split(' cum capital withdrawal ').join(' cum ').trim();
+  return legacyString(s).replace(LONG_IDCW, '$1cum');
 }
 
 /** The normalised key of a name: its tokens joined by one space (the legacy `normalize(name).join(" ")`). */

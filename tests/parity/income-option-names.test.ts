@@ -2,8 +2,9 @@
 // AMFI writes the income option of many schemes as "... Payout of Income Distribution cum capital withdrawal option".
 // The second normaliser now reads "capital withdrawal" after "cum" as option words (KI-321), so such a name finds its
 // scheme's row in the fund table, as its Growth-option name does. The row is the scheme's Growth record: the fund
-// table carries no income-option records, so an income-option holding shows the Growth record's figures, as every
-// IDCW holding already does (the convention is not new here).
+// table carries an income-option record for three liquid ETFs only, so for every other scheme an income-option holding
+// shows the Growth record's figures, as every IDCW holding already does (the convention is not new here; KI-324).
+// For those three ETFs the long form finds the income record, as "IDCW" does (the financial review's F-1).
 //
 // Known answers, worked without the rule under test (tests/parity/amfi-income-names.ts): for 335 of the 499 names the
 // one right answer is known from AMFI's own fund house and category (tier A through FUND_RANKS_CODES, no name
@@ -18,8 +19,8 @@ import fs from 'node:fs';
 import { AMFI_INCOME_NAMES, INCOME_WORDS, categoryOf, fundTableSha256, type IncomeNames } from './amfi-income-names.ts';
 import { refdataBlock } from '../helpers/legacy-engine.ts';
 import { committedBlocks } from '../helpers/match-blocks.ts';
-import { matchInstrumentDetail, type TokenCache } from '../../app/src/engine/match/instrument.ts';
-import { normalize, normalizeV2 } from '../../app/src/engine/match/normalize.ts';
+import { matchInstrument, matchInstrumentDetail, optionOf, type TokenCache } from '../../app/src/engine/match/instrument.ts';
+import { nameKey, normalize, normalizeV2, withoutLongIdcw } from '../../app/src/engine/match/normalize.ts';
 import { buildMatchContext } from '../../app/src/engine/match/resolve-holdings.ts';
 
 const corpus = JSON.parse(fs.readFileSync(AMFI_INCOME_NAMES, 'utf8')) as IncomeNames;
@@ -33,6 +34,12 @@ const cacheLive: TokenCache = new Map();
 const rows: Row[] = corpus.names.map((n) => {
   const d = matchInstrumentDetail(n.amfiName, n.amc, candidates, cacheNew, options);
   return { ...n, got: d.key, step: d.step, live: matchInstrumentDetail(n.amfiName, n.amc, candidates, cacheLive).key };
+});
+/* The same names with no fund house given (a base file may not carry one). */
+const cacheBare: TokenCache = new Map();
+const rowsBare: Row[] = corpus.names.map((n) => {
+  const d = matchInstrumentDetail(n.amfiName, '', candidates, cacheBare, options);
+  return { ...n, got: d.key, step: d.step, live: null };
 });
 const of = (tier: Row['tier']): Row[] => rows.filter((r) => r.tier === tier);
 const show = (r: Row): string => `${r.code} ${r.amfiName} => ${r.got} [${r.step}]`;
@@ -101,6 +108,61 @@ describe('KI-321: the income-option names against their known answers', () => {
   });
 });
 
+describe('KI-321: the same measure with no fund house given, and each answer read word by word', () => {
+  test('no wrong fund in any tier; 12 more names resolve, each to its own scheme', (t) => {
+    const tier = (x: Row['tier']): Row[] => rowsBare.filter((r) => r.tier === x);
+    assert.deepEqual(tier('A').concat(tier('B')).filter((r) => r.got !== null && r.got !== r.vendorKey).map(show), []);
+    assert.deepEqual(tier('several').filter((r) => r.got !== null && !(r.group ?? []).includes(r.got) && r.code !== '135744').map(show), []);
+    assert.deepEqual(tier('absent').filter((r) => r.got !== null).map(show), []);
+    // a name that resolves both ways resolves to the same row
+    assert.deepEqual(rows.filter((r, i) => r.got !== null && rowsBare[i]!.got !== null && r.got !== rowsBare[i]!.got).map(show), []);
+    const counts = { A: tier('A').filter((r) => r.got === r.vendorKey).length, B: tier('B').filter((r) => r.got === r.vendorKey).length, several: tier('several').filter((r) => r.got !== null).length, matched: rowsBare.filter((r) => r.got !== null).length };
+    t.diagnostic(JSON.stringify(counts));
+    if (!SAME_DATA) { t.diagnostic('REPORT ONLY: the fund table changed since the corpus was built'); return; }
+    // the 12 more are TRUSTMF's liquid and short term funds: the house's word as AMFI writes it is not in the vendor's names
+    assert.deepEqual(counts, { A: 138, B: 189, several: 113, matched: 440 });
+  });
+
+  test('every answer carries no scheme word the official name lacks (the tier "several" included)', () => {
+    // "fund" apart (four official names leave it out); the two Kotak names come through the owner's lines 19 and 20
+    const extra = (r: Row): string[] => { const have = new Set(normalizeV2(r.amfiName)); return normalizeV2(r.got).filter((w) => w !== 'fund' && !have.has(w)); };
+    for (const set of [rows, rowsBare]) {
+      const bad = set.filter((r) => r.got !== null && r.step !== 'owner-alias' && extra(r).length > 0);
+      assert.deepEqual(bad.map((r) => `${show(r)} | ${extra(r).join(' ')}`), []);
+      assert.deepEqual(set.filter((r) => r.step === 'owner-alias').map((r) => r.code).sort(), ['133799', '133800']);
+    }
+  });
+});
+
+describe('KI-321: the long form is an income option, also without the letters IDCW (the financial review, F-1)', () => {
+  // The fund table carries a Growth and an income record for three liquid ETFs. A holding written the long way must
+  // take the income record, as one written "IDCW" does: its figures and its inception date are that record's.
+  const ETFS = candidates.filter((k) => k.endsWith('(IDCW)'));
+
+  test('optionOf reads the long form', () => {
+    assert.equal(optionOf('Zeta Fund - Income Distribution cum Capital Withdrawal'), 'idcw');
+    assert.equal(optionOf('Zeta Fund - Income Distribution cum Capital Withdrawal Option'), 'idcw');
+    assert.equal(optionOf('Zeta Fund - Growth'), 'growth');
+    assert.equal(optionOf('Zeta Capital Builder Value Fund'), 'growth');
+    assert.equal(optionOf('Zeta Fixed Income Fund - Growth'), 'growth');
+    // no reference name carries the long form, so no reference key changes its option
+    for (const b of ['MF_PERF', 'MF_PERF_DIRECT', 'SIF_PERF', 'PMS_PERF', 'AIF_PERF']) assert.ok(!Object.keys(refdataBlock(b)).some((k) => /income distribution|capital withdrawal/i.test(k)), b);
+  });
+
+  test('the three liquid ETFs: the long form finds the income record, a Growth name the Growth record', (t) => {
+    if (!SAME_DATA) { t.diagnostic('REPORT ONLY: the fund table changed since the corpus was built'); return; }
+    assert.deepEqual(ETFS, ['ICICI Pru BSE Liquid Rate ETF(IDCW)', 'Mirae Asset Nifty 1D Rate Liquid ETF(IDCW)', 'SBI Nifty 1D Rate Liquid ETF(IDCW)']);
+    for (const income of ETFS) {
+      const stem = income.replace('(IDCW)', '');
+      for (const q of [`${stem} - Income Distribution cum Capital Withdrawal Option`, `${stem} - Income Distribution cum Capital Withdrawal`, `${stem} - IDCW`]) {
+        assert.equal(matchInstrument(q, '', candidates, undefined, options), income, q);
+      }
+      const growth = matchInstrument(`${stem} - Growth`, '', candidates, undefined, options);
+      assert.ok(growth !== null && growth.endsWith('(G)') && nameKey(growth) === nameKey(income), `${stem}: ${growth}`);
+    }
+  });
+});
+
 describe('KI-321: the rule itself', () => {
   test('by hand: the words after "cum" are option words; the name reads as its Growth-option name does', () => {
     assert.deepEqual(normalizeV2('Kotak Gilt Fund -Investment Regular-Payout of Income Distribution cum capital withdrawal option'), ['kotak', 'gsec', 'fund', 'investment']);
@@ -114,6 +176,13 @@ describe('KI-321: the rule itself', () => {
     assert.deepEqual(normalizeV2('Zeta Capital Withdrawal Fund'), ['zeta', 'capital', 'withdrawal', 'fund']);
     // the other order, which 4 of the 499 names use, is not covered: such a name stays unmatched (recorded in KI-321)
     assert.ok(normalizeV2('Zeta Fund - Capital Withdrawal cum Income Distribution').includes('withdrawal'));
+  });
+
+  test('the owner\'s list is asked by the key without the two words only: a name without them keeps its legacy key (F-2)', () => {
+    assert.equal(withoutLongIdcw('Zeta Fund - Payout of Income Distribution cum capital withdrawal option'), 'Zeta Fund - Payout of Income Distribution cum option');
+    assert.equal(withoutLongIdcw('Zeta Fund-Income Distribution cum  Capital-Withdrawal (IDCW)'), 'Zeta Fund-Income Distribution cum (IDCW)');
+    const plain = [...candidates, 'Kotak Standard Multi - Cap Fund', 'HDFC Capital Builder Value Fund', 'Zeta Capital Withdrawal Fund', 'Zeta Fund - Capital Withdrawal cum Income Distribution'];
+    for (const n of plain) assert.equal(withoutLongIdcw(n), n);
   });
 
   test('the legacy normaliser, and so the alias keys and the parity measure, are unchanged', () => {

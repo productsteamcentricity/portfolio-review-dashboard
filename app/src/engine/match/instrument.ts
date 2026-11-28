@@ -150,11 +150,15 @@ export type PlanOption = 'growth' | 'idcw' | 'bonus';
 
 const IDCW_WORDS = ['idcw', 'dividend', 'div', 'payout', 'reinvestment', 'reinvest'];
 
-/** The option a name states: IDCW (any dividend wording), bonus, else growth (the default when none is stated).
- * "Dividend Yield" is a fund category, part of the scheme's name, not an option. */
+/** AMFI's long form of IDCW, which may stand in a name without the letters IDCW or a payout word (KI-321). */
+const IDCW_PHRASES = ['income distribution', 'cum capital withdrawal'];
+
+/** The option a name states: IDCW (any dividend wording, or the long form "Income Distribution cum Capital
+ * Withdrawal"), bonus, else growth (the default when none is stated). "Dividend Yield" is a fund category, part of the
+ * scheme's name, not an option. */
 export function optionOf(name: unknown): PlanOption {
   const w = ` ${wordsOf(name)} `.split(' dividend yield ').join(' ');
-  if (IDCW_WORDS.some((x) => w.includes(` ${x} `))) return 'idcw';
+  if (IDCW_WORDS.some((x) => w.includes(` ${x} `)) || IDCW_PHRASES.some((x) => w.includes(` ${x} `))) return 'idcw';
   if (w.includes(' bonus ')) return 'bonus';
   return 'growth';
 }
