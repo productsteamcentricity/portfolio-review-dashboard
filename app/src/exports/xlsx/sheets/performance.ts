@@ -12,6 +12,9 @@
 // Columns: Plan | Bucket | As On | Tenors | Group | Row | Name | Matched To | Inception | AUM (Cr.) | 1M | 3M | 6M | 1Y |
 // 2Y | 3Y | 5Y | 10Y | SI | Large (%) | Mid (%) | Small (%) | Others (%) | YTM (%) | Avg Maturity (yrs) |
 // Mod Duration (yrs) | Status | Note.
+// KI-302 (the owner, 28 Nov 2026): a since-inception return shown as absolute (a fund under one year old) says so in
+// the row's Note, with the days and the data's annualised figure; one not shown is a blank cell with its status and the
+// reason in the Note. The returns note itself is in the Read Me.
 
 import type { CellSpec, SheetSpec, StyleSpec } from '../spec.ts';
 import type { FundRow, PerfBucket, PerformanceResult, Tenor } from '../../../engine/returns/performance.ts';
@@ -47,14 +50,18 @@ function dateCell(d: Value<DayNumber>): CellSpec {
   return d.kind === 'value' ? numCell(dayToExcelSerial(d.v), DATE) : null;
 }
 
-/** The status and the reason of a row's missing tenors (the bucket's own tenors only). */
-function statusOf(r: Partial<Record<Tenor, Value<number>>>, cols: readonly Tenor[]): { status: string | null; note: string | null } {
-  const gone = cols.filter((c) => r[c]?.kind === 'missing');
-  if (gone.length === 0) return { status: null, note: null };
+/** The status and the reason of a row's missing tenors (the bucket's own tenors only). A since-inception return that is
+ * not shown (KI-302) is not "no figure in the data": its own reason and status are given beside the others'. */
+function statusOf(r: Partial<Record<Tenor, Value<number>>>, cols: readonly Tenor[], siNotShown = false): { status: string | null; note: string | null } {
+  const si = siNotShown && r.SI?.kind === 'missing' ? r.SI : null;
+  const gone = cols.filter((c) => r[c]?.kind === 'missing' && !(si && c === 'SI'));
+  const siNote = si ? `SI: ${si.reason}.` : null;
+  if (gone.length === 0) return { status: si ? si.status : null, note: siNote };
   const first = r[gone[0]!]!;
   const status = first.kind === 'missing' ? first.status : STATUS.NOT_AVAILABLE;
-  if (gone.length === cols.length) return { status, note: first.kind === 'missing' ? first.reason : null };
-  return { status, note: `No ${gone.join(', ')} figure in the data.` };
+  const both = si && si.status !== status ? `${status}; ${si.status}` : status;
+  if (!si && gone.length === cols.length) return { status, note: first.kind === 'missing' ? first.reason : null };
+  return { status: both, note: [`No ${gone.join(', ')} figure in the data.`, siNote].filter((x) => x !== null).join(' ') };
 }
 
 function bucketRows(push: (r: Row, style?: StyleSpec) => void, b: PerfBucket, planList: 'Regular' | 'Direct'): void {
@@ -71,7 +78,7 @@ function bucketRows(push: (r: Row, style?: StyleSpec) => void, b: PerfBucket, pl
   for (const g of b.groups) {
     const group = strCell(g.label);
     for (const f of g.funds) {
-      const s = statusOf(f.r, b.cols);
+      const s = statusOf(f.r, b.cols, f.si?.basis === 'not-shown');
       const row: Row = { ...base, group, row: strCell('Fund'), name: strCell(f.name), key: opt(f.key), inception: opt(f.inception), aum: v(f.aum, NUM) };
       for (const c of b.cols) row[c] = v(f.r[c], PCT);
       row.large = v(f.mcap.Large, PCT); row.mid = v(f.mcap.Mid, PCT); row.small = v(f.mcap.Small, PCT); row.others = v(f.mcap.Others, PCT);
@@ -82,7 +89,13 @@ function bucketRows(push: (r: Row, style?: StyleSpec) => void, b: PerfBucket, pl
       /* N8: in the Direct list a single-plan ETF shows the Regular block's figures, so its row carries that block's date */
       if (mf && planList === 'Direct' && f.plan === 'single-plan' && b.singlePlanAsOn) row.asOn = dateCell(b.singlePlanAsOn);
       const planNote = mf && planList === 'Direct' ? PLAN_TEXT[f.plan] : '';
-      row.note = opt([planNote, s.note ?? ''].filter((x) => x !== '').join('. ') || null);
+      /* KI-302: an absolute since-inception return says so, with what it was worked from */
+      const siNote = f.si?.basis === 'absolute'
+        ? `SI is an absolute return over ${f.si.days} days: the fund is under one year old on this date; the data's annualised figure is ${f.si.vendorAnnualised}%`
+        : '';
+      /* without an SI note the text is as before; the SI note closes with its own full stop when nothing follows it */
+      const parts = [planNote, siNote, s.note ?? ''].filter((x) => x !== '');
+      row.note = opt(`${parts.join('. ')}${siNote && !s.note ? '.' : ''}` || null);
       push(row);
     }
     for (const bm of g.benchmarks) {
