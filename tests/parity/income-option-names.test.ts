@@ -2,7 +2,7 @@
 // AMFI writes the income option of many schemes as "... Payout of Income Distribution cum capital withdrawal option".
 // The second normaliser now reads "capital withdrawal" after "cum" as option words (KI-321), so such a name finds its
 // scheme's row in the fund table, as its Growth-option name does. The row is the scheme's Growth record: the fund
-// table carries an income-option record for three liquid ETFs only, so for every other scheme an income-option holding
+// table carries both a Growth and an income record for three liquid ETFs only, so for any other scheme an income-option holding
 // shows the Growth record's figures, as every IDCW holding already does (the convention is not new here; KI-324).
 // For those three ETFs the long form finds the income record, as "IDCW" does (the financial review's F-1).
 //

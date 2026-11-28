@@ -27,8 +27,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   unchanged at every stage.
 - **What an income-option holding shows**: the scheme's Growth record, as every IDCW holding already does; the plan,
   Regular or Direct, is read from the name as before. Nothing new is worked out for it, and nothing on the page says
-  the figures are the Growth record's (KI-324, an existing gap that this change widens). The fund table carries an
-  income record of its own for three liquid ETFs only; so that a holding of one of them written the long way takes
+  the figures are the Growth record's (KI-324, an existing gap that this change widens). The fund table carries both a
+  Growth and an income record for three liquid ETFs only; so that a holding of one of them written the long way takes
   that record, as one written "IDCW" does, `optionOf` now reads "Income Distribution cum Capital Withdrawal" as an
   income option also where the name has neither "IDCW" nor a payout word (the financial review's F-1; no reference
   name carries the words, so no other answer moves).
