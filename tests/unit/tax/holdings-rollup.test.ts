@@ -135,6 +135,23 @@ describe('clients add back to the family; legacy figures', () => {
     assert.equal(lt.kind === 'value' && lt.coverage, 0.75);
     assert.match(lt.kind === 'value' ? lt.prov.method : '', /PARTIAL COVERAGE: 1 holding of 4/);
   });
+  test('M7b F-2, F-3: the unreconciled holding makes both legacy figures PARTIAL; with every holding unreconciled, NOT AVAILABLE', () => {
+    // Split holdings (a split holding counted once): Large Cap, Mid Cap, Corporate Bond, Flexi Cap = 4; unreconciled: the
+    // Focused fund = 1. st: 11,000, coverage 4 / 5 = 0.8; lt: the lower of 0.75 (unknown gain) and 0.8, 0.75; both name
+    // the holding not split. Every holding unreconciled (as with no IRR file): NOT AVAILABLE, never Rs 0.
+    const { st, lt } = r.legacy.unrealised;
+    assert.equal(st.kind === 'value' && st.coverage, 0.8);
+    assert.equal(lt.kind === 'value' && lt.coverage, 0.75);
+    for (const x of [st, lt]) assert.match(x.kind === 'value' ? x.prov.method : '', /PARTIAL COVERAGE: 1 holding not split \(unreconciled with the IRR file\) left out/);
+    const none = build([
+      { client: A, name: 'Sample Fund One', cls: 'equityMf', cmv: 1000, status: 'unreconciled', gain: 100 },
+      { client: A, name: 'Sample Fund Two', cls: 'equityMf', cmv: 2000, status: 'unreconciled', gain: 200 },
+    ]).legacy.unrealised;
+    for (const x of [none.st, none.lt]) {
+      assert.equal(x.kind, 'missing');
+      assert.equal(x.kind === 'missing' && x.reason, 'no holding is split into long and short term: 2 holdings not split (unreconciled with the IRR file) left out');
+    }
+  });
   test('gainValue: NOT AVAILABLE when every gain is unknown', () => {
     const v = gainValue({ known: 0, holdings: 2, unknown: 2 }, PROV);
     assert.equal(v.kind, 'missing');

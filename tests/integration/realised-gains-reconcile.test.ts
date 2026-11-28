@@ -236,6 +236,11 @@ describe('the review figure tax.realisedFY: the statement where it covers the ye
     const b = fy.clients.find((c) => c.source === 'derived from transactions')!;
     near(v(b.unknownTerm), 400, 'B unknown term'); near(v(b.total), 400, 'B total');
     near(v(fy.lt), 1700, 'lt'); near(v(fy.st), 0, 'st'); near(v(fy.unknownTerm), 400, 'unknown'); near(v(fy.total), 2100, 'total');
+    // M7b F-4: B's term is not known, so B's long and short figures are NOT AVAILABLE (not 0), and the family's long and
+    // short figures are A's alone, PARTIAL (a client figure missing): never complete while a gain's term is unknown.
+    assert.equal(b.lt.kind, 'missing'); assert.equal(b.st.kind, 'missing');
+    assert.match(b.lt.kind === 'missing' ? b.lt.reason : '', /^the term of 1 counted lot is not known/);
+    assert.ok(fy.lt.kind === 'value' && fy.lt.coverage !== undefined && fy.lt.coverage < 1, JSON.stringify(fy.lt));
   });
 
   test('a year the statement covers for every client: the statement alone', () => {
