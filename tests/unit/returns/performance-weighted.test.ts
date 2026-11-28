@@ -95,7 +95,7 @@ describe('E-147 on screen and in the sheet', () => {
   });
 
   test('one coverage footnote per figure (every rendering carries it), and the marker\'s legend', () => {
-    assert.equal(w.notes[0], 'Family, 3Y: weighted average return of current holdings. 3Y covers 80% of MF value; 1 fund without a 3Y return excluded. Source: MF Monitor (embedded monthly data), Regular plans, as on 31 Oct 2026.');
+    assert.equal(w.notes[0], 'Family, 3Y: weighted average return of current holdings. 3Y covers 80.0% of MF value; 1 fund without a 3Y return excluded. Source: MF Monitor (embedded monthly data), Regular plans, as on 31 Oct 2026.');
     assert.equal(w.notes[1], 'Family, 5Y: weighted average return of current holdings. Source: MF Monitor (embedded monthly data), Regular plans, as on 31 Oct 2026.');
     assert.equal(w.notes.length, 7);
     assert.equal(w.notes[6], 'A figure marked p covers only part of the mutual-fund value; its note gives the share and what was left out.');
@@ -158,6 +158,6 @@ describe('B1 of the follow-up\'s financial review: a Direct-plan holding is read
   test('5Y: (5 x 11 + 2 x 4) / 7 = 9.00% at 70%; the footnote counts the Direct holding with no twin and names the Direct table', () => {
     assert.ok(Math.abs(pct(r.byTenor['5y'].figure!.value) - 63 / 7) < 1e-9);
     const w = buildPerformanceVM(computePerformance(D, SRC2, { fundSources: FUNDS2 }), 'regular').weighted!;
-    assert.equal(w.notes[1], 'Family, 5Y: weighted average return of current holdings. 5Y covers 70% of MF value; 1 fund whose plan differs from the account excluded. Source: MF Monitor (embedded monthly data), Regular plans, as on 31 Oct 2026; MF Monitor (embedded monthly data), Direct plans, as on 31 Oct 2026.');
+    assert.equal(w.notes[1], 'Family, 5Y: weighted average return of current holdings. 5Y covers 70.0% of MF value; 1 fund whose plan differs from the account excluded. Source: MF Monitor (embedded monthly data), Regular plans, as on 31 Oct 2026; MF Monitor (embedded monthly data), Direct plans, as on 31 Oct 2026.');
   });
 });

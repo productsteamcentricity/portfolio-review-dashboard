@@ -562,7 +562,7 @@ async function runMode({ browser, mode, files, opt, expect }) {
     s5.weighted !== null && s5.weighted.caption === 'Weighted average return of current holdings (mutual funds)'
       && JSON.stringify(s5.weighted.rows.map((r) => r[0])) === JSON.stringify(['Family', 'Sample Client A', 'Sample Client B'])
       && s5.weighted.rows.every((r) => r.slice(1).every((c) => !/[0-9]/.test(c)))
-      && s5.weighted.notes.length === 6 && s5.weighted.notes.every((n) => /^(Family|Sample Client [AB]), [35]Y: weighted average return of current holdings\. [35]Y covers 0% of MF value; [0-9]+ holdings? not matched to a fund excluded\.$/.test(n)),
+      && s5.weighted.notes.length === 6 && s5.weighted.notes.every((n) => /^(Family|Sample Client [AB]), [35]Y: weighted average return of current holdings\. [35]Y covers 0\.0% of MF value; [0-9]+ holdings? not matched to a fund excluded\.$/.test(n)),
     s5.weighted);
   expect('section 5: one holdings table per client, highest CMV first, with the CZHOLD columns (U-23)',
     JSON.stringify(s5.captions) === JSON.stringify(['Holdings of Sample Client A', 'Holdings of Sample Client B']) && s5.heads[0] === 'Instrument Name' && s5.heads.includes('Distributor') && s5.heads.length === 10, s5);
