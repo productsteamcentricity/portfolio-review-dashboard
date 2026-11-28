@@ -129,6 +129,34 @@ the last section of its Gate B of round 2c). No page change: the engine is impor
   not decidable), another receiving scheme that one or more of the ambiguous sources could have made is a candidate too:
   its switch ins are lots not known and its holding unreconciled 'mergerCandidate' (H2). No parity figure changed.
 
+### Added (new build: the owner's fund aliases, lines 18 to 22, 28 Nov 2026; no change to `index.html`; `/next/` changes)
+- **`data/owner/fund-aliases.json`**, lines 18 to 22, approved by the owner on 28 Nov 2026 ("Approve all five
+  (Recommended)", decision log 2.4): the four official AMFI scheme names that the stricter matching regime (two of them) and its
+  normaliser follow-up (the other two) left unmatched now resolve to the vendor's name for the same scheme, in the Regular and the Direct plan: UTI Focused Fund
+  (30 stocks); Kotak Infrastructure & Economic Reform Fund, with and without "Standard Plan" (two lines); Navi Nifty
+  Smallcap 250 Momentum quality index fund; Baroda BNP Paribas Best-in-Class Strategy Fund. They are spellings, not
+  renames: each official name and its vendor name carry the same AMFI scheme code (AMFI's NAV file and
+  `data/refdata/FUND_RANKS_CODES.json`). Each line carries its own `approved` date and `approvedBy`; the file's date
+  stays that of lines 1 to 17. Evidence links in `data/owner/fund-aliases-evidence.json`.
+- **`app/src/engine/match/owner-aliases.ts`**: the reader accepts a line's own approval (both fields or neither; a date
+  on or after the file's). No change to how an alias applies.
+- **Measured both ways** (`tests/parity/matching-corrections.ts`, `matching-corrections-ledger.json`): a fifth stage with
+  the owner's aliases, a full sweep. Of 1,206 official names it resolves 1,202 correctly (1,198 before; the live matcher
+  1,195), loses none that the live matcher resolves, and changes no other answer: the four stages before it are
+  unchanged in the ledger, and its own changes are those of the stage before less the four recovered names.
+- **Tests**: `tests/unit/match/owner-aliases.test.ts` (per line: each official AMFI name whose key is the line's, 12 of the
+  four schemes' 14, is unmatched without the line and resolves to the vendor's fund in its own plan with it; the other
+  two, the Kotak scheme's income option, stay unmatched and are pinned so, KI-321; the Direct list's record of each
+  target is the line's own direct target; the vendor's rank file gives the
+  target the official name's code; no MF_PERF or MF_PERF_DIRECT name moves), `tests/unit/match/corpus.test.ts` (the last
+  stage loses no official name).
+- **`app/src/views/matching.ts`**: the import report's label of an alias match no longer says "renamed scheme" alone: "a
+  renamed scheme, or another spelling of it".
+- **Known issue KI-321**: official names with the words "capital withdrawal" (the income option) are not matched by the
+  new build: 495 of the 499 such names, 444 of which the live matcher resolves. Not caused by these lines.
+- **`tests/side-by-side/`** (the kit): SB-15, SB-16 and the rows that followed them, SB-37 and SB-38, are retired: they
+  were known gaps, and both builds now match the same fund with the same figures. No known gap is left in the kit.
+
 ### Changed (tooling: the new app's build ignores where `node_modules` really lives, 28 Nov 2026; `/next/` byte-identical)
 - **`scripts/build.mjs`**: esbuild's `preserveSymlinks` is on, so a worktree whose `node_modules` is a junction to
   another worktree's builds the same page. Before, the bundler wrote the resolved path into three Preact module

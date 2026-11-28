@@ -5,11 +5,11 @@ enters a table only after the owner's approval; nothing here is generated. See [
 
 | File | Content | Decision | Read by |
 |---|---|---|---|
-| `fund-aliases.json` | Renamed schemes: an old scheme name and the renamed fund's Regular and Direct vendor keys, each line with public evidence and the rename date where known | PD-36 (OD-5), approved line by line on 25 Nov 2026 | `app/src/engine/match/owner-aliases.ts` (sprint 2a, KI-050) |
+| `fund-aliases.json` | Renamed schemes (lines 1 to 17): an old scheme name and the renamed fund's Regular and Direct vendor keys, each line with public evidence and the rename date where known. Lines 18 to 22 are not renames: each is AMFI's official spelling of a scheme the vendor spells differently, tied to the target by the AMFI scheme code | PD-36 (OD-5), approved line by line by the owner: lines 1 to 9 and 11 to 17 on 25 Nov 2026, lines 18 to 22 on 28 Nov 2026 (each of those lines carries its own date and approver) | `app/src/engine/match/owner-aliases.ts` (sprint 2a, KI-050) |
 
 ## Fund aliases: rules
 
-- **One line per owner-approved rename.** The key is the normalised old name; the parser refuses a line whose key is
+- **One line per owner-approved rename or spelling.** The key is the normalised old name; the parser refuses a line whose key is
   not `normalize(oldName)`, a repeated key, a line without evidence, or a target equal to its own old name.
 - **An alias applies only where its target is among the candidates**, after the stable identifiers and the exact vendor
   key and before the exact normalised name. It never crosses product class.
