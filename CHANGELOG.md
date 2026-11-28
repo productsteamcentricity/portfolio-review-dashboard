@@ -36,7 +36,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   stage loses no official name).
 - **`app/src/views/matching.ts`**: the import report's label of an alias match no longer says "renamed scheme" alone: "a
   renamed scheme, or another spelling of it".
-- **Known issue KI-321**: official names with the words "capital withdrawal" (the income option) are not matched.
+- **Known issue KI-321**: official names with the words "capital withdrawal" (the income option) are not matched by the
+  new build: 495 of the 499 such names, 444 of which the live matcher resolves. Not caused by these lines.
 - **`tests/side-by-side/`** (the kit): SB-15, SB-16 and the rows that followed them, SB-37 and SB-38, are retired: they
   were known gaps, and both builds now match the same fund with the same figures. No known gap is left in the kit.
 
