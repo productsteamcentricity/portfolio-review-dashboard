@@ -4,6 +4,26 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Fixed (new build, M7a tax round 4; not wired into the page yet)
+PLAN-09 (MOD-05, 28 Nov 2026). No behaviour change on the page: the engine is imported by no page module, and the page
+calls no capital-gains reader function (it imports only the reader's column table, for the blank template).
+- **W-1 (`classify.ts`, `lots.ts`; Q-49; KI-341; CHAT-012's Gate B of round 3 d7e1818):** Commodity ETF, International
+  ETFs, Commodity Mutual Fund and Global Funds units bought from 1 Apr 2023 were Specified mutual fund units (s.50AA:
+  deemed short term, at the slab rate) for sales up to 31 Mar 2025; table v1 applies the new definition to sales from
+  1 Apr 2025 (NE-50AA-2, line 568). A gate per class (`I21_PERIODS_GATES`, each with its table v1 line) makes such a lot
+  short term as on a date before 1 Apr 2025, and the record names why. Its short-term I-21 rate is the slab rate, so
+  its tax is the existing slab dash (no slab rate invented, PD-07). CHAT-012's case (a Commodity ETF, 100 units bought
+  1 May 2023 at 100, CMV 13,000) as on 31 Jan 2025 is short 3,000 with the slab dash, no longer long 3,000 and tax 375;
+  as on 1 Apr 2025 it is long 3,000 as before; lots bought before 1 Apr 2023 are unchanged; before 23 Jul 2024 round
+  3's B-1 rule already leaves these classes not split. Round 3's period proof now covers every sale day from 23 Jul
+  2024 to 31 Mar 2027 and derives each gate from table v1. Parity: book `tax-w1`, TX-15 to TX-17 and TXR-25 to TXR-29.
+- **KI-323 (`ingest/capital-gains.ts`; MOD-05's ruling):** `scrubText` also removes and counts a PAN written with a
+  space or a hyphen between its groups (one separator or both, mixed or not, any letter case) when no letter or digit
+  touches it; without that guard ordinary text such as "... April 2033 Index Fund" in the reference names would be cut.
+  A check over every reference string and fixture line shows nothing else is removed.
+- **Not built:** round 2c L3 (row-level matching of a merger's switch in) needs the owner's answer on how the export
+  writes a merger (Q-T5); S-2 stays as built (MOD-05: NO; on the owner's list).
+
 ### Fixed (new build, M7a tax round 3: conditions before wiring; not wired into the page yet)
 These are conditions before the tax engine is wired (PLAN-08, MOD-05, 28 Nov 2026; CHAT-012's Gate B of M7b b299804 and
 the last section of its Gate B of round 2c). No page change: the engine is imported by no page module.
