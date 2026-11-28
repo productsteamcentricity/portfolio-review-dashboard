@@ -993,15 +993,26 @@ describe('E1 (delta review of 8ed1dc7): same-day merger chains', () => {
     assert.ok(r.schemeYears.every((s) => s.realised.kind === 'missing'));
   });
 
-  test('a same-day chain that does not fit (unequal totals) stays computed', () => {
-    // As (b) but Focused receives 19,000: the chain's ends do not agree (20,000 out against 19,000 in), and no other shape
-    // fits, so Contra 5,000 and Value 1,000 stay computed.
+  test('a same-day chain whose ends do not agree: the first link still fits many into one (M7b B2); a chain that fits no link stays computed', () => {
+    // As (b) but Focused receives 19,000: the chain's ends do not agree (20,000 out against 19,000 in), so it is no chain
+    // candidate. Since M7b B2 (KI-340) many into one is tested per receiving scheme: Contra and Value's 20,000 equals
+    // Small Cap's 20,000 in, so they are candidates and Small Cap's onward switch out is a successor gap (ef5e80b
+    // computed Contra 5,000 and Value 1,000 here). When Small Cap itself receives 19,000 (and passes it to Focused), no
+    // link of Contra and Value fits: Contra 5,000 and Value 1,000 stay computed.
     const r = intoNew([
       flow(A, NEW, [2023, 11, 10], 'Switch Out', 150, 20000), flow(A, LAST, [2023, 11, 10], 'Switch In', 150, -19000),
     ]);
-    assert.equal(r.counts.mergerCandidates, 0);
-    assert.deepEqual(lotsOf(r, OLD).map((x) => [x.gap, v(x.realised)]), [[null, 5000]]);
-    assert.deepEqual(lotsOf(r, OLD2).map((x) => [x.gap, v(x.realised)]), [[null, 1000]]);
+    assert.deepEqual(gapsOf(r, OLD), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, OLD2), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, NEW), [['merger-candidate', 'successor']]);
+    const none = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD2, [2019, 7, 1], 'Purchase', 40, -4000),
+      flow(A, OLD, [2023, 11, 10], 'Switch Out', 150, 15000), flow(A, OLD2, [2023, 11, 10], 'Switch Out', 50, 5000),
+      flow(A, NEW, [2023, 11, 10], 'Switch In', 150, -19000),
+      flow(A, NEW, [2023, 11, 10], 'Switch Out', 150, 19000), flow(A, LAST, [2023, 11, 10], 'Switch In', 150, -19000),
+    ]);
+    assert.deepEqual(lotsOf(none, OLD).map((x) => [x.gap, v(x.realised)]), [[null, 5000]]);
+    assert.deepEqual(lotsOf(none, OLD2).map((x) => [x.gap, v(x.realised)]), [[null, 1000]]);
   });
 
   test('a pass-through that held units before sells some the same day: that sale is a successor gap (mutant E1h)', () => {
@@ -1021,5 +1032,163 @@ describe('E1 (delta review of 8ed1dc7): same-day merger chains', () => {
     assert.equal(lotsOf(r, NEW)[0]!.realised.kind, 'missing');
     assert.deepEqual(lotsOf(r, NEW)[0]!.asSwitch!.map((x) => v(x.realised)), [2500]);
     assert.deepEqual(gapsOf(r, OLD), [['merger-candidate', 'switch-out']]);
+  });
+});
+
+describe('M7b B2 (KI-340): compound merger days, many into one per receiving scheme', () => {
+  const OLD = 'Sample Contra Fund - Regular Plan - Growth';
+  const OLD2 = 'Sample Value Fund - Regular Plan - Growth';
+  const NEW = 'Sample Small Cap Fund - Regular Plan - Growth';
+  const FLEXI = 'Sample Flexi Cap Fund - Regular Plan - Growth';
+  const MID = 'Sample Midcap Fund - Regular Plan - Growth';
+  const LARGE = 'Sample Large Cap Fund - Regular Plan - Growth';
+  const M = [2023, 11, 10] as const;
+  /**
+   * CHAT-012's known answer (probes-taxr2c/b2/kat.ts): Contra 100 u at 100 (cost 10,000) and Value 40 u at 100 (cost
+   * 4,000), both switched out whole into Small Cap for 15,000 and 5,000 on 10 Nov 2023 (Small Cap in 20,000 = 133.3333 u at
+   * 150); Small Cap held 50 u bought 1 Jul 2019 at 100 before the day.
+   */
+  const day = (extra: Cell[][], priorNew = true): DerivedRealised => run([
+    flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD2, [2019, 7, 1], 'Purchase', 100, -4000),
+    ...(priorNew ? [flow(A, NEW, [2019, 7, 1], 'Purchase', 100, -5000)] : []),
+    flow(A, OLD, M, 'Switch Out', 150, 15000), flow(A, OLD2, M, 'Switch Out', 125, 5000), flow(A, NEW, M, 'Switch In', 150, -20000),
+    ...extra,
+  ]);
+  const gapsOf = (r: DerivedRealised, name: string): Array<[string | null, string | null]> =>
+    lotsOf(r, name).map((x) => [x.gap, x.mergerCandidate?.role ?? null]);
+  /** The review's figure from the IRR side alone (no base file here, so no client is left out). */
+  const fyTotal = (r: DerivedRealised, fy: number): Value<number> => realisedForYear(fy, { ...r, baseClients: null }, null).total;
+
+  test('B1d(ii), CHAT-012\'s case: Small Cap partly switched into Flexi Cap the same day: FY 2023-24 a gap, not 8,500', () => {
+    // Small Cap switches 50 u (7,500 at 150) into Flexi Cap the same day. a2870e2 found no candidate (the day held another
+    // switch): Contra 5,000, Value 1,000 and Small Cap 7,500 - 5,000 = 2,500, a full 8,500 for FY 2023-24 with no gap.
+    // Per receiving scheme: Contra and Value's 20,000 equals Small Cap's 20,000 in: candidates. Small Cap's own switch out
+    // comes after its candidate switch in: a successor gap. FY 2023-24 is NOT AVAILABLE.
+    const r = day([flow(A, NEW, M, 'Switch Out', 150, 7500), flow(A, FLEXI, M, 'Switch In', 150, -7500)]);
+    assert.deepEqual(gapsOf(r, OLD), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, OLD2), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, NEW), [['merger-candidate', 'successor']]);
+    assert.equal(r.counts.mergerCandidates, 2);
+    assert.equal(fyTotal(r, 2023).kind, 'missing');
+  });
+
+  test('B1d(i): Small Cap (held before) switched out whole into Flexi Cap the same day: Contra and Value gaps', () => {
+    // Small Cap's 183.3333 u (27,500 at 150) all go into Flexi Cap for 27,500. a2870e2 paired Small Cap with Flexi Cap one
+    // into one and stopped there: Contra 5,000 and Value 1,000 computed (FY 2023-24 6,000, partial). Now Contra and Value
+    // are candidates into Small Cap too, and Small Cap's switch out is a gap (the one-into-one pair).
+    const r = day([flow(A, NEW, M, 'Switch Out', 150, 27500), flow(A, FLEXI, M, 'Switch In', 150, -27500)]);
+    assert.deepEqual(gapsOf(r, OLD), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, OLD2), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(lotsOf(r, NEW).map((x) => x.gap), ['merger-candidate']);
+    assert.equal(r.counts.mergerCandidates, 3);
+    assert.equal(fyTotal(r, 2023).kind, 'missing');
+  });
+
+  test('two mergers the same day (Midcap into Large Cap one into one, Contra and Value into Small Cap): all gaps', () => {
+    // Midcap 30 u at 100 switched out whole (4,500 at 150) into Large Cap (4,500) the same day. a2870e2 paired Midcap with
+    // Large Cap and so skipped the many-into-one test: Contra 5,000 and Value 1,000 computed.
+    const r = day([
+      flow(A, MID, [2019, 7, 1], 'Purchase', 100, -3000), flow(A, MID, M, 'Switch Out', 150, 4500), flow(A, LARGE, M, 'Switch In', 150, -4500),
+    ], false);
+    assert.deepEqual(gapsOf(r, OLD), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, OLD2), [['merger-candidate', 'switch-out']]);
+    assert.deepEqual(gapsOf(r, MID), [['merger-candidate', 'switch-out']]);
+    assert.equal(r.counts.mergerCandidates, 3);
+  });
+
+  test('when more than one subset fits, every source of them is a gap (never one picked); over 16 sources, only when a fit is still possible', () => {
+    // Contra 15,000, Value 5,000 and Midcap 5,000 (30 u at 100 written at 166.6667) all emptied into Small Cap for 20,000:
+    // {Contra, Value} and {Contra, Midcap} both fit. All three are gaps.
+    const r = day([flow(A, MID, [2019, 7, 1], 'Purchase', 100, -3000), flow(A, MID, M, 'Switch Out', 5000 / 30, 5000)], false);
+    for (const name of [OLD, OLD2, MID]) assert.deepEqual(gapsOf(r, name), [['merger-candidate', 'switch-out']], name);
+    // n schemes of 1,000 each (8 u bought for 800), all emptied the same day, into receiving schemes as given.
+    const names = (n: number): string[] => Array.from({ length: n }, (_, i) => `Sample Many ${i + 1} Fund - Growth`);
+    const many = (n: number, ins: Array<[string, number]>): DerivedRealised => run([
+      ...names(n).flatMap((k) => [flow(A, k, [2019, 7, 1], 'Purchase', 100, -800), flow(A, k, M, 'Switch Out', 125, 1000)]),
+      ...ins.map(([k, amt]) => flow(A, k, M, 'Switch In', 150, -amt)),
+    ]);
+    const allGaps = (r: DerivedRealised, n: number): boolean => names(n).every((k) => lotsOf(r, k).every((x) => x.gap === 'merger-candidate'));
+    const allComputed = (r: DerivedRealised, n: number): boolean =>
+      names(n).every((k) => lotsOf(r, k).every((x) => x.gap === null && Math.abs(v(x.realised)! - 200) < 0.01));
+    // Nine into 2,000: two of them fit (many ways): all nine gaps, counted 9. Nine into 2,000 and 3,000 at once: still
+    // counted once each, 9 (5054576 counted 18: review H1).
+    const r9 = many(9, [[NEW, 2000]]);
+    assert.equal(r9.counts.mergerCandidates, 9);
+    assert.ok(allGaps(r9, 9));
+    assert.equal(many(9, [[NEW, 2000], [MID, 3000]]).counts.mergerCandidates, 9);
+    // Nine, and sixteen (at MANY_INTO_ONE_SOURCES), into 2,500: searched, no subset fits: all computed, 200 each
+    // (5054576 made the nine gaps, over its cap of 8: review H1).
+    for (const n of [9, 16]) {
+      const r = many(n, [[NEW, 2500]]);
+      assert.equal(r.counts.mergerCandidates, 0, `${n}`);
+      assert.ok(allComputed(r, n), `${n}`);
+    }
+    // Seventeen (over the cap) into 2,500: the bounds cannot rule a fit out (total 17,000, the two smallest 2,000), so it
+    // is not decidable: all seventeen gaps, counted 17. Seventeen into 50,000: the total is short, nothing can fit: all
+    // computed.
+    const r17 = many(17, [[NEW, 2500]]);
+    assert.equal(r17.counts.mergerCandidates, 17);
+    assert.ok(allGaps(r17, 17));
+    const r17b = many(17, [[NEW, 50000]]);
+    assert.equal(r17b.counts.mergerCandidates, 0);
+    assert.ok(allComputed(r17b, 17));
+  });
+
+  test('review H1: nine schemes into 50,000 and 58,000, where no subset can fit, stay computed (18,000)', () => {
+    // The review's case: nine schemes, each 100 u bought for 10,000 and emptied for 12,000 (realised 2,000 each), switched
+    // into two schemes for 50,000 and 58,000 the same day. Sums of 12,000s are 48,000 or 60,000, never 50,000 or 58,000:
+    // an ordinary rebalancing. 5054576 made all nine gaps over its cap and counted 18.
+    const nine = Array.from({ length: 9 }, (_, i) => `Sample Legacy ${i + 1} Fund - Growth`);
+    const r = run([
+      ...nine.flatMap((k) => [flow(A, k, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, k, M, 'Switch Out', 120, 12000)]),
+      flow(A, NEW, M, 'Switch In', 100, -50000), flow(A, FLEXI, M, 'Switch In', 100, -58000),
+    ]);
+    assert.equal(r.counts.mergerCandidates, 0);
+    const total = nine.reduce((t, k) => t + lotsOf(r, k).reduce((s, x) => s + (v(x.realised) ?? NaN), 0), 0);
+    near(total, 18000, 'nine gains');
+  });
+
+  test('review H2: on an ambiguous day, a receiving scheme one of the ambiguous sources could have made is a gap too', () => {
+    // The review's case: Contra, Value and Midcap, each 100 u bought for 8,000 and emptied for 10,000 on 10 Nov 2023, into
+    // Small Cap (20,000) and Flexi Cap (10,000). Any two fit Small Cap: all three sources are gaps (ambiguous). Flexi
+    // Cap's 10,000 can be any one of them, merged into it: its switch in is a lot not known, so its later sale (100 u at
+    // 120, 12,000 on 4 May 2026) is a successor gap. 5054576 computed it at 2,000.
+    const r = run([
+      ...[OLD, OLD2, MID].flatMap((k) => [flow(A, k, [2019, 7, 1], 'Purchase', 100, -8000), flow(A, k, M, 'Switch Out', 125, 10000)]),
+      flow(A, NEW, M, 'Switch In', 100, -20000), flow(A, FLEXI, M, 'Switch In', 100, -10000),
+      flow(A, FLEXI, [2026, 5, 4], 'Redemption', 120, 12000),
+    ]);
+    for (const k of [OLD, OLD2, MID]) assert.deepEqual(gapsOf(r, k), [['merger-candidate', 'switch-out']], k);
+    assert.deepEqual(gapsOf(r, FLEXI), [['merger-candidate', 'successor']]);
+    assert.equal(r.counts.mergerCandidates, 3);
+  });
+
+  test('review H2 on a not-decidable day: seventeen sources into Small Cap 2,500 and Flexi Cap 1,000 (mutant H2c)', () => {
+    // Seventeen schemes, each 8 u bought for 800 and emptied for 1,000 on 10 Nov 2023, into Small Cap (2,500) and Flexi
+    // Cap (1,000 = 10 u at 100). Over MANY_INTO_ONE_SOURCES the bounds cannot rule a fit into Small Cap out, so its
+    // sources are not decidable: ambiguous. Flexi Cap's 1,000 can be any one of them merged into it: its switch in is a
+    // lot not known, and its later sale (10 u at 120, 1,200 on 4 May 2026) is a successor gap. Treating the not-decidable
+    // fit as unambiguous would compute that sale at 200.
+    const names = Array.from({ length: 17 }, (_, i) => `Sample Many ${i + 1} Fund - Growth`);
+    const r = run([
+      ...names.flatMap((k) => [flow(A, k, [2019, 7, 1], 'Purchase', 100, -800), flow(A, k, M, 'Switch Out', 125, 1000)]),
+      flow(A, NEW, M, 'Switch In', 150, -2500), flow(A, FLEXI, M, 'Switch In', 100, -1000),
+      flow(A, FLEXI, [2026, 5, 4], 'Redemption', 120, 1200),
+    ]);
+    assert.ok(names.every((k) => lotsOf(r, k).every((x) => x.gap === 'merger-candidate')));
+    assert.deepEqual(gapsOf(r, FLEXI), [['merger-candidate', 'successor']]);
+    assert.equal(r.counts.mergerCandidates, 17);
+  });
+
+  test('a subset is two or more sources: two emptied schemes of the same amount into one switch in stay computed', () => {
+    // Contra and Value (100 u at 100 each) both switched out whole for 15,000 (at 150) on 10 Nov 2023, and Small Cap in
+    // for 15,000. One into one fails (two possible partners), and no subset
+    // of two or more sums to 15,000: an ordinary switch each, computed at 5,000 (a single source is never a subset).
+    const r = run([
+      flow(A, OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, OLD2, [2019, 7, 1], 'Purchase', 100, -10000),
+      flow(A, OLD, M, 'Switch Out', 150, 15000), flow(A, OLD2, M, 'Switch Out', 150, 15000), flow(A, NEW, M, 'Switch In', 150, -15000),
+    ]);
+    assert.equal(r.counts.mergerCandidates, 0);
+    assert.deepEqual([...lotsOf(r, OLD), ...lotsOf(r, OLD2)].map((x) => [x.gap, v(x.realised)]), [[null, 5000], [null, 5000]]);
   });
 });

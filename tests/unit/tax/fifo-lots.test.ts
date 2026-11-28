@@ -757,3 +757,95 @@ describe('round 2c (Gate B of 5c9ae0a F3, F4; MOD-05\'s merger condition) on the
     near(one(two, FOCUSED).unclassified.gain, 4000, 'Focused unclassified gain');
   });
 });
+
+describe('M7b B2 (KI-340): compound merger days on the holdings side', () => {
+  const OLD = 'Sample Contra Fund - Regular Plan - Growth';
+  const VALUE = 'Sample Value Fund - Regular Plan - Growth';
+  const SMALL = 'Sample Small Cap Fund - Regular Plan - Growth';
+  const FLEXI_CAP = 'Sample Flexi Cap Fund - Regular Plan - Growth';
+  const MIDCAP = 'Sample Midcap Fund - Regular Plan - Growth';
+  const LARGE = 'Sample Large Cap Fund - Regular Plan - Growth';
+  const M = [2023, 11, 10] as const;
+  /** Contra 100 u at 100 and Value 40 u at 100 switched out whole into Small Cap (15,000 + 5,000 = 20,000) on 10 Nov 2023. */
+  const merger = [
+    flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(VALUE, [2019, 7, 1], 'Purchase', 100, -4000),
+    flow(OLD, M, 'Switch Out', 150, 15000), flow(VALUE, M, 'Switch Out', 125, 5000), flow(SMALL, M, 'Switch In', 150, -20000),
+  ];
+
+  test('B1d(ii), CHAT-012\'s case: Small Cap is not split; Flexi Cap, switched into from it in part, stays split', () => {
+    // Small Cap held 50 u (1 Jul 2019 at 100) before the day and switches 50 u (7,500 at 150) into Flexi Cap the same day.
+    // Base: Small Cap 133.3333 u (invested 15,000, CMV 24,000) and Flexi Cap 50 u (invested 7,500, CMV 9,000). a2870e2
+    // found no candidate on the compound day and split Small Cap on lots dated and costed at the merger. Now Small Cap is
+    // unreconciled 'mergerCandidate'. Flexi Cap's switch in is an ordinary switch: split long 9,000 at a gain of 1,500.
+    const r = run([
+      hold(SMALL, 'Small Cap Fund', 'Equity', 20000 / 150, 15000, 24000),
+      hold(FLEXI_CAP, 'Flexi Cap Fund', 'Equity', 50, 7500, 9000),
+    ], [
+      flow(SMALL, [2019, 7, 1], 'Purchase', 100, -5000), ...merger,
+      flow(SMALL, M, 'Switch Out', 150, 7500), flow(FLEXI_CAP, M, 'Switch In', 150, -7500),
+    ]);
+    assert.equal(one(r, SMALL).unreconciledKind, 'mergerCandidate');
+    near(one(r, SMALL).unclassified.cmv, 24000, 'Small Cap unclassified');
+    const f = one(r, FLEXI_CAP);
+    assert.equal(f.status, 'ok');
+    near(f.lt.cmv, 9000, 'Flexi Cap long'); near(f.lt.gain, 1500, 'Flexi Cap gain');
+  });
+
+  test('B1d(i): Flexi Cap, switched into from the whole of Small Cap the same day, is not split', () => {
+    // Small Cap (50 u before, 133.3333 u from the merger) switched out whole (27,500) into Flexi Cap (183.3333 u). Base
+    // Flexi Cap 183.3333 u, invested 27,500, CMV 33,000: unreconciled 'mergerCandidate' (a2870e2 too, through its Small
+    // Cap to Flexi Cap pair; the realised side is what changes here).
+    const r = run([hold(FLEXI_CAP, 'Flexi Cap Fund', 'Equity', 27500 / 150, 27500, 33000)], [
+      flow(SMALL, [2019, 7, 1], 'Purchase', 100, -5000), ...merger,
+      flow(SMALL, M, 'Switch Out', 150, 27500), flow(FLEXI_CAP, M, 'Switch In', 150, -27500),
+    ]);
+    assert.equal(one(r, FLEXI_CAP).unreconciledKind, 'mergerCandidate');
+  });
+
+  test('two mergers the same day: Small Cap and Large Cap are both not split', () => {
+    // Midcap 30 u at 100 switched out whole (4,500 at 150) into Large Cap (30 u) the same day as the Contra and Value
+    // merger. Base: Small Cap 133.3333 u (invested 20,000, CMV 24,000) and Large Cap 30 u (invested 4,500, CMV 5,400).
+    // a2870e2 paired Midcap with Large Cap, skipped the many-into-one test and split Small Cap long 24,000 at 4,000. Now
+    // both are unreconciled 'mergerCandidate'.
+    const r = run([
+      hold(SMALL, 'Small Cap Fund', 'Equity', 20000 / 150, 20000, 24000),
+      hold(LARGE, 'Large Cap Fund', 'Equity', 30, 4500, 5400),
+    ], [
+      ...merger,
+      flow(MIDCAP, [2019, 7, 1], 'Purchase', 100, -3000), flow(MIDCAP, M, 'Switch Out', 150, 4500), flow(LARGE, M, 'Switch In', 150, -4500),
+    ]);
+    assert.equal(one(r, SMALL).unreconciledKind, 'mergerCandidate');
+    near(one(r, SMALL).unclassified.gain, 4000, 'Small Cap unclassified gain');
+    assert.equal(one(r, LARGE).unreconciledKind, 'mergerCandidate');
+  });
+
+  test('review H2: on an ambiguous day, Flexi Cap (which one of the ambiguous sources could have made) is not split', () => {
+    // Contra, Value and Midcap, each 100 u bought for 8,000 and emptied for 10,000 on 10 Nov 2023, into Small Cap
+    // (20,000) and Flexi Cap (10,000 = 100 u at 100). Base Flexi Cap 100 u, invested 10,000, CMV 12,000. 5054576 split it
+    // long 12,000; now unreconciled 'mergerCandidate', the 12,000 and 2,000 unclassified.
+    const r = run([hold(FLEXI_CAP, 'Flexi Cap Fund', 'Equity', 100, 10000, 12000)], [
+      ...[OLD, VALUE, MIDCAP].flatMap((k) => [flow(k, [2019, 7, 1], 'Purchase', 100, -8000), flow(k, M, 'Switch Out', 125, 10000)]),
+      flow(SMALL, M, 'Switch In', 100, -20000), flow(FLEXI_CAP, M, 'Switch In', 100, -10000),
+    ]);
+    const f = one(r, FLEXI_CAP);
+    assert.equal(f.unreconciledKind, 'mergerCandidate');
+    near(f.unclassified.cmv, 12000, 'unclassified'); near(f.unclassified.gain, 2000, 'gain');
+  });
+
+  test('review H1: nine schemes into two where no subset can fit: the holdings switched into stay split', () => {
+    // Nine schemes, each 100 u bought for 10,000, emptied for 12,000 on 10 Nov 2023 into Small Cap (50,000 = 500 u at
+    // 100) and Large Cap (58,000 = 580 u at 100). Base Small Cap 500 u (invested 50,000, CMV 55,000) and Large Cap 580 u
+    // (58,000, 63,800). 5054576 made every source a gap over its cap and left the two unreconciled; now both are split,
+    // long on 30 Sep 2026: 55,000 at 5,000 and 63,800 at 5,800.
+    const nine = Array.from({ length: 9 }, (_, i) => `Sample Legacy ${i + 1} Fund - Growth`);
+    const r = run([
+      hold(SMALL, 'Small Cap Fund', 'Equity', 500, 50000, 55000),
+      hold(LARGE, 'Large Cap Fund', 'Equity', 580, 58000, 63800),
+    ], [
+      ...nine.flatMap((k) => [flow(k, [2019, 7, 1], 'Purchase', 100, -10000), flow(k, M, 'Switch Out', 120, 12000)]),
+      flow(SMALL, M, 'Switch In', 100, -50000), flow(LARGE, M, 'Switch In', 100, -58000),
+    ]);
+    assert.equal(one(r, SMALL).status, 'ok'); near(one(r, SMALL).lt.gain, 5000, 'Small Cap long gain');
+    assert.equal(one(r, LARGE).status, 'ok'); near(one(r, LARGE).lt.gain, 5800, 'Large Cap long gain');
+  });
+});

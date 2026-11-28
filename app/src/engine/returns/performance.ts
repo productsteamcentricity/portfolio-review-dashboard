@@ -136,6 +136,9 @@ export type WeightedReturnRow = {
   /** The file's client label (the view puts the analyst's label in its place); null for the family. */
   clientLabel: string | null;
   byTenor: Record<WeightedTenor, FundWeightedResult>;
+  /** On the family row only: its mutual-fund holdings that have no client, which are in no client row (L5 of the Gate
+   * B of d93da80: the client rows then do not add up to the family, and the view says so). */
+  withoutClient?: number;
 };
 
 type Member = { match: string; bench?: string[]; benchIfHeld?: Array<{ name: string; fundName: string }>; rank?: number };
@@ -214,7 +217,10 @@ function route(holdings: readonly Holding[], s: PerformanceSources, leftOut: Per
     const pc = c.productClass;
     if (pc === 'PMS' || pc === 'AIF' || pc === 'SIF') {
       const book = bookOf(s, pc);
-      out.push({ h, bucket: pc, key, record: key && book ? book[key] ?? null : null });
+      /* a key whose record is not in this bucket's book is no match here (as for a mutual fund below): the row is
+         "not matched to reference data", never a matched fund "with no returns" (Gate B of 80e875e, note N2) */
+      const rec = key && book ? book[key] ?? null : null;
+      out.push({ h, bucket: pc, key: rec ? key : null, record: rec });
       continue;
     }
     const record = key && s.MF ? s.MF[key] ?? null : null;
@@ -400,7 +406,7 @@ function weightedRows(routed: readonly Routed[], leftOut: PerformanceResult['lef
     const byTenor = Object.fromEntries(WEIGHTED_TENORS.map((t) => [t, weightedFundReturn(ins, sources, t, scope)])) as Record<WeightedTenor, FundWeightedResult>;
     return { scope, clientId, clientLabel, byTenor };
   };
-  const out: WeightedReturnRow[] = [row('family', null, null, mf)];
+  const out: WeightedReturnRow[] = [{ ...row('family', null, null, mf), withoutClient: mf.filter((h) => h.clientId === null).length }];
   const clients: ClientId[] = [];
   for (const h of mf) if (h.clientId !== null && !clients.includes(h.clientId)) clients.push(h.clientId);
   for (const c of clients) {

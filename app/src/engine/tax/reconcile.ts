@@ -48,6 +48,9 @@
 // IRR client with no holding in the base file are left out of it too, and listed with a count (`outsideReview`). Whether
 // a client who sold everything in the year belongs in the family's realised figure is owner question Q-4 of the review.
 //
+// M7b financial review F-4: a client-year with a counted gain whose term is not known gives its long and short figures as
+// NOT AVAILABLE (the total and the unknown-term figure stand); the family's long and short figures are then PARTIAL.
+//
 // Pure. Messages carry counts and financial years only: never a client, scheme, folio or amount. No en or em dash.
 
 import type { CgImport } from '../../ingest/capital-gains.ts';
@@ -481,7 +484,13 @@ function figureOf(parts: ReadonlyArray<{ st: number; lt: number; unk: number }>,
   const lt = parts.reduce((s, x) => s + x.lt, 0);
   const unk = parts.reduce((s, x) => s + x.unk, 0);
   const one = (v: number): Value<number> => partialTotal(v, lots, unknownLots, prov, 'lot has an unknown gain, left out of the figure', 'lots have an unknown gain, left out of the figure');
-  return { st: one(st), lt: one(lt), unknownTerm: one(unk), total: one(st + lt + unk) };
+  // M7b financial review F-4: with a counted gain of unknown term, the long and short figures are not known (never 0 or a
+  // part shown as the whole); the total and the unknown-term figure stand.
+  const termUnknown = parts.filter((x) => x.unk !== 0).length;
+  const split = (v: number): Value<number> => (termUnknown > 0
+    ? missing(STATUS.NOT_AVAILABLE, `the term of ${plural(termUnknown, 'counted lot is', 'counted lots are')} not known, so the gain is not split into long and short term (the total stands)`, prov)
+    : one(v));
+  return { st: split(st), lt: split(lt), unknownTerm: one(unk), total: one(st + lt + unk) };
 }
 
 function sumValues(vs: readonly Value<number>[], prov: Provenance): Value<number> {

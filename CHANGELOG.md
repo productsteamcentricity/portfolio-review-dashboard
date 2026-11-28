@@ -4,6 +4,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (records, registers-10, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,CRITICAL_PATH}.md`**: PRs #73 to #76; the conditions before
+  the tax engine is wired (from the new-build reviewer's Gate B of the M7b seam); the M10 intake in review; a schedule
+  note on the PC's three sleeps of 28 Nov; "next on the new build" refreshed (the holdings fix round closed by PR #74).
+- **Compactions** recounted: MOD-05 at 1 (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).
+
 ### Changed (records, registers-9, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/project-control/DECISION_LOG.md`**: PD-68, the decisions MOD-05 took under it (the month-labels ruling,
   confirmed by the owner on 28 Nov 2026 and added to section 2.4) and the window in practice (the PC slept from 04:28 to 12:00 IST for loss of mains power); the
@@ -12,6 +18,72 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   tax round 2c, not wired; KI-340 open).
 - **`docs/coordination/FILE_OWNERSHIP_MAP.md`**: the base-file template's files to NB-05 (in review).
 - **Compactions** recounted: no change (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).
+
+### Added (new build, M7b: the tax seam; not wired into the page yet)
+- **`engine/tax/review-tax.ts` (`reviewTax`, PLAN-07):** one pure call over the review's holdings and as-on day, the
+  accepted IRR file, the accepted capital-gains statement and the analyst's answers (TaxInputs, with or without a
+  statement). It runs today's engine in order and adds no arithmetic: the FIFO lots and their roll-ups by class,
+  product, asset, client and family; the harvest per client and the family sum, the exemption already used being the
+  analyst's entry, else the statement's person-year of the as-on year, else not applied (Q-52); the realised gains
+  derived from the IRR file; the statement's lots and person-year tax; the reconciliation; `tax.realisedFY` for each
+  financial year with a sale in either input up to the as-on year; the repeat evidence. Issues are de-duplicated by rule
+  and scope and ordered by severity, then rule. The output is engine-local, mapped to the I-37 types where they exist,
+  with the gaps marked `TODO(contracts-4)`; the I-41 wiring is to come.
+- **Q-49 for absent inputs:** without an IRR file every holding is unreconciled with its class shown, and the unrealised
+  split, the harvest and the derived gains are labelled missing values; without a statement the person-year tax is
+  missing and `tax.realisedFY` is the derived figure, labelled "derived from transactions"; with neither, the classes
+  only. The clock only through the caller's `now`.
+- **Tests:** `tests/integration/review-tax.test.ts` (four input sets on a book with no switch pair, so the tests do not
+  depend on the merger-candidate rule: all three, no IRR file, no statement, neither; H-1 to H-6 and R2-H7, KA-9 to
+  KA-13, KA-15, KA-18 and KA-20 to KA-22 and the reconcile cases through the seam; each part equal to its module called
+  directly; order independence; no client name or amount in an issue; no clock or browser global). No engine module
+  changed.
+- **After the financial review of 75561f0 (F-1 to F-5, N-2):**
+  - **F-1 (Q-52, the seam):** the harvest reads the statement's exemption already used only for a client whose as-on
+    year realised figure is the statement's, known and complete. A PARTIAL figure (the IRR file shows sales the
+    statement leaves out, or a lot's gain is unknown) or a missing one means "exemption not applied", with a label; the
+    analyst's entry still comes first. The reviewer's book: tax before 112.50 (75561f0: 0).
+  - **F-2 (`holdings-rollup.ts`, the seam):** without an IRR file the roll-up's legacy `tax.unrealised.{st,lt}` is NOT
+    AVAILABLE, never Rs 0, and a record not split has no contract `TaxPosition` (its long-term gain would read 0).
+  - **F-3 (`holdings-rollup.ts`, `harvest.ts`):** holdings unreconciled with the IRR file make the legacy unrealised
+    figures and the harvest (per client and the family) PARTIAL COVERAGE, with the count left out and a label
+    (`unreconciled`).
+  - **F-4 (`reconcile.ts`):** a client-year with a counted gain whose term is not known gives its long and short figures
+    as NOT AVAILABLE (the total and the unknown-term figure stand); the family's long and short are then PARTIAL.
+  - **F-5:** wiring tests on hand-set inputs (the classify context, the as-on boundary, the repeat evidence, the derived
+    issues; deep equality for the no-IRR and no-statement sets) kill the reviewer's 8 surviving mutants.
+  - **N-2:** the seam's Warning `tax.statement-after-as-on` (counts only) when statement lots are sold after the as-on
+    date: they count as stated while the IRR side leaves later trades out (owner question).
+  - No parity figure changed. Tests: `tests/integration/review-tax.test.ts` (49),
+    `tests/integration/realised-gains-reconcile.test.ts`, and `tests/unit/tax/{harvest,holdings-rollup}.test.ts`.
+- **After the delta review of 9d2b242 (D-1, N-6):**
+  - **D-1 (`harvest.ts`):** a client none of whose holdings the IRR file reconciles has no harvest worked: its figures
+    are NOT AVAILABLE with the reason (`notWorked`), as its unrealised figure is, not Rs 0 at coverage 0. The family
+    leaves such a client out with a count (`clientsNotWorked`), with a coverage of the family's holdings in the pools
+    (split holdings with a known gain over split and unreconciled holdings), and is NOT AVAILABLE when every client is
+    left out.
+  - **N-6 (the seam):** one Warning for statement sales after the as-on date in the seam's issues, its own
+    `tax.statement-after-as-on`, in place of the lot engine's `capital-gains.after-as-on-date` (which stays with the
+    statement's lots).
+  - Tests: `tests/integration/review-tax.test.ts` (50), `tests/unit/tax/harvest.test.ts`.
+- **B2, compound merger days (KI-340; CHAT-012's Gate B of a031769; MOD-05: the first item of M7b)** in
+  `engine/tax/lots.ts` `mergerCandidates`: many into one is tested per receiving scheme, so another switch by the same
+  client that day (the scheme switched into partly or wholly switched out, or a second merger) no longer hides it. The
+  sources are the day's emptied schemes other than the receiving one, not already paired one into one; every subset of
+  two or more whose switch outs sum to its switch ins within the amount tolerance fits, and when several fit all of
+  their sources are gaps (never one picked); over 8 sources the day's emptied sources into it are not decidable, a gap,
+  never a sale. The one-into-one rule, the B1d guard (the receiving scheme's own switch out is never a source; it is a
+  successor gap), E1 chains and D1 stay. CHAT-012's case (Contra and Value into Small Cap for 20,000 while Small Cap,
+  held before, is partly switched into Flexi Cap) is now a gap for FY 2023-24, not 8,500; Flexi Cap's own switch stays
+  computed. One earlier expectation changed: in a same-day chain whose ends do not agree, the first link now fits many
+  into one (a gap). No parity figure changed. Tests: `tests/unit/tax/{realised-irr,fifo-lots}.test.ts`.
+- **After the financial review of 10ec846 (H1, H2):** sources that cannot be in any fitting subset (their own switch out
+  already beyond the receiving scheme's switch in) are ruled out first, and up to 16 sources are searched (was 8); over
+  16, the day is not decidable only when a fit is still possible (the total reaches the switch in and the smallest two
+  do not pass it), so nine schemes into 50,000 and 58,000, where no subset can fit, stay computed (18,000) (H1). The
+  candidate count takes each source once a day (it read 18 for 9 sources). On an ambiguous day (several subsets fit, or
+  not decidable), another receiving scheme that one or more of the ambiguous sources could have made is a candidate too:
+  its switch ins are lots not known and its holding unreconciled 'mergerCandidate' (H2). No parity figure changed.
 
 ### Changed (tooling: the new app's build ignores where `node_modules` really lives, 28 Nov 2026; `/next/` byte-identical)
 - **`scripts/build.mjs`**: esbuild's `preserveSymlinks` is on, so a worktree whose `node_modules` is a junction to
@@ -168,6 +240,33 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   corrections (the live page shows another scheme's figures); SB-40, SB-41 accepted differences under KI-036 (ties left
   unmatched; the owner's "New build first" of 25 Nov 2026; no owner question is open). Two parity rows with the real spellings are added to the performance probe and tested (both builds, both lists). SB-25 (the all-dash gold price row) also covers the
   performance probe.
+
+### Fixed (new build, M3b after the follow-up's Gate B: the IRR file's lines, and the shares and dates in the notes; `/next/` only, no change to `index.html`)
+- **In a table that has rows from the IRR file, a line whose holdings have flows in that file no longer shows the base
+  file's figure** (Gate B of the M3b follow-up, condition M1; `views/holdings.ts` `irrHookFrom`):
+  - An instrument whose benchmark flows give no rate is left out of the IRR tree (OD-4). Its line then had no node, and
+    section 5 and the client sheets showed the base file's market-value-weighted XIRR for it beside rows from the IRR
+    file.
+  - Such a line is now a dash, NOT COMPARABLE, with its reason under the table ("1 holding of 1 on this line has flows
+    in the IRR file that are left out of the IRR tree for an invalid benchmark, ..."). Whether a holding has flows is
+    read from the file's reconciliation, not from the tree.
+  - A line none of whose holdings has a flow keeps the base file's figure, as before (the owner's answer of 28 Nov 2026:
+    "Base-file XIRR, marked (Recommended)", as built).
+  - Not changed: a client whose every instrument with flows is left out has no place in the IRR tree at all, so its
+    whole table stays the base file's, under the caption that says so (an owner question).
+- **The ‡ note's share of CMV** (note L1): a holding that has a value never reads "0.00% of CMV"; it reads "under 0.01%
+  of CMV". When a market value of the client is negative, or the CMV is 0, no share is given and the note says why.
+  When the holdings without an invested value hold all the market value the share reads 100.00%; it could read 99.99%.
+- **The Performance sheet's Weighted rows** (note L2): As On holds a date only when the 3Y and the 5Y figure share it.
+  When they come from tables of different dates, the cell is blank and the Note says so before the two footnotes. A
+  figure with no value brings no date; a figure built from tables of two dates keeps its first table's date, and its
+  footnote names both (an owner question).
+- **Mutual-fund holdings with no client** are among the Family row's holdings in the weighted returns and in no client
+  row's. A note under the table, and in the sheet's Family row, now says so with the count (note L5).
+- **A PMS, AIF or SIF holding whose key has no record in that bucket's data** is "not matched to reference data", as a
+  mutual fund already is, never a matched fund "with no returns" (Gate B of M3b, note N2).
+- The rows of the weighted-returns table and the notes lists are keyed by position, so two clients with one name cannot
+  share a row (note L5).
 
 ### Changed (records, registers-6, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/project-control/DECISION_LOG.md`**: the stricter-matching row of 26 Nov corrected to the measured result (the
