@@ -118,6 +118,24 @@
       "class": "correction",
       "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, should-fix (zero-amount out row)",
       "description": "A Redemption written at 110 with an amount of 0 after a Purchase of 100 u; base 50 u. Both find 100 u against 50. The live reads the sale as moving nothing and lists the holding as unreconciled (excess, an event missing). The new engine counts a sale with an amount of 0 as a sale whose units are not known: unreconciled (noPxSell), the reason naming the amount of 0. CMV 6,000 unclassified on both sides."
+    },
+    {
+      "id": "TX-13",
+      "book": "tax-r2c",
+      "holding": "Sample Emerging Smallcap Fund - Regular Plan - Growth @18000",
+      "field": "status",
+      "class": "correction",
+      "reference": "Q-49; OD-16; MOD-05's merger condition (round 2c item 5); s.47(xviii)",
+      "description": "Round 2c item 5, the merger condition: Contra (not in the base file) bought 1 Jul 2019, 100 u at 100, and switched out whole on 10 Nov 2023 (15,000 at 150, its last trade); the same day a Switch In of 15,000 at 150 to this holding, the only switch in of that amount: a merger candidate (the IRR file cannot tell a scheme merger from an ordinary switch). Base 100 u, invested 15,000, CMV 18,000. The live buys the switch in as a purchase dated and costed at the switch and splits the holding (long 18,000, gain 3,000). A merger is not a sale (s.47(xviii)): cost and date carry over from Contra, which the file does not give, so the new engine does not split: unreconciled (mergerCandidate), CMV 18,000 unclassified at a gain of 3,000, until the analyst confirms it (Q-49; the owner question on how the export writes mergers)."
+    },
+    {
+      "id": "TX-14",
+      "book": "tax-r2c",
+      "holding": "Sample Bluechip Fund - Regular Plan - Growth @11940",
+      "field": "reason",
+      "class": "correction",
+      "reference": "Q-49; AC-18; ARC-03 Gate B of 5c9ae0a, F4 (round 2c item 4)",
+      "description": "Round 2c item 4 (F4): a Purchase of 100 u on 1 Jan 2024 and a Redemption written at 110 with an amount of 0 on 1 Jan 2025; base 99.5 u, 0.5% from the history's 100 u, inside the 1% band. Both sides split the holding the same way (long 11,940, gain 1,990). The live reads the sale of 0 as moving nothing and gives no reason; the new engine keeps the split but names the sale of 0 in the reason (its units could not be counted), never silent. The figures agree."
     }
   ],
   "rollupEntries": [
@@ -478,6 +496,95 @@
       "class": "correction",
       "reference": "Q-49; OD-16; ARC-03 Gate B of aa67a45, B2 and B3",
       "description": "Follows from TX-06 to TX-10 (B2, B3: the new engine does not split the transfer in, stock in, demerger in and bonus holdings, so their CMV of 101,200 and gain of 41,000 are unclassified; the live splits three of them and lists two as unreconciled short). The harvest pools only split positions: long-term gains 1,000 (inside the exemption, tax 0) against the live 14,454.55 long and 10,045.45 short (tax 2,009.09 = 10,045.45 x 20%, partly from the bonus costed at its amount and the transfer dated by the transfer). Slab 30% entered and the exemption confirmed unused on both sides."
+    },
+    {
+      "id": "TXR-19",
+      "book": "tax-r2c",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "totals.ltCmv",
+        "totals.unclassCmv",
+        "totals.ltGain",
+        "totals.unclassGain",
+        "totals.nPos"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-16; MOD-05's merger condition (round 2c item 5)",
+      "description": "Follows from TX-13 (round 2c item 5: the new engine does not split the holding switched into by a merger candidate, CMV 18,000 at a gain of 3,000; the live splits it long). Long 11,940 (gain 1,990) against 29,940 (4,990); unclassified 18,000 (3,000) against 0 (0); nPos 1 against 2. The CMV (29,940) and the gain (4,990) agree; long + short + unclassified = CMV on both sides (AC-18). TX-14 changes no figure."
+    },
+    {
+      "id": "TXR-20",
+      "book": "tax-r2c",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "byClass[Equity Mutual Funds].cmv",
+        "byClass[Equity Mutual Funds].ltCmv",
+        "byClass[Equity Mutual Funds].gl",
+        "byClass[Equity Mutual Funds].ltGain",
+        "byClass[Equity Mutual Funds].ltPos",
+        "byClass[Equity Mutual Funds].n"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-16; MOD-05's merger condition (round 2c item 5)",
+      "description": "Follows from TX-13 (round 2c item 5: the holding switched into by a merger candidate is not split). The Equity Mutual Funds class holds split positions only: the Bluechip holding (CMV 11,940, long gain 1,990) in the new engine against two in the live (CMV 29,940, long gain 4,990)."
+    },
+    {
+      "id": "TXR-21",
+      "book": "tax-r2c",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "byProduct[Mutual Funds].ltCmv",
+        "byProduct[Mutual Funds].ltGain",
+        "byProduct[Mutual Funds].unclassGain"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-16; MOD-05's merger condition (round 2c item 5)",
+      "description": "Follows from TX-13 (round 2c item 5: the holding switched into by a merger candidate is not split). By product (Mutual Funds): long CMV 11,940 (gain 1,990) against 29,940 (4,990); the 3,000 gain moves to the unclassified gain, as in the totals."
+    },
+    {
+      "id": "TXR-22",
+      "book": "tax-r2c",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "byAsset[Equity].ltCmv",
+        "byAsset[Equity].ltGain",
+        "byAsset[Equity].unclassGain"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-16; MOD-05's merger condition (round 2c item 5)",
+      "description": "Follows from TX-13 (round 2c item 5: the holding switched into by a merger candidate is not split). By asset (Equity): long CMV 11,940 (gain 1,990) against 29,940 (4,990); the 3,000 gain moves to the unclassified gain, as in the totals."
+    },
+    {
+      "id": "TXR-23",
+      "book": "tax-r2c",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "harvest.ltGains",
+        "harvest.s198Gains",
+        "harvest.s198Left",
+        "harvest.exBefore",
+        "harvest.exAfter",
+        "harvest.exBeforeTax",
+        "harvest.exAfterTax"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-16; MOD-05's merger condition (round 2c item 5)",
+      "description": "Follows from TX-13 (round 2c item 5: the holding switched into by a merger candidate is not split). The harvest pools only split positions: long-term (Sec 198) gains 1,990 against the live 4,990, both inside the exemption, so the exemption used and its tax value follow and the tax is 0 on both sides (before and after, saving 0). Slab 30% entered and the exemption confirmed unused on both sides."
     }
   ]
 }

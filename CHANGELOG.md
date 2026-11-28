@@ -4,6 +4,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (tooling: the new app's build ignores where `node_modules` really lives, 28 Nov 2026; `/next/` byte-identical)
+- **`scripts/build.mjs`**: esbuild's `preserveSymlinks` is on, so a worktree whose `node_modules` is a junction to
+  another worktree's builds the same page. Before, the bundler wrote the resolved path into three Preact module
+  comments, and such a build differed by a few bytes. The page is byte-identical before and after (5,133,832 B, SHA-256
+  `dde507b6…`); `docs/new-build/toolchain.md` §4 says so.
+
 ### Added (new build, M10 before wiring: the pack store in a real browser; tests only, `/next/` unchanged)
 - **`tests/browser/screener-store.cdp.mjs`** (ARC-03's condition for wiring M10): the MF Screener data pack reader and
   browser store run in headless Edge or Chrome against the real IndexedDB, from a `file://` harness bundled by esbuild
@@ -29,6 +35,60 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **Compactions** recounted (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).
 - **`tests/unit/match/corpus.test.ts`**: a comment and a reason text no longer say the owner accepted losses it was not
   asked about (CHAT-016's note N3).
+
+### Changed (new build, M7a tax engine, round 2c: Gate B of 5c9ae0a F1 to F4 and merger candidates; not wired into the page yet)
+- **Q-49 throughout: a gap is named, never estimated.** The owner has not said how the IRR export writes mergers,
+  transfers or bonuses (Q-T1, Q-T5); nothing below assumes it.
+- **F1 (`engine/tax/reconcile.ts`):** the difference of the two sides is taken from each side's sum rounded to whole
+  paise and compared with the tolerance with a relative epsilon of a few ULPs, so a difference exactly at the tolerance
+  reconciles (10,200 against 10,198.98 at 1.02; 136 paise against the 72-row tolerance Rs 1.36). The Q4 and Q5 pairs
+  hold.
+- **F2 (`engine/tax/realised-irr.ts`):** the TR-21 Warning `stripping-candidate` only when the loss is inside the
+  s.94(8) window: b minus 3 months <= purchase <= b < sale <= b plus 9 months (calendar months, clamped to the month
+  end), the bonus row's date standing for the record date b, which the export does not give (said in the Warning). A
+  bonus after the sale, or before the window, no longer flags.
+- **F3, F4 (`engine/tax/lots.ts`):** on a shared instrument the holdings oversell (`oversoldUnits` and its reason, which
+  now gives the units) is the holding's share (OD-15); a sale of 0 within the 1% band keeps the split and is named in
+  the reason.
+- **The merger condition (MOD-05):** a switch out that empties a scheme into exactly one other scheme on the same day
+  for the same amount (within the reader's amount tolerance) is a merger candidate. On the realised side the switch out
+  is the gap `merger-candidate` (no sale value, no gain) and every later sale of the scheme switched into is the same
+  gap; the Warning `tax.derived-merger-candidates` asks the analyst, in counts only (a merger is not a sale,
+  s.47(xviii)). On the holdings side a holding with the candidate's switch in is unreconciled `mergerCandidate`, never
+  split. Ordinary switches (partial, unequal amounts, the scheme kept, several partners) stay computed; where the
+  statement shows the merger, the reconciliation reads the candidate as before (its existing merger handling is
+  unchanged). The fixture's Contra to Small Cap merger (5,000 in FY 2023-24 from the IRR side) is now a gap without a
+  statement. The analyst's answer needs a model field (contracts-4).
+- **After the financial review of 0e860c3 (V1 to V5, N1, N3):** a merger written as several switch rows (one per folio
+  or distributor) is a candidate: emptiness is tested after all of the day's switch outs of the scheme, and the pairing
+  is by the day's sums per scheme, exactly one partner scheme both ways (V1); when the scheme's units are not known, a
+  switch out that is its last trade with exactly one equal-sum partner is a candidate too (V2). The reconciliation reads
+  a successor's ordinary-switch lots only where the statement shows the merger in the candidate's own scheme (V3) and
+  holds the successor's scheme in the sale's year (V4). The amount tolerance is worked from the sale-value sums in whole
+  paise (V5). The oversell reason no longer says "this holding's share" when the apportionment failed (N1), and the
+  candidate texts say the IRR file does not say whether it was a merger (N3). No parity figure changed.
+- **After CHAT-012's Gate B of 4001f8f (B1, D1, D2):** a many-into-one merger is a candidate too: on a client-day where
+  every scheme switched out is emptied (or its units are not known), every switch in goes to one other scheme and the
+  totals agree within the amount tolerance, all those switch outs and switch ins are the candidate's, on both sides
+  (B1; the one-into-one rule is kept). A switch that the scheme's priced trades prove partial stays an ordinary switch
+  even when its units are not known (D1: a lower bound of the units while every unknown trade is a purchase). A test
+  pins both holdings of a scheme switched into through two folios (D2). The successor gap ends once the scheme switched
+  into is back to 0 units, so a later fresh purchase and sale is computed. No parity figure changed.
+- **Same-day merger chains (E1, the delta review of 8ed1dc7):** the switches of a client-day are followed through any
+  scheme that both receives a switch in and is switched out whole that day. When every starting scheme is emptied (or
+  its units are not known), the chain ends in exactly one scheme, and the starting total out equals that scheme's total
+  in within the amount tolerance, every switch of the chain is a 'merger-candidate' gap and the end scheme's switch ins
+  are lots not known (two schemes into B with B switched out whole the same day; A into B into C). The B1d guard stays
+  for a scheme switched out only in part. An unequal chain stays computed. No parity figure changed.
+- **Parity:** book `tax-r2c`, ledger TX-13, TX-14 and TXR-19 to TXR-23, with its known answers; no other expected figure
+  changed.
+- **Open limit (B2, CHAT-012's Gate B of a031769; KI-340): the merger condition is not fully met yet.** A many-into-one
+  merger on a client-day that also holds any other switch by the same client (for example the scheme switched into is
+  itself partly switched out that day, or a second merger the same day) is still computed as a sale: no merger
+  candidate is found. Binding before the engine is wired; the next tax round tests many-into-one per receiving scheme.
+  Nothing here says Q-T5 is answered or the condition met.
+- **Tests:** `tests/unit/tax/{realised-irr,fifo-lots}.test.ts`, `tests/integration/realised-gains-reconcile.test.ts`,
+  `tests/parity/tax.parity.test.ts`; each fails on main 0d38184's engine file.
 
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
@@ -58,7 +118,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   - Such a line is now a dash, NOT COMPARABLE, with its reason under the table ("1 holding of 1 on this line has flows
     in the IRR file that are left out of the IRR tree for an invalid benchmark, ..."). Whether a holding has flows is
     read from the file's reconciliation, not from the tree.
-  - A line none of whose holdings has a flow keeps the base file's figure, as before (an owner question is open).
+  - A line none of whose holdings has a flow keeps the base file's figure, as before (the owner's answer of 28 Nov 2026:
+    "Base-file XIRR, marked (Recommended)", as built).
   - Not changed: a client whose every instrument with flows is left out has no place in the IRR tree at all, so its
     whole table stays the base file's, under the caption that says so (an owner question).
 - **The ‡ note's share of CMV** (note L1): a holding that has a value never reads "0.00% of CMV"; it reads "under 0.01%

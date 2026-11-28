@@ -541,3 +541,219 @@ describe('delta review N-2 and N-4: a transfer out named on the record; the over
     near(x.lt.cmv, 13000, 'long');
   });
 });
+
+describe('round 2c (Gate B of 5c9ae0a F3, F4; MOD-05\'s merger condition) on the holdings side', () => {
+  const OLD = 'Sample Contra Fund - Regular Plan - Growth';
+  const SMALL = 'Sample Small Cap Fund - Regular Plan - Growth';
+
+  test('F3: on a shared instrument the oversell and its reason are this holding\'s share (OD-15)', () => {
+    // IRR (no folio): Purchase 1 Feb 2024 100 u at 100; Redemption 1 Jun 2024 15,000 at 100 = 150 u (50 u beyond);
+    // Purchase 1 Feb 2025 400 u at 120 (48,000). Holdings D1 300 u (invested 36,000, CMV 39,000) and D2 100 u (12,000,
+    // 13,000): shares 0.75 and 0.25 of the 400 u lot. The oversell is 50 u for the scheme: 37.5 u for D1 and 12.5 u for
+    // D2 (5c9ae0a gave 50 to each). Both split, long on 30 Sep 2026: 39,000 at a gain of 3,000; 13,000 at 1,000.
+    const r = run([
+      hold(MID, 'Mid Cap Fund', 'Equity', 300, 36000, 39000, { dist: D1 }),
+      hold(MID, 'Mid Cap Fund', 'Equity', 100, 12000, 13000, { dist: D2 }),
+    ], [
+      flow(MID, [2024, 2, 1], 'Purchase', 100, -10000, { dist: null }),
+      flow(MID, [2024, 6, 1], 'Redemption', 100, 15000, { dist: null }),
+      flow(MID, [2025, 2, 1], 'Purchase', 120, -48000, { dist: null }),
+    ]);
+    const [h1, h2] = recsOf(r, MID);
+    assert.ok(h1 && h2);
+    near(h1.oversoldUnits, 37.5, 'D1 share'); near(h2.oversoldUnits, 12.5, 'D2 share');
+    near(h1.lt.cmv, 39000); near(h1.lt.gain, 3000); near(h2.lt.cmv, 13000); near(h2.lt.gain, 1000);
+    assert.match(h1.reason!, /sells more units than its earlier purchases hold \(37\.5 units beyond, this holding's share by units of the scheme's history \(OD-15\)\)/);
+    assert.match(h2.reason!, /\(12\.5 units beyond, this holding's share/);
+    // Not shared: the whole figure, without the share words (item 6's case: 50 u).
+    const own = run([hold(FLEXI, 'Flexi Cap Fund', 'Equity', 100, 12000, 13000)], [
+      flow(FLEXI, [2024, 1, 10], 'Purchase', 100, -10000), flow(FLEXI, [2024, 6, 10], 'Redemption', 100, 15000),
+      flow(FLEXI, [2025, 1, 10], 'Purchase', 120, -12000),
+    ]);
+    assert.match(one(own, FLEXI).reason!, /\(50 units beyond\), so a purchase, bonus or split is missing/);
+  });
+
+  test('F4: a sale of 0 within the 1% band keeps the split and is named in the reason', () => {
+    // Purchase 1 Jan 2024 100 u at 100; Redemption 1 Jan 2025 written at 110 for 0. Base 99.5 u (invested 9,950, CMV
+    // 11,940): 0.5% from the history's 100 u, inside the band, so the split stands: long 11,940 at a gain of 1,990
+    // (5c9ae0a: the same split with no reason). The reason names the sale of 0.
+    const r = run([hold(BLUE, 'Large Cap Fund', 'Equity', 99.5, 9950, 11940)], [
+      flow(BLUE, [2024, 1, 1], 'Purchase', 100, -10000), flow(BLUE, [2025, 1, 1], 'Redemption', 110, 0),
+    ]);
+    const x = one(r, BLUE);
+    assert.equal(x.status, 'ok');
+    near(x.lt.cmv, 11940, 'long'); near(x.lt.gain, 1990, 'gain');
+    assert.equal(x.reason, 'A sale, switch out or transfer out in the transaction history carries an amount of 0, so the units it sold could not be counted; the units still reconcile to the base file within 1%, so the split is shown on them.');
+  });
+
+  test('the merger condition: a holding with a merger candidate\'s switch in is not split; an ordinary partial switch is', () => {
+    // Contra: Purchase 1 Jul 2019 100 u at 100; Switch Out 10 Nov 2023 15,000 at 150 = all 100 u, Contra's last trade;
+    // Small Cap: Switch In 10 Nov 2023 15,000 at 150 (100 u), the only switch in of that amount: a merger candidate.
+    // Base Small Cap 100 u, invested 15,000, CMV 18,000. 5c9ae0a split it long 18,000 at a gain of 3,000, dated and
+    // costed at the switch; now unreconciled 'mergerCandidate', the 18,000 and 3,000 unclassified. Long + short +
+    // unclassified = CMV in the roll-up; no harvest candidate.
+    const r = run([hold(SMALL, 'Small Cap Fund', 'Equity', 100, 15000, 18000)], [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 15000),
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -15000),
+    ]);
+    const x = one(r, SMALL);
+    assert.equal(x.status, 'unreconciled');
+    assert.equal(x.unreconciledKind, 'mergerCandidate');
+    near(x.unclassified.cmv, 18000, 'unclassified'); near(x.unclassified.gain, 3000, 'gain');
+    assert.equal(x.lt.cmv + x.st.cmv, 0);
+    assert.match(x.reason!, /looks like a scheme merger: on the same day the whole of another scheme was switched out for the same amount\. A merger is not a sale \(s\.47\(xviii\)\)/);
+    // The partial switch: 7,500 = 50 of Contra's 100 u (Contra kept), Small Cap 50 u in at 150. Base 50 u, invested
+    // 7,500, CMV 9,000: an ordinary switch, split long 9,000 at a gain of 1,500 as before.
+    const p = run([hold(SMALL, 'Small Cap Fund', 'Equity', 50, 7500, 9000)], [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 7500),
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -7500),
+    ]);
+    const y = one(p, SMALL);
+    assert.equal(y.status, 'ok');
+    near(y.lt.cmv, 9000, 'long'); near(y.lt.gain, 1500, 'gain');
+  });
+
+  test('financial review V1, V2: the merger in two rows (M1b) and out of a scheme whose units are not known (M2): not split', () => {
+    // M1b: Contra in folios F1 (60 u) and F2 (40 u) at 100, switched out 10 Nov 2023 in two rows (9,000 and 6,000 at
+    // 150), one Small Cap Switch In of 15,000. Base Small Cap 100 u, invested 15,000, CMV 18,000. 0e860c3 split it long
+    // 18,000 on a lot dated at the merger; now unreconciled 'mergerCandidate', 18,000 and 3,000 unclassified.
+    const m1b = run([hold(SMALL, 'Small Cap Fund', 'Equity', 100, 15000, 18000)], [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -6000, { folio: 'F1' }), flow(OLD, [2019, 7, 1], 'Purchase', 100, -4000, { folio: 'F2' }),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 9000, { folio: 'F1' }), flow(OLD, [2023, 11, 10], 'Switch Out', 150, 6000, { folio: 'F2' }),
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -15000, { folio: 'F9' }),
+    ]);
+    const x = one(m1b, SMALL);
+    assert.equal(x.unreconciledKind, 'mergerCandidate');
+    near(x.unclassified.cmv, 18000, 'unclassified'); near(x.unclassified.gain, 3000, 'gain');
+    // M2: Contra 100 u at 100 and 5,000 with no price, switched out whole (22,500 at 150) as its last trade into Small
+    // Cap (22,500). Base 150 u, invested 22,500, CMV 27,000: 0e860c3 split it long 27,000; now 'mergerCandidate'.
+    const m2 = run([hold(SMALL, 'Small Cap Fund', 'Equity', 150, 22500, 27000)], [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(OLD, [2020, 1, 1], 'Purchase', null, -5000),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 22500), flow(SMALL, [2023, 11, 10], 'Switch In', 150, -22500),
+    ]);
+    const z = one(m2, SMALL);
+    assert.equal(z.unreconciledKind, 'mergerCandidate');
+    near(z.unclassified.cmv, 27000, 'unclassified');
+    // N3: the reason says the file does not say whether it was a merger.
+    assert.match(z.reason!, /the IRR file does not say whether it was a merger/);
+  });
+
+  test('financial review N1: when the apportionment fails, the oversell reason does not call it this holding\'s share', () => {
+    // The F3 case with D2's units blank: the lots cannot be apportioned (OD-15), so D1 is unreconciled 'apportion' with
+    // the scheme's whole oversell (50 u); its reason says that, not "this holding's share".
+    const r = run([
+      hold(MID, 'Mid Cap Fund', 'Equity', 300, 36000, 39000, { dist: D1 }),
+      hold(MID, 'Mid Cap Fund', 'Equity', null, 12000, 13000, { dist: D2 }),
+    ], [
+      flow(MID, [2024, 2, 1], 'Purchase', 100, -10000, { dist: null }),
+      flow(MID, [2024, 6, 1], 'Redemption', 100, 15000, { dist: null }),
+      flow(MID, [2025, 2, 1], 'Purchase', 120, -48000, { dist: null }),
+    ]);
+    const d1 = recsOf(r, MID).find((x) => x.baseUnits === 300)!;
+    assert.equal(d1.unreconciledKind, 'apportion');
+    near(d1.oversoldUnits, 50, 'the whole scheme\'s oversell');
+    assert.doesNotMatch(d1.reason!, /this holding's share by units/);
+    assert.match(d1.reason!, /\(50 units beyond, for the scheme's whole history: this holding's share is not known \(OD-15\)\)/);
+  });
+
+  test('Gate B of 4001f8f, B1: Small Cap switched into by Contra and Value together is not split (one row and two rows)', () => {
+    // Contra 100 u at 100 and Value 100 u at 40, switched out whole on 10 Nov 2023 for 15,000 and 5,000; Small Cap in
+    // for 20,000 (133.3333 u at 150), as one row and as two. Base Small Cap 133.3333 u, invested 20,000, CMV 24,000.
+    // 4001f8f split it long 24,000 at a gain of 4,000 on a lot dated at the merger; now 'mergerCandidate', 24,000 and
+    // 4,000 unclassified.
+    const VALUE = 'Sample Value Fund - Regular Plan - Growth';
+    for (const ins of [[20000], [15000, 5000]]) {
+      const r = run([hold(SMALL, 'Small Cap Fund', 'Equity', 20000 / 150, 20000, 24000)], [
+        flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(VALUE, [2019, 7, 1], 'Purchase', 40, -4000),
+        flow(OLD, [2023, 11, 10], 'Switch Out', 150, 15000), flow(VALUE, [2023, 11, 10], 'Switch Out', 50, 5000),
+        ...ins.map((amt) => flow(SMALL, [2023, 11, 10], 'Switch In', 150, -amt)),
+      ]);
+      const x = one(r, SMALL);
+      assert.equal(x.unreconciledKind, 'mergerCandidate', `${ins.length} rows`);
+      near(x.unclassified.cmv, 24000, 'unclassified'); near(x.unclassified.gain, 4000, 'gain');
+    }
+  });
+
+  test('delta review D1: a switch the priced lots prove partial is not a candidate; the holding switched into stays split', () => {
+    // Contra 100 u at 100 and a purchase of 5,000 with no price; 30 u switched out (4,500 at 150) into Small Cap on
+    // 10 Nov 2023, Contra's last trade. At least 70 u of Contra stay: an ordinary switch. Base Small Cap 30 u, invested
+    // 4,500, CMV 5,400: split long 5,400 at a gain of 900 (4001f8f: unreconciled 'mergerCandidate').
+    const r = run([hold(SMALL, 'Small Cap Fund', 'Equity', 30, 4500, 5400)], [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(OLD, [2020, 1, 1], 'Purchase', null, -5000),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 4500), flow(SMALL, [2023, 11, 10], 'Switch In', 150, -4500),
+    ]);
+    const x = one(r, SMALL);
+    assert.equal(x.status, 'ok');
+    near(x.lt.cmv, 5400, 'long'); near(x.lt.gain, 900, 'gain');
+  });
+
+  test('delta review D2: Small Cap held through two distributors whose folios separate the holdings: both not split', () => {
+    // Contra in folios FA1 (60 u) and FA2 (40 u) at 100, merged on 10 Nov 2023 into Small Cap through FB1 (9,000, 60 u)
+    // and FB2 (6,000, 40 u) at 150. Base: Small Cap FB1 60 u (invested 9,000, CMV 10,800) and FB2 40 u (6,000, 7,200).
+    // The folios give each holding its own ledger, each holding one of the two switch-in rows; both are candidate rows,
+    // so both holdings are unreconciled 'mergerCandidate' (marking only the first switch-in row left FB2 split long
+    // 7,200 on a lot dated at the merger: mutant V1d).
+    const r = run([
+      hold(SMALL, 'Small Cap Fund', 'Equity', 60, 9000, 10800, { dist: D1, folio: 'FB1' }),
+      hold(SMALL, 'Small Cap Fund', 'Equity', 40, 6000, 7200, { dist: D2, folio: 'FB2' }),
+    ], [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -6000, { folio: 'FA1' }), flow(OLD, [2019, 7, 1], 'Purchase', 100, -4000, { folio: 'FA2' }),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 9000, { folio: 'FA1' }), flow(OLD, [2023, 11, 10], 'Switch Out', 150, 6000, { folio: 'FA2' }),
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -9000, { folio: 'FB1' }), flow(SMALL, [2023, 11, 10], 'Switch In', 150, -6000, { folio: 'FB2' }),
+    ]);
+    const recs = recsOf(r, SMALL);
+    assert.equal(recs.length, 2);
+    assert.deepEqual(recs.map((x) => [x.unreconciledKind, Math.round(x.unclassified.cmv)]).sort(), [['mergerCandidate', 10800], ['mergerCandidate', 7200]].sort());
+  });
+
+  test('B1 with folios: Contra and Value merged into Small Cap through FB1 and FB2, both holdings not split (mutant B1e)', () => {
+    // Contra 100 u at 100 and Value 100 u at 40, switched out whole on 10 Nov 2023 (15,000 and 5,000) into Small Cap
+    // through folio FB1 (15,000 = 100 u at 150) and FB2 (5,000 = 33.3333 u). Base: Small Cap FB1 100 u (invested 15,000,
+    // CMV 18,000) and FB2 33.3333 u (5,000, 6,000). The folios give each holding its own ledger with one switch-in row;
+    // both rows are the many-into-one candidate's, so both holdings are unreconciled 'mergerCandidate' (marking only the
+    // first switch-in row would leave FB2 split on a lot dated at the merger).
+    const VALUE = 'Sample Value Fund - Regular Plan - Growth';
+    const r = run([
+      hold(SMALL, 'Small Cap Fund', 'Equity', 100, 15000, 18000, { dist: D1, folio: 'FB1' }),
+      hold(SMALL, 'Small Cap Fund', 'Equity', 5000 / 150, 5000, 6000, { dist: D2, folio: 'FB2' }),
+    ], [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000, { folio: 'FA1' }), flow(VALUE, [2019, 7, 1], 'Purchase', 40, -4000, { folio: 'FV1' }),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 15000, { folio: 'FA1' }), flow(VALUE, [2023, 11, 10], 'Switch Out', 50, 5000, { folio: 'FV1' }),
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -15000, { folio: 'FB1' }), flow(SMALL, [2023, 11, 10], 'Switch In', 150, -5000, { folio: 'FB2' }),
+    ]);
+    const recs = recsOf(r, SMALL);
+    assert.equal(recs.length, 2);
+    assert.deepEqual(recs.map((x) => [x.unreconciledKind, Math.round(x.unclassified.cmv)]).sort(), [['mergerCandidate', 18000], ['mergerCandidate', 6000]].sort());
+  });
+
+  test('E1, same-day chains on the holdings side: the end scheme of a chain is not split', () => {
+    // (b) Contra 100 u at 100 and Value 100 u at 40 switched out whole on 10 Nov 2023 into Small Cap (20,000), Small Cap
+    // switched out whole the same day into Focused (20,000 = 133.3333 u at 150). Base Focused 133.3333 u, invested 20,000,
+    // CMV 24,000: unreconciled 'mergerCandidate' (8ed1dc7 too, through its Small Cap to Focused pair). In (a), with Small
+    // Cap switched out to nowhere, no scheme of the chain is held at the as-on date, so the holdings side has nothing to
+    // split. The variant with two pass-throughs, Contra into Small Cap (15,000) and Value into Emerging Smallcap (5,000),
+    // both switched out whole into Focused (20,000) the same day: no older rule fits it (8ed1dc7 split Focused long
+    // 24,000 at 4,000); followed through both, the chain ends in Focused with 20,000 out against 20,000 in: unreconciled.
+    const VALUE = 'Sample Value Fund - Regular Plan - Growth';
+    const FOCUSED = 'Sample Focused Fund - Regular Plan - Growth';
+    const EMERGING = 'Sample Emerging Smallcap Fund - Regular Plan - Growth';
+    const starts = [
+      flow(OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(VALUE, [2019, 7, 1], 'Purchase', 40, -4000),
+      flow(OLD, [2023, 11, 10], 'Switch Out', 150, 15000), flow(VALUE, [2023, 11, 10], 'Switch Out', 50, 5000),
+    ];
+    const focused = hold(FOCUSED, 'Focused Fund', 'Equity', 20000 / 150, 20000, 24000);
+    const b = run([focused], [...starts,
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -20000), flow(SMALL, [2023, 11, 10], 'Switch Out', 150, 20000),
+      flow(FOCUSED, [2023, 11, 10], 'Switch In', 150, -20000)]);
+    assert.equal(one(b, FOCUSED).unreconciledKind, 'mergerCandidate');
+    near(one(b, FOCUSED).unclassified.cmv, 24000, 'Focused unclassified');
+    const two = run([focused], [...starts,
+      flow(SMALL, [2023, 11, 10], 'Switch In', 150, -15000), flow(EMERGING, [2023, 11, 10], 'Switch In', 150, -5000),
+      flow(SMALL, [2023, 11, 10], 'Switch Out', 150, 15000), flow(EMERGING, [2023, 11, 10], 'Switch Out', 150, 5000),
+      flow(FOCUSED, [2023, 11, 10], 'Switch In', 150, -20000)]);
+    assert.equal(one(two, FOCUSED).unreconciledKind, 'mergerCandidate');
+    near(one(two, FOCUSED).unclassified.gain, 4000, 'Focused unclassified gain');
+  });
+});

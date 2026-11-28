@@ -230,7 +230,7 @@ describe('the follow-up\'s financial review (27 Nov 2026): S1 to S4', () => {
     assert.ok(eq.xirrSource === 'irr' && eq.xirr.kind === 'missing' && eq.xirr.status === STATUS.NOT_COMPARABLE, JSON.stringify(eq.xirr));
     assert.ok(c.notes.includes('Equity and Equity / Mutual Funds: XIRR and BMXIRR from the IRR file are blank. 1 holding of 2 on this line has flows in the IRR file under another asset or product label and 1 has flows that are left out of the IRR tree for an invalid benchmark, so the line\'s XIRR cannot be read from the IRR file, and the base file\'s figure is not shown in its place.'), JSON.stringify(c.notes));
     const debt = c.sheet.rows.find((r) => r.level === 'asset' && r.label === 'Debt')!;
-    assert.equal(debt.xirrSource, 'cmv-weighted', 'no flow at all: the adapter\'s null, the base file\'s figure (owner question Q-H2)');
+    assert.equal(debt.xirrSource, 'cmv-weighted', 'no flow at all: the adapter\'s null, the base file\'s figure (answered by the owner on 28 Nov 2026: base-file XIRR, marked)');
     assert.equal(c.rows.find((r) => r.level === 'asset' && r.name === 'Debt')!.cells.xirr.text, '8.00%');
   });
 
