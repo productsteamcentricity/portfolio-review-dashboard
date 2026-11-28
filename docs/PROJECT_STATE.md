@@ -1,6 +1,8 @@
 # Project state
 
-**Last updated:** 28 Nov 2026 (registers-8, drafted by EX-03 for MOD-05).
+**Last updated:** 28 Nov 2026 (registers-9, drafted by EX-03 for MOD-05).
+- **Records (28 Nov 2026, registers-9, docs only):** PRs #71 and #72 below; the decisions MOD-05 took under PD-68; the
+  base-file template's files assigned to NB-05; compactions recounted (no change).
 - **Records (28 Nov 2026, registers-8, docs only):** PRs #65 to #67 below; the direct-equity CAGR described by the rule on
   main (no look-ahead) wherever the older "exact anniversaries" sentence stood; PD-68 (the owner's delegation of 28 Nov)
   in the decision log; compactions recounted.
@@ -152,7 +154,7 @@
   not yet wired. The owner's acceptance (Gate E) is pending. The side-by-side kit compares the live page and the new
   build on fund matching and every performance bucket (PRs #60, #62, #63). Since then (27 Nov 2026): the M3b follow-up
   merged (PR #65, main `04bf700`: the IRR file's XIRRs in the holdings tables and the client sheets, the weighted 3Y
-  and 5Y display) and the M7a tax engine round 2 (PR #67, main `0d38184`, not wired); then PR #68 (28 Nov 2026, main `2e63bed`: the review conditions of PR #61 for the direct-equity CAGR; `/next/` changed only by the footnote wording "holding(s) not matched to a fund"); and PR #69 (28 Nov 2026, main `83647ce`: the M10 store browser test, tests and docs only). Next on the new build: the holdings fix round (the reviewer's condition on the IRR rows), the owner-approved alias lines, the base-file template download, the returns note and the new-fund return, the direct-equity CAGR's remaining conditions before it is wired (dates compared as month labels, as the owner answered on 28 Nov 2026; a price source; a parity ledger); the review conditions of PR #61 were met in PR #68; not wired, the tax engine's next round and its review seam (not wired); then look-through and overlap (M4). Not
+  and 5Y display) and the M7a tax engine round 2 (PR #67, main `0d38184`, not wired); then PR #68 (28 Nov 2026, main `2e63bed`: the review conditions of PR #61 for the direct-equity CAGR; `/next/` changed only by the footnote wording "holding(s) not matched to a fund"); and PR #69 (28 Nov 2026, main `83647ce`: the M10 store browser test, tests and docs only); PR #71 (28 Nov 2026, main `f648f10`: the build ignores where `node_modules` really lives; `/next/` unchanged); PR #72 (28 Nov 2026, about 12:00 IST, main `b42eaae`: M7a tax round 2c, not wired; one open limit, KI-340, binding before the tax engine is wired), merged under the standing `/next/` rule (the owner's decision of 25 Nov 2026). Merged on the new-build reviewer's GO for 4b2499c with CI green, the build unchanged and the expected merge tree, before the new-build reviewer's separate pre-merge line was sent; the reviewer confirmed afterwards that every Gate D figure was green before the merge, and its post-merge check matches (Moderator's routine decision, PD-65). Next on the new build: the holdings fix round (the reviewer's condition on the IRR rows), the owner-approved alias lines, the base-file template download, the returns note and the new-fund return, the direct-equity CAGR's remaining conditions before it is wired (dates compared as month labels, as the owner answered on 28 Nov 2026; a price source; a parity ledger); the review conditions of PR #61 were met in PR #68; not wired, the tax engine's open limit (KI-340) and its review seam (not wired); then look-through and overlap (M4). Not
   in test build 1: a price-file reader (built after it, once the owner supplies the file layout).
 - **Repository.** `C:\dev\portfolio-review`; `origin` =
   https://github.com/productsteamcentricity/portfolio-review-dashboard (**public**, D-008).
@@ -276,8 +278,9 @@
    reported) and the blank template, is merged (PR #35) and accepted by the owner (Gate E), not wired into the page yet. The
    owner answered PD-16 on 26 Nov 2026 (item 4 stays with the tax adviser). **The M7a tax engine:** round 1 (the
    statement lots: the dated rules, lot classes, per-lot tax and the tax per person and year) is merged (PR #52); round 2
-   (the holdings: classification, FIFO lots, harvesting and the IRR reconciliation) is merged (PR #67, 27 Nov 2026).
-   Neither is wired into the page yet.
+   (the holdings: classification, FIFO lots, harvesting and the IRR reconciliation) is merged (PR #67, 27 Nov 2026),
+   and round 2c (PR #72, 28 Nov 2026) with one open limit, KI-340, binding before the tax engine is wired. Neither is
+   wired into the page yet.
    Model contracts-1 (PR #29, types only): I-31, I-32, I-44, I-45 and decision C-01. Model contracts-2 (PR #40, types
    only): contract I-37 (`app/src/model/tax.ts`) and the analyst question as a union on its kind.
 

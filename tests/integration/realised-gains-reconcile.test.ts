@@ -12,7 +12,7 @@ import { emptyTaxInputs, realiseLots } from '../../app/src/engine/tax/realised.t
 import { deriveRealisedGains } from '../../app/src/engine/tax/realised-irr.ts';
 import type { DerivedRealised } from '../../app/src/engine/tax/realised-irr.ts';
 import {
-  MIXED_SOURCE, OUTSIDE_REVIEW_REASON, TOLERANCE_RULE, realisedForYear, reconcileRealised, reconcileTolerance,
+  MIXED_SOURCE, OUTSIDE_REVIEW_REASON, TOLERANCE_RULE, paiseDifference, realisedForYear, reconcileRealised, reconcileTolerance, withinTolerance,
 } from '../../app/src/engine/tax/reconcile.ts';
 import type { ReconcileRow, RealisedReconciliation, StatementSide } from '../../app/src/engine/tax/reconcile.ts';
 import { readWorkbook } from '../../app/src/ingest/workbook.ts';
@@ -88,12 +88,19 @@ describe('cg-statement-mismatch against irr-realised (AC-18: High on disagreemen
     // Contra FY 2023-24: the statement's merger row (realised 15,000 - 10,000 = 5,000) is a non-taxable transfer with
     // no successor-reset lot: realisedCounted 0. The IRR file's switch out of the same day (derived 5,000) is the same
     // merger: left out too. 0 against 0: reconciled, one lot left out on each side.
+    // Round 2c: on the IRR side alone the switch out is a merger candidate (Contra emptied into Small Cap on one day for
+    // the same amount): a 'merger-candidate' gap with no sale value and no realised gain. It keeps the ordinary-switch
+    // lot (realised 5,000, the figure before round 2c), which the reconciliation reads here because the statement shows
+    // the merger on that day, so the row is as before.
     const r = rowOf(rec, 2023, SCHEME.OLD);
     const g = st.realised.gains.find((x) => x.schemeLabel === SCHEME.OLD)!;
     assert.equal(g.lotClass, 'non-taxable-transfer');
     near(v(g.realised), 5000, 'economic gain'); near(v(g.realisedCounted), 0, 'counted');
     const d = der.lots.find((x) => x.instrumentName === SCHEME.OLD)!;
-    near(v(d.realised), 5000, 'derived lot before the merger rule');
+    assert.equal(d.gap, 'merger-candidate');
+    assert.equal(d.realised.kind, 'missing');
+    assert.equal(d.saleValue.kind, 'missing');
+    near(v(d.asSwitch![0]!.realised), 5000, 'the ordinary-switch lot kept, never counted');
     assert.equal(r.outcome, 'reconciled');
     assert.equal(r.statement!.nonTaxableLeftOut, 1);
     assert.equal(r.derived!.nonTaxableLeftOut, 1);
@@ -389,5 +396,214 @@ describe('Gate B of aa67a45 (ARC-03): the tolerance pairs (Q4, Q5) and a stateme
     assert.equal(a.schemesLeftOut, 0);
     near(v(a.total), 1700, 'A total');
     assert.ok(a.total.kind === 'value' && a.total.coverage === undefined, JSON.stringify(a.total));
+  });
+});
+
+describe('round 2c, F1 (Gate B of 5c9ae0a): the tolerance boundary in exact arithmetic', () => {
+  test('10,200 against 10,198.98 at a tolerance of exactly 1.02 reconciles', () => {
+    // IRR: Purchase 1 Apr 2024 10,000 at 100 = 100 u; Redemption 2 Jun 2025 10,198.98 at 101.9898 = 100 u: derived
+    // realised 198.98. Statement: 100 u bought at 100, sold at 102 = 10,200: realised 200. Difference 1.02 (102 paise).
+    // Tolerance max(max(1, 10,200 x 0.0001 = 1.02), 1 + 0.005 x 1 = 1.005) = 1.02: exactly at it, reconciled. The
+    // unrounded difference is 1.0200000000004366, which 5c9ae0a read as "differs" (CHAT-012's F1).
+    const X = 'Sample Large and Midcap Fund - Regular Plan - Growth';
+    const der = deriveRealisedGains(irrImport([
+      flow(CLIENT_A, X, [2024, 4, 1], 'Purchase', 100, -10000),
+      flow(CLIENT_A, X, [2025, 6, 2], 'Redemption', 101.9898, 10198.98),
+    ], xlsx).fund, { asOn: AS_ON_DAY });
+    const imp = parseLots([{ scheme: X, asset: 'Equity', category: 'Large & Mid Cap Funds', buy: [2024, 4, 1], sell: [2025, 6, 2], units: 100, buyNav: 100, sellNav: 102 }], {}, xlsx);
+    const r = rowOf(reconcileRealised(der, { imp, realised: realiseLots(imp, emptyTaxInputs(), { asOnDay: AS_ON_DAY, now: NOW }) }), 2025, X);
+    assert.equal(r.difference, 1.02);
+    assert.equal(r.tolerance, 1.02);
+    assert.equal(r.outcome, 'reconciled');
+  });
+
+  test('a difference of 136 paise against the 72-row tolerance Rs 1.36 (the float 1.3599999999999999) reconciles; 137 differs', () => {
+    // Statement: 72 lots of 1 u each, bought at 100 on 72 different days of 2024 and sold 2 Jun 2025 at 150: sale 10,800,
+    // realised 72 x 50 = 3,600. IRR: Purchase 1 Jan 2024 7,200 at 100 = 72 u; Redemption 2 Jun 2025 of 10,798.64 (72 u
+    // at 149.98111...): derived realised 3,598.64. Difference 1.36. Tolerance max(max(1, 10,800 x 0.0001 = 1.08),
+    // 1 + 0.005 x 72 = 1.36) = 1.36, which the float sum gives as 1.3599999999999999: a bare <= would say "differs".
+    // A redemption of 10,798.63 gives 137 paise: beyond, differs.
+    const X = 'Sample Large and Midcap Fund - Regular Plan - Growth';
+    const lots = Array.from({ length: 72 }, (_, i) => ({ scheme: X, asset: 'Equity', category: 'Large & Mid Cap Funds',
+      buy: [2024, 1 + (i % 12), 1 + Math.floor(i / 12)] as const, sell: [2025, 6, 2] as const, units: 1, buyNav: 100, sellNav: 150 }));
+    const imp = parseLots(lots, {}, xlsx);
+    assert.deepEqual(imp.insufficientYears, []);
+    const st: StatementSide = { imp, realised: realiseLots(imp, emptyTaxInputs(), { asOnDay: AS_ON_DAY, now: NOW }) };
+    const at = (sale: number): ReconcileRow => rowOf(reconcileRealised(deriveRealisedGains(irrImport([
+      flow(CLIENT_A, X, [2024, 1, 1], 'Purchase', 100, -7200),
+      flow(CLIENT_A, X, [2025, 6, 2], 'Redemption', sale / 72, sale),
+    ], xlsx).fund, { asOn: AS_ON_DAY }), st), 2025, X);
+    const r = at(10798.64);
+    assert.equal(r.difference, 1.36);
+    assert.ok(r.tolerance! < 1.36 && Math.abs(r.tolerance! - 1.36) < 1e-12, String(r.tolerance));
+    assert.equal(r.outcome, 'reconciled');
+    const beyond = at(10798.63);
+    assert.equal(beyond.difference, 1.37);
+    assert.equal(beyond.outcome, 'differs');
+  });
+});
+
+describe('round 2c, the merger condition (MOD-05): a merger candidate is never computed without a statement that shows it', () => {
+  const derivedNew = (): DerivedRealised => deriveRealisedGains(irrImport(irrRealisedRows({ sellNew: true }), xlsx).fund, { asOn: AS_ON_DAY });
+  /** The mismatch statement without the Contra merger row (it does not show the merger). */
+  const withoutMerger = (opts: Parameters<typeof mismatchStatementLots>[0] = {}): StatementSide => {
+    const imp = parseLots(mismatchStatementLots(opts).filter((l) => l.scheme !== SCHEME.OLD), {}, xlsx);
+    return { imp, realised: realiseLots(imp, emptyTaxInputs(), { asOnDay: AS_ON_DAY, now: NOW }) };
+  };
+
+  test('the fixture\'s Contra to Small Cap merger from the IRR side alone: a merger-candidate gap, FY 2023-24 NOT AVAILABLE (was 5,000)', () => {
+    // A's Contra: Purchase 1 Jul 2019 100 u at 100; Switch Out 10 Nov 2023 15,000 at 150 = 100 u, the whole holding and
+    // A's last Contra trade; the same day a Switch In of 15,000 to Small Cap, the only switch in of that amount: one
+    // pairing, a candidate. The switch out is a 'merger-candidate' gap (no sale value, no realised gain); FY 2023-24 of
+    // A holds no other derived lot, so the derived figure is NOT AVAILABLE, never the 5,000 of an ordinary switch.
+    const der = derivedOf();
+    const d = der.lots.filter((x) => x.instrumentName === SCHEME.OLD);
+    assert.deepEqual(d.map((x) => [x.gap, x.mergerCandidate?.role]), [['merger-candidate', 'switch-out']]);
+    assert.equal(d[0]!.saleValue.kind, 'missing');
+    assert.equal(der.counts.mergerCandidates, 1);
+    const fy = realisedForYear(2023, der, null);
+    assert.equal(fy.source, 'derived from transactions');
+    assert.equal(fy.total.kind, 'missing');
+    const w = der.issues.find((i) => i.ruleId === 'tax.derived-merger-candidates')!;
+    assert.equal(w.severity, 'Warning');
+    assert.equal(w.count, 1);
+    assert.match(w.message, /^1 switch pair looks like a scheme merger; a merger is not a sale \(s\.47\(xviii\)\) and cost and date carry over; confirm it with the analyst\./);
+    assert.ok(!DASH.test(w.message));
+    // The ordinary partial switch of the same file (Flexi Cap, 50 of 200 u, 1 Aug 2025) stays computed: 1,500.
+    const flexi = der.lots.filter((x) => x.instrumentName === SCHEME.FLEXI);
+    assert.deepEqual(flexi.map((x) => x.gap), [null]);
+    near(v(flexi[0]!.realised), 1500, 'partial switch');
+  });
+
+  test('a statement that does not show the merger: the candidate stays a gap on the derived side (not reconciled)', () => {
+    // The statement without the Contra row: the Contra FY 2023-24 row is IRR-only and its derived figure NOT AVAILABLE,
+    // one lot unknown (5c9ae0a: a computed 5,000).
+    const r = rowOf(reconcileRealised(derivedOf(), withoutMerger()), 2023, SCHEME.OLD);
+    assert.equal(r.outcome, 'irr-only');
+    assert.equal(r.derived!.realised.kind, 'missing');
+    assert.equal(r.derived!.lotsUnknown, 1);
+  });
+
+  test('the successor: a later sale of Small Cap is the same gap without a statement that shows the merger', () => {
+    // Small Cap redeemed 4 May 2026, 18,000 at 180 = 100 u, after the candidate's switch in: 'merger-candidate'
+    // (successor), sale value 18,000 kept, no cost and no realised gain (5c9ae0a: 3,000 at the merger value). Tax year
+    // 2026-27 from the IRR side: NOT AVAILABLE. With a statement holding the Small Cap sale (original cost carried) but
+    // no merger row, the row is not reconciled for the derived gap (5c9ae0a: differs by 5,000); the statement figure
+    // (8,000) stands for the year.
+    const der = derivedNew();
+    const nw = der.lots.filter((x) => x.instrumentName === SCHEME.NEW);
+    assert.deepEqual(nw.map((x) => [x.gap, x.mergerCandidate?.role]), [['merger-candidate', 'successor']]);
+    near(v(nw[0]!.saleValue), 18000, 'sale value');
+    assert.equal(nw[0]!.realised.kind, 'missing');
+    near(v(nw[0]!.asSwitch![0]!.realised), 3000, 'ordinary-switch reading kept, never counted');
+    assert.equal(realisedForYear(2026, der, null).total.kind, 'missing');
+    const st = withoutMerger({ sellNew: 'carried' });
+    const r = rowOf(reconcileRealised(der, st), 2026, SCHEME.NEW);
+    assert.equal(r.outcome, 'not-reconciled');
+    assert.equal(r.reason, 'derived-gaps');
+    const fy = realisedForYear(2026, der, st);
+    assert.equal(fy.source, 'statement');
+    near(v(fy.total), 8000, 'statement figure');
+  });
+
+  test('item 8 counts a candidate\'s gap lot as the lots it keeps, so the statement figure\'s coverage is as before (MC14)', () => {
+    // irr-realised plus Small Cap bought 1 Jan 2023 (100 u at 100) and redeemed 1 Sep 2025 (150 u at 200, 30,000): the
+    // ordinary-switch reading takes two lots (100 u of the purchase, 50 u of the switch in); round 2c gives one
+    // 'merger-candidate' gap lot keeping both. FY 2025-26, client A: the statement covers Flexi Cap (1 lot) only; left
+    // out: Focused (1 derived lot) and Small Cap (2 lots, as before round 2c). Coverage 1 / (1 + 3) = 0.25 (counting
+    // the gap lot as 1 would give 1 / 3); the figure stays the statement's 1,700.
+    const der = deriveRealisedGains(irrImport([
+      ...irrRealisedRows(),
+      flow(CLIENT_A, SCHEME.NEW, [2023, 1, 1], 'Purchase', 100, -10000),
+      flow(CLIENT_A, SCHEME.NEW, [2025, 9, 1], 'Redemption', 200, 30000),
+    ], xlsx).fund, { asOn: AS_ON_DAY });
+    const nw = der.lots.filter((x) => x.instrumentName === SCHEME.NEW);
+    assert.deepEqual(nw.map((x) => [x.gap, x.asSwitch?.length]), [['merger-candidate', 2]]);
+    const a = realisedForYear(2025, der, statementOf()).clients.find((c) => c.source === 'statement')!;
+    assert.equal(a.schemesLeftOut, 2);
+    near(v(a.total), 1700, 'A total');
+    assert.ok(a.total.kind === 'value' && a.total.coverage === 0.25, JSON.stringify(a.total));
+  });
+
+  test('V3: a statement showing another scheme\'s merger on the day does not show this one; the successor stays a gap', () => {
+    // The statement holds the Small Cap sale (original cost carried, 8,000) and no Contra row; instead its Value lot is
+    // written as a non-taxable merger on 10 Nov 2023 (bought 1 Jul 2019, Acquisition Date = Sale Date). The candidate's
+    // scheme A is Contra, whose pair shows no merger, so the Small Cap row is not reconciled for the derived gap.
+    // 0e860c3 read any merger of the client that day: the row compared 8,000 with the ordinary-switch 3,000 (differs).
+    const lots = mismatchStatementLots({ sellNew: 'carried' }).filter((l) => l.scheme !== SCHEME.OLD).map((l) => (l.scheme === SCHEME.VALUE
+      ? { ...l, buy: [2019, 7, 1] as const, sell: [2023, 11, 10] as const, over: { acqDate: [2023, 11, 10] as const, acqPrice: 55, ltcg: 0, stcg: 0 } } : l));
+    const imp = parseLots(lots, {}, xlsx);
+    const st: StatementSide = { imp, realised: realiseLots(imp, emptyTaxInputs(), { asOnDay: AS_ON_DAY, now: NOW }) };
+    assert.ok(st.realised.gains.some((g) => g.schemeLabel === SCHEME.VALUE && g.lotClass === 'non-taxable-transfer'));
+    const r = rowOf(reconcileRealised(derivedNew(), st), 2026, SCHEME.NEW);
+    assert.equal(r.outcome, 'not-reconciled');
+    assert.equal(r.reason, 'derived-gaps');
+    assert.equal(r.mergerSuccessorLots, 0);
+  });
+
+  test('V4: a statement that shows the merger but not the successor\'s sale year leaves the successor a gap', () => {
+    // The mismatch statement shows the Contra merger (FY 2023-24) and holds no Small Cap lot. The Small Cap Tax year
+    // 2026-27 row is IRR-only; its derived figure is NOT AVAILABLE (one lot unknown). 0e860c3 showed the ordinary-switch
+    // 3,000 at the merger-day cost, which a non-taxable merger contradicts (the cost carries over: 8,000).
+    const r = rowOf(reconcileRealised(derivedNew(), statementOf()), 2026, SCHEME.NEW);
+    assert.equal(r.outcome, 'irr-only');
+    assert.equal(r.derived!.realised.kind, 'missing');
+    assert.equal(r.derived!.lotsUnknown, 1);
+    // Contra's own row still reads the merger as before (0 against 0, reconciled).
+    assert.equal(rowOf(reconcileRealised(derivedNew(), statementOf()), 2023, SCHEME.OLD).outcome, 'reconciled');
+  });
+});
+
+describe('round 2c financial review V5: the amount tolerance from sale-value sums in whole paise', () => {
+  test('probe 3b: statement sale values summed over 20 to 420 paise rows, at an exact 0.01% boundary, all reconcile', () => {
+    // The review's probe 3b, as written: 20,000 synthetic statement years (a fixed pseudo-random sequence, seed 7), each
+    // of 20 to 419 rows of up to Rs 50,000 in whole paise, the total a multiple of Rs 100 so 0.01% of it is a whole paisa
+    // T; the difference is exactly T. The sale-value sum carries float noise; 0e860c3 fed it to the 0.01% straight and read
+    // 755 of these as "differs" (the smallest at 160 rows; no case under that size did). Rounded to paise first: none.
+    let seed = 7;
+    const rnd = (): number => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    let tried = 0;
+    let differs = 0;
+    for (let k = 0; k < 20000; k++) {
+      const rows = 20 + Math.floor(rnd() * 400);
+      const paise = Array.from({ length: rows - 1 }, () => 1 + Math.floor(rnd() * 5000000));
+      const partial = paise.reduce((s, x) => s + x, 0);
+      const target = Math.ceil((partial + 1) / 10000) * 10000;
+      paise.push(target - partial);
+      const saleSum = paise.reduce((s, x) => s + x / 100, 0);
+      const exactTol = target / 1000000;
+      if (exactTol < 1 + 0.005 * rows + 0.011) continue;
+      tried++;
+      if (!withinTolerance(paiseDifference(1e5 + exactTol, 1e5), reconcileTolerance(saleSum, 0, rows))) differs++;
+    }
+    assert.equal(tried, 20000);
+    assert.equal(differs, 0);
+    // One paisa beyond still differs.
+    assert.equal(withinTolerance(paiseDifference(1e5 + 1.59, 1e5), reconcileTolerance(15800.5, 0, 2)), false);
+  });
+});
+
+describe('Gate B of 4001f8f: a many-into-one merger in the reconciliation (mutant RC1)', () => {
+  test('a statement showing only one source\'s merger does not show the merger: the successor stays a gap', () => {
+    // IRR: Contra 100 u at 100 and Value 100 u at 40, switched out whole on 10 Nov 2023 (15,000 and 5,000) into Small
+    // Cap (20,000); Small Cap redeemed 4 May 2026 for 24,000. The statement shows Contra's merger row (non-taxable, 10 Nov
+    // 2023) and the Small Cap sale (original cost carried), but no Value merger. Every source must show it, so the Small
+    // Cap Tax year 2026-27 row is not reconciled for the derived gap; reading the ordinary-switch lots on one source's
+    // word would compare them as if the merger were shown.
+    const der = deriveRealisedGains(irrImport([
+      flow(CLIENT_A, SCHEME.OLD, [2019, 7, 1], 'Purchase', 100, -10000), flow(CLIENT_A, SCHEME.VALUE, [2019, 7, 1], 'Purchase', 40, -4000),
+      flow(CLIENT_A, SCHEME.OLD, [2023, 11, 10], 'Switch Out', 150, 15000), flow(CLIENT_A, SCHEME.VALUE, [2023, 11, 10], 'Switch Out', 50, 5000),
+      flow(CLIENT_A, SCHEME.NEW, [2023, 11, 10], 'Switch In', 150, -20000), flow(CLIENT_A, SCHEME.NEW, [2026, 5, 4], 'Redemption', 180, 24000),
+    ], xlsx).fund, { asOn: AS_ON_DAY });
+    assert.equal(der.counts.mergerCandidates, 2);
+    const imp = parseLots(mismatchStatementLots({ sellNew: 'carried' }).filter((l) => l.scheme === SCHEME.OLD || l.scheme === SCHEME.NEW), {}, xlsx);
+    const st: StatementSide = { imp, realised: realiseLots(imp, emptyTaxInputs(), { asOnDay: AS_ON_DAY, now: NOW }) };
+    const rec = reconcileRealised(der, st);
+    const r = rowOf(rec, 2026, SCHEME.NEW);
+    assert.equal(r.outcome, 'not-reconciled');
+    assert.equal(r.reason, 'derived-gaps');
+    assert.equal(r.mergerSuccessorLots, 0);
+    // Contra's own switch out is read as before where its merger is shown (0 against 0, reconciled).
+    assert.equal(rowOf(rec, 2023, SCHEME.OLD).outcome, 'reconciled');
   });
 });

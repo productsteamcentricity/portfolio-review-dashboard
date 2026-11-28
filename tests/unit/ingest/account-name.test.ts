@@ -6,7 +6,7 @@
 // counts and results. Shown in two places only: one count line in the import report, and a last column on the
 // workbook's Holdings (as loaded) sheet, which stays at its 43 columns when no holding has an account name.
 // The financial review's additions: the same comparison on a fuller book through the whole review, both view-models and
-// every sheet of the workbook (T-6); a PAN in the cell is removed at read and kept nowhere (T-9).
+// every sheet of the workbook (T-6); a PAN in the cell is removed from what is read (T-9).
 // Synthetic workbooks; answers by hand. No PAN-shaped literal: each token is assembled at run time (panToken).
 
 import { describe, test } from 'node:test';
@@ -259,7 +259,7 @@ describe('no figure moves on a fuller book: the review, the view-models and ever
   });
 });
 
-describe('a PAN in Account Name is removed at read and kept nowhere (T-9)', () => {
+describe('a PAN in Account Name is removed from what is read (T-9)', () => {
   const p1 = panToken(1);
   const p2 = panToken(2, true);
   const p3 = panToken(3);
@@ -297,6 +297,13 @@ describe('a PAN in Account Name is removed at read and kept nowhere (T-9)', () =
     assert.ok(!JSON.stringify(b).toLowerCase().includes(p4.toLowerCase()));
     // The count is of holding rows: the skipped row is not a holding, so the result still says 3.
     assert.equal(b.issues.find((i) => i.ruleId === 'base-file.account-pan-removed')!.count, 3);
+  });
+
+  test('the side effect the Read Me names: text shaped like a PAN inside a name is cut too', () => {
+    const shaped = `Sample${panToken(5)}`;
+    const b = baseOf([HEAD, ['Sample Client A', shaped, 'Sample Fund 1', 'F-1', 'Sample Distributor', 100000]]);
+    assert.equal(b.holdings[0]!.accountNames![0]!.includes(PAN_REPLACEMENT), true);
+    assert.equal(b.issues.find((i) => i.ruleId === 'base-file.account-pan-removed')!.count, 1);
   });
 
   test('a file with no PAN in the column: no such result, the names as given', () => {

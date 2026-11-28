@@ -60,7 +60,7 @@ const COLUMN_TABLE: readonly TemplateColumn[] = [
   { id: 'client', header: 'Client Name', kind: 'text', required: 'Yes', width: 30, accepted: null, read: true,
     what: 'The client\'s name. Holdings are grouped by client on this name, and the transactions (IRR) file is joined on it, letter for letter.' },
   { id: 'accountName', header: 'Account Name', kind: 'text', required: 'No', width: 30, accepted: null, read: true,
-    what: 'The account the holding sits in, for example a joint, minor or HUF account. Read and kept with the holding: the import report counts the different names, and the workbook\'s Holdings (as loaded) sheet lists them. No figure and no grouping uses it in this version. Never enter a PAN: one found in this column is removed when the file is read.' },
+    what: 'The account the holding sits in, for example a joint, minor or HUF account. Read and kept with the holding: the import report counts the different names, and the workbook\'s Holdings (as loaded) sheet lists them. No figure and no grouping uses it in this version. Never enter a PAN: one found in this column is removed when the file is read, and so is any text shaped like one (five letters, four digits and a letter, run together).' },
   { id: 'name', header: 'Instrument Name', kind: 'text', required: 'Yes', width: 46, accepted: null, read: true,
     what: 'The scheme, strategy or security name, as the platform writes it. A row without one is skipped and reported.' },
   { id: 'isin', header: 'Isin Code', kind: 'text', required: 'No', width: 16, accepted: 'Twelve characters: two letters, nine letters or digits, one digit.',

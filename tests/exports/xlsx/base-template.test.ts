@@ -127,6 +127,7 @@ describe('blank base file template', () => {
     assert.ok(what.get('Account Name')!.includes('No figure and no grouping uses it in this version'));
     assert.ok(what.get('Account Name')!.includes('the import report counts the different names'));
     assert.ok(what.get('Account Name')!.includes('Never enter a PAN'));
+    assert.ok(what.get('Account Name')!.includes('and so is any text shaped like one (five letters, four digits and a letter, run together)'));
     assert.equal(what.get('Isin Code'), BASE_TEMPLATE_ISIN_TEXT);
     assert.ok(what.get('Purchase Date')!.includes('four-digit year'));
     assert.ok(what.get('Market Value (₹)')!.includes('left out of every total and listed'));
