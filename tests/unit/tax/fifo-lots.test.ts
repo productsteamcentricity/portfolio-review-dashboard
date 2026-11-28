@@ -13,9 +13,12 @@ import { parseIrrFile } from '../../../app/src/ingest/irr-file.ts';
 import { computeTaxLots, lotLocked, lotTerm, toTaxPosition } from '../../../app/src/engine/tax/lots.ts';
 import type { TaxLotsResult, TaxPositionRecord } from '../../../app/src/engine/tax/lots.ts';
 import { INST, TAX_RULES_I21, i21ByInst } from '../../../app/src/engine/tax/classify.ts';
-import { rollupHoldings } from '../../../app/src/engine/tax/holdings-rollup.ts';
+import { rollupHoldings, unreconciledText } from '../../../app/src/engine/tax/holdings-rollup.ts';
 import { buildHarvests } from '../../../app/src/engine/tax/harvest.ts';
-import { financialYearOf } from '../../../app/src/engine/tax/rules.ts';
+import { TAX_RULES_V1, financialYearOf, ruleFor } from '../../../app/src/engine/tax/rules.ts';
+// Round 3 B-1 reads the new constant through a namespace, so the file still loads on an older engine (the revert proof).
+import * as classifyMod from '../../../app/src/engine/tax/classify.ts';
+import { V1_OF_I21, v1KeyOf } from '../../../app/src/engine/tax/realised-irr.ts';
 import type { ClientId } from '../../../app/src/model/ids.ts';
 import { ymdToDay } from '../../../app/src/engine/dates.ts';
 import type { SourceFileId } from '../../../app/src/model/ids.ts';
@@ -847,5 +850,192 @@ describe('M7b B2 (KI-340): compound merger days on the holdings side', () => {
     ]);
     assert.equal(one(r, SMALL).status, 'ok'); near(one(r, SMALL).lt.gain, 5000, 'Small Cap long gain');
     assert.equal(one(r, LARGE).status, 'ok'); near(one(r, LARGE).lt.gain, 5800, 'Large Cap long gain');
+  });
+});
+
+describe('tax round 3 (CHAT-012\'s Gate B of M7b and of round 2c) on the holdings side', () => {
+  const X = 'Sample Contra Fund - Regular Plan - Growth';
+  const Y = 'Sample Value Fund - Regular Plan - Growth';
+  const SMALL = 'Sample Small Cap Fund - Regular Plan - Growth';
+  const FOCUSED = 'Sample Focused Fund - Regular Plan - Growth';
+  const M = [2023, 11, 10] as const;
+
+  test('P3: a source paired one into one never joins a many-into-one subset: Small Cap stays split (CHAT-012\'s mutant P3)', () => {
+    // 10 Nov 2023: Contra (100 u at 80) switched out whole for 10,000 into Focused (10,000 = 100 u at 100), a one-into-one
+    // candidate; Value (50 u at 80) switched out whole for 5,000, and Small Cap in for 15,000 (100 u at 150). Base: Small
+    // Cap 100 u, invested 15,000, CMV 18,000; Focused 100 u, invested 10,000, CMV 12,000. Contra is paired, so Small Cap's
+    // only possible source is Value alone: an ordinary switch, split long (bought 10 Nov 2023, 30 Sep 2026 is after the
+    // anniversary) 18,000 at a gain of 3,000. Focused is unreconciled 'mergerCandidate'. Letting the paired Contra into
+    // the subset search (mutant P3) would fit Contra and Value to 15,000 and leave Small Cap unreconciled too.
+    const r = run([
+      hold(SMALL, 'Small Cap Fund', 'Equity', 100, 15000, 18000),
+      hold(FOCUSED, 'Focused Fund', 'Equity', 100, 10000, 12000),
+    ], [
+      flow(X, [2019, 7, 1], 'Purchase', 80, -8000), flow(Y, [2019, 7, 1], 'Purchase', 80, -4000),
+      flow(X, M, 'Switch Out', 100, 10000), flow(FOCUSED, M, 'Switch In', 100, -10000),
+      flow(Y, M, 'Switch Out', 100, 5000), flow(SMALL, M, 'Switch In', 150, -15000),
+    ]);
+    const s = one(r, SMALL);
+    assert.equal(s.status, 'ok');
+    near(s.lt.cmv, 18000, 'Small Cap long'); near(s.lt.gain, 3000, 'Small Cap gain');
+    assert.equal(one(r, FOCUSED).unreconciledKind, 'mergerCandidate');
+  });
+
+  test('J1: 17 schemes of 12,000 into 1,00,000 and 1,04,000 (no subset fits): the holdings switched into stay split', () => {
+    // The financial review's case on the holdings side. Seventeen schemes, each 100 u bought 1 Jul 2019 for 10,000,
+    // emptied for 12,000 on 10 Nov 2023, into Small Cap (1,00,000 = 1,000 u at 100) and Focused (1,04,000 = 1,040 u at
+    // 100). No sum of 12,000s is either amount. Base Small Cap 1,000 u (invested 1,00,000, CMV 1,10,000) and Focused
+    // 1,040 u (1,04,000, 1,14,400): split, long on 30 Sep 2026, at gains of 10,000 and 10,400 (5b9028c: not decidable over
+    // 16 sources, both unreconciled 'mergerCandidate').
+    const legacy = Array.from({ length: 17 }, (_, i) => `Sample Legacy ${i + 1} Fund - Growth`);
+    const r = run([
+      hold(SMALL, 'Small Cap Fund', 'Equity', 1000, 100000, 110000),
+      hold(FOCUSED, 'Focused Fund', 'Equity', 1040, 104000, 114400),
+    ], [
+      ...legacy.flatMap((k) => [flow(k, [2019, 7, 1], 'Purchase', 100, -10000), flow(k, M, 'Switch Out', 120, 12000)]),
+      flow(SMALL, M, 'Switch In', 100, -100000), flow(FOCUSED, M, 'Switch In', 100, -104000),
+    ]);
+    assert.equal(one(r, SMALL).status, 'ok'); near(one(r, SMALL).lt.gain, 10000, 'Small Cap long gain');
+    assert.equal(one(r, FOCUSED).status, 'ok'); near(one(r, FOCUSED).lt.gain, 10400, 'Focused long gain');
+  });
+
+  test('round 2c L1 and L2: once the merged units are sold, a fresh purchase is split, with no dust lot of the merger', () => {
+    // Contra (100 u at 100) merged into Small Cap on 10 Nov 2023 (15,000 at 150 = 100 u, a one-into-one candidate); Small
+    // Cap's 100 u redeemed 1 Jun 2024 at 160 (16,000); a fresh Purchase 1 Jan 2025 of 50 u at 200 (10,000). Base Small Cap
+    // 50 u, invested 10,000, CMV 11,000: split, long on 30 Sep 2026, 11,000 at a gain of 1,000 (before round 3:
+    // unreconciled 'mergerCandidate' for good, unlike the realised side's reset).
+    const base = [hold(SMALL, 'Small Cap Fund', 'Equity', 50, 10000, 11000)];
+    const merged = (redemptionPrice: number) => [
+      flow(X, [2019, 7, 1], 'Purchase', 100, -10000), flow(X, M, 'Switch Out', 150, 15000),
+      flow(SMALL, M, 'Switch In', 150, -15000), flow(SMALL, [2024, 6, 1], 'Redemption', redemptionPrice, 16000),
+      flow(SMALL, [2025, 1, 1], 'Purchase', 200, -10000),
+    ];
+    const s = one(run(base, merged(160)), SMALL);
+    assert.equal(s.status, 'ok');
+    near(s.lt.cmv, 11000, 'long'); near(s.lt.gain, 1000, 'gain');
+    // L2: the redemption sells 99.9999792 u (at 160.0000333), leaving 0.0000208 u of the switch in, within
+    // UNITS_TOLERANCE: cleared at the reset, so the split has one lot, the fresh purchase (not a dust lot dated 10 Nov 2023).
+    const d = one(run(base, merged(16000 / 99.9999792)), SMALL);
+    assert.equal(d.status, 'ok');
+    assert.deepEqual(d.lotDetail.map((x) => x.day), [day(2025, 1, 1)]);
+    near(d.lt.gain, 1000, 'gain');
+  });
+});
+
+describe('round 3 B-1 (the financial review of 7c4d545): the holding periods before 23 Jul 2024 are not in the table', () => {
+  const PERIODS = 'The holding periods before 23 Jul 2024 are not in the table';
+  const GOLD = 'Sample Gold Savings Fund - Regular Plan - Growth';
+  const OVERSEAS = 'Sample US Equity FoF - Regular Plan - Growth';
+  const EQUITY = 'Sample Bluechip Fund - Regular Plan - Growth';
+  const REIT = 'Sample Office Parks REIT';
+  const INVIT = 'Sample Highways InvIT';
+  const UNLISTED = 'Sample Infra Unlisted NCD 2027';
+  /** The review's KA-2 funds, each 100 u bought 1 Jan 2022 at 100 (cost 10,000), and an equity fund bought 1 Jan 2023. */
+  const book = [
+    hold(GOLD, 'FoF Domestic', 'Commodity', 100, 10000, 15000),
+    hold(OVERSEAS, 'FoF Overseas', 'Equity', 100, 10000, 13000),
+    hold(BOND, 'Corporate Bond Fund', 'Debt', 100, 10000, 11500),
+    hold(EQUITY, 'Large Cap Fund', 'Equity', 100, 10000, 13000),
+  ];
+  const flows = [
+    flow(GOLD, [2022, 1, 1], 'Purchase', 100, -10000), flow(OVERSEAS, [2022, 1, 1], 'Purchase', 100, -10000),
+    flow(BOND, [2022, 1, 1], 'Purchase', 100, -10000), flow(EQUITY, [2023, 1, 1], 'Purchase', 100, -10000),
+  ];
+
+  test('the review\'s KA-2: a gold FoF, an overseas FoF and a pre-2023 debt fund bought 1 Jan 2022 are not split as on 30 Jun 2024', () => {
+    // As on 30 Jun 2024 (29 months held) the law then needed 36 months for these units (table v1 NE-ST-2, NE-LT-3; the
+    // holding period non-equity-2014-07-11 to 22 Jul 2024), so all three were short; the I-21 table's 24 months would
+    // show them long 5,000, 3,000 and 1,500 (7c4d545). Now each is unreconciled 'periodsNotInTable', its CMV and gain
+    // unclassified (long + short + unclassified = CMV), and the equity fund (12 months on both sides) stays split long
+    // 13,000 at 3,000. The roll-up's long-term figure is the equity fund's alone, PARTIAL at 1 split of 4.
+    const r = run(book, flows, day(2024, 6, 30));
+    assert.equal(one(r, GOLD).taxRule, INST.commodityMf);
+    assert.equal(one(r, OVERSEAS).taxRule, INST.global);
+    for (const [name, cmv, gain] of [[GOLD, 15000, 5000], [OVERSEAS, 13000, 3000], [BOND, 11500, 1500]] as const) {
+      const x = one(r, name);
+      assert.equal(x.unreconciledKind, 'periodsNotInTable', name);
+      assert.ok(x.reason !== null && x.reason.startsWith(PERIODS), String(x.reason));
+      near(x.unclassified.cmv, cmv, `${name} unclassified`); near(x.unclassified.gain, gain, `${name} gain`);
+      assert.equal(x.lt.cmv + x.st.cmv, 0, name);
+    }
+    const e = one(r, EQUITY);
+    assert.equal(e.status, 'ok');
+    near(e.lt.cmv, 13000, 'equity long'); near(e.lt.gain, 3000, 'equity gain');
+    const roll = rollupHoldings(r, []);
+    const lt = roll.legacy.unrealised.lt;
+    assert.equal(lt.kind === 'value' && lt.v, 3000);
+    assert.equal(lt.kind === 'value' && lt.coverage, 0.25);
+    assert.match(lt.kind === 'value' ? lt.prov.method : '', /3 holdings not split \(the holding periods before 23 Jul 2024 are not in the table: 3\) left out/);
+    // Beside holdings unreconciled with the IRR file, the period count is named apart (the IRR file is not its cause).
+    assert.equal(unreconciledText({ mergerCandidate: 1, periodsNotInTable: 2 } as Parameters<typeof unreconciledText>[0]),
+      'unreconciled with the IRR file: merger candidate 1; the holding periods before 23 Jul 2024 are not in the table: 2');
+    // Nothing of the three reaches the harvest: only the equity fund's pool, and its label says whose gains stand.
+    const h = buildHarvests(roll, { asOn: day(2024, 6, 30) }).clients[0]!;
+    near(h.figures.ltGains, 3000, 'harvest long gains');
+    assert.equal(h.unreconciled, 3);
+    assert.ok(h.labels.some((l) => /the gains and losses shown are those of the holdings still split/.test(l)), JSON.stringify(h.labels));
+    assert.ok(!h.labels.some((l) => /the gains and losses stand/.test(l)));
+  });
+
+  test('KA-2 as on 23 Jul 2024: split as today, all long (9,500)', () => {
+    const r = run(book, flows, day(2024, 7, 23));
+    for (const [name, cmv, gain] of [[GOLD, 15000, 5000], [OVERSEAS, 13000, 3000], [BOND, 11500, 1500]] as const) {
+      const x = one(r, name);
+      assert.equal(x.status, 'ok', name);
+      near(x.lt.cmv, cmv, `${name} long`); near(x.lt.gain, gain, `${name} long gain`);
+    }
+  });
+
+  test('REIT, InvIT and an unlisted bond are not split as on 30 Jun 2024, and split as today on 23 Jul 2024', () => {
+    // REIT and InvIT units needed 36 months before 23 Jul 2024 (12 in the I-21 table); an unlisted bond was deemed short
+    // only for transfers from that day (s.50AA). Bought 1 Jan 2022, 100 u at 100. On 30 Jun 2024 all three are
+    // unreconciled 'periodsNotInTable' (7c4d545: REIT and InvIT long, the bond short). On 23 Jul 2024: REIT and InvIT
+    // long (over 12 months), the bond short (deemed).
+    const b2 = [
+      hold(REIT, 'REIT', 'Real Estate', 100, 10000, 12000, { product: 'REIT', amc: '' }),
+      hold(INVIT, 'InvIT', 'Infrastructure', 100, 10000, 11000, { product: 'InvIT', amc: '' }),
+      hold(UNLISTED, 'Unlisted Bond', 'Debt', 100, 10000, 10500, { product: 'Bonds', amc: '' }),
+    ];
+    const f2 = [REIT, INVIT, UNLISTED].map((n) => flow(n, [2022, 1, 1], 'Purchase', 100, -10000));
+    const before = run(b2, f2, day(2024, 6, 30));
+    assert.deepEqual([REIT, INVIT, UNLISTED].map((n) => one(before, n).taxRule), [INST.reit, INST.invit, INST.unlistedBonds]);
+    for (const n of [REIT, INVIT, UNLISTED]) assert.equal(one(before, n).unreconciledKind, 'periodsNotInTable', n);
+    const after = run(b2, f2, day(2024, 7, 23));
+    near(one(after, REIT).lt.gain, 2000, 'REIT long'); near(one(after, INVIT).lt.gain, 1000, 'InvIT long');
+    near(one(after, UNLISTED).st.gain, 500, 'bond short');
+  });
+
+  test('the classes kept split before 23 Jul 2024 are exactly those whose period table v1 gives the same on both sides', () => {
+    // The proof of classify.ts I21_PERIODS_UNCHANGED from the dated rows of table v1: for each class table v1 covers
+    // (realised-irr.ts V1_OF_I21), listed or not, and every monthly purchase from Jan 2010 to Jul 2024 (the from-2023
+    // classes from 1 Apr 2023, the pre-2023 classes before it), the holding period (months, or deemed short) for a sale
+    // on 22 Jul 2024 equals the one for a sale on 23 Jul 2024, and that equals the I-21 row's own. The set must be
+    // exactly the classes for which this holds; a class table v1 does not cover is never in it.
+    const unchanged = (classifyMod as { I21_PERIODS_UNCHANGED?: ReadonlySet<string> }).I21_PERIODS_UNCHANGED;
+    assert.ok(unchanged, 'I21_PERIODS_UNCHANGED');
+    const byInst = i21ByInst();
+    const spec = day(2023, 4, 1);
+    const period = (r: ReturnType<typeof ruleFor>): string => (r.kind === 'rule' ? (r.deemedShort ? 'deemed short' : `${r.holdingMonths}`) : 'none');
+    const proven = Object.keys(V1_OF_I21).filter((inst) => {
+      const row = byInst.get(inst);
+      return [false, true].every((etf) => {
+        const own = row ? (row.alwaysShort || row.anyPeriod ? 'deemed short' : `${etf && row.listedEtfMonths ? row.listedEtfMonths : row.months}`) : 'no row';
+        for (let y = 2010; y <= 2024; y++) {
+          for (let m = 1; m <= 12; m++) {
+            const p = day(y, m, 1);
+            if (p > day(2024, 7, 22) || (row?.specifiedFrom && p < spec) || (/before 1 Apr 2023/.test(inst) && p >= spec)) continue;
+            const at = (s: DayNumber): string => {
+              const k = v1KeyOf(inst, etf, p, s);
+              return 'key' in k ? period(ruleFor(TAX_RULES_V1, { ...k.key, purchaseDay: p, saleDay: s })) : 'none';
+            };
+            const a = at(day(2024, 7, 22));
+            if (a === 'none' || a !== at(day(2024, 7, 23)) || a !== own) return false;
+          }
+        }
+        return true;
+      });
+    });
+    assert.deepEqual([...unchanged!].sort(), [...proven].sort());
+    assert.deepEqual([...proven].sort(), [INST.debtMf, INST.elss, INST.etfFof9090, INST.equityEtf, INST.equityMf, INST.hybridSpecified].sort());
   });
 });
