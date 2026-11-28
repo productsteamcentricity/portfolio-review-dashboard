@@ -1310,4 +1310,21 @@ describe('tax round 3 (CHAT-012\'s Gate B of M7b and of round 2c): the merger se
     // The cases exercise both answers (a fit and none) as well as a unique fit.
     assert.ok(withFit > 4 && withFit < 32 && unique > 0, `${withFit} with a fit, ${unique} unique`);
   });
+
+  test('round 2c L2: at the successor reset the rounding left in the ledger is cleared, so no dust lot is computed', () => {
+    // Contra (100 u at 100) merged into Small Cap on 10 Nov 2023 (15,000 at 150 = 100 u, a one-into-one candidate). Small
+    // Cap redeemed 1 Jun 2024 for 16,000 at 160.0000333: 99.9999792 u, leaving 0.0000208 u, within UNITS_TOLERANCE, so the
+    // successor mark ends (a gap lot). A fresh Purchase 1 Jan 2025 of 50 u at 200 and its Redemption 1 Jun 2025 of 50 u at
+    // 220 (11,000): one lot of 50 u, realised 1,000, bought 1 Jan 2025. Before round 3 the 0.0000208 u of the switch in
+    // (at 150) were sold first: a dust lot of about Rs 0.0015, computed, beside a lot of 49.9999792 u.
+    const r = run([
+      flow(A, X, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, X, M, 'Switch Out', 150, 15000),
+      flow(A, B, M, 'Switch In', 150, -15000), flow(A, B, [2024, 6, 1], 'Redemption', 16000 / 99.9999792, 16000),
+      flow(A, B, [2025, 1, 1], 'Purchase', 200, -10000), flow(A, B, [2025, 6, 1], 'Redemption', 220, 11000),
+    ]);
+    const nb = lotsOf(r, B);
+    assert.deepEqual(nb.map((x) => [x.gap, x.mergerCandidate?.role ?? null]), [['merger-candidate', 'successor'], [null, null]]);
+    near(v(nb[1]!.units), 50, 'units'); near(v(nb[1]!.realised), 1000, 'realised');
+    assert.equal(v(nb[1]!.purchaseDate), day(2025, 1, 1));
+  });
 });

@@ -895,4 +895,26 @@ describe('tax round 3 (CHAT-012\'s Gate B of M7b and of round 2c) on the holding
     assert.equal(one(r, SMALL).status, 'ok'); near(one(r, SMALL).lt.gain, 10000, 'Small Cap long gain');
     assert.equal(one(r, FOCUSED).status, 'ok'); near(one(r, FOCUSED).lt.gain, 10400, 'Focused long gain');
   });
+
+  test('round 2c L1 and L2: once the merged units are sold, a fresh purchase is split, with no dust lot of the merger', () => {
+    // Contra (100 u at 100) merged into Small Cap on 10 Nov 2023 (15,000 at 150 = 100 u, a one-into-one candidate); Small
+    // Cap's 100 u redeemed 1 Jun 2024 at 160 (16,000); a fresh Purchase 1 Jan 2025 of 50 u at 200 (10,000). Base Small Cap
+    // 50 u, invested 10,000, CMV 11,000: split, long on 30 Sep 2026, 11,000 at a gain of 1,000 (before round 3:
+    // unreconciled 'mergerCandidate' for good, unlike the realised side's reset).
+    const base = [hold(SMALL, 'Small Cap Fund', 'Equity', 50, 10000, 11000)];
+    const merged = (redemptionPrice: number) => [
+      flow(X, [2019, 7, 1], 'Purchase', 100, -10000), flow(X, M, 'Switch Out', 150, 15000),
+      flow(SMALL, M, 'Switch In', 150, -15000), flow(SMALL, [2024, 6, 1], 'Redemption', redemptionPrice, 16000),
+      flow(SMALL, [2025, 1, 1], 'Purchase', 200, -10000),
+    ];
+    const s = one(run(base, merged(160)), SMALL);
+    assert.equal(s.status, 'ok');
+    near(s.lt.cmv, 11000, 'long'); near(s.lt.gain, 1000, 'gain');
+    // L2: the redemption sells 99.9999792 u (at 160.0000333), leaving 0.0000208 u of the switch in, within
+    // UNITS_TOLERANCE: cleared at the reset, so the split has one lot, the fresh purchase (not a dust lot dated 10 Nov 2023).
+    const d = one(run(base, merged(16000 / 99.9999792)), SMALL);
+    assert.equal(d.status, 'ok');
+    assert.deepEqual(d.lotDetail.map((x) => x.day), [day(2025, 1, 1)]);
+    near(d.lt.gain, 1000, 'gain');
+  });
 });

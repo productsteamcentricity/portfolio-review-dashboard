@@ -36,7 +36,9 @@
 // day's switch outs that empty one scheme into exactly one other scheme on the same day for the same sum, one row or
 // several, financial review V1, V2; or several emptied schemes into one, Gate B of 4001f8f B1) is unreconciled
 // 'mergerCandidate', never split, since a scheme merger is not a sale
-// (s.47(xviii)) and cost and date carry over.
+// (s.47(xviii)) and cost and date carry over. Round 3 (round 2c L1, L2): once the scheme's units are known to be back to 0
+// after that switch in, the mark ends (a later fresh purchase is split as usual) and the rounding left in the unit ledger
+// is cleared, as the realised side's successor reset.
 // One correction (OD-15, KI-069): when one IRR instrument joins more than one holding (the same scheme with two
 // distributors) and the flows carry no folio that tells them apart, the instrument's lots are apportioned by units (by
 // invested value on the rupee ledger) across those holdings and labelled `apportioned`; the live gives every such
@@ -540,10 +542,15 @@ function meetInTheMiddle(left: ReadonlyArray<readonly [string, number]>, target:
 /** One pass over trades sorted by day (file order within a day): both FIFO ledgers. */
 function runLedgerOf(trades: readonly Transaction[], asOn: DayNumber, merger: MergerCandidates): Ledger {
   const L: Ledger = { units: [], rupees: [], noPxBuy: false, swIn: false, noPxSell: false, later: 0, transferRow: false, bonusRow: false, zeroSell: false, oversold: 0, transferOut: false, mergerIn: false };
+  /** Units after the trades so far, from the rows; null once a row's units are not known (as realised-irr.ts). */
+  let held: number | null = 0;
   for (const t of trades) {
     if (t.day > asOn) { L.later++; continue; }
     const amt = Math.abs(t.amountRupees);
     const buy = t.direction === 'in';
+    const rowPx = priceOf(t);
+    const rowUnits = rowPx !== null && amt > EPS ? amt / rowPx : null;
+    held = held === null || rowUnits === null ? null : buy ? held + rowUnits : held - rowUnits;
     if (buy && merger.ins.has(t)) L.mergerIn = true;
     if (buy && TRANSFER_IN_KINDS.has(t.kind)) L.transferRow = true;
     if (buy && BONUS_KINDS.has(t.kind)) L.bonusRow = true;
@@ -563,6 +570,10 @@ function runLedgerOf(trades: readonly Transaction[], asOn: DayNumber, merger: Me
       const { short } = consumeFifo(L.units, u);
       if (short > UNITS_TOLERANCE) L.oversold += short;
     }
+    // Round 2c L1 and L2 (CHAT-012's Gate B of a031769, round 3 item 7): once the units are known to be back to 0 after a
+    // merger candidate's switch in, the merged units are all sold, so a later fresh purchase is an ordinary lot again (the
+    // realised side's successor reset); the units left in the ledger within UNITS_TOLERANCE are rounding and are cleared.
+    if (L.mergerIn && held !== null && Math.abs(held) <= UNITS_TOLERANCE) { L.mergerIn = false; L.units = []; }
   }
   return L;
 }
