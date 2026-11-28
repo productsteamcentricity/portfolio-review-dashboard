@@ -4,6 +4,12 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (records, registers-10, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,CRITICAL_PATH}.md`**: PRs #73 to #76; the conditions before
+  the tax engine is wired (from the new-build reviewer's Gate B of the M7b seam); the M10 intake in review; a schedule
+  note on the PC's three sleeps of 28 Nov.
+- **Compactions** recounted: MOD-05 at 1 (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).
+
 ### Changed (records, registers-9, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/project-control/DECISION_LOG.md`**: PD-68, the decisions MOD-05 took under it (the month-labels ruling,
   confirmed by the owner on 28 Nov 2026 and added to section 2.4) and the window in practice (the PC slept from 04:28 to 12:00 IST for loss of mains power); the
