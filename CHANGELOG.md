@@ -4,6 +4,37 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Fixed (new build, M7a tax round 3: conditions before wiring; not wired into the page yet)
+These are conditions before the tax engine is wired (PLAN-08, MOD-05, 28 Nov 2026; CHAT-012's Gate B of M7b b299804 and
+the last section of its Gate B of round 2c). No page change: the engine is imported by no page module.
+- **M1 (`harvest.ts`, Q-49):** a client with no harvest worked now carries null plain figures, used and unused losses,
+  harvestable loss and Sec 198 rate, and the family carries null figures when no client is worked, never 0 (they read
+  0 before); the plain used and unused losses under the slab dash carry the figures' nulls too. Parity TXR-24 (book
+  `tax-invested-zero`, field level: the live gives 0).
+- **M2 (`classify.ts`, `holdings-rollup.ts`, `harvest.ts`; Q-49, no new rates):** the I-21 table holds only the rates
+  from 23 Jul 2024 (named once, `I21_RATES_FROM`, with its source). As on an earlier date every class of the roll-up is
+  marked (`ratesMissing`) and the harvest's tax before, tax after, saving and the amounts the rate order of set-off
+  decides are NOT AVAILABLE, labelled "the rates before 23 Jul 2024 are not in the table". CHAT-012's case as on 30 Jun
+  2024 (long 30,000, short 5,000) is no longer 4,750; on and after 23 Jul 2024 it is computed as before. Gains, losses,
+  splits and terms are unchanged. Owner question: whether the holdings side should read the dated table v1 instead.
+- **P3 (tests only):** a scheme already paired one into one never joins a many-into-one subset, on both sides
+  (CHAT-012's surviving mutant P3 is now killed).
+- **L1 (`harvest.ts`):** a PARTIAL family harvest figure always carries its coverage, so a family whose only gap is a
+  holding with an unknown gain is marked as the client is.
+- **L2 (`holdings-rollup.ts`, `harvest.ts`):** the PARTIAL and not-worked labels of the harvest and of the legacy
+  unrealised figures name each unreconciled kind by count (for example "unreconciled with the IRR file: transfer row 2,
+  merger candidate 1"); no figure changes.
+- **J1 (`lots.ts`):** over 16 sources the many-into-one subset search is exact by meet in the middle up to 32
+  (`MANY_INTO_ONE_SOURCES_SPLIT`), so a day where no subset fits stays computed: the financial review's 17 schemes of
+  12,000 into 1,00,000 and 1,04,000 give 34,000, not 17 gaps. Beyond 32 sources a possible fit is still a gap.
+- **Round 2c L1 and L2 (`lots.ts`, `realised-irr.ts`):** on the holdings side the merger candidate's mark ends once the
+  scheme's units are known to be back to 0 (a later fresh purchase is split), as on the realised side; at that reset the
+  units left within the units tolerance are cleared on both sides, so no dust lot is computed. L3 (row-level matching
+  of a merger written as its own switch-in row) stays an owner question with Q-T5.
+- **Records:** KI-340 reads fixed by PR #76.
+- Tests: `tests/unit/tax/{harvest,fifo-lots,realised-irr,holdings-rollup}.test.ts`, `tests/integration/review-tax.test.ts`
+  (the labels), `tests/parity/tax-ledger.json` (TXR-24).
+
 ### Changed (records, registers-10, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,CRITICAL_PATH}.md`**: PRs #73 to #76; the conditions before
   the tax engine is wired (from the new-build reviewer's Gate B of the M7b seam); the M10 intake in review; a schedule
