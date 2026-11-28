@@ -289,8 +289,10 @@ export type MergerCandidates = { outs: ReadonlyMap<Transaction, string>; ins: Re
  *   - many into one, per receiving scheme B (M7b B2, KI-340, replacing the per-day rule of B1): among the day's emptied
  *     schemes other than B not already paired one into one, any subset of two or more whose switch outs sum to B's switch
  *     ins within the amount tolerance; the other switches of the day do not stop it. When several subsets fit, all of
- *     their sources are the candidate's (never one picked); over MANY_INTO_ONE_SOURCES sources, all of them (not
- *     decidable: a gap, never a sale). B's own switch out that day is never a source; it falls under the successor gap.
+ *     their sources are the candidate's (never one picked); over MANY_INTO_ONE_SOURCES sources left after ruling out
+ *     those that cannot fit, all of them when a fit is still possible (not decidable: a gap, never a sale; review H1).
+ *     On such an ambiguous day, another receiving scheme that one or more of the ambiguous sources could have made is
+ *     the candidate's too (review H2). B's own switch out that day is never a source; it falls under the successor gap.
  * A same-day chain is tested first (E1, the delta review of 8ed1dc7): when a scheme both receives a switch in and is
  * switched out whole that day (a pass-through), the switches are followed through it. If no scheme receives a switch in
  * and is switched out only in part (the B1d guard), every starting scheme (switched out, receiving nothing) is emptied,
@@ -387,35 +389,82 @@ export function mergerCandidates(trades: readonly Transaction[]): MergerCandidat
     // Many into one, per receiving scheme B (Gate B of 4001f8f B1; M7b B2, KI-340: a compound day may hold other switches
     // too). The sources are the day's emptied schemes other than B (B's own switch out is never one: the B1d guard) not
     // already paired one into one. Every subset of two or more whose switch outs sum to B's switch ins, within the amount
-    // tolerance, fits; when several fit, all their sources are the candidate's (never one picked). Over
-    // MANY_INTO_ONE_SOURCES sources the subsets are not searched: the day's emptied sources into B are not decidable, a
-    // gap, never a sale. All of the chosen sources' switch outs that day and all of B's switch ins are the candidate's.
+    // tolerance, fits (`subsetsFitting`); when several fit, all their sources are the candidate's (never one picked).
+    // Sources that cannot be in any fitting subset are ruled out first; over MANY_INTO_ONE_SOURCES left, a fit that is
+    // still possible is not decidable: a gap, never a sale (review H1). All of the chosen sources' switch outs that day and
+    // all of B's switch ins are the candidate's.
     const chosenFor: Array<[string, string[]]> = [];
+    /** Sources of an ambiguous fit (several subsets, or not decidable): review H2. */
+    const ambiguous = new Set<string>();
     for (const [b, s] of d.in) {
       if (pairedIn.has(b)) continue;
-      const avail = [...d.out].filter(([k, o]) => k !== b && !pairedOut.has(k) && o.emptied && o.sum > EPS);
+      const avail = [...d.out].filter(([k, o]) => k !== b && !pairedOut.has(k) && o.emptied && o.sum > EPS).map(([k, o]) => [k, o.sum] as const);
       if (avail.length < 2) continue;
-      if (avail.length > MANY_INTO_ONE_SOURCES) { chosenFor.push([b, avail.map(([k]) => k)]); continue; }
-      const chosen = new Set<string>();
-      for (let mask = 1; mask < 1 << avail.length; mask++) {
-        let n = 0;
-        let sum = 0;
-        for (let i = 0; i < avail.length; i++) if (mask & (1 << i)) { n++; sum += avail[i]![1].sum; }
-        if (n >= 2 && same(sum, s.sum)) for (let i = 0; i < avail.length; i++) if (mask & (1 << i)) chosen.add(avail[i]![0]);
+      const fit = subsetsFitting(avail, s.sum, 2, same);
+      if (!fit.chosen.size) continue;
+      chosenFor.push([b, [...fit.chosen]]);
+      if (fit.ambiguous) for (const k of fit.chosen) ambiguous.add(k);
+    }
+    // Review H2: on an ambiguous day, another receiving scheme whose switch ins one or more of the ambiguous sources could
+    // have made (a merger of one of them into it cannot be ruled out) is the candidate's too: its switch ins are lots not
+    // known.
+    if (ambiguous.size) {
+      const chosenIn = new Set(chosenFor.map(([b]) => b));
+      for (const [c, s] of d.in) {
+        if (pairedIn.has(c) || chosenIn.has(c)) continue;
+        const fit = subsetsFitting([...ambiguous].filter((k) => k !== c).map((k) => [k, d.out.get(k)!.sum] as const), s.sum, 1, same);
+        if (fit.chosen.size) chosenFor.push([c, [...fit.chosen]]);
       }
-      if (chosen.size) chosenFor.push([b, [...chosen]]);
     }
+    // Review H1: each source counted once a day, however many receiving schemes it is chosen for.
+    const counted = new Set<string>();
     for (const [b, sources] of chosenFor) {
-      for (const k of sources) for (const r of d.out.get(k)!.rows) outs.set(r, b);
+      for (const k of sources) {
+        for (const r of d.out.get(k)!.rows) outs.set(r, b);
+        counted.add(k);
+      }
       for (const r of d.in.get(b)!.rows) ins.set(r, sources);
-      pairs += sources.length;
     }
+    pairs += counted.size;
   }
   return { outs, ins, pairs };
 }
 
-/** M7b B2: the most emptied source schemes of one client-day whose subsets are searched for a many-into-one merger. */
-export const MANY_INTO_ONE_SOURCES = 8;
+/** M7b B2 (review H1): the most sources of one client-day whose subsets are searched for a many-into-one merger. */
+export const MANY_INTO_ONE_SOURCES = 16;
+
+/**
+ * The sources (key, switch-out sum) that are in some subset of at least `minSize` of them whose sum matches `target`
+ * (`same`), and whether the fit is ambiguous (several subsets fit, or not decidable). Sources whose own sum is already
+ * beyond the target cannot be in any fitting subset (the amounts are positive) and are ruled out first. Over
+ * MANY_INTO_ONE_SOURCES left, the subsets are not searched: when the total of the rest is short of the target, or the
+ * smallest `minSize` of them already exceed it, nothing fits; otherwise a fit is still possible and not decidable, so all
+ * of them are returned, ambiguous (review H1).
+ */
+export function subsetsFitting(avail: ReadonlyArray<readonly [string, number]>, target: number, minSize: number,
+  same: (x: number, y: number) => boolean): { chosen: Set<string>; ambiguous: boolean } {
+  const left = avail.filter(([, x]) => x <= target || same(x, target));
+  const chosen = new Set<string>();
+  if (left.length < minSize) return { chosen, ambiguous: false };
+  if (left.length > MANY_INTO_ONE_SOURCES) {
+    const total = left.reduce((t, [, x]) => t + x, 0);
+    const smallest = left.map(([, x]) => x).sort((a, b) => a - b).slice(0, minSize).reduce((t, x) => t + x, 0);
+    if ((total < target && !same(total, target)) || (smallest > target && !same(smallest, target))) return { chosen, ambiguous: false };
+    for (const [k] of left) chosen.add(k);
+    return { chosen, ambiguous: true };
+  }
+  let fits = 0;
+  for (let mask = 1; mask < 1 << left.length; mask++) {
+    let n = 0;
+    let sum = 0;
+    for (let i = 0; i < left.length; i++) if (mask & (1 << i)) { n++; sum += left[i]![1]; }
+    if (n >= minSize && same(sum, target)) {
+      fits++;
+      for (let i = 0; i < left.length; i++) if (mask & (1 << i)) chosen.add(left[i]![0]);
+    }
+  }
+  return { chosen, ambiguous: fits > 1 };
+}
 
 /** One pass over trades sorted by day (file order within a day): both FIFO ledgers. */
 function runLedgerOf(trades: readonly Transaction[], asOn: DayNumber, merger: MergerCandidates): Ledger {

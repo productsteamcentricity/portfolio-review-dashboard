@@ -818,4 +818,34 @@ describe('M7b B2 (KI-340): compound merger days on the holdings side', () => {
     near(one(r, SMALL).unclassified.gain, 4000, 'Small Cap unclassified gain');
     assert.equal(one(r, LARGE).unreconciledKind, 'mergerCandidate');
   });
+
+  test('review H2: on an ambiguous day, Flexi Cap (which one of the ambiguous sources could have made) is not split', () => {
+    // Contra, Value and Midcap, each 100 u bought for 8,000 and emptied for 10,000 on 10 Nov 2023, into Small Cap
+    // (20,000) and Flexi Cap (10,000 = 100 u at 100). Base Flexi Cap 100 u, invested 10,000, CMV 12,000. 5054576 split it
+    // long 12,000; now unreconciled 'mergerCandidate', the 12,000 and 2,000 unclassified.
+    const r = run([hold(FLEXI_CAP, 'Flexi Cap Fund', 'Equity', 100, 10000, 12000)], [
+      ...[OLD, VALUE, MIDCAP].flatMap((k) => [flow(k, [2019, 7, 1], 'Purchase', 100, -8000), flow(k, M, 'Switch Out', 125, 10000)]),
+      flow(SMALL, M, 'Switch In', 100, -20000), flow(FLEXI_CAP, M, 'Switch In', 100, -10000),
+    ]);
+    const f = one(r, FLEXI_CAP);
+    assert.equal(f.unreconciledKind, 'mergerCandidate');
+    near(f.unclassified.cmv, 12000, 'unclassified'); near(f.unclassified.gain, 2000, 'gain');
+  });
+
+  test('review H1: nine schemes into two where no subset can fit: the holdings switched into stay split', () => {
+    // Nine schemes, each 100 u bought for 10,000, emptied for 12,000 on 10 Nov 2023 into Small Cap (50,000 = 500 u at
+    // 100) and Large Cap (58,000 = 580 u at 100). Base Small Cap 500 u (invested 50,000, CMV 55,000) and Large Cap 580 u
+    // (58,000, 63,800). 5054576 made every source a gap over its cap and left the two unreconciled; now both are split,
+    // long on 30 Sep 2026: 55,000 at 5,000 and 63,800 at 5,800.
+    const nine = Array.from({ length: 9 }, (_, i) => `Sample Legacy ${i + 1} Fund - Growth`);
+    const r = run([
+      hold(SMALL, 'Small Cap Fund', 'Equity', 500, 50000, 55000),
+      hold(LARGE, 'Large Cap Fund', 'Equity', 580, 58000, 63800),
+    ], [
+      ...nine.flatMap((k) => [flow(k, [2019, 7, 1], 'Purchase', 100, -10000), flow(k, M, 'Switch Out', 120, 12000)]),
+      flow(SMALL, M, 'Switch In', 100, -50000), flow(LARGE, M, 'Switch In', 100, -58000),
+    ]);
+    assert.equal(one(r, SMALL).status, 'ok'); near(one(r, SMALL).lt.gain, 5000, 'Small Cap long gain');
+    assert.equal(one(r, LARGE).status, 'ok'); near(one(r, LARGE).lt.gain, 5800, 'Large Cap long gain');
+  });
 });

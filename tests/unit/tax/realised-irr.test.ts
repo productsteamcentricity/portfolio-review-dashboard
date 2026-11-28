@@ -1096,39 +1096,71 @@ describe('M7b B2 (KI-340): compound merger days, many into one per receiving sch
     assert.equal(r.counts.mergerCandidates, 3);
   });
 
-  test('when more than one subset fits, every source of them is a gap (never one picked); over 8 sources, all are', () => {
+  test('when more than one subset fits, every source of them is a gap (never one picked); over 16 sources, only when a fit is still possible', () => {
     // Contra 15,000, Value 5,000 and Midcap 5,000 (30 u at 100 written at 166.6667) all emptied into Small Cap for 20,000:
     // {Contra, Value} and {Contra, Midcap} both fit. All three are gaps.
     const r = day([flow(A, MID, [2019, 7, 1], 'Purchase', 100, -3000), flow(A, MID, M, 'Switch Out', 5000 / 30, 5000)], false);
     for (const name of [OLD, OLD2, MID]) assert.deepEqual(gapsOf(r, name), [['merger-candidate', 'switch-out']], name);
-    // Nine schemes of 1,000 each, all emptied the same day, and Small Cap in for 2,000: over MANY_INTO_ONE_SOURCES (8)
-    // the subsets are not searched, so all nine are gaps (not decidable).
-    const nine = Array.from({ length: 9 }, (_, i) => `Sample Nine ${i + 1} Fund - Growth`);
-    const r9 = run([
-      ...nine.flatMap((n) => [flow(A, n, [2019, 7, 1], 'Purchase', 100, -800), flow(A, n, M, 'Switch Out', 125, 1000)]),
-      flow(A, NEW, M, 'Switch In', 150, -2000),
+    // n schemes of 1,000 each (8 u bought for 800), all emptied the same day, into receiving schemes as given.
+    const names = (n: number): string[] => Array.from({ length: n }, (_, i) => `Sample Many ${i + 1} Fund - Growth`);
+    const many = (n: number, ins: Array<[string, number]>): DerivedRealised => run([
+      ...names(n).flatMap((k) => [flow(A, k, [2019, 7, 1], 'Purchase', 100, -800), flow(A, k, M, 'Switch Out', 125, 1000)]),
+      ...ins.map(([k, amt]) => flow(A, k, M, 'Switch In', 150, -amt)),
     ]);
+    const allGaps = (r: DerivedRealised, n: number): boolean => names(n).every((k) => lotsOf(r, k).every((x) => x.gap === 'merger-candidate'));
+    const allComputed = (r: DerivedRealised, n: number): boolean =>
+      names(n).every((k) => lotsOf(r, k).every((x) => x.gap === null && Math.abs(v(x.realised)! - 200) < 0.01));
+    // Nine into 2,000: two of them fit (many ways): all nine gaps, counted 9. Nine into 2,000 and 3,000 at once: still
+    // counted once each, 9 (5054576 counted 18: review H1).
+    const r9 = many(9, [[NEW, 2000]]);
     assert.equal(r9.counts.mergerCandidates, 9);
-    for (const n of nine) assert.deepEqual(gapsOf(r9, n), [['merger-candidate', 'switch-out']], n);
-    // Eight of them (at the cap) are searched: 2,000 is two of them, so all eight are gaps; with Small Cap in 2,500 no
-    // subset fits and all stay computed (8 u bought for 800, out for 1,000: 200 each).
-    const eight = nine.slice(0, 8);
-    const rows8 = (inAmt: number): DerivedRealised => run([
-      ...eight.flatMap((n) => [flow(A, n, [2019, 7, 1], 'Purchase', 100, -800), flow(A, n, M, 'Switch Out', 125, 1000)]),
-      flow(A, NEW, M, 'Switch In', 150, -inAmt),
+    assert.ok(allGaps(r9, 9));
+    assert.equal(many(9, [[NEW, 2000], [MID, 3000]]).counts.mergerCandidates, 9);
+    // Nine, and sixteen (at MANY_INTO_ONE_SOURCES), into 2,500: searched, no subset fits: all computed, 200 each
+    // (5054576 made the nine gaps, over its cap of 8: review H1).
+    for (const n of [9, 16]) {
+      const r = many(n, [[NEW, 2500]]);
+      assert.equal(r.counts.mergerCandidates, 0, `${n}`);
+      assert.ok(allComputed(r, n), `${n}`);
+    }
+    // Seventeen (over the cap) into 2,500: the bounds cannot rule a fit out (total 17,000, the two smallest 2,000), so it
+    // is not decidable: all seventeen gaps, counted 17. Seventeen into 50,000: the total is short, nothing can fit: all
+    // computed.
+    const r17 = many(17, [[NEW, 2500]]);
+    assert.equal(r17.counts.mergerCandidates, 17);
+    assert.ok(allGaps(r17, 17));
+    const r17b = many(17, [[NEW, 50000]]);
+    assert.equal(r17b.counts.mergerCandidates, 0);
+    assert.ok(allComputed(r17b, 17));
+  });
+
+  test('review H1: nine schemes into 50,000 and 58,000, where no subset can fit, stay computed (18,000)', () => {
+    // The review's case: nine schemes, each 100 u bought for 10,000 and emptied for 12,000 (realised 2,000 each), switched
+    // into two schemes for 50,000 and 58,000 the same day. Sums of 12,000s are 48,000 or 60,000, never 50,000 or 58,000:
+    // an ordinary rebalancing. 5054576 made all nine gaps over its cap and counted 18.
+    const nine = Array.from({ length: 9 }, (_, i) => `Sample Legacy ${i + 1} Fund - Growth`);
+    const r = run([
+      ...nine.flatMap((k) => [flow(A, k, [2019, 7, 1], 'Purchase', 100, -10000), flow(A, k, M, 'Switch Out', 120, 12000)]),
+      flow(A, NEW, M, 'Switch In', 100, -50000), flow(A, FLEXI, M, 'Switch In', 100, -58000),
     ]);
-    assert.equal(rows8(2000).counts.mergerCandidates, 8);
-    const r8 = rows8(2500);
-    assert.equal(r8.counts.mergerCandidates, 0);
-    assert.ok(eight.every((n) => lotsOf(r8, n).every((x) => x.gap === null && Math.abs(v(x.realised)! - 200) < 0.01)));
-    // Nine of them into 2,500: no subset could fit, but over the cap the subsets are not searched, so the nine are not
-    // decidable: all gaps (a search, or a cap of 9, would compute them).
-    const r9b = run([
-      ...nine.flatMap((n) => [flow(A, n, [2019, 7, 1], 'Purchase', 100, -800), flow(A, n, M, 'Switch Out', 125, 1000)]),
-      flow(A, NEW, M, 'Switch In', 150, -2500),
+    assert.equal(r.counts.mergerCandidates, 0);
+    const total = nine.reduce((t, k) => t + lotsOf(r, k).reduce((s, x) => s + (v(x.realised) ?? NaN), 0), 0);
+    near(total, 18000, 'nine gains');
+  });
+
+  test('review H2: on an ambiguous day, a receiving scheme one of the ambiguous sources could have made is a gap too', () => {
+    // The review's case: Contra, Value and Midcap, each 100 u bought for 8,000 and emptied for 10,000 on 10 Nov 2023, into
+    // Small Cap (20,000) and Flexi Cap (10,000). Any two fit Small Cap: all three sources are gaps (ambiguous). Flexi
+    // Cap's 10,000 can be any one of them, merged into it: its switch in is a lot not known, so its later sale (100 u at
+    // 120, 12,000 on 4 May 2026) is a successor gap. 5054576 computed it at 2,000.
+    const r = run([
+      ...[OLD, OLD2, MID].flatMap((k) => [flow(A, k, [2019, 7, 1], 'Purchase', 100, -8000), flow(A, k, M, 'Switch Out', 125, 10000)]),
+      flow(A, NEW, M, 'Switch In', 100, -20000), flow(A, FLEXI, M, 'Switch In', 100, -10000),
+      flow(A, FLEXI, [2026, 5, 4], 'Redemption', 120, 12000),
     ]);
-    assert.equal(r9b.counts.mergerCandidates, 9);
-    assert.ok(nine.every((n) => lotsOf(r9b, n).every((x) => x.gap === 'merger-candidate')));
+    for (const k of [OLD, OLD2, MID]) assert.deepEqual(gapsOf(r, k), [['merger-candidate', 'switch-out']], k);
+    assert.deepEqual(gapsOf(r, FLEXI), [['merger-candidate', 'successor']]);
+    assert.equal(r.counts.mergerCandidates, 3);
   });
 
   test('a subset is two or more sources: two emptied schemes of the same amount into one switch in stay computed', () => {

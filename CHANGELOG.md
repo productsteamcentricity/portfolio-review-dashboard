@@ -62,6 +62,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   held before, is partly switched into Flexi Cap) is now a gap for FY 2023-24, not 8,500; Flexi Cap's own switch stays
   computed. One earlier expectation changed: in a same-day chain whose ends do not agree, the first link now fits many
   into one (a gap). No parity figure changed. Tests: `tests/unit/tax/{realised-irr,fifo-lots}.test.ts`.
+- **After the financial review of 10ec846 (H1, H2):** sources that cannot be in any fitting subset (their own switch out
+  already beyond the receiving scheme's switch in) are ruled out first, and up to 16 sources are searched (was 8); over
+  16, the day is not decidable only when a fit is still possible (the total reaches the switch in and the smallest two
+  do not pass it), so nine schemes into 50,000 and 58,000, where no subset can fit, stay computed (18,000) (H1). The
+  candidate count takes each source once a day (it read 18 for 9 sources). On an ambiguous day (several subsets fit, or
+  not decidable), another receiving scheme that one or more of the ambiguous sources could have made is a candidate too:
+  its switch ins are lots not known and its holding unreconciled 'mergerCandidate' (H2). No parity figure changed.
 
 ### Changed (tooling: the new app's build ignores where `node_modules` really lives, 28 Nov 2026; `/next/` byte-identical)
 - **`scripts/build.mjs`**: esbuild's `preserveSymlinks` is on, so a worktree whose `node_modules` is a junction to
