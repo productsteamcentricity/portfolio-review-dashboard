@@ -246,7 +246,8 @@
    base file's ISIN column, read only) merged in PR #31 and was accepted on 25 Nov 2026; the upload buttons wait for the
    SheetJS 0.20.2 upgrade (Q-12, approved by the owner on 26 Nov 2026). Sprint 2a (matcher corrections, under the owner's
    "new build first" exception to D-028 of 25 Nov 2026) merged in PR #46, with the name normaliser in PR #48: the owner's 16 fund aliases
-   (PD-36), no answer decided by candidate order (KI-036), fund-house words never distinctive (KI-101), the re-key of ranks
+   (PD-36; lines 18 to 22, approved by the owner on 28 Nov 2026 for the four official names the stricter regime and its normaliser
+   follow-up left unmatched, are on `data/owner-aliases-18-22`), no answer decided by candidate order (KI-036), fund-house words never distinctive (KI-101), the re-key of ranks
    and risk ratios (KI-052, OD-23), the same-scheme Direct twin (KI-054), the fund ISIN map and code join, merged rows with
    different ISINs (S3-1), and the stricter regime (option B) the owner chose on 26 Nov 2026 (`NEW_BUILD_MATCHING`); all
    opt-in at the engine, measured both ways (`tests/parity/matching-corrections-ledger.json`), and wired into the page
@@ -266,6 +267,10 @@
    Its Gate B's condition and notes are on `fix/m3b-followup-round2`: a line whose holdings have flows in the IRR file
    no longer shows the base file's figure beside rows from that file (M1), and the notes' shares and dates (L1, L2,
    L5; N2 of the M3b Gate B).
+   The templates PR is on `feat/base-template` (28 Nov 2026): the blank 17-column base file template with its Read Me
+   (U-06), a Templates group in section 1, and the base file's Account Name read, kept and shown only (no figure uses it;
+   the Moderator's default, not yet ruled on by the owner);
+   "Valuation Date" is in the template and not read (KI-320).
    Beside M2, the data-platform items (NB-04): M10, the MF Screener data pack reader and browser store, merged in
    PR #37 and accepted on 26 Nov 2026 (not wired); M11a, the monthly update engine core, merged in
    PR #41; M12a, the drawdown engine on index data, merged in PR #38, owner Gate E pending (the

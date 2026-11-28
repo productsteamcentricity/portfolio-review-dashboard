@@ -161,6 +161,45 @@ the last section of its Gate B of round 2c). No page change: the engine is impor
   not decidable), another receiving scheme that one or more of the ambiguous sources could have made is a candidate too:
   its switch ins are lots not known and its holding unreconciled 'mergerCandidate' (H2). No parity figure changed.
 
+### Added (new build: the owner's fund aliases, lines 18 to 22, 28 Nov 2026; no change to `index.html`; `/next/` changes)
+- **`data/owner/fund-aliases.json`**, lines 18 to 22, approved by the owner on 28 Nov 2026 ("Approve all five
+  (Recommended)", decision log 2.4): the four official AMFI scheme names that the stricter matching regime (two of them) and its
+  normaliser follow-up (the other two) left unmatched now resolve to the vendor's name for the same scheme, in the Regular and the Direct plan: UTI Focused Fund
+  (30 stocks); Kotak Infrastructure & Economic Reform Fund, with and without "Standard Plan" (two lines); Navi Nifty
+  Smallcap 250 Momentum quality index fund; Baroda BNP Paribas Best-in-Class Strategy Fund. They are spellings, not
+  renames: each official name and its vendor name carry the same AMFI scheme code (AMFI's NAV file and
+  `data/refdata/FUND_RANKS_CODES.json`). Each line carries its own `approved` date and `approvedBy`; the file's date
+  stays that of lines 1 to 17. Evidence links in `data/owner/fund-aliases-evidence.json`.
+- **`app/src/engine/match/owner-aliases.ts`**: the reader accepts a line's own approval (both fields or neither; a date
+  on or after the file's). No change to how an alias applies.
+- **Measured both ways** (`tests/parity/matching-corrections.ts`, `matching-corrections-ledger.json`): a fifth stage with
+  the owner's aliases, a full sweep. Of 1,206 official names it resolves 1,202 correctly (1,198 before; the live matcher
+  1,195), loses none that the live matcher resolves, and changes no other answer: the four stages before it are
+  unchanged in the ledger, and its own changes are those of the stage before less the four recovered names.
+- **Tests**: `tests/unit/match/owner-aliases.test.ts` (per line: each official AMFI name whose key is the line's, 12 of the
+  four schemes' 14, is unmatched without the line and resolves to the vendor's fund in its own plan with it; the other
+  two, the Kotak scheme's income option, stay unmatched and are pinned so, KI-321; the Direct list's record of each
+  target is the line's own direct target; the vendor's rank file gives the
+  target the official name's code; no MF_PERF or MF_PERF_DIRECT name moves), `tests/unit/match/corpus.test.ts` (the last
+  stage loses no official name).
+- **`app/src/views/matching.ts`**: the import report's label of an alias match no longer says "renamed scheme" alone: "a
+  renamed scheme, or another spelling of it".
+- **Known issue KI-321**: official names with the words "capital withdrawal" (the income option) are not matched by the
+  new build: 495 of the 499 such names, 444 of which the live matcher resolves. Not caused by these lines.
+- **`tests/side-by-side/`** (the kit): SB-15, SB-16 and the rows that followed them, SB-37 and SB-38, are retired: they
+  were known gaps, and both builds now match the same fund with the same figures. No known gap is left in the kit.
+
+### Added (new build, M10 before wiring: the pack intake for the section 1 slot; not wired, `/next/` unchanged)
+- **`app/src/services/screener-intake.ts`**: `intakeScreenerPack` reads a picked MF Screener data pack and offers it to
+  the browser store, and returns the source register record (role `screener-pack`, class N, as-on = the pack's cycle;
+  stage `review` when stored, `upload` when refused) and the status the slot shows: stored or already loaded with the
+  pack overview (cycle, kind, provisional, month-ends, backfill cycles, warnings, the cycle it replaced), or refused at
+  the read stage (the reader's reason and the file at fault) or the store stage (the store's reason; the stored pack
+  kept). `screenerStoreStatus` gives the sidebar line ("MF Screener pack: cycle 2026-10-15, provisional"). No pack
+  figure (D-026), no UI, no global.
+- Tests: `unit/services/screener-intake.test.ts` (synthetic packs, the memory backend); `tests/browser/screener-store.cdp.mjs`
+  runs the intake against the real IndexedDB too (17 checks).
+
 ### Changed (tooling: the new app's build ignores where `node_modules` really lives, 28 Nov 2026; `/next/` byte-identical)
 - **`scripts/build.mjs`**: esbuild's `preserveSymlinks` is on, so a worktree whose `node_modules` is a junction to
   another worktree's builds the same page. Before, the bundler wrote the resolved path into three Preact module
@@ -262,6 +301,41 @@ the last section of its Gate B of round 2c). No page change: the engine is impor
   (October's last weekday) and a 31 Oct review use the point labelled 31 Oct and give the same 1Y, 3Y and 5Y; 29, 25
   and 15 Oct use September. The figure is dated by the month-end label, marked "month-end label" on that source's
   footnote clause; the true price day goes in the result's `notes`. Daily sources keep true days.
+
+### Added (new build: the base file template, the Templates group and Account Name, 28 Nov 2026; no change to `index.html` or data; `/next/` changes)
+- **A blank base file template** (`app/src/exports/xlsx/base-template.ts`, parity row U-06): "Base file template.xlsx",
+  built in the browser on request, no binary committed. Sheet "Base File" holds 17 headings of the platform's holding
+  report (MOD-04's selection of 26 Nov 2026 under the owner's answer of that day: only the columns that are necessary),
+  exactly as the platform writes them, with column formats as column defaults
+  (none on the two XIRR columns: a percent format on a pasted 8.79 would read as 879%). Sheet "Read Me" has one row per
+  column, eight rules, and the product names the application knows with what each is read as.
+- **A Templates group in section 1** (`app/src/ui/components/templates-group.tsx`; one line each in `s1-uploads.tsx`,
+  `store.ts` and `wiring.ts`): the base file template and the transactions (IRR) file template, available before any file.
+  The IRR slot keeps its own template button.
+- **Account Name is read, kept and shown** (`app/src/ingest/base-file.ts`; the Moderator's default D1 (a) of 27 Nov 2026,
+  not yet ruled on by the owner): a column headed exactly "Account Name" is kept on each holding (`Holding.accountNames`,
+  each different name once for merged folios; a PAN in the cell is removed at read, as the capital-gains reader removes
+  it, with an Information result `base-file.account-pan-removed`). It is shown as one count line in the import report
+  (the number of different names) and as a last column
+  "Account Name" on the workbook's Holdings (as loaded) sheet, written only when a holding has a name, so a workbook from a
+  file without the column is unchanged. No figure, no grouping and no account identity uses it. Merged folios under more
+  than one account name stay one holding, with an Information result (`base-file.merged-accounts`).
+- **Model types, proposed to the Moderator, who writes `app/src/model/**`**: `BaseField` gains `accountName`, and `Holding`
+  gains the optional `accountNames`.
+- **Known issue KI-320**: the template's "Valuation Date" column is not read; the Read Me says so.
+- **The blank template uploaded as it is downloaded** (the Guardian's Gate B finding B1): it is now refused plainly, "The
+  sheet "Base File" has a header row but no holding rows.", with the sheets in either order. Before, one Read Me row
+  held both words of the reader's header test, so the reader took the Read Me for the holdings sheet and read its
+  sentences as 33 holdings. The row is reworded; a test holds every Read Me row to it and uploads the blank template.
+- **A dependency between two readers**: `app/src/ingest/base-file.ts` imports `scrubText` from
+  `app/src/ingest/capital-gains.ts` (the PAN removal, one rule for both files). **Known issue KI-323**: a PAN written
+  with spaces or hyphens inside it is not removed.
+- **Tests**: `tests/exports/xlsx/base-template.test.ts` (the headings against a hand-typed list and the full report's
+  order; a filled template read back with no result of any severity and each value as typed; the Read Me's product list
+  against `data/refdata/PRODUCT_CLASS_RULES.json`: every row's example classifies as the row says and every label of the
+  table is listed), `tests/unit/ingest/account-name.test.ts` (kept as given; the same file with and without the column
+  gives the same holdings, accounts, counts and results; the import report line; the workbook column), and a real-click
+  download check in `tests/browser/overview.cdp.mjs`.
 
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
