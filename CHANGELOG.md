@@ -16,8 +16,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   CHAT-016 at 1 (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_SUCCESSION_REGISTER.md`, `CHAT_REGISTRY.md`).
 
 ### Fixed (new build, M7a tax round 4; not wired into the page yet)
-PLAN-09 (MOD-05, 28 Nov 2026). No behaviour change on the page: the engine is imported by no page module, and the page
-calls no capital-gains reader function (it imports only the reader's column table, for the blank template).
+PLAN-09 (MOD-05, 28 Nov 2026). The tax engine is imported by no page module. One change reaches the page: since PR #81
+the base-file reader calls `scrubText` for the Account Name cell and its label, so KI-323 below changes `/next/`.
 - **W-1 (`classify.ts`, `lots.ts`; Q-49; KI-341; CHAT-012's Gate B of round 3 d7e1818):** Commodity ETF, International
   ETFs, Commodity Mutual Fund and Global Funds units bought from 1 Apr 2023 were Specified mutual fund units (s.50AA:
   deemed short term, at the slab rate) for sales up to 31 Mar 2025; table v1 applies the new definition to sales from
