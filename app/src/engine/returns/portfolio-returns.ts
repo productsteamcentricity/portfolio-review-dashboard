@@ -85,8 +85,12 @@ export type FundHoldingInput = {
   cmvCr: Value<number>;
 };
 
-/** Why an item is not in the weights ('no-value': outside the base; the others are excluded and counted). */
-export type ExclusionReason = 'no-value' | 'unmatched' | 'no-plan' | 'plan-mismatch' | 'no-return';
+/**
+ * Why an item is not in the weights ('no-value': outside the base; the others are excluded and counted). 'other-date':
+ * the fund is absent from its plan's primary table and from every same-date table, and only a table of another date
+ * has its return, which the same-date rule may not use (ARC-03 L3: it is not "without a return").
+ */
+export type ExclusionReason = 'no-value' | 'unmatched' | 'no-plan' | 'plan-mismatch' | 'other-date' | 'no-return';
 
 /** One item of a weighted figure: the return used and where it came from, or why it was left out. */
 export type WeightedItem = {
@@ -213,7 +217,14 @@ export function assertOneSourcePerKind(kinds: readonly ReturnsSource[]): void {
 }
 
 /** A source table whose figures a result used, for the footnote (source, plan, as-on date; E-148: count of stocks). */
-export type UsedTable = { source: ReturnsSource; plan?: FundPlan; asOn: Value<DayNumber>; count?: number };
+export type UsedTable = {
+  source: ReturnsSource;
+  plan?: FundPlan;
+  asOn: Value<DayNumber>;
+  count?: number;
+  /** E-148: the date is a month-end label of month-end prices (owner's F1 answer); the footnote says so. */
+  monthLabel?: boolean;
+};
 
 export type FundWeightedResult = WeightedResult & {
   used: UsedTable[];
@@ -254,13 +265,24 @@ export function weightedFundReturn(
     if (h.accountPlan != null && h.accountPlan !== h.plan) return { ...at, pick: { excluded: 'plan-mismatch' } };
     const chain = chains.get(h.plan)!;
     if (chain[0]) consulted.add(chain[0]);
+    let listed = false;
     for (const e of chain) {
       const found = fundLookup(e.table, h.schemeName, tenor);
       if (found.kind === 'absent') continue; // only a fund the table does not list is filled from the next table
+      listed = true;
       if (found.kind === 'none') break; // an explicit "no return" is the answer: never overridden
       if (h.cmvCr.kind === 'value' && h.cmvCr.v > 0) usedEntries.add(e);
       entryOfInput[entryOfInput.length - 1] = e;
       return { ...at, pick: { returnPct: found.v, source: e.src.source } };
+    }
+    // absent from every table the rule may use, but with a return in a table of another date: say so (ARC-03 L3).
+    // Only when both dates are known: an undated table is not known to be "of another date" (stays 'no-return').
+    if (!listed && chain[0] && chain[0].table.asOn.kind === 'value') {
+      const elsewhere = sources.some((src) => {
+        const t = src.plans[h.plan!];
+        return t !== undefined && !chain.some((e) => e.table === t) && t.asOn.kind === 'value' && fundLookup(t, h.schemeName!, tenor).kind === 'value';
+      });
+      if (elsewhere) return { ...at, pick: { excluded: 'other-date' } };
     }
     return { ...at, pick: { excluded: 'no-return' } };
   });
@@ -377,12 +399,15 @@ const BASE_NAME: Readonly<Record<ReturnsCoverage['basis'], string>> = {
   'flows-in': 'money paid in',
 };
 
-/** A share as a percent with one decimal that never reads 100% below 1, nor 0% above 0 (ARC-03 L5). */
+/**
+ * A share as a percent with a fixed one decimal ("63.0%" beside "89.8%", one format: the financial review's S5 note),
+ * never reading 100.0% below 1, nor 0.0% above 0 (ARC-03 L5).
+ */
 export function sharePct(share: number): string {
   let pct = Math.round(share * 1000) / 10;
   if (share < 1 && pct >= 100) pct = 99.9;
   if (share > 0 && pct <= 0) pct = 0.1;
-  return `${pct}%`;
+  return `${pct.toFixed(1)}%`;
 }
 
 /** The excluded items of a result counted by reason (items outside the base are not excluded: `outsideBase`). */
@@ -394,20 +419,21 @@ export function excludedBy(items: readonly WeightedItem[]): ExcludedBy {
   return out;
 }
 
-const REASON_ORDER: ReadonlyArray<Exclude<ExclusionReason, 'no-value'>> = ['no-return', 'unmatched', 'no-plan', 'plan-mismatch'];
+const REASON_ORDER: ReadonlyArray<Exclude<ExclusionReason, 'no-value'>> = ['no-return', 'other-date', 'unmatched', 'no-plan', 'plan-mismatch'];
 
-function reasonText(reason: Exclude<ExclusionReason, 'no-value'>, basis: ReturnsCoverage['basis'], t: string): string {
+function reasonText(reason: Exclude<ExclusionReason, 'no-value'>, basis: ReturnsCoverage['basis'], t: string, n: number): string {
   switch (reason) {
     case 'no-return': return `without a ${t} return`;
     case 'unmatched': return basis === 'equity-value' ? 'without an ISIN' : 'not matched to a fund';
     case 'no-plan': return 'with no known plan';
     case 'plan-mismatch': return 'whose plan differs from the account';
+    case 'other-date': return n === 1 ? `not in the primary table (its ${t} return is only in a table of another date)` : `not in the primary table (their ${t} returns are only in a table of another date)`;
   }
 }
 
 /**
  * The coverage footnote of a weighted figure, one text for screen, slide and sheet; it goes with every rendering of
- * the figure: the label; the coverage and the items excluded, each reason counted apart ("3Y covers 80% of MF value;
+ * the figure: the label; the coverage and the items excluded, each reason counted apart ("3Y covers 80.0% of MF value;
  * 1 fund without a 3Y return excluded; 1 fund with no known plan excluded", ARC-03 delta M3); the holdings outside the
  * base; every table used with its plan and as-on label (`used` of the result). Never prints an excluded item as 0%,
  * and never the true price day (PD-58). `footnoteOf(result)` passes a result's own fields.
@@ -422,7 +448,7 @@ export function coverageFootnote(figure: WeightedReturn, used: readonly UsedTabl
       const n = excluded[r]!;
       // a fund that is not matched is a holding, not yet a fund (ARC-03 F7)
       const [o, m] = r === 'unmatched' && c.basis === 'mf-value' ? ['holding', 'holdings'] : [one, many];
-      return `${n} ${n === 1 ? o : m} ${reasonText(r, c.basis, t)} excluded`;
+      return `${n} ${n === 1 ? o : m} ${reasonText(r, c.basis, t, n)} excluded`;
     });
     parts.push([`${t} covers ${sharePct(c.share)} of ${BASE_NAME[c.basis]}`, ...clauses].join('; '));
   }
@@ -437,7 +463,9 @@ export function coverageFootnote(figure: WeightedReturn, used: readonly UsedTabl
     while (j < used.length && used[j]!.source === s.source && used[j]!.plan === s.plan) j++;
     const head = `${SOURCE_NAME[s.source]}${s.plan ? (s.plan === 'regular' ? ', Regular plans' : ', Direct plans') : ''}, as on ${day(s.asOn)}`;
     const others = used.slice(i + 1, j).map((o) => `${day(o.asOn)}${o.count === undefined ? '' : `: ${cnt(o.count)}`}`);
-    const inner = [s.count === undefined ? '' : cnt(s.count), others.length ? `also ${others.join(', ')}` : ''].filter((x) => x).join('; ');
+    // a month-end label is marked on its own source's clause, so a true day of another source is never read as a label
+    const label = used.slice(i, j).some((u) => u.monthLabel) ? 'month-end label' : '';
+    const inner = [label, s.count === undefined ? '' : cnt(s.count), others.length ? `also ${others.join(', ')}` : ''].filter((x) => x).join('; ');
     named.push(inner ? `${head} (${inner})` : head);
     i = j;
   }
