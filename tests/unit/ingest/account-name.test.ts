@@ -306,6 +306,18 @@ describe('a PAN in Account Name is removed from what is read (T-9)', () => {
     assert.equal(b.issues.find((i) => i.ruleId === 'base-file.account-pan-removed')!.count, 1);
   });
 
+  test('a known limit (KI-323): a PAN written with spaces or hyphens inside it is not removed', () => {
+    const p = panToken(6);
+    const spaced = `${p.slice(0, 5)} ${p.slice(5, 9)} ${p.slice(9)}`;
+    const hyphened = `${p.slice(0, 5)}-${p.slice(5, 9)}-${p.slice(9)}`;
+    const b = baseOf([HEAD,
+      ['Sample Client A', `Sample Client A ${spaced}`, 'Sample Fund 1', 'F-1', 'Sample Distributor', 100000],
+      ['Sample Client A', `Sample Client A ${hyphened}`, 'Sample Fund 2', 'F-2', 'Sample Distributor', 200000]]);
+    // what the reader does today, pinned so that a change to scrubText shows here: the spaced forms stay in the name
+    assert.deepEqual(b.holdings.map((h) => h.accountNames), [[`Sample Client A ${spaced}`], [`Sample Client A ${hyphened}`]]);
+    assert.ok(!b.issues.some((i) => i.ruleId === 'base-file.account-pan-removed'));
+  });
+
   test('a file with no PAN in the column: no such result, the names as given', () => {
     assert.ok(!baseOf(BOOK).issues.some((i) => i.ruleId === 'base-file.account-pan-removed'));
   });

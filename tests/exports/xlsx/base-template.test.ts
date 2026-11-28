@@ -252,6 +252,47 @@ describe('round trip: the filled template reads back through parseBaseFile', () 
   });
 });
 
+describe('the blank template uploaded as it is downloaded (the Guardian\'s Gate B finding B1)', () => {
+  /** The blank template, its two sheets in the order given, saved through SheetJS as an upload would arrive. */
+  const blank = (order: readonly string[]): Uint8Array => {
+    const book = xlsx.read(buildBaseTemplate(), { type: 'array' }) as unknown as { SheetNames: string[]; Sheets: Record<string, unknown> };
+    book.SheetNames = [...order];
+    return writeXlsx(xlsx, book);
+  };
+
+  for (const order of [['Base File', 'Read Me'], ['Read Me', 'Base File']] as const) {
+    test(`sheets ${order.join(', ')}: a plain "no holding rows" on "Base File"; the Read Me is never read as holdings`, () => {
+      // the bytes exactly as the page builds them (their own sheet order), and the same book re-saved in this order
+      const uploads = order[0] === 'Base File' ? [buildBaseTemplate(), blank(order)] : [blank(order)];
+      for (const upload of uploads) {
+        const imp = parseBaseFile(readWorkbook(xlsx, upload), { sourceId: SRC, now: NOW });
+        assert.deepEqual(imp.sheet, { name: 'Base File', headerRow: 1 });
+        assert.deepEqual(imp.holdings, []);
+        assert.deepEqual([imp.counts.holdingRows, imp.counts.holdings, imp.counts.dataRows], [0, 0, 0]);
+        assert.deepEqual(imp.sheets.map((s) => [s.sheet, s.outcome]).sort(), [['Base File', 'no-rows'], ['Read Me', 'no-header']]);
+        assert.deepEqual(imp.issues.map((i) => `${i.severity} ${i.ruleId}`), ['Blocking base-file.no-holdings']);
+        assert.equal(imp.issues[0]!.message, 'The sheet "Base File" has a header row but no holding rows.');
+        // every one of the template's 17 headings that the reader reads is still mapped on the blank sheet
+        assert.equal(imp.columns.length, 16);
+      }
+    });
+  }
+
+  test('no row of the Read Me holds both words of the reader\'s header test, on any row (not only the rows the reader scans)', () => {
+    const rows = wb.sheets[1]!.rows;
+    assert.ok(rows.length > 20, 'the Read Me is longer than the reader\'s header scan');
+    const both = rows.map((r, i) => ({ i: i + 1, text: r.map((c) => cellText(c)).join('|').toLowerCase() })).filter((x) => x.text.includes('instrument') && x.text.includes('client'));
+    assert.deepEqual(both, []);
+    // the two column rows that name those headings are there, each without the other's word
+    assert.ok(rows.some((r) => cellText(r[0]) === 'Client Name') && rows.some((r) => cellText(r[0]) === 'Instrument Name'));
+  });
+
+  test('the sentence that was read as a header says the same without the word', () => {
+    const folio = wb.sheets[1]!.rows.find((r) => cellText(r[0]) === 'Folio No')!;
+    assert.equal(cellText(folio[2]), 'The folio number. Rows of one client that share the scheme or security name, the product and the distributor are merged into one holding.');
+  });
+});
+
 describe('the Read Me\'s product names against PRODUCT_CLASS_RULES as committed', () => {
   const TABLE = JSON.parse(fs.readFileSync(path.join(REPO, 'data', 'refdata', 'PRODUCT_CLASS_RULES.json'), 'utf8')) as Array<{ label: string }>;
   const { rules: R, skipped } = parseProductClassRulesDetailed(TABLE);

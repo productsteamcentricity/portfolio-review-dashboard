@@ -15,6 +15,10 @@
 // them: names, the ISIN and the folio as text, units, rupees in the house Indian-grouped format, dates in the house
 // date format. The two XIRR columns carry no format on purpose: a percent format on a pasted 8.79 would read as 879%.
 // "Valuation Date" is in the layout and is not read by this version (KI-320); the Read Me says so.
+// No row of the Read Me may read as a base-file header: the reader takes a row as the header when its text holds both
+// "client" and the word the Instrument Name heading starts with, and it looks at every sheet. So no Read Me row holds
+// both words (the Guardian's Gate B finding B1: the blank template, uploaded as downloaded, was read from this sheet);
+// tests/exports/xlsx/base-template.test.ts holds every row to it and uploads the blank template both ways round.
 // No sentence holds an en or em dash (D-029).
 
 import type { CellSpec, ColumnSpec, NumFmtKey, SheetSpec, WorkbookSpec } from './spec.ts';
@@ -72,7 +76,7 @@ const COLUMN_TABLE: readonly TemplateColumn[] = [
     accepted: `${BASE_TEMPLATE_ASSETS.join(', ')}. Commodities is read as Commodity; ${BASE_TEMPLATE_ASSET_SYNONYMS.join(' and ')} are read as Debt.`,
     what: 'The asset class. A blank or any other value leaves the asset class unknown, with a warning; it is never read as Equity.' },
   { id: 'folio', header: 'Folio No', kind: 'text', required: 'No', width: 18, accepted: null, read: true,
-    what: 'The folio number. Rows with the same client, instrument, product and distributor are merged into one holding.' },
+    what: 'The folio number. Rows of one client that share the scheme or security name, the product and the distributor are merged into one holding.' },
   { id: 'product', header: 'Product Name', kind: 'text', required: 'No', width: 20, accepted: 'See the product names below.', read: true,
     what: 'The product, as the platform names it. A blank is read as Mutual Funds, and a validation result says so.' },
   { id: 'distributor', header: 'Distributor Name', kind: 'text', required: 'No', width: 26, accepted: null, read: true,

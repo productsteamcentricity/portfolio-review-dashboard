@@ -136,6 +136,13 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **Model types, proposed to the Moderator, who writes `app/src/model/**`**: `BaseField` gains `accountName`, and `Holding`
   gains the optional `accountNames`.
 - **Known issue KI-320**: the template's "Valuation Date" column is not read; the Read Me says so.
+- **The blank template uploaded as it is downloaded** (the Guardian's Gate B finding B1): it is now refused plainly, "The
+  sheet "Base File" has a header row but no holding rows.", with the sheets in either order. Before, one Read Me row
+  held both words of the reader's header test, so the reader took the Read Me for the holdings sheet and read its
+  sentences as 33 holdings. The row is reworded; a test holds every Read Me row to it and uploads the blank template.
+- **A dependency between two readers**: `app/src/ingest/base-file.ts` imports `scrubText` from
+  `app/src/ingest/capital-gains.ts` (the PAN removal, one rule for both files). **Known issue KI-323**: a PAN written
+  with spaces or hyphens inside it is not removed.
 - **Tests**: `tests/exports/xlsx/base-template.test.ts` (the headings against a hand-typed list and the full report's
   order; a filled template read back with no result of any severity and each value as typed; the Read Me's product list
   against `data/refdata/PRODUCT_CLASS_RULES.json`: every row's example classifies as the row says and every label of the
