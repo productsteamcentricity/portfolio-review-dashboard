@@ -189,8 +189,9 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     assert.ok(legacy.performance!.some((x) => x.key === 'regular | pms | bench | nifty500multicap502525'), 'legacy: the equity index by category');
     // S3: a scheme the Regular block carries only as a Direct plan: both builds show its Regular-block record in the
     // Regular list and its Direct-block record in the Direct list, alike but for the since-inception return: the fund
-    // is 74 days old on 31 Oct 2026 (inception 18 Aug 2026), so the new build shows it as an absolute return (KI-302, the
-    // owner's answer of 28 Nov 2026; SB-59, SB-60), where the live page shows the data's annualised figure
+    // is under one year old (inception 18 Aug 2026), so the new build shows it as an absolute return (KI-302, the owner's
+    // answer of 28 Nov 2026; SB-59, SB-60), counted to the day each block is priced to (Regular Mon 2 Nov 2026, 76 days;
+    // Direct Fri 30 Oct 2026, 73 days), where the live page shows the data's annualised figure
     const z = 'zerodha arbitrage fund(g)-direct plan';
     assert.deepEqual(result.diffs.filter((x) => x.key.endsWith(`| fund | ${z}`)).map((x) => [x.key.split(' | ')[0], x.field, x.ledger]), [['regular', 'r SI', 'SB-59'], ['direct', 'r SI', 'SB-60']], 'S3: only SI differs');
     assert.equal(row('regular', 'hybrid mf', z).ref, 'Zerodha Arbitrage Fund(G)-Direct Plan');
@@ -198,10 +199,11 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     for (const [t, v] of Object.entries(row('regular', 'hybrid mf', z).returns)) {
       if (t !== 'SI') assert.equal(v, fig(MF, 'Zerodha Arbitrage Fund(G)-Direct Plan', t), `S3 regular ${t}`);
     }
-    // by hand: 1.067987^(74/365) - 1 = 1.3425% (Regular data, 6.7987% annualised); 1.061353^(74/365) - 1 = 1.2145% (Direct data, 6.1353%)
+    // by hand: 1.067987^(76/365) - 1 = e^(0.065775 x 0.208219) - 1 = 1.3790% (Regular data, 6.7987% annualised);
+    // 1.061353^(73/365) - 1 = e^(0.059544 x 0.2) - 1 = 1.1980% (Direct data, 6.1353%)
     const near = (a: number | null | undefined, b: number): boolean => typeof a === 'number' && Math.abs(a - b) < 5e-5;
-    assert.ok(near(row('regular', 'hybrid mf', z).returns.SI, 1.3425), `S3 regular SI ${row('regular', 'hybrid mf', z).returns.SI}`);
-    assert.ok(near(next.performance!.find((x) => x.key === `direct | hybrid mf | fund | ${z}`)!.returns.SI, 1.2145), 'S3 direct SI');
+    assert.ok(near(row('regular', 'hybrid mf', z).returns.SI, 1.379), `S3 regular SI ${row('regular', 'hybrid mf', z).returns.SI}`);
+    assert.ok(near(next.performance!.find((x) => x.key === `direct | hybrid mf | fund | ${z}`)!.returns.SI, 1.198), 'S3 direct SI');
     assert.equal(legacy.performance!.find((x) => x.key === `regular | hybrid mf | fund | ${z}`)!.returns.SI, 6.7987, 'the live page: the annualised figure');
   });
 
@@ -219,13 +221,15 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
         const b = r.bucket === 'AIF' ? AIF : SIF;
         assert.ok(r.ref !== null && r.ref in b, `${s.engine} ${r.key}: record`);
         for (const [t, v] of Object.entries(r.returns)) {
-          // KI-302 (SB-61): the new build does not show the since-inception figure of a SIF under one year old on the
-          // table's date (31 Oct 2026), because the SIF data does not say whether it is annualised; the live page shows it
-          const young = s === next && r.bucket === 'SIF' && t === 'SI' && String((b[r.ref!] as { inception?: string }).inception ?? '') > '2025-10-31';
-          assert.equal(v, young ? null : b[r.ref!]!.r?.[t] ?? null, `${s.engine} ${r.key} ${t}`);
+          // KI-322 (SB-61): the new build shows no since-inception figure of a SIF, at any age, because the SIF data
+          // does not state whether it is annualised (the Moderator's interim default); the live page shows it
+          const notShown = s === next && r.bucket === 'SIF' && t === 'SI';
+          assert.equal(v, notShown ? null : b[r.ref!]!.r?.[t] ?? null, `${s.engine} ${r.key} ${t}`);
         }
       }
-      assert.ok(next.performance!.some((x) => x.bucket === 'SIF' && x.kind === 'fund' && x.returns.SI === null), 'a young SIF is in the probe');
+      // the probe holds a SIF under one year old and one over (inception 20 Oct 2025): both are dashes in the new build
+      const sifAges = next.performance!.filter((x) => x.bucket === 'SIF' && x.kind === 'fund').map((x) => String((SIF[x.ref!] as { inception?: string }).inception ?? '') > '2025-11-02');
+      assert.ok(sifAges.includes(true) && sifAges.includes(false), 'a SIF under one year old and one over are in the probe');
       // the SIF bucket has no benchmark rows by design, on both sides
       assert.ok(!s.performance!.some((x) => x.bucket === 'SIF' && x.kind === 'bench'), `${s.engine}: a SIF benchmark`);
     }
