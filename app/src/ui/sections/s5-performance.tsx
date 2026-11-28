@@ -45,7 +45,7 @@ export function S5Performance({ state }: { state: AppState }) {
                       <th scope="row">{r.name}{r.kind === 'fund' && r.marker ? <span class="marker"> {r.marker}</span> : null}</th>
                       {b.cols.map((c) => {
                         const d = r.cells[c]!;
-                        return <td key={c} class={d.negative ? 'num neg' : 'num'}>{d.text}</td>;
+                        return <td key={c} class={d.negative ? 'num neg' : 'num'}>{d.text}{d.marker ? <sup>{d.marker}</sup> : null}</td>;
                       })}
                     </tr>
                   )))}

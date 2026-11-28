@@ -9,13 +9,16 @@
 //   - notes under each table: benchmark series not in the data (KI-073), categories with no benchmark named (OD-7),
 //     funds with no Direct plan (KI-054), ETFs shown with their single plan; under the section, the holdings not in any
 //     table;
+//   - the owner's returns note of 28 Nov 2026 first under every table (RETURNS_NOTE); a since-inception return shown as
+//     absolute for a fund under one year old carries the marker "a" and a note, and one not shown is a dash with a
+//     note that names the funds and the reason (KI-302);
 //   - E-147: the weighted average return of current holdings (mutual funds), 3Y and 5Y, the family then each client
 //     (D-023 point 3). Every figure carries its coverage footnote (portfolio-returns.ts footnoteOf), one note per figure;
 //     a figure with no source at all is the dash with "no source"; the switch does not change it (each fund is read
 //     from its own plan's table).
 // Sentences never contain an en or em dash (D-029).
 
-import type { BucketKey, FundRow, PerfBucket, PerformanceResult, Tenor, WeightedReturnRow } from '../engine/returns/performance.ts';
+import type { BucketKey, FundRow, PerfBucket, PerformanceResult, SinceInception, Tenor, WeightedReturnRow } from '../engine/returns/performance.ts';
 import type { CellDisplay } from './format.ts';
 import type { DayNumber, Value } from '../model/value.ts';
 import { displayPct, plainText, plural } from './format.ts';
@@ -28,6 +31,22 @@ import { PARTIAL_MARKER } from '../config/formats.ts';
 import { NOT_GIVEN } from '../engine/aggregate/entities.ts';
 
 export type PerformancePlan = 'regular' | 'direct';
+/** The owner's sentence (28 Nov 2026), under every performance table and in the workbook's Read Me. */
+export const RETURNS_NOTE = 'Returns up to one year are absolute; returns over one year are annualised.';
+/** The marker of a since-inception return shown as absolute (a fund under one year old; KI-302). */
+export const ABSOLUTE_MARKER = 'a';
+
+/** Why a since-inception return is not shown, as a note says it (the cell's own reason is longer and names the dates). */
+export const SI_NOT_SHOWN_TEXT: Readonly<Record<Extract<SinceInception, { basis: 'not-shown' }>['why'], string>> = {
+  'basis-not-stated': 'the data does not state whether its since-inception return is annualised',
+  'under-30-days': 'the fund is under 30 days old on the day its data is priced to, and one day of count is a large share of so young a figure',
+  'no-inception': 'the data gives no readable inception date and no return of one year or more',
+  'no-price-day': 'the day the data is priced to is not known and the fund has no return of one year or more',
+  'uploaded-monitor': 'the figures come from an uploaded monitor, which does not state the day they are priced to; without the uploaded monitor the page shows this return from its own monthly data, where the fund is at least 30 days old',
+  'inception-not-before-price-day': 'the fund\'s inception is not before the day its data is priced to',
+  'cannot-convert': 'the data\'s annualised figure is a loss of 100% or more',
+};
+
 export type PerformanceRowVM =
   | { kind: 'group'; name: string }
   | { kind: 'fund'; name: string; marker: string | null; cells: Partial<Record<Tenor, CellDisplay>> }
@@ -109,7 +128,8 @@ function names(list: readonly string[]): string {
   return xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
 }
 
-const hasReturn = (f: FundRow): boolean => Object.values(f.r).some((v) => v !== undefined && v.kind === 'value');
+/* a fund whose only figure is a since-inception return that is not shown keeps its row: the dash has a reason (KI-302) */
+const hasReturn = (f: FundRow): boolean => Object.values(f.r).some((v) => v !== undefined && v.kind === 'value') || f.si?.basis === 'not-shown';
 
 function bucketVM(b: PerfBucket, plan: PerformancePlan, directList: boolean): PerformanceBucketVM {
   const mf = b.key.endsWith(' MF');
@@ -123,6 +143,8 @@ function bucketVM(b: PerfBucket, plan: PerformancePlan, directList: boolean): Pe
   const notRecognised: string[] = [];
   const notAllEquity: string[] = [];
   const noTwin: string[] = [];
+  let absolute = 0;
+  const siNotShown = new Map<string, string[]>();
   let singlePlan = 0;
   for (const g of b.groups) {
     const shown = g.funds.filter((f) => hasReturn(f) || f.plan === 'no-direct-twin');
@@ -135,6 +157,8 @@ function bucketVM(b: PerfBucket, plan: PerformancePlan, directList: boolean): Pe
       if (f.plan === 'single-plan') singlePlan += 1;
       const cells: Partial<Record<Tenor, CellDisplay>> = {};
       for (const c of b.cols) cells[c] = displayPct(f.r[c]!);
+      if (f.si?.basis === 'absolute' && cells.SI) { cells.SI = { ...cells.SI, marker: ABSOLUTE_MARKER }; absolute += 1; }
+      if (f.si?.basis === 'not-shown') { const list = siNotShown.get(f.si.why) ?? []; list.push(f.name); siNotShown.set(f.si.why, list); }
       rows.push({ kind: 'fund', name: plainText(f.name), marker: f.plan === 'single-plan' ? DAGGER : null, cells });
     }
     for (const bm of g.benchmarks) {
@@ -147,7 +171,13 @@ function bucketVM(b: PerfBucket, plan: PerformancePlan, directList: boolean): Pe
     else if (g.noBenchmarkReason === 'not-recognised') notRecognised.push(g.label);
     else if (g.noBenchmarkReason === 'not-all-equity') notAllEquity.push(g.label);
   }
-  const notes: string[] = [];
+  const notes: string[] = [RETURNS_NOTE];
+  if (absolute > 0) {
+    notes.push(`${ABSOLUTE_MARKER}: ${plural(absolute, 'fund is', 'funds are')} under one year old, so ${absolute === 1 ? 'its' : 'their'} since-inception return is shown as an absolute return, worked from the data's annualised figure over the days from the fund's inception to the day the data is priced to.`);
+  }
+  for (const [why, list] of siNotShown) {
+    notes.push(`Since-inception return not shown for ${plural(list.length, 'fund', 'funds')} (${names(list)}): ${SI_NOT_SHOWN_TEXT[why as keyof typeof SI_NOT_SHOWN_TEXT]}.`);
+  }
   if (b.hasBenchmarks && b.benchAsOn) notes.push(b.benchAsOn.kind === 'value' ? `Benchmarks ${dateText(b.benchAsOn)}.` : `Benchmarks: ${dateText(b.benchAsOn)}.`);
   if (singlePlan > 0) {
     /* N8: the Direct list's single-plan rows show the Regular block's figures, which may be of another date */

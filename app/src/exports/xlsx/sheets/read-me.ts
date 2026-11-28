@@ -7,6 +7,7 @@ import { numCell, strCell } from '../spec.ts';
 import { SHEETS } from '../sheet-names.ts';
 import { STATUS } from '../../../model/status.ts';
 import { dayToExcelSerial } from '../../../engine/dates.ts';
+import { RETURNS_NOTE } from '../../../views/performance.ts';
 
 export const READ_ME_PURPOSE = 'Portfolio overview of one family: the holdings as loaded, the allocation by asset class, '
   + 'product and liquidity, and the client and distributor allocations. Every allocation cell is a formula over the '
@@ -55,6 +56,9 @@ export function readMeSheet(ctx: BuildContext): SheetSpec {
   if (ctx.input.performance) {
     add('Performance sheet', 'The performance tables of section 5: the Regular list, then the Direct list for the mutual-fund buckets, every row '
       + 'labelled with its plan and the as-on date of its data. Every fund is listed, with or without returns in the data.');
+    add('Returns', `${RETURNS_NOTE} The since-inception return of a mutual fund under one year old is shown as an absolute return, `
+      + 'and its row\'s Note says so; where the data does not allow that, or does not state how the figure is worked (a SIF), '
+      + 'the cell is blank with the reason in the Note.');
   }
   add('Sheets in this workbook', ctx.sheets.filter((s) => s !== SHEETS.manifest).join(', '));
   for (const l of ctx.leftOut) add('Sheet left out', `${l.sheet}: ${l.reason}.`);

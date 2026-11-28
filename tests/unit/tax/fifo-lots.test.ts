@@ -1039,3 +1039,172 @@ describe('round 3 B-1 (the financial review of 7c4d545): the holding periods bef
     assert.deepEqual([...proven].sort(), [INST.debtMf, INST.elss, INST.etfFof9090, INST.equityEtf, INST.equityMf, INST.hybridSpecified].sort());
   });
 });
+
+describe('round 4 W-1 (KI-341): four classes bought from 1 Apr 2023 were Specified for sales up to 31 Mar 2025', () => {
+  // CHAT-012's Gate B of tax round 3 (d7e1818), W-1; MOD-05's ruling of 28 Nov 2026. Commodity ETF, International ETFs,
+  // Commodity MF and Global Funds units bought from 1 Apr 2023 were Specified mutual fund units under s.50AA (deemed short
+  // term, at the slab rate) for sales up to 31 Mar 2025; table v1 applies the new definition to sales from 1 Apr 2025
+  // (data/owner/tax-rules.json NE-50AA-1, NE-50AA-2 at line 568, and the four fund types at lines 704 to 707).
+  type Gate = { boughtFrom: DayNumber; saleFrom: DayNumber; source: string };
+  const GOLD = 'Sample Gold ETF';
+  const DEEMED = /Specified mutual fund units \(s\.50AA\) for sales up to 31 Mar 2025/;
+  const gold = (): BookRow => hold(GOLD, 'Gold ETF', 'Commodity', 100, 10000, 13000);
+  const byInst = i21ByInst();
+  // The new names are read through the namespace, so the file still loads on an older engine (the revert proof).
+  const gates = (): ReadonlyMap<string, Gate> => {
+    const g = (classifyMod as { I21_PERIODS_GATES?: ReadonlyMap<string, Gate> }).I21_PERIODS_GATES;
+    assert.ok(g, 'I21_PERIODS_GATES');
+    return g!;
+  };
+
+  test('CHAT-012\'s case as on 31 Jan 2025: short 3,000 with the slab dash, not long 3,000 and tax 375', () => {
+    // 100 u bought 1 May 2023 at 100 (10,000), CMV 13,000. As on 31 Jan 2025 the units were Specified (s.50AA): short term
+    // whatever the holding period (21 months, beyond the 12 months of today's listed rule), gain 3,000 at the slab rate.
+    // The I-21 short-term rate of Commodity ETF is the slab rate (null), so the pool has no tax figure (PD-07: no slab rate
+    // invented): it is unquantified with the label "slab rate not set", and the 375 (3,000 x 12.5%) of the long-term
+    // reading (main 4817105) is gone from tax before.
+    const r = run([gold()], [flow(GOLD, [2023, 5, 1], 'Purchase', 100, -10000)], day(2025, 1, 31));
+    const x = one(r, GOLD);
+    assert.equal(x.taxRule, INST.commodityEtf);
+    assert.equal(x.status, 'ok');
+    near(x.st.cmv, 13000, 'short cmv'); near(x.st.gain, 3000, 'short gain');
+    assert.equal(x.lt.cmv, 0);
+    near(x.lt.cmv + x.st.cmv + x.unclassified.cmv, 13000, 'L+S+U');
+    assert.match(String(x.reason), DEEMED);
+    const h = buildHarvests(rollupHoldings(r, []), { asOn: day(2025, 1, 31) }).clients[0]!;
+    near(h.figures.stGains, 3000, 'short gains'); near(h.figures.ltGains, 0, 'long gains');
+    assert.equal(h.figures.unquantifiedPools, 1);
+    near(h.figures.unquantifiedGain, 3000, 'unquantified');
+    assert.ok(h.pools.every((p) => p.term === 'ST' && p.rate === null), JSON.stringify(h.pools));
+    assert.ok(h.labels.includes('slab rate not set: slab-rate gains have no tax figure'), JSON.stringify(h.labels));
+    assert.notEqual(h.taxBefore.kind === 'value' ? h.taxBefore.v : null, 375);
+  });
+
+  test('the same lot as on 1 Apr 2025 is long 3,000 and tax 375, as today', () => {
+    const r = run([gold()], [flow(GOLD, [2023, 5, 1], 'Purchase', 100, -10000)], day(2025, 4, 1));
+    const x = one(r, GOLD);
+    near(x.lt.cmv, 13000, 'long cmv'); near(x.lt.gain, 3000, 'long gain'); assert.equal(x.st.cmv, 0);
+    assert.equal(x.reason, null);
+    const h = buildHarvests(rollupHoldings(r, []), { asOn: day(2025, 4, 1) }).clients[0]!;
+    assert.equal(h.taxBefore.kind === 'value' ? h.taxBefore.v : null, 375);
+  });
+
+  test('a lot of the same class bought 1 Mar 2023 is long on both dates (unchanged)', () => {
+    // Bought before 1 Apr 2023: never Specified; the 12-month anniversary 1 Mar 2024 is past on both dates.
+    for (const asOn of [day(2025, 1, 31), day(2025, 4, 1)]) {
+      const x = one(run([gold()], [flow(GOLD, [2023, 3, 1], 'Purchase', 100, -10000)], asOn), GOLD);
+      near(x.lt.cmv, 13000, 'long cmv'); near(x.lt.gain, 3000, 'long gain'); assert.equal(x.st.cmv, 0);
+      assert.equal(x.reason, null);
+    }
+  });
+
+  test('lots on both sides of 1 Apr 2023: the Commodity ETF reads each lot by its date; the Specified debt fund keeps its split', () => {
+    // Commodity ETF: 50 u on 1 Mar 2023 and 50 u on 1 May 2023, each at 100 (10,000), CMV 13,000 (130 a unit). As on
+    // 31 Jan 2025 the first lot is long (6,500, gain 1,500) and the second short as Specified (6,500, gain 1,500), in one
+    // record: the I-21 table has no row for the earlier units of these classes, so no record split is invented. Main
+    // 4817105 gave long 13,000 at 3,000. As on 1 Apr 2025 both are long.
+    const flows = [flow(GOLD, [2023, 3, 1], 'Purchase', 100, -5000), flow(GOLD, [2023, 5, 1], 'Purchase', 100, -5000)];
+    const x = one(run([gold()], flows, day(2025, 1, 31)), GOLD);
+    assert.equal(x.splitPart, null);
+    near(x.lt.cmv, 6500, 'long cmv'); near(x.lt.gain, 1500, 'long gain');
+    near(x.st.cmv, 6500, 'short cmv'); near(x.st.gain, 1500, 'short gain');
+    assert.match(String(x.reason), DEEMED);
+    const y = one(run([gold()], flows, day(2025, 4, 1)), GOLD);
+    near(y.lt.cmv, 13000, 'long cmv on 1 Apr 2025'); near(y.lt.gain, 3000, 'long gain on 1 Apr 2025');
+    // The Specified debt fund (Sec 76 from 1 Apr 2023) as on 31 Jan 2025: its two records as before. The part from 2023
+    // is always short (12,000, gain 1,500); the part before (24 months, anniversary 1 Mar 2025) is short too (12,000,
+    // gain 2,000); neither carries the W-1 reason.
+    const d = run([hold(BOND, 'Corporate Bond Fund', 'Debt', 2000, 20500, 24000)], [
+      flow(BOND, [2023, 3, 1], 'Purchase', 10, -10000),
+      flow(BOND, [2023, 5, 1], 'Purchase', 10.5, -10500),
+    ], day(2025, 1, 31));
+    const [from, pre] = recsOf(d, BOND);
+    assert.ok(from && pre);
+    assert.equal(from.splitPart, 'from-2023'); assert.equal(from.taxRule, INST.debtMf);
+    near(from.st.cmv, 12000); near(from.st.gain, 1500);
+    assert.equal(pre.splitPart, 'pre-2023'); assert.equal(pre.taxRule, 'Debt MF bought before 1 Apr 2023');
+    near(pre.st.cmv, 12000); near(pre.st.gain, 2000);
+    assert.ok(![from.reason, pre.reason].some((s) => DEEMED.test(String(s))));
+  });
+
+  test('the gate day by day: bought 1 Apr 2023 is short as on 31 Mar 2025 and long on 1 Apr 2025; bought 31 Mar 2023 is long', () => {
+    // The two 12-month classes (listed): bought 1 Apr 2023, anniversary 1 Apr 2024, so only the Specified rule makes the
+    // lot short as on 31 Mar 2025. The two 24-month classes are short there anyway (24 months at most from 1 Apr 2023);
+    // their gate shows in the reason and in the proof below.
+    for (const inst of [INST.commodityEtf, INST.intlEtf]) {
+      const row = byInst.get(inst)!;
+      assert.equal(lotTerm(row, day(2023, 4, 1), day(2025, 3, 31), true), 'short', `${inst} bought 1 Apr 2023, as on 31 Mar 2025`);
+      assert.equal(lotTerm(row, day(2023, 4, 1), day(2025, 4, 1), true), 'long', `${inst} bought 1 Apr 2023, as on 1 Apr 2025`);
+      assert.equal(lotTerm(row, day(2023, 3, 31), day(2025, 3, 31), true), 'long', `${inst} bought 31 Mar 2023, as on 31 Mar 2025`);
+      assert.equal(lotTerm(row, day(2023, 4, 1), day(2024, 7, 23), true), 'short', `${inst} bought 1 Apr 2023, as on 23 Jul 2024`);
+    }
+    // The Commodity MF (24 months) as on 31 Mar 2025: bought 1 Apr 2023 it is short either way, and the reason names the
+    // rule; bought 31 Mar 2023 it carries no such reason.
+    const FOF = 'Sample Gold Fund of Funds';
+    const fof = (): BookRow => hold(FOF, 'FoF Domestic', 'Commodity', 100, 10000, 12000);
+    const x = one(run([fof()], [flow(FOF, [2023, 4, 1], 'Purchase', 100, -10000)], day(2025, 3, 31)), FOF);
+    assert.equal(x.taxRule, INST.commodityMf);
+    near(x.st.gain, 2000, 'short gain');
+    assert.match(String(x.reason), DEEMED);
+    const y = one(run([fof()], [flow(FOF, [2023, 3, 31], 'Purchase', 100, -10000)], day(2025, 3, 31)), FOF);
+    near(y.st.gain, 2000, 'short gain, bought 31 Mar 2023');
+    assert.equal(y.reason, null);
+  });
+
+  test('the period proof from each class\'s gate: for every sale day from 23 Jul 2024 the engine\'s period is table v1\'s', () => {
+    // Round 3's B-1 proof, extended (MOD-05): for each class table v1 covers (realised-irr.ts V1_OF_I21), listed or not,
+    // every sale day from 23 Jul 2024 to 31 Mar 2027 (a year into the open-ended rules from 1 Apr 2026) and every monthly
+    // purchase from Jan 2010 before it (and 31 Mar 2023), the holding period table v1 gives (months, or deemed short)
+    // equals the one the engine uses: deemed short on an alwaysShort or anyPeriod row or before a class's gate
+    // (I21_PERIODS_GATES, for a lot bought from its `boughtFrom`), the I-21 row's months otherwise. The gates are the
+    // classes where the plain I-21 period differs from table v1's, and each gate's dates are table v1's: the last sale day
+    // that differs is the day before `saleFrom`, and the first purchase day that differs is `boughtFrom`. Where table v1
+    // cannot decide the class (it depends on what the scheme held), only the two classes already known stay outside: the
+    // equity-oriented hybrid and the general fund of funds bought from 1 Apr 2023.
+    const G = gates();
+    const deemed = (classifyMod as { i21DeemedShort?: (inst: string, buy: DayNumber, asOn: DayNumber) => boolean }).i21DeemedShort;
+    assert.ok(deemed, 'i21DeemedShort');
+    const spec = day(2023, 4, 1);
+    const period = (r: ReturnType<typeof ruleFor>): string => (r.kind === 'rule' ? (r.deemedShort ? 'deemed short' : `${r.holdingMonths}`) : 'none');
+    const purchases: DayNumber[] = [day(2023, 3, 31)];
+    for (let y = 2010; y <= 2027; y++) for (let m = 1; m <= 12; m++) purchases.push(day(y, m, 1));
+    purchases.sort((a, b) => a - b);
+    const mismatches: string[] = [];
+    const undecided = new Set<string>();
+    /** Per class: the last sale day and the first purchase day where the plain I-21 period differs from table v1's. */
+    const plainDiff = new Map<string, { lastSale: number; firstBuy: number }>();
+    for (let s = day(2024, 7, 23); s <= day(2027, 3, 31); s++) {
+      for (const inst of Object.keys(V1_OF_I21)) {
+        const row = byInst.get(inst);
+        for (const etf of [false, true]) {
+          const plain = row ? (row.alwaysShort || row.anyPeriod ? 'deemed short' : `${etf && row.listedEtfMonths ? row.listedEtfMonths : row.months}`) : 'no row';
+          for (const p of purchases) {
+            if (p >= s) break;
+            if ((row?.specifiedFrom && p < spec) || (/before 1 Apr 2023/.test(inst) && p >= spec)) continue;
+            const k = v1KeyOf(inst, etf, p, s as DayNumber);
+            const a = 'key' in k ? period(ruleFor(TAX_RULES_V1, { ...k.key, purchaseDay: p, saleDay: s as DayNumber })) : 'none';
+            if (a === 'none') { undecided.add(inst); continue; }
+            const engine = deemed!(inst, p, s as DayNumber) ? 'deemed short' : plain;
+            if (a !== engine && mismatches.length < 10) mismatches.push(`${inst} etf=${etf} bought ${p} sold ${s}: v1 ${a}, engine ${engine}`);
+            if (a !== plain) {
+              const d = plainDiff.get(inst) ?? { lastSale: s, firstBuy: p };
+              d.lastSale = Math.max(d.lastSale, s); d.firstBuy = Math.min(d.firstBuy, p);
+              plainDiff.set(inst, d);
+            }
+          }
+        }
+      }
+    }
+    assert.deepEqual(mismatches, []);
+    assert.deepEqual([...undecided].sort(), [INST.fofGeneral, INST.hybridEquity].sort());
+    assert.deepEqual([...G.keys()].sort(), [...plainDiff.keys()].sort());
+    assert.deepEqual([...G.keys()].sort(), [INST.commodityEtf, INST.commodityMf, INST.global, INST.intlEtf].sort());
+    for (const [inst, g] of G) {
+      const d = plainDiff.get(inst)!;
+      assert.equal(d.lastSale, g.saleFrom - 1, `${inst}: the last sale day table v1 reads as Specified`);
+      assert.equal(d.firstBuy, g.boughtFrom, `${inst}: the first purchase day table v1 reads as Specified`);
+      assert.equal(g.saleFrom, day(2025, 4, 1)); assert.equal(g.boughtFrom, day(2023, 4, 1));
+      assert.match(g.source, /data\/owner\/tax-rules\.json line 70[4-7].*line 568/, inst);
+    }
+  });
+});
