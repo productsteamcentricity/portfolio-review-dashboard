@@ -4,6 +4,10 @@
 // universe. Guards: line 17 never catches ICICI Pru Savings Fund (a different debt fund), line 15 never resolves to the
 // Aggressive Hybrid Active FOF. The collision scan (MOD-04's standing rule, 25 Nov 2026) checks every alias key against
 // every name in data/refdata.
+// Lines 18 to 22 (the owner's "Approve all five" of 28 Nov 2026) are not renames: each is AMFI's official spelling of a
+// scheme the vendor spells differently. Per line: every official AMFI name of the scheme (its code in the comment)
+// resolves to the vendor's fund in its own plan; without the line each is unmatched, never another fund; the line
+// carries its own approval date and approver.
 // Refresh-proof (the coupling rule): a line whose target is not in today's reference data is reported, not failed, and
 // the collision scan fails only while the reference names equal the recorded basis; after a refresh it reports.
 
@@ -33,11 +37,25 @@ const one = (over: Record<string, unknown> = {}, top: Record<string, unknown> = 
 });
 
 describe('owner fund aliases: the file', () => {
-  test('16 owner-approved lines under PD-36 (25 Nov 2026); line 10 on hold and absent', () => {
+  test('21 owner-approved lines under PD-36: 16 of 25 Nov 2026 and lines 18 to 22 of 28 Nov 2026; line 10 on hold and absent', () => {
     assert.equal(table.decision, 'PD-36');
     assert.equal(table.approved, '2026-11-25');
     const lines = [...table.byKey.values()].map((a) => a.line).sort((a, b) => a - b);
-    assert.deepEqual(lines, [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17]);
+    assert.deepEqual(lines, [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
+    // The file's date is that of lines 1 to 17; a later line says when and by whom it was approved.
+    for (const a of table.byKey.values()) {
+      assert.deepEqual([a.approved, a.approvedBy], a.line >= 18 ? ['2026-11-28', 'the owner'] : [undefined, undefined], `line ${a.line}`);
+    }
+    for (const raw of FILE.aliases) if ((raw.line as number) >= 18) assert.equal(raw.renamed, null, `line ${String(raw.line)} is a spelling, not a rename`);
+  });
+
+  test('a line\'s own approval: both fields or neither, a date on or after the file\'s', () => {
+    assert.doesNotThrow(() => parseOwnerAliases(one({ approved: '2026-11-28', approvedBy: 'the owner' })));
+    assert.throws(() => parseOwnerAliases(one({ approved: '2026-11-28' })), /both approved and approvedBy/);
+    assert.throws(() => parseOwnerAliases(one({ approvedBy: 'the owner' })), /both approved and approvedBy/);
+    assert.throws(() => parseOwnerAliases(one({ approved: '28 Nov 2026', approvedBy: 'the owner' })), /on or after the file/);
+    assert.throws(() => parseOwnerAliases(one({ approved: '2026-11-24', approvedBy: 'the owner' })), /on or after the file/);
+    assert.throws(() => parseOwnerAliases(one({ approved: '2026-11-28', approvedBy: '' })), /approvedBy/);
   });
 
   test('every line has public evidence in the evidence file; the table itself carries no remote URL', () => {
@@ -93,14 +111,15 @@ describe('owner fund aliases: each approved line (real data/refdata)', () => {
   }
 
   /* Without its alias, what the new build's matcher (NEW_BUILD_MATCHING: KI-036, KI-101, the stricter regime the owner
-   * chose on 26 Nov 2026, the second normaliser and the candidate-side word guard) gives each old name. Fourteen give no
-   * match; two (lines 12 and 13, the Multicap renames) still give another fund, which their aliases cover. Any change
-   * here shows. */
+   * chose on 26 Nov 2026, the second normaliser and the candidate-side word guard) gives each old name. Nineteen give no
+   * match (the five AMFI spellings of lines 18 to 22 among them); two (lines 12 and 13, the Multicap renames) still give
+   * another fund, which their aliases cover. Any change here shows. */
   const WITHOUT_ALIAS: Readonly<Record<number, string | null>> = {
     1: null, 2: null, 3: null, 4: null,
     5: null, 6: null, 7: null,
     8: null, 9: null, 11: null, 12: 'Kotak Multi Cap Fund-Reg(G)', 13: 'Motilal Oswal Multi Cap Fund-Reg(G)', 14: null, 15: null, 16: null,
     17: null,
+    18: null, 19: null, 20: null, 21: null, 22: null,
   };
   test('per line: without the alias, the corrected matcher gives no match or the recorded other fund; with it, the right fund', (t) => {
     const corrected = { ...NEW_BUILD_MATCHING };
@@ -111,6 +130,68 @@ describe('owner fund aliases: each approved line (real data/refdata)', () => {
       assert.equal(matchInstrument(`${a.oldName}(G)`, '', REG, undefined, corrected), want, `line ${a.line} without the alias`);
       if (REG.includes(a.regular)) assert.equal(matchInstrument(`${a.oldName}(G)`, '', REG, undefined, { ...corrected, ownerAliases: table }), a.regular, `line ${a.line} with the alias`);
     }
+  });
+});
+
+/* Lines 18 to 22: every official AMFI name of the four schemes (AMFI's public NAV file, read on 23 Nov 2026; the scheme
+ * code beside each), with the plan the name says. The Regular names' codes are the vendor's own codes for the targets
+ * (data/refdata/FUND_RANKS_CODES.json), which is the evidence that the two names are one scheme. */
+const AMFI_NAMES: ReadonlyArray<{ line: number; code: string; name: string; plan: 'regular' | 'direct' }> = [
+  { line: 18, code: '149090', name: 'UTI Focused Fund (30 stocks) - Regular Plan - Growth Option', plan: 'regular' },
+  { line: 18, code: '149091', name: 'UTI Focused Fund (30 stocks) - Direct Plan - Growth Option', plan: 'direct' },
+  { line: 18, code: '149092', name: 'UTI Focused Fund (30 stocks) - Regular Plan - IDCW Payout Option', plan: 'regular' },
+  { line: 18, code: '149093', name: 'UTI Focused Fund (30 stocks) - Direct Plan - IDCW Payout Option', plan: 'direct' },
+  { line: 20, code: '133796', name: 'Kotak Infrastructure & Economic Reform Fund - Standard Plan-Growth', plan: 'regular' },
+  { line: 19, code: '133801', name: 'Kotak Infrastructure & Economic Reform Fund- Direct Plan- Growth Option', plan: 'direct' },
+  { line: 21, code: '153363', name: 'Navi Nifty Smallcap 250 Momentum quality index fund- Regular Plan', plan: 'regular' },
+  { line: 21, code: '153362', name: 'Navi Nifty Smallcap 250 Momentum quality index fund- Direct Plan', plan: 'direct' },
+  { line: 22, code: '154194', name: 'Baroda BNP Paribas Best-in-Class Strategy Fund - Regular - Growth Option', plan: 'regular' },
+  { line: 22, code: '154195', name: 'Baroda BNP Paribas Best-in-Class Strategy Fund - Direct - Growth Option', plan: 'direct' },
+  { line: 22, code: '154191', name: 'Baroda BNP Paribas Best-in-Class Strategy Fund - Regular - IDCW Payout Option', plan: 'regular' },
+  { line: 22, code: '154193', name: 'Baroda BNP Paribas Best-in-Class Strategy Fund - Direct - IDCW Payout Option', plan: 'direct' },
+];
+
+describe('owner fund aliases: lines 18 to 22, the official AMFI names (the owner, 28 Nov 2026)', () => {
+  const byLine = new Map([...table.byKey.values()].map((a) => [a.line, a] as const));
+  const RANKS = readJson('data/refdata/FUND_RANKS_CODES.json') as Record<string, unknown>;
+  const corrected = { ...NEW_BUILD_MATCHING };
+
+  test('the evidence in the repository: the vendor\'s rank file gives each Regular target the AMFI code of the official name', (t) => {
+    for (const n of AMFI_NAMES.filter((x) => x.plan === 'regular' && / Growth|Regular Plan$/.test(x.name) && !/IDCW/.test(x.name))) {
+      const target = byLine.get(n.line)!.regular;
+      if (!(target in RANKS)) { t.diagnostic(`REPORT ONLY: ${target} is not in today\'s FUND_RANKS_CODES`); continue; }
+      assert.equal(String(RANKS[target]), n.code, `${target} has AMFI code ${n.code}`);
+    }
+  });
+
+  for (const line of [18, 19, 20, 21, 22]) {
+    const a = byLine.get(line)!;
+    const names = AMFI_NAMES.filter((n) => n.line === line);
+    test(`line ${line}: ${names.length} official AMFI name${names.length === 1 ? '' : 's'} of "${a.oldName}" resolve to the vendor\'s fund, each in its own plan`, (t) => {
+      assert.ok(names.length > 0);
+      if (!REG.includes(a.regular) || !DIR.includes(a.direct)) { t.diagnostic(`REPORT ONLY: line ${line} target not in today\'s MF_PERF / MF_PERF_DIRECT`); return; }
+      for (const n of names) {
+        assert.equal(nameKey(n.name), a.key, `${n.code}: the name\'s key is the line\'s`);
+        const universe = n.plan === 'direct' ? DIR : REG;
+        const target = n.plan === 'direct' ? a.direct : a.regular;
+        // Without the line: no match at all, never another fund. With it: the vendor\'s name for the same scheme.
+        assert.equal(matchInstrument(n.name, '', universe, undefined, corrected), null, `${n.code} without the line`);
+        assert.deepEqual(matchInstrumentDetail(n.name, '', universe, undefined, { ...corrected, ownerAliases: table }), { key: target, step: 'owner-alias' }, `${n.code} with the line`);
+      }
+    });
+  }
+
+  test('the lines move no other answer: every MF_PERF and MF_PERF_DIRECT name resolves the same with and without lines 18 to 22', () => {
+    const older = parseOwnerAliases({ ...(FILE as object), aliases: FILE.aliases.filter((x) => (x.line as number) < 18) });
+    let moved = 0;
+    for (const [universe, names] of [[REG, REG], [DIR, DIR]] as const) {
+      for (const n of names) {
+        const before = matchInstrument(n, '', universe, undefined, { ...corrected, ownerAliases: older });
+        const after = matchInstrument(n, '', universe, undefined, { ...corrected, ownerAliases: table });
+        if (before !== after) moved++;
+      }
+    }
+    assert.equal(moved, 0);
   });
 });
 
