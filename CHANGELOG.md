@@ -4,6 +4,14 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (records, registers-9, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **`docs/project-control/DECISION_LOG.md`**: PD-68, the decisions MOD-05 took under it (the month-labels ruling to be
+  confirmed by the owner) and the window in practice (the PC slept from 04:28 to 12:00 IST for loss of mains power).
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,CRITICAL_PATH}.md`**: PRs #71 (the build fix) and #72 (M7a
+  tax round 2c, not wired; KI-340 open).
+- **`docs/coordination/FILE_OWNERSHIP_MAP.md`**: the base-file template's files to NB-05 (in review).
+- **Compactions** recounted: no change (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).
+
 ### Changed (tooling: the new app's build ignores where `node_modules` really lives, 28 Nov 2026; `/next/` byte-identical)
 - **`scripts/build.mjs`**: esbuild's `preserveSymlinks` is on, so a worktree whose `node_modules` is a junction to
   another worktree's builds the same page. Before, the bundler wrote the resolved path into three Preact module

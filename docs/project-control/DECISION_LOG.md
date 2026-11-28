@@ -13,6 +13,8 @@ PD-30; the owner's decisions of 26 and 27 Nov without a PD number added to secti
 recounted in registers-5. **Owner of this log from now on:** MOD-05.
 **Updated:** 28 Nov 2026 (IST), drafted by EX-03 (CHAT-014) for MOD-05 (CHAT-015) on branch `docs/registers-8` (base
 `main` 0d38184). PD-68 added (the owner's delegation of 28 Nov 2026); the owner's six answers of 28 Nov 2026 added to section 2.4.
+**Updated:** 28 Nov 2026 (IST), drafted by EX-03 (CHAT-014) for MOD-05 (CHAT-015) on branch `docs/registers-9` (base
+`main` b42eaae). PD-68: the decisions taken under it, and the PC's sleep from 04:28 to 12:00 IST.
 **Updated:** 27 Nov 2026 (IST), drafted by EX-03 (CHAT-014) for MOD-05 (CHAT-015) on branch `docs/registers-6` (base
 `main` 6973101). Section 2.4's row on the stricter matching corrected to the measured result; section 2.5 added (the
 Moderator's decisions of 27 Nov 2026 with a financial meaning). The counts on the first "Updated" line were not recounted.
@@ -317,7 +319,7 @@ that builds it (EX-01 or NB-01).
 | PD-65 | The owner's operating charter: autonomous full-stack development, parallel execution and project continuity | **GIVEN 24 Nov 2026** (owner instruction): the Moderator is project manager, principal architect, lead full-stack developer and integration owner; routine technical decisions are the Moderator's; the owner is asked only for business and financial logic, scope, data integrity, security and privacy, irreversible actions, spend and sprint output approvals; three-compaction succession for every chat, the Moderator too; `docs/coordination/` | none |
 | PD-66 | Delegation while the owner was away | **GIVEN 25 Nov 2026, 00:57 IST** (owner instruction, about 12 hours, ended about 13:00 IST): the Moderator approves decisions on the owner's behalf ("approve all the decisions on my behalf"), recorded as "MOD-04 under PD-66", within fixed limits | none (ended) |
 | PD-67 | Delegation while the owner was away, again | **GIVEN 26 Nov 2026, about 19:30 IST** ("Yes, as on 25 Nov (Recommended)"; about 15 hours, ended about 10:30 IST on 27 Nov): as PD-66, recorded as "MOD-04 under delegation (PD-67)" and, after the Moderator change, "MOD-05 under delegation (PD-67)" | none (ended) |
-| PD-68 | Delegation while the owner was away, 28 Nov 2026 | **GIVEN 28 Nov 2026, about 02:05 IST** (until about 11:00 IST): the Moderator (MOD-05) takes every decision needed to keep the new build moving and may open successor chats itself; unchanged limits (nothing that is prohibited (credentials, untrusted downloads, force-push, history rewrite, data or branch deletion), no Office runs, no account settings, the live page not changed, Gate E the owner's); recorded as "MOD-05 under delegation (PD-68)" | none (ends about 11:00 IST, 28 Nov) |
+| PD-68 | Delegation while the owner was away, 28 Nov 2026 | **GIVEN 28 Nov 2026, about 02:05 IST** (until about 11:00 IST): the Moderator (MOD-05) takes every decision needed to keep the new build moving and may open successor chats itself; unchanged limits (nothing that is prohibited (credentials, untrusted downloads, force-push, history rewrite, data or branch deletion), no Office runs, no account settings, the live page not changed, Gate E the owner's); recorded as "MOD-05 under delegation (PD-68)" | none (ended about 11:00 IST, 28 Nov) |
 
 ### 2.3 Each decision explained
 
@@ -1007,7 +1009,30 @@ PD-50 to PD-56: the plain-language sections are still to be written; their table
 - **Effect.** The Moderator (MOD-05) takes every decision needed to keep the new build moving until about 11:00 IST on
   28 Nov 2026 and may open successor chats itself. Unchanged limits: nothing that is prohibited (credentials, untrusted downloads, force-push, history rewrite, data or branch deletion),
   no Office runs, no account settings, the live page not changed, Gate E the owner's.
-- **Decisions taken under it:** listed in the records update that follows the window.
+- **The window in practice.** The PC lost mains power at 04:24 IST and slept from 04:28 to 12:00 IST, so the window
+  gave about two and a half hours of work (about 02:05 to 04:28 IST).
+- **Decisions taken under it** (28 Nov 2026, IST):
+  - About 02:26: the merge of PR #68 was held, although its checks were green, because the Guardian's own build of the
+    same commit differed by 42 bytes. At 02:28 the cause was found: the reviewer's worktree used another worktree's
+    library folder, which changes three comment lines of the built page and nothing else. PR #68 merged; PR #71
+    removed the cause. (MOD-05 under delegation (PD-68).)
+  - 02:30 to 02:45, routine: the tax chat's next piece approved (one tax view for a review, not on screen); one format
+    for coverage percentages ("80.0%"); the footnote wording change goes to the chat that owns the file. (MOD-05 under delegation (PD-68).)
+  - About 02:55: the build-script fix given to CHAT-014, with the Guardian's review (PR #71). (MOD-05 under delegation (PD-68).)
+  - About 03:10: how the owner's "month labels" answer is applied. A month's data counts when its own date is on or
+    before the review date, or when the review date is on or after the month's last weekday; otherwise the previous
+    month is used (30 and 31 Oct use October's data; 29 and 15 Oct use September's). A first reading ("the month's
+    data counts when the review date is in the month's last 7 days") was not accepted: the owner named no width, and
+    a review dated 25 Oct would use a price of 30 Oct, after the review date. Not on screen yet. **To be confirmed by
+    the owner.** (MOD-05 under delegation (PD-68).)
+  - About 03:35: the base-file template (not merged yet): the Account Name fields accepted as proposed (read, kept and
+    shown only); anything shaped like a PAN in the Account Name cell is removed when the file is read, and counted.
+    Display only; no figure moves. (MOD-05 under delegation (PD-68).)
+  - About 03:50: tax round 2c merges with one rarer case recorded as an open limit (KI-340: a many-into-one merger on
+    the same day as another switch is still computed as a sale), to be fixed before the tax engine is put on screen. (MOD-05 under delegation (PD-68).)
+  - Prepared at 04:28, done at about 12:00 when the PC woke: PR #72 merged on the Guardian's GO for that exact commit,
+    with green checks, the expected merge tree and an unchanged `/next/` fingerprint, each verified by the Moderator,
+    without waiting for the Guardian's separate pre-merge line; the Guardian's post-merge check is requested. (MOD-05 under delegation (PD-68).)
 
 ### 2.4 Owner decisions without a PD number (17 to 28 Nov 2026)
 
@@ -1113,3 +1138,4 @@ These are Claude's recommendations. None is a decision until the named approver 
 | 27 Nov 2026 | MOD-05 (registers-6, drafted by EX-03) | Section 2.4: the stricter-matching row corrected to the measured result (20 of 22 recovered, 2 lost, 4 named and unmatched: a known gap, owner asked 27 Nov 2026); section 2.5 added: the Moderator's decisions of 27 Nov 2026 with a financial meaning |
 | 27 Nov 2026 | MOD-05 (registers-7, drafted by EX-03) | Section 2.4: the owner's "Open both" (CHAT-016 ARC-04 and CHAT-017 NB-05) |
 | 28 Nov 2026 | MOD-05 (registers-8, drafted by EX-03) | PD-68 added with its section and the owner's words (the delegation of 28 Nov 2026); section 2.4: the owner's six answers of 28 Nov 2026; section 2.5: the four unmatched names marked answered |
+| 28 Nov 2026 | MOD-05 (registers-9, drafted by EX-03) | PD-68: the decisions taken under it (the month-labels ruling to be confirmed by the owner), the window's end and the PC's sleep from 04:28 to 12:00 IST |
