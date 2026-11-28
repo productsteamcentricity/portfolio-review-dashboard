@@ -31,6 +31,7 @@ import { buildMatchContext, matchLoaded, type MatchContext, type MatchReport } f
 import { loadMonitor, type LoadedMonitor, type MonitorBlocks, type MonitorLoadError, type MonitorSheetJS, type MonitorUploadKind } from '../ingest/load-monitor.ts';
 import type { MonitorScheme } from '../ingest/vendor/mf-monitor.ts';
 import { buildIrrTemplate, IRR_TEMPLATE_FILE_NAME } from '../exports/xlsx/irr-template.ts'; // PLAN-05: the blank IRR file template (NB-03)
+import { buildBaseTemplate, BASE_TEMPLATE_FILE_NAME } from '../exports/xlsx/base-template.ts'; // the blank base file template (NB-05)
 
 export type LogoAsset = { id: string; label: string; dataUri: string; widthPx: number; heightPx: number };
 export type ExportResult = { kind: 'pptx' | 'xlsx'; fileName: string; bytes: number; sha256: string; audit: Omit<AuditEntry, 'id'> };
@@ -51,6 +52,8 @@ export type Wiring = {
   loadMonitor?(kind: MonitorUploadKind, bytes: Uint8Array, fileName: string, regular?: Readonly<Record<string, MonitorScheme>>): LoadedMonitor | MonitorLoadError;
   /** PLAN-05 (NB-03): saves the blank transactions (IRR) file template; optional, so the test fakes stay valid. */
   downloadIrrTemplate?(): void;
+  /** NB-05: saves the blank base file template; optional, so the test fakes stay valid. */
+  downloadBaseTemplate?(): void;
   /** M3b: section 5's performance tables of the matched holdings, the uploaded monitors standing in for their blocks. */
   performance?(holdings: readonly Holding[], uploads: MonitorUploads): PerformanceResult;
 };
@@ -93,6 +96,7 @@ export function browserWiring(build: BuildStamp): Wiring {
     matchHoldings: (loaded, overrides) => matchLoaded(loaded, pageMatchContext(overrides)),
     loadMonitor: (kind, bytes, fileName, regular) => loadMonitor(kind, bytes, fileName, XLSX as unknown as MonitorSheetJS, regular ?? readBlock('MF_PERF') ?? undefined),
     downloadIrrTemplate: () => downloadBytes(buildIrrTemplate(), IRR_TEMPLATE_FILE_NAME, XLSX_MIME), // PLAN-05 (NB-03): no client data, no audit entry
+    downloadBaseTemplate: () => downloadBytes(buildBaseTemplate(), BASE_TEMPLATE_FILE_NAME, XLSX_MIME), // NB-05: no client data, no audit entry
     performance: (holdings, uploads) => computePerformance(holdings, performanceSourcesFrom(uploads), { fundSources: fundReturnSourcesFrom(uploads) }),
   };
 }

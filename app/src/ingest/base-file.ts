@@ -31,7 +31,14 @@
 //     fund whose name only begins with "Total" is still a holding;
 //   - merged folios' purchase date and holding days (D-041 point 2, KI-148): the earliest purchase date, whatever
 //     the row order; holding days recomputed from it when the folios count to one date, else blank with a notice;
-//   - a negative market value is read as written (the legacy figures) and warned (D-039).
+//   - a negative market value is read as written (the legacy figures) and warned (D-039);
+//   - Account Name (the 17-column template of 26 Nov 2026; the Moderator's default D1 (a) of 27 Nov 2026, not yet the
+//     owner's ruling): a column headed exactly "Account Name" is kept on the holding as given and shown; no figure, no
+//     grouping and no id uses it, and the merge key has no account, so merged folios under more than one account name
+//     stay one holding, with an Information result. A PAN in the cell is removed at read, as the capital-gains reader
+//     removes it, and counted in an Information result; no account name, result or skipped-row label holds it (the
+//     file's own bytes stay in memory for a re-read, as for every upload). The legacy reads no such column, so
+//     nothing is compared in the ledger. "Valuation Date" is not read (KI-320).
 // Column aliases, the money-unit precedence (Cr., then Lakh, then rupees) and the merge key (client, instrument,
 // product, distributor) are the legacy ones. Pure function: no globals, no network, no clock unless injected.
 
@@ -61,6 +68,7 @@ import { idFactory, keyOf, normaliseLabel } from '../engine/ids.ts';
 import { readAssetLabel } from '../engine/classify/asset.ts';
 import { defaultOwnership, ownershipFromColumns, parseHoldingMode } from '../engine/ownership.ts';
 import { MONEY_COLUMN_RULE } from '../config/money-columns.ts';
+import { scrubText } from './capital-gains.ts';
 
 export const BASE_FILE_PARSER_VERSION = 'base-file@1';
 /** Rows searched for the header on each sheet (KI-074; the audit's fix asks for about 20, the legacy read 5). */
@@ -125,6 +133,10 @@ const FIELD_PREDICATES: ReadonlyArray<readonly [BaseField, (h: string) => boolea
   /* the owner's answer of 25 Nov 2026: the column is headed "ISIN" (any letter case); a heading with ISIN as a whole word
      ("ISIN Code") is also read, the first such column winning */
   ['isin', (h) => h === 'isin' || /(^|[^a-z0-9])isin([^a-z0-9]|$)/.test(h)],
+  /* the 17-column template of 26 Nov 2026: the column headed exactly "Account Name"; "Account Source Code" and any other
+     heading are not it. Read, kept and shown only (the Moderator's default D1 (a), not yet the owner's ruling; see the
+     header). */
+  ['accountName', (h) => h === 'account name'],
 ];
 
 /** A money field's exact headings, with any trailing unit in brackets dropped: preferred over a partial match. */
@@ -275,6 +287,8 @@ type RowRecord = {
   liquidity: string | null;
   /** A well-formed ISIN of the row (12 characters, upper case), or null. */
   isin: string | null;
+  /** "Account Name" as given (whitespace collapsed), or null. */
+  accountName: string | null;
   purchaseDate: Value<DayNumber>;
   units: Value<number>;
   invested: Value<number>;
@@ -335,6 +349,27 @@ function isinOfMembers(members: ReadonlyArray<{ isin: string | null }>): { isin?
 /** True when a holding's member rows carry more than one ISIN. */
 function isinsDisagree(members: ReadonlyArray<{ isin: string | null }>): boolean {
   return new Set(members.map((m) => m.isin).filter((i): i is string => i !== null)).size > 1;
+}
+
+/** The Account Names of a holding's member rows: each different name once, in file order. No field at all when no row
+ * carries one, so a file without the column reads exactly as before. Kept and shown only (the Moderator's default
+ * D1 (a); see the header). */
+function accountNamesOfMembers(members: ReadonlyArray<{ accountName: string | null }>): { accountNames?: string[] } {
+  const found = [...new Set(members.map((m) => m.accountName).filter((a): a is string => a !== null))];
+  return found.length > 0 ? { accountNames: found } : {};
+}
+
+/** The Account Name cell with every "[PAN: ...]" tag and PAN-shaped token removed (the capital-gains reader's rule,
+ * scrubText: the platform writes such a tag in the Account Name of its capital-gains statement); `pans` counts the
+ * cells that held one. Null when nothing is left. */
+function accountNameOf(row: Cell[], col: number | undefined, pans: { cells: number }): string | null {
+  const t = textOrNull(row, col);
+  if (t === null) return null;
+  const s = scrubText(t);
+  if (s.tags + s.tokens === 0) return t;
+  pans.cells++;
+  const out = s.text.replace(/\s+/g, ' ').trim();
+  return out === '' ? null : out;
 }
 
 function textOrNull(row: Cell[], col: number | undefined): string | null {
@@ -806,6 +841,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
 
   // 3. Read every holding row.
   const invalid: InvalidTally = new Map();
+  const accountPans = { cells: 0 };
   const records: RowRecord[] = scan.holdingRows.map((r) => {
     const row = sheet.rows[r] ?? [];
     const pdCol = cols.pdate;
@@ -842,6 +878,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       distributorLabel: textOrNull(row, cols.dist),
       liquidity: textOrNull(row, cols.liq),
       isin: isinOrNull(row, cols.isin),
+      accountName: accountNameOf(row, cols.accountName, accountPans),
       purchaseDate,
       units: readPlainNumber(row, cols.units, header('units'), 'units', 'Units', prov, invalid),
       invested: money.invested.value,
@@ -997,6 +1034,7 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       mergeGaps,
       inclusion,
       ...isinOfMembers(members),
+      ...accountNamesOfMembers(members),
     };
   };
   const built: Array<{ firstRow: number; h: Holding }> = [];
@@ -1138,6 +1176,19 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
       `${plural(isinConflicts.length, 'merged holding has rows', 'merged holdings have rows')} with different ISINs: no ISIN is kept for ${isinConflicts.length === 1 ? 'it' : 'them'}, and the instrument name decides the match.`,
       { decision: 'S3-1', count: isinConflicts.length, resolution: 'auto-resolved', status: 'resolved' });
   }
+  if (accountPans.cells > 0) {
+    const n = accountPans.cells;
+    issues.add('base-file.account-pan-removed', 'Information', { kind: 'sheet', sourceId, sheet: sheetName },
+      `${plural(n, 'Account Name cell', 'Account Name cells')} held a PAN or text shaped like one, which was removed from what was read.`,
+      { count: n, resolution: 'auto-resolved', status: 'resolved' });
+  }
+  // Merged folios in different accounts: the holding stays one line (the merge key has no account) and keeps every name.
+  const manyAccounts = includedHoldings.filter((h) => (h.accountNames?.length ?? 0) > 1);
+  if (manyAccounts.length) {
+    issues.add('base-file.merged-accounts', 'Information', { kind: 'holdings', holdingIds: manyAccounts.map((h) => h.id) },
+      `${plural(manyAccounts.length, 'merged holding has folios', 'merged holdings have folios')} under more than one Account Name: ${manyAccounts.length === 1 ? 'it stays one holding' : 'each stays one holding'}, with every account name kept.`,
+      { decision: 'E-02', count: manyAccounts.length, resolution: 'auto-resolved', status: 'resolved' });
+  }
   if (daysBlank.length) {
     // The live page's sentence (D-041 point 2): the merged holding days are blank, never one folio's figure.
     issues.add('base-file.merge-days-blank', 'Information', { kind: 'holdings', holdingIds: [...daysBlank] },
@@ -1166,7 +1217,9 @@ export function parseBaseFile(wb: Workbook, opts: BaseFileOptions): BaseFileImpo
   // 7. Skipped rows (never dropped silently).
   const skipped: SkippedRow[] = scan.skipped.map((s) => {
     const first = (sheet.rows[s.r] ?? []).map((c) => cellText(c)).find((t) => t !== '') ?? null;
-    return { at: at(s.r), reason: s.reason, label: first === null ? null : first.slice(0, 60), hasMoney: s.hasMoney };
+    // The label may be the row's Account Name cell (the first cell that is not blank): a PAN in it is removed here too.
+    const label = first === null ? null : scrubText(first).text.replace(/\s+/g, ' ').trim().slice(0, 60);
+    return { at: at(s.r), reason: s.reason, label: label === '' ? null : label, hasMoney: s.hasMoney };
   });
   const skipCounts = EMPTY_COUNTS();
   for (const s of skipped) skipCounts[s.reason]++;

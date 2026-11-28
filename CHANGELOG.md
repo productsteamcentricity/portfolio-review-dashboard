@@ -270,6 +270,41 @@ the last section of its Gate B of round 2c). No page change: the engine is impor
   and 15 Oct use September. The figure is dated by the month-end label, marked "month-end label" on that source's
   footnote clause; the true price day goes in the result's `notes`. Daily sources keep true days.
 
+### Added (new build: the base file template, the Templates group and Account Name, 28 Nov 2026; no change to `index.html` or data; `/next/` changes)
+- **A blank base file template** (`app/src/exports/xlsx/base-template.ts`, parity row U-06): "Base file template.xlsx",
+  built in the browser on request, no binary committed. Sheet "Base File" holds 17 headings of the platform's holding
+  report (MOD-04's selection of 26 Nov 2026 under the owner's answer of that day: only the columns that are necessary),
+  exactly as the platform writes them, with column formats as column defaults
+  (none on the two XIRR columns: a percent format on a pasted 8.79 would read as 879%). Sheet "Read Me" has one row per
+  column, eight rules, and the product names the application knows with what each is read as.
+- **A Templates group in section 1** (`app/src/ui/components/templates-group.tsx`; one line each in `s1-uploads.tsx`,
+  `store.ts` and `wiring.ts`): the base file template and the transactions (IRR) file template, available before any file.
+  The IRR slot keeps its own template button.
+- **Account Name is read, kept and shown** (`app/src/ingest/base-file.ts`; the Moderator's default D1 (a) of 27 Nov 2026,
+  not yet ruled on by the owner): a column headed exactly "Account Name" is kept on each holding (`Holding.accountNames`,
+  each different name once for merged folios; a PAN in the cell is removed at read, as the capital-gains reader removes
+  it, with an Information result `base-file.account-pan-removed`). It is shown as one count line in the import report
+  (the number of different names) and as a last column
+  "Account Name" on the workbook's Holdings (as loaded) sheet, written only when a holding has a name, so a workbook from a
+  file without the column is unchanged. No figure, no grouping and no account identity uses it. Merged folios under more
+  than one account name stay one holding, with an Information result (`base-file.merged-accounts`).
+- **Model types, proposed to the Moderator, who writes `app/src/model/**`**: `BaseField` gains `accountName`, and `Holding`
+  gains the optional `accountNames`.
+- **Known issue KI-320**: the template's "Valuation Date" column is not read; the Read Me says so.
+- **The blank template uploaded as it is downloaded** (the Guardian's Gate B finding B1): it is now refused plainly, "The
+  sheet "Base File" has a header row but no holding rows.", with the sheets in either order. Before, one Read Me row
+  held both words of the reader's header test, so the reader took the Read Me for the holdings sheet and read its
+  sentences as 33 holdings. The row is reworded; a test holds every Read Me row to it and uploads the blank template.
+- **A dependency between two readers**: `app/src/ingest/base-file.ts` imports `scrubText` from
+  `app/src/ingest/capital-gains.ts` (the PAN removal, one rule for both files). **Known issue KI-323**: a PAN written
+  with spaces or hyphens inside it is not removed.
+- **Tests**: `tests/exports/xlsx/base-template.test.ts` (the headings against a hand-typed list and the full report's
+  order; a filled template read back with no result of any severity and each value as typed; the Read Me's product list
+  against `data/refdata/PRODUCT_CLASS_RULES.json`: every row's example classifies as the row says and every label of the
+  table is listed), `tests/unit/ingest/account-name.test.ts` (kept as given; the same file with and without the column
+  gives the same holdings, accounts, counts and results; the import report line; the workbook column), and a real-click
+  download check in `tests/browser/overview.cdp.mjs`.
+
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
   `docs/project-control/CHAT_REGISTRY.md`): CHAT-016 (ARC-04, Guardian, successor of CHAT-008) and CHAT-017 (NB-05, new
