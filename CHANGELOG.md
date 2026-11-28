@@ -4,6 +4,15 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (records, registers-9, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **`docs/project-control/DECISION_LOG.md`**: PD-68, the decisions MOD-05 took under it (the month-labels ruling,
+  confirmed by the owner on 28 Nov 2026 and added to section 2.4) and the window in practice (the PC slept from 04:28 to 12:00 IST for loss of mains power); the
+  merge of PR #72 is recorded outside PD-68, under the standing `/next/` rule.
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,CRITICAL_PATH}.md`**: PRs #71 (the build fix) and #72 (M7a
+  tax round 2c, not wired; KI-340 open).
+- **`docs/coordination/FILE_OWNERSHIP_MAP.md`**: the base-file template's files to NB-05 (in review).
+- **Compactions** recounted: no change (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).
+
 ### Added (new build, M7b: the tax seam; not wired into the page yet)
 - **`engine/tax/review-tax.ts` (`reviewTax`, PLAN-07):** one pure call over the review's holdings and as-on day, the
   accepted IRR file, the accepted capital-gains statement and the analyst's answers (TaxInputs, with or without a
@@ -190,6 +199,33 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
   corrections (the live page shows another scheme's figures); SB-40, SB-41 accepted differences under KI-036 (ties left
   unmatched; the owner's "New build first" of 25 Nov 2026; no owner question is open). Two parity rows with the real spellings are added to the performance probe and tested (both builds, both lists). SB-25 (the all-dash gold price row) also covers the
   performance probe.
+
+### Fixed (new build, M3b after the follow-up's Gate B: the IRR file's lines, and the shares and dates in the notes; `/next/` only, no change to `index.html`)
+- **In a table that has rows from the IRR file, a line whose holdings have flows in that file no longer shows the base
+  file's figure** (Gate B of the M3b follow-up, condition M1; `views/holdings.ts` `irrHookFrom`):
+  - An instrument whose benchmark flows give no rate is left out of the IRR tree (OD-4). Its line then had no node, and
+    section 5 and the client sheets showed the base file's market-value-weighted XIRR for it beside rows from the IRR
+    file.
+  - Such a line is now a dash, NOT COMPARABLE, with its reason under the table ("1 holding of 1 on this line has flows
+    in the IRR file that are left out of the IRR tree for an invalid benchmark, ..."). Whether a holding has flows is
+    read from the file's reconciliation, not from the tree.
+  - A line none of whose holdings has a flow keeps the base file's figure, as before (the owner's answer of 28 Nov 2026:
+    "Base-file XIRR, marked (Recommended)", as built).
+  - Not changed: a client whose every instrument with flows is left out has no place in the IRR tree at all, so its
+    whole table stays the base file's, under the caption that says so (an owner question).
+- **The ‡ note's share of CMV** (note L1): a holding that has a value never reads "0.00% of CMV"; it reads "under 0.01%
+  of CMV". When a market value of the client is negative, or the CMV is 0, no share is given and the note says why.
+  When the holdings without an invested value hold all the market value the share reads 100.00%; it could read 99.99%.
+- **The Performance sheet's Weighted rows** (note L2): As On holds a date only when the 3Y and the 5Y figure share it.
+  When they come from tables of different dates, the cell is blank and the Note says so before the two footnotes. A
+  figure with no value brings no date; a figure built from tables of two dates keeps its first table's date, and its
+  footnote names both (an owner question).
+- **Mutual-fund holdings with no client** are among the Family row's holdings in the weighted returns and in no client
+  row's. A note under the table, and in the sheet's Family row, now says so with the count (note L5).
+- **A PMS, AIF or SIF holding whose key has no record in that bucket's data** is "not matched to reference data", as a
+  mutual fund already is, never a matched fund "with no returns" (Gate B of M3b, note N2).
+- The rows of the weighted-returns table and the notes lists are keyed by position, so two clients with one name cannot
+  share a row (note L5).
 
 ### Changed (records, registers-6, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/project-control/DECISION_LOG.md`**: the stricter-matching row of 26 Nov corrected to the measured result (the
