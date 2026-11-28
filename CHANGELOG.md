@@ -4,6 +4,17 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Added (new build, M10 before wiring: the pack intake for the section 1 slot; not wired, `/next/` unchanged)
+- **`app/src/services/screener-intake.ts`**: `intakeScreenerPack` reads a picked MF Screener data pack and offers it to
+  the browser store, and returns the source register record (role `screener-pack`, class N, as-on = the pack's cycle;
+  stage `review` when stored, `upload` when refused) and the status the slot shows: stored or already loaded with the
+  pack overview (cycle, kind, provisional, month-ends, backfill cycles, warnings, the cycle it replaced), or refused at
+  the read stage (the reader's reason and the file at fault) or the store stage (the store's reason; the stored pack
+  kept). `screenerStoreStatus` gives the sidebar line ("MF Screener pack: cycle 2026-10-15, provisional"). No pack
+  figure (D-026), no UI, no global.
+- Tests: `unit/services/screener-intake.test.ts` (synthetic packs, the memory backend); `tests/browser/screener-store.cdp.mjs`
+  runs the intake against the real IndexedDB too (17 checks).
+
 ### Changed (tooling: the new app's build ignores where `node_modules` really lives, 28 Nov 2026; `/next/` byte-identical)
 - **`scripts/build.mjs`**: esbuild's `preserveSymlinks` is on, so a worktree whose `node_modules` is a junction to
   another worktree's builds the same page. Before, the bundler wrote the resolved path into three Preact module

@@ -20,7 +20,11 @@
 //   5. damaged read-back: one byte of a stored file is flipped directly in IndexedDB; reading that file is refused with
 //      the "was damaged ... has been removed" reason, and the pack is gone from the state;
 //   6. a pack whose file does not match its manifest (tampered) is refused by the reader and never reaches the store;
-//   7. no exception in the page and no request but the harness's own file:// documents.
+//   7. no exception in the page and no request but the harness's own file:// documents;
+//   8. through services/screener-intake.ts (the call the section 1 slot will make), against the same real IndexedDB:
+//      the 2026-11-15 pack is stored, its source register record says role screener-pack, class N, stage review, and
+//      the sidebar line reads "MF Screener pack: cycle 2026-11-15"; a tampered pack is refused at the read stage,
+//      naming funds.json, and leaves the store as it was.
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -50,7 +54,17 @@ const sha256 = async (b) => [...new Uint8Array(await crypto.subtle.digest('SHA-2
 let tick = 0;
 const store = createScreenerStore(browserScreenerBackend(), { now: () => '2026-11-27T10:00:0' + (tick++ % 10) + 'Z', sha256 });
 let last = null;
+import { intakeScreenerPack, screenerStoreStatus } from ${JSON.stringify(path.join(ROOT, 'app/src/services/screener-intake.ts').split(path.sep).join('/'))};
 window.__m10 = {
+  // the section 1 slot's call: read and offer the picked file through the intake service
+  async intake() {
+    const f = document.getElementById('f').files[0];
+    const r = await intakeScreenerPack(new Uint8Array(await f.arrayBuffer()), f.name, { JSZip: window.JSZip, sha256 }, store);
+    const src = r.source;
+    return { status: r.status, stage: r.status === 'refused' ? r.stage : null, reason: r.status === 'refused' ? r.reason : null, file: r.status === 'refused' ? r.file : null,
+      source: { role: src.role, class: src.class, stage: src.stage, asOn: src.asOn.kind === 'value' ? src.asOn.v : null }, cycle: r.pack ? r.pack.cycle : null };
+  },
+  async status() { return screenerStoreStatus(store); },
   // reads the picked file; keeps the accepted pack for offer()
   async read() {
     const f = document.getElementById('f').files[0];
@@ -174,6 +188,16 @@ try {
   // 6. a tampered pack never reaches the store
   const r6 = await pick('bad');
   check(!r6.ok && /funds\.json/.test(r6.reason), `6. a pack whose file does not match its manifest is refused by the reader (${r6.reason})`);
+
+  // 8. through the intake service
+  const i8 = await (async () => { await page.setFiles('#f', [path.join(dir, 'pr-datapack-nov.zip')]); return page.eval('window.__m10.intake()'); })();
+  const st8 = await page.eval('window.__m10.status()');
+  check(i8.status === 'stored' && i8.source.role === 'screener-pack' && i8.source.class === 'N' && i8.source.stage === 'review' && i8.cycle === '2026-11-15', `8. the intake stores the 2026-11-15 pack with its source register record (${JSON.stringify(i8)})`);
+  check(st8.label === 'MF Screener pack: cycle 2026-11-15', `8. the sidebar line (${st8.label})`);
+  const i9 = await (async () => { await page.setFiles('#f', [path.join(dir, 'pr-datapack-bad.zip')]); return page.eval('window.__m10.intake()'); })();
+  const st9 = await page.eval('window.__m10.status()');
+  check(i9.status === 'refused' && i9.stage === 'read' && i9.file === 'funds.json' && i9.source.stage === 'upload', `8. a tampered pack is refused at the read stage, naming funds.json (${i9.reason})`);
+  check(st9.label === st8.label, '8. the refused pack leaves the store as it was');
 
   // 7. clean page
   const foreign = page.requests.filter((u) => !u.startsWith('file:') && !u.startsWith('blob:') && !u.startsWith('data:'));
