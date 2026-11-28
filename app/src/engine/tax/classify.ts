@@ -183,6 +183,41 @@ export function i21PeriodsMissing(inst: string, asOn: DayNumber): string | null 
   return asOn < I21_RATES_FROM && !I21_PERIODS_UNCHANGED.has(inst) ? I21_PERIODS_MISSING : null;
 }
 
+/**
+ * Round 4 W-1 (Q-49; CHAT-012's Gate B of tax round 3 d7e1818; MOD-05's ruling of 28 Nov 2026; KI-341): the day from
+ * which the I-21 holding period applies to a lot of a class whose lots bought from `boughtFrom` were Specified mutual
+ * fund units (s.50AA: deemed short term, at the slab rate) for earlier sales. For a sale (an as-on date) before
+ * `saleFrom` such a lot is short term whatever its holding period; its I-21 short-term rate is the slab rate, so its tax
+ * is the existing slab dash (no slab rate invented, PD-07). Lots bought before `boughtFrom` keep the I-21 period. As on a
+ * date before I21_RATES_FROM these classes are not split anyway (round 3 B-1, I21_PERIODS_UNCHANGED). Each gate is
+ * proven from the dated rows of table v1 (tests/unit/tax/fifo-lots.test.ts, "round 4 W-1"): the class's fund type takes
+ * the Specified class for units bought from 1 Apr 2023 and sales up to 31 Mar 2025 (its line in `source`), and row
+ * NE-50AA-2 (line 568: s.50AA Explanation (ii) as substituted by the Finance (No. 2) Act 2024, from AY 2026-27) applies
+ * the new definition to sales from 1 Apr 2025.
+ */
+export type I21PeriodsGate = { boughtFrom: DayNumber; saleFrom: DayNumber; source: string };
+/** Round 4 W-1: units bought from this day could be Specified (s.50AA, Finance Act 2023, table v1 NE-50AA-1). */
+const SPECIFIED_BOUGHT_FROM: DayNumber = ymdToDay(2023, 4, 1)!;
+/** Round 4 W-1: the first sale day of the new Specified definition (table v1 NE-50AA-2, data/owner/tax-rules.json line 568). */
+const SPECIFIED_NEW_DEFINITION_FROM: DayNumber = ymdToDay(2025, 4, 1)!;
+const W1_ROWS = 'data/owner/tax-rules.json NE-50AA-1 (sales to 2025-03-31) and NE-50AA-2 (line 568, sales from 2025-04-01)';
+const w1Gate = (fundTypeLine: string): I21PeriodsGate => ({
+  boughtFrom: SPECIFIED_BOUGHT_FROM, saleFrom: SPECIFIED_NEW_DEFINITION_FROM, source: `${fundTypeLine}; ${W1_ROWS}`,
+});
+/** Round 4 W-1: the gate of each class it covers (the four classes of table v1 whose fund type was Specified from 2023). */
+export const I21_PERIODS_GATES: ReadonlyMap<string, I21PeriodsGate> = new Map<string, I21PeriodsGate>([
+  [INST.commodityEtf, w1Gate('data/owner/tax-rules.json line 704, fund type gold-silver-etf')],
+  [INST.intlEtf, w1Gate('data/owner/tax-rules.json line 707, fund type international-etf')],
+  [INST.commodityMf, w1Gate('data/owner/tax-rules.json line 705, fund type gold-silver-fof')],
+  [INST.global, w1Gate('data/owner/tax-rules.json line 706, fund type international-fof')],
+]);
+
+/** Round 4 W-1: a lot of this class bought on `buy` is deemed short term as on `asOn` (Specified under s.50AA then). */
+export function i21DeemedShort(inst: string, buy: DayNumber, asOn: DayNumber): boolean {
+  const g = I21_PERIODS_GATES.get(inst);
+  return g !== undefined && buy >= g.boughtFrom && asOn < g.saleFrom;
+}
+
 /** Why a holding is left unclassified: the live TAX_WHY texts, word for word. */
 export const TAX_WHY = {
   none: 'No row in the tax rules covers this product or category.',

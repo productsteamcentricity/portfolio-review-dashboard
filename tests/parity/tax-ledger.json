@@ -136,6 +136,33 @@
       "class": "correction",
       "reference": "Q-49; AC-18; ARC-03 Gate B of 5c9ae0a, F4 (round 2c item 4)",
       "description": "Round 2c item 4 (F4): a Purchase of 100 u on 1 Jan 2024 and a Redemption written at 110 with an amount of 0 on 1 Jan 2025; base 99.5 u, 0.5% from the history's 100 u, inside the 1% band. Both sides split the holding the same way (long 11,940, gain 1,990). The live reads the sale of 0 as moving nothing and gives no reason; the new engine keeps the split but names the sale of 0 in the reason (its units could not be counted), never silent. The figures agree."
+    },
+    {
+      "id": "TX-15",
+      "book": "tax-w1",
+      "holding": "Sample Gold Exchange Traded Fund 2023 @13000",
+      "field": "lt",
+      "class": "correction",
+      "reference": "Q-49; OD-2; W-1 (CHAT-012, Gate B of tax round 3 d7e1818); KI-341; s.50AA",
+      "description": "Round 4 W-1: a Commodity ETF, 100 u bought 1 May 2023 at 100 (10,000), CMV 13,000, as on 31 Jan 2025. Units of this class bought from 1 Apr 2023 were Specified mutual fund units (s.50AA, deemed short term at the slab rate) for sales up to 31 Mar 2025 (table v1 NE-50AA-1, NE-50AA-2 at line 568, fund type gold-silver-etf at line 704). The live applies today's 12 months and gives long 13,000 at a gain of 3,000; the new engine gives long 0."
+    },
+    {
+      "id": "TX-16",
+      "book": "tax-w1",
+      "holding": "Sample Gold Exchange Traded Fund 2023 @13000",
+      "field": "st",
+      "class": "correction",
+      "reference": "Q-49; OD-2; W-1 (CHAT-012, Gate B of tax round 3 d7e1818); KI-341; s.50AA",
+      "description": "Follows from TX-15: the same lot is short 13,000 at a gain of 3,000 in the new engine (at the slab rate, so no tax figure without a slab rate, PD-07), against short 0 in the live."
+    },
+    {
+      "id": "TX-17",
+      "book": "tax-w1",
+      "holding": "Sample Gold Exchange Traded Fund 2023 @13000",
+      "field": "reason",
+      "class": "correction",
+      "reference": "Q-49; OD-2; W-1 (CHAT-012, Gate B of tax round 3 d7e1818); KI-341",
+      "description": "Follows from TX-15: the new engine names why the lot is short whatever its holding period (Specified under s.50AA for sales up to 31 Mar 2025; today's holding periods from 1 Apr 2025); the live gives no reason. The Commodity ETF bought 1 Mar 2023 (before 1 Apr 2023) and the other holdings of the book agree."
     }
   ],
   "rollupEntries": [
@@ -620,6 +647,95 @@
       "class": "correction",
       "reference": "Q-49; AC-18; round 3 M1 (CHAT-012, Gate B of M7b b299804)",
       "description": "Follows from TX-05 and the D-1 rule: the only holding of Sample Client A is unreconciled in the new engine, so no holding of the client is split and no harvest is worked. Round 3 M1 (Q-49): every plain harvest figure of the client, and of the family (no client worked), is null, not known, where the live gives 0 for each (and the new engine gave 0 before round 3). The harvest Values were already NOT AVAILABLE with the reason (D-1); nothing is worked, so nothing is 0."
+    },
+    {
+      "id": "TXR-25",
+      "book": "tax-w1",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "totals.ltCmv",
+        "totals.stCmv",
+        "totals.ltGain",
+        "totals.stGain"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-2; W-1 (CHAT-012, Gate B of tax round 3 d7e1818); KI-341",
+      "description": "Follows from TX-15 and TX-16 (round 4 W-1, as on 31 Jan 2025): the Commodity ETF bought 1 May 2023 moves from long to short. Totals: long 57,500 at a gain of 7,500 and short 13,000 at 3,000 in the new engine, against long 70,500 at 10,500 and short 0 in the live."
+    },
+    {
+      "id": "TXR-26",
+      "book": "tax-w1",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "byClass[Commodity ETF].ltCmv",
+        "byClass[Commodity ETF].stCmv",
+        "byClass[Commodity ETF].ltGain",
+        "byClass[Commodity ETF].stGain",
+        "byClass[Commodity ETF].ltPos",
+        "byClass[Commodity ETF].stPos"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-2; W-1 (CHAT-012, Gate B of tax round 3 d7e1818); KI-341",
+      "description": "Follows from TX-15 and TX-16: the Commodity ETF class holds the lot bought 1 Mar 2023 long (12,500, gain 2,500) and the lot bought 1 May 2023 short (13,000, gain 3,000) in the new engine, against both long (25,500, gain 5,500) in the live; its long and short pools follow."
+    },
+    {
+      "id": "TXR-27",
+      "book": "tax-w1",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "byProduct[Mutual Funds].ltCmv",
+        "byProduct[Mutual Funds].stCmv",
+        "byProduct[Mutual Funds].ltGain",
+        "byProduct[Mutual Funds].stGain"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-2; W-1 (CHAT-012, Gate B of tax round 3 d7e1818); KI-341",
+      "description": "Follows from TX-15 and TX-16: by product (Mutual Funds), long 57,500 (gain 7,500) and short 13,000 (gain 3,000) against long 70,500 (10,500) and short 0, as in the totals."
+    },
+    {
+      "id": "TXR-28",
+      "book": "tax-w1",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "byAsset[Commodity].ltCmv",
+        "byAsset[Commodity].stCmv",
+        "byAsset[Commodity].ltGain",
+        "byAsset[Commodity].stGain"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-2; W-1 (CHAT-012, Gate B of tax round 3 d7e1818); KI-341",
+      "description": "Follows from TX-15 and TX-16: by asset (Commodity: the two Commodity ETFs and the Commodity MF), long 24,000 (gain 4,000) and short 13,000 (gain 3,000) against long 37,000 (7,000) and short 0."
+    },
+    {
+      "id": "TXR-29",
+      "book": "tax-w1",
+      "scopes": [
+        "family",
+        "Sample Client A"
+      ],
+      "fields": [
+        "harvest.taxBefore",
+        "harvest.taxAfter",
+        "harvest.ltGains",
+        "harvest.stGains",
+        "harvest.unquantifiedGain",
+        "harvest.unquantifiedPools"
+      ],
+      "class": "correction",
+      "reference": "Q-49; OD-2; W-1 (CHAT-012, Gate B of tax round 3 d7e1818); KI-341; PD-07",
+      "description": "Follows from TX-15 and TX-16: the short-term gain of 3,000 is at the slab rate, a pool with no tax figure (unquantified: 1 pool, 3,000), so tax before and after are 875 (the other long-term pools, 7,000 x 12.5%; the Sec 198 gain of 500 inside the exemption) against the live 1,250 (with the 3,000 long at 12.5%, 375); long-term gains 7,500 against 10,500, short-term 3,000 against 0. Slab 30% entered and the exemption confirmed unused on both sides; saving 0 on both."
     }
   ]
 }
