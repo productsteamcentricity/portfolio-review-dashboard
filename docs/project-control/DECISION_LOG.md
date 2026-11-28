@@ -1023,8 +1023,8 @@ PD-50 to PD-56: the plain-language sections are still to be written; their table
     before the review date, or when the review date is on or after the month's last weekday; otherwise the previous
     month is used (30 and 31 Oct use October's data; 29 and 15 Oct use September's). A first reading ("the month's
     data counts when the review date is in the month's last 7 days") was not accepted: the owner named no width, and
-    a review dated 25 Oct would use a price of 30 Oct, after the review date. Not on screen yet. **To be confirmed by
-    the owner.** (MOD-05 under delegation (PD-68).)
+    a review dated 25 Oct would use a price of 30 Oct, after the review date. Not on screen yet. **Confirmed by the
+    owner on 28 Nov 2026** (section 2.4). (MOD-05 under delegation (PD-68).)
   - About 03:35: the base-file template (not merged yet): the Account Name fields accepted as proposed (read, kept and
     shown only); anything shaped like a PAN in the Account Name cell is removed when the file is read, and counted.
     Display only; no figure moves. (MOD-05 under delegation (PD-68).)
@@ -1082,6 +1082,7 @@ Answers and instructions the owner gave in chat that have no PD number. Recorded
 | 28 Nov 2026 (about 02:25 IST) | A price-day line under the Direct tables | "No, one label only" | No change; the single "31 Oct 2026" label stays (PD-57, PD-58). Not the Moderator's recommendation |
 | 28 Nov 2026 (about 02:25 IST) | Review date against data dates | "As month labels (Recommended)" | A data point labelled with the review month's end counts as on or before the review date; the no-look-ahead rule compares month labels |
 | 28 Nov 2026 (about 02:25 IST) | A holdings line with no transactions in a loaded transactions file | "Base-file XIRR, marked (Recommended)" | As built |
+| 28 Nov 2026 (about 13:00 IST) | Confirm the Moderator's reading of the "month labels" answer: a month's data counts when its own date is on or before the review date, or the review date is on or after that month's last weekday; otherwise the previous month | "Confirm it" | The Moderator's reading (PD-68) is the rule for the new build |
 
 ### 2.5 Moderator decisions with a financial meaning (27 Nov 2026)
 
@@ -1137,4 +1138,4 @@ These are Claude's recommendations. None is a decision until the named approver 
 | 27 Nov 2026 | MOD-05 (registers-6, drafted by EX-03) | Section 2.4: the stricter-matching row corrected to the measured result (20 of 22 recovered, 2 lost, 4 named and unmatched: a known gap, owner asked 27 Nov 2026); section 2.5 added: the Moderator's decisions of 27 Nov 2026 with a financial meaning |
 | 27 Nov 2026 | MOD-05 (registers-7, drafted by EX-03) | Section 2.4: the owner's "Open both" (CHAT-016 ARC-04 and CHAT-017 NB-05) |
 | 28 Nov 2026 | MOD-05 (registers-8, drafted by EX-03) | PD-68 added with its section and the owner's words (the delegation of 28 Nov 2026); section 2.4: the owner's six answers of 28 Nov 2026; section 2.5: the four unmatched names marked answered |
-| 28 Nov 2026 | MOD-05 (registers-9, drafted by EX-03) | PD-68: the decisions taken under it (the month-labels ruling to be confirmed by the owner), the window's end and the PC's sleep from 04:28 to 12:00 IST; the merge of PR #72 recorded as outside PD-68 |
+| 28 Nov 2026 | MOD-05 (registers-9, drafted by EX-03) | PD-68: the decisions taken under it (the month-labels ruling, confirmed by the owner on 28 Nov 2026), the window's end and the PC's sleep from 04:28 to 12:00 IST; the merge of PR #72 recorded as outside PD-68; section 2.4: the owner's confirmation of the month-labels reading (28 Nov 2026, about 13:00 IST) |

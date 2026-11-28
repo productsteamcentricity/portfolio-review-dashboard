@@ -5,8 +5,8 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ## [Unreleased]
 
 ### Changed (records, registers-9, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
-- **`docs/project-control/DECISION_LOG.md`**: PD-68, the decisions MOD-05 took under it (the month-labels ruling to be
-  confirmed by the owner) and the window in practice (the PC slept from 04:28 to 12:00 IST for loss of mains power); the
+- **`docs/project-control/DECISION_LOG.md`**: PD-68, the decisions MOD-05 took under it (the month-labels ruling,
+  confirmed by the owner on 28 Nov 2026 and added to section 2.4) and the window in practice (the PC slept from 04:28 to 12:00 IST for loss of mains power); the
   merge of PR #72 is recorded outside PD-68, under the standing `/next/` rule.
 - **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,CRITICAL_PATH}.md`**: PRs #71 (the build fix) and #72 (M7a
   tax round 2c, not wired; KI-340 open).
