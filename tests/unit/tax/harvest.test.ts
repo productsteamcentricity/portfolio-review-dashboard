@@ -252,8 +252,8 @@ describe('per client, the family a sum; the contract shape', () => {
     assert.equal(h.unreconciled, 1);
     near(h.figures.taxBefore, 0, 'tax before');
     assert.equal((h.taxBefore as { coverage?: number }).coverage, 0.5);
-    assert.match((h.taxBefore as { prov: { method: string } }).prov.method, /PARTIAL COVERAGE: 1 holding not split \(unreconciled with the IRR file\) left out of the pools/);
-    assert.ok(h.labels.includes('1 holding not split (unreconciled with the IRR file) left out (PARTIAL COVERAGE)'), JSON.stringify(h.labels));
+    assert.match((h.taxBefore as { prov: { method: string } }).prov.method, /PARTIAL COVERAGE: 1 holding not split \(unreconciled with the IRR file: fewer units in the history 1\) left out of the pools/);
+    assert.ok(h.labels.includes('1 holding not split (unreconciled with the IRR file: fewer units in the history 1) left out (PARTIAL COVERAGE)'), JSON.stringify(h.labels));
     assert.equal(family.unreconciled, 1);
     assert.equal((family.taxBefore as { coverage?: number }).coverage, 0.5);
   });
@@ -268,7 +268,7 @@ describe('per client, the family a sum; the contract shape', () => {
     const { clients, family } = run(specs, ctxOf({ exemptionUsed: { [A]: 'unused-confirmed' } }));
     const b = clients.find((c) => c.clientLabel === B)!;
     assert.equal(b.taxBefore.kind, 'missing');
-    assert.equal(b.notWorked, 'no holding of this client is split into long and short term (1 holding not split, unreconciled with the IRR file), so no harvest is worked');
+    assert.equal(b.notWorked, 'no holding of this client is split into long and short term (1 holding not split, unreconciled with the IRR file: fewer units in the history 1), so no harvest is worked');
     assert.equal(clients.find((c) => c.clientLabel === A)!.notWorked, null);
     assert.equal(family.clientsNotWorked, 1);
     assert.equal(family.taxBefore.kind, 'value');
@@ -405,5 +405,30 @@ describe('round 3 L1 and L2 (CHAT-012\'s Gate B of M7b): the family coverage and
     assert.equal(family.taxBefore.kind, 'value');
     assert.equal((family.taxBefore as { coverage?: number }).coverage, 0.5);
     assert.match((family.taxBefore as { prov: { method: string } }).prov.method, /PARTIAL COVERAGE: 1 holding with an unknown gain left out/);
+  });
+  test('L2: the PARTIAL and not-worked labels name each unreconciled kind by count', () => {
+    // A: one split holding (long gain 1,00,000) and three unreconciled holdings: a merger candidate and two transfer rows.
+    // B: one unreconciled holding only, a bonus row (no harvest worked). The labels say which kinds by count; before,
+    // only "not split (unreconciled with the IRR file)".
+    const { lots, facts } = makeLots([
+      { client: A, name: 'Sample Fund One', cls: 'equityMf', cmv: 300000, lt: 100000 },
+      { client: A, name: 'Sample Fund Two', cls: 'equityMf', cmv: 10000, status: 'unreconciled', gain: 1000 },
+      { client: A, name: 'Sample Fund Three', cls: 'equityMf', cmv: 20000, status: 'unreconciled', gain: 2000 },
+      { client: A, name: 'Sample Fund Four', cls: 'equityMf', cmv: 30000, status: 'unreconciled', gain: 3000 },
+      { client: B, name: 'Sample Fund Five', cls: 'equityMf', cmv: 40000, status: 'unreconciled', gain: 4000 },
+    ]);
+    const kinds = ['mergerCandidate', 'transferRow', 'transferRow', 'bonusRow'] as const;
+    lots.unreconciled.forEach((r, i) => { r.unreconciledKind = kinds[i]!; });
+    const roll = rollupHoldings(lots, facts);
+    const { clients, family } = buildHarvests(roll, ctxOf({ exemptionUsed: { [A]: 'unused-confirmed' } }));
+    const a = clients.find((c) => c.clientLabel === A)!;
+    const b = clients.find((c) => c.clientLabel === B)!;
+    assert.ok(a.labels.includes('3 holdings not split (unreconciled with the IRR file: transfer row 2, merger candidate 1) left out (PARTIAL COVERAGE)'), JSON.stringify(a.labels));
+    assert.match((a.taxBefore as { prov: { method: string } }).prov.method, /3 holdings not split \(unreconciled with the IRR file: transfer row 2, merger candidate 1\) left out of the pools/);
+    assert.equal(b.notWorked, 'no holding of this client is split into long and short term (1 holding not split, unreconciled with the IRR file: bonus row 1), so no harvest is worked');
+    assert.deepEqual(family.unreconciledKinds, { mergerCandidate: 1, transferRow: 2, bonusRow: 1 });
+    assert.match((family.taxBefore as { prov: { method: string } }).prov.method, /4 holdings not split \(unreconciled with the IRR file: transfer row 2, bonus row 1, merger candidate 1\) left out/);
+    const lt = roll.legacy.unrealised.lt;
+    assert.match(lt.kind === 'value' ? lt.prov.method : '', /4 holdings not split \(unreconciled with the IRR file: transfer row 2, bonus row 1, merger candidate 1\) left out/);
   });
 });

@@ -49,7 +49,8 @@ import { missing, present } from '../value.ts';
 import { TAX_RULES_V1, exemptionFor, financialYearOf } from './rules.ts';
 import { i21RatesMissing } from './classify.ts';
 import type { TaxRuleTable } from './rules.ts';
-import type { ClassPool, ClientTaxSummary, HoldingsTaxRollup } from './holdings-rollup.ts';
+import type { ClassPool, ClientTaxSummary, HoldingsTaxRollup, UnreconciledKinds } from './holdings-rollup.ts';
+import { addUnreconciledKinds, countUnreconciledKinds, unreconciledText } from './holdings-rollup.ts';
 import type { PersonYearTaxLocal } from './types.ts';
 
 /**
@@ -204,6 +205,8 @@ export type HarvestLocal = Omit<HarvestResult, 'clientId' | 'usedLosses' | 'unus
   gainUnknown: number;
   /** Holdings of the client not split, unreconciled with the IRR file: left out of the pools (PARTIAL; M7b F-3). */
   unreconciled: number;
+  /** Round 3 L2: those holdings counted by unreconciled kind (named in the labels). */
+  unreconciledKinds: UnreconciledKinds;
   /** The client's split holdings (a holding split at 1 Apr 2023 counted once). */
   split: number;
   /**
@@ -240,6 +243,8 @@ export type FamilyHarvest = {
   gainUnknown: number;
   /** Holdings not split, unreconciled with the IRR file, over the clients (PARTIAL; M7b F-3). */
   unreconciled: number;
+  /** Round 3 L2: those holdings counted by unreconciled kind, over the clients (named in the labels). */
+  unreconciledKinds: UnreconciledKinds;
   /** D-1: clients with no harvest worked, left out of the sum (the family figures are missing when every client is). */
   clientsNotWorked: number;
 };
@@ -427,15 +432,18 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   // M7b financial review F-3: the client's holdings not split because the IRR file does not reconcile them are left out
   // of the pools too, so the figures are PARTIAL with them (never read as complete).
   const unreconciled = client.unreconciled.length;
+  // Round 3 L2 (CHAT-012): the labels name each unreconciled kind by count.
+  const kinds = countUnreconciledKinds(client.unreconciled);
+  const unrecText = unreconciledText(kinds);
   const p: Provenance = prov ?? { sources: [], method: 'tax-loss harvest per client (E-43)' };
   const leftOut = [gainUnknown > 0 ? `${gainUnknown} holding${gainUnknown === 1 ? '' : 's'} with an unknown gain` : null,
-    unreconciled > 0 ? `${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (unreconciled with the IRR file)` : null].filter((x): x is string => x !== null);
+    unreconciled > 0 ? `${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (${unrecText})` : null].filter((x): x is string => x !== null);
   const note = leftOut.length ? `; ${STATUS.PARTIAL}: ${leftOut.join(' and ')} left out of the pools` : '';
   // M7b delta review D-1: a client with no holding split and some unreconciled with the IRR file has no harvest worked:
   // its figures are NOT AVAILABLE with the reason (as the unrealised figure), never Rs 0 at coverage 0.
   const split = splitHoldingsOf(client);
   const notWorked = split === 0 && unreconciled > 0
-    ? `no holding of this client is split into long and short term (${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split, unreconciled with the IRR file), so no harvest is worked`
+    ? `no holding of this client is split into long and short term (${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split, ${unrecText}), so no harvest is worked`
     : null;
   // Round 3 M1 (Q-49): with no harvest worked, every plain figure is null (not known), never 0.
   const shown: HarvestFigureValues = notWorked !== null ? nullFigures() : figures;
@@ -455,7 +463,7 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   if (c.nsoGain + c.nsoLoss > EPS) labels.push('crypto kept out of set-off (PD-03)');
   if (gainUnknown > 0) labels.push(`${gainUnknown} holding${gainUnknown === 1 ? '' : 's'} with an unknown gain left out (${STATUS.PARTIAL})`);
   if (notWorked !== null) labels.push(notWorked);
-  else if (unreconciled > 0) labels.push(`${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (unreconciled with the IRR file) left out (${STATUS.PARTIAL})`);
+  else if (unreconciled > 0) labels.push(`${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (${unrecText}) left out (${STATUS.PARTIAL})`);
   const pools: HarvestPool[] = c.pools.map((x) => ({
     // M2: as on a date before 23 Jul 2024 the class's rate (and its label, which states the rate) is not in the table,
     // and what is left after set-off depends on the order the rates set.
@@ -476,7 +484,7 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
     usedLosses: { st: shown.stUsed, lt: shown.ltUsed },
     unusedLosses: { st: shown.stUnused, lt: shown.ltUnused },
     unquantifiedPools: slabP.map((x) => `${x.cls}, ${x.b === 'LT' ? 'long term' : 'short term'}`),
-    pools, candidateDetail, gainUnknown, unreconciled, split, notWorked,
+    pools, candidateDetail, gainUnknown, unreconciled, unreconciledKinds: kinds, split, notWorked,
     harvestableLoss: notWorked !== null ? null : candidateDetail.reduce((s, x) => s + x.ltLoss + x.stLoss, 0),
     labels,
   };
@@ -523,11 +531,13 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
   const dashed = worked.filter((h) => h.afterSetOffDash !== null).length;
   const gainUnknown = list.reduce((s, h) => s + h.gainUnknown, 0);
   const unreconciled = list.reduce((s, h) => s + h.unreconciled, 0);
+  const kinds = list.reduce<UnreconciledKinds>((k, h) => addUnreconciledKinds(k, h.unreconciledKinds), {});
+  const unrecText = unreconciledText(kinds);
   // F-3, D-1: holdings not split (unreconciled with the IRR file) make the family figure PARTIAL; its coverage is the
   // share of the family's holdings in the pools: split holdings with a known gain over split and unreconciled holdings.
   const familyNote = [notWorked > 0 ? `${notWorked} client${notWorked === 1 ? '' : 's'} with no holding split (no harvest worked)` : null,
     gainUnknown > 0 ? `${gainUnknown} holding${gainUnknown === 1 ? '' : 's'} with an unknown gain` : null,
-    unreconciled > 0 ? `${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (unreconciled with the IRR file)` : null].filter((x): x is string => x !== null);
+    unreconciled > 0 ? `${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (${unrecText})` : null].filter((x): x is string => x !== null);
   const known = list.reduce((s, h) => s + Math.max(0, h.split - h.gainUnknown), 0);
   const base = list.reduce((s, h) => s + h.split + h.unreconciled, 0);
   const familyCoverage = base > 0 ? Math.min(1, known / base) : 0;
@@ -535,7 +545,7 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
   // rate-dependent figures NOT AVAILABLE with its label.
   const ratesMissing = worked.find((h) => h.ratesMissing !== null)?.ratesMissing ?? null;
   const v = (x: number | null, what: string): Value<number> => (none
-    ? missing(STATUS.NOT_AVAILABLE, `no holding of any client is split into long and short term (${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split, unreconciled with the IRR file): the family ${what} is not available`, fp)
+    ? missing(STATUS.NOT_AVAILABLE, `no holding of any client is split into long and short term (${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split, ${unrecText}): the family ${what} is not available`, fp)
     : x === null && ratesMissing !== null
       ? missing(STATUS.NOT_AVAILABLE, `${ratesMissing}: the family ${what} is not available`, fp)
     : x === null
@@ -552,7 +562,7 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
     exRate: none || worked.some((h) => h.exRate === null) ? null : worked.reduce((m, h) => Math.max(m, h.exRate ?? 0), 0),
     ratesMissing,
     exemptionNotApplied: worked.filter((h) => h.exemptionApplied === EXEMPTION_NOT_APPLIED).length,
-    gainUnknown, unreconciled, clientsNotWorked: notWorked,
+    gainUnknown, unreconciled, unreconciledKinds: kinds, clientsNotWorked: notWorked,
   };
 }
 

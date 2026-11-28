@@ -34,7 +34,7 @@ import { STATUS } from '../../model/status.ts';
 import { missing, present } from '../value.ts';
 import { TAX_RULES_I21, i21ByInst, i21RatesMissing } from './classify.ts';
 import type { I21Row } from './classify.ts';
-import type { NotSplitKind, TaxLotsResult, TaxPositionRecord } from './lots.ts';
+import type { NotSplitKind, TaxLotsResult, TaxPositionRecord, UnreconciledKind } from './lots.ts';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Types
@@ -180,6 +180,43 @@ export function gainValue(g: GainTotal, prov: Provenance, what = 'gain'): Value<
 
 function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Round 3 L2 (CHAT-012's Gate B of M7b): the kinds of the holdings not split because unreconciled with the IRR file
+
+/** The words of each unreconciled kind (lots.ts UnreconciledKind) in a label, in the type's order. */
+export const UNRECONCILED_KIND_WORDS: Readonly<Record<UnreconciledKind, string>> = {
+  unitsGap: 'units blank (merged folio)', noLots: 'no purchase in the history', value: 'invested value does not reconcile',
+  short: 'fewer units in the history', excess: 'more units in the history', noPxSell: 'a sale without a price',
+  apportion: 'shared scheme not apportioned', transferRow: 'transfer row', bonusRow: 'bonus row', mergerCandidate: 'merger candidate',
+};
+
+/** The count of each unreconciled kind (a record without a kind is not counted). */
+export type UnreconciledKinds = Partial<Record<UnreconciledKind, number>>;
+
+/** Round 3 L2: the unreconciled records counted by kind. */
+export function countUnreconciledKinds(records: ReadonlyArray<Pick<TaxPositionRecord, 'unreconciledKind'>>): UnreconciledKinds {
+  const out: UnreconciledKinds = {};
+  for (const r of records) if (r.unreconciledKind !== null) out[r.unreconciledKind] = (out[r.unreconciledKind] ?? 0) + 1;
+  return out;
+}
+
+/** Round 3 L2: two counts by kind added up. */
+export function addUnreconciledKinds(a: UnreconciledKinds, b: UnreconciledKinds): UnreconciledKinds {
+  const out: UnreconciledKinds = { ...a };
+  for (const k of Object.keys(b) as UnreconciledKind[]) out[k] = (out[k] ?? 0) + (b[k] ?? 0);
+  return out;
+}
+
+/**
+ * Round 3 L2: the label of holdings not split because unreconciled with the IRR file, naming each kind by count, for
+ * example "unreconciled with the IRR file: merger candidate 1, transfer row 2" (the kinds in the type's order).
+ */
+export function unreconciledText(kinds: UnreconciledKinds): string {
+  const parts = (Object.keys(UNRECONCILED_KIND_WORDS) as UnreconciledKind[])
+    .filter((k) => (kinds[k] ?? 0) > 0).map((k) => `${UNRECONCILED_KIND_WORDS[k]} ${kinds[k]}`);
+  return parts.length ? `unreconciled with the IRR file: ${parts.join(', ')}` : 'unreconciled with the IRR file';
 }
 
 /** A GainTotal being added up, with the holdings already counted (a split holding is counted once). */
@@ -353,13 +390,14 @@ export function rollupHoldings(lots: Pick<TaxLotsResult, 'positions' | 'unreconc
   const unnamedN = all.filter((r) => r.clientId === null && !isSecondPart(r)).length;
   const split = lots.positions.filter((r) => r.notSplit === null && !isSecondPart(r)).length;
   const unrec = lots.unreconciled.length;
+  const kinds = countUnreconciledKinds(lots.unreconciled);
   return {
     family, clients, unnamedN, facts, prov,
     ratesMissing: opts.asOn === undefined ? null : i21RatesMissing(opts.asOn),
     legacy: {
       unrealised: {
-        st: withUnreconciled(gainValue(family.totals.st.gain, { ...prov, method: `${prov.method}; tax.unrealised.st` }, 'short-term gain'), split, unrec, prov),
-        lt: withUnreconciled(gainValue(family.totals.lt.gain, { ...prov, method: `${prov.method}; tax.unrealised.lt` }, 'long-term gain'), split, unrec, prov),
+        st: withUnreconciled(gainValue(family.totals.st.gain, { ...prov, method: `${prov.method}; tax.unrealised.st` }, 'short-term gain'), split, unrec, prov, kinds),
+        lt: withUnreconciled(gainValue(family.totals.lt.gain, { ...prov, method: `${prov.method}; tax.unrealised.lt` }, 'long-term gain'), split, unrec, prov, kinds),
       },
     },
   };
@@ -369,9 +407,10 @@ export function rollupHoldings(lots: Pick<TaxLotsResult, 'positions' | 'unreconc
  * F-2, F-3: a legacy unrealised figure with the holdings unreconciled with the IRR file left out: unchanged when there are
  * none; NOT AVAILABLE when no holding is split; else PARTIAL COVERAGE (split / (split + unreconciled), or lower).
  */
-function withUnreconciled(v: Value<number>, split: number, unrec: number, prov: Provenance): Value<number> {
+function withUnreconciled(v: Value<number>, split: number, unrec: number, prov: Provenance, kinds: UnreconciledKinds = {}): Value<number> {
   if (unrec === 0 || v.kind === 'missing') return v;
-  const why = `${plural(unrec, 'holding')} not split (unreconciled with the IRR file) left out`;
+  // Round 3 L2: the label names each unreconciled kind by count.
+  const why = `${plural(unrec, 'holding')} not split (${unreconciledText(kinds)}) left out`;
   if (split === 0) return missing(STATUS.NOT_AVAILABLE, `no holding is split into long and short term: ${why}`, prov);
   return present(v.v, 'inr', { ...v.prov, method: `${v.prov.method}; ${STATUS.PARTIAL}: ${why}` },
     { coverage: Math.min(v.coverage ?? 1, split / (split + unrec)) });
