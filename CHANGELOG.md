@@ -7,7 +7,7 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 ### Changed (records, registers-10, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,CRITICAL_PATH}.md`**: PRs #73 to #76; the conditions before
   the tax engine is wired (from the new-build reviewer's Gate B of the M7b seam); the M10 intake in review; a schedule
-  note on the PC's three sleeps of 28 Nov.
+  note on the PC's three sleeps of 28 Nov; "next on the new build" refreshed (the holdings fix round closed by PR #74).
 - **Compactions** recounted: MOD-05 at 1 (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_REGISTRY.md`).
 
 ### Changed (records, registers-9, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
