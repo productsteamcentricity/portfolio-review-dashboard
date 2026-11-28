@@ -277,6 +277,40 @@ describe('per client, the family a sum; the contract shape', () => {
     assert.equal(alone.taxBefore.kind, 'missing');
     assert.equal(alone.clientsNotWorked, 1);
   });
+  test('round 3 M1: no plain 0 where nothing is worked: a not-worked client, an all-not-worked family, the slab dash', () => {
+    // CHAT-012's Gate B of M7b, M1 (Q-49). B holds one unreconciled holding only: no harvest is worked for B, so its plain
+    // figures, used and unused losses, harvestable loss and Sec 198 rate are null (before: 0, and the family's sums of
+    // nothing 0 when B is alone). A beside B is worked as before (tax before 0: 1,00,000 inside the confirmed exemption).
+    const specs: PositionSpec[] = [
+      { client: A, name: 'Sample Fund One', cls: 'equityMf', cmv: 300000, lt: 100000 },
+      { client: B, name: 'Sample Fund Two', cls: 'equityMf', cmv: 80000, status: 'unreconciled', gain: -8000 },
+    ];
+    const { clients } = run(specs, ctxOf({ exemptionUsed: { [A]: 'unused-confirmed' } }));
+    const b = clients.find((c) => c.clientLabel === B)!;
+    assert.ok(b.notWorked !== null);
+    assert.deepEqual(b.usedLosses, { st: null, lt: null });
+    assert.deepEqual(b.unusedLosses, { st: null, lt: null });
+    assert.equal(b.harvestableLoss, null);
+    assert.equal(b.exRate, null);
+    for (const [k, x] of Object.entries(b.figures)) assert.equal(x, null, `B figures.${k}`);
+    const a = clients.find((c) => c.clientLabel === A)!;
+    assert.deepEqual(a.usedLosses, { st: 0, lt: 0 });
+    assert.equal(a.harvestableLoss, 0);
+    near(a.figures.ltGains, 100000, 'A long-term gains');
+    // B alone: the family has no worked client, so every family figure and its Sec 198 rate are null (before: all 0).
+    const alone = run([specs[1]!], ctxOf({})).family;
+    assert.equal(alone.clientsNotWorked, 1);
+    for (const [k, x] of Object.entries(alone.figures)) assert.equal(x, null, `family figures.${k}`);
+    assert.equal(alone.exRate, null);
+    assert.equal(alone.taxBefore.kind, 'missing');
+    // The slab dash (H-3 with no slab entered): the after-set-off figures are null, and the plain losses carry them
+    // (before: { st: 0, lt: 0 }, NOT MEANINGFUL).
+    const h3: PositionSpec[] = KA.cases.find((c: { id: string }) => c.id === 'H-3').positions;
+    const d = run(h3, ctxOf({ exemptionUsed: { [A]: 'unused-confirmed' } })).clients[0]!;
+    assert.equal(d.afterSetOffDash, 'slab rate not set');
+    assert.deepEqual(d.usedLosses, { st: null, lt: null });
+    assert.deepEqual(d.unusedLosses, { st: null, lt: null });
+  });
   test('an unsplit holding (Category II AIF) is never a pool or a candidate', () => {
     const { clients } = run([
       { client: A, name: 'Sample AIF Category II', cls: 'equityAif12', cmv: 300000, notSplit: 'pass-through', gain: -50000 },

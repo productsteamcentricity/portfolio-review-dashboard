@@ -30,6 +30,9 @@
 // of the pools as before, but now counted (`unreconciled`) and the figures marked PARTIAL with them, with a label.
 // Delta review D-1: a client with no holding split and some unreconciled has no harvest worked (`notWorked`; its Values
 // NOT AVAILABLE with the reason), and the family leaves it out with a count (missing when every client is left out).
+// Round 3 M1 (Q-49; CHAT-012's Gate B of M7b): such a client's plain figures, used and unused losses, harvestable loss and
+// Sec 198 rate are null, and so are the family's when no client is worked, never 0 (they read 0 before); the plain used
+// and unused losses under the slab dash are null too, as `figures` already held them.
 // The exemption limit is the as-on year's threshold of table v1 (data/owner/tax-rules.json §10.2: Rs 1,25,000 from FY
 // 2024-25); a year whose exemption is to be confirmed applies none ("exemption not applied").
 // Money in rupees, unrounded (the live works in Crore: the same figures x 1e7). Pure.
@@ -140,6 +143,12 @@ export type HarvestFigures = {
   noSetOffLoss: number;
 };
 
+/**
+ * The figures as a result carries them: null where not known (Q-49): the after-set-off figures under the dash "slab rate
+ * not set", and every figure of a client with no harvest worked or of a family with none worked (round 3 M1).
+ */
+export type HarvestFigureValues = { [K in keyof HarvestFigures]: number | null };
+
 /** The figures the family sum adds field by field (the live TAX_HARVEST_SUM). */
 export const HARVEST_SUM_FIELDS: ReadonlyArray<keyof HarvestFigures> = ['taxBefore', 'taxAfter', 'saving', 'ltGains', 'stGains',
   'ltLosses', 'stLosses', 'ltUsed', 'stUsed', 'ltUnused', 'stUnused', 'unquantifiedPools', 'unquantifiedGain', 'slabSheltered',
@@ -147,22 +156,29 @@ export const HARVEST_SUM_FIELDS: ReadonlyArray<keyof HarvestFigures> = ['taxBefo
 
 /**
  * One client's harvest: the contract's HarvestResult (model/tax.ts) and the lines it does not carry. Engine-local:
- * `clientId` may be null (the holdings without a client label are one person, PD-44). Under the dash "slab rate not
- * set" the contract's plain `usedLosses` and `unusedLosses` read 0 and are NOT MEANINGFUL: `figures` holds them as null.
+ * `clientId` may be null (the holdings without a client label are one person, PD-44). Round 3 M1 (Q-49): the plain
+ * `usedLosses`, `unusedLosses` and `harvestableLoss` are null where they are not known, never 0: under the dash "slab
+ * rate not set" (the used and unused losses), and all of them for a client with no harvest worked (`notWorked`).
  */
-// TODO(contracts-4): HarvestResult.clientId may be null; the fields below join HarvestResult
-export type HarvestLocal = Omit<HarvestResult, 'clientId'> & {
+// TODO(contracts-4): HarvestResult.clientId may be null; usedLosses and unusedLosses become nullable (round 3 M1); the
+//   fields below join HarvestResult
+export type HarvestLocal = Omit<HarvestResult, 'clientId' | 'usedLosses' | 'unusedLosses'> & {
   clientId: ClientId | null;
+  /** The losses used in the set-off, by term; each null where not known (round 3 M1), never 0. */
+  usedLosses: { st: number | null; lt: number | null };
+  /** The losses left unused, by term; each null where not known (round 3 M1), never 0. */
+  unusedLosses: { st: number | null; lt: number | null };
   clientLabel: string | null;
   /** The as-on financial year (its start year). */
   fy: number;
   slab: { pct: number | null; source: 'analyst' | 'default' | 'not set'; limited: boolean };
   exemption: HarvestExemption;
-  /** The Sec 198 rate (the highest rate of the Sec 198 pools; 0 when none). */
-  exRate: number;
+  /** The Sec 198 rate (the highest rate of the Sec 198 pools; 0 when none); null when no harvest is worked (M1). */
+  exRate: number | null;
   /** "slab rate not set" when the after-set-off figures depend on the slab rate and none is entered; else null. */
   afterSetOffDash: string | null;
-  figures: HarvestFigures;
+  /** The figures; all null when no harvest is worked (round 3 M1). */
+  figures: HarvestFigureValues;
   pools: HarvestPool[];
   candidateDetail: HarvestCandidate[];
   /** Split holdings of the client whose gain is unknown (no invested value): left out of the pools (PARTIAL). */
@@ -173,11 +189,15 @@ export type HarvestLocal = Omit<HarvestResult, 'clientId'> & {
   split: number;
   /**
    * D-1: why no harvest is worked for the client (no holding split, some unreconciled with the IRR file), else null.
-   * When set, the Values are NOT AVAILABLE with this reason and the plain `figures` (all 0) are NOT MEANINGFUL.
+   * When set, the Values are NOT AVAILABLE with this reason, and the plain figures, losses and harvestable loss are
+   * null (round 3 M1; before, they read 0).
    */
   notWorked: string | null;
-  /** DATA_DICTIONARY §6 `tax.harvestableLoss[p]`: the candidates' losses (long plus short term). */
-  harvestableLoss: number;
+  /**
+   * DATA_DICTIONARY §6 `tax.harvestableLoss[p]`: the candidates' losses (long plus short term); null when no harvest is
+   * worked (round 3 M1).
+   */
+  harvestableLoss: number | null;
   labels: string[];
 };
 
@@ -185,14 +205,15 @@ export type HarvestLocal = Omit<HarvestResult, 'clientId'> & {
 export type FamilyHarvest = {
   label: typeof FAMILY_LABEL;
   byClient: HarvestLocal[];
-  /** Null when any client's figure is null (the dash). */
-  figures: { [K in keyof HarvestFigures]: number | null };
+  /** Null when any worked client's figure is null (the dash), and every one when no client's harvest is worked (M1). */
+  figures: HarvestFigureValues;
   taxBefore: Value<number>;
   taxAfter: Value<number>;
   saving: Value<number>;
   pools: HarvestPool[];
   candidates: HarvestCandidate[];
-  exRate: number;
+  /** The highest Sec 198 rate of the worked clients; null when none is worked (M1). */
+  exRate: number | null;
   /** Clients whose exemption is not applied (Q-52). */
   exemptionNotApplied: number;
   gainUnknown: number;
@@ -389,6 +410,8 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   const notWorked = split === 0 && unreconciled > 0
     ? `no holding of this client is split into long and short term (${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split, unreconciled with the IRR file), so no harvest is worked`
     : null;
+  // Round 3 M1 (Q-49): with no harvest worked, every plain figure is null (not known), never 0.
+  const shown: HarvestFigureValues = notWorked !== null ? nullFigures() : figures;
   const val = (x: number | null, what: string): Value<number> => (notWorked !== null ? missing(STATUS.NOT_AVAILABLE, notWorked, p) : x === null
     ? missing(STATUS.NOT_AVAILABLE, `${SLAB_NOT_SET}: the ${what} depends on the order of set-off against slab-rate gains`, p)
     : present(x, 'inr', { ...p, method: `${p.method}; ${what}${note}` }, leftOut.length ? { coverage: coverageOf(client, gainUnknown, unreconciled) } : undefined));
@@ -411,16 +434,17 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
     clientId: client.clientId, clientLabel: client.clientLabel, fy, slabPct: slab.pct, slab,
     exemptionApplied: applied ? 'applied' : EXEMPTION_NOT_APPLIED,
     exemption: { limit, used, source: known.source, reason: applied ? null : reason, available: exAvail },
-    exRate: c.er, afterSetOffDash: dash, figures,
+    exRate: notWorked !== null ? null : c.er, afterSetOffDash: dash, figures: shown,
     taxBefore: val(figures.taxBefore, 'tax before harvesting'),
     taxAfter: val(figures.taxAfter, 'tax after harvesting'),
     saving: val(figures.saving, 'saving'),
     candidates: [...new Set(candidateDetail.map((x) => x.holdingId))],
-    usedLosses: { st: figures.stUsed ?? 0, lt: figures.ltUsed ?? 0 },
-    unusedLosses: { st: figures.stUnused ?? 0, lt: figures.ltUnused ?? 0 },
+    // Round 3 M1: the plain losses carry the figures' nulls (the slab dash, no harvest worked), never 0.
+    usedLosses: { st: shown.stUsed, lt: shown.ltUsed },
+    unusedLosses: { st: shown.stUnused, lt: shown.ltUnused },
     unquantifiedPools: slabP.map((x) => `${x.cls}, ${x.b === 'LT' ? 'long term' : 'short term'}`),
     pools, candidateDetail, gainUnknown, unreconciled, split, notWorked,
-    harvestableLoss: candidateDetail.reduce((s, x) => s + x.ltLoss + x.stLoss, 0),
+    harvestableLoss: notWorked !== null ? null : candidateDetail.reduce((s, x) => s + x.ltLoss + x.stLoss, 0),
     labels,
   };
 }
@@ -433,6 +457,13 @@ function coverageOf(client: ClientTaxSummary, unknown: number, unreconciled = 0)
   const split = splitHoldingsOf(client);
   const base = split + unreconciled;
   return base > 0 ? Math.max(0, Math.min(1, (split - unknown) / base)) : 0;
+}
+
+/** Every figure null (round 3 M1: no harvest worked, so nothing is known; never 0). */
+function nullFigures(): HarvestFigureValues {
+  const f = {} as HarvestFigureValues;
+  for (const k of HARVEST_SUM_FIELDS) f[k] = null;
+  return f;
 }
 
 /** The client's split holdings (a holding split at 1 Apr 2023 counted once; not-split records left out). */
@@ -448,9 +479,11 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
   // D-1: a client with no harvest worked (no holding split) is left out of the sum and counted.
   const worked = list.filter((h) => h.notWorked === null);
   const notWorked = list.length - worked.length;
-  const figures = {} as { [K in keyof HarvestFigures]: number | null };
+  const none = list.length > 0 && worked.length === 0;
+  // Round 3 M1 (Q-49): when no client's harvest is worked, every family figure is null, never a sum of nothing (0).
+  const figures = {} as HarvestFigureValues;
   for (const k of HARVEST_SUM_FIELDS) {
-    figures[k] = worked.some((h) => h.figures[k] === null) ? null : worked.reduce((s, h) => s + (h.figures[k] ?? 0), 0);
+    figures[k] = none || worked.some((h) => h.figures[k] === null) ? null : worked.reduce((s, h) => s + (h.figures[k] ?? 0), 0);
   }
   const p: Provenance = prov ?? { sources: [], method: 'tax-loss harvest per client (E-43)' };
   const fp: Provenance = { ...p, method: `${p.method}; family: ${FAMILY_LABEL}` };
@@ -465,8 +498,7 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
   const known = list.reduce((s, h) => s + Math.max(0, h.split - h.gainUnknown), 0);
   const base = list.reduce((s, h) => s + h.split + h.unreconciled, 0);
   const familyCoverage = base > 0 ? Math.min(1, known / base) : 0;
-  const none = list.length > 0 && worked.length === 0;
-  const v = (x: number | null, what: string): Value<number> => (none
+  const v =(x: number | null, what: string): Value<number> => (none
     ? missing(STATUS.NOT_AVAILABLE, `no holding of any client is split into long and short term (${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split, unreconciled with the IRR file): the family ${what} is not available`, fp)
     : x === null
       ? missing(STATUS.NOT_AVAILABLE, `${SLAB_NOT_SET} for ${dashed} client${dashed === 1 ? '' : 's'}: the family ${what} is not available`, fp)
@@ -478,7 +510,7 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
     taxBefore: v(figures.taxBefore, 'tax before harvesting'), taxAfter: v(figures.taxAfter, 'tax after harvesting'), saving: v(figures.saving, 'saving'),
     pools: worked.flatMap((h) => h.pools),
     candidates: worked.flatMap((h) => h.candidateDetail).sort((a, b) => (b.ltLoss + b.stLoss) - (a.ltLoss + a.stLoss)),
-    exRate: worked.reduce((m, h) => Math.max(m, h.exRate), 0),
+    exRate: none ? null : worked.reduce((m, h) => Math.max(m, h.exRate ?? 0), 0),
     exemptionNotApplied: worked.filter((h) => h.exemptionApplied === EXEMPTION_NOT_APPLIED).length,
     gainUnknown, unreconciled, clientsNotWorked: notWorked,
   };
