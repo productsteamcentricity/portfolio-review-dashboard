@@ -8,7 +8,8 @@
 // scheme the vendor spells differently. Per line: each official AMFI name whose key is the line's (12 of the four
 // schemes' 14 names, with their codes) resolves to the vendor's fund in its own plan; without the line each is unmatched,
 // never another fund; the line carries its own approval date and approver. The other two official names, the Kotak
-// scheme's income option, stay unmatched with the lines (KI-321) and are pinned so. The Direct list's record of each
+// scheme's income option written with AMFI's long form of IDCW, reach lines 19 and 20 since KI-321 (the words
+// "capital withdrawal" after "cum" are read as option words). The Direct list's record of each
 // target is its same-scheme Direct twin, which is the line's own direct target.
 // Refresh-proof (the coupling rule): a line whose target is not in today's reference data is reported, not failed, and
 // the collision scan fails only while the reference names equal the recorded basis; after a refresh it reports.
@@ -22,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { NEW_BUILD_MATCHING, matchInstrument, matchInstrumentDetail } from '../../../app/src/engine/match/instrument.ts';
 import { ownerAliasOf, parseOwnerAliases } from '../../../app/src/engine/match/owner-aliases.ts';
 import { buildCrosswalk, makeUniverse, resolveInstrument } from '../../../app/src/engine/match/crosswalk.ts';
-import { nameKey } from '../../../app/src/engine/match/normalize.ts';
+import { nameKey, withoutLongIdcw } from '../../../app/src/engine/match/normalize.ts';
 import { directTwin } from '../../../app/src/engine/match/rekey.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -138,7 +139,7 @@ describe('owner fund aliases: each approved line (real data/refdata)', () => {
 
 /* Lines 18 to 22: the official AMFI names of the four schemes whose key is a line's key, 12 of their 14 (AMFI's public NAV
  * file, read on 23 Nov 2026; the scheme code beside each), with the plan the name says. The other two are
- * AMFI_NAMES_NOT_COVERED below. The Regular names' codes are the vendor's own codes for the targets
+ * AMFI_INCOME_OPTION_NAMES below. The Regular names' codes are the vendor's own codes for the targets
  * (data/refdata/FUND_RANKS_CODES.json), which is the evidence that the two names are one scheme. */
 const AMFI_NAMES: ReadonlyArray<{ line: number; code: string; name: string; plan: 'regular' | 'direct' }> = [
   { line: 18, code: '149090', name: 'UTI Focused Fund (30 stocks) - Regular Plan - Growth Option', plan: 'regular' },
@@ -155,11 +156,12 @@ const AMFI_NAMES: ReadonlyArray<{ line: number; code: string; name: string; plan
   { line: 22, code: '154193', name: 'Baroda BNP Paribas Best-in-Class Strategy Fund - Direct - IDCW Payout Option', plan: 'direct' },
 ];
 
-/* The Kotak scheme's income option: AMFI writes "Payout of Income Distribution cum capital withdrawal option", and the
- * words "capital withdrawal" are not plan words, so the key is not line 19's or 20's (KI-321). */
-const AMFI_NAMES_NOT_COVERED: ReadonlyArray<{ code: string; name: string; plan: 'regular' | 'direct' }> = [
-  { code: '133799', name: 'Kotak Infrastructure & Economic Reform Fund - Standard Plan-Payout of Income Distribution cum capital withdrawal option', plan: 'regular' },
-  { code: '133800', name: 'Kotak Infrastructure & Economic Reform Fund- Direct Plan- Payout of Income Distribution cum capital withdrawal option', plan: 'direct' },
+/* The Kotak scheme's income option: AMFI writes "Payout of Income Distribution cum capital withdrawal option". The
+ * legacy key keeps the words "capital withdrawal", so it is no line's key; since KI-321 the new build asks the owner's
+ * list by the key without those option words, which is line 20's ("... Standard Plan") and line 19's. */
+const AMFI_INCOME_OPTION_NAMES: ReadonlyArray<{ line: number; code: string; name: string; plan: 'regular' | 'direct' }> = [
+  { line: 20, code: '133799', name: 'Kotak Infrastructure & Economic Reform Fund - Standard Plan-Payout of Income Distribution cum capital withdrawal option', plan: 'regular' },
+  { line: 19, code: '133800', name: 'Kotak Infrastructure & Economic Reform Fund- Direct Plan- Payout of Income Distribution cum capital withdrawal option', plan: 'direct' },
 ];
 
 describe('owner fund aliases: lines 18 to 22, the official AMFI names (the owner, 28 Nov 2026)', () => {
@@ -192,11 +194,18 @@ describe('owner fund aliases: lines 18 to 22, the official AMFI names (the owner
     });
   }
 
-  test('the two income-option names of the Kotak scheme stay unmatched with the lines: a blank, never another fund (KI-321)', () => {
+  test('the two income-option names of the Kotak scheme reach lines 19 and 20 by their key without the long form of IDCW (KI-321)', (t) => {
     assert.equal(AMFI_NAMES.length, 12);
-    for (const n of AMFI_NAMES_NOT_COVERED) {
-      assert.ok(![...table.byKey.keys()].includes(nameKey(n.name)), `${n.code}: its key is no line\'s`);
-      assert.equal(matchInstrument(n.name, '', n.plan === 'direct' ? DIR : REG, undefined, { ...corrected, ownerAliases: table }), null, n.code);
+    for (const n of AMFI_INCOME_OPTION_NAMES) {
+      const a = byLine.get(n.line)!;
+      assert.ok(![...table.byKey.keys()].includes(nameKey(n.name)), `${n.code}: its legacy key is no line\'s`);
+      assert.equal(nameKey(withoutLongIdcw(n.name)), a.key, `${n.code}: without the option words its key is line ${n.line}\'s`);
+      if (!REG.includes(a.regular) || !DIR.includes(a.direct)) { t.diagnostic(`REPORT ONLY: line ${n.line} target not in today\'s MF_PERF / MF_PERF_DIRECT`); continue; }
+      // each in its own plan's list; in the Regular list a Direct name falls to the scheme's one row there
+      assert.equal(matchInstrument(n.name, '', n.plan === 'direct' ? DIR : REG, undefined, { ...corrected, ownerAliases: table }), n.plan === 'direct' ? a.direct : a.regular, n.code);
+      assert.equal(matchInstrument(n.name, '', REG, undefined, { ...corrected, ownerAliases: table }), a.regular, `${n.code} in the Regular list`);
+      // without the lines: a blank, never another fund; and the legacy matcher's own lists are not asked by the new key
+      assert.equal(matchInstrument(n.name, '', n.plan === 'direct' ? DIR : REG, undefined, corrected), null, `${n.code} without the lines`);
     }
   });
 

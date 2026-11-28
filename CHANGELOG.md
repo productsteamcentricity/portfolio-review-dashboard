@@ -63,6 +63,46 @@ the base-file reader calls `scrubText` for the Account Name cell and its label, 
 - **Not built:** round 2c L3 (row-level matching of a merger's switch in) needs the owner's answer on how the export
   writes a merger (Q-T5); S-2 stays as built (MOD-05: NO; on the owner's list).
 
+### Fixed (new build: official income-option names written with AMFI's long form of IDCW, KI-321; 28 Nov 2026; no change to `index.html` or data; `/next/` changes)
+- **The gap**: AMFI writes the income option of many schemes as "... Payout of Income Distribution cum capital
+  withdrawal option". The words "capital withdrawal" stayed in such a name's tokens, and the stricter regime's guard
+  then refused every candidate: 495 of 499 such official names were unmatched in the new build, where the live matcher
+  resolves 459.
+- **The rule** (`app/src/engine/match/normalize.ts`, one more entry of `COMPOUNDS_V2`): the second normaliser reads
+  "capital withdrawal" after "cum" as option words, like the words before it. Anywhere else the two words are left
+  alone ("Capital Builder", "Systematic Withdrawal"). With it (`instrument.ts`), the owner's alias list is asked by
+  the name's key without those words, so the two Kotak income-option names (AMFI codes 133799 and 133800) reach the
+  owner's lines 20 and 19, as the scheme's other names do. The legacy normaliser, the legacy name lists (pins, blocks,
+  exact-only) and the live page are unchanged.
+- **Measured both ways** (CLAUDE.md rule 4) on 499 public AMFI names, each with the answer known without the rule
+  (`tests/parity/amfi-income-names.ts` builds `amfi-income-names.json`: the fund house and the category AMFI gives each
+  scheme code tie an income-option name to its scheme; 141 names through the vendor's own scheme codes, 194 through
+  the Growth-option names of the same house and category): 428 of the 499 resolve (4 before). Of the 335 names with
+  one known answer 315 are right, none is wrong, 20 are blank. Of the 127 names whose house has several schemes in the
+  category 113 resolve, each to one of those schemes or to the fund's own exact name. None of the 37 names is
+  matched whose house and category have no Growth-option name that the new build resolves (the scheme is taken as
+  not in the fund table). Wherever the live matcher also answers, the two agree on every name.
+  The matching-corrections ledger (`tests/parity/matching-corrections-ledger.json`, the full sweep) is byte for byte
+  unchanged at every stage.
+- **What an income-option holding shows**: the scheme's Growth record, as every IDCW holding already does; the plan,
+  Regular or Direct, is read from the name as before. Nothing new is worked out for it, and nothing on the page says
+  the figures are the Growth record's (KI-324, an existing gap that this change widens). The fund table carries both a
+  Growth and an income record for three liquid ETFs only; so that a holding of one of them written the long way takes
+  that record, as one written "IDCW" does, `optionOf` now reads "Income Distribution cum Capital Withdrawal" as an
+  income option also where the name has neither "IDCW" nor a payout word (the financial review's F-1; no reference
+  name carries the words, so no other answer moves).
+- **Left unmatched**: 71 names, a blank with its count and never another fund: the 37 above, and 34 of schemes whose
+  Growth names resolve (further option words, spellings and one other word order, each listed in KI-321). The live
+  matcher answers for 31 of the 71; for 10 of those it gives another fund or another plan of the fund (6 names of a
+  close-ended series, 4 of a retirement fund's plans), which the new build leaves blank. No further rule is built.
+  These counts are with the fund house as AMFI writes it; with no fund house given 440 resolve (the 12 names of
+  TRUSTMF's liquid and short term funds too, each to its own scheme), again with no wrong fund.
+- **Tests**: `tests/parity/income-option-names.test.ts` (the corpus, the known answers per tier, the agreement with
+  the live matcher, the counts with and without the fund house, every answer read word by word, the three liquid
+  ETFs, the rule by hand and its limits); `tests/unit/match/owner-aliases.test.ts` (the two Kotak names now reach
+  their lines, and stay blank without the lines).
+
+
 ### Fixed (new build, M7a tax round 3: conditions before wiring; not wired into the page yet)
 These are conditions before the tax engine is wired (PLAN-08, MOD-05, 28 Nov 2026; CHAT-012's Gate B of M7b b299804 and
 the last section of its Gate B of round 2c). No page change: the engine is imported by no page module.

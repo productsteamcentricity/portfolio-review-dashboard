@@ -45,7 +45,7 @@
 //     tests/parity/matching-corrections.ts.
 
 import { aliasFor, isExactOnlyKey } from './name-lists.ts';
-import { nameKey, normalize, normalizeV2 } from './normalize.ts';
+import { nameKey, normalize, normalizeV2, withoutLongIdcw } from './normalize.ts';
 import { ownerAliasOf, ownerAliasTarget, wordsOf, type OwnerAliasTable } from './owner-aliases.ts';
 
 /** Normalised tokens of candidate names, kept between calls (the legacy candNormCache). */
@@ -150,11 +150,15 @@ export type PlanOption = 'growth' | 'idcw' | 'bonus';
 
 const IDCW_WORDS = ['idcw', 'dividend', 'div', 'payout', 'reinvestment', 'reinvest'];
 
-/** The option a name states: IDCW (any dividend wording), bonus, else growth (the default when none is stated).
- * "Dividend Yield" is a fund category, part of the scheme's name, not an option. */
+/** AMFI's long form of IDCW, which may stand in a name without the letters IDCW or a payout word (KI-321). */
+const IDCW_PHRASES = ['income distribution', 'cum capital withdrawal'];
+
+/** The option a name states: IDCW (any dividend wording, or the long form "Income Distribution cum Capital
+ * Withdrawal"), bonus, else growth (the default when none is stated). "Dividend Yield" is a fund category, part of the
+ * scheme's name, not an option. */
 export function optionOf(name: unknown): PlanOption {
   const w = ` ${wordsOf(name)} `.split(' dividend yield ').join(' ');
-  if (IDCW_WORDS.some((x) => w.includes(` ${x} `))) return 'idcw';
+  if (IDCW_WORDS.some((x) => w.includes(` ${x} `)) || IDCW_PHRASES.some((x) => w.includes(` ${x} `))) return 'idcw';
   if (w.includes(' bonus ')) return 'bonus';
   return 'growth';
 }
@@ -310,7 +314,10 @@ export function matchInstrumentDetail(name: unknown, amc: unknown, candidates: r
     for (const c of candidates) if (c === alias) return { key: alias, step: 'pin' };
   }
   if (opts?.ownerAliases) {
-    const own = ownerAliasOf(name, legacyKey, opts.ownerAliases);
+    /* KI-321: with the second normaliser, an income-option name written with AMFI's long form of IDCW asks the owner's
+       list by its key without those option words, as an "IDCW Payout" name already does. The legacy lists (pins,
+       blocks, EXACT_ONLY) keep the legacy key. */
+    const own = ownerAliasOf(name, opts.normaliserV2 ? nameKey(withoutLongIdcw(name)) : legacyKey, opts.ownerAliases);
     const target = own ? ownerAliasTarget(name, own, candidates) : undefined;
     if (target !== undefined) return { key: target, step: 'owner-alias' };
   }
