@@ -303,13 +303,33 @@ describe('per client, the family a sum; the contract shape', () => {
     for (const [k, x] of Object.entries(alone.figures)) assert.equal(x, null, `family figures.${k}`);
     assert.equal(alone.exRate, null);
     assert.equal(alone.taxBefore.kind, 'missing');
-    // The slab dash (H-3 with no slab entered): the after-set-off figures are null, and the plain losses carry them
-    // (before: { st: 0, lt: 0 }, NOT MEANINGFUL).
+    // The slab dash (H-3 with no slab entered): the plain losses are the figures' used and unused totals, which do not
+    // depend on the order of set-off (S-1): the short-term loss of 50,000 is used in full against 1,20,000 of short-term
+    // gains at any slab rate (before round 3: { st: 0, lt: 0 }; at 7c4d545: null).
     const h3: PositionSpec[] = KA.cases.find((c: { id: string }) => c.id === 'H-3').positions;
     const d = run(h3, ctxOf({ exemptionUsed: { [A]: 'unused-confirmed' } })).clients[0]!;
     assert.equal(d.afterSetOffDash, 'slab rate not set');
-    assert.deepEqual(d.usedLosses, { st: null, lt: null });
-    assert.deepEqual(d.unusedLosses, { st: null, lt: null });
+    assert.deepEqual(d.usedLosses, { st: 50000, lt: 0 });
+    assert.deepEqual(d.unusedLosses, { st: 0, lt: 0 });
+  });
+  test('round 3 S-1: under the slab dash the used and unused totals stand; what the order decides stays the dash', () => {
+    // The financial review's probe: equity short-term gain 5,000, a deemed-short debt gain of 5,000 (slab rate, none
+    // entered) and an equity short-term loss of 1,000. At slab 0% the loss meets the equity gain (20%) first, at 30% the
+    // slab gain first, so the after-set-off figures differ: the dash. But the loss is used in full either way: used
+    // 1,000, unused 0 (7c4d545: null). Tax after, saving and the slab-sheltered amount stay null.
+    const { clients } = run([
+      { client: A, name: 'Sample Flexi Cap Fund', cls: 'equityMf', cmv: 25000, st: 5000 },
+      { client: A, name: 'Sample Money Market Fund', cls: 'debtMf', cmv: 25000, st: 5000 },
+      { client: A, name: 'Sample Small Cap Fund', cls: 'equityMf', cmv: 9000, st: -1000 },
+    ], ctxOf({ exemptionUsed: { [A]: 'unused-confirmed' } }));
+    const h = clients[0]!;
+    assert.equal(h.afterSetOffDash, 'slab rate not set');
+    assert.equal(h.figures.stUsed, 1000); assert.equal(h.figures.stUnused, 0);
+    assert.equal(h.figures.ltUsed, 0); assert.equal(h.figures.ltUnused, 0);
+    assert.deepEqual(h.usedLosses, { st: 1000, lt: 0 });
+    assert.deepEqual(h.unusedLosses, { st: 0, lt: 0 });
+    for (const k of ['taxAfter', 'saving', 'slabSheltered'] as const) assert.equal(h.figures[k], null, k);
+    assert.ok(h.pools.every((p) => p.left === null));
   });
   test('an unsplit holding (Category II AIF) is never a pool or a candidate', () => {
     const { clients } = run([

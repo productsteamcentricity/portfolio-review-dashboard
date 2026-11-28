@@ -31,8 +31,8 @@
 // Delta review D-1: a client with no holding split and some unreconciled has no harvest worked (`notWorked`; its Values
 // NOT AVAILABLE with the reason), and the family leaves it out with a count (missing when every client is left out).
 // Round 3 M1 (Q-49; CHAT-012's Gate B of M7b): such a client's plain figures, used and unused losses, harvestable loss and
-// Sec 198 rate are null, and so are the family's when no client is worked, never 0 (they read 0 before); the plain used
-// and unused losses under the slab dash are null too, as `figures` already held them.
+// Sec 198 rate are null, and so are the family's when no client is worked, never 0 (they read 0 before). Round 3 S-1: under the
+// slab dash the used and unused totals stand (they do not depend on the order of set-off), in figures and plain alike.
 // Round 3 M2 (Q-49; MOD-05): the pools' rates are the I-21 table's, which holds only the rates from 23 Jul 2024
 // (classify.ts I21_RATES_FROM). As on an earlier date every rate-dependent figure (tax before, tax after, saving, the
 // exemption's tax value, and the amounts the rate order of set-off decides) is NOT AVAILABLE, labelled "the rates before
@@ -171,8 +171,8 @@ export const HARVEST_SUM_FIELDS: ReadonlyArray<keyof HarvestFigures> = ['taxBefo
 /**
  * One client's harvest: the contract's HarvestResult (model/tax.ts) and the lines it does not carry. Engine-local:
  * `clientId` may be null (the holdings without a client label are one person, PD-44). Round 3 M1 (Q-49): the plain
- * `usedLosses`, `unusedLosses` and `harvestableLoss` are null where they are not known, never 0: under the dash "slab
- * rate not set" (the used and unused losses), and all of them for a client with no harvest worked (`notWorked`).
+ * `usedLosses`, `unusedLosses` and `harvestableLoss` are null where they are not known, never 0: all of them for a
+ * client with no harvest worked (`notWorked`). Under the dash "slab rate not set" the used and unused totals stand (S-1).
  */
 // TODO(contracts-4): HarvestResult.clientId may be null; usedLosses and unusedLosses become nullable (round 3 M1); the
 //   fields below join HarvestResult
@@ -414,8 +414,11 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
     taxBefore: r(before), taxAfter: r(d(after)), saving: r(d(before - after)),
     ltGains: c.pools.filter((p) => p.b === 'LT').reduce((s, p) => s + p.gross, 0),
     stGains: c.pools.filter((p) => p.b === 'ST').reduce((s, p) => s + p.gross, 0),
-    ltLosses: c.ltLoss, stLosses: c.stLoss, ltUsed: d(c.usedLt), stUsed: d(c.usedSt),
-    ltUnused: d(c.ltLoss - c.usedLt), stUnused: d(c.stLoss - c.usedSt),
+    // Round 3 S-1 (the financial review of 7c4d545): the used and unused totals do not depend on the order of set-off
+    // (long-term losses meet long-term pools only, short-term losses any pool: used = the smaller of the loss and the
+    // pools it may meet), so they stand under the slab dash too; only the amounts the order decides are the dash.
+    ltLosses: c.ltLoss, stLosses: c.stLoss, ltUsed: c.usedLt, stUsed: c.usedSt,
+    ltUnused: c.ltLoss - c.usedLt, stUnused: c.stLoss - c.usedSt,
     unquantifiedPools: slabP.length, unquantifiedGain: slabP.reduce((s, p) => s + p.gross, 0),
     slabSheltered: r(d(slabP.reduce((s, p) => s + (p.gross - p.left), 0))),
     s198Gains: c.G, s198Left: r(d(c.R)), exBefore: exB, exAfter: r(d(exA)), exBeforeTax: r(exB * c.er), exAfterTax: r(d(exA * c.er)),
@@ -482,7 +485,7 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
     taxAfter: val(figures.taxAfter, 'tax after harvesting'),
     saving: val(figures.saving, 'saving'),
     candidates: [...new Set(candidateDetail.map((x) => x.holdingId))],
-    // Round 3 M1: the plain losses carry the figures' nulls (the slab dash, no harvest worked), never 0.
+    // Round 3 M1: the plain losses carry the figures' nulls (no harvest worked), never 0.
     usedLosses: { st: shown.stUsed, lt: shown.ltUsed },
     unusedLosses: { st: shown.stUnused, lt: shown.ltUnused },
     unquantifiedPools: slabP.map((x) => `${x.cls}, ${x.b === 'LT' ? 'long term' : 'short term'}`),

@@ -9,8 +9,10 @@ These are conditions before the tax engine is wired (PLAN-08, MOD-05, 28 Nov 202
 the last section of its Gate B of round 2c). No page change: the engine is imported by no page module.
 - **M1 (`harvest.ts`, Q-49):** a client with no harvest worked now carries null plain figures, used and unused losses,
   harvestable loss and Sec 198 rate, and the family carries null figures when no client is worked, never 0 (they read
-  0 before); the plain used and unused losses under the slab dash carry the figures' nulls too. Parity TXR-24 (book
-  `tax-invested-zero`, field level: the live gives 0).
+  0 before). Parity TXR-24 (book `tax-invested-zero`, field level: the live gives 0). S-1 (the financial review of
+  7c4d545): under the slab dash the used and unused loss totals, which do not depend on the order of set-off, are shown
+  in the figures and the plain fields (the review's case: used 1,000; H-3 with no slab: 50,000); only tax after, saving
+  and the amounts the order decides stay the dash.
 - **M2 (`classify.ts`, `holdings-rollup.ts`, `harvest.ts`; Q-49, no new rates):** the I-21 table holds only the rates
   from 23 Jul 2024 (named once, `I21_RATES_FROM`, with its source). As on an earlier date every class of the roll-up is
   marked (`ratesMissing`) and the harvest's tax before, tax after, saving and the amounts the rate order of set-off

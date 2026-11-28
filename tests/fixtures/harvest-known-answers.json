@@ -80,8 +80,8 @@
         {
           "id": "H-3 no slab",
           "inputs": { "exemptionUsed": { "Sample Client A": "unused-confirmed" } },
-          "expect": { "clients": [ { "client": "Sample Client A", "taxBefore": 8000, "taxAfter": null, "saving": null, "stUsed": null, "slabSheltered": null, "unquantifiedGain": 80000, "dash": "slab rate not set" } ] },
-          "note": "PD-07, no slab entered: at slab 0% the loss goes to the equity gain first (after 0), at 30% to the slab gain first (after 8,000). The two differ, so the after-set-off figures are the dash \"slab rate not set\"; the tax before (8,000, the slab gain unquantified) stands."
+          "expect": { "clients": [ { "client": "Sample Client A", "taxBefore": 8000, "taxAfter": null, "saving": null, "stUsed": 50000, "slabSheltered": null, "unquantifiedGain": 80000, "dash": "slab rate not set" } ] },
+          "note": "PD-07, no slab entered: at slab 0% the loss goes to the equity gain first (after 0), at 30% to the slab gain first (after 8,000). The two differ, so the after-set-off figures are the dash \"slab rate not set\"; the tax before (8,000, the slab gain unquantified) stands, and so does the used total, 50,000 either way (round 3 S-1: the order of set-off does not change it)."
         },
         {
           "id": "H-3 no slab, losses cover all",
