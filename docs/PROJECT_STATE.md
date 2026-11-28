@@ -265,6 +265,8 @@
    tables with one benchmark table and the Direct list by the same scheme only (E-31, E-32, E-30), their section 5 view
    with one Regular/Direct switch (U-41) and the Performance sheet (E-84). The weighted 3Y and 5Y returns engine
    (E-147, NB-04, PR #61) is on main but not yet shown; that display, the IRR hook and the slides C-21 and C-22 follow.
+   The returns note and the absolute since-inception return of a fund under one year old (KI-302; the owner's answers of
+   28 Nov 2026) are on `feat/returns-note-new-fund`.
    The M3b follow-up merged in PR #65 (27 Nov 2026, main `04bf700`):
    - the IRR file's subtotals in section 5 and the client sheets;
    - the weighted 3Y and 5Y returns (E-147) shown with their coverage footnotes;
