@@ -51,6 +51,17 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
     `tax.statement-after-as-on`, in place of the lot engine's `capital-gains.after-as-on-date` (which stays with the
     statement's lots).
   - Tests: `tests/integration/review-tax.test.ts` (50), `tests/unit/tax/harvest.test.ts`.
+- **B2, compound merger days (KI-340; CHAT-012's Gate B of a031769; MOD-05: the first item of M7b)** in
+  `engine/tax/lots.ts` `mergerCandidates`: many into one is tested per receiving scheme, so another switch by the same
+  client that day (the scheme switched into partly or wholly switched out, or a second merger) no longer hides it. The
+  sources are the day's emptied schemes other than the receiving one, not already paired one into one; every subset of
+  two or more whose switch outs sum to its switch ins within the amount tolerance fits, and when several fit all of
+  their sources are gaps (never one picked); over 8 sources the day's emptied sources into it are not decidable, a gap,
+  never a sale. The one-into-one rule, the B1d guard (the receiving scheme's own switch out is never a source; it is a
+  successor gap), E1 chains and D1 stay. CHAT-012's case (Contra and Value into Small Cap for 20,000 while Small Cap,
+  held before, is partly switched into Flexi Cap) is now a gap for FY 2023-24, not 8,500; Flexi Cap's own switch stays
+  computed. One earlier expectation changed: in a same-day chain whose ends do not agree, the first link now fits many
+  into one (a gap). No parity figure changed. Tests: `tests/unit/tax/{realised-irr,fifo-lots}.test.ts`.
 
 ### Changed (tooling: the new app's build ignores where `node_modules` really lives, 28 Nov 2026; `/next/` byte-identical)
 - **`scripts/build.mjs`**: esbuild's `preserveSymlinks` is on, so a worktree whose `node_modules` is a junction to

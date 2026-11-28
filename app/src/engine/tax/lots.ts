@@ -286,9 +286,11 @@ export type MergerCandidates = { outs: ReadonlyMap<Transaction, string>; ins: Re
  *   - one into one: A emptied; B's switch ins that day sum to A's switch outs, within the reader's amount tolerance
  *     (Rs 1 or 0.01%, the larger; ingest/capital-gains.ts `amountTolerance`); exactly one partner scheme both ways (B
  *     the only other scheme whose switch-in sum matches A's, A the only other scheme whose switch-out sum matches B's);
- *   - many into one: no one-into-one candidate that day; every scheme switched out that day is emptied (two or more);
- *     every switch in that day goes to one scheme B, not one of them; and the day's total out equals the total in,
- *     within the amount tolerance.
+ *   - many into one, per receiving scheme B (M7b B2, KI-340, replacing the per-day rule of B1): among the day's emptied
+ *     schemes other than B not already paired one into one, any subset of two or more whose switch outs sum to B's switch
+ *     ins within the amount tolerance; the other switches of the day do not stop it. When several subsets fit, all of
+ *     their sources are the candidate's (never one picked); over MANY_INTO_ONE_SOURCES sources, all of them (not
+ *     decidable: a gap, never a sale). B's own switch out that day is never a source; it falls under the successor gap.
  * A same-day chain is tested first (E1, the delta review of 8ed1dc7): when a scheme both receives a switch in and is
  * switched out whole that day (a pass-through), the switches are followed through it. If no scheme receives a switch in
  * and is switched out only in part (the B1d guard), every starting scheme (switched out, receiving nothing) is emptied,
@@ -366,8 +368,9 @@ export function mergerCandidates(trades: readonly Transaction[]): MergerCandidat
         continue;
       }
     }
-    let found = false;
     // One into one.
+    const pairedOut = new Set<string>();
+    const pairedIn = new Set<string>();
     for (const [a, o] of d.out) {
       if (!o.emptied || !(o.sum > EPS)) continue;
       const partners = [...d.in].filter(([b, s]) => b !== a && same(o.sum, s.sum));
@@ -377,22 +380,42 @@ export function mergerCandidates(trades: readonly Transaction[]): MergerCandidat
       if (rivals.length !== 1) continue;
       for (const r of o.rows) outs.set(r, b);
       for (const r of s.rows) ins.set(r, [a]);
+      pairedOut.add(a);
+      pairedIn.add(b);
       pairs++;
-      found = true;
     }
-    // Many into one (Gate B of 4001f8f, B1).
-    if (found || d.in.size !== 1 || d.out.size < 2) continue;
-    const [b, s] = [...d.in][0]!;
-    if (d.out.has(b) || ![...d.out.values()].every((o) => o.emptied && o.sum > EPS)) continue;
-    const total = [...d.out.values()].reduce((x, o) => x + o.sum, 0);
-    if (!same(total, s.sum)) continue;
-    const sources = [...d.out.keys()];
-    for (const o of d.out.values()) for (const r of o.rows) outs.set(r, b);
-    for (const r of s.rows) ins.set(r, sources);
-    pairs += sources.length;
+    // Many into one, per receiving scheme B (Gate B of 4001f8f B1; M7b B2, KI-340: a compound day may hold other switches
+    // too). The sources are the day's emptied schemes other than B (B's own switch out is never one: the B1d guard) not
+    // already paired one into one. Every subset of two or more whose switch outs sum to B's switch ins, within the amount
+    // tolerance, fits; when several fit, all their sources are the candidate's (never one picked). Over
+    // MANY_INTO_ONE_SOURCES sources the subsets are not searched: the day's emptied sources into B are not decidable, a
+    // gap, never a sale. All of the chosen sources' switch outs that day and all of B's switch ins are the candidate's.
+    const chosenFor: Array<[string, string[]]> = [];
+    for (const [b, s] of d.in) {
+      if (pairedIn.has(b)) continue;
+      const avail = [...d.out].filter(([k, o]) => k !== b && !pairedOut.has(k) && o.emptied && o.sum > EPS);
+      if (avail.length < 2) continue;
+      if (avail.length > MANY_INTO_ONE_SOURCES) { chosenFor.push([b, avail.map(([k]) => k)]); continue; }
+      const chosen = new Set<string>();
+      for (let mask = 1; mask < 1 << avail.length; mask++) {
+        let n = 0;
+        let sum = 0;
+        for (let i = 0; i < avail.length; i++) if (mask & (1 << i)) { n++; sum += avail[i]![1].sum; }
+        if (n >= 2 && same(sum, s.sum)) for (let i = 0; i < avail.length; i++) if (mask & (1 << i)) chosen.add(avail[i]![0]);
+      }
+      if (chosen.size) chosenFor.push([b, [...chosen]]);
+    }
+    for (const [b, sources] of chosenFor) {
+      for (const k of sources) for (const r of d.out.get(k)!.rows) outs.set(r, b);
+      for (const r of d.in.get(b)!.rows) ins.set(r, sources);
+      pairs += sources.length;
+    }
   }
   return { outs, ins, pairs };
 }
+
+/** M7b B2: the most emptied source schemes of one client-day whose subsets are searched for a many-into-one merger. */
+export const MANY_INTO_ONE_SOURCES = 8;
 
 /** One pass over trades sorted by day (file order within a day): both FIFO ledgers. */
 function runLedgerOf(trades: readonly Transaction[], asOn: DayNumber, merger: MergerCandidates): Ledger {
