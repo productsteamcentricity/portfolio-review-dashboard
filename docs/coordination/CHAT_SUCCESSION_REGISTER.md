@@ -14,6 +14,7 @@ Every replacement of a chat by a numbered successor. Chat numbers are never reus
 | CHAT-013 (MOD-04) | CHAT-015 (MOD-05) | Moderator | the owner's order: the next Moderator runs on the Fable model; CHAT-015 was opened as a standby the same evening | 26 Nov 2026 (standby about 19:35 IST; handover about 20:40 IST) | complete: CHAT-015 is the only active Moderator; CHAT-013 is a historical record that only forwards notes |
 | CHAT-008 (ARC-02) | CHAT-016 (ARC-04) | Guardian | three compactions (27 Nov 2026); ordered by the Moderator (MOD-05) | 27 Nov 2026 | complete: CHAT-016 opened on the owner's "Open both" of 27 Nov 2026 and took over as Guardian that day; CHAT-008's review queue is closed; CHAT-008 keeps rule 10 only until CHAT_REGISTRY names ARC-04 (registers-7) |
 | CHAT-009 (NB-02) | CHAT-017 (NB-05) | New-build implementer | three compactions (27 Nov 2026); ordered by the Moderator (MOD-05) | 27 Nov 2026 | complete: CHAT-017 opened on the owner's "Open both" of 27 Nov 2026 and took over that day |
+| CHAT-011 (NB-04) | successor pending the owner (no chat number yet) | New build: data platform | three compactions (28 Nov 2026, 15:28 UTC, 20:58 IST) | - | pending the owner; CHAT-011 stands still until a successor opens |
 
 Next free chat number: **CHAT-018** (27 Nov 2026). CHAT-010 (NB-03), CHAT-011 (NB-04) and CHAT-012 (ARC-03) are new
 roles opened on 24 and 25 Nov 2026, not successors. ARC-04 (CHAT-016) is the only chat named as ARC-01's rule-10 successor (through ARC-02) from the merge of

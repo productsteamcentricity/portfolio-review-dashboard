@@ -4,9 +4,20 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (records, registers-11, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
+- **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,CRITICAL_PATH}.md`**: PRs #77 to #81; the tax engine's
+  conditions before wiring met in PR #78 except the contract fields (contracts-4) and the owner questions, and the tax
+  finding W-1 added; "next on the new build" refreshed.
+- **`docs/project-control/DECISION_LOG.md`**: section 2.5 (27 and 28 Nov 2026): eight decisions of the Moderator of
+  28 Nov 2026 with a financial meaning, defaults pending the owner where marked; section 2.4: the alias lines on main.
+- **`docs/coordination/FILE_OWNERSHIP_MAP.md`**: the base-file template's files on main (PR #81); the base-file reader's
+  import of `scrubText`; the M10 intake service; the model files changed for Account Name; `model/tax.ts` by NB-03 (contracts-4).
+- **Compactions** recounted: CHAT-011 (NB-04) at its third, successor pending the owner; CHAT-014 and CHAT-017 at 2,
+  CHAT-016 at 1 (`CONTEXT_COMPACTION_TRACKER.md`, `CHAT_SUCCESSION_REGISTER.md`, `CHAT_REGISTRY.md`).
+
 ### Fixed (new build, M7a tax round 4; not wired into the page yet)
-PLAN-09 (MOD-05, 28 Nov 2026). No behaviour change on the page: the engine is imported by no page module, and the page
-calls no capital-gains reader function (it imports only the reader's column table, for the blank template).
+PLAN-09 (MOD-05, 28 Nov 2026). The tax engine is imported by no page module. One change reaches the page: since PR #81
+the base-file reader calls `scrubText` for the Account Name cell and its label, so KI-323 below changes `/next/`.
 - **W-1 (`classify.ts`, `lots.ts`; Q-49; KI-341; CHAT-012's Gate B of round 3 d7e1818):** Commodity ETF, International
   ETFs, Commodity Mutual Fund and Global Funds units bought from 1 Apr 2023 were Specified mutual fund units (s.50AA:
   deemed short term, at the slab rate) for sales up to 31 Mar 2025; table v1 applies the new definition to sales from
@@ -95,6 +106,55 @@ the last section of its Gate B of round 2c). No page change: the engine is impor
 - **Records:** KI-340 reads fixed by PR #76.
 - Tests: `tests/unit/tax/{harvest,fifo-lots,realised-irr,holdings-rollup}.test.ts`, `tests/integration/review-tax.test.ts`
   (the labels), `tests/parity/tax-ledger.json` (TXR-24).
+
+### Changed (new build: the returns note, and the since-inception return of a fund under one year old, KI-302; 28 Nov 2026; no change to `index.html` or data; `/next/` changes)
+- **The returns note** (the owner, 28 Nov 2026: "Yes, add it"): "Returns up to one year are absolute; returns over one
+  year are annualised." is the first note under every performance table of section 5, in both lists, and a "Returns" row
+  of the workbook's Read Me when the Performance sheet is written.
+- **A mutual fund under one year old** (the owner, 28 Nov 2026: "Absolute, and say so"; KI-302): its since-inception
+  return is shown as an absolute return, marked "a" on screen with a note, and said in the row's Note on the Performance
+  sheet with the days and the data's annualised figure. The conversion is (1 + SI/100)^(days/365) - 1
+  (`app/src/engine/returns/performance.ts`, `sinceInception`) over the days from the fund's inception to the day its
+  block is priced to, which is not the month-end label: the October 2026 Regular monitor is priced to Mon 2 Nov 2026 and
+  the Direct monitor to Fri 30 Oct 2026 (the refresh log of October 2026; PD-56). The price days are a small table,
+  `app/src/config/price-days.json` (one entry per data month and block, copied from the refresh log at each refresh,
+  read by `app/src/data/price-days.ts`). The page still shows one label only (the owner, 28 Nov 2026: "No, one label
+  only"): the price day is used, never shown. An uploaded monitor has no known price day: the date its file states may
+  be the month's label (the October 2026 Direct file states 31 Oct and is priced to 30 Oct), so a fund under one year
+  old in an uploaded monitor shows a dash, never a figure counted to the stated date, and the reason says that
+  without the uploaded monitor the page shows this return from its own monthly data, where the fund is at least 30
+  days old (the Moderator's ruling D-A as corrected on 28 Nov 2026 after the delta financial review, R2-1; the wording
+  after the third review's R3-1). A fund a year old keeps its figure.
+- **How the conversion is known** (the financial review of 28 Nov 2026): from the vendor's own figures. Thirteen funds in
+  the committed data start exactly at a 1M, 3M or 6M window, and converted this way their since-inception figure gives
+  the vendor's own figure for that tenor to four decimals (Edelweiss BSE Top 10 Bank ETF: -13.413% annualised over 94
+  days is -3.6411%, its 3M figure; counted to the 31 Oct label it would be -3.5650%). And of the young funds launched at
+  a NAV of 10, 146 of 173 (Regular) and 130 of 163 (Direct) land on a NAV of four decimals on the recorded price day,
+  against 11 to 26 on any other day within three of it. Both are tests, so a wrong price day typed at a refresh fails
+  CI. A Regular and a Direct figure of one young fund differ because the two blocks are of two price days, as every
+  other tenor of the two lists already does under the one label.
+- **A dash with its reason, never a figure of unknown basis and never a count to the label.** These are the
+  Moderator's defaults of 28 Nov 2026 (MOD-05's rulings on this branch), not rulings of the owner; the questions for
+  the owner are held by the Moderator: a mutual fund under 30 days old, where one day of count is a large share of the figure (22 Regular
+  and 17 Direct records); a SIF at every age, because the SIF data does not state whether its since-inception return is
+  annualised (all 30 records; KI-322); a month with no price day recorded. Where a date is missing (700 of the 721 PMS
+  records carry no inception date; PMS and AIF no as-on date), the data's figure is kept only when a return of one year or more shows
+  the strategy is a year old (620 of 690 PMS strategies, 10 of 12 AIFs), else a dash: the implementer's reading,
+  confirmed by the Moderator. Such a figure is annualised by convention, which is not verified for a strategy between
+  one and two years old (88 of those 620 PMS figures and 8 of those 10 AIF figures have a 1Y return and no longer
+  one). In the committed data 246 Regular and 164 Direct mutual-fund records are shown as an absolute return. A limit
+  that stays: about ten of the Direct figures shown are a day off, where the vendor counted those schemes to 31 Oct and
+  not to the block's price day; the difference is at most 0.064 percentage points.
+- **Parity**: `tests/parity/performance-ledger.json` PF-17 (a SIF's since-inception figure, a dash) and
+  `tests/side-by-side/sbs-ledger.json` SB-59 and SB-60 (one fund in each list: 1.3790% over 76 days for 6.7987%
+  annualised; 1.1980% over 73 days for 6.1353%) and SB-61 (three SIFs, under and over one year old). The live page
+  shows the data's figure with no flag in each case.
+- **Tests**: `tests/unit/returns/since-inception.test.ts`: the price-day table (the embedded month has its three
+  entries; no entry is a missing value with its reason), the thirteen vendor figures, the landing measure on both
+  monitors, conversions worked by hand (216.4712% over 38 days is 12.7430%; 263.9663% over 35 days is 13.188%; 10% over
+  364 days is 9.9713%; 8% over 30 days is 0.6346%), the calendar boundary counted to the price day and a leap day, each
+  dash reason, each list on its own block's price day, the screen's notes and marker, the sheet's Note, and that no
+  text on screen names the price day.
 
 ### Changed (records, registers-10, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,CRITICAL_PATH}.md`**: PRs #73 to #76; the conditions before

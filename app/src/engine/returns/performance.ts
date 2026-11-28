@@ -18,6 +18,18 @@
 //   - KI-083: every bucket carries the as-on date of its own block.
 //   - KI-054: the Direct list takes a Direct record only for the same scheme (match/rekey.ts directTwin); an ETF keeps
 //     its own figures as a single-plan fund; a fund with no Direct twin keeps a blank row, noted and counted.
+//   - KI-302 (the owner's answer of 28 Nov 2026 to "How should a fund under one year old show its since-inception
+//     return?": "Absolute, and say so"): the since-inception return of a mutual fund under one year old is shown as an
+//     absolute return and marked. The mutual-fund monitors annualise such a figure by compounding on a 365-day year,
+//     over the days from the fund's inception to the block's PRICE DAY, the day its figures are priced to, which is not
+//     the month-end label the table shows (October 2026: Monday 2 Nov for the Regular monitor, Friday 30 Oct for the
+//     Direct one). Measured on the committed data: with those days the conversion (1 + SI/100)^(days/365) - 1 returns
+//     the vendor's own 1M, 3M or 6M figure, to four decimals, for every fund whose inception is that tenor's start.
+//     The price day is used and never displayed (the owner's "No, one label only"). The Moderator's defaults of 28 Nov
+//     2026, not the owner's rulings: a fund under 30 days old is a dash (one day of count is a large share of so young
+//     a figure); a SIF is a dash at every age (its data does not state whether the figure is annualised, KI-322); a
+//     fund whose age cannot be told keeps the data's figure only when a return of one year or more shows it is a
+//     year old. Never a figure of unknown basis, never a count to the label (sinceInception below).
 // Every fund row is kept, matched or not, with each tenor a Value: the view decides what the screen shows (U-41).
 
 import type { Holding } from '../../model/holding.ts';
@@ -28,6 +40,7 @@ import type { FundHoldingInput, FundReturnSource, FundWeightedResult } from './p
 import { weightedFundReturn } from './portfolio-returns.ts';
 import { STATUS } from '../../model/status.ts';
 import { missing, present } from '../value.ts';
+import { dayToYmd, formatDay, parseDayText, ymdToDay } from '../dates.ts';
 import { isIncluded } from '../aggregate/totals.ts';
 import { isDirectEquityProduct } from '../match/resolve-holdings.ts';
 import { holdingClass, nonMfRule, type ProductClassRule } from '../match/product-class.ts';
@@ -61,6 +74,10 @@ export type PerformanceSources = {
   STOCK: Book<PerfRecord>;
   BENCH: Book<BenchRecord>;
   asOn: Partial<Record<'MF' | 'MF_DIRECT' | 'PMS' | 'AIF' | 'SIF' | 'STOCK' | 'BENCH', Value<DayNumber>>>;
+  /** KI-302: the day each block's figures are priced to (an embedded block: the day recorded for its month,
+   * data/price-days.ts; an uploaded monitor: 'uploaded', its price day not known). Used to count a young fund's days;
+   * never displayed. */
+  priceDay?: Partial<Record<'MF' | 'MF_DIRECT' | 'SIF', PriceDay>>;
   /** PRODUCT_CLASS_RULES, so the routing agrees with the matcher's. */
   rules: readonly ProductClassRule[];
 };
@@ -68,6 +85,22 @@ export type PerformanceSources = {
 /** 'not-applicable' outside the MF buckets and for an unmatched fund. 'single-plan': in the Direct list an ETF (its one
  * plan's figures); in the Regular list a scheme the Regular block carries only as a Direct plan (S3). */
 export type Plan = 'regular' | 'direct' | 'single-plan' | 'no-direct-twin' | 'not-applicable';
+
+/**
+ * How a row's since-inception figure is stated (KI-302). 'annualised': the data's own figure, for a fund at least one
+ * year old. 'absolute': the fund is under one year old; the cell is the absolute return over `days` (inception to the
+ * block's price day), worked from the data's annualised figure `vendorAnnualised`. 'not-shown': a dash, with the reason in the
+ * cell's Value and its kind here.
+ */
+/** The day a block is priced to; 'uploaded' for an uploaded monitor, whose file states one date that may be its month's
+ * label and not its price day (the Moderator's ruling D-A as corrected on 28 Nov 2026 after the delta financial review,
+ * R2-1): never counted to. */
+export type PriceDay = Value<DayNumber> | 'uploaded';
+
+export type SinceInception =
+  | { basis: 'annualised' }
+  | { basis: 'absolute'; days: number; vendorAnnualised: number }
+  | { basis: 'not-shown'; why: 'basis-not-stated' | 'under-30-days' | 'no-inception' | 'no-price-day' | 'uploaded-monitor' | 'inception-not-before-price-day' | 'cannot-convert' };
 
 export type FundRow = {
   name: string;
@@ -78,6 +111,8 @@ export type FundRow = {
   inception: string | null;
   aum: Value<number>;
   r: Partial<Record<Tenor, Value<number>>>;
+  /** KI-302: how the SI cell is stated; absent when the bucket has no SI column or the data has no SI figure. */
+  si?: SinceInception;
   mcap: Partial<Record<'Large' | 'Mid' | 'Small' | 'Others', Value<number>>>;
   debt: Partial<Record<'YTM' | 'AvgMat' | 'ModDur', Value<number>>>;
 };
@@ -170,6 +205,90 @@ function num(x: number | null | undefined, unit: 'pct' | 'cr' | 'years', what: s
   return typeof x === 'number' && Number.isFinite(x) ? present(x, unit, { sources: [source], method: 'vendor figure' }) : NO_FIGURE(what);
 }
 
+/** The sources whose since-inception figure of a fund under one year old is annualised by compounding to the block's
+ * price day: the Regular and the Direct mutual-fund monitor (measured on the committed data, see the header and
+ * tests/unit/returns/since-inception.test.ts). */
+export const SI_ANNUALISED_SOURCES: ReadonlySet<string> = new Set(['MF_PERF', 'MF_PERF_DIRECT']);
+/** The sources whose since-inception figure is not shown at any age, because the data does not state whether it is
+ * annualised (the Moderator's interim default of 28 Nov 2026, not the owner's ruling; KI-322): the SIF monitor, whose
+ * figures look like absolute NAV returns at every age. */
+export const SI_BASIS_NOT_STATED_SOURCES: ReadonlySet<string> = new Set(['SIF_PERF']);
+/** The tenors whose presence shows a fund is at least one year old. */
+const LONG_TENORS: readonly Tenor[] = ['1Y', '2Y', '3Y', '5Y', '10Y'];
+/** The year the annualised figure is stated on. */
+export const SI_YEAR_DAYS = 365;
+/** A fund younger than this, in days from its inception to the price day, shows no since-inception return: one day of
+ * count is a third of the figure at 3 days old and still 3% at 30, and the vendor's count day varies by a day for about
+ * one fund in ten (the Moderator's default of 28 Nov 2026 on the financial review's advice, not the owner's ruling). */
+export const SI_MIN_DAYS = 30;
+
+/** The day one calendar year before `day` (28 Feb for a 29 Feb). */
+function oneYearBefore(day: DayNumber): DayNumber {
+  const { y, m, d } = dayToYmd(day);
+  return ymdToDay(y - 1, m, d) ?? ymdToDay(y - 1, m, d - 1)!;
+}
+
+/** An inception date as the blocks write it: "YYYY-MM-DD", or a text date with a four-digit year; else null. */
+function inceptionDay(text: string | null | undefined): DayNumber | null {
+  const t = typeof text === 'string' ? text.trim() : '';
+  return t === '' ? null : parseDayText(t);
+}
+
+/**
+ * KI-302: the since-inception cell of a record and how it is stated; null when the data has no SI figure (the cell is
+ * then the usual "no SI return"). `priceDay` is the day the record's block is priced to, never the label.
+ *   0. A source whose data does not state the figure's basis (SIF): a dash at every age.
+ *   1. The fund's age is known (a readable inception date and the block's price day):
+ *      - inception not before the price day: a dash;
+ *      - at least one calendar year old: the data's figure, annualised, as given;
+ *      - under one year, a source that annualises by compounding: under SI_MIN_DAYS a dash; else the absolute return
+ *        (1 + SI/100)^(days/365) - 1, as a percent number; any other source a dash (the basis is not stated).
+ *   2. The age is not known (the inception or the price day missing or unreadable): the data's figure as given when
+ *      the record has a 1Y or longer return, which only a fund at least one year old has (annualised by convention,
+ *      not verified for a PMS or AIF between one and two years old); else a dash naming what is missing.
+ */
+export function sinceInception(record: PerfRecord, priceDay: PriceDay | undefined, source: string): { value: Value<number>; si: SinceInception } | null {
+  const vendor = record.r?.SI;
+  if (typeof vendor !== 'number' || !Number.isFinite(vendor)) return null;
+  const given = (): { value: Value<number>; si: SinceInception } => ({ value: present(vendor, 'pct', { sources: [source], method: 'vendor figure' }), si: { basis: 'annualised' } });
+  const dash = (why: Extract<SinceInception, { basis: 'not-shown' }>['why'], reason: string): { value: Value<number>; si: SinceInception } =>
+    ({ value: missing(STATUS.INSUFFICIENT_EVIDENCE, reason, { sources: [source], method: 'since-inception return (KI-302)' }), si: { basis: 'not-shown', why } });
+  if (SI_BASIS_NOT_STATED_SOURCES.has(source)) {
+    return dash('basis-not-stated', `${source} does not state whether its since-inception return is annualised, so it is not shown`);
+  }
+  const inc = inceptionDay(record.inception);
+  const on = priceDay && priceDay !== 'uploaded' && priceDay.kind === 'value' ? priceDay.v : null;
+  if (inc === null || on === null) {
+    if (LONG_TENORS.some((t) => typeof record.r?.[t] === 'number')) return given();
+    const text = typeof record.inception === 'string' ? record.inception.trim() : '';
+    if (inc === null) {
+      return dash('no-inception', text === ''
+        ? `${source} gives no inception date and no return of one year or more, so the fund cannot be shown to be a year old and its since-inception return is not shown`
+        : `the inception date "${text}" in ${source} could not be read and there is no return of one year or more, so its since-inception return is not shown`);
+    }
+    if (priceDay === 'uploaded') {
+      return dash('uploaded-monitor', 'the fund has no return of one year or more, and an uploaded monitor does not state the day its figures are priced to, so the fund\'s days cannot be counted; without the uploaded monitor the page shows this return from its own monthly data, where the fund is at least 30 days old');
+    }
+    return dash('no-price-day', `the day ${source} is priced to is not known and the fund has no return of one year or more, so its days cannot be counted and its since-inception return is not shown`);
+  }
+  const days = on - inc;
+  if (days <= 0) return dash('inception-not-before-price-day', `the fund's inception (${formatDay(inc)}) is not before the day its data is priced to, so it has no since-inception return yet`);
+  if (inc <= oneYearBefore(on)) return given();
+  if (!SI_ANNUALISED_SOURCES.has(source)) {
+    return dash('basis-not-stated', `the fund is under one year old (inception ${formatDay(inc)}) and ${source} does not state whether its since-inception return is annualised, so it is not shown`);
+  }
+  if (days < SI_MIN_DAYS) {
+    return dash('under-30-days', `the fund is only ${days} days old on the day its data is priced to (inception ${formatDay(inc)}): one day of count is a large share of so young a figure, so its since-inception return is not shown`);
+  }
+  const base = 1 + vendor / 100;
+  if (!(base > 0)) return dash('cannot-convert', `the data's annualised since-inception figure (${vendor}%) is a loss of 100% or more, so no absolute return can be worked from it`);
+  const absolute = (Math.pow(base, days / SI_YEAR_DAYS) - 1) * 100;
+  return {
+    value: present(absolute, 'pct', { sources: [source], method: `absolute return over ${days} days from inception to the block's price day, from the vendor's annualised figure (KI-302)` }),
+    si: { basis: 'absolute', days, vendorAnnualised: vendor },
+  };
+}
+
 type Routed = { h: Holding; bucket: BucketKey; key: string | null; record: PerfRecord | null };
 
 function bucketOfMf(h: Holding, record: PerfRecord | null): BucketKey | null {
@@ -197,6 +316,11 @@ function bookOf(s: PerformanceSources, b: BucketKey): Book<PerfRecord> {
 function asOnOfBucket(s: PerformanceSources, b: BucketKey, direct: boolean): Value<DayNumber> {
   const k = b === 'PMS' ? 'PMS' : b === 'AIF' ? 'AIF' : b === 'SIF' ? 'SIF' : b === 'Direct Equity' ? 'STOCK' : direct ? 'MF_DIRECT' : 'MF';
   return s.asOn[k] ?? missing(STATUS.NOT_AVAILABLE, `the ${k} block records no as-on date`);
+}
+
+/** The price day of a bucket's own block (the Regular block for the mutual-fund buckets); PMS and AIF have none. */
+function priceDayOfBucket(s: PerformanceSources, b: BucketKey): PriceDay | undefined {
+  return b === 'SIF' ? s.priceDay?.SIF : b.endsWith(' MF') ? s.priceDay?.MF : undefined;
 }
 
 /** Routes the included holdings to buckets (KI-072). */
@@ -247,15 +371,18 @@ function benchRow(name: string, cols: readonly Tenor[], s: PerformanceSources): 
   return any ? { name: rec.name ?? name, r } : null;
 }
 
-function fundRow(name: string, key: string | null, record: PerfRecord | null, cols: readonly Tenor[], plan: Plan, source: string, ids: HoldingId[]): FundRow {
+function fundRow(name: string, key: string | null, record: PerfRecord | null, cols: readonly Tenor[], plan: Plan, source: string, ids: HoldingId[], priceDay?: PriceDay): FundRow {
   const r: FundRow['r'] = {};
   for (const c of cols) r[c] = record ? num(record.r?.[c], 'pct', `no ${c} return in ${source}`, source) : NO_FIGURE(key ? `no ${c} return in ${source}` : 'the holding is not matched to reference data');
+  /* KI-302: the SI cell follows the fund's age on its own block's price day */
+  const si = record && cols.includes('SI') ? sinceInception(record, priceDay, source) : null;
+  if (si) r.SI = si.value;
   const mcap: FundRow['mcap'] = {};
   const debt: FundRow['debt'] = {};
   if (record?.mcap) for (const k of ['Large', 'Mid', 'Small', 'Others'] as const) mcap[k] = num(record.mcap[k], 'pct', `no ${k} share`, source);
   if (record?.debt) for (const k of ['YTM', 'AvgMat', 'ModDur'] as const) debt[k] = num(record.debt[k], k === 'YTM' ? 'pct' : 'years', `no ${k}`, source);
   const inception = record && typeof record.inception === 'string' && record.inception.trim() !== '' ? record.inception : null;
-  return { name, key, holdingIds: ids, plan, inception, aum: record ? num(record.aum, 'cr', 'no AUM', source) : NO_FIGURE('the holding is not matched to reference data'), r, mcap, debt };
+  return { name, key, holdingIds: ids, plan, inception, aum: record ? num(record.aum, 'cr', 'no AUM', source) : NO_FIGURE('the holding is not matched to reference data'), r, mcap, debt, ...(si ? { si: si.si } : {}) };
 }
 
 type GroupSpec = { label: string; cats: string[]; members: Member[] };
@@ -319,8 +446,9 @@ function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: Performanc
         const name = bucket === 'PMS' && x.key ? x.key : x.h.instrumentName;
         if (direct && mfBucket && x.key) {
           const twin = directTwin(x.key, directKeys);
-          if (twin !== null) row = fundRow(name, twin, s.MF_DIRECT![twin]!, cols, 'direct', 'MF_PERF_DIRECT', [x.h.id]);
-          else if (/(^| )etfs?( |$)/.test(categoryKey(x.key)) && !/ (fund of funds?|fofs?) /.test(categoryKey(x.key))) row = fundRow(name, x.key, x.record, cols, 'single-plan', source, [x.h.id]);
+          if (twin !== null) row = fundRow(name, twin, s.MF_DIRECT![twin]!, cols, 'direct', 'MF_PERF_DIRECT', [x.h.id], s.priceDay?.MF_DIRECT);
+          /* a single-plan ETF shows the Regular block's figures, so its age is counted to that block's price day (N8) */
+          else if (/(^| )etfs?( |$)/.test(categoryKey(x.key)) && !/ (fund of funds?|fofs?) /.test(categoryKey(x.key))) row = fundRow(name, x.key, x.record, cols, 'single-plan', source, [x.h.id], priceDayOfBucket(s, bucket));
           else {
             row = fundRow(name, null, null, cols, 'no-direct-twin', 'MF_PERF_DIRECT', [x.h.id]);
             for (const t of cols) row.r[t] = missing(STATUS.NOT_AVAILABLE, 'no Direct plan of this scheme in the Direct data');
@@ -330,7 +458,7 @@ function buildBucket(bucket: BucketKey, routed: readonly Routed[], s: Performanc
           /* S3 (financial review of 27 Nov 2026): a scheme the Regular block carries only as a Direct plan (12 Zerodha
              schemes and one JioBlackRock today) is its own single plan, never labelled Regular */
           const plan: Plan = !mfBucket || !x.key ? 'not-applicable' : isDirectKey(x.key) ? 'single-plan' : 'regular';
-          row = fundRow(name, x.key, x.record, cols, plan, source, [x.h.id]);
+          row = fundRow(name, x.key, x.record, cols, plan, source, [x.h.id], priceDayOfBucket(s, bucket));
         }
         seen.set(dedup, row);
         funds.push(row);

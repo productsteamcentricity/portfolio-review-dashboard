@@ -675,6 +675,45 @@
       "class": "correction",
       "reference": "E-30; KI-024 (MOD-05's ruling of 27 Nov 2026: an equity index for a PMS or AIF group only when every holding is Equity); PF-08",
       "description": "An Equity AIF and a Hybrid AIF in one category (Small Cap): the live page compares the group with Nifty Smallcap 250 by its category; the new build names no benchmark, because not every holding of the group is Equity."
+    },
+    {
+      "id": "SB-59",
+      "section": "performance",
+      "kind": "field",
+      "field": "r SI",
+      "key": "regular | hybrid mf | fund | zerodha arbitrage fund(g)-direct plan",
+      "fixtures": ["matching-probe"],
+      "legacy": 6.7987,
+      "new": 1.37899509479662,
+      "class": "correction",
+      "reference": "E-31; KI-302; the owner's answer of 28 Nov 2026 (\"Absolute, and say so (Recommended)\")",
+      "description": "A mutual fund under one year old (inception 18 Aug 2026): the live page shows the data's annualised since-inception figure (6.7987%) with no flag; the new build shows the absolute return, marked, worked over the days from the fund's inception to the day the Regular data is priced to (Mon 2 Nov 2026, 76 days; the table's label stays 31 Oct 2026): (1 + 0.067987)^(76/365) - 1 = 1.3790%. Regular list (the scheme has only a Direct plan, read from the Regular data)."
+    },
+    {
+      "id": "SB-60",
+      "section": "performance",
+      "kind": "field",
+      "field": "r SI",
+      "key": "direct | hybrid mf | fund | zerodha arbitrage fund(g)-direct plan",
+      "fixtures": ["matching-probe"],
+      "legacy": 6.1353,
+      "new": 1.1980095161021165,
+      "class": "correction",
+      "reference": "E-32; KI-302; the owner's answer of 28 Nov 2026 (\"Absolute, and say so (Recommended)\")",
+      "description": "The same fund in the Direct list, read from the Direct data, whose annualised figure is 6.1353%. The Direct data is priced to Fri 30 Oct 2026, one trading day before the Regular data (the refresh log of October 2026), so the count is 73 days: (1 + 0.061353)^(73/365) - 1 = 1.1980%, marked. The two figures of this one plan differ because the two blocks are of two price days; each list shows its own block's, as every other tenor does."
+    },
+    {
+      "id": "SB-61",
+      "section": "performance",
+      "kind": "field",
+      "field": "r SI",
+      "key": "/^(regular|direct) \\| sif \\| fund \\| (dynasif equity long-short fund-reg\\(g\\)|altiva hybrid long-short fund-reg\\(g\\)|altiva equity ex-top 100 long-short fund-reg\\(g\\))$/",
+      "fixtures": ["performance-probe", "sample-with-irr", "sample-base-only"],
+      "legacy": "*",
+      "new": null,
+      "class": "correction",
+      "reference": "E-31; E-32; KI-302; KI-322 (the Moderator's interim default of 28 Nov 2026; a question for the owner, held by the Moderator)",
+      "description": "The since-inception return of a SIF, at every age (two of these three funds are under one year old, one is over): the live page shows the data's figure with no flag. The SIF data does not state whether that figure is annualised, so under the returns note it would be read on a basis nobody has verified; the new build shows a dash with that reason. The dash is the Moderator's interim default until the owner or the source says how the figure is stated (KI-322); it is not the owner's ruling."
     }
   ]
 }
