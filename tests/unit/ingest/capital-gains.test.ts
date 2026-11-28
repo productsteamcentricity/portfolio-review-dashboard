@@ -5,6 +5,9 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { readWorkbook } from '../../../app/src/ingest/workbook.ts';
 import type { Cell, Workbook } from '../../../app/src/ingest/workbook.ts';
 import {
@@ -121,6 +124,77 @@ describe('helpers (design §2.2, §2.5, §3, §8, §11)', () => {
     assert.equal(possiblyOnePerson('A Sample', 'B Sample'), false);
     assert.equal(possiblyOnePerson('Sample Client A', 'Sample Client A'), false);
     assert.equal(possiblyOnePerson('Other Client X', 'Other Client Y'), false);
+  });
+});
+
+describe('KI-323 (MOD-05\'s ruling): a PAN written with spaces or hyphens between its groups is removed and counted', () => {
+  // The forms are built at run time from the synthetic panToken (five letters, four digits, one letter), never written
+  // out, so the repository's privacy scan sees no PAN.
+  const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+  const forms = (p: string): string[] => {
+    const [a, b, c] = [p.slice(0, 5), p.slice(5, 9), p.slice(9)];
+    return [`${a} ${b} ${c}`, `${a}-${b}-${c}`, `${a} ${b}-${c}`, `${a}-${b} ${c}`, `${a} ${b}${c}`, `${a}-${b}${c}`, `${a}${b} ${c}`, `${a}${b}-${c}`];
+  };
+
+  test('each form, upper and lower case, alone, in a name and beside punctuation, is removed and counted once', () => {
+    for (const p of [panToken(7), panToken(8, true)]) {
+      for (const f of forms(p)) {
+        assert.deepEqual(scrubText(f), { text: PAN_REPLACEMENT, tags: 0, tokens: 1 }, 'alone');
+        assert.deepEqual(scrubText(`Sample Client A ${f}`), { text: `Sample Client A ${PAN_REPLACEMENT}`, tags: 0, tokens: 1 }, 'in a name');
+        assert.deepEqual(scrubText(`Sample Client A (${f}), Held Away`), { text: `Sample Client A (${PAN_REPLACEMENT}), Held Away`, tags: 0, tokens: 1 }, 'punctuation');
+      }
+    }
+    // Two in one cell, one of each kind, and a spaced one beside a tag: every one counted.
+    const [s1, s2] = [forms(panToken(9))[0]!, forms(panToken(10))[1]!];
+    assert.deepEqual(scrubText(`${s1} and ${panToken(11)} and ${s2}`), { text: `${PAN_REPLACEMENT} and ${PAN_REPLACEMENT} and ${PAN_REPLACEMENT}`, tags: 0, tokens: 3 });
+    assert.deepEqual(scrubText(`Sample Client B ${s1} [PAN: ${s2}]`), { text: `Sample Client B ${PAN_REPLACEMENT}`, tags: 1, tokens: 1 });
+  });
+
+  test('not removed: scheme names with a year or a code, folio numbers, dates, and a spaced form glued to other text', () => {
+    const kept = [
+      'Sample CRISIL IBX Gilt April 2033 Index Fund - Direct Plan - Growth',
+      'Sample Nifty SDL Plus Gilt - April 2032 Index Fund',
+      'Sample 2025 Growth Fund',
+      'Sample Fixed Maturity Plan Series 2025 A',
+      'Sample Fund INF000A01AB1',
+      'Folio No: 91000001/12', 'Folio 1234-5678-9', 'Folio ABC-1234-5',
+      '01-04-2025', '2025-04-01', '31 March 2025', 'April 2025', 'Tue 01 Apr 2025', 'FY 2024-25',
+      // A form glued to letters or digits on either side is left alone: the guard that keeps the names above.
+      `x${forms(panToken(12))[0]}`, `${forms(panToken(12))[1]}9`,
+    ];
+    for (const s of kept) assert.deepEqual(scrubText(s), { text: s, tags: 0, tokens: 0 }, s);
+  });
+
+  test('no false removal over every reference string (data/refdata) and every line of tests/fixtures', () => {
+    // The spaced pattern adds a removal only where a PAN written with separators stands: none of these hold one, so the
+    // tokens counted equal those of the unspaced rule alone (the fixtures' own synthetic PANs), and the text is the
+    // unspaced rule's text.
+    const strings: string[] = [];
+    const walk = (x: unknown): void => {
+      if (typeof x === 'string') strings.push(x);
+      else if (Array.isArray(x)) x.forEach(walk);
+      else if (x && typeof x === 'object') for (const [k, v] of Object.entries(x)) { strings.push(k); walk(v); }
+    };
+    const refdata = path.join(ROOT, 'data/refdata');
+    const jsons = fs.readdirSync(refdata).filter((f) => f.endsWith('.json'));
+    for (const f of jsons) walk(JSON.parse(fs.readFileSync(path.join(refdata, f), 'utf8')));
+    const files = (d: string): string[] => fs.readdirSync(d).flatMap((n) => {
+      const p = path.join(d, n);
+      return fs.statSync(p).isDirectory() ? files(p) : [p];
+    });
+    const fixtureFiles = files(path.join(ROOT, 'tests/fixtures'));
+    for (const p of fixtureFiles) strings.push(...fs.readFileSync(p, 'utf8').split('\n'));
+    assert.ok(jsons.length >= 20 && fixtureFiles.length >= 20 && strings.length > 500000, `${jsons.length} files, ${fixtureFiles.length} fixtures, ${strings.length} strings`);
+    const plain = /[A-Za-z]{5}[0-9]{4}[A-Za-z]/g;
+    const hits: string[] = [];
+    for (const s of strings) {
+      const r = scrubText(s);
+      const unspaced = s.replace(/\[\s*pan\s*:[^\]]*\]/gi, '').replace(plain, PAN_REPLACEMENT);
+      if (r.tokens !== (s.replace(/\[\s*pan\s*:[^\]]*\]/gi, '').match(plain) ?? []).length || r.text.replace(/\s+$/, '') !== unspaced.replace(/\s+$/, '')) {
+        if (hits.length < 10) hits.push(s.slice(0, 120));
+      }
+    }
+    assert.deepEqual(hits, []);
   });
 });
 
