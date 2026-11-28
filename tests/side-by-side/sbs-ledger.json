@@ -163,32 +163,6 @@
       "description": "The live page matches this Gold fund-of-funds holding to the Kotak Gold ETF: another scheme and another product class (an ETF for a fund of funds), whose figures leave out the fund of funds' own cost. The new build finds no single answer (the Gold fund and the Gold ETF tie as its best candidates) and leaves it blank, as the rule for an ambiguous name requires: it removes the wrong figures but does not reach the holding's own fund (the ledger's \"neither\"). The holding name is a synthetic spelling: the vendor's name (Kotak Gold Fund(G)) with the word \"Fund\" left out, taken from the matching-corrections ledger's measured query. Under the real spellings both builds match the Gold fund itself: the vendor's name (tested in the performance probe) and the AMFI Regular and Direct Growth names (the new-build chat's run on d93da80, 27 Nov 2026), so no alias is needed."
     },
     {
-      "id": "SB-15",
-      "section": "holdings",
-      "kind": "field",
-      "field": ["matched", "universe"],
-      "key": "sample client n | uti focused fund (30 stocks) - regular plan - growth option | syn-6001 | mutual funds | centricity",
-      "fixtures": ["matching-probe"],
-      "legacy": { "byField": { "matched": "UTI Focused Fund-Reg(G)", "universe": "MF" } },
-      "new": null,
-      "class": "known-gap",
-      "reference": "E-13; OD-5 option B, the owner's \"Go ahead with the Stricter regime\" (26 Nov 2026); tests/parity/matching-corrections-ledger.json stage 3 and 4, MF_PERF amfi, to-null, regressed",
-      "description": "The live page is right here (UTI Focused Fund). The stricter regime leaves the AMFI-style name with \"(30 stocks)\" unmatched; the normaliser follow-up did not recover it. One of the 4 names the ledger still lists as regressed. A known gap under the stricter regime (OD-5 option B, owner 26 Nov 2026): the live page is right and the new build leaves the name unmatched; not yet ruled on by the owner (asked 27 Nov 2026); alias candidate (PD-36)."
-    },
-    {
-      "id": "SB-16",
-      "section": "holdings",
-      "kind": "field",
-      "field": ["matched", "universe"],
-      "key": "sample client n | kotak infrastructure & economic reform fund - standard plan-growth | syn-6002 | mutual funds | centricity",
-      "fixtures": ["matching-probe"],
-      "legacy": { "byField": { "matched": "Kotak Infra & Eco Reform Fund(G)", "universe": "MF" } },
-      "new": null,
-      "class": "known-gap",
-      "reference": "E-13; the normaliser follow-up of OD-5 option B (26 Nov 2026), not option B itself; tests/parity/matching-corrections-ledger.json stage 4 only, MF_PERF amfi, to-null, regressed (stage 3 still matched it); not yet ruled on by the owner (asked 27 Nov 2026)",
-      "description": "The live page is right here (Kotak Infra & Eco Reform Fund, an abbreviated reference name). The normaliser follow-up lost it (option B alone still matched it), so the new build leaves the full AMFI name unmatched. One of the 4 names the ledger still lists as regressed, newly lost by the follow-up. A known gap under the stricter regime (OD-5 option B, owner 26 Nov 2026): the live page is right and the new build leaves the name unmatched; not yet ruled on by the owner (asked 27 Nov 2026); alias candidate (PD-36)."
-    },
-    {
       "id": "SB-17",
       "section": "holdings",
       "kind": "field",
@@ -445,34 +419,6 @@
       "follows": "SB-14",
       "reference": "E-31; follows SB-14",
       "description": "Regular list: the live page shows the sibling Kotak Gold ETF's figures for the Gold fund (synthetic spelling, SB-14); the new build leaves the row blank (unmatched). Neither shows the holding's own fund in this list."
-    },
-    {
-      "id": "SB-37",
-      "section": "performance",
-      "kind": "field",
-      "field": ["r 1M", "r 3M", "r 6M", "r 1Y", "r 2Y", "r 3Y", "r 5Y", "r 10Y", "r SI"],
-      "key": "/^(regular|direct) \\| equity mf \\| fund \\| (uti focused fund \\(30 stocks\\) - regular plan - growth option)$/",
-      "fixtures": ["matching-probe"],
-      "legacy": "*",
-      "new": "*",
-      "class": "known-gap",
-      "follows": "SB-15",
-      "reference": "E-31; E-32; follows SB-15",
-      "description": "The live page shows the right fund's figures; the new build a blank row. A known gap under the stricter regime (OD-5 option B, owner 26 Nov 2026): not yet ruled on by the owner (asked 27 Nov 2026); alias candidate (PD-36)."
-    },
-    {
-      "id": "SB-38",
-      "section": "performance",
-      "kind": "field",
-      "field": ["r 1M", "r 3M", "r 6M", "r 1Y", "r 2Y", "r 3Y", "r 5Y", "r 10Y", "r SI"],
-      "key": "/^(regular|direct) \\| equity mf \\| fund \\| (kotak infrastructure & economic reform fund - standard plan-growth)$/",
-      "fixtures": ["matching-probe"],
-      "legacy": "*",
-      "new": "*",
-      "class": "known-gap",
-      "follows": "SB-16",
-      "reference": "E-31; E-32; follows SB-16",
-      "description": "The live page shows the right fund's figures; the new build a blank row. A known gap under the stricter regime (OD-5 option B, owner 26 Nov 2026): not yet ruled on by the owner (asked 27 Nov 2026); alias candidate (PD-36)."
     },
     {
       "id": "SB-39",

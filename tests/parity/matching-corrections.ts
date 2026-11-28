@@ -25,6 +25,7 @@ import { nameKey } from '../../app/src/engine/match/normalize.ts';
 import { AMFI_NAMES, type AmfiNames } from './amfi-names.ts';
 import { buildMatchContext } from '../../app/src/engine/match/resolve-holdings.ts';
 import { committedBlocks } from '../helpers/match-blocks.ts';
+import { parseOwnerAliases, type OwnerAliasTable } from '../../app/src/engine/match/owner-aliases.ts';
 
 export type ChangeKind = 'to-null' | 'from-null' | 'other-answer';
 export type Change = { set: string; measure: 'self' | 'loo' | 'amfi'; query: string; amc: string; legacy: string | null; corrected: string | null; kind: ChangeKind; correct: 'fixed' | 'regressed' | 'neither' };
@@ -113,20 +114,30 @@ export function knownWordsOfReference(): ReadonlySet<string> {
   return k;
 }
 
+/** The owner's aliases as committed (data/owner/fund-aliases.json), as the page carries them. */
+export function ownerAliasesOfReference(): OwnerAliasTable {
+  return parseOwnerAliases(committedBlocks().OWNER_FUND_ALIASES);
+}
+/** The id of the last stage: everything the page matches with, the owner's aliases included. */
+export const ALIAS_STAGE = 'Owner aliases, lines 1 to 22 (the owner, 25 and 28 Nov 2026)';
+
 /** The corrections in the order they land; each stage is measured with everything before it switched on. */
 export const STAGES: ReadonlyArray<{ id: string; opts: MatchOptions }> = [
   { id: 'KI-036 no answer decided by candidate order', opts: { nullOnTies: true } },
   { id: 'KI-101 fund-house words are not distinctive', opts: { nullOnTies: true, houseTokens: true } },
   { id: 'Option B, the stricter regime (the owner, 26 Nov 2026)', opts: { nullOnTies: true, houseTokens: true, absentFundGuard: true } },
   { id: 'Normaliser v2 and the candidate-side word guard (follow-up, 26 Nov 2026)', opts: { nullOnTies: true, houseTokens: true, absentFundGuard: true, normaliserV2: true, candidateWordGuard: true, knownWords: knownWordsOfReference() } },
+  { id: ALIAS_STAGE, opts: { nullOnTies: true, houseTokens: true, absentFundGuard: true, normaliserV2: true, candidateWordGuard: true, knownWords: knownWordsOfReference(), ownerAliases: ownerAliasesOfReference() } },
 ];
 
 export const LEDGER = path.join(path.dirname(fileURLToPath(import.meta.url)), 'matching-corrections-ledger.json');
 
 if (process.argv.includes('--write-ledger')) {
   const stages = STAGES.map((s) => ({ id: s.id, opts: s.opts, report: measure(s.opts, 1) }));
-  /* a Set (knownWords) is recorded by its size: its words are the reference data's, rebuilt on every run */
-  const replacer = (_k: string, v: unknown): unknown => (v instanceof Set ? `${v.size} words (normalizeV2 tokens)` : v);
+  /* a Set (knownWords) is recorded by its size: its words are the reference data's, rebuilt on every run; the owner's
+     alias table by its number of lines and the file's date */
+  const replacer = (k: string, v: unknown): unknown => (v instanceof Set ? `${v.size} words (normalizeV2 tokens)`
+    : k === 'ownerAliases' && v !== null && typeof v === 'object' ? `${(v as OwnerAliasTable).byKey.size} lines (data/owner/fund-aliases.json)` : v);
   fs.writeFileSync(LEDGER, `${JSON.stringify({ written: 'full sweep (stride 1)', stages }, replacer, 1)}\n`);
   for (const s of stages) console.log(s.id, JSON.stringify({ self: s.report.self, loo: s.report.loo, amfi: s.report.amfi, changes: s.report.changes.length }));
 }

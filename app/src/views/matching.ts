@@ -67,7 +67,7 @@ export function buildMatchingSection(report: MatchReport | null, holdings: reado
     }
     if (r.method === 'isin') isin++;
     else if (r.method === 'amfi') amfi++;
-    else if (r.method === 'alias-pin') { alias++; matchedTo.push({ holding, matchedTo: plainText(key), how: 'approved alias (renamed scheme)' }); }
+    else if (r.method === 'alias-pin') { alias++; matchedTo.push({ holding, matchedTo: plainText(key), how: 'approved alias (the owner\'s list: a renamed scheme, or another spelling of it)' }); }
     else if (r.method === 'name-match' && r.confidence !== 'exact') { name++; matchedTo.push({ holding, matchedTo: plainText(key), how: 'name match' }); }
     else exact++;
   }
@@ -81,7 +81,7 @@ export function buildMatchingSection(report: MatchReport | null, holdings: reado
       { id: 'isin', label: 'Matched by the file\'s ISIN', value: isin },
       { id: 'amfi', label: 'Matched by AMFI scheme code', value: amfi },
       { id: 'exact', label: 'Matched by the exact reference name', value: exact },
-      { id: 'alias', label: 'Matched by an approved alias (renamed scheme)', value: alias },
+      { id: 'alias', label: 'Matched by an approved alias (a renamed scheme, or another spelling of it)', value: alias },
       { id: 'name', label: 'Matched by name (the names differ: check below)', value: name },
       { id: 'none', label: 'Unmatched (no figures from reference data)', value: none },
     ],
