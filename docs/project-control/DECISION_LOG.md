@@ -1012,8 +1012,8 @@ PD-50 to PD-56: the plain-language sections are still to be written; their table
 - **The window in practice.** The PC lost mains power at 04:24 IST and slept from 04:28 to 12:00 IST, so the window
   gave about two and a half hours of work (about 02:05 to 04:28 IST).
 - **Decisions taken under it** (28 Nov 2026, IST):
-  - About 02:26: the merge of PR #68 was held, although its checks were green, because the Guardian's own build of the
-    same commit differed by 42 bytes. At 02:28 the cause was found: the reviewer's worktree used another worktree's
+  - About 02:26: the merge of PR #68 was held, although its checks were green, because the new-build reviewer's own build
+    of the same commit differed by 42 bytes. At 02:28 the cause was found: the reviewer's worktree used another worktree's
     library folder, which changes three comment lines of the built page and nothing else. PR #68 merged; PR #71
     removed the cause. (MOD-05 under delegation (PD-68).)
   - 02:30 to 02:45, routine: the tax chat's next piece approved (one tax view for a review, not on screen); one format
