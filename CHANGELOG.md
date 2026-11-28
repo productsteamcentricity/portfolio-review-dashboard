@@ -99,6 +99,22 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **Tests:** `tests/unit/tax/{realised-irr,fifo-lots}.test.ts`, `tests/integration/realised-gains-reconcile.test.ts`,
   `tests/parity/tax.parity.test.ts`; each fails on main 0d38184's engine file.
 
+### Changed (new build, M3b: the E-147 footnote names other-date funds; one share format; E-148 month labels; `/next/` changes)
+- **`app/src/engine/returns/portfolio-returns.ts`** (ARC-03's L3, moved to NB-04 by MOD-05; the follow-up's financial
+  review S5): a fund absent from its plan's primary table and from every same-date table, whose return is only in a
+  table of another date, is excluded as `other-date` and footnoted "not in the primary table (its 3Y return is only in
+  a table of another date)" instead of "without a 3Y return"; a fund listed without the tenor, or absent everywhere,
+  stays "without a 3Y return". The coverage share has a fixed one decimal ("63.0%" beside "89.8%"). Weights, values
+  and coverage are unchanged; only the reason and the text change. Tests in `unit/returns/portfolio-returns.test.ts`.
+- **`app/src/engine/returns/stock-cagr.ts`** (E-148, not wired; the owner's answer to F1 on 27 Nov 2026, "As month
+  labels"): on a month-end source (the pack, by its kind; the analyst's file is daily unless declared) the
+  no-look-ahead rule compares month labels, not calendar days, under rule c2 (MOD-05 under the owner's delegation
+  PD-68): the review month's point counts when its own date is on or before the review date, or when the review date
+  is on or after the month's last weekday (no holiday calendar); otherwise the month before. A 30 Oct 2026 review
+  (October's last weekday) and a 31 Oct review use the point labelled 31 Oct and give the same 1Y, 3Y and 5Y; 29, 25
+  and 15 Oct use September. The figure is dated by the month-end label, marked "month-end label" on that source's
+  footnote clause; the true price day goes in the result's `notes`. Daily sources keep true days.
+
 ### Changed (records, registers-7, 27 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **Chat registers** (`docs/coordination/{CHAT_SUCCESSION_REGISTER,CONTEXT_COMPACTION_TRACKER,FILE_OWNERSHIP_MAP}.md`,
   `docs/project-control/CHAT_REGISTRY.md`): CHAT-016 (ARC-04, Guardian, successor of CHAT-008) and CHAT-017 (NB-05, new
