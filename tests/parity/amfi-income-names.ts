@@ -16,8 +16,9 @@
 //   several the house has several schemes in the category (index funds, ETFs, funds of funds, thematic and close-ended
 //           schemes): the answer is not known this way; `group` lists the house's schemes there, and a right answer is
 //           one of them.
-//   absent  no Growth-option name of the house and category resolves: the scheme is not in the fund table, so the only
-//           right answer is no match.
+//   absent  no Growth-option name of the house and category resolves in the new build: the scheme is taken as not in
+//           the fund table (close-ended series mostly; for a few the fund is there under a spelling the rules do not
+//           read, for the Growth names either). The income-option name must not resolve where the Growth names do not.
 // Codes only: no Screener score or rank is read (D-026).
 
 import fs from 'node:fs';

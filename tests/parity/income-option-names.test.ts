@@ -8,8 +8,9 @@
 // Known answers, worked without the rule under test (tests/parity/amfi-income-names.ts): for 335 of the 499 names the
 // one right answer is known from AMFI's own fund house and category (tier A through FUND_RANKS_CODES, no name
 // compared; tier B through the Growth-option names of the same house and category); for 127 the house has several
-// schemes in the category and a right answer is one of them; for 37 the scheme is not in the table and the only right
-// answer is no match. The rule under test must never give a wrong fund: a blank is right where the name is not sure.
+// schemes in the category and a right answer is one of them; for 37 the new build resolves no Growth-option name of
+// the house and category (the scheme is taken as not in the table), and the income-option name must not resolve
+// either. The rule under test must never give a wrong fund: a blank is right where the name is not sure.
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -54,7 +55,7 @@ describe('the corpus (tests/parity/amfi-income-names.json)', () => {
 });
 
 describe('KI-321: the income-option names against their known answers', () => {
-  test('no wrong fund, in any tier: a known answer or a blank; one of the house\'s schemes; a blank for an absent scheme', () => {
+  test('no wrong fund, in any tier: a known answer or a blank; one of the house\'s schemes; a blank where the Growth names do not resolve either', () => {
     const wrongKnown = of('A').concat(of('B')).filter((r) => r.got !== null && r.got !== r.vendorKey);
     assert.deepEqual(wrongKnown.map(show), [], 'tiers A and B');
     /* Kotak Nifty 50 Value 20 ETF has no Growth row in AMFI's file (an ETF's only option is its income option), so it is
@@ -64,7 +65,7 @@ describe('KI-321: the income-option names against their known answers', () => {
     assert.deepEqual(outside.map(show), [], 'tier several');
     const own = rows.find((r) => r.code === '135744')!;
     assert.deepEqual([own.got, own.step], ['Kotak Nifty 50 Value 20 ETF', 'exact']);
-    assert.deepEqual(of('absent').filter((r) => r.got !== null).map(show), [], 'a scheme absent from the table');
+    assert.deepEqual(of('absent').filter((r) => r.got !== null).map(show), [], 'a scheme whose Growth names do not resolve');
   });
 
   test('where the live matcher answers too, the two agree on every name (the same scheme the live page gives)', () => {
@@ -82,7 +83,8 @@ describe('KI-321: the income-option names against their known answers', () => {
     if (!SAME_DATA) { t.diagnostic('REPORT ONLY: the fund table changed since the corpus was built; rebuild it (tests/parity/amfi-income-names.ts) and review'); return; }
     // before the rule (main d8e811e): A 2, B 0, several 2, matched 4 of 499; the live matcher 459
     assert.deepEqual(counts, { A: 138, B: 177, several: 113, matched: 428, liveMatched: 459 });
-    // the live matcher is blank for none of the names the new build resolves; 31 names it resolves stay blank here
+    // the live matcher is blank for none of the names the new build resolves; it answers for 31 names that stay blank
+    // here, 10 of them with another fund or another plan of the fund (KI-321 lists them)
     assert.deepEqual([rows.filter((r) => r.got !== null && r.live === null).length, rows.filter((r) => r.got === null && r.live !== null).length], [0, 31]);
   });
 
