@@ -96,7 +96,6 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
       [/multi - cap/i, 'SB-08', 'correction'], [/icici pru bse liquid/i, 'SB-09', 'correction'], [/sbi nifty 1d/i, 'SB-10', 'correction'],
       [/tata nifty 50 exchange/i, 'SB-11', 'correction'], [/icici pru bluechip/i, 'SB-12', 'correction'],
       [/axis gold/i, 'SB-13', 'correction'], [/kotak gold/i, 'SB-14', 'correction'],
-      [/uti focused/i, 'SB-15', 'known-gap'], [/kotak infrastructure/i, 'SB-16', 'known-gap'],
       [/infosys/i, 'SB-17', 'improvement'],
     ];
     for (const [re, id, cls] of expect) {
@@ -110,6 +109,20 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     assert.equal(by(next, /icici pru bluechip/i).method, 'alias-pin (pinned)');
     assert.equal(by(next, /infosys/i).method, 'isin (exact)');
     assert.equal(by(legacy, /infosys/i).matched, null, 'the live page never reads the ISIN column (KI-184)');
+    // SB-15 and SB-16 retired (the owner's alias lines 18 and 20, approved 28 Nov 2026): the two official AMFI names the
+    // stricter regime left unmatched now match the same fund on both sides, the new build by the owner's alias
+    for (const [re, fund] of [[/uti focused/i, 'UTI Focused Fund-Reg(G)'], [/kotak infrastructure/i, 'Kotak Infra & Eco Reform Fund(G)']] as const) {
+      assert.ok(!result.diffs.some((d) => d.section === 'holdings' && re.test(d.key)), `${re}: no fund-matching difference left`);
+      // in the performance tables the two sides show the same record and figures; the only difference left is the renamed
+      // group of the Kotak fund (SB-18, a correction decided before)
+      assert.deepEqual([...new Set(result.diffs.filter((d) => d.section === 'performance' && re.test(d.key)).map((d) => `${d.field} ${d.ledger}`))].filter((x) => x !== 'group SB-18'), [], `${re}: performance`);
+      for (const list of ['regular', 'direct']) {
+        const rows = [legacy, next].map((s) => s.performance!.find((x) => x.list === list && re.test(x.key))!);
+        assert.deepEqual([rows[1]!.ref, rows[1]!.returns], [rows[0]!.ref, rows[0]!.returns], `${re}: the ${list} row`);
+        assert.ok(rows[0]!.ref !== null && Object.values(rows[0]!.returns).some((v) => v !== null), `${re}: the ${list} row has figures`);
+      }
+      assert.deepEqual([by(legacy, re).matched, by(next, re).matched, by(next, re).method], [fund, fund, 'alias-pin (pinned)']);
+    }
     // parity rows: a fund by its exact name, a share by name (legacy) and by ISIN (new), two non-MF classes
     for (const re of [/parag parikh/i, /hdfc bank/i, /office reit/i, /sample technologies/i]) {
       assert.ok(!result.diffs.some((d) => d.section === 'holdings' && re.test(d.key)), `${re}: parity expected`);
@@ -117,14 +130,14 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
     assert.equal(by(next, /hdfc bank/i).matched, 'hdfc bank');
     assert.equal(by(next, /office reit/i).route, 'other (REITs and InvITs)');
     assert.equal(by(next, /sample technologies/i).route, 'other (Unlisted shares)');
-    // the report's "Fund matching" summary: 17 holdings, 7 alike, 10 differ (7 corrections, 1 improvement, 2 known gaps)
+    // the report's "Fund matching" summary: 17 holdings, 9 alike, 8 differ (7 corrections, 1 improvement, no known gap)
     const m = result.matching;
-    assert.deepEqual([m.compared, m.same, m.rows.length], [17, 7, 10]);
+    assert.deepEqual([m.compared, m.same, m.rows.length], [17, 9, 8]);
     const per = (c: string): number => m.rows.filter((x) => x.class === c).length;
-    assert.deepEqual([per('correction'), per('improvement'), per('accepted-difference'), per('known-gap')], [7, 1, 0, 2]);
+    assert.deepEqual([per('correction'), per('improvement'), per('accepted-difference'), per('known-gap')], [7, 1, 0, 0]);
     const html = fundMatching(m);
     assert.match(html, /The live page matched ICICI Pru US Bluechip Equity Fund\(G\); the new build matched ICICI Pru Large Cap Fund\(G\) by alias-pin \(pinned\)\. Why: correction/);
-    assert.match(html, /The live page matched UTI Focused Fund-Reg\(G\); the new build matched nothing\. Why: known gap/);
+    assert.doesNotMatch(html, /UTI Focused Fund|Kotak Infra|known gap/, 'no known gap is left in the fund-matching report');
     // the entries pin each field's exact answer (CHAT-008 N1): another live-page fund for the Gold holding is unclassified
     const moved = { ...legacy, holdings: legacy.holdings.map((h) => (/axis gold/i.test(h.name) ? { ...h, matched: 'Axis Gold Fund-Reg(G)' } : h)) };
     const r2 = compareSides('matching-probe', false, moved, next, ledger);
@@ -163,7 +176,8 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
       }
       checked[list]++;
     }
-    assert.ok(checked.regular >= 40 && checked.direct >= 40, `only ${checked.regular} Regular and ${checked.direct} Direct figures checked`);
+    // 53 Regular and 39 Direct figures today; before the alias lines 18 and 20 the two known-gap rows (SB-37, SB-38) added theirs
+    assert.ok(checked.regular >= 40 && checked.direct >= 35, `only ${checked.regular} Regular and ${checked.direct} Direct figures checked`);
     // the gold rows of the Direct list (SB-40, SB-41): the live page shows the holding's own scheme's Direct plan, the
     // new build nothing, while the live page's Regular list picks the ETF (SB-40, SB-41: accepted differences, KI-036 ties left unmatched)
     for (const [name, own] of [['axis gold -reg(g)', 'Axis Gold Fund(G)-Direct Plan'], ['kotak gold (g)', 'Kotak Gold Fund(G)-Direct Plan']] as const) {
