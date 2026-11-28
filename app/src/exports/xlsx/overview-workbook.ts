@@ -81,6 +81,9 @@ export type HoldingRowInput = {
   exclusion: string | null;
   investedPresent: boolean;
   mergeGaps: string;
+  /** The holding's Account Names as given, joined by "; " (NB-05): set only when the base file gave one, and then the
+   * Holdings (as loaded) sheet gets a last column "Account Name". Shown only; no figure uses it. */
+  accountNames?: string;
 };
 
 /** The key of each matrix column (the engine's column id, as in the view-model). */
@@ -206,6 +209,7 @@ export function workbookInputFrom(review: Review, vm: OverviewVM, returns?: Retu
       exclusion: h.inclusion.status === 'excluded' ? exclusionText(h) : null,
       investedPresent: h.invested.kind === 'value',
       mergeGaps: h.mergeGaps.join(', '),
+      ...(h.accountNames ? { accountNames: h.accountNames.join('; ') } : {}),
     };
   });
 

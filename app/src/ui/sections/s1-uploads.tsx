@@ -25,6 +25,7 @@ import { registerSources, sizeText, slotView } from '../upload-slot.ts';
 import { focusFirst, useKeepFocus } from '../focus.ts';
 import { IrrSlot } from '../components/irr-slot.tsx'; // M3a returns (NB-03)
 import { irrSlotView } from '../../views/returns.ts'; // M3a returns (NB-03)
+import { TemplatesGroup } from '../components/templates-group.tsx'; // the blank file templates (NB-05)
 
 const BASE_FILE_ACCEPT = '.xlsx,.xlsm,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
 
@@ -122,6 +123,11 @@ export function S1Uploads({ store, state, logos }: { store: Store; state: AppSta
 
       <Group id="group-monitors" title="Fund monitor files" note="Optional: the month's data is embedded">
         <MonitorSlots state={state} store={store} />
+      </Group>
+
+      {/* The blank file templates (NB-05) */}
+      <Group id="group-templates" title="Templates" note="Blank layouts with a Read Me">
+        <TemplatesGroup store={store} />
       </Group>
 
       {report ? (

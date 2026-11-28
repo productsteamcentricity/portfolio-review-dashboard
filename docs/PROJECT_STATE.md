@@ -267,6 +267,10 @@
    Its Gate B's condition and notes are on `fix/m3b-followup-round2`: a line whose holdings have flows in the IRR file
    no longer shows the base file's figure beside rows from that file (M1), and the notes' shares and dates (L1, L2,
    L5; N2 of the M3b Gate B).
+   The templates PR is on `feat/base-template` (28 Nov 2026): the blank 17-column base file template with its Read Me
+   (U-06), a Templates group in section 1, and the base file's Account Name read, kept and shown only (no figure uses it;
+   the Moderator's default, not yet ruled on by the owner);
+   "Valuation Date" is in the template and not read (KI-320).
    Beside M2, the data-platform items (NB-04): M10, the MF Screener data pack reader and browser store, merged in
    PR #37 and accepted on 26 Nov 2026 (not wired); M11a, the monthly update engine core, merged in
    PR #41; M12a, the drawdown engine on index data, merged in PR #38, owner Gate E pending (the
