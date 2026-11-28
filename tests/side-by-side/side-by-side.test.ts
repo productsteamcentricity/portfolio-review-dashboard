@@ -177,7 +177,7 @@ describe('side-by-side: the legacy engine and the new build on the same syntheti
       checked[list]++;
     }
     // 53 Regular and 39 Direct figures today; before the alias lines 18 and 20 the two known-gap rows (SB-37, SB-38) added theirs
-    assert.ok(checked.regular >= 40 && checked.direct >= 35, `only ${checked.regular} Regular and ${checked.direct} Direct figures checked`);
+    assert.ok(checked.regular >= 50 && checked.direct >= 37, `only ${checked.regular} Regular and ${checked.direct} Direct figures checked`);
     // the gold rows of the Direct list (SB-40, SB-41): the live page shows the holding's own scheme's Direct plan, the
     // new build nothing, while the live page's Regular list picks the ETF (SB-40, SB-41: accepted differences, KI-036 ties left unmatched)
     for (const [name, own] of [['axis gold -reg(g)', 'Axis Gold Fund(G)-Direct Plan'], ['kotak gold (g)', 'Kotak Gold Fund(G)-Direct Plan']] as const) {

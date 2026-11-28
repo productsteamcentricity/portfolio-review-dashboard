@@ -5,9 +5,11 @@
 // Aggressive Hybrid Active FOF. The collision scan (MOD-04's standing rule, 25 Nov 2026) checks every alias key against
 // every name in data/refdata.
 // Lines 18 to 22 (the owner's "Approve all five" of 28 Nov 2026) are not renames: each is AMFI's official spelling of a
-// scheme the vendor spells differently. Per line: every official AMFI name of the scheme (its code in the comment)
-// resolves to the vendor's fund in its own plan; without the line each is unmatched, never another fund; the line
-// carries its own approval date and approver.
+// scheme the vendor spells differently. Per line: each official AMFI name whose key is the line's (12 of the four
+// schemes' 14 names, with their codes) resolves to the vendor's fund in its own plan; without the line each is unmatched,
+// never another fund; the line carries its own approval date and approver. The other two official names, the Kotak
+// scheme's income option, stay unmatched with the lines (KI-321) and are pinned so. The Direct list's record of each
+// target is its same-scheme Direct twin, which is the line's own direct target.
 // Refresh-proof (the coupling rule): a line whose target is not in today's reference data is reported, not failed, and
 // the collision scan fails only while the reference names equal the recorded basis; after a refresh it reports.
 
@@ -21,6 +23,7 @@ import { NEW_BUILD_MATCHING, matchInstrument, matchInstrumentDetail } from '../.
 import { ownerAliasOf, parseOwnerAliases } from '../../../app/src/engine/match/owner-aliases.ts';
 import { buildCrosswalk, makeUniverse, resolveInstrument } from '../../../app/src/engine/match/crosswalk.ts';
 import { nameKey } from '../../../app/src/engine/match/normalize.ts';
+import { directTwin } from '../../../app/src/engine/match/rekey.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const readJson = (rel: string): unknown => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
@@ -133,8 +136,9 @@ describe('owner fund aliases: each approved line (real data/refdata)', () => {
   });
 });
 
-/* Lines 18 to 22: every official AMFI name of the four schemes (AMFI's public NAV file, read on 23 Nov 2026; the scheme
- * code beside each), with the plan the name says. The Regular names' codes are the vendor's own codes for the targets
+/* Lines 18 to 22: the official AMFI names of the four schemes whose key is a line's key, 12 of their 14 (AMFI's public NAV
+ * file, read on 23 Nov 2026; the scheme code beside each), with the plan the name says. The other two are
+ * AMFI_NAMES_NOT_COVERED below. The Regular names' codes are the vendor's own codes for the targets
  * (data/refdata/FUND_RANKS_CODES.json), which is the evidence that the two names are one scheme. */
 const AMFI_NAMES: ReadonlyArray<{ line: number; code: string; name: string; plan: 'regular' | 'direct' }> = [
   { line: 18, code: '149090', name: 'UTI Focused Fund (30 stocks) - Regular Plan - Growth Option', plan: 'regular' },
@@ -149,6 +153,13 @@ const AMFI_NAMES: ReadonlyArray<{ line: number; code: string; name: string; plan
   { line: 22, code: '154195', name: 'Baroda BNP Paribas Best-in-Class Strategy Fund - Direct - Growth Option', plan: 'direct' },
   { line: 22, code: '154191', name: 'Baroda BNP Paribas Best-in-Class Strategy Fund - Regular - IDCW Payout Option', plan: 'regular' },
   { line: 22, code: '154193', name: 'Baroda BNP Paribas Best-in-Class Strategy Fund - Direct - IDCW Payout Option', plan: 'direct' },
+];
+
+/* The Kotak scheme's income option: AMFI writes "Payout of Income Distribution cum capital withdrawal option", and the
+ * words "capital withdrawal" are not plan words, so the key is not line 19's or 20's (KI-321). */
+const AMFI_NAMES_NOT_COVERED: ReadonlyArray<{ code: string; name: string; plan: 'regular' | 'direct' }> = [
+  { code: '133799', name: 'Kotak Infrastructure & Economic Reform Fund - Standard Plan-Payout of Income Distribution cum capital withdrawal option', plan: 'regular' },
+  { code: '133800', name: 'Kotak Infrastructure & Economic Reform Fund- Direct Plan- Payout of Income Distribution cum capital withdrawal option', plan: 'direct' },
 ];
 
 describe('owner fund aliases: lines 18 to 22, the official AMFI names (the owner, 28 Nov 2026)', () => {
@@ -180,6 +191,24 @@ describe('owner fund aliases: lines 18 to 22, the official AMFI names (the owner
       }
     });
   }
+
+  test('the two income-option names of the Kotak scheme stay unmatched with the lines: a blank, never another fund (KI-321)', () => {
+    assert.equal(AMFI_NAMES.length, 12);
+    for (const n of AMFI_NAMES_NOT_COVERED) {
+      assert.ok(![...table.byKey.keys()].includes(nameKey(n.name)), `${n.code}: its key is no line\'s`);
+      assert.equal(matchInstrument(n.name, '', n.plan === 'direct' ? DIR : REG, undefined, { ...corrected, ownerAliases: table }), null, n.code);
+    }
+  });
+
+  test('the Direct list\'s record: the same-scheme Direct twin of each Regular target is the line\'s own direct target', (t) => {
+    for (const line of [18, 19, 20, 21, 22]) {
+      const a = byLine.get(line)!;
+      if (!REG.includes(a.regular) || !DIR.includes(a.direct)) { t.diagnostic(`REPORT ONLY: line ${line} target not in today\'s MF_PERF / MF_PERF_DIRECT`); continue; }
+      // the page matches a holding in MF_PERF and reads its Direct figures from this twin (KI-054: the same scheme only)
+      assert.equal(directTwin(a.regular, DIR), a.direct, `line ${line}`);
+      assert.equal(nameKey(a.regular), nameKey(a.direct), `line ${line}: one scheme name in both plans`);
+    }
+  });
 
   test('the lines move no other answer: every MF_PERF and MF_PERF_DIRECT name resolves the same with and without lines 18 to 22', () => {
     const older = parseOwnerAliases({ ...(FILE as object), aliases: FILE.aliases.filter((x) => (x.line as number) < 18) });
