@@ -168,13 +168,38 @@ describe('KI-323 (MOD-05\'s ruling): a PAN written with spaces or hyphens betwee
     for (const t of [panToken(15, true), withFourth(16, 'Z')]) assert.deepEqual(scrubText(t), { text: PAN_REPLACEMENT, tags: 0, tokens: 1 });
   });
 
-  test('KI-323 narrow, the residual stated plainly: an upper-case five-letter word whose fourth letter is one of the ten, four digits and one letter, apart by single spaces or hyphens, is removed and counted', () => {
+  test('KI-323 narrow, the residual stated plainly: an upper-case five-letter word whose fourth letter is one of the ten, four digits and one letter, with a separator after the word, before the letter or both, is removed and counted', () => {
     // MOD-05's ruling: such ordinary text is still removed, by design; it is counted (the statement's "pan-removed"
-    // Information result tells the analyst), never silent. A month name in capitals whose fourth letter is C.
+    // Information result tells the analyst), never silent. A month name in capitals whose fourth letter is C. The
+    // separator: one to three spaces, non-breaking spaces or hyphens (S-2), on either side or both (review N-2).
     const word = ['MAR', 'CH'].join('');
-    for (const s of [`${word} 2025 A`, `${word}-2025-A`, `${word} 2025-A`, `${word}-2025 A`]) {
-      assert.deepEqual(scrubText(s), { text: PAN_REPLACEMENT, tags: 0, tokens: 1 }, s);
-      assert.deepEqual(scrubText(`Sample Fund ${s}`), { text: `Sample Fund ${PAN_REPLACEMENT}`, tags: 0, tokens: 1 }, s);
+    const NBSP = String.fromCharCode(0xa0);
+    for (const s of [`${word} 2025 A`, `${word}-2025-A`, `${word} 2025-A`, `${word}-2025 A`, `${word}2025 A`, `${word} 2025A`,
+      `${word}${NBSP}2025${NBSP}A`, `${word}  2025  A`, `${word} - 2025 - A`]) {
+      assert.deepEqual(scrubText(s), { text: PAN_REPLACEMENT, tags: 0, tokens: 1 }, JSON.stringify(s));
+      assert.deepEqual(scrubText(`Sample Fund ${s}`), { text: `Sample Fund ${PAN_REPLACEMENT}`, tags: 0, tokens: 1 }, JSON.stringify(s));
+    }
+  });
+
+  test('KI-323 widened (S-2): separators of one to three spaces, non-breaking spaces or hyphens are removed; four, or a tab, are not', () => {
+    // MOD-05's ruling on the review's S-2. The non-breaking space (U+00A0) and the tab are built from their codes.
+    const NBSP = String.fromCharCode(0xa0);
+    const TAB = String.fromCharCode(9);
+    const p = withFourth(17, 'H');
+    const [a, b, c] = [p.slice(0, 5), p.slice(5, 9), p.slice(9)];
+    for (const sep of [NBSP, '  ', ' - ', `${NBSP}-${NBSP}`, '---', `${NBSP}${NBSP}`]) {
+      for (const f of [`${a}${sep}${b}${sep}${c}`, `${a}${sep}${b}${c}`, `${a}${b}${sep}${c}`, `${a}${sep}${b} ${c}`]) {
+        assert.deepEqual(scrubText(`Sample Client A ${f}`), { text: `Sample Client A ${PAN_REPLACEMENT}`, tags: 0, tokens: 1 }, JSON.stringify(f));
+      }
+    }
+    for (const sep of ['    ', ' -- ', `${NBSP}${NBSP}${NBSP}${NBSP}`, TAB, ` ${TAB} `]) {
+      for (const f of [`${a}${sep}${b}${sep}${c}`, `${a}${sep}${b}${c}`, `${a}${b}${sep}${c}`]) {
+        assert.deepEqual(scrubText(`Sample Client A ${f}`), { text: `Sample Client A ${f}`, tags: 0, tokens: 0 }, JSON.stringify(f));
+      }
+    }
+    // The guards stay with the wider separators: lower case, and a fourth letter outside the ten, are kept.
+    for (const f of [`${a.toLowerCase()}${NBSP}${b}${NBSP}${c.toLowerCase()}`, `${withFourth(18, 'E').slice(0, 5)}  ${b}  ${c}`]) {
+      assert.deepEqual(scrubText(f), { text: f, tags: 0, tokens: 0 }, JSON.stringify(f));
     }
   });
 
