@@ -4,6 +4,33 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 
 ## [Unreleased]
 
+### Changed (new build: the returns note, and the since-inception return of a fund under one year old, KI-302; 28 Nov 2026; no change to `index.html` or data; `/next/` changes)
+- **The returns note** (the owner, 28 Nov 2026: "Yes, add it"): "Returns up to one year are absolute; returns over one
+  year are annualised." is the first note under every performance table of section 5, in both lists, and a "Returns" row
+  of the workbook's Read Me when the Performance sheet is written.
+- **A fund under one year old** (the owner, 28 Nov 2026: "Absolute, and say so"; KI-302): where a mutual fund's inception
+  is less than one calendar year before its table's as-on date, its since-inception return is shown as an absolute
+  return, marked "a" on screen with a note, and said in the row's Note on the Performance sheet with the days and the
+  data's annualised figure. The conversion is (1 + SI/100)^(days/365) - 1 over the days from the fund's inception to
+  its own block's as-on date (`app/src/engine/returns/performance.ts`, `sinceInception`). That the mutual-fund monitors
+  annualise such a figure by compounding is measured on the committed data, not documented by the vendor: de-annualised
+  that way, a young fund's figure lands on its own 1M, 3M or 6M return where its age is that window (18 fund and window
+  pairs: mean error 0.81 percentage points against 1.51 pro rata). The vendor's exact day count is not known; for a very
+  young fund one day matters (at 36 days and 216% annualised, about 0.3 percentage points).
+- **A dash with its reason, never a figure of unknown basis**: a fund whose age cannot be told (either date missing or
+  unreadable) keeps the data's figure only when a return of one year or more shows it is a year old; otherwise the cell is
+  a dash naming the missing date (the owner's rule). A SIF, PMS or AIF under one year old is also a dash: those data do
+  not say whether a young fund's since-inception return is annualised. That dash is the implementer's conservative
+  default, not the owner's ruling (KI-322, asked). In the committed data: 268 Regular and 181 Direct mutual-fund records
+  are under one year old on 31 Oct 2026; 26 of the 30 SIF records; 70 of 690 PMS strategies have no return of one year or
+  more and no inception date.
+- **Parity**: `tests/parity/performance-ledger.json` PF-17 and `tests/side-by-side/sbs-ledger.json` SB-59 to SB-61 (the
+  live page shows the data's annualised figure with no flag).
+- **Tests**: `tests/unit/returns/since-inception.test.ts`: four conversions worked by hand (216.4712% over 36 days is
+  12.03%; 6.7987% over 74 days is 1.34%; -13.413% over 92 days is -3.57%; 10% over 364 days is 9.97%), the calendar
+  boundary and a leap day, each dash reason, the Direct list on its own block's date, the screen's notes and marker, the
+  sheet's Note, and the measure on the committed data.
+
 ### Changed (records, registers-10, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,CRITICAL_PATH}.md`**: PRs #73 to #76; the conditions before
   the tax engine is wired (from the new-build reviewer's Gate B of the M7b seam); the M10 intake in review; a schedule
