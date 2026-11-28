@@ -191,9 +191,9 @@ describe('an uploaded monitor: the date its file states is not counted to (the f
     assert.ok(young > 300 && old > 3000, `${young} young, ${old} a year old`);
     const it = sinceInception(direct['Mirae Asset BSE Information Technology Index Fund(G)-Direct Plan']!, src.priceDay?.MF_DIRECT, 'MF_PERF_DIRECT')!;
     // the reason tells the analyst what to do and names no date
-    assert.equal(reason(it), 'the fund has no return of one year or more, and an uploaded monitor does not state the day its figures are priced to, so the fund\'s days cannot be counted; its since-inception return is shown once the month\'s data is built into the page');
+    assert.equal(reason(it), 'the fund has no return of one year or more, and an uploaded monitor does not state the day its figures are priced to, so the fund\'s days cannot be counted; without the uploaded monitor the page shows this return from its own monthly data, where the fund is at least 30 days old');
     assert.equal(status(it), STATUS.INSUFFICIENT_EVIDENCE);
-    assert.equal(SI_NOT_SHOWN_TEXT['uploaded-monitor'], 'the figures come from an uploaded monitor, which does not state the day they are priced to; the return is shown once the month\'s data is built into the page');
+    assert.equal(SI_NOT_SHOWN_TEXT['uploaded-monitor'], 'the figures come from an uploaded monitor, which does not state the day they are priced to; without the uploaded monitor the page shows this return from its own monthly data, where the fund is at least 30 days old');
   });
 });
 

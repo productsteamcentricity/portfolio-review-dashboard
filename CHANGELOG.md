@@ -62,9 +62,10 @@ the last section of its Gate B of round 2c). No page change: the engine is impor
   read by `app/src/data/price-days.ts`). The page still shows one label only (the owner, 28 Nov 2026: "No, one label
   only"): the price day is used, never shown. An uploaded monitor has no known price day: the date its file states may
   be the month's label (the October 2026 Direct file states 31 Oct and is priced to 30 Oct), so a fund under one year
-  old in an uploaded monitor shows a dash, never a figure counted to the stated date, and the reason says the return is
-  shown once the month's data is built into the page (the Moderator's ruling D-A as corrected on 28 Nov 2026 after the
-  delta financial review, R2-1). A fund a year old keeps its figure.
+  old in an uploaded monitor shows a dash, never a figure counted to the stated date, and the reason says that
+  without the uploaded monitor the page shows this return from its own monthly data, where the fund is at least 30
+  days old (the Moderator's ruling D-A as corrected on 28 Nov 2026 after the delta financial review, R2-1; the wording
+  after the third review's R3-1). A fund a year old keeps its figure.
 - **How the conversion is known** (the financial review of 28 Nov 2026): from the vendor's own figures. Thirteen funds in
   the committed data start exactly at a 1M, 3M or 6M window, and converted this way their since-inception figure gives
   the vendor's own figure for that tenor to four decimals (Edelweiss BSE Top 10 Bank ETF: -13.413% annualised over 94

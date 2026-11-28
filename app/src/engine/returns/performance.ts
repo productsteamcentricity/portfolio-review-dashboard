@@ -267,7 +267,7 @@ export function sinceInception(record: PerfRecord, priceDay: PriceDay | undefine
         : `the inception date "${text}" in ${source} could not be read and there is no return of one year or more, so its since-inception return is not shown`);
     }
     if (priceDay === 'uploaded') {
-      return dash('uploaded-monitor', 'the fund has no return of one year or more, and an uploaded monitor does not state the day its figures are priced to, so the fund\'s days cannot be counted; its since-inception return is shown once the month\'s data is built into the page');
+      return dash('uploaded-monitor', 'the fund has no return of one year or more, and an uploaded monitor does not state the day its figures are priced to, so the fund\'s days cannot be counted; without the uploaded monitor the page shows this return from its own monthly data, where the fund is at least 30 days old');
     }
     return dash('no-price-day', `the day ${source} is priced to is not known and the fund has no return of one year or more, so its days cannot be counted and its since-inception return is not shown`);
   }
