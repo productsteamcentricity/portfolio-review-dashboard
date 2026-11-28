@@ -451,6 +451,9 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   const partial = [leftOut.length ? `${leftOut.join(' and ')} left out of the pools` : null, slabText].filter((x): x is string => x !== null);
   const note = partial.length ? `; ${STATUS.PARTIAL}: ${partial.join('; ')}` : '';
   const coverages = [leftOut.length ? coverageOf(client, gainUnknown, unreconciled) : null, slabShare].filter((x): x is number => x !== null);
+  // Round 4 S-3 (Q-49; the delta review of 0b95ff3; as M1 and D-1): when every gain is in slab-rate pools, the tax figures
+  // cover none of them, so they are NOT AVAILABLE with the pools named, never Rs 0 at coverage 0.
+  const allSlab = slabShare === 0 ? `${slabText}: ${slabNames(slabP)}; every gain is at the slab rate, which has no tax figure (PD-07)` : null;
   // M7b delta review D-1: a client with no holding split and some unreconciled with the IRR file has no harvest worked:
   // its figures are NOT AVAILABLE with the reason (as the unrealised figure), never Rs 0 at coverage 0.
   const split = splitHoldingsOf(client);
@@ -461,6 +464,7 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   const shown: HarvestFigureValues = notWorked !== null ? nullFigures() : figures;
   const val = (x: number | null, what: string): Value<number> => (notWorked !== null ? missing(STATUS.NOT_AVAILABLE, notWorked, p)
     : ratesMissing !== null ? missing(STATUS.NOT_AVAILABLE, `${ratesMissing}: the ${what} needs the tax rates as on the as-on date`, p)
+    : allSlab !== null ? missing(STATUS.NOT_AVAILABLE, `${allSlab}: the ${what} is not available`, p)
     : x === null
     ? missing(STATUS.NOT_AVAILABLE, `${SLAB_NOT_SET}: the ${what} depends on the order of set-off against slab-rate gains`, p)
     // Round 4 S-1: with both gaps the smaller coverage (the conservative mark).
@@ -479,7 +483,8 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
   else if (unreconciled > 0) labels.push(`${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (${unrecText}) left out (${STATUS.PARTIAL})`);
   // Round 4 S-1: the label names the slab-rate pools left out of the tax figures, whenever those figures are shown.
   if (slabText !== null && notWorked === null && ratesMissing === null) {
-    labels.push(`${slabText}: ${slabP.map((x) => `${x.cls}, ${x.b === 'LT' ? 'long term' : 'short term'}`).join('; ')} (${STATUS.PARTIAL})`);
+    // Round 4 S-3: with every gain at the slab rate the tax figures are NOT AVAILABLE, and the label says so.
+    labels.push(`${slabText}: ${slabNames(slabP)} (${allSlab !== null ? STATUS.NOT_AVAILABLE : STATUS.PARTIAL})`);
   }
   const pools: HarvestPool[] = c.pools.map((x) => ({
     // M2: as on a date before 23 Jul 2024 the class's rate (and its label, which states the rate) is not in the table,
@@ -500,7 +505,7 @@ export function buildHarvest(client: ClientTaxSummary, ctx: HarvestContext, prov
     // Round 3 M1: the plain losses carry the figures' nulls (no harvest worked), never 0.
     usedLosses: { st: shown.stUsed, lt: shown.ltUsed },
     unusedLosses: { st: shown.stUnused, lt: shown.ltUnused },
-    unquantifiedPools: slabP.map((x) => `${x.cls}, ${x.b === 'LT' ? 'long term' : 'short term'}`),
+    unquantifiedPools: slabP.map(poolName),
     pools, candidateDetail, gainUnknown, unreconciled, unreconciledKinds: kinds, split, notWorked,
     harvestableLoss: notWorked !== null ? null : candidateDetail.reduce((s, x) => s + x.ltLoss + x.stLoss, 0),
     labels,
@@ -520,6 +525,16 @@ function coverageOf(client: ClientTaxSummary, unknown: number, unreconciled = 0)
 /** Round 4 S-1: "slab-rate gains of N pools not in the tax figures", or null with no slab-rate pool. */
 function slabPoolsText(n: number): string | null {
   return n > 0 ? `slab-rate gains of ${n} pool${n === 1 ? '' : 's'} not in the tax figures` : null;
+}
+
+/** A pool by class and term ("Commodity ETF, short term"). */
+function poolName(x: { cls: string; b: HarvestTerm }): string {
+  return `${x.cls}, ${x.b === 'LT' ? 'long term' : 'short term'}`;
+}
+
+/** Round 4 S-1, S-3: the slab-rate pools by name, joined. */
+function slabNames(pools: ReadonlyArray<{ cls: string; b: HarvestTerm }>): string {
+  return pools.map(poolName).join('; ');
 }
 
 /** Round 4 S-1: the share of the pools' gains (gross) in pools with a rate, 0 to 1; 1 when the pools hold no gain. */
@@ -586,6 +601,9 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
     ? missing(STATUS.NOT_AVAILABLE, `no holding of any client is split into long and short term (${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split, ${unrecText}): the family ${what} is not available`, fp)
     : x === null && ratesMissing !== null
       ? missing(STATUS.NOT_AVAILABLE, `${ratesMissing}: the family ${what} is not available`, fp)
+    // Round 4 S-3: every gain of the worked clients at the slab rate: not available, never Rs 0 at coverage 0.
+    : familySlabShare === 0
+      ? missing(STATUS.NOT_AVAILABLE, `${familySlab}: every gain of the worked clients is at the slab rate, which has no tax figure (PD-07): the family ${what} is not available`, fp)
     : x === null
       ? missing(STATUS.NOT_AVAILABLE, `${SLAB_NOT_SET} for ${dashed} client${dashed === 1 ? '' : 's'}: the family ${what} is not available`, fp)
       : familyPartial.length === 0 ? present(x, 'inr', fp)

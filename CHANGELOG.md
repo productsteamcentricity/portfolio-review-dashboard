@@ -29,8 +29,10 @@ calls no capital-gains reader function (it imports only the reader's column tabl
   arithmetic in the engine), so whenever one exists, slab rate entered or not, the tax before, tax after and saving of
   the client and of the family are PARTIAL: their coverage is the share of the pools' gains at a rate (the smaller one
   when holdings are also left out), and a label names the pools ("slab-rate gains of N pools not in the tax figures").
-  CHAT-012's case with a 30% slab entered was a present 0 with no label (the tax at that slab is 900); now 0 at
-  coverage 0, labelled. No figure changes; a client with no slab-rate pool is unmarked as before.
+  No figure changes; a client with no slab-rate pool is unmarked as before. S-3 (the delta review of 0b95ff3; as M1 and
+  D-1): when every gain is in slab-rate pools, those three are NOT AVAILABLE with the pools named, never Rs 0 at
+  coverage 0, for the client and, when every worked client is so, the family. CHAT-012's case with a 30% slab entered
+  was a present 0 with no label (the tax at that slab is 900); it is now NOT AVAILABLE, labelled.
 - **Not built:** round 2c L3 (row-level matching of a merger's switch in) needs the owner's answer on how the export
   writes a merger (Q-T5); S-2 stays as built (MOD-05: NO; on the owner's list).
 

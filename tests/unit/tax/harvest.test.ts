@@ -469,18 +469,20 @@ describe('round 4 S-1 (the financial review of 7c6c4e9; Q-49): slab-rate pools l
   const amount = (v: Value<number>): number | null => (v.kind === 'value' ? v.v : null);
   const SLAB_ONE = 'slab-rate gains of 1 pool not in the tax figures';
 
-  test('the review\'s slab probe (CHAT-012\'s Commodity ETF, short 3,000, as on 31 Jan 2025), with and without a slab rate entered', () => {
-    // The only pool is short term at the slab rate: none of its gain is in the tax figures, coverage 0 (the tax at a 30%
-    // slab would be 900; the engine shows 0 and says it is PARTIAL, never a complete 0).
+  test('the review\'s slab probe (CHAT-012\'s Commodity ETF, short 3,000, as on 31 Jan 2025), with and without a slab rate entered: NOT AVAILABLE', () => {
+    // The only pool is short term at the slab rate: none of its gain is in the tax figures (the tax at a 30% slab would
+    // be 900). Round 4 S-3 (the delta review of 0b95ff3; as M1 and D-1): not Rs 0 at coverage 0 (S-1 as first built)
+    // but NOT AVAILABLE, the reason naming the pool, for the client and the family; the label says NOT AVAILABLE.
     for (const slab of [null, 30]) {
       const { clients, family } = run([{ client: A, name: 'Sample Gold ETF', cls: 'commodityEtf', cmv: 13000, st: 3000, ltCmv: 0 }], ctx25(slab));
       const a = clients[0]!;
       for (const v of [a.taxBefore, a.taxAfter, a.saving, family.taxBefore, family.taxAfter, family.saving]) {
-        assert.equal(amount(v), 0, `slab ${slab}`);
-        assert.equal(cov(v), 0, `slab ${slab}: coverage`);
-        assert.match(method(v), new RegExp(`${STATUS.PARTIAL}: ${SLAB_ONE}`), `slab ${slab}`);
+        assert.equal(v.kind, 'missing', `slab ${slab}`);
+        assert.equal(v.kind === 'missing' ? v.status : '', STATUS.NOT_AVAILABLE);
+        assert.match(v.kind === 'missing' ? v.reason : '', new RegExp(`^${SLAB_ONE}`), `slab ${slab}`);
       }
-      assert.ok(a.labels.includes(`${SLAB_ONE}: Commodity ETF, short term (${STATUS.PARTIAL})`), JSON.stringify(a.labels));
+      for (const v of [a.taxBefore, a.taxAfter, a.saving]) assert.match(v.kind === 'missing' ? v.reason : '', /Commodity ETF, short term; every gain is at the slab rate/);
+      assert.ok(a.labels.includes(`${SLAB_ONE}: Commodity ETF, short term (${STATUS.NOT_AVAILABLE})`), JSON.stringify(a.labels));
       assert.equal(a.figures.unquantifiedGain, 3000);
     }
   });
@@ -503,7 +505,8 @@ describe('round 4 S-1 (the financial review of 7c6c4e9; Q-49): slab-rate pools l
 
   test('a client with no slab-rate pool is unchanged; beside one with such a pool, the family is PARTIAL by the gains share', () => {
     // A: equity short-term 10,000 (tax 2,000), no slab pool: no mark, no label, as before. B: a debt fund short-term 1,500
-    // only (coverage 0). The family: gains at a rate 10,000 of 11,500.
+    // only: NOT AVAILABLE (round 4 S-3; it read 0 at coverage 0 as S-1 was first built). The family: gains at a rate
+    // 10,000 of 11,500.
     const { clients, family } = run([
       { client: A, name: 'Sample Flexi Cap Fund', cls: 'equityMf', cmv: 60000, st: 10000, ltCmv: 0 },
       { client: B, name: 'Sample Corporate Bond Fund', cls: 'debtMf', cmv: 11500, st: 1500, ltCmv: 0 },
@@ -516,7 +519,7 @@ describe('round 4 S-1 (the financial review of 7c6c4e9; Q-49): slab-rate pools l
     }
     near(amount(a.taxBefore), 2000, 'A tax before');
     assert.ok(!a.labels.some((l) => /slab-rate gains of/.test(l)), JSON.stringify(a.labels));
-    assert.equal(cov(b.taxBefore), 0);
+    assert.equal(b.taxBefore.kind, 'missing');
     near(amount(family.taxBefore), 2000, 'family tax before');
     assert.ok(Math.abs((cov(family.taxBefore) ?? -1) - 10000 / 11500) < 1e-12, `family coverage ${cov(family.taxBefore)}`);
     assert.match(method(family.taxBefore), new RegExp(`${STATUS.PARTIAL}: ${SLAB_ONE}`));
@@ -539,5 +542,32 @@ describe('round 4 S-1 with another gap: the smaller coverage, both named', () =>
       assert.ok(v.kind === 'value' && Math.abs((v.coverage ?? -1) - 2 / 3) < 1e-12, JSON.stringify(v));
       assert.match(v.kind === 'value' ? v.prov.method : '', /1 holding not split \(unreconciled with the IRR file: transfer row 1\) left out.*; slab-rate gains of 1 pool not in the tax figures/);
     }
+  });
+});
+
+describe('round 4 S-3 (the delta review of 0b95ff3; Q-49): an all-slab harvest is NOT AVAILABLE; a mixed one stays PARTIAL', () => {
+  test('the review\'s mixed case (3,750 at 0.857) is unchanged beside a client whose every gain is at the slab rate', () => {
+    // A: a Sec. 76 debt fund short-term 5,000 (slab) and an equity fund long-term 30,000; slab 30% entered, nothing
+    // entered on the exemption ("exemption not applied"): tax before 30,000 x 12.5% = 3,750, PARTIAL at 30,000 / 35,000.
+    // B: a debt fund short-term 2,000 only: NOT AVAILABLE with the pool named (0b95ff3: Rs 0 at coverage 0). The family:
+    // 3,750, PARTIAL at 30,000 / 37,000 (only B's figure is not worked out; A's stands).
+    const { clients, family } = run([
+      { client: A, name: 'Sample Corporate Bond Fund', cls: 'debtMf', cmv: 25000, st: 5000, ltCmv: 0 },
+      { client: A, name: 'Sample Flexi Cap Fund', cls: 'equityMf', cmv: 130000, lt: 30000 },
+      { client: B, name: 'Sample Banking and PSU Fund', cls: 'debtMf', cmv: 22000, st: 2000, ltCmv: 0 },
+    ], ctxOf({ slab: { [A]: 30, [B]: 30 } }));
+    const a = clients.find((c) => c.clientLabel === A)!;
+    const b = clients.find((c) => c.clientLabel === B)!;
+    for (const v of [a.taxBefore, a.taxAfter]) {
+      assert.ok(v.kind === 'value' && Math.abs(v.v - 3750) <= 0.01 && Math.abs((v.coverage ?? -1) - 30000 / 35000) < 1e-12, JSON.stringify(v));
+    }
+    assert.ok(a.saving.kind === 'value' && Math.abs((a.saving.coverage ?? -1) - 30000 / 35000) < 1e-12);
+    for (const v of [b.taxBefore, b.taxAfter, b.saving]) {
+      assert.ok(v.kind === 'missing' && v.status === STATUS.NOT_AVAILABLE && /^slab-rate gains of 1 pool not in the tax figures: Debt Mutual Funds /.test(v.reason), JSON.stringify(v));
+    }
+    assert.ok(b.labels.some((l) => l.startsWith('slab-rate gains of 1 pool not in the tax figures') && l.endsWith(`(${STATUS.NOT_AVAILABLE})`)), JSON.stringify(b.labels));
+    const f = family.taxBefore;
+    assert.ok(f.kind === 'value' && Math.abs(f.v - 3750) <= 0.01 && Math.abs((f.coverage ?? -1) - 30000 / 37000) < 1e-12, JSON.stringify(f));
+    assert.match(f.kind === 'value' ? f.prov.method : '', /slab-rate gains of 2 pools not in the tax figures/);
   });
 });
