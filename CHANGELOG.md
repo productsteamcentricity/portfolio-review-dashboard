@@ -8,28 +8,43 @@ All notable changes. Dates are IST. `index.html` MD5 is recorded for every chang
 - **The returns note** (the owner, 28 Nov 2026: "Yes, add it"): "Returns up to one year are absolute; returns over one
   year are annualised." is the first note under every performance table of section 5, in both lists, and a "Returns" row
   of the workbook's Read Me when the Performance sheet is written.
-- **A fund under one year old** (the owner, 28 Nov 2026: "Absolute, and say so"; KI-302): where a mutual fund's inception
-  is less than one calendar year before its table's as-on date, its since-inception return is shown as an absolute
-  return, marked "a" on screen with a note, and said in the row's Note on the Performance sheet with the days and the
-  data's annualised figure. The conversion is (1 + SI/100)^(days/365) - 1 over the days from the fund's inception to
-  its own block's as-on date (`app/src/engine/returns/performance.ts`, `sinceInception`). That the mutual-fund monitors
-  annualise such a figure by compounding is measured on the committed data, not documented by the vendor: de-annualised
-  that way, a young fund's figure lands on its own 1M, 3M or 6M return where its age is that window (18 fund and window
-  pairs: mean error 0.81 percentage points against 1.51 pro rata). The vendor's exact day count is not known; for a very
-  young fund one day matters (at 36 days and 216% annualised, about 0.3 percentage points).
-- **A dash with its reason, never a figure of unknown basis**: a fund whose age cannot be told (either date missing or
-  unreadable) keeps the data's figure only when a return of one year or more shows it is a year old; otherwise the cell is
-  a dash naming the missing date (the owner's rule). A SIF, PMS or AIF under one year old is also a dash: those data do
-  not say whether a young fund's since-inception return is annualised. That dash is the implementer's conservative
-  default, not the owner's ruling (KI-322, asked). In the committed data: 268 Regular and 181 Direct mutual-fund records
-  are under one year old on 31 Oct 2026; 26 of the 30 SIF records; 70 of 690 PMS strategies have no return of one year or
-  more and no inception date.
-- **Parity**: `tests/parity/performance-ledger.json` PF-17 and `tests/side-by-side/sbs-ledger.json` SB-59 to SB-61 (the
-  live page shows the data's annualised figure with no flag).
-- **Tests**: `tests/unit/returns/since-inception.test.ts`: four conversions worked by hand (216.4712% over 36 days is
-  12.03%; 6.7987% over 74 days is 1.34%; -13.413% over 92 days is -3.57%; 10% over 364 days is 9.97%), the calendar
-  boundary and a leap day, each dash reason, the Direct list on its own block's date, the screen's notes and marker, the
-  sheet's Note, and the measure on the committed data.
+- **A mutual fund under one year old** (the owner, 28 Nov 2026: "Absolute, and say so"; KI-302): its since-inception
+  return is shown as an absolute return, marked "a" on screen with a note, and said in the row's Note on the Performance
+  sheet with the days and the data's annualised figure. The conversion is (1 + SI/100)^(days/365) - 1
+  (`app/src/engine/returns/performance.ts`, `sinceInception`) over the days from the fund's inception to the day its
+  block is priced to, which is not the month-end label: the October 2026 Regular monitor is priced to Mon 2 Nov 2026 and
+  the Direct monitor to Fri 30 Oct 2026 (the refresh log of October 2026; PD-56). The price days are a small table,
+  `app/src/config/price-days.json` (one entry per data month and block, copied from the refresh log at each refresh,
+  read by `app/src/data/price-days.ts`); an uploaded monitor uses the date its file states. The page still shows one
+  label only (the owner, 28 Nov 2026: "No, one label only"): the price day is used, never shown.
+- **How the conversion is known** (the financial review of 28 Nov 2026): from the vendor's own figures. Thirteen funds in
+  the committed data start exactly at a 1M, 3M or 6M window, and converted this way their since-inception figure gives
+  the vendor's own figure for that tenor to four decimals (Edelweiss BSE Top 10 Bank ETF: -13.413% annualised over 94
+  days is -3.6411%, its 3M figure; counted to the 31 Oct label it would be -3.5650%). And of the young funds launched at
+  a NAV of 10, 146 of 173 (Regular) and 130 of 163 (Direct) land on a NAV of four decimals on the recorded price day,
+  against 11 to 26 on any other day within three of it. Both are tests, so a wrong price day typed at a refresh fails
+  CI. A Regular and a Direct figure of one young fund differ because the two blocks are of two price days, as every
+  other tenor of the two lists already does under the one label.
+- **A dash with its reason, never a figure of unknown basis and never a count to the label.** These are the
+  Moderator's defaults of 28 Nov 2026 (MOD-05's rulings on this branch), not rulings of the owner, to whom they are put
+  (Q-F9 to Q-F11): a mutual fund under 30 days old, where one day of count is a large share of the figure (22 Regular
+  and 17 Direct records); a SIF at every age, because the SIF data does not state whether its since-inception return is
+  annualised (all 30 records; KI-322); a month with no price day recorded. Where a date is missing (PMS carries no
+  inception dates; PMS and AIF no as-on date), the data's figure is kept only when a return of one year or more shows
+  the strategy is a year old (620 of 690 PMS strategies, 10 of 12 AIFs), else a dash: the implementer's reading,
+  confirmed by the Moderator. Such a figure is annualised by convention, which is not verified for a strategy between
+  one and two years old. In the committed data 246 Regular and 164 Direct mutual-fund records are shown as an absolute
+  return.
+- **Parity**: `tests/parity/performance-ledger.json` PF-17 (a SIF's since-inception figure, a dash) and
+  `tests/side-by-side/sbs-ledger.json` SB-59 and SB-60 (one fund in each list: 1.3790% over 76 days for 6.7987%
+  annualised; 1.1980% over 73 days for 6.1353%) and SB-61 (three SIFs, under and over one year old). The live page
+  shows the data's figure with no flag in each case.
+- **Tests**: `tests/unit/returns/since-inception.test.ts`: the price-day table (the embedded month has its three
+  entries; no entry is a missing value with its reason), the thirteen vendor figures, the landing measure on both
+  monitors, conversions worked by hand (216.4712% over 38 days is 12.7430%; 263.9663% over 35 days is 13.188%; 10% over
+  364 days is 9.9713%; 8% over 30 days is 0.6346%), the calendar boundary counted to the price day and a leap day, each
+  dash reason, each list on its own block's price day, the screen's notes and marker, the sheet's Note, and that no
+  text on screen names the price day.
 
 ### Changed (records, registers-10, 28 Nov 2026: docs only; no change to `index.html`, `app/` or data)
 - **`docs/PROJECT_STATE.md`**, **`docs/coordination/{CODING_MAP,CRITICAL_PATH}.md`**: PRs #73 to #76; the conditions before
