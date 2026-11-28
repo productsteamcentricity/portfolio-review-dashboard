@@ -526,7 +526,7 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
   // F-3, D-1: holdings not split (unreconciled with the IRR file) make the family figure PARTIAL; its coverage is the
   // share of the family's holdings in the pools: split holdings with a known gain over split and unreconciled holdings.
   const familyNote = [notWorked > 0 ? `${notWorked} client${notWorked === 1 ? '' : 's'} with no holding split (no harvest worked)` : null,
-    gainUnknown > 0 ? `${gainUnknown} holdings with an unknown gain` : null,
+    gainUnknown > 0 ? `${gainUnknown} holding${gainUnknown === 1 ? '' : 's'} with an unknown gain` : null,
     unreconciled > 0 ? `${unreconciled} holding${unreconciled === 1 ? '' : 's'} not split (unreconciled with the IRR file)` : null].filter((x): x is string => x !== null);
   const known = list.reduce((s, h) => s + Math.max(0, h.split - h.gainUnknown), 0);
   const base = list.reduce((s, h) => s + h.split + h.unreconciled, 0);
@@ -541,8 +541,9 @@ export function sumHarvests(list: readonly HarvestLocal[], prov?: Provenance): F
     : x === null
       ? missing(STATUS.NOT_AVAILABLE, `${SLAB_NOT_SET} for ${dashed} client${dashed === 1 ? '' : 's'}: the family ${what} is not available`, fp)
       : familyNote.length === 0 ? present(x, 'inr', fp)
+        // Round 3 L1 (CHAT-012): the coverage mark whatever is left out, an unknown gain alone included (as the client's).
         : present(x, 'inr', { ...fp, method: `${fp.method}; ${STATUS.PARTIAL}: ${familyNote.join(' and ')} left out` },
-          unreconciled > 0 ? { coverage: familyCoverage } : undefined));
+          { coverage: familyCoverage }));
   return {
     label: FAMILY_LABEL, byClient: [...list], figures,
     taxBefore: v(figures.taxBefore, 'tax before harvesting'), taxAfter: v(figures.taxAfter, 'tax after harvesting'), saving: v(figures.saving, 'saving'),

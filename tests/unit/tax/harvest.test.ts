@@ -390,3 +390,20 @@ describe('round 3 M2: the I-21 rates are those from 23 Jul 2024; before that day
     }
   });
 });
+
+describe('round 3 L1 and L2 (CHAT-012\'s Gate B of M7b): the family coverage and what the PARTIAL label names', () => {
+  test('L1: the family figure is marked with its coverage when the only gap is a holding with an unknown gain', () => {
+    // One client: Fund One split with a known long-term gain of 1,00,000, Fund Two split with no invested value (gain
+    // unknown). The client's tax before is PARTIAL at coverage 1 known of 2 split holdings = 0.5 (round 2). The family
+    // (one client) is PARTIAL with the same coverage, 0.5; before round 3 it carried the PARTIAL words but no coverage.
+    const { clients, family } = run([
+      { client: A, name: 'Sample Fund One', cls: 'equityMf', cmv: 300000, lt: 100000 },
+      { client: A, name: 'Sample Fund Two', cls: 'equityMf', cmv: 200000, lt: null },
+    ], ctxOf({ exemptionUsed: { [A]: 'unused-confirmed' } }));
+    assert.equal((clients[0]!.taxBefore as { coverage?: number }).coverage, 0.5);
+    assert.equal(family.unreconciled, 0);
+    assert.equal(family.taxBefore.kind, 'value');
+    assert.equal((family.taxBefore as { coverage?: number }).coverage, 0.5);
+    assert.match((family.taxBefore as { prov: { method: string } }).prov.method, /PARTIAL COVERAGE: 1 holding with an unknown gain left out/);
+  });
+});
